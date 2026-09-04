@@ -57,6 +57,8 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 | `clob_depth` | same module | `depth` | `ClobDepth.Func7.func7_terminates` with `ClobDepth.Spec` corollaries | For every represented order array under the stated allocator budget, the export terminates with two pointers owning level arrays that represent the exact source `depthL` bids and asks.  The theorem states the exact three allocator globals, unchanged pages, the preserved input orders representation, and byte preservation below the initial heap top.  Source corollaries state exact modular per-price aggregation and its bounded natural-number interpretation. |
 | [`f64_mul_bits`](lean/Project/F64MulBits/README.md) | [`LeanExe.Examples.Float64Bits`](../../LeanExe/Examples/Float64Bits.lean) | `mulBits` | `F64MulBits.Spec.mulBits_source_real_error` and `F64MulBits.Spec.mulBits_wat_real_error` | The source-facing Talos model and the generated WAT return the same binary64 product bits.  For finite inputs of magnitude at most one, the result is finite and has absolute real error at most `2^-52`; WAT execution is fuel-independent and preserves the store. |
 | [`f64_dot2_checked_bits`](lean/Project/F64Dot2CheckedBits/README.md) | same module | `dot2CheckedBits` | `F64Dot2CheckedBits.Spec.dot2CheckedBits_source_real_error` and `F64Dot2CheckedBits.Spec.dot2CheckedBits_wat_real_error` | Four raw-bit half-range guards give a total two-word status/result contract.  The accepted generated WAT performs two multiplications and one addition, returns a finite result within `3 * 2^-52` of the exact real dot product, terminates independently of fuel, and preserves the store; rejection returns status one and zero bits. |
+| [`f64_dot_checked_bits`](lean/Project/F64DotCheckedBits/README.md) | same module | `dotCheckedBits` | source and WAT absolute, gamma-times-mass, and conditioned-relative-error theorems | For arbitrary valid equal-length logical arrays, the generated loop returns the pure modeled binary64 dot product, terminates independently of fuel, and preserves the store; unequal lengths reject and empty arrays return positive zero. |
+| [`f64_horner2_checked_bits`](lean/Project/F64Horner2CheckedBits/README.md) | same module | `horner2CheckedBits` | `F64Horner2CheckedBits.Spec.horner2CheckedBits_source_real_error` and `F64Horner2CheckedBits.Spec.horner2CheckedBits_wat_real_error` | Four raw-bit half-range guards protect `(c₂*x+c₁)*x+c₀`.  The accepted generated WAT returns a finite result within `3 * 2^-52`, and an independent explicit trace covers all 47/64/81/98/118-step paths with exact results and store preservation. |
 
 Together the counter artifacts cover the runtime end to end: bump allocation, free-list reuse and unlink, release through all three object kinds including recursion, retain both inline and exported, and the null release.
 
@@ -64,7 +66,7 @@ Together the counter artifacts cover the runtime end to end: bump allocation, fr
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It stages the complete result in a temporary directory and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that temporary directory and removes it before returning.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all twenty registered models, verifies the registry against runtime and specification imports, and builds the twenty completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all twenty-four registered models, verifies the registry against runtime and specification imports, and builds the twenty-four completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -81,11 +83,14 @@ tools/artifact-conformance.js check
 
 ## Requirements
 
-The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  For the
-pre-floating-point checkpoint, the proof Lake files pin Talos revision
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` and its transitive dependencies.  The source
-artifact tool fetches that pinned dependency and builds its verifier under the
-resource limits when a local verifier is absent.
+The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  The
+source-driven proof Lake files pin floating-point Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
+The historical twenty-package exact-artifact manifests still identify the
+pre-floating-point verifier inputs and require a separate migration before a
+current aggregate artifact claim.  The source artifact tool fetches its pinned
+dependency and builds the verifier under the resource limits when a local
+verifier is absent.
 
 The conformance gate uses the official WebAssembly testsuite submodule already pinned by CodeLib.  After Lake fetches CodeLib, initialize that nested submodule with `git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/testsuite`.  The gate verifies both repository revisions and stops on a mismatch rather than fetching or changing either checkout.
 
@@ -100,7 +105,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  `tools/talos-proof.js check --all` passed all twenty registered cases on 2026-08-26.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26.  The guarded Horner focused gate passed as the twenty-fourth completed case on 2026-09-04; a refreshed twenty-four-case aggregate remains pending.
 
 The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  All twenty packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The last recorded `tools/artifact-proof.js check-all` run passed all twenty exact artifact targets, behavioral specifications, and manifest declarations on 2026-08-26 without reading source or invoking LeanExe or `wasm-tools`.
 

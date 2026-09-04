@@ -69,6 +69,10 @@ instruction and administrative transition: rejection at `x`, `c₂`, `c₁`, or
 steps.  Its exact-result, termination, and numerical theorems have the same
 standard-only axiom report.
 
-The case remains registered with `complete: false`.  Completion still
-requires the exact-program-byte gate.  Release manifests, receipts, and
-self-host packaging remain outside this branch's completion gate.
+The case is complete under the established f64 source-driven boundary: the
+gate regenerates compiler WASM and WAT, requires exact equality with this
+tracked Talos program cache, and rebuilds the public proofs.  It deliberately
+does not claim a frozen exact-byte package.  The Euler flux, rather than this
+phase-7 prerequisite, remains the planned first f64 entry in the independent
+artifact registry.  Release manifests, receipts, and self-host packaging are
+outside this branch's completion gate.

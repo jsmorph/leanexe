@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty source-driven Talos proofs, twenty exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-four source-driven Talos proofs, twenty exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -121,7 +121,7 @@ and acceptance gates.
 - [x] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its generated WAT execution, with an explicit fuel-independent trace and store preservation.
 - [x] Follow the scalar multiplication proof with a guarded two-term dot artifact.
 - [x] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
-- [ ] Prove a guarded generated f64 quadratic Horner artifact with a finite-result and `3 * 2^-52` error theorem, retaining reusable ProofKit, annotation, certificate, and LTG support justified by the numerical kernels.
+- [x] Prove a guarded generated f64 quadratic Horner artifact with a finite-result and `3 * 2^-52` error theorem, retaining reusable ProofKit, annotation, certificate, and LTG support justified by the numerical kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
 
 Native floating-point execution and Wasmtime remain regression tools.  Accepted
@@ -164,13 +164,16 @@ only the standard logical axioms.  The next implementation checkpoint is a guard
 Horner evaluation, `(c₂*x + c₁)*x + c₀`, with the same finite-result and sharp
 `3 * 2^-52` theorem at both the source-model and decoded-WAT layers.
 
-On `talosfp-euler`, the guarded Horner source and its complete local Wasmtime,
-IR, WAT, annotation, and rejection regression now pass.  The reusable raw-bit
-half-unit theorem has been extracted into ProofKit, and the pure IEEE64
+On `talosfp-euler`, the guarded Horner source and its local Wasmtime, IR, WAT,
+annotation, and rejection regressions pass.  The reusable raw-bit half-unit
+theorem has been extracted into ProofKit, and the pure IEEE64
 multiply-then-add stage and two-stage `3 * 2^-52` theorems compile with only
-the standard logical axioms.  Talos case registration, generated-program
-execution, exact small-step tracing, and exact-byte closure are still pending,
-so the checklist item remains open.
+the standard logical axioms.  The generated-program proof now covers every
+guard path with exact results, store preservation, fuel-independent big-step
+execution, and an independent 47/64/81/98/118-transition small-step trace.
+Horner follows the established f64 source-driven completion boundary and does
+not claim a frozen exact-byte package; the Euler flux remains the planned first
+f64 entry in the independent exact-artifact registry.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
@@ -185,7 +188,7 @@ defines the formulas, guarded domain, mathematical and IEEE theorem layers,
 generated-WAT proof, exact-byte closure, data format, follow-on checked solver,
 acceptance gates, and nonclaims.
 
-- [ ] Complete the already selected guarded quadratic Horner checkpoint.
+- [x] Complete the already selected guarded quadratic Horner checkpoint.
 - [ ] Compile a guarded `gamma = 7/5` primitive-state Rusanov flux using the
       admitted binary64 add/multiply profile and exact sign-bit negation.
 - [ ] Prove physical admissibility, the characteristic-speed bound, finite
