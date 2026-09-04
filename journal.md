@@ -1184,3 +1184,127 @@ execution, cleanup, deletion, reset, or worktree rewrite.  The cold root was
 not repeated until its entire import closure had been divided and passed.
 The remaining aggregate recovery frontier is `ClobLimit`, `ClobMarket`, and
 `ClobDepth`, followed by one materially warmed aggregate retry.
+
+## 2026-09-04: ClobLimit behavioral specification fully warmed and passed
+
+The MatchFuel recovery and operating-contract notes were published as
+`60ca3730505d22e3135986bf073cd65b76f5ddba`; the local and
+`origin/talosfp-euler` refs and tree
+`754062c326bc468e5a4889dcfc8f83057b2f3d66` were identical before this work
+started.  The worktree was clean.  A read-only import audit established the
+behavioral `Project.ClobLimit.Spec` closure and confirmed that the separate
+`Artifact*` modules are not dependencies of that specification.
+
+Every build below ran directly on the local machine, one Lean process at a
+time, with `LEANRUN_LOCAL=1`, `LEAN_NUM_THREADS=1`, the pinned Lean
+4.34.0-rc2 sysroot, the PID-namespace preload shim, local wasm-tools 1.251.0,
+and an explicit 15-minute runner timeout.  No `dev` host was invoked or
+probed.  No maintenance, cleanup, reclamation, pruning, deletion, reset,
+checkout-overwrite, stash, or other worktree rewrite occurred.
+
+The model, validity, search, and internal transition leaves were warmed first:
+
+- `Project.ClobLimit.ValidOrder` passed 3,353 jobs.  `Model` took about 3.5
+  seconds and `ValidOrder` 9.6 seconds.
+- `Project.ClobLimit.Invalid` passed 3,356 jobs.  `Allocation` took about 3.4
+  seconds and the target 38 seconds.
+- `Project.ClobLimit.FindBestWrapper` passed 3,358 jobs.  Its freshly built
+  boundaries included `FunctionRegion.NoTail` at 15 seconds, `Step` at 1.5,
+  `Exec` at 0.732, `SearchRegion` at 9.8, `FindBest` at 3.0, and the wrapper
+  at 3.4 seconds.
+- `InternalEarlyExit` passed 3,359 jobs in 21 seconds and
+  `InternalIteration` passed 3,359 jobs in 29 seconds.
+- `InternalBookBump`, `InternalFullBookBump`, and `InternalTradeBump` each
+  passed 3,347 jobs and each took approximately 93 seconds.
+
+The partial-fill path was then divided at its allocation and update joins:
+
+- `InternalPartialBookPrepare` passed 3,346 jobs in 12 seconds and
+  `InternalPartialBookControl` passed 3,348 jobs in 5.1 seconds.
+- `InternalPartialBookAlloc` passed 3,349 jobs, building `AllocPrepare` in
+  6.1 seconds and `Alloc` in 5.9 seconds.
+- `InternalPartialBookUpdate` passed 3,366 jobs.  `Copy` took 9.1 seconds,
+  `Finish` 42 seconds, and `Update` 21 seconds.
+- `InternalPartialTradePrepare` passed 3,367 jobs in 10 seconds.
+  `InternalPartialTradeAlloc` passed 3,370 jobs, building `AllocPrepare` in
+  6.6 seconds and `Alloc` in 5.8 seconds.
+- `InternalPartialTradeUpdate` passed 3,378 jobs.  `Copy` took 8.6 seconds,
+  `Finish` 34 seconds, and `Update` 20 seconds.
+- `InternalPartialBranch` passed 3,384 jobs.  Its final boundaries were
+  `PartialFinish` at 3.4 seconds, `PartialTradeBranch` at 17 seconds, and the
+  target at 196 seconds.
+
+The full-fill path and loop closure passed from their leaves upward:
+
+- `InternalFullBookPrepare` passed 3,347 jobs in 7.0 seconds.
+  `InternalFullBookUpdate` passed 3,363 jobs, with `AllocPrepare` at 6.0
+  seconds, `Alloc` at 5.2, `Prefix` at 7.5, `Suffix` at 10, and `Update` at
+  11 seconds.
+- `InternalFullTradeFinish` passed 3,365 jobs, building its prepare boundary
+  in 10 seconds and finish boundary in 4.0 seconds.
+  `InternalFullTradeUpdate` passed 3,398 jobs in 18 seconds;
+  `InternalFullBookTrade` passed 3,401 jobs in 15 seconds;
+  `InternalFullTransition` passed 3,399 jobs in 3.0 seconds; and
+  `InternalFullBranch` passed 3,403 jobs in 11 seconds.
+- `InternalLoopControl` passed 3,409 jobs in 9.5 seconds and
+  `InternalLoopInvariant` passed 3,411 jobs in 4.5 seconds.
+- `InternalLoop` passed all 3,418 jobs.  Its newly built boundaries were
+  `Bounds` at 5.6 seconds, `Progress` at 3.2, `Completion` at 4.4,
+  `Advance` at 4.0, `Branches` at 4.3, `LoopIteration` at 3.1, and the loop
+  at 3.5 seconds.
+- `InternalCorrect` passed all 3,424 jobs.  `LoopInitial` took 4.4 seconds,
+  `LoopResult` 3.5, `Initialization` 3.2, `InternalEntry` 3.4, and the target
+  4.0 seconds.
+
+The public run-match wrapper passed next:
+
+- `RunMatchEmptyAlloc` passed 3,358 jobs in 60 seconds.  It replayed only the
+  existing deprecation warnings and the existing unused-simp-argument lints
+  at `RunMatchEmptyAlloc.lean:536`.
+- `RunMatchEntry` passed 3,359 jobs in 3.6 seconds.
+- `RunMatchAllocations` passed 3,361 jobs, with `Prepare` at 5.8 seconds and
+  the target at 7.5 seconds.
+- `RunMatchCorrect` passed 3,434 jobs, building `Call` in 6.6 seconds,
+  `Result` in 3.2, and the target in 5.0 seconds.
+
+The exported limit-order path began with `LimitEntry` at 3,435 jobs and 4.0
+seconds.  `LimitRunMatchResult` passed 3,441 jobs, building `ValidEntry` in
+3.7 seconds, `RunMatchCall` in 3.3, and its target in 4.1 seconds.
+`LimitFilled` then passed 3,443 jobs in 9.6 seconds.
+
+The residual-order path was deliberately divided around its two cold memory
+boundaries:
+
+- `LimitResidualStatus` passed 3,443 jobs in 3.7 seconds and
+  `LimitResidualPrepare` passed 3,444 jobs in 6.3 seconds.
+- The focused `LimitResidualBump` build first built
+  `LimitResidualAllocPrepare` in 4.8 seconds, then passed all 3,446 jobs with
+  92 seconds on the bump target.
+- `LimitResidualAlloc` passed 3,447 jobs in 5.9 seconds;
+  `LimitResidualAllocFacts` passed 3,448 jobs in 4.1 seconds; and
+  `LimitResidualCopyInvariant` passed 3,449 jobs in 3.8 seconds.
+- `LimitResidualAllocCopy` passed all 3,452 jobs.  The newly built
+  `LimitResidualBounds`, `LimitResidualCopy`, and root boundaries took 3.7,
+  4.9, and 3.0 seconds respectively.
+- The focused `LimitResidualFinish` build passed all 3,456 jobs, building
+  `LimitResidualFinishFacts` in 5.2 seconds and the target in 39 seconds.
+- `LimitResidualBook`, `LimitResidualResult`, and `LimitResidualBranch` each
+  passed in 3.4 seconds, at 3,457, 3,458, and 3,459 jobs respectively.
+- The independent `LimitResult` target passed 3,457 jobs in 3.6 seconds.
+  `LimitResidualExport` passed 3,459 jobs in 3.9 seconds and
+  `LimitResidual` passed 3,462 jobs in 5.1 seconds.
+
+With the complete behavioral closure current, `LimitCorrect` passed all 3,465
+jobs in 5.2 seconds and the public root completed:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.ClobLimit.Spec
+Build completed successfully (3466 jobs).
+```
+
+`Project.ClobLimit.Spec` itself took approximately 3.3 seconds.  Every target
+completed without a theorem diagnostic or source repair; output was limited to
+the repository's existing deprecation and linter warnings.  The remaining
+aggregate recovery frontier is now `ClobMarket` and `ClobDepth`, followed by
+one materially warmed aggregate retry.
