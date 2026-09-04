@@ -168,6 +168,35 @@ Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
 of each artifact theorem because they are the semantic input being proved.
 
+## 8. Produce verified Euler data from an exact floating-point artifact
+
+The `talosfp-euler` branch applies the phase-7 floating-point foundation to a
+guarded one-dimensional ideal-gas Rusanov numerical flux and a fixed Sod
+finite-volume step.  [Verified Euler Rusanov Data](plans/euler-rusanov.md)
+defines the formulas, guarded domain, mathematical and IEEE theorem layers,
+generated-WAT proof, exact-byte closure, data format, follow-on checked solver,
+acceptance gates, and nonclaims.
+
+- [ ] Complete the already selected guarded quadratic Horner checkpoint.
+- [ ] Compile a guarded `gamma = 7/5` primitive-state Rusanov flux using the
+      admitted binary64 add/multiply profile and exact sign-bit negation.
+- [ ] Prove physical admissibility, the characteristic-speed bound, finite
+      IEEE execution, and explicit componentwise real-error bounds.
+- [ ] Prove the same numerical contract for total, store-preserving execution
+      of the generated WAT.
+- [ ] Add the first registered f64 exact-byte artifact and transfer the WAT
+      theorem through checked decode, validation, and Talos translation.
+- [ ] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
+- [ ] Compile and prove a fixed first-order Sod step that emits raw binary64
+      state, flux, admissibility, and balance data.
+- [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
+      runner only after the fixed artifact passes.
+
+The accepted claim concerns exact IEEE-754 execution and explicit safety and
+roundoff properties.  PDE convergence, entropy-solution correctness,
+high-order reconstruction, and multidimensional flow remain outside this
+phase.
+
 ## Required gates
 
 | Change | Required evidence |
