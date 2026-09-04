@@ -12,7 +12,22 @@ Ordinary library-mode binary serialization can also run through LeanExe's experi
 
 The compiler and proof workspaces pin exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`.  The proof workspace pins the pre-floating-point Talos revision `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`; refreshed aggregate proof and conformance gates remain required before this migration supplies release evidence.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
 
-Run every direct Lean or Lake command through `tools/leanrun`.  The runner serializes Lean work with the neighboring VQ repository and applies the repository's CPU, memory, swap, and thread limits.  Repository drivers that invoke Lean already use this runner for their child processes.
+Run every direct Lean or Lake command through `tools/leanrun`.  The runner
+serializes Lean work with the neighboring VQ repository; in standard mode it
+also applies the repository's CPU, memory, swap, and thread limits.  Repository
+drivers that invoke Lean already use this runner for their child processes.
+
+If a container has no systemd user scope and the user explicitly authorizes
+local execution, set `LEANRUN_LOCAL=1`.  This opt-in mode still selects the
+pinned toolchain, takes the shared lock, applies the command timeout,
+`LEAN_NUM_THREADS=1`, `nice`, and `ionice`, and prints a warning that cgroup
+CPU, memory, and swap limits are unavailable.  It never enables itself.  Put
+the variable on a runner-calling repository driver instead of wrapping that
+driver in `tools/leanrun`, so nested runner calls do not reacquire the lock:
+
+```text
+LEANRUN_LOCAL=1 tools/talos-artifact.js prepare <case>
+```
 
 ```sh
 tools/download-wasmtime.sh
