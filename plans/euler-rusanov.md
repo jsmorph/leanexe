@@ -1,10 +1,12 @@
 # Verified Euler Rusanov Data
 
 **Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
-genuine Fréchet Jacobian, and complete strictly ordered eigenbasis are proved
-and integrated; the decoded finite-volume error layer is complete and direct
-compiled-update WebAssembly is next.  This document
-expands phase 8 of the root [Development Plan](../plan.md).
+genuine Fréchet Jacobian, complete strictly ordered eigenbasis, and decoded
+finite-volume error layer are proved and integrated.  The fixed compiled step
+now has source, generated Talos cache, pure model, runtime pins, and a passing
+Wasmtime/WAT regression; its exact generated-WAT execution theorem is next.
+This document expands phase 8 of the root
+[Development Plan](../plan.md).
 
 ## Purpose
 
@@ -365,10 +367,11 @@ are complete: the shared-interface error cancels from the balance residual,
 and each quarter-step cell is within half of the applicable scalar-flux budget
 of the decoded-input exact stencil.  This assembly still occurs in Lean's
 mathematical reals and is not described as executed stencil arithmetic.  Only
-after this explicit boundary, compile a fixed-grid stencil whose WASM output is a
-flat sequence of raw binary64 words containing the initial conservative
-states, interface fluxes, updated states, status, and balance diagnostics.
-Required results for that compiled artifact are:
+after this explicit boundary, compile a fixed-grid stencil whose WASM output
+is status followed by the six updated conservative-state words.  The initial
+states and interface fluxes are fixed inputs and internal intermediates, while
+admissibility and balance are theorem/data-certificate layers rather than
+extra runtime slots.  Required results for that compiled artifact are:
 
 - exact execution equals one application of the specified checked recurrence;
 - every emitted word required to denote a number is finite;
@@ -419,6 +422,16 @@ and seven result slots.  The medium-risk proof task is to expose the existing
 call-free Rusanov execution theorem in a module/function-index-parametric form
 so both the current scalar artifact and the embedded helper can instantiate
 it without duplicating the 335-instruction proof.
+
+The first implementation checkpoint now exists but remains deliberately
+incomplete.  The source, no-argument ABI, three flux calls, six update calls,
+generated `Program.lean`, runtime pins, and regression test are present.  The
+pure `Wasm.IEEE64` model proves the seven expected output words, while
+`Project.EulerRusanovStep.Spec.ExactSpecFor` fixes the future total execution
+contract at generated function index 6.  The registry entry remains
+`complete: false`, and the completed `Project` aggregate does not import that
+Spec until `sodQuarterStepCheckedBits_exact` is proved.  No exact-byte package
+or publishable raw step data is claimed at this intermediate checkpoint.
 
 ## Follow-on full shock-tube generator
 
@@ -481,7 +494,12 @@ Every checked row ends in a passing commit, an update to this plan and
       assembled quarter-step cells.
 - [ ] Add a symbolic CFL/invariant-domain theorem only if a later claim needs
       generic positivity beyond the proved fixed step.
-- [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
+- [x] Compile and register the fixed seven-word Sod step, generate its Talos
+      cache and pure IEEE64 model, prove the fixed model output, pin its
+      runtime helpers, and check its exact Wasmtime/WAT operation shape.
+- [ ] Prove exact generated-WAT execution of the fixed step and transfer its
+      decoded-real admissibility and balance bounds.
+- [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
       comparison support as demanded by the checked multi-step solver.
@@ -512,6 +530,16 @@ addition:
   preload maps numeric `/proc/<pid>/exe` reads to `/proc/self/exe`; never pass
   it to unrelated process inspection.  The prior read-only `ps` failure from
   doing so is recorded in `journal.md` and is not to be repeated;
+- invoke repository Node drivers such as `tools/talos-artifact.js` and
+  `tools/talos-proof.js` directly under the same pinned environment, because
+  they invoke `tools/leanrun` for their Lean-family children; do not wrap the
+  driver itself in `tools/leanrun`, whose nested-runner guard rejects that
+  invocation;
+- before an artifact-driver run, account for its exact staging behavior: it
+  creates a fresh uniquely named repository-local `tmp/leanexe-talos-*`
+  directory and removes only that same task-owned staging directory after the
+  run; it must never remove, rewrite, or repurpose any pre-existing `tmp/`
+  entry, generated output, cache, dependency, or partial work;
 - never invoke, probe, or assume the existence of `tools/leanrun-dev`, a
   `dev` host, or any other remote executor; GitHub is only the publication and
   recovery remote for this work;
@@ -560,11 +588,13 @@ an exact-artifact theorem is claimed.
 
 ## Feasibility and controlled scope
 
-The guarded scalar kernel, real-domain proofs, generated-WAT theorem, first f64
-exact-byte package, and fixed one-step data are expected to be tractable with
-the existing infrastructure.  The straight-line kernel is simpler at the WAT
-level than the completed runtime-length dot loop.  The main new work is its
-domain/error algebra and exercising the exact-byte FP path.
+The guarded scalar kernel, its real-domain and generated-WAT proofs, and the
+first f64 exact-byte package are complete.  Fixed-step compilation, pure-model
+evaluation, runtime pinning, and Wasmtime/WAT regression are also complete.
+The remaining medium-risk work is composition of three exact embedded flux
+calls and six straight-line update calls in the generated-WAT theorem,
+followed by exact-byte closure and raw-data publication.  No missing compiler
+or floating-point semantic feature blocks that work.
 
 The full checked grid step is a larger but compatible extension.  Its main cost
 is proof structure for two array buffers, boundary conditions, nested loops,

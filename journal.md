@@ -3555,3 +3555,209 @@ packages and four blockers; and the targeted changed-source scan found no
 `sorry`, `admit`, or axiom declaration.  The next mutation is explicit staging
 of only the seven reviewed paths, followed by exact non-forced Git-data
 publication and local/remote tree verification.
+
+## 2026-09-04: fixed compiled Euler step source/model checkpoint
+
+Implementation resumed from the clean published commit
+`70aae44702a970506ff1a71fee4c6f698a314060` on `talosfp-euler`.  The opening
+`git status --short --branch` contained only the synchronized branch header.
+Every later mutation was preceded by another status inspection.  The whole
+checkout remains persistent user-owned state, including `.git`, tracked and
+untracked source, ignored generated files, dependencies, `.lake` products,
+caches, evidence, and partial work.  No generic maintenance, cleanup,
+reclamation, pruning, cache invalidation, `git clean`, reset, stash,
+checkout-overwrite, worktree rewrite, or deletion of pre-existing state was
+performed.  No `dev` host exists or was invoked or probed.  All compilation,
+generation, proof checking, and regression execution ran locally, with one
+global Lean/Lake/compiler-family process at a time.
+
+The durable local command envelope remains:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build TARGET
+```
+
+The compatibility preload is confined to relevant Lean-family commands; it
+was not passed to process inspection.  Repository Node drivers which invoke
+`tools/leanrun` for their own children must instead be invoked directly under
+the same environment.  In particular, `tools/talos-artifact.js`,
+`tools/talos-proof.js`, and tests using `tools/run-process.js` must not be
+outer-wrapped in `tools/leanrun`, because nested runner use is rejected.
+
+`LeanExe.Examples.EulerRusanovStep` now defines a seven-word result and the
+fixed no-argument `sodQuarterStepCheckedBits` entry.  It evaluates the guarded
+scalar Euler flux three times for `LL`, `LR`, and `RR`, rejects with status one
+and six positive-zero payloads if any call rejects, and otherwise performs six
+component updates in the exact source order
+
+```text
+fluxDifference  = round(fluxRight + (-fluxLeft))
+scaledDifference = round(binary64(1/4) * fluxDifference)
+updated          = round(state + (-scaledDifference)).
+```
+
+Subtraction uses exact sign-bit XOR followed by the existing binary64 add
+intrinsic.  The primitive right pressure is the exact word
+`3fb999999999999a`, while the conservative right energy is the separately
+rounded word `3fd0000000000000`; the source comments prohibit silently
+identifying these with rational `1/10` and its exact-real product.  A focused
+source build passed four jobs, building the new module in 417 milliseconds.
+The source umbrella now imports it.
+
+The case `euler_rusanov_step` was registered with its seven-result source
+entry, generated module `EulerRusanovStep`, intended theorem
+`Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact`, and
+`complete: false`.  The incomplete flag is deliberate: no generated-WAT
+execution theorem exists yet.  The completed `Project` aggregate therefore
+does not import its Spec.  The runtime aggregate does import its generated
+Program and pins alloc/reset/retain/release at functions 7, 8, 9, and 10 to
+the shared runtime definitions.
+
+The artifact preparation driver was invoked directly, not through an outer
+runner:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  tools/talos-artifact.js prepare euler_rusanov_step
+```
+
+Before that run, the user-facing progress note incorrectly anticipated that
+fresh staging would be below the system `/tmp`.  The command output and a
+subsequent source audit established the actual behavior: the driver created
+the fresh task-owned repository path `tmp/leanexe-talos-jqTrWD` and removed
+only that same newly created staging directory when the requested outputs were
+ready.  This exact correction is material and is retained here.  The
+pre-existing directories `tmp/leanexe-talos-WauTHs` and
+`tmp/leanexe-talos-x9h6ML` were left untouched.  No pre-existing source,
+generated result, cache, dependency, evidence, or partial-work path was
+deleted.  The plans and maintained workflow documentation now name this
+repository-local staging behavior and prohibit treating any pre-existing
+`tmp/` entry as a cleanup target.
+
+Generation produced these exact persistent outputs:
+
+```text
+2551 bytes  proofs/talos/.generated/euler_rusanov_step/program.wasm
+             SHA-256 0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511
+25528 bytes proofs/talos/.generated/euler_rusanov_step/program.wat
+             SHA-256 4daa739b85e0c115f9279fa90298a50f660d50fe47482c6c1d29938e321e8898
+25302 bytes proofs/talos/lean/Project/EulerRusanovStep/Program.lean
+             SHA-256 fee069ab47b6c96abc44d1b902cbcfbaa5996174517f7d7c2a215366c7d7f2bc
+```
+
+The tracked generated Program has 1,375 lines and eleven functions.  Function
+0 is the embedded four-result guarded flux; function 2 is the three-argument
+single-result update helper; function 6 is the no-argument, seven-result
+export; and functions 7 through 10 are the runtime exports.  The exported
+function calls function 0 exactly three times and function 2 exactly six
+times.  The embedded flux has 22 `f64.mul`, 27 `f64.add`, and three `i64.xor`
+operations.  The update helper has one multiply, two adds, and two XORs.
+Consequently the complete artifact has 23 floating multiplies, 29 floating
+adds, and five XORs.  These are inspected WAT/IR facts, not conclusions drawn
+only from sample output.
+
+`Project.EulerRusanovStep.Model` independently mirrors the fixed source with
+Talos's pure `Wasm.IEEE64.add` and `mul` operations, reusing the already proved
+LL/LR/RR scalar models.  Its kernel-checked
+`sodQuarterStepCheckedBitsModel_exact` theorem proves the source-order words
+
+```text
+0000000000000000
+3fe9e00000000000 3fbccccccccccccc 4000100000000000
+3fd4400000000000 3fbcccccccccccce 3fe7c00000000000
+```
+
+and defines their exact reverse as Talos's top-first result stack.  The focused
+model build passed 3,391 jobs in approximately 7.2 seconds wall time, with
+about 4.4 seconds in the new module.  Its public theorem reports only
+`propext` and `Quot.sound`.  The focused runtime-pin build then passed 3,368
+jobs in approximately 10.5 seconds wall time, including about 4.4 seconds for
+the generated Program and 3.5 seconds for the checks.
+
+`test/euler_rusanov_step.js` compiles the source to WASM and WAT, dumps its IR,
+executes the no-argument export under Wasmtime with seven result slots, checks
+every raw result word, and pins the operation and call shape above.  Its first
+invocation was mistakenly outer-wrapped in `tools/leanrun`.  The nested-runner
+guard rejected it immediately with `nested tools/leanrun is not supported`;
+no compilation or test execution occurred.  The invocation shape was then
+corrected, not retried unchanged:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  node test/euler_rusanov_step.js
+```
+
+That direct regression passed in approximately 5.56 seconds.  A later
+independent read-only audit reproduced all seven words, including the one-bit
+left/right momentum asymmetry, and confirmed source/model association, ABI
+order, helper indices, and every operation/call count.  It found no semantic
+or ABI defect and suggested pinning the exported index and total step-call
+count.  The test now additionally requires exported function 6 and exactly
+nine calls; the hardened direct rerun passed in 5.41 seconds.  Wasmtime remains
+regression evidence only and is not substituted for the Talos execution
+theorem.
+
+`Project.EulerRusanovStep.Spec` is a deliberately minimal incomplete root.  It
+defines `ExactSpecFor`: for every host environment and initial store, function
+6 terminates from an empty argument stack, preserves the complete store, and
+returns exactly `Model.resultValues`.  It does not declare the pending theorem.
+The focused Spec target passed 3,393 jobs in 6.07 seconds wall time, building
+the root in 3.4 seconds.  The updated root `LeanExe` target passed 52 jobs in
+1.72 seconds wall time, building the umbrella in 1.1 seconds.  The full
+completed `Project` aggregate passed 3,808 jobs in 6.32 seconds wall time,
+building its root in 3.4 seconds; its long warning stream was replayed existing
+deprecation/linter output.
+
+The registry and documentation now state the exact inventory: twenty-six
+registered source-driven cases, twenty-five complete cases, one incomplete
+`euler_rusanov_step` case, and twenty-six tracked `Program.lean` caches.  Six
+registrations use the restricted raw-bit binary64 path and five are complete.
+The plans split the old combined milestone into completed compilation/model/
+runtime/regression work, pending exact generated-WAT execution and theorem
+transfer, and pending exact-byte/raw-data publication.  They also correct an
+earlier broad output description: the selected ABI emits only status and six
+updated-state words; initial states, fluxes, admissibility, and balance are
+fixed inputs, intermediates, or theorem/data-certificate layers.
+
+Refreshing the draft release record for the changed source/proof tree produced
+release-input SHA-256
+`1de33fb55c4181fe63c05985dcf1fb7e17b5776968d50b20f9bdd26f00564e95`.
+It retains twenty-one exact-artifact packages and exactly four honest blockers:
+no immutable source revision for this changed tree, no aggregate artifact
+proof receipt for this input, pending semantic conformance, and no cold-checkout
+receipt.  No older receipt is presented as current.
+
+This checkpoint makes no claim that the generated step WAT has been proved,
+that the 2,551 bytes form a registered exact artifact, or that verified step
+data has been published.  The next proof boundary is reuse of the existing
+call-free 335-instruction scalar-flux proof for embedded function 0, followed
+by the small function-2 update theorem and composition of three flux calls plus
+six update calls in function 6.  The current exact WAT body shape makes that
+work feasible without a new compiler or floating-point semantic feature.
+
+Pre-publication non-Lean checks then passed without mutating project inputs:
+`git diff --check` was silent; `node tools/check-docs.js` checked 90 maintained
+Markdown files; `node test/artifact_release.js` accepted release identities,
+receipts, pins, results, and blockers; the release kernel-scope audit passed
+its three recorded roots; JavaScript syntax and the 26-registered/25-complete
+case inventory were checked; and the targeted changed-Lean scan found no
+`sorry`, `admit`, or axiom declaration.  The intended coherent commit is
+`Add fixed Euler step compiler case`.  Only the explicitly reviewed source,
+generated Program, model/spec, runtime/case/test plumbing, maintained count and
+operational documentation, plan/journal/devnotes, and refreshed release record
+will be staged.  Ignored generated WASM/WAT, `.lake` products, pre-existing
+temporary directories, dependencies, caches, and unrelated checkout state
+remain untouched by Git staging and publication.

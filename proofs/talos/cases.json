@@ -248,6 +248,17 @@
         "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_rusanov_step",
+      "module": "LeanExe.Examples.EulerRusanovStep",
+      "entry": "LeanExe.Examples.EulerRusanovStep.sodQuarterStepCheckedBits",
+      "leanModule": "EulerRusanovStep",
+      "specTarget": "Project.EulerRusanovStep.Spec",
+      "behaviorTheorems": [
+        "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact"
+      ],
+      "complete": false
     }
   ]
 }
