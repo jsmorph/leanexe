@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-five source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-five completed source-driven Talos proofs plus one registered incomplete Euler-step case, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -216,8 +216,12 @@ acceptance gates, and nonclaims.
 - [x] Propagate the certified `sodLL`/`sodLR`/`sodRR` flux-error budgets through
       decoded-real update and balance theorems, with the binary64 `0.1`
       representation bias proved separately from flux roundoff.
-- [ ] Compile and prove a fixed first-order Sod step that emits raw binary64
-      state, flux, admissibility, and balance data.
+- [x] Compile and register the fixed seven-word Sod step, generate its Talos
+      cache and pure IEEE64 model, prove the fixed model output, pin its
+      runtime helpers, and check its exact Wasmtime/WAT operation shape.
+- [ ] Prove exact generated-WAT execution of the fixed step and transfer its
+      decoded-real admissibility and balance bounds.
+- [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
       runner only after the fixed artifact passes.
 
@@ -255,6 +259,14 @@ phase.
   `tools/leanrun-dev`; run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime,
   artifact preparation, and proof checks locally.  GitHub is used only to
   publish and recover branch checkpoints.
+- Invoke Node drivers that call `tools/leanrun` internally—including
+  `tools/talos-artifact.js`, `tools/talos-proof.js`, and regressions using
+  `tools/run-process.js`—directly under the pinned local environment.  Do not
+  wrap those drivers in another `tools/leanrun`; its nested-runner guard will
+  reject the invocation.  Artifact preparation creates a fresh uniquely named
+  repository-local `tmp/leanexe-talos-*` staging directory and removes only
+  that newly created task-owned directory.  It must never touch any
+  pre-existing `tmp/` entry or treat it as maintenance material.
 - The user explicitly authorized direct local Lean execution because
   standard `tools/leanrun` cannot create its systemd user scope here.  Use its
   explicit `LEANRUN_LOCAL=1` mode so local work still has the shared lock,

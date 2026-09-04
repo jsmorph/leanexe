@@ -16,6 +16,7 @@ import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
 import LeanExe.Examples.Float64Bits
 import LeanExe.Examples.EulerRusanov
+import LeanExe.Examples.EulerRusanovStep
 import LeanExe.Examples.IntMap
 import LeanExe.Examples.JsonAdd
 import LeanExe.Examples.JsonCollatzLength

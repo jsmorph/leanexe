@@ -8521,3 +8521,56 @@ The refreshed release-input digest is
 the 21-package draft retains four honest blockers.  Whitespace, 90-file docs,
 release consistency, kernel scope, four-blocker inspection, and targeted
 no-placeholder/no-axiom checks pass before publication.
+
+## 2026-09-04: fixed compiled Euler step source/model
+
+The registered but intentionally incomplete `EulerRusanovStep` case now
+compiles a fixed no-argument two-cell quarter-step.  It calls the proved
+guarded scalar flux three times, calls the exact-association update helper six
+times, and returns status plus six conservative binary64 words.  The generated
+2,551-byte WASM has SHA-256
+`0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511`;
+its 25,528-byte WAT has SHA-256
+`4daa739b85e0c115f9279fa90298a50f660d50fe47482c6c1d29938e321e8898`;
+and the 1,375-line tracked Program has SHA-256
+`fee069ab47b6c96abc44d1b902cbcfbaa5996174517f7d7c2a215366c7d7f2bc`.
+The export is function 6, the flux/update helpers are functions 0/2, and
+runtime functions are 7--10.  Inspected WAT contains three flux calls, six
+update calls, 23 multiplies, 29 adds, and five XORs.
+
+The pure Talos IEEE64 model proves the exact seven words
+`0000000000000000 3fe9e00000000000 3fbccccccccccccc 4000100000000000
+3fd4400000000000 3fbcccccccccccce 3fe7c00000000000`; its axiom report contains
+only `propext` and `Quot.sound`.  Focused Model, runtime-pin, and incomplete
+Spec builds pass, as do the root `LeanExe` and 3,808-job completed `Project`
+aggregates.  The direct Wasmtime/IR/WAT regression passes and pins the export
+index, all words, and all operation/call counts.  It remains regression-only:
+the function-6 Talos execution theorem, exact-byte package, and verified raw
+step data are still pending.
+
+Operationally, the entire checkout remains persistent user-owned state; no
+maintenance, generic cleanup, pre-existing-file deletion, cache invalidation,
+remote executor, `dev` probe, competing Lean process, or worktree rewrite was
+used.  Artifact preparation actually staged at the fresh repository-local
+`tmp/leanexe-talos-jqTrWD`, not system `/tmp` as first anticipated, and removed
+only that newly created task-owned directory.  It left pre-existing
+`tmp/leanexe-talos-WauTHs` and `tmp/leanexe-talos-x9h6ML` untouched.  The first
+test command was incorrectly outer-wrapped in `tools/leanrun`; the nested-runner
+guard rejected it before compilation, after which direct invocation under the
+pinned local environment passed.  Plans and workflow docs now record both the
+repository-local staging behavior and the rule that drivers using
+`tools/leanrun` internally must be invoked directly.
+
+The source registry now has 26 cases, 25 complete, and 26 tracked Program
+caches.  The release draft has input digest
+`1de33fb55c4181fe63c05985dcf1fb7e17b5776968d50b20f9bdd26f00564e95`,
+21 packages, and the same four honest blockers.  `journal.md` carries the full
+command, failure, timing, hash, inventory, review, and remaining-boundary
+chronology.
+
+Final checkpoint checks pass: whitespace; all 90 maintained Markdown files;
+release identity/receipt/pin/result/blocker consistency; kernel-scope audit;
+JavaScript syntax; the exact 26-registered/25-complete inventory; and the
+changed-Lean no-`sorry`/no-`admit`/no-axiom scan.  Publication stages only the
+explicit reviewed paths and leaves all ignored build/generated/cache and
+pre-existing temporary state intact.
