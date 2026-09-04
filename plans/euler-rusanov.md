@@ -350,10 +350,12 @@ Every checked row ends in a passing commit, an update to this plan and
       path in the current generated WAT.
 - [x] Transfer the numerical contract to generated-WAT execution and audit its
       axioms.
-- [ ] Freeze the generated WAT, register its exact binary artifact, and prove
+- [x] Freeze the generated WAT, register its exact binary artifact, and prove
       decoded/validated/translated module identity.
-- [ ] Generate and prove the frozen `euler-rusanov-interface-v1` raw-word
-      dataset, then add regression-only CSV and pinned C comparison tooling.
+- [x] Generate and prove the frozen `euler-rusanov-interface-v1` raw-word
+      dataset and its regression-only CSV.
+- [ ] Add pinned, regression-only C comparison tooling without conflating the
+      fixed-speed verified kernel with Lanyon's dynamic-speed implementation.
 - [ ] Prove the independent Jacobian derivative and complete eigendecomposition.
 - [ ] Add the generic one-step stencil and its exact-real positivity theorem.
 - [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
