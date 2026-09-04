@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-six Talos cases: twenty-five completed cases and one explicitly incomplete fixed Euler-step case.  The separate exact-artifact registry contains twenty-one frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its twenty-six cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-six Talos cases, all complete.  The separate exact-artifact registry contains twenty-one frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its twenty-six cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -9,7 +9,7 @@ This report describes the repository state on 2026-09-04.  The source-driven reg
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers twenty-six cases, of which twenty-five are complete, and the proof tree tracks twenty-six corresponding `Program.lean` caches.  Five completed floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth floating-point registration is the fixed two-cell step; its pure seven-word model is proved, but its WAT theorem is pending and the case remains incomplete.  The current twenty-six-registry/twenty-five-complete aggregate is pending. |
+| Source-driven proofs | `proofs/talos/cases.json` registers twenty-six complete cases, and the proof tree tracks twenty-six corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  The current twenty-six-case aggregate gate passes. |
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-one frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
@@ -25,11 +25,12 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 The proof workspace and `proofs/artifacts/release.json` now record exact Lean
 4.34.0-rc2, Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release-input
-identity.  The release record remains a draft: its 2026-09-04 aggregate
-artifact receipt passes all twenty-one packages for release-input digest
-`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`;
-semantic conformance is pending, and `sourceRevision` is still null.  The
-successful 2026-08-26 receipts remain historical evidence for their earlier
+identity.  The release record remains a draft for release-input digest
+`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`.
+The prior aggregate artifact receipt no longer matches after the fixed-step
+proof changes; aggregate artifact proof, semantic conformance, immutable source
+revision, and cold checkout are the four current blockers.  The successful
+2026-08-26 receipts likewise remain historical evidence for their earlier
 digest rather than current release receipts.
 
 The draft makes no release-readiness claim, and
@@ -43,8 +44,8 @@ the release record.  The owner accepted that older toolchain defect after the
 recorded narrow lexical audit of the artifact proof sources and two local
 LeanExe imports.  The audit does not repair the historical kernel or cover
 transitive dependencies.  The current record separately identifies exact Lean
-4.34.0-rc2 and records that the reproduction is rejected there; the current
-aggregate artifact receipt passes independently of that historical record.
+4.34.0-rc2 and records that the reproduction is rejected there; a new aggregate
+artifact receipt remains pending for the current input identity.
 
 ## Known limits
 

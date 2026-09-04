@@ -8612,3 +8612,49 @@ The checkpoint was published as
 Git-data fast-forward.  The fetched commit, parent, message, full tree, index,
 and worktree matched before the local compare-and-swap ref move; final status
 was clean and synchronized.
+
+## 2026-09-04: fixed Euler-step generated-WAT theorem
+
+The scalar Euler flux execution theorem is now module-polymorphic under exact
+function-body and no-import hypotheses, with its standalone theorem retained
+as a specialization.  `EulerRusanovStep.Update` proves arbitrary raw-word
+execution of generated helper function 2.  `EulerRusanovStep.Execution`
+instantiates the embedded function 0 three times, traverses all eight accepted
+status decisions in generated function 6, composes six helper calls, and proves
+the exact seven-word pure-model result with complete store preservation.
+
+The registered `sodQuarterStepCheckedBits_exact` theorem, `complete: true`
+flag, and aggregate import bring the source registry to 26 registered and 26
+complete cases.  The focused execution target, 3,812-job `Project` build,
+focused regenerating Talos proof, and full regenerating 26-case Talos proof
+gate pass locally.  New public execution theorems audit to only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+The driver-created staging directories were fresh and removed by their own
+invocations; both pre-existing `tmp/leanexe-talos-*` directories remain
+untouched.  No cleanup, deletion, remote executor, `dev` probe, competing Lean
+process, native floating-point proof shortcut, admission, new axiom, or
+worktree rewrite was used.
+
+Before freezing the stable 2,551-byte step WASM, add a public numerical bridge
+for the actual decoded output words: finiteness, both-cell admissibility,
+signed cell errors, and the nonzero decoded-real balance residual.  Finalize
+that theorem in the source registry first because artifact migration copies
+the behavior-theorem list into its immutable manifest.  Exact-byte migration
+and verified raw-data publication remain separate later checkpoints.
+
+The post-lint 3,395-job registered Spec rebuild and fixed-step Wasmtime/IR/WAT
+regression pass.  The release-input test now expects all 26 tracked Program
+caches and passes.  Release refresh records current digest
+`432fc417d53cbf1a42519b313cc19eaca72abea4295f60996657079fc6261853`
+without reusing receipts for earlier inputs; the 21-package draft correctly
+reports four blockers.  The 91-file documentation and release-consistency tests
+pass.
+
+Final review added a direct axiom print for `func2_exact`; its 3,395-job rebuild
+passes and reports only the three standard logical axioms.  That proof-source
+line superseded the intermediate `432fc417...` release identity.  The refreshed
+current digest is
+`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`
+with the same four blockers.  Remaining current-facing references now label the
+older `bbc645...` aggregate receipt historical rather than current.

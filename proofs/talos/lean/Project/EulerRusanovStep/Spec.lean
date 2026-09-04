@@ -1,14 +1,12 @@
-import Project.EulerRusanovStep.Program
-import Project.EulerRusanovStep.Model
+import Project.EulerRusanovStep.Execution
 
 /-!
 # Fixed two-cell Euler--Rusanov step specification
 
-This intentionally incomplete proof root fixes the contract for the generated
-no-argument entry.  The future execution theorem must establish the seven
-pure-model words and complete store preservation for the actual generated WAT.
-Until that theorem is proved, the source-driven case remains `complete: false`
-and this module is not imported by the completed `Project` aggregate.
+The registered theorem establishes the seven pure-model words and complete
+store preservation for the actual generated WAT.  It is fuel-independent and
+inherits the exact nine-call execution proof rather than substituting a
+source-level evaluator for any generated function body.
 -/
 
 namespace Project.EulerRusanovStep.Spec
@@ -22,5 +20,14 @@ def ExactSpecFor (m : Wasm.Module) : Prop :=
       (fun final values =>
         final = initial ∧
           values = Project.EulerRusanovStep.Model.resultValues)
+
+/-- The generated fixed step terminates with exactly the independent pure
+binary64 model result and preserves the complete WebAssembly store. -/
+theorem sodQuarterStepCheckedBits_exact :
+    ExactSpecFor Project.EulerRusanovStep.«module» := by
+  intro env initial
+  exact func6_exact env initial
+
+#print axioms sodQuarterStepCheckedBits_exact
 
 end Project.EulerRusanovStep.Spec
