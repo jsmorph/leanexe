@@ -1477,3 +1477,54 @@ resource/cache-warming problem, not evidence of a failing theorem.
 No second aggregate retry was made.  No `dev` host, cleanup, deletion, reset,
 stash, maintenance, or worktree rewrite was used.  The existing TalosFP proof
 baseline is now demonstrated green immediately before Euler implementation.
+
+## 2026-09-04: guarded Euler Rusanov source checkpoint
+
+The green inherited aggregate ledger was published as
+`8734a86d13eb833229e8f10a6bc37aa1ab958d40`; local and remote refs and tree
+`389fda745b60d74246b96cc1f3acf642538ad07b` matched, with a clean tracked
+worktree, before the first Euler source edit.
+
+The new `LeanExe.Examples.EulerRusanov.rusanovFluxCheckedBits` entry takes six
+raw binary64 words and returns `{status, mass, momentum, energy}` as four
+`UInt64` words.  The integer-only guard enforces `1/8 <= rho <= 1`,
+`1/16 <= p <= rho`, and sign-cleared `|u| <= 1/2` independently on both
+primitive states.  Rejection returns status one and three positive-zero words.
+
+The accepted operation graph computes the exact-real `gamma = 7/5`, fixed
+`alpha = 7/4` Rusanov formula in a dyadic order selected for proof headroom:
+`5/2 * p` is `(p + p) + p/2`, `7/2 * p` adds another `p`, and `alpha/2`
+times a jump is the sum of separately rounded `jump/2`, `jump/4`, and
+`jump/8`.  On the guarded domain this keeps exact products below two and exact
+sums below four, the ranges already supported by the pinned IEEE64 rounders.
+
+The first direct `lean-wasm compile` probe omitted the required pinned local
+sysroot environment and exited immediately with compiler status 3 and
+`failed to locate application`; it created no accepted result and was not a
+source failure.  Re-running with the documented local sysroot and compatibility
+preload produced the WASM, WAT, and IR normally.
+
+Focused local verification then passed:
+
+- `lake --no-ansi build LeanExe.Examples.EulerRusanov` passed three jobs, with
+  402 milliseconds on the new module.
+- `lake --no-ansi build LeanExe` passed all 51 jobs, including the new root
+  import, in approximately 17.1 seconds wall time.
+- `node test/euler_rusanov.js` completed in approximately 0.7 seconds.  The
+  Wasmtime C host matched fixed words for equal left/right states, canonical
+  and reversed Sod interfaces, a midpoint state, and both extreme guarded
+  interfaces.  Signed zero was accepted.  Adjacent-bit violations of the rho,
+  pressure, pressure-versus-rho, and velocity bounds on both sides, plus
+  representative NaNs, all returned `[1, 0, 0, 0]`.
+- The extracted IR contains exactly 22 `f64MulBits`, 27 `f64AddBits`, and
+  three `bitXor` operations, with zero surviving `LeanExe.Float64` intrinsic
+  calls.  The exported WAT body contains exactly 22 `f64.mul`, 27 `f64.add`,
+  three `i64.xor`, 98 `f64.reinterpret_i64`, and 49
+  `i64.reinterpret_f64` instructions.
+- `node test/no_js_wasm_execution.js` passed, confirming that the new
+  regression uses the pinned Wasmtime host rather than JavaScript's WASM API.
+
+All commands ran locally; no `dev` host, maintenance, cleanup, deletion,
+reset, stash, or worktree rewrite was used.  Generated `.lake/build` products
+remain ignored.  The next checkpoint registers this source as an initially
+incomplete Talos case and generates its proof-visible program.
