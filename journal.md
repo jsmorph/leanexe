@@ -2114,3 +2114,32 @@ assumed that an unrelated earlier build had already produced the source
 runner's imported object files.  A separate focused follow-up will make the
 migration driver build its own `Project.Artifact.Binary.DumpRaw` target once
 before decoding, without deleting or invalidating any active-workspace cache.
+
+## 2026-09-04: cold-cache artifact migration repaired
+
+`tools/artifact-migrate.js` now builds the leaf target
+`Project.Artifact.Binary.DumpRaw` exactly once after resolving the selected
+cases and existing registry and before decoding any selected artifact.  It
+uses the repository's locked local `tools/leanrun` envelope with a 15-minute
+timeout.  Building the leaf rather than a transitive imported module lets Lake
+maintain the complete runner closure when `DumpRaw.lean` changes and avoids one
+redundant build per case under a future multi-case invocation.
+
+The source runner now permits 64 MiB of captured raw-module output instead of
+Node's default buffer.  On spawn errors, signals, or nonzero exits it relays
+both stdout and stderr before reporting the distinct failure, so a missing
+object diagnostic cannot again be hidden as an apparent decoder rejection.
+All of these checks still happen before transactional artifact outputs are
+installed.
+
+The focused `test/artifact_migrate.js` check passed.  It now pins the exact
+runner path, timeout, proof-workspace path, leaf target, inherited local
+environment, one-time invocation, spawn-error message, nonzero-exit message,
+and signal message in addition to its existing transactional-write and
+immutable-binary checks.
+An actual local invocation of the repaired driver then built all seven
+`DumpRaw` jobs (422 ms for the leaf), migrated only `euler_rusanov`, and
+completed in approximately 2.5 seconds.  Git status afterward contained only
+the driver and test edits: the registered Euler bytes, manifest, registry,
+cache, and proof modules were unchanged byte-for-byte.  No cache was deleted
+or invalidated to simulate a cold checkout.

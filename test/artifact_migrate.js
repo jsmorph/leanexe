@@ -6,6 +6,7 @@ const path = require("node:path");
 const {
   applyOutputs,
   binaryOutput,
+  buildDumpRaw,
   textOutput,
 } = require("../tools/artifact-migrate");
 const { makeTemporaryDirectory } = require("../tools/temp-directory");
@@ -28,6 +29,7 @@ try {
     throw new Error("transactional migration did not install every prepared output");
   }
 
+  let rejectedFrozenChange = false;
   try {
     applyOutputs([binaryOutput(frozen, Buffer.from([1, 2, 3]))]);
   } catch (error) {
@@ -35,11 +37,53 @@ try {
     if (!fs.readFileSync(frozen).equals(Buffer.from([0, 97, 115, 109]))) {
       throw new Error("a rejected migration changed a frozen artifact");
     }
-    process.stdout.write("checked transactional artifact migration and frozen-file identity\n");
-    process.exitCode = 0;
-    return;
+    rejectedFrozenChange = true;
   }
-  throw new Error("migration replaced an existing frozen artifact");
+  if (!rejectedFrozenChange) {
+    throw new Error("migration replaced an existing frozen artifact");
+  }
+
+  const repoRoot = path.resolve(__dirname, "..");
+  const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
+  let buildCalls = 0;
+  buildDumpRaw((command, args, options) => {
+    buildCalls += 1;
+    const expectedArgs = [
+      "--timeout", "15m",
+      "lake", "-d", proofRoot, "build", "Project.Artifact.Binary.DumpRaw",
+    ];
+    if (command !== path.join(repoRoot, "tools", "leanrun") ||
+        JSON.stringify(args) !== JSON.stringify(expectedArgs) ||
+        options.cwd !== repoRoot || options.env !== process.env ||
+        options.stdio !== "inherit") {
+      throw new Error("raw-module decoder build used the wrong local command envelope");
+    }
+    return { status: 0, signal: null };
+  });
+  if (buildCalls !== 1) throw new Error("raw-module decoder target was not built exactly once");
+
+  try {
+    buildDumpRaw(() => ({ status: 7, signal: null }));
+    throw new Error("raw-module decoder accepted a failed build");
+  } catch (error) {
+    if (!error.message.includes("exit status 7")) throw error;
+  }
+  try {
+    buildDumpRaw(() => ({ status: null, signal: "SIGTERM" }));
+    throw new Error("raw-module decoder accepted a signaled build");
+  } catch (error) {
+    if (!error.message.includes("terminated by SIGTERM")) throw error;
+  }
+  try {
+    buildDumpRaw(() => ({ error: new Error("spawn failed"), status: null, signal: null }));
+    throw new Error("raw-module decoder accepted a spawn failure");
+  } catch (error) {
+    if (!error.message.includes("raw-module decoder build failed: spawn failed")) throw error;
+  }
+
+  process.stdout.write(
+    "checked transactional artifact migration, frozen-file identity, and cold-cache decoder build\n",
+  );
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }

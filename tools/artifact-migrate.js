@@ -16,6 +16,7 @@ const artifactRoot = path.join(repoRoot, "proofs", "artifacts");
 const casesPath = path.join(repoRoot, "proofs", "talos", "cases.json");
 const leanrun = path.join(repoRoot, "tools", "leanrun");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
+const dumpRawTarget = "Project.Artifact.Binary.DumpRaw";
 
 function fail(message) {
   throw new Error(message);
@@ -96,6 +97,26 @@ function applyOutputs(outputs) {
   for (const output of prepared) fs.rmSync(output.backup, { force: true });
 }
 
+function buildDumpRaw(spawnSync = childProcess.spawnSync) {
+  const result = spawnSync(leanrun, [
+    "--timeout", "15m",
+    "lake", "-d", proofRoot, "build", dumpRawTarget,
+  ], {
+    cwd: repoRoot,
+    env: process.env,
+    stdio: "inherit",
+  });
+  if (result.error) {
+    fail(`raw-module decoder build failed: ${result.error.message}`);
+  }
+  if (result.signal) {
+    fail(`raw-module decoder build terminated by ${result.signal}`);
+  }
+  if (result.status !== 0) {
+    fail(`raw-module decoder build failed with exit status ${result.status}`);
+  }
+}
+
 function runDumpRaw(wasm) {
   const result = childProcess.spawnSync(leanrun, [
     "--timeout", "5m",
@@ -104,10 +125,22 @@ function runDumpRaw(wasm) {
     cwd: repoRoot,
     encoding: "utf8",
     env: process.env,
+    maxBuffer: 64 * 1024 * 1024,
   });
-  if (result.error) fail(`raw-module decode failed: ${result.error.message}`);
+  const relayOutput = () => {
+    if (result.stdout) process.stderr.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+  };
+  if (result.error) {
+    relayOutput();
+    fail(`raw-module decode failed: ${result.error.message}`);
+  }
+  if (result.signal) {
+    relayOutput();
+    fail(`raw-module decode terminated by ${result.signal}`);
+  }
   if (result.status !== 0) {
-    process.stderr.write(result.stderr || "");
+    relayOutput();
     fail(`raw-module decode failed with exit status ${result.status}`);
   }
   const output = result.stdout.trim();
@@ -462,6 +495,7 @@ function main() {
   const registryPath = path.join(artifactRoot, "registry.json");
   const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
   const entries = new Map(registry.artifacts.map((entry) => [entry.case, entry]));
+  buildDumpRaw();
   const outputs = [];
   for (const item of selected) {
     console.log(`Migrating artifact: ${item.name}`);
@@ -490,5 +524,6 @@ if (require.main === module) {
 module.exports = {
   applyOutputs,
   binaryOutput,
+  buildDumpRaw,
   textOutput,
 };
