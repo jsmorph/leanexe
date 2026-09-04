@@ -2,7 +2,8 @@
 
 **Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
 genuine Fréchet Jacobian, and complete strictly ordered eigenbasis are proved
-and integrated; decoded finite-volume update work is next.  This document
+and integrated; the decoded finite-volume error layer is complete and direct
+compiled-update WebAssembly is next.  This document
 expands phase 8 of the root [Development Plan](../plan.md).
 
 ## Purpose
@@ -353,13 +354,18 @@ dt / dx      1/4
 The future artifact theorem interprets `binary64(1/10)` as the exact dyadic
 encoded by the input word; it never silently replaces that value by the
 rational `1/10`.  The exact-real reference stencil deliberately uses rational
-`1/10`; the decoded numerical bridge between those two inputs remains a
-separate checked layer.
+`1/10`.  `StencilNumerical` now proves the separate bridge: the encoded value
+is exactly `1/10 + 1/180143985094819840`, and that representation bias remains
+distinct from the certified floating-point flux errors.
 
 First prove generic two-cell update algebra with three spatial interfaces and
 instantiate it for the exact rational Sod pair.  Then propagate the three
-certified artifact interface rows through a decoded-real update.  Only after
-that boundary is explicit, compile a fixed-grid stencil whose WASM output is a
+certified artifact interface rows through a decoded-real update.  These stages
+are complete: the shared-interface error cancels from the balance residual,
+and each quarter-step cell is within half of the applicable scalar-flux budget
+of the decoded-input exact stencil.  This assembly still occurs in Lean's
+mathematical reals and is not described as executed stencil arithmetic.  Only
+after this explicit boundary, compile a fixed-grid stencil whose WASM output is a
 flat sequence of raw binary64 words containing the initial conservative
 states, interface fluxes, updated states, status, and balance diagnostics.
 Required results for that compiled artifact are:
@@ -374,6 +380,45 @@ Required results for that compiled artifact are:
 
 A small host program may decode the words and produce CSV and a static plot.
 That formatting is presentation outside the verified numerical boundary.
+
+### Selected direct-artifact shape
+
+The first compiled step is a separate fixed case,
+`LeanExe.Examples.EulerRusanovStep`, with a no-argument export
+`sodQuarterStepCheckedBits`.  It returns seven `i64` slots: status followed by
+the six updated conservative-state words.  It calls the checked scalar
+Rusanov kernel three times for `(L,L)`, `(L,R)`, and `(R,R)`, rejects if any
+status is nonzero, and otherwise applies this exact binary64 operation graph
+to each component:
+
+```text
+difference = round(fluxRight - fluxLeft)
+scaled     = round((1/4) * difference)
+updated    = round(state - scaled)
+```
+
+The association is part of the specification and must not be changed by
+scaling the two fluxes independently or reassociating the update.  The
+expected successful words are:
+
+```text
+status 0000000000000000
+left   3fe9e00000000000 3fbccccccccccccc 4000100000000000
+right  3fd4400000000000 3fbcccccccccccce 3fe7c00000000000
+```
+
+The artifact may emit rounded residual words only if they are labeled as such.
+For this fixed step the natural floating residual calculation rounds all three
+components to positive zero, even though the exact decoded-real balance errors
+against the dyadic-input stencil are momentum `+epsilon/32` and energy
+`-epsilon/16`.  The publishable conservation certificate is therefore the
+Lean theorem over decoded reals, never the zero residual bits alone.
+
+Compiler lowering already supports repeated direct calls, multi-result calls,
+and seven result slots.  The medium-risk proof task is to expose the existing
+call-free Rusanov execution theorem in a module/function-index-parametric form
+so both the current scalar artifact and the embedded helper can instantiate
+it without duplicating the 335-instruction proof.
 
 ## Follow-on full shock-tube generator
 
@@ -430,7 +475,7 @@ Every checked row ends in a passing commit, an update to this plan and
 - [x] Prove the independent Jacobian derivative and complete eigendecomposition.
 - [x] Add the generic two-cell/three-interface balance theorem and prove the
       concrete rational Sod quarter-step values and admissibility.
-- [ ] Propagate the three certified interface-flux budgets through the
+- [x] Propagate the three certified interface-flux budgets through the
       decoded-real update and balance theorem.
 - [ ] Add a symbolic CFL/invariant-domain theorem only if a later claim needs
       generic positivity beyond the proved fixed step.
