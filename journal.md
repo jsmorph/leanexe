@@ -2900,3 +2900,112 @@ documentation check; release identity, receipt, pin, result, and blocker tests;
 the recorded kernel-scope audit; and final release inspection reproducing the
 twenty-one-package, four-blocker draft.  A targeted scan of the three new
 modules found no `sorry`, `admit`, or axiom declaration.
+
+### Publication of the conservative Jacobian checkpoint
+
+The six explicitly staged blobs were uploaded through the GitHub Git-data API
+and each returned the exact local Git object identity:
+
+```text
+07d26f232f76a70956ddb7d9017affac259dfce5  devnotes.md
+ceda9da4f2f7dbca89f0c8956d30c23e532ff4b4  journal.md
+56a89295843cdcd9bfbb0e8eafc0ef2675f4df09  proofs/artifacts/release.json
+9e3c1a07e0669e6a3c4d89b8cf90009d54c5e022  RealConservative.lean
+14952cb14550180ccf25802bf50d23b30758662d  RealJacobian.lean
+b53c91825cee41fd16301f7b2ec9ef0d658c8b8d  RealMatrices.lean
+```
+
+The API tree based on remote parent tree
+`029a0a06742bfc724d0cdb8b43a6c4b3ce991953` was exactly the staged local tree
+`25e96e0af09398cb2b7a38444caa462c724f0f48`.  A second remote comparison
+confirmed branch `talosfp-euler` was still identical to parent
+`c0c9627ec8ac3985ea357440e79b3de101f32f72`.  GitHub created commit
+`868a130d1174389c4ddc20b2ea87a5b9ffc9de07` with that sole parent and moved the
+branch through a non-forced update.  A local fetch then independently reported
+the same commit, parent, and complete tree; only after that equality check did
+`git update-ref` advance the local branch.  Local and tracking refs aligned,
+and the sole remaining worktree item was the isolated untracked eigenbasis
+draft.  No checkout, reset, merge, stash, worktree rewrite, or file removal was
+used during publication.
+
+## 2026-09-04: complete conservative Euler eigenbasis
+
+`RealEigenbasis.lean` now supplies an actual strict-hyperbolicity certificate,
+not merely three expressions of type `Real`.  Its parameterized algebraic
+layer defines eigenvalues `(u-c,u,u+c)`, the diagonal characteristic matrix,
+and the right-eigenvector columns
+
+```text
+(1,u-c,H-u*c), (1,u,u^2/2), (1,u+c,H+u*c).
+```
+
+It first computes the complete residual of `A*R-R*Lambda` as a matrix whose
+only nonzero symbolic factor is
+`(2/5)*(H-u^2/2)-c^2`.  The acoustic relation therefore yields the exact matrix
+eigenrelation and each column equation.  It proves
+`det R = 2*c*(H-u^2/2)`, strengthens this to `5*c^3` under the acoustic
+relation, obtains nonzero determinant and linear independence for `c != 0`,
+constructs an actual `Basis (Fin 3) Real Vec3`, and packages each column with
+Mathlib's nonzero `Module.End.HasEigenvector` predicate.  Positive `c` gives
+strict ordering.
+
+The physical specialization takes
+`c = sqrt (gamma*p/rho)`.  Conservative admissibility proves `c > 0` and the
+acoustic relation.  The explicit conservative Jacobian then satisfies the
+full matrix/column equations, its right-eigenvector determinant is
+`7*c*p/rho > 0`, and `exists_strict_complete_eigenbasis` returns three
+strictly ordered real characteristic values together with a spanning basis of
+genuine eigenvectors.
+
+The first focused build exited nonzero after 11.8 seconds.  It identified two
+definitions involving real division that needed a noncomputable section; the
+scoped `*ᵥ` notation was not open; matrix residual simplification left nine
+`Matrix.vecMul ... (Matrix.diagonal ...)` terms; `Basis` and `HasEigenvector`
+needed their pinned namespaces; and the physical matrix relation needed
+`eigenvalueMatrix` unfolded.  This was a source/API-shape failure, not an
+accepted theorem, and no generated object or cache was removed.
+
+The repair opened the Matrix scope, made the section noncomputable, used the
+pinned targeted `Matrix.vecMul_diagonal` lemma, wrote
+`Module.End.HasEigenvector` explicitly, and unfolded `eigenvalueMatrix` at the
+specialization bridge.  The second build, 7.2 seconds, confirmed that every
+algebraic residual and eigenvector equation was solved; its remaining errors
+were the unqualified `Module.Basis` name and dependent cascades.  Opening
+`Module` left only the explicit `[Decidable (Nonempty (Fin 3))]` requirement of
+`basisOfPiSpaceOfLinearIndependent` on the third build, 7.1 seconds.  Opening
+the pinned `Classical` scope supplied that construction instance.  The fourth
+build passed in 7.2 seconds over 3,063 jobs and reported only two no-op `change`
+tactics.  Removing those tactics and adding axiom audits produced a clean final
+focused build in 7.4 seconds over 3,063 jobs.
+
+The five explicit audits cover the parameterized matrix relation, determinant
+identity, physical matrix relation, positive physical determinant, and final
+complete eigenbasis theorem.  Each reports only `propext`,
+`Classical.choice`, and `Quot.sound`.  There is no source `sorry`, `admit`, or
+new axiom.
+
+`RealMathematics.lean` now provides the deliberate umbrella for
+`RealJacobian` and `RealEigenbasis`, with an explicit note that exact-real
+matrix and square-root operations are not claimed to execute in the current
+artifact.  `Project.lean` imports that umbrella.  The umbrella target passed
+in 5.0 seconds over 3,150 jobs, and the complete `Project` root passed in 6.2
+seconds over 3,803 jobs.  Its voluminous output consists of existing replayed
+dependency/project deprecation and linter warnings; the new eigenbasis target
+itself has no local warning after cleanup.
+
+The root and Euler plan checklists now mark the conservative derivative and
+complete eigendecomposition milestone done.  The next active milestone is the
+exact-real and decoded transmissive finite-volume step; it retains the hard
+scope boundary that current WebAssembly proves the three flux calls, not the
+update arithmetic.
+
+Refreshing release evidence for the integrated source tree preserves the
+twenty-one-package draft and its four honest blockers.  The new release-input
+SHA-256 is `c84b3584020f82336922d30d54eb4edff52607c5fe0f13ea2e91216213f066c9`;
+no previous aggregate receipt is treated as current for this changed input.
+
+Pre-publication checks passed for this checkpoint: whitespace/diff validation;
+the 90-file maintained documentation check; release identity, receipt, pin,
+result, and blocker tests; kernel-scope audit; final four-blocker inspection;
+and a targeted source scan finding no `sorry`, `admit`, or axiom declaration in
+the eigenbasis or umbrella modules.

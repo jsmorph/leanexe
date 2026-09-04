@@ -208,7 +208,7 @@ acceptance gates, and nonclaims.
       of the generated WAT.
 - [x] Add the first registered f64 exact-byte artifact and transfer the WAT
       theorem through checked decode, validation, and Talos translation.
-- [ ] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
+- [x] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
 - [ ] Prove the exact-real two-cell Sod update and propagate the three certified
       `sodLL`/`sodLR`/`sodRR` flux-error budgets through decoded-real update and
       balance theorems.  Do not call this a WASM stencil: the current artifact
