@@ -11,6 +11,7 @@ run_timeout="${LEANRUN_TIMEOUT:-900}"
 lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
 lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
+local_mode="${LEANRUN_LOCAL:-0}"
 
 usage() {
   echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--toolchain DIR] <command> [args]" >&2
@@ -63,6 +64,20 @@ if [ -z "$run_timeout" ]; then
   exit 2
 fi
 
+case "$local_mode" in
+  0|1)
+    ;;
+  *)
+    echo "leanrun: LEANRUN_LOCAL must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
+
+if [ "${LEANRUN_LOCAL_IN_SCOPE:-0}" = "1" ]; then
+  echo "leanrun: nested tools/leanrun is not supported in LEANRUN_LOCAL mode (LEANRUN_LOCAL=1); invoke the repository driver directly" >&2
+  exit 1
+fi
+
 if [ ! -x "$toolchain/bin/lean" ]; then
   echo "leanrun: no Lean toolchain at $toolchain" >&2
   exit 2
@@ -94,6 +109,12 @@ exec 9>"$lock_dir/1"
 if ! flock -w "$lock_timeout" 9; then
   echo "leanrun: timed out waiting for the machine-wide Lean slot" >&2
   exit 75
+fi
+
+if [ "$local_mode" = "1" ]; then
+  echo "leanrun: LEANRUN_LOCAL=1; cgroup CPU, memory, and swap limits are not enforced" >&2
+  exec env LEANRUN_LOCAL_IN_SCOPE=1 nice -n 10 ionice -c 3 \
+    timeout "$run_timeout" "$@"
 fi
 
 exec systemd-run --user --scope --quiet --collect \

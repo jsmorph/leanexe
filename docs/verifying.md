@@ -9,7 +9,7 @@ The compiler remains outside both proofs' trusted base.  The source-driven gate 
 | Stage | Explicit inputs | Other inputs used by the stage | Outputs | Human work |
 |-------|-----------------|--------------------------------|---------|------------|
 | Write and test the program | A Lean source module and exported entry definition. | The accepted source subset, public ABI, compiler semantics, and ordinary test infrastructure. | Tracked Lean source and tests; checked declarations under the ignored root `.lake` tree. | Choose the computation, types, error behavior, and test cases. |
-| `talos-artifact.js prepare` | A case name and its entry in `proofs/talos/cases.json`. | The root compiler's pinned Lean version, the proof workspace's separately pinned Lean version, `lean-wasm`, `wasm-tools` 1.251.0, the pinned Talos revision, and the required systemd resource policy. | Ignored WASM and WAT under `proofs/talos/.generated/<case>/`; a tracked `lean/Project/<Case>/Program.lean` proof cache. | Inspect any changed instruction stream and decide what property warrants proof. |
+| `talos-artifact.js prepare` | A case name and its entry in `proofs/talos/cases.json`. | The root compiler's pinned Lean version, the proof workspace's separately pinned Lean version, `lean-wasm`, `wasm-tools` 1.251.0, the pinned Talos revision, and either the standard systemd resource policy or explicitly authorized local runner mode. | Ignored WASM and WAT under `proofs/talos/.generated/<case>/`; a tracked `lean/Project/<Case>/Program.lean` proof cache. | Inspect any changed instruction stream and decide what property warrants proof. |
 | Develop the specification | The source meaning, generated `Program.lean`, generated WAT, and the intended claim. | Talos semantics, the shared runtime theorems, representation predicates, arithmetic lemmas, and examples from completed cases. | Tracked `Spec.lean` and any tracked helper proof modules under `lean/Project/<Case>/`. | State adequate preconditions and postconditions, then construct the proof. |
 | `talos-proof.js check` | A case name or `--all`, the registry, current source, and handwritten proof modules. | Every artifact-stage dependency, the proof Lake project, its pinned manifest, runtime pins, and aggregate imports. | Ignored generated files and Lake outputs; a zero exit status only after the selected theorem builds. | Interpret a failure and change source, specification, or proof according to its cause. |
 | `artifact-proof.js check` | An exact `program.wasm` path and registered artifact proof target. | The content-addressed package, strict manifest and registry, embedded bytes, binary verifier, Talos semantics, and behavioral proof modules. | Lake outputs; a zero exit status only after identity, formal artifact, behavior, and manifest-declaration checks pass. | Review the manifest, trusted revisions, host assumptions, and behavioral statement. |
@@ -21,7 +21,15 @@ The persistent source-driven case consists of the source program, its tests, one
 
 ## Resource Policy
 
-All four tools call `tools/leanrun` for every Lake, Lean, `lean-wasm`, and Talos verifier process.  Each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, `LEAN_NUM_THREADS=1`, and a stage-specific timeout.  The runner shares the same-user `../vq` lock, and the tools stop when they cannot acquire that lock or create the required user scope.
+All four tools call `tools/leanrun` for every Lake, Lean, `lean-wasm`, and Talos verifier process.  In standard mode each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, `LEAN_NUM_THREADS=1`, and a stage-specific timeout.  The runner shares the same-user `../vq` lock, and the tools stop when they cannot acquire that lock or create the required user scope.
+
+In a container without a systemd user scope, an explicit user-authorized
+`LEANRUN_LOCAL=1` on one of these tools keeps every child local and retains the
+pinned toolchain, shared lock, stage timeout, `LEAN_NUM_THREADS=1`, `nice`, and
+`ionice`.  The runner warns that the cgroup CPU, memory, and swap limits are
+not enforced.  The mode is never an automatic fallback.  Invoke the tool
+directly with the variable; do not wrap a runner-calling tool in
+`tools/leanrun`, because its child runners must acquire the lock themselves.
 
 Do not wrap these commands in a second resource scope.  The tools create a separate limited scope for each expensive child, and the shared lock queues behind any participating Lean or Lake process.  The Node drivers use signal-aware process groups, so `SIGINT` or `SIGTERM` reaches the active runner, timeout process, Lake process, and Lean child before the driver exits.
 
@@ -79,7 +87,7 @@ After the theorem is complete, set `complete` to `true` and import `Project.<Cas
 tools/talos-proof.js check --all
 ```
 
-The final gate can fail because the source no longer compiles, `wasm-tools` has the wrong version, Talos rejects the WAT, the generated model differs from the tracked cache, the cached model does not compile, a runtime definition changed, a handwritten theorem no longer matches the current instruction stream, or the registry and aggregate imports disagree.  It also fails when a child exceeds its timeout, the cgroup manager rejects a required limit, a generated ignored output cannot be replaced, or a temporary directory cannot be removed.  These failures preserve the stage name and child status so the next investigation starts at the first failed boundary.
+The final gate can fail because the source no longer compiles, `wasm-tools` has the wrong version, Talos rejects the WAT, the generated model differs from the tracked cache, the cached model does not compile, a runtime definition changed, a handwritten theorem no longer matches the current instruction stream, or the registry and aggregate imports disagree.  It also fails when a child exceeds its timeout, the standard-mode cgroup manager rejects a required limit, a generated ignored output cannot be replaced, or a temporary directory cannot be removed.  These failures preserve the stage name and child status so the next investigation starts at the first failed boundary.
 
 ## Exact-Artifact Tool
 

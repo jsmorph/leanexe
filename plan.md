@@ -217,10 +217,11 @@ phase.
   artifact preparation, and proof checks locally.  GitHub is used only to
   publish and recover branch checkpoints.
 - The user explicitly authorized direct local Lean execution because
-  `tools/leanrun` cannot create its systemd user scope here.  Keep all
-  Lean-family work serialized with `LEAN_NUM_THREADS=1`, the exact pinned
-  toolchain, and explicit timeouts.  Do not use the self-hosted emitter or its
-  gates.
+  standard `tools/leanrun` cannot create its systemd user scope here.  Use its
+  explicit `LEANRUN_LOCAL=1` mode so local work still has the shared lock,
+  `LEAN_NUM_THREADS=1`, the exact pinned toolchain, priority controls, and
+  explicit timeouts; the mode warns that cgroup limits are absent.  Do not use
+  the self-hosted emitter or its gates.
 - The ordinary HTTPS remote has no usable credential helper.  Publish with the
   authenticated GitHub Git-data API as a non-forced fast-forward: upload
   complete changed-file blobs, create a tree from the current remote tree,
@@ -237,7 +238,7 @@ phase.
 | Change | Required evidence |
 |--------|-------------------|
 | Documentation only | `git diff --check`, `tools/check-docs.js`, and command review. |
-| Source language or compiler | Focused serialized local Lean build under the branch-specific direct-run authorization, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
+| Source language or compiler | Focused serialized local Lean build through the explicitly authorized `LEANRUN_LOCAL=1` runner mode, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
 | Self-hosted emitter | Native/image byte equality, Stage 1/Stage 2 self-reproduction, registered-corpus equality, malformed-image tests, two-host execution, and all source-language/compiler gates. |
 | Exact-artifact verifier | Focused artifact package, `tools/artifact-proof.js check-all`, decoder and validator tests, and conformance checks when semantics change. |
 | ProofKit, annotations, or LTG | Focused Lean modules, generated declaration checks, `tools/ltg check`, fixed-artifact package verification, and journal plus telemetry review. |
