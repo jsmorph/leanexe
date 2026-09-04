@@ -381,6 +381,14 @@ function talosNonAssertionFailureCount(counts) {
   return counts.cascade + counts.decodeError + counts.interpreterError + counts.outOfFuel;
 }
 
+function isExpectedWasmToolsVersion(actual, expected) {
+  if (actual === `wasm-tools ${expected}`) return true;
+  const escaped = expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `^wasm-tools ${escaped} \\([0-9a-f]{7,40} [0-9]{4}-[0-9]{2}-[0-9]{2}\\)$`,
+  ).test(actual);
+}
+
 async function checkPrerequisites(config) {
   await checkRevision(codeLibRoot, config.codeLibRevision, "CodeLib");
   await checkRevision(testsuiteRoot, config.testsuiteRevision, "WebAssembly testsuite");
@@ -396,7 +404,7 @@ async function checkPrerequisites(config) {
     "utf8",
   ).trim();
   const wasmToolsVersion = await checkedText([wasmTools, "--version"]);
-  if (wasmToolsVersion !== `wasm-tools ${expectedWasmTools}`) {
+  if (!isExpectedWasmToolsVersion(wasmToolsVersion, expectedWasmTools)) {
     fail(`wasm-tools version mismatch: expected ${expectedWasmTools}, found ${wasmToolsVersion}`);
   }
 
@@ -658,6 +666,7 @@ if (require.main === module) {
 module.exports = {
   mathlibTacticSource,
   classifyKnownIssues,
+  isExpectedWasmToolsVersion,
   leanPublicImports,
   parseTalosCounts,
   parseTalosFailures,

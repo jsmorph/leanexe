@@ -26,8 +26,12 @@ if ! actual="$($wasm_tools --version 2>&1)"; then
   exit 1
 fi
 
-if [[ "$actual" != "wasm-tools $expected" ]]; then
-  actual_first_line="${actual%%$'\n'*}"
+actual_first_line="${actual%%$'\n'*}"
+expected_regex="${expected//./\\.}"
+release_regex="^wasm-tools ${expected_regex} \\([0-9a-f]{7,40} [0-9]{4}-[0-9]{2}-[0-9]{2}\\)$"
+if [[ "$actual" != "$actual_first_line" ]] ||
+   { [[ "$actual_first_line" != "wasm-tools $expected" ]] &&
+     [[ ! "$actual_first_line" =~ $release_regex ]]; }; then
   echo "wasm-tools version mismatch: expected $expected, got $actual_first_line" >&2
   echo "Executable: $wasm_tools" >&2
   exit 1
