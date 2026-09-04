@@ -1,4 +1,5 @@
 import Project.EulerRusanov.Program
+import Project.EulerRusanov.Model
 
 /-!
 # Guarded Euler Rusanov artifact
