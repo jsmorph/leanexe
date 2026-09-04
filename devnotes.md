@@ -8169,7 +8169,9 @@ only the artifact format's permitted theorem-local decision certificates.
 The first migration attempt exposed a cold-cache driver defect rather than a
 WASM rejection: `DumpRaw.lean` was run before its imported decoder object had
 been built.  Building the focused decoder closure unblocked the named Euler
-migration without any cleanup.  The migration driver must now build the leaf
-`Project.Artifact.Binary.DumpRaw` target once before running it so a fresh
-checkout does not depend on accidental cache warmth.  Full command chronology
-and timings are retained in `journal.md`.
+migration without any cleanup.  The migration driver now builds the leaf
+`Project.Artifact.Binary.DumpRaw` target once before running it, distinguishes
+spawn, signal, and exit failures, relays both output streams, and allows a
+64-MiB raw-module representation.  Its focused unit test and an idempotent real
+Euler migration passed; the latter changed no artifact output.  Full command
+chronology and timings are retained in `journal.md`.

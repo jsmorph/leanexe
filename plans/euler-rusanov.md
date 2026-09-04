@@ -63,9 +63,10 @@ The `talosfp` parent already supplies:
 - Talos IEEE64 subtraction, division, and square-root semantics and numerical
   theorems for the later conservative-state solver.
 
-The current floating-point cases are source-driven generated-WAT proof cases.
-No f64 case is yet registered in `proofs/artifacts/registry.json`.  The first
-Euler artifact must therefore exercise the complete exact-byte path rather than
+The multiplication, dot, and Horner floating-point cases are source-driven
+generated-WAT proof cases.  Euler is now the first f64 case registered in
+`proofs/artifacts/registry.json`: its exact 1,808-byte module exercises the
+complete decode, validation, Talos-translation, and behavior path rather than
 calling regenerated WAT alone a verified distributable binary.  This proves the
 behavior of the frozen bytes; it does not by itself prove a general
 source-to-Wasm compiler-correctness theorem.
