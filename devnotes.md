@@ -8137,3 +8137,16 @@ Spec root, now importing both the numerical and execution layers, passed all
 `Classical.choice`, and `Quot.sound`.  Detailed staged-build diagnostics and
 the exact local-list reducer repairs are recorded in `journal.md`.  WAT-level
 numerical transfer and exact-byte registration remain separate checkpoints.
+
+## 2026-09-04: Euler WAT numerical composition
+
+`Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error` composes the
+total exact generated-WAT execution theorem with the pure numerical theorem.
+On every guard-accepted six-word input it proves exact returned model words,
+status zero, complete store preservation, finite mass/momentum/energy words,
+and absolute real-error budgets `10`, `14`, and `25` times `2^-52`.
+
+The combined Spec target passed all 3,370 jobs on the first attempt; the new
+composition module took 3.3 seconds and its public axiom report is exactly
+`propext`, `Classical.choice`, and `Quot.sound`.  Exact-byte generation,
+decode/validation/translation identity, and manifest registration are next.
