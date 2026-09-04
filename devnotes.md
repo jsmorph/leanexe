@@ -8040,3 +8040,12 @@ and checks exact zero payloads on rejection.  The extracted IR contains 22
 f64 multiplies, 27 f64 additions, and three sign XORs with no surviving source
 intrinsic call.  The exported WAT body has the same arithmetic counts plus 98
 `f64.reinterpret_i64` and 49 `i64.reinterpret_f64` instructions.
+
+The source is now registered as the intentionally incomplete Talos case
+`euler_rusanov`.  Local artifact preparation generated a 996-line
+`Project.EulerRusanov.Program` from the 1,808-byte WASM and a minimal compiling
+Spec root.  The scalar entry is `func0`; inspection established that `func1`
+through `func4` are alloc, reset, retain, and release, and the shared runtime
+checks pin each definition by `rfl`.  The incomplete focused proof gate
+regenerates the same program and passes without adding Euler Spec to the
+completed aggregate.

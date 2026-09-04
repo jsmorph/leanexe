@@ -17,6 +17,7 @@ import Project.ClobMarket.Program
 import Project.ClobMatchFuel.Program
 import Project.ClobPostOnly.Program
 import Project.ClobQuote.Program
+import Project.EulerRusanov.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -67,6 +68,11 @@ example : eraseTypeIdx Project.F64Horner2CheckedBits.func2Def = eraseTypeIdx all
 example : eraseTypeIdx Project.F64Horner2CheckedBits.func3Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.F64Horner2CheckedBits.func4Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.F64Horner2CheckedBits.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.EulerRusanov.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerRusanov.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerRusanov.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerRusanov.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
 example : eraseTypeIdx Project.F64DotCheckedBits.func1Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.F64DotCheckedBits.func2Def = eraseTypeIdx resetFuncDef := rfl
