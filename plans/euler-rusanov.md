@@ -101,16 +101,30 @@ F(q) = (rho * velocity,
         ((7/2) * pressure + (1/2) * rho * velocity^2) * velocity).
 ```
 
-For a fixed dissipation speed `alpha = 7/4`, compute the numerical flux directly:
+For a fixed dissipation speed `alpha = 7/4`, the exact-real numerical flux is:
 
 ```text
 H(qL, qR) = (1/2) * (F(qL) + F(qR) + alpha * (U(qL) - U(qR))).
 ```
 
-The first implementation uses only the admitted f64 addition and multiplication
-operations.  Binary64 negation is exact sign-bit toggling, and subtraction is
-addition of the negated word.  The constants `1/2`, `5/2`, `7/2`, and `7/4`
-are exactly representable binary64 values.
+The implementation evaluates the same real expression in a proof-friendly
+dyadic order.  It forms `5/2 * p` as `(p + p) + (1/2) * p`, forms
+`7/2 * p` by adding one more `p`, and evaluates the Rusanov result as
+
+```text
+(1/2) * (FL + FR)
+  + (1/2) * (UL - UR)
+  + (1/4) * (UL - UR)
+  + (1/8) * (UL - UR).
+```
+
+This keeps every exact multiplication result below two and every exact sum
+below four on the guarded domain, matching the ranges of the existing checked
+IEEE64 rounders.  It uses only the admitted f64 addition and multiplication
+operations and the exactly representable constants `1/2`, `1/4`, and `1/8`.
+Binary64 negation is exact sign-bit toggling, and subtraction is addition of
+the negated word.  The emitted accepted branch has exactly 22 `f64.mul`, 27
+`f64.add`, and three `i64.xor` instructions.
 
 The public result is a fixed structure containing a status word and the three
 raw flux words.  Status zero denotes acceptance.  Rejection returns a distinct
@@ -282,7 +296,7 @@ Every checked row ends in a passing commit, an update to this plan and
 
 - [x] Complete the phase-7 guarded quadratic Horner source, WAT, and numerical
       theorem checkpoint.
-- [ ] Add the guarded scalar Euler source entry, ABI, extraction/IR/WAT checks,
+- [x] Add the guarded scalar Euler source entry, ABI, extraction/IR/WAT checks,
       and Wasmtime regression cases.
 - [ ] Prove the raw-bit guard and real characteristic-speed bound.
 - [ ] Prove the pure IEEE64 finite-result and componentwise real-error contract.
