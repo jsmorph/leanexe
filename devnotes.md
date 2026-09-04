@@ -8049,3 +8049,10 @@ through `func4` are alloc, reset, retain, and release, and the shared runtime
 checks pin each definition by `rfl`.  The incomplete focused proof gate
 regenerates the same program and passes without adding Euler Spec to the
 completed aggregate.
+
+`Project.EulerRusanov.Model` now supplies the pure proof boundary.  It mirrors
+the exact Talos IEEE64 evaluation order for both primitive states and all three
+Rusanov components, models total checked result words and reversed Talos stack
+values, and separately defines the decoded primitive, conservative state,
+physical Euler flux, and fixed-speed real Rusanov target.  It imports no
+generated program and evaluates no native Lean `Float`.

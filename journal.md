@@ -1576,3 +1576,36 @@ Output was limited to existing deprecation warnings.  No `dev` host,
 maintenance, cleanup of the active checkout, deletion of user files, reset,
 stash, or worktree rewrite was used.  The next proof boundary is the pure
 IEEE64 Euler model and the raw-bit guard/domain bridge.
+
+## 2026-09-04: pure Euler IEEE64 and real model passed
+
+The Talos registration checkpoint was published as
+`6775846ab94da6c1327b15f5e717be515abd6e21`; local and remote refs and tree
+`679bccb4b57ca820596f0d2f19621c790afbe57d` matched before the model edit.
+
+`Project.EulerRusanov.Model` now defines, without importing the generated
+Program or evaluating native Lean `Float`:
+
+- the exact raw constants and ten-condition integer guard;
+- the ordered per-side Talos `Wasm.IEEE64` intermediates;
+- sign-toggle subtraction, rounded mean, dyadic `7/8` dissipation, and the
+  three accepted result words;
+- the total checked result, source-order words, and reversed Talos value stack;
+  and
+- independent real primitive, conservative, physical Euler flux, and fixed
+  `alpha = 7/4` Rusanov definitions over decoded input values.
+
+The guard was kept in the source's exact left-associated condition order so
+later execution proofs can relate each short-circuit path without treating
+Boolean associativity as generated-code evidence.  The focused local build
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.EulerRusanov.Model
+```
+
+passed all 3,058 jobs, with 3.2 seconds on the new target and approximately
+5.6 seconds wall time.  Output contained only existing dependency warnings and
+the standard accepted CodeLib axiom reports.  No `sorry`, `admit`, or new axiom
+declaration is present.  No `dev` host, active-checkout cleanup, deletion,
+reset, stash, maintenance, or worktree rewrite was used.
