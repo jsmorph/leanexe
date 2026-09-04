@@ -209,9 +209,11 @@ phase.
 
 - Treat the scratch checkout and ignored build/dependency caches as
   disposable.  Automated workspace maintenance already removed one complete
-  checkout, including `.git`; do not run cleanup or maintenance against the
-  active checkout.  Journal, commit, and publish every coherent checkpoint
-  promptly, and label unchecked work explicitly.
+  checkout, including `.git`.  No assistant action may run cleanup,
+  maintenance, pruning, reset, checkout-overwrite, or recursive deletion
+  against the active checkout.  Preserve unrelated user changes.  Journal,
+  commit, and publish every coherent checkpoint promptly, and label unchecked
+  work explicitly so the remote branch is the recovery boundary.
 - This environment has no `dev` host.  Never invoke or probe
   `tools/leanrun-dev`; run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime,
   artifact preparation, and proof checks locally.  GitHub is used only to
@@ -222,6 +224,17 @@ phase.
   `LEAN_NUM_THREADS=1`, the exact pinned toolchain, priority controls, and
   explicit timeouts; the mode warns that cgroup limits are absent.  Do not use
   the self-hosted emitter or its gates.
+- Run only one Lean/Lake process at a time.  Coordinate delegated proof work
+  around that single local slot, never start a competing check while another
+  is active, and do not repeat an unchanged target after a timeout.  Split the
+  dependency boundary, record the timeout, and retry only after the boundary
+  or cache state has materially changed.
+- Lean 4.34.0-rc2 needs a session-local compatibility preload in this nested
+  PID namespace.  It must map every numeric `/proc/<pid>/exe` lookup made by
+  the current process to `/proc/self/exe`; an `ENOENT`-only fallback is
+  insufficient because a colliding outer-namespace PID can resolve to the
+  wrong executable.  Keep this environment workaround outside the repository,
+  record its use, and never present it as proof evidence.
 - The ordinary HTTPS remote has no usable credential helper.  Publish with the
   authenticated GitHub Git-data API as a non-forced fast-forward: upload
   complete changed-file blobs, create a tree from the current remote tree,
