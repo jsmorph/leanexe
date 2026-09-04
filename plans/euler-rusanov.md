@@ -221,8 +221,12 @@ Prove:
 - `alpha` bounds every left and right characteristic speed on the guarded
   domain;
 - consistency `H(q, q) = F(q)`; and
-- the exact-real one-step finite-volume update preserves the Euler admissible
-  set under the stated Rusanov CFL condition.
+- a generic exact-real two-cell, three-interface update has exact boundary-flux
+  balance, and the concrete rational Sod quarter-step is Euler-admissible.
+
+A generic invariant-domain theorem under a symbolic Rusanov CFL condition is
+a separate follow-on result.  Do not infer or claim it from the concrete
+quarter-step calculation.
 
 The derivative and matrix certificate may be completed after the executable
 kernel theorem, but they are required before the Euler phase is called complete.
@@ -346,18 +350,25 @@ alpha        7/4
 dt / dx      1/4
 ```
 
-The theorem interprets `binary64(1/10)` as the exact dyadic encoded by the
-input word; it never silently replaces that value by the rational `1/10`.
+The future artifact theorem interprets `binary64(1/10)` as the exact dyadic
+encoded by the input word; it never silently replaces that value by the
+rational `1/10`.  The exact-real reference stencil deliberately uses rational
+`1/10`; the decoded numerical bridge between those two inputs remains a
+separate checked layer.
 
-First prove a generic three-cell stencil and instantiate it for a compact fixed
-grid.  The WASM output is a flat sequence of raw binary64 words containing the
-initial conservative states, interface fluxes, updated states, status, and
-balance diagnostics.  Required results are:
+First prove generic two-cell update algebra with three spatial interfaces and
+instantiate it for the exact rational Sod pair.  Then propagate the three
+certified artifact interface rows through a decoded-real update.  Only after
+that boundary is explicit, compile a fixed-grid stencil whose WASM output is a
+flat sequence of raw binary64 words containing the initial conservative
+states, interface fluxes, updated states, status, and balance diagnostics.
+Required results for that compiled artifact are:
 
 - exact execution equals one application of the specified checked recurrence;
 - every emitted word required to denote a number is finite;
 - each updated cell has positive density and pressure/internal energy;
-- the real update meets the Rusanov positivity theorem; and
+- the decoded update is compared with the exact reference and has an explicit
+  admissibility argument at the selected fixed input; and
 - the floating mass, momentum, and energy balance residuals have explicit
   bounds rather than an unjustified claim of bit-exact conservation.
 
@@ -417,7 +428,12 @@ Every checked row ends in a passing commit, an update to this plan and
 - [x] Add pinned, regression-only C comparison tooling without conflating the
       fixed-speed verified kernel with Lanyon's dynamic-speed implementation.
 - [x] Prove the independent Jacobian derivative and complete eigendecomposition.
-- [ ] Add the generic one-step stencil and its exact-real positivity theorem.
+- [x] Add the generic two-cell/three-interface balance theorem and prove the
+      concrete rational Sod quarter-step values and admissibility.
+- [ ] Propagate the three certified interface-flux budgets through the
+      decoded-real update and balance theorem.
+- [ ] Add a symbolic CFL/invariant-domain theorem only if a later claim needs
+      generic positivity beyond the proved fixed step.
 - [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
