@@ -8423,3 +8423,37 @@ checkpoints are committed and pushed frequently through an exact non-forced
 GitHub Git-data fast-forward, followed by fetched full-tree equality, without
 rewriting the worktree.  This documentation-only checkpoint explicitly leaves
 the untracked `RealGuardBridge.lean` and `RealStencil.lean` drafts untouched.
+
+## 2026-09-04: guarded exact-real Euler stencil
+
+`RealGuardBridge.lean` closes the raw-guard-to-mathematics boundary: accepted
+binary64 density and pressure words decode positively, their conservative
+states are admissible, and all three exact conservative-Jacobian
+characteristic values have absolute value at most fixed `alphaReal = 7/4`.
+The square root occurs only in the exact-real eigensystem; the executable
+continues to use the certified fixed bound and evaluates no square root.
+
+`RealStencil.lean` defines generic one- and two-cell conservative updates,
+proves cancellation of the shared interface flux, instantiates transmissive
+Rusanov fluxes, and proves the exact `1/4` Sod step.  The updated cells are
+`[207/256, 9/80, 257/128]` and `[81/256, 9/80, 95/128]`; both are admissible,
+with exact total density `9/8`, momentum `9/40`, and energy `11/4`.  This is an
+exact-real stencil, not an executed WASM stencil.  Its right pressure is the
+mathematical rational `1/10`; the future artifact input is the exact dyadic
+decoded from binary64 `0.1`, and their bridge is still pending.
+
+The original stencil draft needed one noncomputable marker and three explicit
+fixed-vector projection reductions.  The guard bridge needed only explicit
+unfolding of the three eigenvalue cases before linear arithmetic.  Failed
+diagnostics and repairs are recorded in `journal.md`; no file, dependency,
+generated object, or cache was cleaned.  Final focused builds pass over 3,060
+and 3,073 jobs, the integrated mathematics umbrella over 3,161 jobs, and the
+full `Project` root over 3,805 jobs.  All nine new printed theorem audits report
+only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The refreshed release-input digest is
+`3d4778e8bcf2ca10731c14045af4cdfb9d389ac5603b9e1b93a74331b2beff7e`;
+the twenty-one-package draft honestly retains four blockers.  The next layer
+propagates the three already certified interface-flux error budgets through a
+decoded finite-volume update, while reserving the phrase "WASM stencil" for a
+separate compiled and proved one-step artifact.
