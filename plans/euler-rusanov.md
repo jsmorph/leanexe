@@ -466,8 +466,8 @@ theorems.
 
 ## Ordered checkpoints
 
-Every checked row ends in a passing commit, an update to this plan and
-`devnotes.md`, and a push to `origin/talosfp-euler`.
+Every checked row ends in a passing commit, an update to this plan,
+`journal.md`, and `devnotes.md`, and a push to `origin/talosfp-euler`.
 
 - [x] Complete the phase-7 guarded quadratic Horner source, WAT, and numerical
       theorem checkpoint.
@@ -510,7 +510,9 @@ Every checked row ends in a passing commit, an update to this plan and
 ## Verification gates
 
 Every checkpoint follows the repository gates relevant to its files.  In
-addition:
+addition.  The consolidated project requirements live in the
+[TalosFP Euler operating contract](talosfp-euler-operations.md); the list below
+is its proof-work summary.
 
 - run every Lean command directly on the local host with exactly one global
   Lean/Lake/compiler process at a time; direct Lean is user-authorized through

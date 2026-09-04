@@ -8581,3 +8581,27 @@ The source/model checkpoint was published as
 fast-forward.  Fetched commit/tree identity, local index, and worktree content
 matched before the local ref advanced by compare-and-swap; final status was
 clean and synchronized.
+
+## 2026-09-04: canonical TalosFP Euler operating notes
+
+`plans/talosfp-euler-operations.md` is now the canonical consolidated operating
+contract, linked by both active plans.  It treats the complete checkout and
+all generated, ignored, cached, evidence, temporary-looking, and partial state
+as persistent user-owned data; prohibits generic maintenance and destructive
+operations without fresh exact user authorization; requires status before
+every mutation and explicit staging; and preserves unrelated work.
+
+All execution remains local: there is no `dev` host or probe, direct Lean is
+authorized only inside the pinned `LEANRUN_LOCAL=1` envelope, Lean-family work
+is globally serialized to one process and one thread, runner-owning Node
+drivers are invoked directly, and artifact staging may remove only the fresh
+directory created for that invocation.  Detailed history stays append-only in
+`journal.md`.  Coherent checkpoints use the exact non-forced GitHub Git-data
+fast-forward, fetch, and full-tree equality protocol.  The whitespace and
+91-file maintained-document checks pass; no Lean or artifact process was
+needed for this documentation-only checkpoint.
+
+An independent read-only audit confirmed the contract and tightened its edge
+conditions for task-owned staging, reviewed artifact refreshes, delegated
+work, status boundaries, recovery-time tool validation, timeout reporting,
+user progress updates, dependency authority, and finite publication receipts.
