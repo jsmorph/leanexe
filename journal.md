@@ -731,3 +731,58 @@ present locally, and a draft big-step/WP execution proof is undergoing its
 first focused serialized build.  No execution-proof pass is claimed here.
 The case remains registered with `complete: false`; the explicit small-step
 trace and exact-byte package remain open after the big-step proof.
+
+## 2026-09-04: Generated-WAT Horner execution proof
+
+The preceding operating record was published first as the documentation-only
+commit `a24b1348f840990f7f184f7c96270da660ebaf17`.  Its complete Git tree is
+`dcfd6ebfc97d521fd4fb3f32b33db12fb15b9a90`; local `HEAD`, the remote
+`talosfp-euler` ref, and that tree were checked equal without rewriting the
+in-flight proof worktree.
+
+The first focused `Project.F64Horner2CheckedBits.Execution` build reached its
+300-second timeout while still continuously compiling cold Mathlib imports at
+approximately 2,594 modules.  It emitted no Horner diagnostic, so this was
+recorded as an infrastructure/dependency timeout rather than a proof result.
+The target was not repeated unchanged.  The smaller dependency boundary was
+built first:
+
+```text
+lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Horner2CheckedBits.Numerical
+Build completed successfully (3068 jobs).
+```
+
+That cached build took approximately 2.6 seconds and continued to report only
+`propext`, `Classical.choice`, and `Quot.sound` for the numerical theorem.  A
+single Execution retry then filled the additional cold WP/Tactic frontier,
+reached the generated Horner module at roughly job 3,361 of 3,366, and exposed
+five identical proof-structure errors rather than timing out.  In each guard
+path, a final conditional boundary copied from the older dot proof had already
+been consumed by `wp_run` under the current Talos compatibility layer.
+
+The first correction removed only the redundant `wp_iff_cons`; the next
+8.5-second build showed that its associated final `rw [if_*]` and `wp_run`
+pair was also redundant.  Removing exactly those five endpoint pairs while
+retaining every earlier control refinement produced the passing proof:
+
+```text
+lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Horner2CheckedBits.Execution
+Build completed successfully (3366 jobs).
+```
+
+The final build took 8.9 seconds, with approximately 6.2 seconds on the target.
+It proves the exact helper result, fuel-independent total execution of all five
+entry paths, the reversed Talos input/output stack convention, exact staged
+Horner result bits, complete store preservation, and the transferred finite
+result plus `3 * 2^-52` real absolute-error contract.  Axiom reports for
+`func0_exact`, `horner2CheckedBits_exact`, and
+`horner2CheckedBits_wat_real_error` are each exactly the standard logical
+axioms `propext`, `Classical.choice`, and `Quot.sound`; no `sorryAx` occurs.
+
+This is a big-step/WP checkpoint, not case completion.  The generated program,
+the passing execution proof, its public import, and the generated-program audit
+are ready to publish together.  Runtime-pin aggregate checking, the separately
+drafted explicit small-step trace, and exact-byte closure remain pending, so
+the registry remains `complete: false`.

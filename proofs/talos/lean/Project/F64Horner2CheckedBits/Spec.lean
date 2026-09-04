@@ -1,9 +1,8 @@
-import Project.F64Horner2CheckedBits.Numerical
+import Project.F64Horner2CheckedBits.Execution
 
 /-!
 # Guarded binary64 quadratic Horner artifact
 
-This proof root initially exposes the checked source-model contract.  It will
-import the generated-WAT execution theorem when the registered artifact proof
-is complete.
+This public proof root exposes both the checked source-model contract and its
+fuel-independent theorem about the exact compiler-generated WAT.
 -/
