@@ -1,7 +1,9 @@
 # Verified Euler Rusanov Data
 
-**Status:** Active on branch `talosfp-euler`.  This document expands phase 8
-of the root [Development Plan](../plan.md).
+**Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
+genuine Fréchet Jacobian, and complete strictly ordered eigenbasis are proved
+and integrated; decoded finite-volume update work is next.  This document
+expands phase 8 of the root [Development Plan](../plan.md).
 
 ## Purpose
 
@@ -414,7 +416,7 @@ Every checked row ends in a passing commit, an update to this plan and
       dataset and its regression-only CSV.
 - [x] Add pinned, regression-only C comparison tooling without conflating the
       fixed-speed verified kernel with Lanyon's dynamic-speed implementation.
-- [ ] Prove the independent Jacobian derivative and complete eigendecomposition.
+- [x] Prove the independent Jacobian derivative and complete eigendecomposition.
 - [ ] Add the generic one-step stencil and its exact-real positivity theorem.
 - [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.

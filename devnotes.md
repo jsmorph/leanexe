@@ -8361,3 +8361,36 @@ input.
 The diff checker, 90-file docs checker, release tests, kernel-scope audit,
 four-blocker inspector, and targeted no-`sorry`/no-`admit`/no-axiom scan pass
 before publication.
+
+## 2026-09-04: complete conservative Euler eigenbasis
+
+The Jacobian checkpoint was published as commit
+`868a130d1174389c4ddc20b2ea87a5b9ffc9de07`, tree
+`25e96e0af09398cb2b7a38444caa462c724f0f48`, by an exact non-forced GitHub
+Git-data fast-forward.  API and fetched local trees matched before the local
+ref moved; no worktree rewrite or deletion occurred.
+
+`RealEigenbasis.lean` now proves `A*R=R*Lambda`, all column eigenvector
+equations, `det R = 2*c*(H-u^2/2) = 5*c^3`, nondegeneracy, linear independence,
+an actual basis, Mathlib `HasEigenvector` certificates, and strict ordering.
+For admissible conservative states, `c=sqrt(gamma*p/rho)>0`, the determinant is
+`7*c*p/rho>0`, and `exists_strict_complete_eigenbasis` supplies the complete
+strict-hyperbolicity witness.
+
+Five focused compiler iterations repaired only pinned API shape: Matrix and
+Classical scopes, a noncomputable section, targeted `vecMul_diagonal`
+simplification, the `Module` namespace, explicit `Module.End.HasEigenvector`,
+and one definition unfolding.  The final eigenbasis build passes over 3,063
+jobs without a local warning.  `RealMathematics.lean` is the exact-real
+umbrella, and the complete `Project` target passes over 3,803 jobs.  Axiom
+audits report only `propext`, `Classical.choice`, and `Quot.sound`; no
+`sorry`, `admit`, or new axiom is present.
+
+The integrated release-input digest is
+`c84b3584020f82336922d30d54eb4edff52607c5fe0f13ea2e91216213f066c9` and the
+draft correctly retains four blockers.  Next is the decoded transmissive
+stencil; the current artifact still proves flux calls only, not update
+arithmetic in WebAssembly.
+
+Whitespace, maintained docs, release tests, kernel scope, release inspection,
+and targeted no-placeholder/no-axiom gates pass before publication.
