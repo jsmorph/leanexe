@@ -213,8 +213,9 @@ acceptance gates, and nonclaims.
       fluxes, admissibility of both updated cells, and exact conservative
       balance.  This is deliberately not called a WASM stencil: the current
       artifact executes the interface fluxes, not the update arithmetic.
-- [ ] Propagate the certified `sodLL`/`sodLR`/`sodRR` flux-error budgets through
-      decoded-real update and balance theorems.
+- [x] Propagate the certified `sodLL`/`sodLR`/`sodRR` flux-error budgets through
+      decoded-real update and balance theorems, with the binary64 `0.1`
+      representation bias proved separately from flux roundoff.
 - [ ] Compile and prove a fixed first-order Sod step that emits raw binary64
       state, flux, admissibility, and balance data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
