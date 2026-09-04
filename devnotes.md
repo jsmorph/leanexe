@@ -8736,3 +8736,60 @@ pre-existing state was deleted, moved, truncated, or invalidated.
 Final identity, release, kernel-scope, release-inspection, 91-file
 documentation, whitespace, source-policy, and inventory checks pass.  Release
 inspection reports exactly 21 packages and the four expected blockers.
+
+## 2026-09-04: frozen exact-byte fixed Euler-step artifact
+
+The prior numerical certificate is published as
+`77edac202190b41ec237210d2caba368587a9838`.  The stable 2,551-byte
+`euler_rusanov_step` WASM is now frozen as exact artifact
+`0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511`.
+Its schema-3 manifest binds the binary decoder and validator, cached
+11-function translation, artifact equality theorem, and both registered fixed
+step behavior theorems, with no host assumptions.
+
+The focused pinned local artifact gate passes identity, bytes, decode,
+`CoreValid`, translation, artifact equality, the full step specification, both
+behavior theorem declarations, and axiom audit.  The safe non-receipt aggregate
+passes identities, embedded bytes, and exact artifact theorem targets for all
+22 packages.  Inventory is 26/26 source cases, 38 source behavior names, 26
+Program caches, 22 exact artifacts, 44 package files, 154 artifact Lean
+modules, and 26 manifest behavior references.  Verified raw-state publication
+remains the next distinct Euler checkpoint.
+
+The historical 21-package evidence receipt and 21-package release draft are
+protected pre-existing state and remain byte-for-byte unchanged pending an
+exact user instruction to replace them.  The current 661-file release-input
+digest is
+`e8f96184c9b87c9e70a27f9438ec6043e7b14bfe4d15e6393f8c5d8820cff32f`.
+Artifact identity, transactional migration, 91-file documentation, and
+whitespace checks pass; release-dependent gates await an authorized refresh.
+
+All work was local, serial, one-threaded, and status-bounded.  The migration
+and proof drivers removed only fresh staging paths created by their own
+invocations; the three pre-existing Talos temp directories remain untouched.
+No `dev` probe, generic maintenance, cleanup, deletion, movement, truncation,
+replacement, invalidation, reset, checkout, stash, or discarded workspace
+state was used.  Detailed commands, hashes, one harmless read-only `ENOENT`,
+the overlapping-output false alarm, two corrected local script/patch mistakes,
+the protected-file boundary, and verification results are recorded in
+`journal.md`.
+
+### External workspace deletion and notes-only recovery
+
+After those checks, an external workspace event removed `.git` and 6,278
+tracked worktree paths, including the protected receipt, tracked release file,
+artifact registry, and unpublished fixed-step package.  No command in this
+work performed that deletion.  The remote branch remained intact at
+`77edac202190b41ec237210d2caba368587a9838`.
+
+Only missing Git metadata was recreated locally and seeded from that exact
+remote tree; no worktree file was restored, overwritten, or removed.  All
+6,278 losses remain unstaged, and the recovered index preserves the complete
+remote parent tree.  The earlier note about changing the release regression to
+22 is corrected: that uncommitted edit disappeared with
+`test/artifact_release.js`, and the parent version remains in the index.
+
+This recovery checkpoint publishes only `journal.md` and `devnotes.md`, with
+zero deletions.  The verified-but-unpublished artifact must be regenerated
+only after an explicit recovery decision; surviving README, development-guide,
+and plan edits remain unstaged and untouched.

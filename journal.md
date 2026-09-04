@@ -4320,3 +4320,200 @@ package or registry entry had been added prematurely.  It found no substantive
 defect.  Its sole wording suggestion was adopted: four documents now say
 “six numeric payload words,” distinguishing them from the seventh ABI word,
 the status code.
+
+## 2026-09-04: exact-byte fixed Euler-step artifact checkpoint
+
+The preceding fixed-step numerical certificate was published as commit
+`77edac202190b41ec237210d2caba368587a9838`, message
+`Certify fixed Euler step numerics`.  Before artifact migration, local and
+remote `talosfp-euler` were clean and synchronized at that commit, the index
+was empty, the exact-artifact registry contained 21 packages, and no
+`euler_rusanov_step` package or
+`Project.EulerRusanovStep.Artifact*.lean` module existed.  The stable generated
+step module was 2,551 bytes with SHA-256
+`0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511`;
+its generated `Program.lean` cache had SHA-256
+`fee069ab47b6c96abc44d1b902cbcfbaa5996174517f7d7c2a215366c7d7f2bc`.
+The pre-existing directories `tmp/leanexe-talos-S1boEy`,
+`tmp/leanexe-talos-WauTHs`, and `tmp/leanexe-talos-x9h6ML` were inventoried as
+state to preserve.
+
+After a fresh status inspection, the bounded migration ran locally and
+serially under the pinned environment:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  node tools/artifact-migrate.js migrate euler_rusanov_step
+```
+
+The driver completed in about 2.8 seconds after locally building and running
+its `DumpRaw` boundary.  Its atomic publication touched exactly 11 named
+deliverables: the seven new modules
+`Project/EulerRusanovStep/ArtifactBytes.lean`, `ArtifactCache.lean`,
+`ArtifactDecoded.lean`, `ArtifactRawCache.lean`, `ArtifactDecode.lean`,
+`ArtifactValidation.lean`, and `ArtifactTranslation.lean`; package files
+`proofs/artifacts/euler_rusanov_step/0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511/manifest.json`
+and `program.wasm`; plus the reviewed `proofs/artifacts/registry.json` update
+and `Project/Artifact/Binary/CheckFile.lean` dispatch update.  The generated
+and frozen WASM files are byte-identical.  No `.tmp-*` or `.bak-*` residue was
+left, and all three pre-existing `tmp/leanexe-talos-*` directories remained
+untouched.
+
+The schema-3 manifest has SHA-256
+`ae92a42d9ed961507cccbeed8e573244aa757d3f167e10a7c20dd40950bce870`.
+It records the 2,551-byte binary, validation profile `leanexe-core-v1`, proof
+target `Project.EulerRusanovStep.ArtifactTranslation`, artifact theorem
+`Project.EulerRusanovStep.Artifact.artifact_module_eq_cache`, no host
+assumptions, and the two behavior theorems in registry order:
+`Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact` and
+`Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_wat_real`.  The
+22-entry registry has SHA-256
+`7c05e1ebaffd7fcc6e01a9fd3abf1f3b7a2b6077de972d2f048057fdc05cb237`;
+the updated binary-check dispatch has SHA-256
+`11bb3b70af0c2a585b53986810d48dac73514fb8628ef5093460d99f6cc971f4`.
+
+A read-only post-migration Node inspection mistakenly resolved the manifest's
+repository-relative subpath as though it were already checkout-root relative
+and returned `ENOENT`.  It made no mutation and supplied no validation result;
+the corrected direct file inspection established the identities above.  Two
+overlapping `sed` output ranges then made one theorem header appear twice.  A
+numbered source view and `rg` confirmed that exactly one declaration was
+present, so no generator or proof edit was made for that display-only false
+alarm.
+
+The focused exact-artifact gate ran directly under the same pinned local
+environment:
+
+```sh
+node tools/artifact-proof.js check \
+  proofs/talos/.generated/euler_rusanov_step/program.wasm \
+  Project.EulerRusanovStep.ArtifactTranslation
+```
+
+It exited zero after about two minutes.  Identity, all embedded bytes, binary
+decode, `CoreValid` validation, the 11-function translation,
+translation-cache equality, exact artifact theorem, full fixed-step `Spec`,
+both registered behavior declarations, and axiom auditing all passed.  Public
+behavior proofs report only `propext`, `Classical.choice`, and `Quot.sound`;
+the generated decoded/cache/validation witnesses retain their expected
+theorem-local `native_decide` witnesses.  Upstream deprecation and linter
+warnings were non-fatal.  This focused gate used and removed only its own
+fresh `tmp/leanexe-artifact-*` staging path and did not write an aggregate
+receipt.
+
+The safe non-receipt aggregate then ran as
+`node tools/artifact-proof.js check-artifacts` under the same pinned local
+environment.  It exited zero and reported
+`Aggregate artifact theorem pass completed: 22 artifacts`, after confirming
+all 22 package identities, embedded bytes, and exact artifact theorem targets.
+The recovered unified runner session did not retain a single trustworthy
+end-to-end wall-time measurement, so none is invented here.  It wrote ordinary
+ignored Lake caches only, wrote no receipt, and left the three pre-existing
+Talos temporary directories present.
+
+The existing ignored aggregate receipt was treated as protected evidence, not
+disposable generated output.  It remains byte-for-byte unchanged at
+`build/evidence/artifact-proof.json`, SHA-256
+`ecc17bdb8dbb65d335b072f9314c8298142f6b44224e92e1385c3b29d14ebe8f`,
+with `artifactCount: 21` and historical release-input SHA-256
+`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`.
+Running `artifact-proof.js check-all` would replace that exact pre-existing
+file.  Likewise, `artifact-release.js refresh` would replace tracked
+`proofs/artifacts/release.json`, which remains unchanged at SHA-256
+`fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1`
+and still records 21 packages.  Neither replacement was inferred from
+migration or validation authority.  The current 22-package release-input
+identity is
+`e8f96184c9b87c9e70a27f9438ec6043e7b14bfe4d15e6393f8c5d8820cff32f`
+over 661 files.  Both exact replacements remain pending a fresh user
+instruction naming their targets and actions.
+
+Current-facing plans and documentation now distinguish the completed frozen
+step artifact from the still-pending verified raw-state publication.  The live
+inventory is 26 registered source cases, 26 complete cases, 38 source behavior
+theorem names, 26 `Program.lean` caches, 22 exact artifacts, 44 package files,
+154 `Artifact*.lean` modules, and 26 manifest behavior-theorem references.
+Historical prose about the earlier 20- and 21-package receipts was preserved.
+The release regression's package expectation changed from 21 to 22; its
+release-dependent execution remains deferred until an authorized 22-package
+release refresh.
+
+The first combined documentation `apply_patch` attempt found a stale expected
+context in `DEVELOPING.md`, failed its verification, and changed no file.  The
+bounded patches were reapplied in reviewed batches.  A later ad hoc read-only
+inventory script incorrectly expected `behaviorTheorems` directly on artifact
+registry rows and stopped with a `TypeError` before producing a result.  The
+corrected query read those names from each package manifest and produced the
+inventory above.  These were editing/query errors, not proof or repository
+failures, and neither discarded state.
+
+The non-receipt validation set passes: `node test/artifact_identity.js`
+accepted verifier membership and canonical input digests;
+`node test/artifact_migrate.js` accepted transactional migration,
+frozen-file identity, and the cold-cache decoder build; `node
+tools/check-docs.js` checked all 91 maintained Markdown files; and `git diff
+--check` passed.  The migration regression created and removed only its own
+fresh `tmp/leanexe-migrate-test-*` directory.  Reinspection confirmed the same
+three pre-existing Talos temp directories and unchanged protected-file hashes.
+
+All Lean-family work remained local, globally serialized, one-threaded, and
+bounded by the pinned runner environment.  No `dev` host was invoked, probed,
+or assumed.  Status was inspected before each mutation.  No generic workspace
+maintenance, cleanup, deletion, move, truncation, replacement, invalidation,
+prune, reset, checkout, stash, worktree rewrite, or discard of pre-existing
+tracked, untracked, generated, ignored, build, cache, dependency, evidence,
+temporary-looking, or partial state occurred.  Staging and publication remain
+future exact, reviewed mutations; no path is staged at this journal point.
+
+### External workspace deletion after verification
+
+Immediately before the next bounded edit, `git status --short --branch` failed
+with `fatal: not a git repository`.  A read-only directory inspection showed
+that the checkout root and surviving top-level files still existed but `.git`
+did not.  No command in this work deleted, cleaned, moved, reset, checked out,
+stashed, or otherwise rewrote that metadata.  A read-only `git ls-remote`
+query for `https://github.com/jsmorph/leanexe.git` and
+`refs/heads/talosfp-euler` confirmed that the remote branch remained intact at
+`77edac202190b41ec237210d2caba368587a9838`.
+
+To recover only missing Git metadata needed for the requested publication, a
+narrow local recovery created the absent `.git` directory with
+`git init --initial-branch=talosfp-euler .`, added the known public `origin`,
+fetched only `refs/heads/talosfp-euler`, and created the local branch ref at the
+exact fetched commit with compare-and-swap from the zero ref.  The newly
+initialized index was empty, which initially displayed every remote file as an
+index deletion plus its surviving top-level copy as untracked.  A
+`git read-tree 77edac202190b41ec237210d2caba368587a9838` invocation populated only the index from the
+exact remote tree; it did not write, remove, or overwrite a worktree file.
+
+That comparison exposed the full extent of the external event: 6,278 tracked
+worktree paths are absent.  The missing paths include the pre-existing
+`build/evidence/artifact-proof.json`, tracked
+`proofs/artifacts/release.json`, the modified artifact registry and
+conformance file, all newly generated fixed-step artifact modules, and the
+unpublished content-addressed WASM package.  They were present and hashed in
+the preceding paragraphs before this event, then disappeared without a
+command from this work.  The recovered index still contains every parent-tree
+path and therefore shows these losses only as unstaged worktree deletions;
+zero deletions are staged.
+
+The external deletion also removed `test/artifact_release.js`, including the
+uncommitted 21-to-22 expectation edit.  This appends a correction to the
+earlier current-checkpoint sentence: that test edit is no longer present and
+will not be included in the notes-only recovery checkpoint; the recovered
+index retains the parent commit's 21-package test.  The verified artifact
+payload cannot be honestly published from the surviving files, and no missing
+path is silently regenerated, restored, or fabricated.
+
+The safe recovery checkpoint therefore contains only this detailed journal
+and the matching concise developer note.  Its tree is constructed from the
+intact remote parent tree plus those two reviewed blobs, so it preserves every
+remote file and records no deletion.  Surviving but unpublished edits to
+`README.md`, `DEVELOPING.md`, and `plan.md` remain unstaged and untouched.
+Restoring the 6,278 missing worktree paths or regenerating the exact artifact
+requires a separate explicit recovery decision; neither is inferred from the
+authority to record and publish these operational notes.
