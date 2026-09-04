@@ -306,14 +306,28 @@ Every checked row ends in a passing commit, an update to this plan and
 Every checkpoint follows the repository gates relevant to its files.  In
 addition:
 
-- run every Lean command locally and serially with `LEAN_NUM_THREADS=1` and an
-  explicit timeout; in this container use the user-authorized
-  `LEANRUN_LOCAL=1` mode of `tools/leanrun`, which preserves the shared lock,
-  pinned toolchain, and priority controls while warning that its unavailable
-  systemd cgroup limits are not enforced;
-- never invoke or probe `tools/leanrun-dev` or any other remote executor;
-- treat the scratch checkout as disposable, avoid cleanup or file deletion,
-  and commit and push every coherent checkpoint promptly;
+- run every Lean command directly on the local host, one Lean process at a
+  time, with `LEAN_NUM_THREADS=1`, an explicit timeout, the pinned local
+  sysroot, and the user-authorized `LEANRUN_LOCAL=1` mode of `tools/leanrun`;
+  this preserves the shared lock and priority controls while warning that its
+  unavailable systemd cgroup limits are not enforced;
+- never invoke, probe, or assume the existence of `tools/leanrun-dev`, a
+  `dev` host, or any other remote executor; GitHub is only the publication and
+  recovery remote for this work;
+- after a timeout without a theorem diagnostic, do not repeat the same target
+  against unchanged dependencies: identify a smaller missing dependency,
+  build that boundary under its own timeout, and retry the parent only after
+  the proof state or cache has materially changed;
+- treat the scratch checkout as disposable but its contents as user-owned:
+  never run workspace maintenance, cleanup, reclamation, pruning, deletion,
+  `git clean`, destructive reset, checkout-overwrite, or an equivalent
+  worktree rewrite;
+- inspect the branch and worktree before every edit, preserve unrelated and
+  pre-existing changes, commit each coherent checkpoint, push it promptly,
+  and verify that the remote and local commit trees are identical;
+- record commands, elapsed boundaries, proof failures, timeouts, warnings,
+  axiom audits, commit identities, and publication verification in
+  `journal.md`; a timeout is never recorded as a theorem failure or pass;
 - reject new `sorry`, `admit`, and axiom declarations in changed Lean files;
 - require public numerical and execution theorems to report only the project's
   accepted standard logical axioms;

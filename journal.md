@@ -1017,3 +1017,103 @@ for `func0_exact`, `dot2CheckedBits_exact`, and
 `dot2CheckedBits_wat_real_error` contain exactly `propext`,
 `Classical.choice`, and `Quot.sound`; the transient failed build's `sorryAx`
 reports are gone.  Only existing deprecation and linter warnings remain.
+
+## 2026-09-04: Local-only operating contract after workspace loss
+
+An earlier scratch checkout disappeared during workspace maintenance outside
+the repository workflow.  That event deleted files and is not an authorized
+part of this project.  The recovered `talosfp-euler` checkout and every file in
+it are treated as user-owned even though the enclosing scratch filesystem is
+disposable.  No workspace maintenance, cleanup, reclamation, pruning, file
+deletion, `git clean`, destructive reset, checkout-overwrite, stash, or other
+worktree-rewriting shortcut may be used.  Existing and unrelated changes must
+be inspected and preserved.  If a conflict cannot be worked around safely,
+work stops for user direction rather than discarding anything.
+
+There is no `dev` host in this workflow.  It must not be invoked, probed, or
+silently substituted.  Every Lean, Lake, compiler, WAT, WASM, Node, Wasmtime,
+and artifact command runs directly on the local machine.  Lean commands use
+one serialized process, `LEAN_NUM_THREADS=1`, an explicit timeout,
+`LEANRUN_LOCAL=1`, the pinned local Lean 4.34.0-rc2 sysroot, and the corrected
+PID-namespace preload shim.  The repository runner retains its machine lock,
+`nice`, and `ionice` controls.  GitHub is used only to publish and recover
+committed repository state; it is not a build executor.
+
+A no-diagnostic timeout is censored timing evidence, not a proof error and not
+a pass.  The identical target is not rerun against unchanged dependency state.
+The next action must divide it at a smaller module or theorem boundary; the
+parent can be retried only after that boundary has passed and materially
+warmed the local cache.  Only one Lean process may run at a time, including
+through subagents.  All command outcomes, elapsed slow boundaries, warnings,
+axiom audits, and failed attempts are recorded here.
+
+The branch is inspected before every edit.  Each coherent change is committed
+and pushed promptly because the checkout can disappear again.  Publication is
+complete only after the remote ref is fetched and local and remote commit trees
+are identical.  Publishing must not reset, clean, stash, or rewrite the
+worktree.  These rules apply to the remaining aggregate-cache recovery and to
+all Euler implementation phases.
+
+## 2026-09-04: Focused aggregate-cache ledger through TradeAllocAppend
+
+The F64Dot2 repair checkpoint was published as
+`36547bf44409e92d750c85a12d330ae724601760`; local and remote tree
+`6e8509b61efd85e50d0295caca550152138a912b` matched and the worktree was
+clean.  Aggregate recovery then continued locally and serially through focused
+public specification targets.  No source changed during the successful cache
+warming runs.
+
+- `Project.F64DotCheckedBits.Spec` passed all 3,372 jobs.  Its execution module
+  took approximately 13 seconds and its public specification approximately 2
+  seconds.  The advertised theorem audit again contained only `propext`,
+  `Classical.choice`, and `Quot.sound`.
+- `Project.LebU32.Spec` passed all 3,366 jobs.  The largest freshly built
+  boundaries were `Iter` at approximately 60 seconds and `NegIter` at 28
+  seconds.
+- `Project.ClobQuote.Spec` passed all 3,348 jobs.  `Step` took approximately 36
+  seconds and the root specification 13 seconds.
+- `Project.ClobCancel.Spec` passed all 3,351 jobs; its root specification took
+  approximately 63 seconds.
+- `Project.ClobFindBest.Spec` passed all 3,349 jobs.  The material cold costs
+  were `Helpers` at approximately 191 seconds and `Loop` at 468 seconds.
+
+The first focused `Project.ClobPostOnly.Spec` run reached 3,364 of 3,366 jobs
+and then exhausted its explicit 15-minute limit after
+`Project.ClobPostOnly.AppendOrderFinish`.  It emitted no theorem diagnostic, so
+it is a timeout rather than a failure.  Inspection of the generated `.olean`
+frontier identified `Append` and the root `Spec` as the remaining boundaries.
+`Project.ClobPostOnly.Append` was therefore built separately and passed all
+3,363 jobs, with its target taking approximately 29 seconds.  The now
+materially warmed `Project.ClobPostOnly.Spec` retry passed all 3,366 jobs; its
+root took approximately 3.2 seconds.  The unchanged cold target was never
+repeated.
+
+The first focused `Project.ClobMatchFuel.Spec` run likewise reached its
+15-minute limit without a theorem diagnostic, after warming through
+`BookAllocSearch`.  Its cold dependency path included the already observed
+`FindBest` and `Helpers` costs, approximately 471 and 198 seconds, plus an
+`EarlyExit` boundary of approximately 51 seconds.  Rather than repeating the
+root, its missing chains were split further:
+
+- `Project.ClobMatchFuel.BookAlloc` passed all 3,357 jobs.  `BookAllocFit` took
+  approximately 221 seconds, `BookAllocBump` 93 seconds, and the final prepare
+  and root boundaries about 6 seconds each.
+- `Project.ClobMatchFuel.BookReplaceFinish` passed all 3,361 jobs.  The store,
+  erase-prefix, and copy boundaries took approximately 4.8, 7.4, and 9.0
+  seconds; the finish boundary took approximately 40 seconds.
+- `Project.ClobMatchFuel.PartialBookPrepare` passed all 3,370 jobs.
+  `PartialBookAllocFit` took approximately 219 seconds,
+  `PartialBookAllocBump` 91 seconds, `Update` 30 seconds, and the final prepare
+  boundary 11 seconds.
+- `Project.ClobMatchFuel.TradeAllocAppend` passed all 3,372 jobs.
+  `TradeAllocSearch`, `TradeAllocPrepare`, and `TradeAlloc` each took about 6
+  seconds; `TradeAllocFit` took 215 seconds; `TradeAllocBump` 92 seconds;
+  `TradeAppendCopy` 8.3 seconds; `TradeAppendStore` 3.6 seconds;
+  `TradeAllocCopy` 10 seconds; `TradeAppendFinish` 33 seconds; and the root
+  `TradeAllocAppend` boundary 27 seconds.
+
+All commands in this ledger used the local-only runner envelope above.  No
+remote executor, concurrent Lean process, maintenance action, deletion, reset,
+or worktree rewrite was used.  The next proof action must continue splitting
+the still-cold higher-level MatchFuel chains before any retry of its unchanged
+root specification.
