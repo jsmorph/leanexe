@@ -522,6 +522,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+  // Prepare reviewable outputs independently of the transactional installer.
+  prepareMigration: migrate,
+  checkFileOutput,
   applyOutputs,
   binaryOutput,
   buildDumpRaw,

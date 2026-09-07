@@ -132,6 +132,24 @@
       "sha256": "0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511",
       "manifest": "euler_rusanov_step/0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511/manifest.json",
       "proofTarget": "Project.EulerRusanovStep.ArtifactTranslation"
+    },
+    {
+      "case": "f64_sub_bits",
+      "sha256": "4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929",
+      "manifest": "f64_sub_bits/4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929/manifest.json",
+      "proofTarget": "Project.F64SubBits.ArtifactTranslation"
+    },
+    {
+      "case": "f64_div_bits",
+      "sha256": "b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62",
+      "manifest": "f64_div_bits/b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62/manifest.json",
+      "proofTarget": "Project.F64DivBits.ArtifactTranslation"
+    },
+    {
+      "case": "f64_sqrt_bits",
+      "sha256": "7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841",
+      "manifest": "f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/manifest.json",
+      "proofTarget": "Project.F64SqrtBits.ArtifactTranslation"
     }
   ]
 }
