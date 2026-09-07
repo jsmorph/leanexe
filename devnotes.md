@@ -8821,3 +8821,11 @@ compiler and proof prerequisites, recover the fixed 2,551-byte step artifact
 at recorded digest 0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511,
 then publish its verified raw state data before extending the checked solver.
 No cleanup or replacement of pre-existing workspace state occurred.
+
+The ARM Mac setup is published as
+`030a433688380534d2db62c2ab0e6bdb18d86693`, exact tree
+`4aea36274a2e950e13145abeee4e167c1ff3ffc8`.  Non-forced Git-data publication
+and fetch-side commit/parent/message/tree/index/worktree checks passed; local
+and remote were clean and synchronized.  This notes-only follow-up is the
+checkpoint's sole publication receipt.  Lean execution still awaits the
+pending inherited-priority decision.
