@@ -5437,3 +5437,112 @@ remaining CLOB builds and the full-source aggregate to keep the active path
 on Euler proofs and tests. No CLOB job is running. Stage exactly devnotes.md,
 journal.md, proofs/talos/lean/Project.lean, and
 proofs/talos/lean/Project/ProofKit/F64Order.lean for this passing checkpoint.
+
+2026-09-07 conservative-state boundary: published the four-path guard
+checkpoint as c88c2f3233a74b036deaf009d6c78480eb42a212, sole parent
+c084bf98fd3da0994afc83190ec4549251430124, tree
+6118d3d286475ec365c9831abcb693e37e1124a6. Exact API/index tree equality,
+non-forced branch advance, fetched parent/message/tree/content equality,
+local CAS update-ref, and clean synchronized status all passed.
+Installed three reviewed fresh drafts: LeanExe/Examples/EulerConservative.lean,
+Project/EulerConservative/Model.lean, and Project/EulerConservative/Guard.lean.
+The source returns a seven-word checked thermodynamic side; the model uses
+only Talos IEEE operations. All inputs and every intermediate have finite/
+positive guards before acceptance, including a positive radicand before sqrt.
+The physical guard proof derives exact internal energy >= density/2 from
+positive density, |momentum| <= density, and energy >= density. This is the
+previously discussed conservative implementation domain, not a user-approved
+claim of covering all admissible states. Next run only focused Euler targets.
+
+First focused EulerConservative.Guard build completed Model and checked
+internalEnergy_lower, but stateGuard_spec had an explicit Bool/decide
+simplification mismatch. Replaced the broad unfolding simplifier with direct
+short-circuit conjunction projections and of_decide_eq_true, matching the
+executable guard structure. Log euler-conservative-guard-first.log retained.
+The user then acknowledged the explanation of shared-code regression testing;
+confirmed that focused Euler work continues while broader regression remains
+pending. No further CLOB work was started.
+
+The guard projection rerun reported a theorem-name error: Bool.and_eq_true
+is a proposition equality in this Lean version; Bool.and_eq_true_iff is the
+implication interface. Confirmed that in the pinned Lean source and changed
+only the four projections. The source-only EulerConservative build passed
+(3 jobs, 221ms module build). The user permits manageable regression checks;
+use focused per-change checks and a small relevant set, keeping long whole-
+repository builds outside the main Euler work.
+
+The Euler guard proof now passes (3062 jobs, 2.8-second module build) in
+euler-conservative-guard-iff.log. stateGuard_spec, internalEnergy_lower, and
+stateGuard_admissible all use only propext, Classical.choice, and Quot.sound.
+Added the focused test/euler_conservative.js with six fixed accepted-word
+references, 32 rejection vectors, and emitted IR/WAT arithmetic counts.
+Vectors include both Sod states, both velocity guard boundaries, negative
+momentum and signed zero; invalid/adjacent inputs, all input positions with
+infinities and both NaN classes, pressure underflow, pressure-ratio overflow,
+enthalpy overflow, and both published failure tuples. Reference accepted words
+were computed with a standalone Node IEEE arithmetic calculation; they are
+regression evidence only. The test retains one fresh output directory and
+uses the existing runner with a two-minute limit per compiler operation.
+
+The focused compiled-side regression passed all 38 vectors and exact IR/WAT
+arithmetic counts; outputs retained in tmp/euler-conservative-Z2IKrq and log
+euler-conservative-regression-first.log. Added fresh EulerConservative/Safety.lean
+to prove that accepted model status implies the input guard, physical input
+admissibility, and finiteness of all twelve rounded intermediates. This is
+pure Talos model safety; exact generated-WAT composition remains a subsequent
+boundary and is not claimed by the runtime vectors.
+
+First model-safety build produced direct proof diagnostics: split does not
+traverse the branch-local have/let blocks without reduction, and norm_num
+left the false UInt64 status equality unresolved. Added dsimp-only at each
+accepted-stage boundary and discharged rejection with the kernel-decided
+UInt64 1 != 0 fact. No numerical model or source code changed. Retained
+euler-conservative-safety-first.log; no failed theorem was claimed.
+
+The staged safety rerun proved accepted_inputGuard and accepted_admissible;
+one redundant inner dsimp failed its progress check because the outer dsimp
+had already reduced all nested lets. Removed only the two redundant inner
+reductions; retained euler-conservative-safety-stages.log.
+
+The reduced safety proof reached the final list-tail obligation: all twelve
+finite witnesses were correct, but simp did not discharge the empty-list
+universal. Added the direct List.forall_mem_nil witness and removed the two
+unused simp arguments. Retained euler-conservative-safety-reduced.log.
+
+The complete EulerConservative.Safety target passed (3063 jobs, 2.7-second
+module build) in euler-conservative-safety-finite.log. All six Guard/Safety
+public theorems audit to standard logical axioms only. Registered this model
+safety import in Project.lean and the source build/test in test/run_all.js;
+the prohibited full run_all suite was not executed. Added a case README and
+updated only current Euler checkpoint items in plan.md, plans/euler-rusanov.md,
+docs/status.md, and devnotes.md. There is no new Program cache or complete
+source-case registration yet: exact WAT execution is the next boundary.
+The first documentation edit command had a Node parser error from Markdown
+backticks embedded in a template string and executed no mutations. Reissued
+with ordinary quoted lines for the README. Reviewed checkpoint intent: source,
+Model/Guard/Safety/README, focused test and registration, aggregate import,
+status/plan records, and journal.
+
+Final conservative-side checkpoint review: focused source build, six public
+pure-model/guard theorem audits, and all 38 compiled vectors passed. Both test
+scripts syntax-check; 91 maintained docs, every new README relative link, and
+the aggregate import inventory check pass. No sorry/admit/new-axiom declaration
+exists in the new source/proofs. Moved the new current-status paragraph next
+to the current capability inventory and stated that the full suite is deferred.
+No new numerical source change after passing tests; no broad regression rerun.
+Review and stage precisely these 13 paths, then publish non-forced with exact
+parent/tree/index/worktree verification:
+
+- `LeanExe/Examples/EulerConservative.lean`
+- `devnotes.md`
+- `docs/status.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/talos/lean/Project.lean`
+- `proofs/talos/lean/Project/EulerConservative/Guard.lean`
+- `proofs/talos/lean/Project/EulerConservative/Model.lean`
+- `proofs/talos/lean/Project/EulerConservative/README.md`
+- `proofs/talos/lean/Project/EulerConservative/Safety.lean`
+- `test/euler_conservative.js`
+- `test/run_all.js`

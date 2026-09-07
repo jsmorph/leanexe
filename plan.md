@@ -234,6 +234,9 @@ acceptance gates, and nonclaims.
 - [x] Add source-profile subtraction, division, and square root with exact
       generated-WAT and bounded-domain numerical theorems.
 - [x] Complete exact-package verification of the extended binary profile.
+- [x] Prove conservative-state guard admissibility and pure-model intermediate
+      finiteness; add checked thermodynamics source and 38 runtime vectors.
+- [ ] Prove exact generated-WAT execution of the conservative-state side.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem

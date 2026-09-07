@@ -31,6 +31,7 @@ function main() {
   run(["lake", "build", "LeanExe.Wasm.ImageIntegrationTest"]);
   for (const target of [
     "LeanExe.Examples.ByteArrayPrograms",
+    "LeanExe.Examples.EulerConservative",
     "LeanExe.Examples.JsonGcTreeRewrite",
     "LeanExe.Examples.JsonMergeTreeCommand",
     "LeanExe.Examples.JsonObjectArrayDecode",
@@ -48,6 +49,7 @@ function main() {
   run([process.execPath, path.join("test", "f64_dot.js")]);
   run([process.execPath, path.join("test", "euler_rusanov.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);
+  run([process.execPath, path.join("test", "euler_conservative.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step_data.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_interface.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_c.js")]);
