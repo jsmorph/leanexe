@@ -8976,3 +8976,12 @@ All execution and safety audits contain only standard logical axioms. The
 3,167-byte interface module remains pending frozen-package verification.
 Focused source/cache and metadata checks accompany the unchanged 76 passing
 runtime vectors; broad regression and release work remain deferred.
+
+## 2026-09-07: Dynamic-interface frozen binary
+
+The exact 3,167-byte dynamic interface is registered as package 27, SHA-256
+304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022.
+The focused gate checks embedded bytes, decoding, validation, translation
+and both behavioral specifications. Verifier source and all 26 earlier
+manifest/binary pairs are unchanged; source case count stays 31. The next
+implementation boundaries are checked cell update/CFL and the array step.

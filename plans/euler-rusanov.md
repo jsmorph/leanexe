@@ -453,7 +453,7 @@ only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side and dynamic-interface proofs bring source
 status to thirty-one registered and complete cases and thirty-one generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
-timeout; focused Euler gates pass. Exact-artifact status is twenty-six packages;
+timeout; focused Euler gates pass. Exact-artifact status is twenty-seven packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -539,7 +539,7 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Freeze and independently verify the checked conservative-side bytes.
 - [x] Add dynamic Rusanov flux source, model safety proofs, and 76 focused vectors.
 - [x] Prove total exact dynamic-interface execution and attach model safety.
-- [ ] Freeze and independently verify the dynamic-interface bytes.
+- [x] Freeze and independently verify the dynamic-interface bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_dynamic_flux",
+  "sha256": "304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022",
+  "byteLength": 3167,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerDynamicFlux.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerDynamicFlux.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerDynamicFlux.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerDynamicFlux.Program",
+  "cachedProgramDefinition": "Project.EulerDynamicFlux.module",
+  "specModule": "Project.EulerDynamicFlux.Spec",
+  "proofTarget": "Project.EulerDynamicFlux.ArtifactTranslation",
+  "identityTheorem": "Project.EulerDynamicFlux.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerDynamicFlux.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerDynamicFlux.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerDynamicFlux.Spec.fluxCheckedBits_exact",
+    "Project.EulerDynamicFlux.Spec.fluxCheckedBits_wat_safe"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

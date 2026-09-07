@@ -5969,3 +5969,83 @@ Stage only these 20 paths and publish a non-forced verified checkpoint:
 - `proofs/talos/lean/Project/EulerDynamicFlux/Spec.lean`
 - `proofs/talos/lean/Project/Runtime/Checks.lean`
 - `test/artifact_identity.js`
+
+Published dynamic exact execution as 654da5b8a0fc1fe00f41532dc51f259b7da2dfcc,
+sole parent 8591ffe023199b5016160e54f293185e1b49d694, tree
+66dd638d0c7cbaa94d5497a370d8bb6aae0bdf14. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS update passed;
+final status was clean and synchronized. Prepared the same scoped freezer
+for the exact 3,167-byte dynamic interface, with nine new package/proof
+files, bounded registry/CheckFile additions, and byte-hash protection of
+all 26 prior packages plus the historical release draft. Verifier source
+is unchanged. Only the new single-package gate will run.
+
+Created nine fresh dynamic-interface exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 26 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler_dynamic_flux",
+  "sha256": "304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022",
+  "byteLength": 3167,
+  "newFiles": [
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactCache.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/EulerDynamicFlux/ArtifactTranslation.lean",
+    "proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/manifest.json",
+    "proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/program.wasm"
+  ],
+  "oldPackagesUnchanged": 26,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The dynamic package byte match, decoding, validation and exact translation
+passed. Reconciled only current package counts to 27, retained the historical
+26-case source aggregate and 25-package artifact aggregate facts, and linked
+the exact package/proof from the dynamic README. The running gate still must
+finish behavioral declarations and axiom audits before publication. A read-only
+lookup mistakenly named absent LeanExe/Wasm/Core.lean; no source/compiler
+mutation resulted, and future emitter searches use the directory inventory.
+Array.replicate and Array.set! support was inspected for the forthcoming
+double-buffered step; no new array source or proof has been installed yet.
+
+The focused dynamic-interface package gate completed with exit zero, including
+all manifest declaration types and axiom audits. Public execution/safety
+theorems have only the standard three axioms; byte-decision witnesses use
+the existing accepted package native_decide policy. Decoder/validator
+soundness remains standard-axiom only. Identity metadata and 91 maintained
+docs pass; protected release draft hash remains
+fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1.
+Review and stage only these 22 paths for a non-forced verified checkpoint:
+
+- `DEVELOPING.md`
+- `README.md`
+- `devnotes.md`
+- `docs/spec.md`
+- `docs/status.md`
+- `docs/verifying.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/artifacts/registry.json`
+- `proofs/talos/README.md`
+- `proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/README.md`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactBytes.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactCache.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactDecode.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactDecoded.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactRawCache.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactTranslation.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactValidation.lean`
+- `proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/manifest.json`
+- `proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/program.wasm`
