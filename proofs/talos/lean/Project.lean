@@ -18,6 +18,7 @@ import Project.EulerRusanov.RealMathematics
 import Project.EulerRusanov.StencilNumerical
 import Project.EulerRusanov.StencilAdmissibility
 import Project.EulerRusanovStep.Spec
+import Project.EulerRusanovStep.StepData
 import Project.LebU32.Spec
 import Project.ClobQuote.Spec
 import Project.ClobCancel.Spec
