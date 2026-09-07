@@ -246,6 +246,9 @@ acceptance gates, and nonclaims.
       the decoded rounded Courant ceiling; add 43 focused compiled vectors.
 - [x] Prove exact cell-update WAT execution with accepted-state/Courant safety.
 - [x] Freeze and independently verify the checked cell-update bytes.
+- [x] Add the array step and maximum-speed scan, 31 focused compiled vectors,
+      and model size, prefix-preservation and accepted-cell invariants.
+- [ ] Prove complete grid payload safety, array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem

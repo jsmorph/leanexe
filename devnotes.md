@@ -9015,3 +9015,15 @@ Its focused gate covers embedded bytes, decoding, validation, exact Talos
 translation and both execution/safety specifications. Verifier source and
 all 27 earlier manifest/binary pairs remain unchanged. Source count stays 32;
 the double-buffered array step and repeated Sod runner are next.
+
+## 2026-09-07: Grid source and first model invariants
+
+Added the separate-output array step and checked maximum-speed scan. All 31
+focused compiled vectors pass, including the initial 100-cell grid. Model
+proofs establish output size, earlier-word preservation, rejection persistence
+and acceptance of every requested cell on a successful fill. Generalizing
+the checked-cell result removes an elaboration blow-up; the focused Safety
+build takes 2.6 seconds and uses only standard logical axioms. A preliminary
+compiled Sod run reaches t=0.2 in 93 steps with exact final-word agreement
+against the host calculation. Full payload safety, array execution, frozen
+bytes and maintained runner evidence remain pending. Inventories stay 32/28.

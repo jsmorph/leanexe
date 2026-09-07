@@ -544,6 +544,9 @@ Every checked row ends in a passing commit, an update to this plan,
       the decoded rounded Courant ceiling; add 43 focused compiled vectors.
 - [x] Prove exact cell-update WAT execution with accepted-state/Courant safety.
 - [x] Freeze and independently verify the checked cell-update bytes.
+- [x] Add the array step and maximum-speed scan, 31 focused compiled vectors,
+      and model size, prefix-preservation and accepted-cell invariants.
+- [ ] Prove complete grid payload safety, array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
