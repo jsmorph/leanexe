@@ -8995,3 +8995,14 @@ prove finite intermediates, finite/admissible accepted state, positive
 pressure and decoded Courant bounds using standard logical axioms. The
 focused regression has 16 scalar and 27 cell vectors; WAT/byte proofs and
 the array runner remain next. Inventories stay 31 source cases/27 packages.
+
+## 2026-09-07: Exact checked cell execution
+
+The 32nd source case proves total exact cell execution with seven model
+words and complete store preservation. Its safety specification transfers
+finite/admissible new-state bounds, positive pressure/speed and decoded
+Courant in (0,1/2]. The generic proof composes existing interface/side
+results and the new scalar update theorem; standard axioms only. Explicit
+rounded-product guard hypotheses resolve a local-alias simplification gap.
+The unchanged 43 compiled vectors pass; the exact 4,592-byte binary remains
+pending its frozen-package gate. Broad source regression stays deferred.
