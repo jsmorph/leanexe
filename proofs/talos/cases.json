@@ -260,6 +260,45 @@
         "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_wat_real"
       ],
       "complete": true
+    },
+    {
+      "name": "f64_sub_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.subBits",
+      "leanModule": "F64SubBits",
+      "specTarget": "Project.F64SubBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64SubBits.Spec.subBits_exact",
+        "Project.F64SubBits.Spec.subBits_source_real_error",
+        "Project.F64SubBits.Spec.subBits_wat_real_error"
+      ],
+      "complete": true
+    },
+    {
+      "name": "f64_div_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.divBits",
+      "leanModule": "F64DivBits",
+      "specTarget": "Project.F64DivBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64DivBits.Spec.divBits_exact",
+        "Project.F64DivBits.Spec.divBits_source_real_error",
+        "Project.F64DivBits.Spec.divBits_wat_real_error"
+      ],
+      "complete": true
+    },
+    {
+      "name": "f64_sqrt_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.sqrtBits",
+      "leanModule": "F64SqrtBits",
+      "specTarget": "Project.F64SqrtBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64SqrtBits.Spec.sqrtBits_exact",
+        "Project.F64SqrtBits.Spec.sqrtBits_source_real_error",
+        "Project.F64SqrtBits.Spec.sqrtBits_wat_real_error"
+      ],
+      "complete": true
     }
   ]
 }

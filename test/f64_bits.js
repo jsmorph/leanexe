@@ -7,7 +7,8 @@ const host = require("./wasmtime_host");
 
 const moduleName = "LeanExe.Examples.Float64Bits";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
-const outDir = path.join(".lake", "build", "f64-bits");
+const nativeOnly = process.argv.includes("--native-only");
+let outDir = path.join(".lake", "build", "f64-bits");
 
 function run(args) {
   return runChecked(args, { encoding: "utf8" }).stdout;
@@ -214,7 +215,15 @@ function checkImageRejection(entry) {
 }
 
 function main() {
-  fs.mkdirSync(outDir, { recursive: true });
+  if (process.argv.slice(2).some(arg => arg !== "--native-only")) {
+    throw new Error("usage: f64_bits.js [--native-only]");
+  }
+  if (nativeOnly) {
+    fs.mkdirSync("tmp", { recursive: true });
+    outDir = fs.mkdtempSync(path.join("tmp", "f64-native-"));
+  } else {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
 
   const annotationsPath = path.join(outDir, "addBits.annotations.json");
   const addWasm = compile("addBits", annotationsPath);
@@ -428,9 +437,10 @@ function main() {
   ]);
 
   checkAnnotations(addWasm, annotationsPath, "addBits", 2);
-  checkImageRejection("mulThenAddBits");
+  if (!nativeOnly) checkImageRejection("mulThenAddBits");
 
-  process.stdout.write("checked Float64 bit-pattern execution, lowering, emission, annotations, and image rejection\n");
+  process.stdout.write("checked Float64 bit-pattern execution, lowering, emission, and annotations" +
+    (nativeOnly ? " (native-only; retained fresh outputs)\n" : ", and image rejection\n"));
 }
 
 try {

@@ -1325,7 +1325,9 @@ def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
 /-- Compiler-recognized source operations whose executable Lean bodies are
 native comparison oracles, not part of the extracted program. -/
 def compilerPrimitiveName (name : Name) : Bool :=
-  [``LeanExe.Float64.addBits, ``LeanExe.Float64.mulBits].contains name
+  [``LeanExe.Float64.addBits, ``LeanExe.Float64.mulBits,
+    ``LeanExe.Float64.subBits, ``LeanExe.Float64.divBits,
+    ``LeanExe.Float64.sqrtBits].contains name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda

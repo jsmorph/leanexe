@@ -10,6 +10,9 @@ import Project.PairFree.Spec
 import Project.BoxFree.Spec
 import Project.FoldSum.Spec
 import Project.F64MulBits.Spec
+import Project.F64SubBits.Spec
+import Project.F64DivBits.Spec
+import Project.F64SqrtBits.Spec
 import Project.F64Dot2CheckedBits.Spec
 import Project.F64DotCheckedBits.Spec
 import Project.F64Horner2CheckedBits.Spec

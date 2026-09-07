@@ -88,6 +88,7 @@ mutual
     | .local _ => Scan.empty
     | .trap => Scan.empty
     | .u64 _ => Scan.empty
+    | .f64SqrtBits value => scanExpr (childPath path "value") value
     | .u64Bin _ left right =>
         Scan.many [
           scanExpr (childPath path "left") left,

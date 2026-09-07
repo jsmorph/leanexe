@@ -8,6 +8,18 @@ def addBits (left right : UInt64) : UInt64 :=
 def mulBits (left right : UInt64) : UInt64 :=
   LeanExe.Float64.mulBits left right
 
+def subBits (left right : UInt64) : UInt64 :=
+  LeanExe.Float64.subBits left right
+
+def divBits (left right : UInt64) : UInt64 :=
+  LeanExe.Float64.divBits left right
+
+def sqrtBits (value : UInt64) : UInt64 :=
+  LeanExe.Float64.sqrtBits value
+
+def sqrtDivBits (left right : UInt64) : UInt64 :=
+  LeanExe.Float64.sqrtBits (LeanExe.Float64.divBits left right)
+
 def mulThenAddBits (left right addend : UInt64) : UInt64 :=
   LeanExe.Float64.addBits (LeanExe.Float64.mulBits left right) addend
 
