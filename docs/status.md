@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-six Talos cases, all complete.  The separate exact-artifact registry contains twenty-one frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its twenty-six cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-07.  The source-driven registry contains twenty-six Talos cases, all complete.  The separate exact-artifact registry contains twenty-two frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its twenty-six cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -10,7 +10,7 @@ This report describes the repository state on 2026-09-04.  The source-driven reg
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
 | Source-driven proofs | `proofs/talos/cases.json` registers twenty-six complete cases, and the proof tree tracks twenty-six corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  The current twenty-six-case aggregate gate passes. |
-| Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-one frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
+| Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-two frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
@@ -25,11 +25,12 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 The proof workspace and `proofs/artifacts/release.json` now record exact Lean
 4.34.0-rc2, Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release-input
-identity.  The release record remains a draft for release-input digest
+identity.  The retained 21-package release record is a historical draft for digest
 `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
 The prior aggregate artifact receipt no longer matches after the fixed-step
 proof changes; aggregate artifact proof, semantic conformance, immutable source
-revision, and cold checkout are the four current blockers.  The successful
+revision, and cold checkout remain release evidence obligations.  The draft
+predates the recovered 22nd package and ARM Mac tooling.  The successful
 2026-08-26 receipts likewise remain historical evidence for their earlier
 digest rather than current release receipts.
 
@@ -45,7 +46,7 @@ recorded narrow lexical audit of the artifact proof sources and two local
 LeanExe imports.  The audit does not repair the historical kernel or cover
 transitive dependencies.  The current record separately identifies exact Lean
 4.34.0-rc2 and records that the reproduction is rejected there; a new aggregate
-artifact receipt remains pending for the current input identity.
+artifact receipt remains pending for the updated input identity.
 
 ## Known limits
 
@@ -53,7 +54,7 @@ artifact receipt remains pending for the current input identity.
 |------|---------------|
 | Source language | Programs must remain in the pure, monomorphic, first-order subset.  Public ABI values exclude recursive inductives and function values. |
 | Arithmetic | `UInt64` follows wrapping arithmetic.  `Nat` is bounded by the compiler's runtime representation where it crosses executable code. |
-| Floating point | Selected `UInt64` bit-pattern intrinsics lower to `f64.add`, `f64.mul`, and the two i64/f64 reinterpretations.  Their source-driven cases, and Euler's exact frozen artifact, have proof-grade Talos execution and numerical theorems.  For `ε = 2^-52`, the fixed step decodes to left cell `[207/256, 9/80 - ε/20, 257/128]` and right cell `[81/256, 9/80 + 3ε/40, 95/128]`; their signed errors against the decoded-input exact-real quarter step are `[0, -3ε/64, -7ε/512]` and `[0, 5ε/64, -25ε/512]`, and the rounded physical two-cell balance residual is `[0, ε/32, -ε/16]`.  This is one closed Sod quarter-step certificate, not an input-generic Euler solver or time-integration theorem; its exact-byte freeze and verified-data package remain pending.  General Lean `Float`, `f32`, binary64 division, square root, classification, and comparisons remain unsupported by the LeanExe and exact-artifact profiles. |
+| Floating point | Selected `UInt64` bit-pattern intrinsics lower to `f64.add`, `f64.mul`, and the two i64/f64 reinterpretations.  Their source-driven cases, and Euler's exact frozen artifact, have proof-grade Talos execution and numerical theorems.  For `ε = 2^-52`, the fixed step decodes to left cell `[207/256, 9/80 - ε/20, 257/128]` and right cell `[81/256, 9/80 + 3ε/40, 95/128]`; their signed errors against the decoded-input exact-real quarter step are `[0, -3ε/64, -7ε/512]` and `[0, 5ε/64, -25ε/512]`, and the rounded physical two-cell balance residual is `[0, ε/32, -ε/16]`.  This is one closed Sod quarter-step certificate, not an input-generic Euler solver or time-integration theorem; its exact-byte package is recovered and checked, with verified raw-data publication next.  General Lean `Float`, `f32`, binary64 division, square root, classification, and comparisons remain unsupported by the LeanExe and exact-artifact profiles. |
 | Strings | Lean `String` is not a supported runtime value.  `LeanExe.AsciiString` and `ByteArray` provide the supported textual representations. |
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
