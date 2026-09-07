@@ -8908,3 +8908,15 @@ The 29-case source aggregate remains pending after the recorded dependency
 build timeout; next build smaller missing source boundaries. Next Euler
 implementation boundary: prove raw-bit finite/order guards, then connect the
 checked conservative side to the Talos model. Full 100-cell solver is pending.
+
+2026-09-07: General raw binary64 guard proofs pass: finiteBits recognizes
+finite encodings, positiveBits implies finite positive decoded value, and
+sign-cleared UInt64 order implies decoded magnitude order. Signed-zero,
+subnormal/normal, finite/infinite, and NaN classification boundaries are
+kernel checked. All four audited public theorems use only propext,
+Classical.choice, and Quot.sound. Imported the helper into the proof aggregate.
+The smaller existing ClobFindBest.Spec build also passed. Following user
+steering, remaining CLOB builds and the full source aggregate are deferred
+while focused Euler work continues. Next: connect
+the conservative input guard and checked thermodynamic arithmetic to this
+helper, then the dynamic flux and array recurrence.
