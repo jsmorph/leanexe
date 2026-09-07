@@ -8930,3 +8930,16 @@ public proofs use only the standard logical axioms. Focused safety build passes
 registered generated-WAT proof case; that exact execution boundary is next,
 followed by dynamic flux and array stepping. Regressions remain manageable and
 focused; the broad source suite is pending.
+
+## 2026-09-07: Checked conservative-side exact execution
+
+The thirtieth source case now proves total exact generated-WAT execution for
+all raw density/momentum/energy words. Accepted results carry physical input
+admissibility and finiteness of all twelve rounded intermediates. The helper
+execution lemmas accept a closed-module layout for later interface composition.
+All public execution/safety audits contain only the standard three axioms.
+Concrete List.set normalization fixed proof elaboration at the 64-local
+frame; the isolated rejection boundary and failed diagnostics are retained.
+Checks stay focused on this case, runtime pins, identity metadata and docs.
+The source and 38 previously passing runtime vectors are unchanged. Frozen
+side bytes, dynamic flux, array step and the 100-cell run remain next.
