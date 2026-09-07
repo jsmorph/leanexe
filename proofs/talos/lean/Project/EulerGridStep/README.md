@@ -14,7 +14,10 @@ to the existing checked-cell function without changing the compiler.
 [Safety.lean](Safety.lean) proves output size, preservation of earlier words,
 persistence of rejection, and acceptance of every requested cell computation
 when the fill returns status zero. These model theorems use standard logical
-axioms. Complete output-payload correspondence, scan bounds, generated-WAT
+axioms. [Payload.lean](Payload.lean) proves exact correspondence of all six
+fields and preservation by subsequent cells. [Outputs.lean](Outputs.lean)
+transfers accepted state, pressure, speed and Courant safety to the actual
+returned array and proves its expected length. Scan bounds, generated-WAT
 array execution and frozen-byte verification remain open; this is not yet a
 registered complete source case or artifact package.
 
@@ -33,6 +36,6 @@ Run focused checks serially:
 ```sh
 source tools/macos-env.sh
 tools/leanrun --timeout 2m lake --no-ansi build LeanExe.Examples.EulerGridStep
-tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Safety
+tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Outputs
 node test/euler_grid_step.js
 ```

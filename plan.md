@@ -248,7 +248,9 @@ acceptance gates, and nonclaims.
 - [x] Freeze and independently verify the checked cell-update bytes.
 - [x] Add the array step and maximum-speed scan, 31 focused compiled vectors,
       and model size, prefix-preservation and accepted-cell invariants.
-- [ ] Prove complete grid payload safety, array execution and exact bytes.
+- [x] Prove exact model payload correspondence and transfer cell safety to
+      every accepted output array entry.
+- [ ] Prove scan bounds, grid array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
