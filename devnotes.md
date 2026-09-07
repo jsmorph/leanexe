@@ -9037,3 +9037,12 @@ pressure/speed and decoded rounded Courant in (0,1/2] to every returned cell.
 Both focused modules build in under three seconds with only standard logical
 axioms. The source/runtime vectors are unchanged; scan bounds and exact
 array memory/loop execution remain open. Inventories stay 32/28.
+
+## 2026-09-07: Checked grid speed-scan model bound
+
+The accepted maximum-speed scan checks every cell and returns a positive
+finite speed that bounds every rounded computed cell speed in decoded-real
+order. The proof composes UInt64 selection bounds, checked-side positivity
+and the existing IEEE magnitude-order theorem. Its focused build takes
+2.7 seconds, uses only standard logical axioms and has no local warnings.
+Exact array execution and bytes remain open; inventories stay 32/28.
