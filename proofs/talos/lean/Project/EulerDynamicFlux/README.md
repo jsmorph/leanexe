@@ -21,9 +21,12 @@ component calls into total exact generated-WAT execution for all six raw
 inputs, with five exact result words and complete store preservation.
 [Spec.lean](Spec.lean) attaches the model safety properties to execution.
 All public execution/safety theorems use only the standard logical axioms.
-The 3,167-byte module passes source/cache regeneration; its frozen-byte
-package remains pending. No general roundoff, invariant-domain preservation,
-stability or convergence claim is made.
+The [frozen package](../../../../artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/manifest.json)
+contains the exact 3,167-byte module. [ArtifactTranslation.lean](ArtifactTranslation.lean)
+closes decoding, validation and equality with the proved execution module.
+The focused package gate checks both behavioral declarations and their axioms.
+The array step and repeated Sod runner remain next. No general roundoff,
+invariant-domain preservation, stability or convergence claim is made.
 
 [The regression](../../../../../test/euler_dynamic_flux.js) checks 15 component
 cases and 61 interfaces in compiled Wasmtime execution, plus IR/WAT operation

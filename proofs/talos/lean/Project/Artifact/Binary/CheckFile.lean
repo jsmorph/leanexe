@@ -24,6 +24,7 @@ import Project.F64SubBits.ArtifactBytes
 import Project.F64DivBits.ArtifactBytes
 import Project.F64SqrtBits.ArtifactBytes
 import Project.EulerConservative.ArtifactBytes
+import Project.EulerDynamicFlux.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -52,6 +53,7 @@ private def artifactBytes : String → Option ByteArray
   | "f64_div_bits" => some Project.F64DivBits.Artifact.artifactBytes
   | "f64_sqrt_bits" => some Project.F64SqrtBits.Artifact.artifactBytes
   | "euler_conservative" => some Project.EulerConservative.Artifact.artifactBytes
+  | "euler_dynamic_flux" => some Project.EulerDynamicFlux.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do
