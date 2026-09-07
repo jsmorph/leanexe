@@ -152,9 +152,11 @@ The Darwin runner retains the shared native `flock` lock, one Lean thread,
 explicit process-group timeout, and nice priority.  It reports the absence of
 Linux cgroup and ionice controls.  A sandbox that rejects nice priority causes
 a fail-closed exit before the target executes.  Only an explicit user-approved
-`LEANRUN_INHERIT_PRIORITY=1` permits inherited priority instead; this is not
-enabled by the environment script or bootstrap.  Tests of that opt-in may use
-dummy non-Lean processes without launching any compiler or proof target.
+`LEANRUN_INHERIT_PRIORITY=1` permits inherited priority instead.  On 2026-09-07
+the user explicitly approved this exception for the ARM Mac sandbox, and
+`tools/macos-env.sh` now enables it.  The runner still attempts nice first and
+reports any use of inherited priority; its default without that environment
+remains fail-closed.  The approval persists across resumed work in this checkout.
 
 ### Driver invocation boundaries
 

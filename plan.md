@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; the step still needs its separate exact-byte package and verified data publication.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package has been recovered and checked, and verified data publication is next.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -11,11 +11,13 @@ carried input digest
 revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dated
 2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
 Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  After the fixed-step
-proof, its current release-input digest is
+proof, the retained 21-package draft records release-input digest
 `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
 The preceding 2026-09-04 aggregate artifact receipt is historical for an older
 input identity; aggregate artifact proof, semantic conformance, immutable
-source revision, and cold checkout are the four current blockers.  Cold
+source revision, and cold checkout remain release evidence obligations.  The
+retained draft predates the recovered 22nd artifact and ARM Mac tooling; its
+input identity and receipts are not presented as current.  Cold
 verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
@@ -226,7 +228,8 @@ acceptance gates, and nonclaims.
       three flux calls and six update calls through the generated status gate.
 - [x] Transfer the executed words to decoded-real admissibility and exact
       signed cell and balance errors for the actual rounded fixed-step output.
-- [ ] Freeze the proved step bytes and publish the verified raw state data.
+- [x] Freeze and independently verify the proved fixed-step bytes.
+- [ ] Publish the verified raw state data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
       runner only after the fixed artifact passes.
 
@@ -241,8 +244,8 @@ energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
 or convergence result.  Source status remains twenty-six registered cases,
 twenty-six complete cases, and twenty-six generated `Program.lean` caches; the
-exact-artifact registry remains at twenty-one packages until the step bytes are
-frozen.
+exact-artifact registry now contains twenty-two packages.  The recovered step
+bytes and schema-3 manifest match the historical checkpoint exactly.
 
 The accepted claim concerns exact IEEE-754 execution and explicit safety and
 roundoff properties.  PDE convergence, entropy-solution correctness,

@@ -8829,3 +8829,27 @@ and fetch-side commit/parent/message/tree/index/worktree checks passed; local
 and remote were clean and synchronized.  This notes-only follow-up is the
 checkpoint's sole publication receipt.  Lean execution still awaits the
 pending inherited-priority decision.
+
+## 2026-09-07: recovered fixed-step artifact
+
+The user approved inherited priority in the ARM Mac sandbox.  The canonical
+contract and macos-env.sh record the persistent exception.  Lean 4.34.0-rc2
+version validation, the compiler/fixed-step source build, and the pinned
+8,747-file Mathlib cache fetch passed locally.
+
+The exact 2,551-byte Euler step artifact is recovered at
+0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511.
+The focused artifact gate passes embedded bytes, decode, validation, CoreValid,
+translation equality, both behavior theorems, and their declaration audits.
+Public behavior axioms are only propext, Classical.choice, and Quot.sound.
+Wasmtime/WAT, migration, identity, documentation, and whitespace regressions
+pass.  The 22-package aggregate artifact check is running; no release receipt
+is replaced.  Next is the separately proved raw step dataset and exact
+rational comparison, then the conservative-state FP extension and checked
+100-cell Sod runner.  The prior setup receipt is a140f027.
+
+The 22-package aggregate artifact gate has now passed completely, including
+all identities, embedded bytes, and artifact theorems.  Documentation and
+identity checks pass again.  The reviewed recovery checkpoint is ready for
+non-forced exact-tree publication; data and FP-extension drafts remain outside
+the checkout.
