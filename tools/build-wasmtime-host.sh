@@ -15,6 +15,9 @@ detect_platform() {
     Linux:x86_64 | Linux:amd64)
       printf '%s\n' "x86_64-linux"
       ;;
+    Darwin:arm64 | Darwin:aarch64)
+      printf '%s\n' "aarch64-macos"
+      ;;
     *)
       printf '%s\n' "unsupported Wasmtime platform: $system $machine" >&2
       exit 1
@@ -32,7 +35,13 @@ else
   RPATH="\$ORIGIN/wasmtime/wasmtime-v$VERSION-$PLATFORM-c-api/lib"
 fi
 
-if [ ! -f "$C_API/include/wasmtime.h" ] || [ ! -f "$C_API/lib/libwasmtime.so" ]; then
+library=libwasmtime.so
+if [ "$(uname -s)" = "Darwin" ]; then
+  library=libwasmtime.dylib
+  RPATH="$C_API/lib"
+fi
+
+if [ ! -f "$C_API/include/wasmtime.h" ] || [ ! -f "$C_API/lib/$library" ]; then
   printf '%s\n' "missing Wasmtime C API at $C_API" >&2
   printf '%s\n' "run tools/download-wasmtime.sh or set WASMTIME_C_API" >&2
   exit 1

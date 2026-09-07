@@ -4517,3 +4517,104 @@ remote file and records no deletion.  Surviving but unpublished edits to
 Restoring the 6,278 missing worktree paths or regenerating the exact artifact
 requires a separate explicit recovery decision; neither is inferred from the
 authority to record and publish these operational notes.
+
+## 2026-09-07: ARM Mac recovery and local execution setup
+
+The user requested a fresh clone under `~/src`, then authorized proceeding
+with the complete Euler agenda: local setup, fixed-step artifact recovery,
+raw data publication, and the later checked 100-cell Sod solver.  The fresh
+checkout is `/Users/jamiestephens/src/leanexe` on `talosfp-euler`, with parent
+`d597fc4c9f60d803498d5d21cf138b148cae0ac3` and an initially clean synchronized
+worktree.  This is a new checkout; no old checkout or cached state was removed
+or rewritten.  The remote contains 26 complete source cases and 21 artifact
+packages.  The step's tracked Program cache SHA-256 is still
+`fee069ab47b6c96abc44d1b902cbcfbaa5996174517f7d7c2a215366c7d7f2bc`.
+The uncommitted 22nd package described in the previous notes is absent.
+
+The new host is Darwin arm64.  Read-only prerequisite inspection found the old
+Linux toolchain, x86-64 preload, and Linux wasm-tools paths absent, and only
+older Lean toolchains installed elsewhere.  Global Node is v26.7.0 rather than
+the pinned v24.13.0.  `tools/bootstrap-macos.sh` now installs the existing
+project versions in fresh `build/tools` paths, without modifying the user's
+Elan, Node, or Homebrew installations.  `gh api` release metadata supplied
+SHA-256 digests for the official Lean 4.34.0-rc2 ARM Mac tarball, wasm-tools
+1.251.0, and Wasmtime 44.0.0 CLI/C API; Node's official SHASUMS256.txt supplied
+its v24.13.0 ARM Mac digest.  Each archive was downloaded with a bounded curl
+command, verified, and extracted into an absent path.  Exact archive digests
+are checked into the bootstrap script.  The bootstrap passed for all five
+archives.  `file` inspection confirms native ARM Mac executables.
+
+`tools/macos-env.sh` records replacement paths for LEANRUN_TOOLCHAIN,
+LEAN_SYSROOT, WASM_TOOLS, WASMTIME, WASMTIME_C_API, and pinned Node PATH.
+The Linux `/proc` compatibility preload is neither loaded nor required on
+Darwin.  No alternate Lean or wasm-tools version has been substituted.  The
+local runner gains a Darwin-only C resource wrapper using the native flock
+system call on the same shared lock file, one inherited Lean thread, nice
+priority, process-group signal forwarding, and an explicit monotonic deadline.
+It requires LEANRUN_LOCAL=1 and reports the absence of cgroup and ionice
+controls.  Linux execution remains on the existing runner path.  Fresh helper
+build directories are retained rather than cleaned.  The Wasmtime host build
+now recognizes ARM macOS and its dylib.  No compiler or proof command has run
+at this journal point; local runner and host checks precede proof recovery.
+
+Status was inspected before each edit and installation boundary.  Bounded
+tracked changes so far are the bootstrap/environment scripts, runner/C helper,
+Wasmtime host build, focused runner regressions, test registration, and this
+append-only journal.  Read-only searches for a few guessed tool filenames
+returned ENOENT; no command from those searches executed.  No remote execution,
+cleanup, cache invalidation, reset, stash, or deletion of pre-existing state
+occurred.
+
+### Local setup validation and priority boundary
+
+The first `node test/leanrun_local.js` stopped before its dummy target because
+Darwin's sandbox rejected `setpriority` with Operation not permitted; the
+subsequent lock test likewise did not reach its fixture.  A read-only priority
+query through Node reports inherited nice value zero.  `/usr/bin/nice -n 10
+/usr/bin/true` independently reported the same sandbox rejection, and `ps`
+inspection was also denied.  These are resource-control failures, not Lean
+proof failures.  A user approval question is pending for inherited priority
+on this host.  No actual Lean, Lake, or compiler command has been attempted.
+
+The runner now supports an explicit LEANRUN_INHERIT_PRIORITY=1 opt-in, disabled
+by default and absent from macos-env.sh.  Its behavior was tested only on
+Node fixture processes: both `env LEANRUN_INHERIT_PRIORITY=1 node
+test/leanrun_local.js` and the Darwin-specific `test/leanrun_macos.js` pass.
+Checks cover ordinary exit codes, environment propagation, nesting rejection,
+strict standard-mode rejection, lock exclusion and waiting, bounded timeout,
+descendant termination, signal forwarding, and lock release.  These fixture
+checks do not authorize or substitute for proof execution.  The helper is
+compiled with C11, -Wall -Wextra -Werror, and no third-party library.
+
+Pinned Node and wasm-tools version checks pass.  `tools/build-wasmtime-host.sh`
+built the ARM Mac C host with Wasmtime 44.0.0.  `node
+test/euler_rusanov_interface.js` reproduced all eight existing interface rows
+from the registered frozen binary and accepted CSV, manifest, and identity
+checks.  `node test/wasm_tools_version.js` and `node test/run_process.js` pass,
+including malformed-version rejection and process-routing/signal tests.
+`git diff --check` passes.  Actual Lean and wasm-tools binary SHA-256 values
+are respectively
+`1b370cfcbf44e80d1b004ab1b1ab9a4c73951f9f7c242140bcff9bc577576554`
+and `3b30448f3dda6a381aa2de7f401f7e635ceb90ebe0f168ad9cedd052e114ad3e`.
+
+All eleven Git dependencies in the proof lake-manifest were fetched into
+absent `proofs/talos/lean/.lake/packages/<name>` directories using `git init`,
+a pinned-depth fetch, and an initial detached checkout of that exact fetched
+commit.  No pre-existing dependency directory was reused or replaced.  A
+subsequent comparison of every HEAD to its manifest revision passed, including
+CodeLib 87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47 and Mathlib
+85e3a25e006c35636f0e53b0e9296caca2685bc0.  No Lean process was needed for these
+source-only fetches.  The existing build/cache state is retained.
+
+The setup checkpoint's reviewed staging intent is exactly DEVELOPING.md,
+devnotes.md, journal.md, plans/talosfp-euler-operations.md,
+test/leanrun_local.js, test/leanrun_macos.js, test/run_all.js,
+tools/bootstrap-macos.sh, tools/build-wasmtime-host.sh, tools/leanrun,
+tools/leanrun-macos.c, and tools/macos-env.sh.  The fixture regressions above,
+91-file documentation check, and whitespace check pass; actual Lean validation
+remains pending the priority exception.  No generated binaries, archives,
+dependency checkouts, caches, data replacements, or release receipts are staged.
+Publication will use gh's authenticated Git-data API, exact index blobs/tree,
+a sole current-remote parent, a non-forced ref update, and fetched tree/content
+verification before compare-and-swap advancement of the local branch.  Actual
+publication identities will be recorded in one bounded follow-up receipt.
