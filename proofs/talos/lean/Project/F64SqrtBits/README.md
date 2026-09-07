@@ -14,8 +14,10 @@ not implicit runtime guards on the unrestricted primitive.
 All three public theorems use only propext, Classical.choice, and Quot.sound.
 Native Lean Float and Wasmtime comparisons are regression evidence.  NaN
 payload behavior in host runtimes is tested by class; the exact formal subject
-is the deterministic pinned Talos semantics.  This primitive is a source-driven
-proof case; the independent binary-verifier extension is a separate checkpoint.
+is the deterministic pinned Talos semantics.  The [frozen manifest](../../../../artifacts/f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/manifest.json) registers
+its exact bytes against this specification.  The independent profile supports
+the operation.  The exact-package check passes, including the behavioral
+declarations and axiom audit.
 
 Run the focused gate from the repository root, after selecting the pinned
 local environment:

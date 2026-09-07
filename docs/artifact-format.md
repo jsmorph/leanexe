@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty-two registered artifacts.  The proof workspace and
+**Status:** Implemented for twenty-five registered artifacts.  The proof workspace and
 checked-in draft release record now identify exact Lean 4.34.0-rc2,
 Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release inputs.
@@ -37,7 +37,7 @@ The memory section accepts 32-bit limits encoded with flag 0 or 1.  The raw repr
 
 The global section accepts immutable or mutable `i32` and `i64` globals initialized by a matching scalar constant expression.  The export section accepts function, memory, and global descriptors and retains each UTF-8 name as both bytes and decoded text.  Validation checks initializer types, export-name uniqueness, descriptor indices, and the one-memory restriction.
 
-The code profile consists of `unreachable`, `drop`, structured `block`, `loop`, and `if`, direct branches, `return`, direct calls, local and global access, integer scalar constants, the integer operations emitted by LeanExe, `f64.add`, `f64.mul`, `i64.reinterpret_f64`, `f64.reinterpret_i64`, six memory operations, and memory size or growth.  Structured control accepts empty, `i32`, `i64`, or `f64` block results.  The restricted binary64 subset has no `f64.const`; current artifacts introduce binary64 values from raw `i64` words through reinterpretation.  Memory instructions retain alignment and offset immediates, and memory size or growth retains the memory index that validation restricts to zero.
+The code profile consists of `unreachable`, `drop`, structured `block`, `loop`, and `if`, direct branches, `return`, direct calls, local and global access, integer scalar constants, the integer operations emitted by LeanExe, `f64.add`, `f64.sub`, `f64.mul`, `f64.div`, `f64.sqrt`, `i64.reinterpret_f64`, `f64.reinterpret_i64`, six memory operations, and memory size or growth.  Structured control accepts empty, `i32`, `i64`, or `f64` block results.  The restricted binary64 subset has no `f64.const`; current artifacts introduce binary64 values from raw `i64` words through reinterpretation.  Memory instructions retain alignment and offset immediates, and memory size or growth retains the memory index that validation restricts to zero.
 
 The decoder rejects custom sections, imports, tables, start functions, elements, data, data counts, tags, unsupported value types, reference types, SIMD, atomics, exception handling, GC types, unsupported opcodes, and every reserved or malformed encoding.  Rejection defines the boundary of the first profile and does not imply that the rejected input violates the full WebAssembly specification.  Extending the profile requires syntax, decoding, validation, translation, soundness proofs, and semantic coverage for each added form.
 

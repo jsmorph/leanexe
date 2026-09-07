@@ -22,6 +22,6 @@
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
-  "verifierSourceSha256": "bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
   "hostAssumptions": []
 }

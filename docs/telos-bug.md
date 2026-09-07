@@ -72,7 +72,7 @@ The selected test exposes only the lost memory maximum.  Adding a maximum to `Me
 
 ## Effect on LeanExe Artifact Verification
 
-The current artifact profile rejects imports, tables, and multiple memories.  Each of the twenty-one frozen artifacts executes as one closed module whose static memory declaration and runtime memory correspond directly.  Under those conditions, Talos obtains the same limit from the module declaration that a memory-instance field would contain.
+The current artifact profile rejects imports, tables, and multiple memories.  Each frozen artifact executes as one closed module whose static memory declaration and runtime memory correspond directly.  Under those conditions, Talos obtains the same limit from the module declaration that a memory-instance field would contain.
 
 The defect therefore does not change the byte-identity, decoder-soundness, validator-soundness, exact-translation, or behavioral theorems already proved for those artifacts.  Those theorems continue to state behavior under the pinned Talos semantics, and their subjects contain no imported entity that can trigger the defect.  The failure limits the empirical evidence that connects Talos to general WebAssembly execution and blocks artifact claims for modules with imports.
 
@@ -84,7 +84,7 @@ A narrow repair adds the effective maximum to each `Mem` instance, initializes i
 
 A complete repair introduces a shared runtime store containing addressable function, table, memory, and global instances.  A module instance maps its local indices to addresses in that store, imports reuse exported addresses, and invocation threads changes through the shared store.  This design follows the WebAssembly runtime structure and covers memory identity, mutation visibility, imported-function state, and the analogous table and global cases.
 
-The existing twenty-one proofs can retain a compact closed-module interface if Talos supplies an embedding of closed modules into the shared runtime and proves an execution-equivalence theorem for modules without imports.  That separation preserves the current proof investment while giving conformance tests and future imported artifacts the general semantics.  Implementing the shared model in a maintained fork would require a new immutable Talos revision, proof updates, a complete artifact-gate rerun, and broader official linking tests before release.
+The existing proofs can retain a compact closed-module interface if Talos supplies an embedding of closed modules into the shared runtime and proves an execution-equivalence theorem for modules without imports.  That separation preserves the current proof investment while giving conformance tests and future imported artifacts the general semantics.  Implementing the shared model in a maintained fork would require a new immutable Talos revision, proof updates, a complete artifact-gate rerun, and broader official linking tests before release.
 
 ## Disposition
 

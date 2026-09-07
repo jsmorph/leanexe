@@ -822,6 +822,15 @@ theorem instructionPair_sound (fuel : Nat) :
             | f64Mul =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Mul
+            | f64Sub =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64Sub
+            | f64Div =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64Div
+            | f64Sqrt =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64Sqrt
             | i32WrapI64 =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i32WrapI64

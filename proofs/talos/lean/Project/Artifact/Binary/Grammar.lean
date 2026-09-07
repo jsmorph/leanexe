@@ -216,6 +216,9 @@ mutual
     | i64ShrU : Instr [byte 136] .i64ShrU
     | f64Add : Instr [byte 160] .f64Add
     | f64Mul : Instr [byte 162] .f64Mul
+    | f64Sub : Instr [byte 161] .f64Sub
+    | f64Div : Instr [byte 163] .f64Div
+    | f64Sqrt : Instr [byte 159] .f64Sqrt
     | i32WrapI64 : Instr [byte 167] .i32WrapI64
     | i64ExtendI32U : Instr [byte 173] .i64ExtendI32U
     | i64ReinterpretF64 : Instr [byte 189] .i64ReinterpretF64

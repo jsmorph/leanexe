@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-nine completed source-driven Talos proofs, twenty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-nine completed source-driven Talos proofs, twenty-five exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -233,8 +233,8 @@ acceptance gates, and nonclaims.
       independent exact-rational numerical comparison.
 - [x] Add source-profile subtraction, division, and square root with exact
       generated-WAT and bounded-domain numerical theorems.
-- [ ] Extend the independent binary profile, then implement the guarded 100-cell Sod
-      runner only after the fixed artifact passes.
+- [x] Complete exact-package verification of the extended binary profile.
+- [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
 `sodQuarterStepCheckedBits_wat_real` now certifies status zero and six finite
@@ -247,8 +247,9 @@ energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
 or convergence result.  Source status remains twenty-nine registered cases,
 twenty-nine complete cases, and twenty-nine generated `Program.lean` caches; the
-exact-artifact registry now contains twenty-two packages.  The recovered step
-bytes and schema-3 manifest match the historical checkpoint exactly.
+exact-artifact registry now contains twenty-five packages.  The recovered step
+bytes match the historical checkpoint; its schema-3 manifest identifies the
+current verifier source.
 
 The accepted claim concerns exact IEEE-754 execution and explicit safety and
 roundoff properties.  PDE convergence, entropy-solution correctness,

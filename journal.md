@@ -5025,3 +5025,351 @@ sole parent fd1782ae720016cec2fc6fc3ec33d02da44f5b94.  Use exact Git-data blob/t
 comparison, a non-forced ref advance, fetch validation, and local CAS.  Record
 the resulting identities and the aggregate outcome in the next substantive
 checkpoint.
+
+## 2026-09-07: independent binary profile extension
+
+The source arithmetic recovery checkpoint is published as
+ab57101a17bc6b150b5abedc66a1c537571b4a80, sole parent
+fd1782ae720016cec2fc6fc3ec33d02da44f5b94, tree a7c2a6e29d9784844ba20ccdea7eaa652cbe46ca.
+Exact staged blob/API tree equality, force:false advancement, fetch-side
+commit/parent/message/tree checks, index/worktree equality, and local CAS
+passed.  The checkout was clean and synchronized.
+
+The active source aggregate later hit its explicit 20-minute build limit
+(exit 124), without a theorem diagnostic, after progressing to 3,600 of the
+3,827 discovered jobs.  All 29 generated models had passed comparison, the new
+runtime pins and three new specs passed, and existing CLOB dependencies were
+still being compiled.  The complete source aggregate remains pending; do not
+repeat unchanged Project.  Build smaller missing source-spec dependencies
+before retrying.  The full retained log is fp-source-aggregate-runtime-pins.log.
+
+After that process ended, serialized local regressions passed:
+node test/f64_bits.js --native-only (fresh retained outputs; no image command),
+node test/f64_dot.js, node test/euler_rusanov.js, and
+node test/euler_rusanov_step.js.  Their fresh logs are respectively
+f64-native-regression.log, fp-legacy-dot-regression.log,
+fp-legacy-euler-regression.log, and fp-legacy-step-regression.log under
+tmp/euler-recovery-20260907.  No changed tracked outputs resulted.
+
+The independent host-only checked Sod trial, outside the checkout, reaches
+t=0.2 in 93 steps with 100 cells.  Every intermediate is finite; maximum
+|momentum|/density is 0.9290892948106627 and minimum energy/density is 2.  The
+standard Sod inputs therefore remain inside the proposed conservative guard.
+The target CFL 0.45 can round upward to 0.4500000000000001, motivating a
+separate explicit acceptance ceiling of 0.5 in the implementation.  This is
+design/regression evidence only.  The user received the stated domain
+assumption; it is not represented as an explicit user approval.
+
+Installed the reviewed binary profile preview in these twelve exact paths:
+- proofs/talos/lean/Project/Artifact/Binary/Syntax.lean
+- proofs/talos/lean/Project/Artifact/Binary/Decode.lean
+- proofs/talos/lean/Project/Artifact/Binary/Grammar.lean
+- proofs/talos/lean/Project/Artifact/Binary/Validity.lean
+- proofs/talos/lean/Project/Artifact/Binary/Validate.lean
+- proofs/talos/lean/Project/Artifact/Binary/Translate.lean
+- proofs/talos/lean/Project/Artifact/Binary/Equality.lean
+- proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean
+- proofs/talos/lean/Project/Artifact/Binary/Proof/Validate.lean
+- proofs/talos/lean/Project/Artifact/Binary/DecodeTests.lean
+- proofs/talos/lean/Project/Artifact/Binary/TranslateTests.lean
+- proofs/talos/lean/Project/Artifact/Binary/ValidateTests.lean
+
+The extension covers f64.sub (161), f64.div (163), and unary f64.sqrt (159)
+through syntax, opcode classification, grammar, decoder, stack validator,
+declarative validity, translation, equality, and soundness proof branches.
+Decoder/translator and accepted/rejected operand tests exercise each addition.
+No frozen bytes, package manifests, release receipt, or release draft have yet
+changed.  The old manifests temporarily retain the prior verifier source
+identity while this new profile is proved; no current manifest/release gate
+success is claimed during that intermediate state.
+
+The three focused binary test modules passed on the first build (3,350 jobs).
+The decoder/validator/translation soundness targets are now building under a
+separate 15-minute boundary.  To create the new exact packages without moving
+or deleting any pre-existing installer backup, expose the migration output
+preparer and CheckFile renderer from tools/artifact-migrate.js.  The existing
+CLI and transactional installer are unchanged.  A scoped caller will review
+and exclusively create only the new package/proof files, then make bounded
+text edits to registry.json and CheckFile.lean.  It will never call applyOutputs.
+
+All three binary soundness modules passed on the first build (3,355 jobs).
+Created three exact primitive packages using the exported output preparer,
+without the transactional installer.  All 27 new files were required absent
+and written exclusively.  The two existing registry/CheckFile texts received
+bounded additions, and only verifierSourceSha256 changed in each of the 22
+existing manifests.  All existing frozen WASM bytes and protected receipt/draft
+hashes were checked unchanged.  Exact mutation and identity ledger:
+
+```json
+{
+  "oldVerifier": "bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7",
+  "newVerifier": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "packages": [
+    {
+      "case": "f64_sub_bits",
+      "sha256": "4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929",
+      "byteLength": 1049
+    },
+    {
+      "case": "f64_div_bits",
+      "sha256": "b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62",
+      "byteLength": 1049
+    },
+    {
+      "case": "f64_sqrt_bits",
+      "sha256": "7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841",
+      "byteLength": 1046
+    }
+  ],
+  "newFiles": [
+    "proofs/talos/lean/Project/F64SubBits/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactCache.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/F64SubBits/ArtifactTranslation.lean",
+    "proofs/artifacts/f64_sub_bits/4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929/manifest.json",
+    "proofs/artifacts/f64_sub_bits/4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929/program.wasm",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactCache.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/F64DivBits/ArtifactTranslation.lean",
+    "proofs/artifacts/f64_div_bits/b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62/manifest.json",
+    "proofs/artifacts/f64_div_bits/b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62/program.wasm",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactCache.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/F64SqrtBits/ArtifactTranslation.lean",
+    "proofs/artifacts/f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/manifest.json",
+    "proofs/artifacts/f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/program.wasm"
+  ],
+  "updatedManifests": [
+    "proofs/artifacts/gcd/51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae/manifest.json",
+    "proofs/artifacts/assoc_list/6b356640062b5977acaf5459a6d3f8c3f1184c1a3e442b963c54e7a1d3a5a1de/manifest.json",
+    "proofs/artifacts/order_book/6faa6ae292bd217814d66e31ee241687974acfed74403543e8482540cfc95558/manifest.json",
+    "proofs/artifacts/validate/d408c2db3af861b170cda77077ce4f5ba3d9137008db5a21c6acc433d1398c7a/manifest.json",
+    "proofs/artifacts/append_bang/cc5a20a246d6c9f4fd215ffe01283e3c8ccbd80b9288b714e0dd0c380797ce96/manifest.json",
+    "proofs/artifacts/push_size/6a6a5e4e9dba3d8daa4fc4becf0a335fef6eea1cd9130ed1b2867f1c21da22fb/manifest.json",
+    "proofs/artifacts/push_twice/d62f015137837e6e4bd6c2cffda2d082b3e3268dc18f9ca2e4da52b07984af81/manifest.json",
+    "proofs/artifacts/shared_pair/f1cf88bd4fbad114cab41ed10a1f1f43ac1fa49e2ed2e9e13f8d7df6872c741f/manifest.json",
+    "proofs/artifacts/pair_free/e3809e304f3572d4674192de101ef74fcc22c3b1ea3c1651c18d7512cdfd8135/manifest.json",
+    "proofs/artifacts/box_free/d2701846048e1079da8416f5c2fefeaec39f749b7e1567b8b9c0e7ae175590f5/manifest.json",
+    "proofs/artifacts/fold_sum/b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5/manifest.json",
+    "proofs/artifacts/leb_u32/02780df586732a25fdfe827892ca18b278ab02c3893e2c516f1a253d640c327a/manifest.json",
+    "proofs/artifacts/clob_quote/5e3d45cba560f8a49c5cd9aedcc33698d57fed2c27034c10da4ac26362e5d522/manifest.json",
+    "proofs/artifacts/clob_cancel/b9e304af59b8511a24be491d5e17e0c47f8d0f4a8d89b7471a9b49751ac9cf7e/manifest.json",
+    "proofs/artifacts/clob_find_best/b66424e00789f14e8e4f2256f99682725f856a18efd9ce6064a588295bc0c536/manifest.json",
+    "proofs/artifacts/clob_post_only/0407b872a87be0337399c414affdd82400fae45ac00a1ca3928e5db20489cf1b/manifest.json",
+    "proofs/artifacts/clob_match_fuel/971deb775adf62fb4db34ffe353053b8660b4460a13c870341eba84626410e8a/manifest.json",
+    "proofs/artifacts/clob_limit/8f44e7f96de04a6ce531801337305fa932b504ac70f6e4aff5d73b58e5a3747d/manifest.json",
+    "proofs/artifacts/clob_market/1b7349307d6e19e7690331173d81d17cfba8f36b9e25f0ba2f16f2fc6d168ffc/manifest.json",
+    "proofs/artifacts/clob_depth/d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f/manifest.json",
+    "proofs/artifacts/euler_rusanov/145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546/manifest.json",
+    "proofs/artifacts/euler_rusanov_step/0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511/manifest.json"
+  ],
+  "protectedHashes": [
+    [
+      "proofs/artifacts/release.json",
+      "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+    ]
+  ]
+}
+```
+
+Updated the artifact identity regression's explicit normative verifier digest
+to 67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18,
+and its source-cache inventory to 29.  The latter count had remained at 26
+through the source checkpoint, whose gate was not claimed as passing.  The
+17-file normative source membership is unchanged.  Existing manifest diffs
+are exactly one old/new verifier digest line apiece; CheckFile adds only the
+three matching imports and dispatch entries.
+
+Synchronized maintained current inventories to 29 source cases and 25 frozen
+packages while preserving historical gate dates and release draft identities.
+The verification/specification guides had stale fixed-step pending statements;
+these now reflect its completed exact-byte/data milestone.  The source
+aggregate timeout and pending primitive package checks remain explicit.
+Bounded documentation paths: README.md, DEVELOPING.md, docs/status.md, docs/artifact-format.md, proofs/talos/README.md, plan.md, plans/euler-rusanov.md, docs/spec.md, docs/verifying.md, docs/telos-bug.md, proofs/talos/lean/Project/F64SubBits/README.md, proofs/talos/lean/Project/F64DivBits/README.md, proofs/talos/lean/Project/F64SqrtBits/README.md, devnotes.md.
+A read-only lookup for a nonexistent proofs/artifacts/README.md returned ENOENT;
+existing documentation authorities were used instead.
+
+The focused exact-package gates for subtraction, division, and square root
+all pass, including identity, embedded bytes, decoder/validator soundness,
+translation equality, behavior declarations, and axiom audits.  All nine
+public primitive execution/numerical theorems report only propext,
+Classical.choice, and Quot.sound.  Exact-byte witnesses retain the existing
+native-decision policy.  Logs: fp-sub-artifact-check.log,
+fp-div-artifact-check.log, and fp-sqrt-artifact-check.log.  The 25-package
+check-artifacts aggregate is running in fp-artifacts-25.log, without writing
+a release receipt.  Artifact identity/migration tests, 91 maintained docs,
+three extra README link checks, and whitespace checks pass.
+
+Independent drafts remain outside the checkout: general raw-word guards and
+ordering, conservative side source and pure Talos model, and a checked host
+Sod prototype.  A revised host prototype uses CFL target 0.45 with explicit
+acceptance ceiling 0.5.  An independently written Riemann reference uses the
+shock/rarefaction relations in https://www.clawpack.org/riemann_book/html/Euler.html
+and analytic cell integrals for gamma=7/5.  Its pressure-root and shock-jump
+residuals are below 4e-16, and its domain integrals reproduce
+[0.5625, 0.18, 1.375] within 3e-16 at t=0.2.  The 100/200/400/800-cell host
+trials take 93/190/385/774 steps, preserve every checked intermediate and
+conservative guard, and give density L1 errors
+[0.023762707776387997, 0.016645769363901008, 0.010889542673173476,
+0.006977521849557591].  Momentum and energy errors also decrease.  This is
+host scientific-validation evidence, not a generated-Wasm or convergence
+theorem.  No Python or new repository dependency was used.
+
+Read the original public reports lanyonai/CompressibleEuler issues 2 and 3
+through read-only gh API calls.  Stored their numeric facts and links in an
+external JSON draft, independently checked both positive exact internal
+energies with BigInt rationals, and reproduced negative host-double internal
+energies in the reported association.  Both violate |momentum| <= density,
+so the selected conservative source guard rejects them before sqrt.  Planned
+regressions include both interface orientations and explicit nonfinite inputs.
+Exact facts:
+
+```json
+[
+  {
+    "name": "cancellation",
+    "source": "https://github.com/lanyonai/CompressibleEuler/issues/2",
+    "upstreamCommit": "a736aa5f8b17efd225c4692404e2442361d06729",
+    "rhoBits": "3ff3be3969ca97cb",
+    "momentumBits": "41981433e88dacc6",
+    "energyBits": "432d5df2b6bc70d7",
+    "exactInternalEnergy": "553765701395033/11114356709601174",
+    "reportedAssociationHostInternalEnergy": -0.5,
+    "expectedCheckedStatus": 1
+  },
+  {
+    "name": "one_sided_nan",
+    "source": "https://github.com/lanyonai/CompressibleEuler/issues/3",
+    "upstreamCommit": "a736aa5f8b17efd225c4692404e2442361d06729",
+    "rhoBits": "3fe999999999999a",
+    "momentumBits": "400428f5c28f5c29",
+    "energyBits": "400fc083126e978d",
+    "exactInternalEnergy": "26177172834091/1014120480182583577492357906432",
+    "reportedAssociationHostInternalEnergy": -4.440892098500626e-16,
+    "expectedCheckedStatus": 1
+  }
+]
+```
+
+2026-09-07 binary-profile checkpoint completion: the serialized
+`tools/artifact-proof.js check-artifacts` invocation completed with exit 0,
+including all 25 registered exact-artifact theorem targets. The retained log
+is tmp/euler-recovery-20260907/fp-artifacts-25.log. This is the artifact-only
+aggregate, not a new check-all behavioral or release receipt. The three new
+packages separately passed their full focused checks. Both
+`node tools/euler-rusanov-interface.js check` and
+`node tools/euler-rusanov-step-data.js check` passed after the verifier digest
+updates, preserving all published data. Updated only the current status and
+completion statements in docs/status.md, docs/spec.md, proofs/talos/README.md,
+the three primitive READMEs, plan.md, and plans/euler-rusanov.md; appended
+this record and devnotes.md. Source aggregate timeout remains explicit.
+The latest user request to publish the SVG is already satisfied by commit
+fd1782ae720016cec2fc6fc3ec33d02da44f5b94; the immutable GitHub SVG link was
+provided again. Publication intent: review and explicitly stage the binary
+profile, three exact packages, 22 verifier-digest-only manifest updates,
+registry/check-file wiring, tests, docs, and these records, then publish a
+non-forced fast-forward with exact tree/parent/content verification.
+
+Final binary checkpoint review: 91 maintained documentation files pass the
+link checker and git diff --check passes. The reviewed explicit path list
+contains 80 paths: 53 modified and 27 new. Independently verified all 22 old
+manifest changes alter only verifierSourceSha256, all three new binary hashes
+and byte lengths match their manifests, the first 22 registry entries are
+unchanged, and protected release.json retains SHA-256
+fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1.
+The external explicit list is work/fp-binary-checkpoint-paths.json.
+Reviewed source soundness changes cover all three new opcodes and stack
+effects; new package witnesses use the existing exact-byte native policy.
+Stage precisely the 80 reviewed paths for the binary checkpoint.
+
+- `DEVELOPING.md`
+- `README.md`
+- `devnotes.md`
+- `docs/artifact-format.md`
+- `docs/spec.md`
+- `docs/status.md`
+- `docs/telos-bug.md`
+- `docs/verifying.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/artifacts/append_bang/cc5a20a246d6c9f4fd215ffe01283e3c8ccbd80b9288b714e0dd0c380797ce96/manifest.json`
+- `proofs/artifacts/assoc_list/6b356640062b5977acaf5459a6d3f8c3f1184c1a3e442b963c54e7a1d3a5a1de/manifest.json`
+- `proofs/artifacts/box_free/d2701846048e1079da8416f5c2fefeaec39f749b7e1567b8b9c0e7ae175590f5/manifest.json`
+- `proofs/artifacts/clob_cancel/b9e304af59b8511a24be491d5e17e0c47f8d0f4a8d89b7471a9b49751ac9cf7e/manifest.json`
+- `proofs/artifacts/clob_depth/d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f/manifest.json`
+- `proofs/artifacts/clob_find_best/b66424e00789f14e8e4f2256f99682725f856a18efd9ce6064a588295bc0c536/manifest.json`
+- `proofs/artifacts/clob_limit/8f44e7f96de04a6ce531801337305fa932b504ac70f6e4aff5d73b58e5a3747d/manifest.json`
+- `proofs/artifacts/clob_market/1b7349307d6e19e7690331173d81d17cfba8f36b9e25f0ba2f16f2fc6d168ffc/manifest.json`
+- `proofs/artifacts/clob_match_fuel/971deb775adf62fb4db34ffe353053b8660b4460a13c870341eba84626410e8a/manifest.json`
+- `proofs/artifacts/clob_post_only/0407b872a87be0337399c414affdd82400fae45ac00a1ca3928e5db20489cf1b/manifest.json`
+- `proofs/artifacts/clob_quote/5e3d45cba560f8a49c5cd9aedcc33698d57fed2c27034c10da4ac26362e5d522/manifest.json`
+- `proofs/artifacts/euler_rusanov/145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546/manifest.json`
+- `proofs/artifacts/euler_rusanov_step/0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511/manifest.json`
+- `proofs/artifacts/f64_div_bits/b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62/manifest.json`
+- `proofs/artifacts/f64_div_bits/b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62/program.wasm`
+- `proofs/artifacts/f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/manifest.json`
+- `proofs/artifacts/f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/program.wasm`
+- `proofs/artifacts/f64_sub_bits/4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929/manifest.json`
+- `proofs/artifacts/f64_sub_bits/4e320470f360eb2181772b234840d79414f19052ac6b3e26e94bf3a142c94929/program.wasm`
+- `proofs/artifacts/fold_sum/b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5/manifest.json`
+- `proofs/artifacts/gcd/51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae/manifest.json`
+- `proofs/artifacts/leb_u32/02780df586732a25fdfe827892ca18b278ab02c3893e2c516f1a253d640c327a/manifest.json`
+- `proofs/artifacts/order_book/6faa6ae292bd217814d66e31ee241687974acfed74403543e8482540cfc95558/manifest.json`
+- `proofs/artifacts/pair_free/e3809e304f3572d4674192de101ef74fcc22c3b1ea3c1651c18d7512cdfd8135/manifest.json`
+- `proofs/artifacts/push_size/6a6a5e4e9dba3d8daa4fc4becf0a335fef6eea1cd9130ed1b2867f1c21da22fb/manifest.json`
+- `proofs/artifacts/push_twice/d62f015137837e6e4bd6c2cffda2d082b3e3268dc18f9ca2e4da52b07984af81/manifest.json`
+- `proofs/artifacts/registry.json`
+- `proofs/artifacts/shared_pair/f1cf88bd4fbad114cab41ed10a1f1f43ac1fa49e2ed2e9e13f8d7df6872c741f/manifest.json`
+- `proofs/artifacts/validate/d408c2db3af861b170cda77077ce4f5ba3d9137008db5a21c6acc433d1398c7a/manifest.json`
+- `proofs/talos/README.md`
+- `proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Decode.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/DecodeTests.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Equality.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Grammar.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Proof/Validate.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Syntax.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Translate.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/TranslateTests.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Validate.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/ValidateTests.lean`
+- `proofs/talos/lean/Project/Artifact/Binary/Validity.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactBytes.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactCache.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactDecode.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactDecoded.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactRawCache.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactTranslation.lean`
+- `proofs/talos/lean/Project/F64DivBits/ArtifactValidation.lean`
+- `proofs/talos/lean/Project/F64DivBits/README.md`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactBytes.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactCache.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactDecode.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactDecoded.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactRawCache.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactTranslation.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/ArtifactValidation.lean`
+- `proofs/talos/lean/Project/F64SqrtBits/README.md`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactBytes.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactCache.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactDecode.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactDecoded.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactRawCache.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactTranslation.lean`
+- `proofs/talos/lean/Project/F64SubBits/ArtifactValidation.lean`
+- `proofs/talos/lean/Project/F64SubBits/README.md`
+- `test/artifact_identity.js`
+- `tools/artifact-migrate.js`

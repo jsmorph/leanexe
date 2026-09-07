@@ -29,6 +29,15 @@ example : Instr.toTalos .f64Add = [.f64Add] := by
 example : Instr.toTalos .f64Mul = [.f64Mul] := by
   simp [Instr.toTalos]
 
+example : Instr.toTalos .f64Sub = [.f64Sub] := by
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .f64Div = [.f64Div] := by
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .f64Sqrt = [.f64Sqrt] := by
+  simp [Instr.toTalos]
+
 example : Instr.toTalos .i64ReinterpretF64 = [.i64ReinterpretF64] := by
   simp [Instr.toTalos]
 

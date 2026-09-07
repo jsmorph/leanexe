@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "f64_div_bits",
+  "sha256": "b3d81061ed69ffb1a60f9c87fbc82bb2b7d6edbc224ecaef0fb71636b2c34c62",
+  "byteLength": 1049,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.F64DivBits.ArtifactBytes",
+  "artifactBytesDefinition": "Project.F64DivBits.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.F64DivBits.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.F64DivBits.Program",
+  "cachedProgramDefinition": "Project.F64DivBits.module",
+  "specModule": "Project.F64DivBits.Spec",
+  "proofTarget": "Project.F64DivBits.ArtifactTranslation",
+  "identityTheorem": "Project.F64DivBits.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.F64DivBits.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.F64DivBits.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.F64DivBits.Spec.divBits_exact",
+    "Project.F64DivBits.Spec.divBits_source_real_error",
+    "Project.F64DivBits.Spec.divBits_wat_real_error"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

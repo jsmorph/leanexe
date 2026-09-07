@@ -37,6 +37,9 @@ inductive InstrAtom where
   | i64ShrU
   | f64Add
   | f64Mul
+  | f64Sub
+  | f64Div
+  | f64Sqrt
   | i32WrapI64
   | i64ExtendI32U
   | i64ReinterpretF64
@@ -95,6 +98,9 @@ def instrView : Instr → InstrView
   | .i64ShrU => .atom .i64ShrU
   | .f64Add => .atom .f64Add
   | .f64Mul => .atom .f64Mul
+  | .f64Sub => .atom .f64Sub
+  | .f64Div => .atom .f64Div
+  | .f64Sqrt => .atom .f64Sqrt
   | .i32WrapI64 => .atom .i32WrapI64
   | .i64ExtendI32U => .atom .i64ExtendI32U
   | .i64ReinterpretF64 => .atom .i64ReinterpretF64
@@ -143,6 +149,9 @@ def InstrAtom.toInstr : InstrAtom → Instr
   | .i64ShrU => .i64ShrU
   | .f64Add => .f64Add
   | .f64Mul => .f64Mul
+  | .f64Sub => .f64Sub
+  | .f64Div => .f64Div
+  | .f64Sqrt => .f64Sqrt
   | .i32WrapI64 => .i32WrapI64
   | .i64ExtendI32U => .i64ExtendI32U
   | .i64ReinterpretF64 => .i64ReinterpretF64

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "f64_sqrt_bits",
+  "sha256": "7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841",
+  "byteLength": 1046,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.F64SqrtBits.ArtifactBytes",
+  "artifactBytesDefinition": "Project.F64SqrtBits.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.F64SqrtBits.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.F64SqrtBits.Program",
+  "cachedProgramDefinition": "Project.F64SqrtBits.module",
+  "specModule": "Project.F64SqrtBits.Spec",
+  "proofTarget": "Project.F64SqrtBits.ArtifactTranslation",
+  "identityTheorem": "Project.F64SqrtBits.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.F64SqrtBits.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.F64SqrtBits.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.F64SqrtBits.Spec.sqrtBits_exact",
+    "Project.F64SqrtBits.Spec.sqrtBits_source_real_error",
+    "Project.F64SqrtBits.Spec.sqrtBits_wat_real_error"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
