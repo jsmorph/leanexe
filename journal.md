@@ -6114,3 +6114,104 @@ Review/stage precisely these 12 paths for verified non-forced publication:
 - plans/euler-rusanov.md
 - devnotes.md
 - journal.md
+
+Published the checked-cell source/model checkpoint as
+9763988cdce7e658d9ff76c2baf2ef79ffd5c0da, sole parent
+9788bd2efc0acc24b13d4313fb08bb47eed21cf0, tree
+a84aa4026cc61ba508b3df814e11ef0fe66a2cc7. The non-forced GitHub update,
+fetch, commit/parent/message/tree/index/worktree equality, local CAS and
+clean synchronized status all passed. A read-only lookup named absent
+test/runtime_pins.js; inventory discovery located the actual runtime pins
+in Project/Runtime/Checks.lean. Added an explicitly incomplete cell registry
+entry for scoped Program/WAT/WASM preparation; no execution claim yet.
+
+Added fresh module-polymorphic cell layout/rejection and scalar-update
+execution proof boundaries, reusing the dynamic layout and finite/positive
+helper theorems. Emitted WAT inspection identifies update19, rejection24,
+cell25, and allocator/reset/retain/release26–29. Shared functions0–16
+retain the prior interface layout; concrete equality remains a Lean gate.
+
+Scoped cell preparation passed, creating Program/WAT/WASM through fresh
+tmp/leanexe-talos-b30Zbj. The tool removed only its own fresh staging path.
+Added the exact cell execution composition draft: one ratio classifier,
+two proved interfaces, Courant classification/ceiling, three proved scalar
+updates and the proved final state calculation. All acceptance/rejection
+branches preserve the initial store; the public claim awaits its Lean gate.
+
+The scalar exact update and concrete shared-layout proofs pass (Helpers
+3.7s, Update7.4s), using only standard axioms. The first full execution
+draft failed after9.3s: generic peeling before Boolean case analysis
+consumed a conditional boundary before the appropriate callee application.
+Preserved that draft externally and its diagnostic log; moved case analysis
+ahead of peeling, as in the accepted conservative/component proofs. These
+were elaboration errors, not a timeout or a numerical test failure; no
+failed declaration/temporary sorryAx report is claimed as a proof.
+
+Generated cell identities: Program48,499 bytes SHA256
+33942e73793fe3ba1387d76dba5db3150e6a371de2add323aeee3d31b0417279;
+WASM4,592 bytes SHA256
+2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f;
+WAT49,308 bytes SHA256
+0fea5e1fe1c8db7ebcc84f1a5b64a2dd33234a635113f7edf4f4d0155f08cfa6.
+Added accepted selected-speed positivity to the model and a public Spec
+draft attaching state/Courant/speed safety to exact execution.
+
+The second execution check narrowed failures to the Courant ceiling
+(12-second module diagnostic). Removed the remaining premature peel before
+that unsigned comparison case split and pruned the specifically reported
+unused simp arguments. The second draft and diagnostics are retained.
+
+The next Spec check confirms the new alpha safety theorem (Safety6.2s)
+but execution still fails only at the Courant comparison boundary (12s).
+Added one bounded pretty-printed goal trace at that boundary to inspect
+the exact unsigned-comparison normalization; preserved the prior draft.
+No timeout or limit increase occurred.
+
+The diagnostic option pp.maxDepth is unavailable in this pinned Lean;
+that diagnostic attempt failed before printing the goal. Replaced it with
+ordinary trace_state and retained the failed log.
+
+The ordinary trace isolates the remaining issue: the WAT condition contains
+IEEE64.mul ratio right.alpha (or left.alpha), while the guard hypothesis
+used a local let alias courant. Generic simp did not unfold that alias in
+the hypothesis. Wrote the comparison case split with the explicit rounded
+product, matching the instruction condition; removed only the temporary
+trace statement. This corrects the earlier incomplete tactic-order diagnosis.
+
+Explicit rounded-product hypotheses close the full execution proof (35s),
+and the public Spec passes (3.7s,3,379 jobs total). Both public specifications
+and execution/helper theorems use only standard logical axioms. Removed
+only reported unused simp arguments for the final source gate, registered
+the complete case and its four runtime pins, switched Project to the Spec
+import, and reconciled current inventories to32 source cases/27 packages.
+The five model safety results include positive selected speed. The source
+and runtime vectors are unchanged. Historical aggregate/release facts remain
+qualified; no broad source, release, conformance or selfhost check ran.
+
+The final focused cell source gate passes regenerated-cache equality and
+Spec (3,379 jobs), with no new cell warnings; Execution35s and Spec3.6s.
+Runtime pin checks pass (3,374 jobs,3.8s module). All32 registry/import
+members match; metadata and91 maintained docs plus cell README links pass.
+Review and stage these21 exact paths for non-forced verified publication:
+
+- DEVELOPING.md
+- README.md
+- devnotes.md
+- docs/spec.md
+- docs/status.md
+- docs/verifying.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/README.md
+- proofs/talos/cases.json
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/Runtime/Checks.lean
+- test/artifact_identity.js
+- proofs/talos/lean/Project/EulerCellStep/Execution.lean
+- proofs/talos/lean/Project/EulerCellStep/Helpers.lean
+- proofs/talos/lean/Project/EulerCellStep/Program.lean
+- proofs/talos/lean/Project/EulerCellStep/Spec.lean
+- proofs/talos/lean/Project/EulerCellStep/Update.lean
+- proofs/talos/lean/Project/EulerCellStep/Safety.lean
+- proofs/talos/lean/Project/EulerCellStep/README.md
