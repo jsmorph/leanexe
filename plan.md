@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-nine completed source-driven Talos proofs, twenty-five exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, thirty completed source-driven Talos proofs, twenty-six exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -238,7 +238,7 @@ acceptance gates, and nonclaims.
       finiteness; add checked thermodynamics source and 38 runtime vectors.
 - [x] Prove exact generated-WAT execution of the conservative-state side
       and transfer admissibility and intermediate finiteness to that execution.
-- [ ] Freeze and independently verify the checked conservative-side bytes.
+- [x] Freeze and independently verify the checked conservative-side bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
@@ -250,9 +250,8 @@ signed errors against the decoded-input exact stencil are respectively
 `[0, 5*epsilon/64, -25*epsilon/512]`, while the physical mass, momentum, and
 energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
-or convergence result.  Source status remains twenty-nine registered cases,
-twenty-nine complete cases, and twenty-nine generated `Program.lean` caches; the
-exact-artifact registry now contains twenty-five packages.  The recovered step
+or convergence result.  Source status is thirty registered and complete cases with thirty generated
+`Program.lean` caches; the exact-artifact registry contains twenty-six packages.  The recovered step
 bytes match the historical checkpoint; its schema-3 manifest identifies the
 current verifier source.
 

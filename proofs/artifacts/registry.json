@@ -150,6 +150,12 @@
       "sha256": "7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841",
       "manifest": "f64_sqrt_bits/7b236ffd9b15e117e80a60d4b4515682801c4a84bd9d4aeb34239d394d522841/manifest.json",
       "proofTarget": "Project.F64SqrtBits.ArtifactTranslation"
+    },
+    {
+      "case": "euler_conservative",
+      "sha256": "351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114",
+      "manifest": "euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/manifest.json",
+      "proofTarget": "Project.EulerConservative.ArtifactTranslation"
     }
   ]
 }

@@ -5716,3 +5716,84 @@ content equality checks; preserve all ignored build/evidence/diagnostic state.
 - `proofs/talos/lean/Project/EulerConservative/StateGuard.lean`
 - `proofs/talos/lean/Project/Runtime/Checks.lean`
 - `test/artifact_identity.js`
+
+Published exact conservative-side execution as 59e486622cbafefc9c79cbd3a64f1f9e046f9b55,
+sole parent 4001afe81123cf61875387a79c946f4e27df8e77, tree
+08eab1bb2b704b89691ea2abc313c495c469bb75. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS update passed;
+final status was clean and synchronized. Prepared a scoped external freezer
+for the exact 2,019-byte side: nine fresh package/proof files plus bounded
+registry and CheckFile additions, with all 25 old packages and release draft
+hash-protected. The single-package gate is next; no whole-suite rerun.
+
+Created nine fresh conservative-side exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 25 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler_conservative",
+  "sha256": "351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114",
+  "byteLength": 2019,
+  "newFiles": [
+    "proofs/talos/lean/Project/EulerConservative/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactCache.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/EulerConservative/ArtifactTranslation.lean",
+    "proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/manifest.json",
+    "proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/program.wasm"
+  ],
+  "oldPackagesUnchanged": 25,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The exact-byte checker matched all 2,019 bytes, and the focused artifact
+translation theorem passed after decoding and validation. Reconciled package
+counts to 26 in the six maintained inventories and two plans, retaining the
+dated 25-package aggregate evidence and 25-file conformance counts. Corrected
+the preceding source inventory historical sentence: the timed-out aggregate
+was 29 cases; only the current inventory is 30. Added package links and
+devnotes. The running gate still must finish its behavioral declaration and
+axiom checks before publication. Two speculative test filenames were absent
+in a read-only search; rg --files showed no such test files, and no test was
+run from those names. No runtime or whole-suite regression is needed for
+unchanged executable/verifier bytes.
+
+Focused conservative-side package gate completed with exit zero, including
+all manifest declaration types and axiom audits. Public source/execution/
+safety theorems contain only the standard three axioms; exact embedded-byte
+decision witnesses use the existing accepted native_decide package policy.
+The normative decoder and validator soundness theorems remain standard-axiom
+only. Identity membership and all 91 maintained doc links pass. The release
+draft still hashes to fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1.
+Review and stage only these 22 paths for a non-forced verified checkpoint:
+
+- `DEVELOPING.md`
+- `README.md`
+- `devnotes.md`
+- `docs/spec.md`
+- `docs/status.md`
+- `docs/verifying.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/artifacts/registry.json`
+- `proofs/talos/README.md`
+- `proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean`
+- `proofs/talos/lean/Project/EulerConservative/README.md`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactBytes.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactCache.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactDecode.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactDecoded.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactRawCache.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactTranslation.lean`
+- `proofs/talos/lean/Project/EulerConservative/ArtifactValidation.lean`
+- `proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/manifest.json`
+- `proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/program.wasm`
