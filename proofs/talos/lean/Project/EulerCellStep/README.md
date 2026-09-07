@@ -28,9 +28,12 @@ incoming states and CFL. Fixed host words serve as regression evidence.
 [Execution.lean](Execution.lean) composes the complete cell calculation with
 exact words and complete store preservation for all ten raw inputs.
 [Spec.lean](Spec.lean) attaches model state/Courant/speed safety to execution.
-All public execution proofs use only standard logical axioms. The generated
-4,592-byte binary awaits frozen-package verification; the array step and
-repeated Sod runner follow.
+All public execution proofs use only standard logical axioms.
+The [frozen 4,592-byte package](../../../../artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/manifest.json)
+has exact decoding, validation and [translation equality](ArtifactTranslation.lean)
+with the proved execution module. Its focused package gate checks both
+behavioral declarations and their axiom audits. The array step and repeated
+Sod runner follow.
 
 Run focused checks serially:
 
