@@ -540,6 +540,9 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Add dynamic Rusanov flux source, model safety proofs, and 76 focused vectors.
 - [x] Prove total exact dynamic-interface execution and attach model safety.
 - [x] Freeze and independently verify the dynamic-interface bytes.
+- [x] Add checked cell updates and model proofs of accepted-state safety and
+      the decoded rounded Courant ceiling; add 43 focused compiled vectors.
+- [ ] Prove exact cell-update WAT execution and frozen-byte closure.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

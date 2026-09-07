@@ -36,6 +36,14 @@ pass. The 3,167-byte frozen interface passes its focused exact-package gate;
 source/artifact inventories are 31 and 27. See the
 [dynamic interface checkpoint](../proofs/talos/lean/Project/EulerDynamicFlux/README.md).
 
+The checked cell-update source and pure IEEE model now compose two dynamic
+interfaces, a positive rounded Courant ceiling of 1/2, three conservative
+updates and final state validation. Model theorems establish finite update
+intermediates and physically admissible accepted output with positive
+pressure. Exact cell WAT and byte proofs remain pending, so inventories stay
+at 31 complete source cases and 27 packages. See
+[the cell checkpoint](../proofs/talos/lean/Project/EulerCellStep/README.md).
+
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
 
 ## Release state
