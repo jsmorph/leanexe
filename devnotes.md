@@ -9027,3 +9027,13 @@ build takes 2.6 seconds and uses only standard logical axioms. A preliminary
 compiled Sod run reaches t=0.2 in 93 steps with exact final-word agreement
 against the host calculation. Full payload safety, array execution, frozen
 bytes and maintained runner evidence remain pending. Inventories stay 32/28.
+
+## 2026-09-07: Complete accepted grid-model payload safety
+
+Payload proves each six-word cell write and its preservation by later
+iterations. Outputs proves accepted output length and exact payload
+correspondence, then transfers physical admissibility, finite state, positive
+pressure/speed and decoded rounded Courant in (0,1/2] to every returned cell.
+Both focused modules build in under three seconds with only standard logical
+axioms. The source/runtime vectors are unchanged; scan bounds and exact
+array memory/loop execution remain open. Inventories stay 32/28.
