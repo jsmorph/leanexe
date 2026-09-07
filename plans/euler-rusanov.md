@@ -431,7 +431,7 @@ flux theorem is module-polymorphic, the update helper is proved for arbitrary
 raw words, and `sodQuarterStepCheckedBits_exact` composes all nine calls through
 the actual generated function-6 status gate.  It proves fuel-independent
 termination, complete store preservation, and the seven pure-model words.  The
-registry marks all twenty-six cases complete, the `Project` aggregate imports
+registry marked all then-current twenty-six cases complete, the `Project` aggregate imports
 the step specification, and the full source-driven gate passes.  The subsequent
 ARM Mac recovery also closes the exact-byte step package.  The subsequent
 StepData.artifact_stepV1 theorem certifies its seven published words and
@@ -450,9 +450,9 @@ against the decoded-input reference stencil are
 is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
-invariant-domain, convergence, or entropy-solution theorem.  Source status
-remains twenty-six registered cases, twenty-six complete cases, and twenty-six
-generated `Program.lean` caches.  Exact-artifact status is twenty-two packages;
+invariant-domain, convergence, or entropy-solution theorem.  The subsequent subtraction, division, and square-root source proofs bring
+source status to twenty-nine registered cases, twenty-nine complete cases, and
+twenty-nine generated `Program.lean` caches; the extended aggregate is running.  Exact-artifact status is twenty-two packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -527,8 +527,10 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Freeze and independently verify the proved fixed-step bytes.
 - [x] Publish the verified raw state data.
 - [x] Add host CSV/plot presentation and independent numerical comparisons.
-- [ ] Extend subtraction, division, square root, classification, and safe
-      comparison support as demanded by the checked multi-step solver.
+- [x] Extend the source profile with subtraction, division, and square root,
+      exact generated-WAT execution, and bounded-domain numerical theorems.
+- [ ] Extend the independent binary profile for those three operations.
+- [ ] Add classification and safe comparison support for the checked solver.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

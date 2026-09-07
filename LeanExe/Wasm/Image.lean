@@ -268,7 +268,8 @@ mutual
     | .unreachable => .ok (encodeNat 38)
     | .ret => .ok (encodeNat 39)
     | .drop => .ok (encodeNat 40)
-    | .addF64 | .mulF64 | .i64ReinterpretF64 | .f64ReinterpretI64 =>
+    | .addF64 | .mulF64 | .subF64 | .divF64 | .sqrtF64
+      | .i64ReinterpretF64 | .f64ReinterpretI64 =>
         .error errorUnsupportedInstructionV2
     | .block body => do
         let bodyBytes ← encodeInstrItems body

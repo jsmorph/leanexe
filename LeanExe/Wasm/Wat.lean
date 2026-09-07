@@ -65,6 +65,9 @@ mutual
     | .drop => [s!"{pad indent}drop"]
     | .addF64 => [s!"{pad indent}f64.add"]
     | .mulF64 => [s!"{pad indent}f64.mul"]
+    | .subF64 => [s!"{pad indent}f64.sub"]
+    | .divF64 => [s!"{pad indent}f64.div"]
+    | .sqrtF64 => [s!"{pad indent}f64.sqrt"]
     | .i64ReinterpretF64 => [s!"{pad indent}i64.reinterpret_f64"]
     | .f64ReinterpretI64 => [s!"{pad indent}f64.reinterpret_i64"]
     | .block body =>

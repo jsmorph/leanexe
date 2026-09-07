@@ -8865,3 +8865,23 @@ comparison, host decimal CSV, SVG plot, manifest, and README.  Runtime/data
 regressions pass and the static rendered plot is visually checked.  Signed
 physical balance residuals remain [0, 2^-57, -2^-56].  The fixed-step milestone
 is complete; the FP extension and checked 100-cell runner remain next.
+
+## 2026-09-07: source floating-point extension in verification
+
+The certified step dataset is published at fd1782ae720016cec2fc6fc3ec33d02da44f5b94
+(tree f70971bbbd9ec461eb6ada623c85ae39f87133e6).  The compiler now lowers raw-word
+subtraction, division, and unary square root.  Three source cases prove exact
+Talos execution and bounded-domain real-error contracts; all nine public
+theorems pass with only propext, Classical.choice, and Quot.sound.  The compiler
+build and 37 runtime vectors pass, including exceptional encodings and nested
+unary traversal.  All 29 cases are registered with runtime pins; the extended
+source aggregate is compiling existing proof dependencies.  The independent
+binary verifier extension remains a separate pending checkpoint, and all 22
+frozen artifact manifests and bytes retain their published identities.
+
+The source arithmetic work is being published as a recovery checkpoint while
+the full source aggregate compiles existing CLOB dependencies.  All 29 generated
+models match; the three new focused proofs and 37 new runtime vectors pass.
+The new native-only legacy regression mode is syntax-checked but still awaits
+execution after the serialized aggregate.  Complete aggregate success is not
+claimed at this checkpoint.

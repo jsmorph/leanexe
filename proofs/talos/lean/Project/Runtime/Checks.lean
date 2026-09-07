@@ -24,6 +24,9 @@ import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
 import Project.F64Horner2CheckedBits.Program
 import Project.F64MulBits.Program
+import Project.F64SubBits.Program
+import Project.F64DivBits.Program
+import Project.F64SqrtBits.Program
 import Project.Gcd.Program
 import Project.LebU32.Program
 import Project.OrderBook.Program
@@ -59,6 +62,21 @@ example : eraseTypeIdx Project.F64MulBits.func1Def = eraseTypeIdx allocFuncDef :
 example : eraseTypeIdx Project.F64MulBits.func2Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.F64MulBits.func3Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.F64MulBits.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.F64SubBits.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.F64SubBits.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.F64SubBits.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.F64SubBits.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.F64DivBits.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.F64DivBits.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.F64DivBits.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.F64DivBits.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.F64SqrtBits.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.F64SqrtBits.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.F64SqrtBits.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.F64SqrtBits.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
 example : eraseTypeIdx Project.F64Dot2CheckedBits.func2Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.F64Dot2CheckedBits.func3Def = eraseTypeIdx resetFuncDef := rfl
