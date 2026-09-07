@@ -5373,3 +5373,67 @@ Stage precisely the 80 reviewed paths for the binary checkpoint.
 - `proofs/talos/lean/Project/F64SubBits/README.md`
 - `test/artifact_identity.js`
 - `tools/artifact-migrate.js`
+
+2026-09-07 next checked-solver boundary: binary checkpoint publication
+completed as c084bf98fd3da0994afc83190ec4549251430124, sole parent
+ab57101a17bc6b150b5abedc66a1c537571b4a80, tree
+97e529a68e47e1f2f76838e10c1c45a098f95ab1. The exact 80-path staged tree
+matched the GitHub API tree; force:false advanced the branch, ordinary fetch
+with maintenance disabled returned that commit, all parent/message/tree/index/
+worktree checks passed, and CAS update-ref left a clean synchronized branch.
+Revalidated the pinned Mac Lean/Lake and wasm-tools executable paths after
+compaction. The session sandbox granted the requested repo write and network
+permissions for the already-authorized work; no new task permission was asked.
+
+Following the source aggregate timeout, began the smaller existing target
+Project.ClobFindBest.Spec through tools/leanrun --timeout 10m and pinned
+local one-thread environment. Its fresh log is
+tmp/euler-recovery-20260907/source-clob-find-best-boundary.log. Only this
+Lean-family job is active. Installed the previously reviewed external draft
+as the fresh Project/ProofKit/F64Order.lean: integer finite/positive guards,
+sign-cleared magnitude ordering, and proof goals relating guards to decoded
+real values. Added sign-clearing equality for positive words and kernel
+classification examples for both zeros, subnormal/normal boundaries, maximum
+finite encodings, infinities, and NaNs. This draft is not yet checked. No
+existing source or artifact program was modified.
+
+The smaller Project.ClobFindBest.Spec build passed (3349 jobs), completing
+its Loop and Spec boundary without changing existing source. The first
+Project.ProofKit.F64Order build failed in 3 seconds with explicit diagnostics:
+UInt64.toNat numeral expressions were not normalized in two positive-word
+bounds, and broad simp did not close sign=false. Finite classification and
+magnitude-order theorems checked with the standard three axioms; two incomplete
+positive lemmas were not accepted or claimed. Added explicit natural-literal
+types to the bounds and a direct decide=false proof for sign. Retained
+f64-order-first.log and all failed outputs. A read-only lookup mistakenly
+named absent tools/talos-artifact-lib.js; recovered the actual tools/talos-lib.js
+through file discovery, without any filesystem mutation from the failed read.
+
+Second F64Order run (f64-order-normalized.log) finished in 2 seconds with
+one remaining type mismatch in the finite-word subproof: simp-only retained
+the UInt64 numeral toNat form while the revised natural bound used a literal.
+Used the original raw comparison directly for that finite conversion, preserving
+the normalized bound for the arithmetic steps; removed new deprecated ite
+lemma names. Three of the four audited public lemmas already checked with
+only the standard logical axioms; the final positive lemma remains unclaimed
+until the next complete build.
+
+F64Order positive-word correction passed (3050 jobs, 3-second module build)
+in f64-order-positive.log. All four public guard/order lemmas audit to only
+propext, Classical.choice, and Quot.sound; all signed-zero/subnormal/normal/
+finite/infinite/NaN examples kernel-check. Removed the single now-unused
+norm_num tactic and added the helper import to Project.lean so the aggregate
+checks it. No source-case or exact-artifact registry count changes. This
+checkpoint consists exactly of Project/ProofKit/F64Order.lean, Project.lean,
+devnotes.md, and journal.md. Recheck the focused target after the no-op removal,
+review all four files, then publish that bounded proof foundation.
+
+Final focused F64Order build passed (3050 jobs, 2-second module build) in
+f64-order-final.log with no new-module warnings. All four public axiom audits
+remain standard-only. Reviewed the complete new proof and the aggregate import;
+git diff --check passes. The user questioned the relevance of CLOB work.
+Explained its sole role as an old full-regression dependency and deferred all
+remaining CLOB builds and the full-source aggregate to keep the active path
+on Euler proofs and tests. No CLOB job is running. Stage exactly devnotes.md,
+journal.md, proofs/talos/lean/Project.lean, and
+proofs/talos/lean/Project/ProofKit/F64Order.lean for this passing checkpoint.
