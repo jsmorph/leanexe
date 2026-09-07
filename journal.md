@@ -6415,3 +6415,47 @@ No source or frozen-package count changes. Reviewed explicit staging intent:
 - plans/euler-rusanov.md
 - devnotes.md
 - journal.md
+
+Published grid source/model checkpoint 64a28d5145be90bbc19831e9d04a543e9e303120,
+sole parent 12a2dda2bf28bed106e29e58ab89798d185d0a05, tree
+b0dfb346f2c453f8c97a03cf6fd0acffd96ce8c2. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed; the
+branch was clean and synchronized. Added a separate Payload proof boundary
+for six field writes and preservation by later iterations. Its first focused
+build is pending; no grid output safety claim is made before it passes.
+
+The first Payload build failed in 29 seconds. Field zero needed normalization
+of index+0 before applying the self-write lemma; the cell payload transfer
+hit the heartbeat budget while reducing its concrete checked-cell term.
+Preserved draft/log, normalized the zero index explicitly and generalized
+the checked result before the transfer. No budget increase; failed audit
+outputs containing sorryAx are not accepted evidence.
+
+The revised Payload attempt removed the heartbeat problem, but strict simp
+reported no progress on five nonzero fields. Making zero normalization
+optional exposed the remaining density self-write, discharged directly by
+Array.getElem!_set!_self. Payload now builds in 2.8s and both audited
+theorems use only propext, Classical.choice and Quot.sound. Added Outputs
+to transfer payload safety; its first 2.6s build identified missing false
+Boolean coercion reduction and two explicit definition-unfolding steps.
+Preserved that draft/log and corrected only those proof reductions.
+
+Outputs now passes in 2.7s (3,072 jobs), including audits of accepted size,
+cell acceptance, exact payload and per-output safety. All use only propext,
+Classical.choice and Quot.sound. The source and compiled vectors are
+unchanged, so no repeated runtime regression is needed for this pure-proof
+checkpoint. Updated README, Project import and plans/devnotes to distinguish
+proved payload safety from pending scan, WAT and byte obligations.
+Explicit reviewed staging intent:
+- proofs/talos/lean/Project/EulerGridStep/Payload.lean
+- proofs/talos/lean/Project/EulerGridStep/Outputs.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project.lean
+- plan.md
+- plans/euler-rusanov.md
+- devnotes.md
+- journal.md
+
+Payload checkpoint review: diff whitespace, all new README links, 91
+maintained Markdown files, registry/import metadata and no-admission source
+checks pass. No broad regression or release gate was run.
