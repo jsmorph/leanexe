@@ -8793,3 +8793,31 @@ This recovery checkpoint publishes only `journal.md` and `devnotes.md`, with
 zero deletions.  The verified-but-unpublished artifact must be regenerated
 only after an explicit recovery decision; surviving README, development-guide,
 and plan edits remain unstaged and untouched.
+
+## 2026-09-07: pinned ARM Mac setup checkpoint
+
+The fresh `/Users/jamiestephens/src/leanexe` checkout resumes `talosfp-euler`
+from d597fc4.  The user authorized the full Euler agenda.  All five official
+ARM Mac tool archives are installed under `build/tools` at the existing exact
+project pins, and all eleven proof Git dependencies match the tracked manifest.
+`tools/bootstrap-macos.sh` verifies immutable archive digests;
+`tools/macos-env.sh` selects these repository-local versions.  The old Linux
+preload is not used on Darwin.  The native Wasmtime C host builds and reproduces
+all eight previously published Euler interface rows exactly.
+
+The Darwin runner uses native flock, one Lean thread, an explicit process-group
+timeout, and nice priority.  Standard mode fails closed on macOS.  This sandbox
+rejects nice; LEANRUN_INHERIT_PRIORITY=1 is an explicit exception, disabled by
+default, whose use for Lean is awaiting a user answer.  Dummy Node-process
+tests pass for exclusion, waiting, timeout and descendant termination, signal
+forwarding, normal exit codes, environment controls, and nested-runner rejection.
+Pinned-version, process-wrapper, interface-data, documentation, and whitespace
+checks pass.  No Lean target has run here yet, and no recovered fixed-step
+artifact or new data is claimed.  The source registry remains 26 complete cases
+and the exact-artifact registry remains 21 packages.
+
+Next: resolve the inherited-priority execution boundary, build the pinned
+compiler and proof prerequisites, recover the fixed 2,551-byte step artifact
+at recorded digest 0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511,
+then publish its verified raw state data before extending the checked solver.
+No cleanup or replacement of pre-existing workspace state occurred.

@@ -15,6 +15,7 @@ function main() {
   run([process.execPath, path.join("test", "wasm_tools_version.js")]);
   run([process.execPath, path.join("test", "run_process.js")]);
   run([process.execPath, path.join("test", "leanrun_local.js")]);
+  run([process.execPath, path.join("test", "leanrun_macos.js")]);
   run([process.execPath, path.join("test", "artifact_conformance.js")]);
   run([process.execPath, path.join("test", "artifact_identity.js")]);
   run([process.execPath, path.join("test", "artifact_migrate.js")]);

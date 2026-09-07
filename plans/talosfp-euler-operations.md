@@ -137,6 +137,27 @@ inspection; the already-recorded read-only `ps` failure must not be repeated.
 
 ## Runner and artifact-driver boundaries
 
+### ARM Mac checkout recovery, 2026-09-07
+
+The user authorized resuming the complete Euler agenda in a fresh checkout at
+`/Users/jamiestephens/src/leanexe`.  The Linux path envelope above is historical
+for that host, and does not name installed binaries on this ARM Mac.  After
+`sh tools/bootstrap-macos.sh`, source `tools/macos-env.sh` from the repository
+root to select the exact same versions from `build/tools`.  Official archive
+digests are pinned in the bootstrap.  No Linux compatibility preload is used
+on Darwin.  All existing preservation, journaling, theorem, serialization, and
+publication requirements continue to apply.
+
+The Darwin runner retains the shared native `flock` lock, one Lean thread,
+explicit process-group timeout, and nice priority.  It reports the absence of
+Linux cgroup and ionice controls.  A sandbox that rejects nice priority causes
+a fail-closed exit before the target executes.  Only an explicit user-approved
+`LEANRUN_INHERIT_PRIORITY=1` permits inherited priority instead; this is not
+enabled by the environment script or bootstrap.  Tests of that opt-in may use
+dummy non-Lean processes without launching any compiler or proof target.
+
+### Driver invocation boundaries
+
 - Direct Lean or Lake targets run through the local `tools/leanrun` envelope.
 - Invoke a Node driver that calls `tools/leanrun` internally directly under
   the pinned environment.  This includes `tools/talos-artifact.js`,

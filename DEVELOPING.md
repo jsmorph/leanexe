@@ -4,7 +4,30 @@ This guide defines the repository setup, development workflow, test gates, gener
 
 ## Prerequisites
 
-LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86_64` and `aarch64`; another platform requires a compatible Wasmtime CLI and C API supplied through the environment variables below.  A first proof build needs network access for the pinned Talos and Mathlib dependencies, and the semantic conformance gate needs CodeLib's pinned official WebAssembly testsuite submodule.
+LeanExe develops and tests on Linux, with local execution support for ARM macOS.
+The Linux Wasmtime download script supports `x86_64` and `aarch64`; ARM Macs
+use the pinned repository-local bootstrap below.  A first proof build needs
+network access for the pinned Talos and Mathlib dependencies, and the semantic
+conformance gate needs CodeLib's pinned official WebAssembly testsuite submodule.
+
+On an ARM Mac, run these commands from the repository root:
+
+```sh
+sh tools/bootstrap-macos.sh
+source tools/macos-env.sh
+tools/leanrun --timeout 15m lake build
+```
+
+The bootstrap verifies official archive SHA-256 digests and installs the same
+Lean, Node, wasm-tools, and Wasmtime versions under `build/tools`.  It preserves
+existing archives and installation directories.  The environment script selects
+those paths without changing global installations.  The Darwin runner uses
+native `flock`, a process-group timeout, one Lean thread, and nice priority.
+It requires explicit local mode because systemd cgroups and `ionice` are
+unavailable.  If a sandbox blocks `nice`, it stops unless the user has expressly
+authorized `LEANRUN_INHERIT_PRIORITY=1`; that exception retains inherited
+priority and prints a diagnostic.  The environment script does not enable the
+exception.  The Linux `/proc` compatibility preload is not used on macOS.
 
 | Tool | Repository requirement |
 |------|------------------------|
