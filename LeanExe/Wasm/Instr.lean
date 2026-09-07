@@ -50,6 +50,9 @@ inductive Instr where
   | drop
   | addF64
   | mulF64
+  | subF64
+  | divF64
+  | sqrtF64
   | i64ReinterpretF64
   | f64ReinterpretI64
   | block (body : List Instr)

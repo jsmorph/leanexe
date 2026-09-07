@@ -722,6 +722,7 @@ mutual
     | .local index => [index]
     | .trap => []
     | .u64 _ => []
+    | .f64SqrtBits value => exprUsedSlots value
     | .u64Bin _ left right =>
         addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
     | .ite cond thenValue elseValue =>
@@ -2740,6 +2741,7 @@ mutual
   partial def exprReleasedSlots : IRExpr → List Nat
     | .release ptr =>
         addLiveSlots (exprUsedSlots ptr) (exprReleaseTargetSlots ptr)
+    | .f64SqrtBits value => exprReleasedSlots value
     | .u64Bin _ left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
     | .ite cond thenValue elseValue =>
         addLiveSlots (condReleasedSlots cond)
@@ -3554,6 +3556,7 @@ partial def exprSpineOwnedTemps (ownedLocals : List Nat) : IRExpr → List Nat
         (fromLets.filter fun slot =>
           !released.contains slot && !exprReturnsLocalSlot slot body)
         (exprSpineOwnedTemps ownedLocals body)
+  | .f64SqrtBits value => exprSpineOwnedTemps ownedLocals value
   | .u64Bin _ left right =>
       addLiveSlots (exprSpineOwnedTemps ownedLocals left)
         (exprSpineOwnedTemps ownedLocals right)
@@ -3622,6 +3625,8 @@ mutual
       (summaries : Array (List Nat))
       (ownerSources : List (Nat × List Nat)) :
       IRExpr → IRExpr
+    | .f64SqrtBits value =>
+        .f64SqrtBits (refreshOwnerMasksExprForAlloc summaries ownerSources value)
     | .u64Bin op left right =>
         .u64Bin op
           (refreshOwnerMasksExprForAlloc summaries ownerSources left)

@@ -28,6 +28,7 @@ mutual
     | .local _ => true
     | .trap => true
     | .u64 _ => true
+    | .f64SqrtBits value => scalarExpr value
     | .u64Bin _ left right => scalarExpr left && scalarExpr right
     | .ite cond thenValue elseValue =>
         scalarCond cond && scalarExpr thenValue && scalarExpr elseValue

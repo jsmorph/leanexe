@@ -245,6 +245,7 @@ mutual
     | .local index => .local index
     | .trap => .trap
     | .u64 value => .u64 value
+    | .f64SqrtBits value => .f64SqrtBits (shiftExprCalls offset value)
     | .u64Bin op left right =>
         .u64Bin op (shiftExprCalls offset left) (shiftExprCalls offset right)
     | .ite cond thenValue elseValue =>
@@ -461,6 +462,8 @@ def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .shiftRight => [Instr.shrUI64]
   | .f64AddBits => [Instr.addF64]
   | .f64MulBits => [Instr.mulF64]
+  | .f64SubBits => [Instr.subF64]
+  | .f64DivBits => [Instr.divF64]
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
@@ -742,6 +745,7 @@ mutual
     | .u64Bin .natMul left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
+    | .f64SqrtBits value => exprScratch value
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
@@ -2592,6 +2596,17 @@ mutual
         emitExpr scratch left ++ [Instr.f64ReinterpretI64] ++
           emitExpr scratch right ++ [Instr.f64ReinterpretI64, Instr.mulF64,
             Instr.i64ReinterpretF64]
+    | .u64Bin .f64SubBits left right =>
+        emitExpr scratch left ++ [Instr.f64ReinterpretI64] ++
+          emitExpr scratch right ++ [Instr.f64ReinterpretI64, Instr.subF64,
+            Instr.i64ReinterpretF64]
+    | .u64Bin .f64DivBits left right =>
+        emitExpr scratch left ++ [Instr.f64ReinterpretI64] ++
+          emitExpr scratch right ++ [Instr.f64ReinterpretI64, Instr.divF64,
+            Instr.i64ReinterpretF64]
+    | .f64SqrtBits value =>
+        emitExpr scratch value ++
+          [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
     | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ([Instr.iff true (emitExpr scratch thenValue) (some (emitExpr scratch elseValue))])
@@ -2786,6 +2801,17 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
       emitExprWithReleaseFallback releaseIndex scratch left ++ [Instr.f64ReinterpretI64] ++
         emitExprWithReleaseFallback releaseIndex scratch right ++
           [Instr.f64ReinterpretI64, Instr.mulF64, Instr.i64ReinterpretF64]
+  | .u64Bin .f64SubBits left right =>
+      emitExprWithReleaseFallback releaseIndex scratch left ++ [Instr.f64ReinterpretI64] ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.f64ReinterpretI64, Instr.subF64, Instr.i64ReinterpretF64]
+  | .u64Bin .f64DivBits left right =>
+      emitExprWithReleaseFallback releaseIndex scratch left ++ [Instr.f64ReinterpretI64] ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.f64ReinterpretI64, Instr.divF64, Instr.i64ReinterpretF64]
+  | .f64SqrtBits value =>
+      emitExprWithReleaseFallback releaseIndex scratch value ++
+        [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
   | .u64Bin op left right =>
       emitExprWithReleaseFallback releaseIndex scratch left ++
         emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op

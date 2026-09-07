@@ -35,6 +35,8 @@ inductive U64Op where
   | shiftRight
   | f64AddBits
   | f64MulBits
+  | f64SubBits
+  | f64DivBits
   deriving BEq, Repr
 
 inductive RuntimeStat where
@@ -66,6 +68,7 @@ mutual
     | local (index : Nat)
     | trap
     | u64 (value : Nat)
+    | f64SqrtBits (value : Expr)
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
@@ -208,6 +211,7 @@ mutual
     | .local index => store index
     | .trap => 0
     | .u64 value => UInt64.ofNat value
+    | .f64SqrtBits value => LeanExe.Float64.sqrtBits (value.eval module_ store)
     | .u64Bin op left right =>
         let leftValue := left.eval module_ store
         let rightValue := right.eval module_ store
@@ -227,6 +231,8 @@ mutual
         | .shiftRight => UInt64.shiftRight leftValue rightValue
         | .f64AddBits => LeanExe.Float64.addBits leftValue rightValue
         | .f64MulBits => LeanExe.Float64.mulBits leftValue rightValue
+        | .f64SubBits => LeanExe.Float64.subBits leftValue rightValue
+        | .f64DivBits => LeanExe.Float64.divBits leftValue rightValue
     | .ite cond thenValue elseValue =>
         if cond.eval module_ store then
           thenValue.eval module_ store

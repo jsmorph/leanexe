@@ -4732,7 +4732,13 @@ mutual
       (primitive : Name)
       (args : List Expr) :
       Except String (IRExpr × Nat) := do
-    if compilerPrimitiveName primitive then
+    if primitive == ``LeanExe.Float64.sqrtBits then
+      match args with
+      | [value] =>
+          let result ← extractExprFrom ctx locals nextLocal value
+          .ok (.f64SqrtBits result.fst, result.snd)
+      | _ => .error s!"floating-point square root requires exactly one argument: {primitive}"
+    else if compilerPrimitiveName primitive then
       match args with
       | [left, right] =>
           let leftResult ← extractExprFrom ctx locals nextLocal left
@@ -4740,6 +4746,10 @@ mutual
           let op :=
             if primitive == ``LeanExe.Float64.addBits then
               LeanExe.IR.U64Op.f64AddBits
+            else if primitive == ``LeanExe.Float64.subBits then
+              LeanExe.IR.U64Op.f64SubBits
+            else if primitive == ``LeanExe.Float64.divBits then
+              LeanExe.IR.U64Op.f64DivBits
             else
               LeanExe.IR.U64Op.f64MulBits
           .ok (.u64Bin op leftResult.fst rightResult.fst, rightResult.snd)

@@ -132,6 +132,9 @@ mutual
     | .drop => byte 26
     | .addF64 => byte 160
     | .mulF64 => byte 162
+    | .subF64 => byte 161
+    | .divF64 => byte 163
+    | .sqrtF64 => byte 159
     | .i64ReinterpretF64 => byte 189
     | .f64ReinterpretI64 => byte 191
     | .block body => bytes2 2 64 ++ emitInstrs body ++ byte 11
