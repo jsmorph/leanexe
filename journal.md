@@ -4618,3 +4618,18 @@ Publication will use gh's authenticated Git-data API, exact index blobs/tree,
 a sole current-remote parent, a non-forced ref update, and fetched tree/content
 verification before compare-and-swap advancement of the local branch.  Actual
 publication identities will be recorded in one bounded follow-up receipt.
+
+### ARM Mac setup publication receipt
+
+The reviewed twelve-path setup checkpoint was published as
+`030a433688380534d2db62c2ab0e6bdb18d86693`, message
+`Support pinned ARM Mac local tooling`, with sole parent
+`d597fc4c9f60d803498d5d21cf138b148cae0ac3` and exact tree
+`4aea36274a2e950e13145abeee4e167c1ff3ffc8`.  Every uploaded Git blob matched
+its staged index identity.  The Git-data API tree matched `git write-tree`,
+and the branch update used force:false.  A fetch with auto-maintenance disabled
+confirmed the commit, tree, sole parent, message, index, and worktree equality
+before the local branch advanced by exact compare-and-swap.  Final status was
+clean and synchronized.  This is the single receipt follow-up for the setup
+checkpoint; only journal.md and devnotes.md are staged for it.  Its own identity
+is verified externally, with no recursive receipt chain.
