@@ -14,8 +14,13 @@ radicand before square root and a finite enthalpy before acceptance.
 [Guard.lean](Guard.lean) proves accepted input words decode to physically
 admissible Euler states, with exact internal energy at least density/2.
 [Safety.lean](Safety.lean) proves accepted pure Talos model status implies
-that input guard and finiteness of all twelve rounded intermediates. All six
-public theorems use only propext, Classical.choice, and Quot.sound (or a subset).
+that input guard and finiteness of all twelve rounded intermediates.
+[Execution.lean](Execution.lean) proves total exact generated-WAT execution
+for every three raw input words, with complete store preservation and exact
+seven-word output. [Spec.lean](Spec.lean) attaches input admissibility and
+intermediate finiteness to that execution. The helper proofs are parameterized
+by a closed module layout for later composition. All public theorems use
+only propext, Classical.choice, and Quot.sound (or a subset).
 
 [The focused regression](../../../../../test/euler_conservative.js) checks six
 accepted results and 32 rejections in compiled Wasmtime execution, plus exact
@@ -23,9 +28,9 @@ IR/WAT arithmetic counts. It covers the Sod states, signed zero, adjacent
 guard boundaries, invalid values, intermediate underflow/overflow, and the
 published cancellation and one-sided-NaN examples.
 
-This checkpoint has source, model-safety proofs, and runtime tests. The exact
-generated-WAT execution theorem, frozen binary package, dynamic Rusanov
-interface, array step, and 100-cell runner remain pending. It makes no general
+The generated module is 2,019 bytes; source/cache regeneration is checked.
+The frozen binary package, dynamic Rusanov interface, array step, and
+100-cell runner remain pending. It makes no general
 roundoff, invariant-domain preservation, stability, or PDE convergence claim.
 
 Run the focused checks serially from the repository root:
@@ -33,6 +38,6 @@ Run the focused checks serially from the repository root:
 ```sh
 source tools/macos-env.sh
 tools/leanrun --timeout 5m lake --no-ansi build LeanExe.Examples.EulerConservative
-tools/leanrun --timeout 5m lake -d proofs/talos/lean --no-ansi build Project.EulerConservative.Safety
+node tools/talos-proof.js check euler_conservative
 node test/euler_conservative.js
 ```
