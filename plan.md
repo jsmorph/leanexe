@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package has been recovered and checked, and verified data publication is next.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -229,7 +229,8 @@ acceptance gates, and nonclaims.
 - [x] Transfer the executed words to decoded-real admissibility and exact
       signed cell and balance errors for the actual rounded fixed-step output.
 - [x] Freeze and independently verify the proved fixed-step bytes.
-- [ ] Publish the verified raw state data.
+- [x] Publish the verified raw state data with host CSV/plot presentation and
+      independent exact-rational numerical comparison.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
       runner only after the fixed artifact passes.
 

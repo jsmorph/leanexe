@@ -8853,3 +8853,15 @@ all identities, embedded bytes, and artifact theorems.  Documentation and
 identity checks pass again.  The reviewed recovery checkpoint is ready for
 non-forced exact-tree publication; data and FP-extension drafts remain outside
 the checkout.
+
+## 2026-09-07: certified fixed-step data
+
+Artifact recovery is published and verified at fc50beb78bae6e387c5aa9a8245dd6939cb984c1
+(tree 93705d36a764f63e8cf2dce5c78f71d7106b452a).  The StepData module now
+proves the seven published words and numerical certificate from the exact
+frozen bytes.  Its focused Lean build and axiom audit pass.  The
+euler-rusanov-step-v1 dataset includes raw words, an independent BigInt rational
+comparison, host decimal CSV, SVG plot, manifest, and README.  Runtime/data
+regressions pass and the static rendered plot is visually checked.  Signed
+physical balance residuals remain [0, 2^-57, -2^-56].  The fixed-step milestone
+is complete; the FP extension and checked 100-cell runner remain next.
