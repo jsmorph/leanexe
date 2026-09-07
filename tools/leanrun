@@ -104,6 +104,26 @@ if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
   exec ionice -c 3 timeout "$run_timeout" "$@"
 fi
 
+if [ "$(uname -s)" = "Darwin" ]; then
+  if [ "$local_mode" != "1" ]; then
+    echo "leanrun: macOS requires explicit LEANRUN_LOCAL=1; systemd cgroups are unavailable" >&2
+    exit 2
+  fi
+  helper_hash="$(shasum -a 256 "$script_dir/leanrun-macos.c")"
+  helper="$cache_dir/leanrun-macos-${helper_hash%% *}"
+  if [ ! -x "$helper" ]; then
+    staging="$(mktemp -d "$cache_dir/leanrun-macos-build.XXXXXX")"
+    cc -std=c11 -Wall -Wextra -Werror -O2 "$script_dir/leanrun-macos.c" -o "$staging/runner"
+    # Publish without overwriting an existing helper; retain staging as local state.
+    if ! ln "$staging/runner" "$helper"; then
+      [ -x "$helper" ] || exit 2
+    fi
+  fi
+  mkdir -p "$lock_dir"
+  echo "leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice" >&2
+  exec "$helper" "$lock_dir/1" "$lock_timeout" "$run_timeout" "$@"
+fi
+
 mkdir -p "$lock_dir"
 exec 9>"$lock_dir/1"
 if ! flock -w "$lock_timeout" 9; then

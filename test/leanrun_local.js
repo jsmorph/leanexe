@@ -106,11 +106,16 @@ try {
     "-e",
     "process.exit(0)",
   ], "0");
-  expectStatus("standard invocation", standard, 91);
-  if (!fs.existsSync(systemdMarker)) {
+  expectStatus("standard invocation", standard, process.platform === "darwin" ? 2 : 91);
+  if (process.platform === "darwin" &&
+      (!standard.stderr.includes("requires explicit LEANRUN_LOCAL=1") ||
+       fs.existsSync(systemdMarker))) {
+    throw new Error("macOS standard invocation did not reject unavailable cgroups");
+  }
+  if (process.platform !== "darwin" && !fs.existsSync(systemdMarker)) {
     throw new Error("standard invocation did not call systemd-run");
   }
-  fs.rmSync(systemdMarker);
+  if (fs.existsSync(systemdMarker)) fs.rmSync(systemdMarker);
 
   const timed = runLeanrun([
     "--timeout",
