@@ -533,7 +533,9 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove raw-word finite/positive classification and magnitude comparison.
 - [x] Implement the checked conservative-state side, prove input admissibility
       and pure-model intermediate finiteness, and pass 38 compiled vectors.
-- [ ] Prove exact generated-WAT execution of the conservative-state side.
+- [x] Prove exact generated-WAT execution of the conservative-state side
+      and transfer admissibility and intermediate finiteness to that execution.
+- [ ] Freeze and independently verify the checked conservative-side bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

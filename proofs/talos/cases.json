@@ -299,6 +299,18 @@
         "Project.F64SqrtBits.Spec.sqrtBits_wat_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_conservative",
+      "module": "LeanExe.Examples.EulerConservative",
+      "entry": "LeanExe.Examples.EulerConservative.sideCheckedBits",
+      "leanModule": "EulerConservative",
+      "specTarget": "Project.EulerConservative.Spec",
+      "behaviorTheorems": [
+        "Project.EulerConservative.Spec.sideCheckedBits_exact",
+        "Project.EulerConservative.Spec.sideCheckedBits_wat_safe"
+      ],
+      "complete": true
     }
   ]
 }

@@ -5546,3 +5546,173 @@ parent/tree/index/worktree verification:
 - `proofs/talos/lean/Project/EulerConservative/Safety.lean`
 - `test/euler_conservative.js`
 - `test/run_all.js`
+
+2026-09-07 exact conservative-side execution boundary: published the 13-path
+source/model safety checkpoint as 4001afe81123cf61875387a79c946f4e27df8e77,
+sole parent c88c2f3233a74b036deaf009d6c78480eb42a212, tree
+cd8f2f9ed25e867150b07ee3bfa5d611bd94fa23. API/index tree equality,
+non-forced branch update, fetched commit/parent/message/tree/content equality,
+and local CAS update-ref all passed; final status was clean and synchronized.
+Added one deliberately incomplete euler_conservative registry entry and a
+Spec import boundary without any admitted theorem. Its two intended public
+execution/safety declaration names are pending, not claimed. Explicitly
+verified that its Program.lean and two .generated deliverables do not exist.
+The following scoped prepare may create only those named deliverables and
+its own fresh staging path, preserving all earlier generated state.
+
+Scoped prepare euler_conservative passed and removed only its own fresh
+staging directory tmp/leanexe-talos-UA7K2G. Generated Program.lean is unchanged
+by hand. Its functions 0/1/2/3/4/5 are positiveBits/absBits/finiteBits/
+stateGuard/rejectedSide/sideCheckedBits, with runtime helpers at 6/7/8/9.
+Added the new Program import and four exact runtime pins to Runtime/Checks.lean.
+Retained log euler-conservative-prepare.log and generated identities:
+
+[
+  {
+    "path": "proofs/talos/lean/Project/EulerConservative/Program.lean",
+    "bytes": 19719,
+    "sha256": "1a88dfca607722fb2ccffb7834cef6f354ebb52cff1bcdb98648ec6c1424a7d2"
+  },
+  {
+    "path": "proofs/talos/.generated/euler_conservative/program.wasm",
+    "bytes": 2019,
+    "sha256": "351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114"
+  },
+  {
+    "path": "proofs/talos/.generated/euler_conservative/program.wat",
+    "bytes": 20531,
+    "sha256": "3f4fc73b350495438f172357a82bcd517385717547373f39ec664005cc374320"
+  }
+]
+
+Added fresh EulerConservative/Helpers.lean with a closed-module helper layout
+and four module-polymorphic exact execution proof drafts: sign clearing,
+positive classification, finite classification through the sign-clear call,
+and the seven-word reject result. Each theorem preserves the complete store
+and uses TerminatesWith; the state guard helper and main side remain next.
+Build only these helpers and the exact runtime pins; no broad source suite.
+
+The first helper build passed absBits_exact, rejectedSide_exact, the generated
+Program, and all runtime pins. The positive/finite proofs failed on an
+unavailable progress tactic, before their branch reasoning executed. Replaced
+the speculative combinator with two explicit positive branches and one finite
+branch, and imported the existing TalosCompat metadata-normalization lemmas
+used by the earlier Euler execution proof. Retained helpers-first.log; helper
+retries are focused on explicit diagnostics, not unchanged timeouts.
+
+The helper branch run reached no-progress diagnostics after simp had already
+consumed straight-line instructions. Replaced the redundant fixed sequence
+with the existing bounded repeat/first pattern: wp_run itself fails when it
+makes no progress, then the explicit if rule handles the next guard. The
+final model-value simplification remains separate. Retained helpers-branches.log.
+
+All four scalar helper execution theorems now pass (3350 jobs, 4.4-second
+module build) in helpers-consume.log with only the standard three axioms.
+Added fresh StateGuard.lean to compose those helper calls through the exact
+short-circuit control flow. A small side_peel tactic consumes only determined
+scalar prefixes and guards, stopping at calls; the proof splits actual Bool
+helper outputs and the two final raw order comparisons. No source or generated
+program changed.
+
+StateGuard exact execution passed on its first run (3351 jobs, 5-second
+module build), standard three axioms only. Added fresh Execution.lean to
+compose the five helper specifications through the main side routine. The
+proof names the twelve pure IEEE intermediates, handles the first failed
+guard via the proved seven-word rejection call, and preserves the source
+arithmetic association on acceptance. It is module-polymorphic over the
+closed helper layout and main-function identity. The focused attempt has a
+five-minute runner bound and an explicit heartbeat limit; exact main execution
+is unclaimed until it passes.
+
+First main execution attempt failed immediately at the entry-frame change:
+Wasm operand-stack arguments are reversed, but Function.toLocals expects
+source parameter order after the entry rule reverses them. Corrected only
+the proof frame to [rho, momentum, energy]. The generated code/model are
+unchanged; retained euler-conservative-execution-first.log.
+
+Main execution frame attempt ended with a deterministic eight-million-heartbeat
+whnf limit in the first reject tail, not a runner wall timeout. The failed
+proof audit is not an accepted theorem. Retained execution-frame.log. A read
+of a guessed Wp/Locals.lean returned ENOENT; discovered and read the actual
+Interpreter/Wasm/Locals.lean instead, with no mutation from that failed read.
+The existing EulerRusanov staged proof explicitly normalizes List.set and
+concrete list indexing; wp_run alone does not include these rewrites. Added
+only EulerConservative/Rejection.lean as a smaller first-rejection boundary,
+with concrete frame normalization and a one-million-heartbeat budget. It
+will be checked before changing or rerunning the main execution proof.
+User requested manageable regression checks; unrelated CLOB/full-source
+aggregate work remains deferred.
+
+The isolated rejection proof passed in four seconds, standard three axioms
+only, at one million heartbeats (rejection-normalize.log). This confirms
+concrete List.set/index normalization removes the pathological local-frame
+reduction. Applied that same explicit normalization to Execution.lean and
+its initial prefix; lowered the whole-proof heartbeat budget from eight to
+two million. The proof now imports the independently checked rejection
+boundary. Only this materially changed focused target will run next.
+
+Normalized main execution passed (3353 jobs, 19-second module), standard
+three axioms only, in execution-normalize.log. It proves total seven-word
+execution and full store preservation for arbitrary raw inputs. A token-checked
+warning cleanup first rejected one-based column interpretation before any
+write; Lean diagnostic columns are zero-based. The corrected scoped edit
+removes only the 99 unused simp arguments identified by Lean in four new
+handwritten proof modules, plus the redundant final peel. Installed the
+prepared Spec composition: exact execution and accepted-state admissibility/
+finiteness for all twelve intermediates. No generated code, source, or model
+changed. Registry remains incomplete until this final focused gate passes.
+
+Final Spec build passed (3366 jobs, Spec 3.7 seconds); both registered
+public theorems audit to only propext, Classical.choice and Quot.sound. All
+new Euler execution modules now have no linter warnings. Marked the case
+complete, imported its Spec in Project, updated the cached-program identity
+count to 30, and reconciled the six maintained inventories, side README,
+plan and Euler plan. Frozen artifact count remains 25. The inventory edit
+stopped at a checked row mismatch after the preceding bounded edits had
+completed: the existing sqrt row uses a link around its name. Matched the
+actual row, added the conservative side, and retained all prior one-line
+behaviorTheorems array formatting. Added this ledger and devnotes only after
+those corrections. A read-only lookup used the absent Float64Sqrt directory
+name; rg --files subsequently found F64SqrtBits, with no mutation from the
+lookup. Focused source regeneration/proof, runtime pins, identity metadata
+and doc links remain the checkpoint gates. Source/compiled bytes are unchanged,
+so the previously passing 38 vectors need no rerun.
+
+Focused source regeneration and Spec gate passed; the 2,019-byte WASM, WAT
+and generated Program identities remain exactly as recorded. Runtime pins
+passed (3372 jobs); metadata checks accepted all 30 complete registrations
+and cached programs, artifact identity membership, and 91 maintained docs.
+The source gate removed only its own fresh staging directory. Correction to
+the preceding linter note: one harmless redundant final side_fp_peel remained,
+because the first line carried a branch bullet. Removed that exact duplicate
+and will recheck only Spec; no runtime vector or unrelated gate is repeated.
+The proof inventory now distinguishes the current 30-case aggregate from
+the historical 29-case timeout.
+
+The final Spec check passed after redundant-tactic removal (3366 jobs), with
+standard-axiom audits and no new Euler warnings. No source or artifact bytes
+changed. Review and stage the following 21 exact paths, then publish a
+non-forced single-parent checkpoint using API/index/fetched-tree and local
+content equality checks; preserve all ignored build/evidence/diagnostic state.
+
+- `DEVELOPING.md`
+- `README.md`
+- `devnotes.md`
+- `docs/spec.md`
+- `docs/status.md`
+- `docs/verifying.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/talos/README.md`
+- `proofs/talos/cases.json`
+- `proofs/talos/lean/Project.lean`
+- `proofs/talos/lean/Project/EulerConservative/Execution.lean`
+- `proofs/talos/lean/Project/EulerConservative/Helpers.lean`
+- `proofs/talos/lean/Project/EulerConservative/Program.lean`
+- `proofs/talos/lean/Project/EulerConservative/README.md`
+- `proofs/talos/lean/Project/EulerConservative/Rejection.lean`
+- `proofs/talos/lean/Project/EulerConservative/Spec.lean`
+- `proofs/talos/lean/Project/EulerConservative/StateGuard.lean`
+- `proofs/talos/lean/Project/Runtime/Checks.lean`
+- `test/artifact_identity.js`
