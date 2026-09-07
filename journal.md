@@ -6049,3 +6049,68 @@ Review and stage only these 22 paths for a non-forced verified checkpoint:
 - `proofs/talos/lean/Project/EulerDynamicFlux/ArtifactValidation.lean`
 - `proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/manifest.json`
 - `proofs/artifacts/euler_dynamic_flux/304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022/program.wasm`
+
+Published dynamic exact bytes as 9788bd2efc0acc24b13d4313fb08bb47eed21cf0,
+sole parent 654da5b8a0fc1fe00f41532dc51f259b7da2dfcc, tree
+46062da645906cce05708280c3e5c55e27b15b95. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS update passed;
+final status was clean and synchronized. Added fresh EulerCellStep source
+and pure IEEE model. A positive finite dt/dx ratio and two accepted dynamic
+interfaces precede the rounded Courant check (positive and at most 1/2).
+Three checked difference/multiply/subtract updates precede a final checked
+thermodynamic validation of the new state. Accepted output is status, density,
+momentum, energy, pressure, selected speed and Courant number; rejection is
+status one and six positive zeros. The array wrapper and runner are still
+pending, with no new source-case or frozen-package registration yet.
+
+Cell source builds (5 jobs, 183 ms). Added a fresh focused Safety boundary
+for the three rounded update intermediates, accepted updated-state bounds/
+admissibility/positive pressure, and the raw positive Courant ceiling. The
+proof composes the checked-side safety result after explicit cell guard
+case analysis; all resulting facts remain unclaimed until the build passes.
+
+Cell Safety builds successfully (3,068 jobs, 2.0-second new module), with
+only standard logical axioms for the three public theorems. A read-only
+Node host-oracle import initially failed because process.argv[1] was absent;
+using an explicit stdin '-' argument succeeded without modifying the oracle.
+Fixed words include two adjacent ratios, 3fdb0b80ef844ba1 and
+3fdb0b80ef844ba2, whose rounded Courant values are both exactly 1/2;
+3fdb0b80ef844ba3 is the first rejected ratio with Courant one ULP above.
+Added a decoded-real positive Courant ceiling lemma by composing existing
+positive-word order with exact decoding of the binary64 half constant.
+The resumed environment still selects pinned ARM Mac tools through
+tools/macos-env.sh; no tool replacement or parallel Lean work occurs.
+
+Decoded Courant proof passes (3,068 jobs, 6.0-second module). All four
+public cell model safety audits contain only standard logical axioms. Added
+a focused compiled regression with 16 scalar and 27 cell cases, including
+the adjacent rounded-CFL boundary, update overflow stages, published bad
+states in three neighborhood positions, and final updated-state rejection.
+The expected full-cell operation counts are checked against emitted IR/WAT.
+
+Registered only the new source build, focused test and model Safety import;
+source-proof/artifact registries stay unchanged. Added the cell README and
+synchronized plan/status/devnotes with that boundary. A read-only lookup
+incorrectly named absent tools/talos-artifacts.json; the actual registry is
+proofs/talos/cases.json. No generator or registry mutation resulted.
+
+The focused compiled regression passes all 16 scalar updates and 27 full
+cells, retaining tmp/euler-cell-step-Gh0rFn. Both emitted IR and WAT have
+Sub2/Mul1 for scalar update and Sub5/Div2/Mul10/Add4/Sqrt1 for the full cell.
+Identity metadata and 91 maintained Markdown files pass; new cell README
+links were separately checked. Source/model diff has only the intended
+namespace, intrinsic and deriving substitutions. No broad regression ran.
+Review/stage precisely these 12 paths for verified non-forced publication:
+
+- LeanExe/Examples/EulerCellStep.lean
+- proofs/talos/lean/Project/EulerCellStep/Model.lean
+- proofs/talos/lean/Project/EulerCellStep/Safety.lean
+- proofs/talos/lean/Project/EulerCellStep/README.md
+- test/euler_cell_step.js
+- test/run_all.js
+- proofs/talos/lean/Project.lean
+- docs/status.md
+- plan.md
+- plans/euler-rusanov.md
+- devnotes.md
+- journal.md
