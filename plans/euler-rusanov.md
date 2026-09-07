@@ -5,7 +5,8 @@ genuine Fréchet Jacobian, complete strictly ordered eigenbasis, and decoded
 finite-volume error layer are proved and integrated.  The fixed compiled step
 now has source, generated Talos cache, pure model, runtime pins, exact WAT
 execution and numerical theorems, and its recovered 2,551-byte exact artifact.
-Verified raw step data is the next checkpoint.
+The [verified raw step dataset](../data/euler-rusanov-step-v1/README.md),
+exact-rational comparison, host decimal CSV, and cell-average plot are complete.
 This document expands phase 8 of the root
 [Development Plan](../plan.md).
 
@@ -432,8 +433,9 @@ the actual generated function-6 status gate.  It proves fuel-independent
 termination, complete store preservation, and the seven pure-model words.  The
 registry marks all twenty-six cases complete, the `Project` aggregate imports
 the step specification, and the full source-driven gate passes.  The subsequent
-ARM Mac recovery also closes the exact-byte step package; raw step data remains
-the next publication checkpoint.
+ARM Mac recovery also closes the exact-byte step package.  The subsequent
+StepData.artifact_stepV1 theorem certifies its seven published words and
+decoded-real certificate; the raw dataset and host presentations are complete.
 
 The decoded-real transfer for those executed words is also complete.  Write
 `epsilon = 2^-52`.  The public theorem
@@ -523,8 +525,8 @@ Every checked row ends in a passing commit, an update to this plan,
       signed cell and balance errors through the public
       `sodQuarterStepCheckedBits_wat_real` theorem.
 - [x] Freeze and independently verify the proved fixed-step bytes.
-- [ ] Publish the verified raw state data.
-- [ ] Add host CSV/plot presentation and independent numerical comparisons.
+- [x] Publish the verified raw state data.
+- [x] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
       comparison support as demanded by the checked multi-step solver.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
@@ -617,9 +619,9 @@ an exact-artifact theorem is claimed.
 The guarded scalar kernel, its real-domain and generated-WAT proofs, and the
 first f64 exact-byte package are complete.  Fixed-step compilation, pure-model
 evaluation, runtime pinning, generated-WAT composition, decoded-real transfer,
-and Wasmtime/WAT regression are also complete.  The remaining fixed-step work
-is verified raw-data publication.  No missing compiler or
-floating-point semantic feature blocks that work.
+and Wasmtime/WAT regression are also complete.  The fixed-step raw dataset,
+exact-artifact data theorem, independent rational comparison, host CSV, and
+cell-average plot complete the fixed-step work.
 
 The full checked grid step is a larger but compatible extension.  Its main cost
 is proof structure for two array buffers, boundary conditions, nested loops,

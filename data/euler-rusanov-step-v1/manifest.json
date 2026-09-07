@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "dataset": "euler-rusanov-step-v1",
+  "registryEntry": "euler_rusanov_step",
+  "wasmSha256": "0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511",
+  "wasmByteLength": 2551,
+  "exportedFunction": "sodQuarterStepCheckedBits",
+  "rowOrder": [
+    "left",
+    "right"
+  ],
+  "wordEncoding": "lowercase fixed-width 16-digit hexadecimal; raw IEEE 754 binary64",
+  "parameters": {
+    "gamma": "7/5",
+    "alpha": "7/4",
+    "dtOverDx": "1/4",
+    "dx": "1/2",
+    "dt": "1/8",
+    "rightPressureBits": "3fb999999999999a"
+  },
+  "formalProofModule": "Project.EulerRusanovStep.StepData",
+  "formalProofTheorem": "Project.EulerRusanovStep.StepData.artifact_stepV1",
+  "generatorSourceSha256": "967ed7cd7c57b71da45b8580265656a51661e6d6df77cf77702301c4457a1b9b",
+  "rawCsv": {
+    "file": "euler-rusanov-step-v1.csv",
+    "sha256": "d952ba579c4184acde0288e36a62726d46d2225068d4491b0f641191de92c74d",
+    "byteLength": 191
+  },
+  "comparison": {
+    "file": "exact-comparison.csv",
+    "sha256": "09b974ba13cbd34be863acc6cfd950d334d4e7967a91f99813eb24c1d5b7060d",
+    "description": "Independent host rational regression against the dyadic-input Euler stencil; not formal proof evidence"
+  },
+  "presentation": [
+    {
+      "file": "presentation.csv",
+      "sha256": "02a32c17663d85677bc5d6f5b084530390238757fcd53820eb431fffc45392fb"
+    },
+    {
+      "file": "cell-averages.svg",
+      "sha256": "a4ab2b4b746533be0bec64b5b05a9f2de4a5955636391ecde336289bf66aa569"
+    }
+  ],
+  "exactDecodedBalanceResidual": [
+    "0",
+    "1/144115188075855872",
+    "-1/72057594037927936"
+  ],
+  "exactDecodedPressures": [
+    "45635111584971637454762381218369/57044277010270323067351644241920",
+    "65914662085367357763892869637079/228177108041081292269406576967680"
+  ],
+  "claim": "One fixed two-cell Sod step, finite and admissible, with exact signed rounding errors; no full-solver or convergence claim"
+}

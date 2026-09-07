@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="410" viewBox="0 0 1080 410" role="img" aria-labelledby="title desc">
+<title id="title">Verified two-cell Sod update</title>
+<desc id="desc">Initial and updated conservative cell averages for the fixed Rusanov step. This plot is host presentation outside the formal proof.</desc>
+<rect width="1080" height="410" fill="#f7f9fb"/>
+<g font-family="Arial, sans-serif" fill="#183047">
+<text x="42" y="40" font-size="24" font-weight="700">Verified two-cell Sod update</text>
+<text x="42" y="67" font-size="14">t = 1/8 · gamma = 7/5 · alpha = 7/4 · dt/dx = 1/4</text>
+<path d="M745 40h28" stroke="#83929f" stroke-width="2" stroke-dasharray="6 4"/><text x="782" y="45" font-size="13">Initial</text>
+<path d="M895 40h28" stroke="#187aa0" stroke-width="3"/><text x="932" y="45" font-size="13">Updated</text>
+<text x="68" y="106" font-size="16" font-weight="700">Density</text>
+<path d="M68 330.000h268" stroke="#dbe3e9"/><text x="59" y="334" text-anchor="end" font-size="11">0.00</text>
+<path d="M68 228.000h268" stroke="#dbe3e9"/><text x="59" y="232" text-anchor="end" font-size="11">0.575</text>
+<path d="M68 126.000h268" stroke="#dbe3e9"/><text x="59" y="130" text-anchor="end" font-size="11">1.15</text>
+<path d="M68 152.609H202V307.826H336" fill="none" stroke="#83929f" stroke-width="3" stroke-dasharray="6 4"/>
+<path d="M68 186.563H202V273.872H336" fill="none" stroke="#187aa0" stroke-width="3"/>
+<text x="68" y="350" text-anchor="middle" font-size="12">0</text>
+<text x="202" y="350" text-anchor="middle" font-size="12">0.5</text>
+<text x="336" y="350" text-anchor="middle" font-size="12">1</text>
+<text x="202" y="370" text-anchor="middle" font-size="12">Position x</text>
+<text x="418" y="106" font-size="16" font-weight="700">Momentum</text>
+<path d="M418 330.000h268" stroke="#dbe3e9"/><text x="409" y="334" text-anchor="end" font-size="11">0.00</text>
+<path d="M418 228.000h268" stroke="#dbe3e9"/><text x="409" y="232" text-anchor="end" font-size="11">0.0647</text>
+<path d="M418 126.000h268" stroke="#dbe3e9"/><text x="409" y="130" text-anchor="end" font-size="11">0.129</text>
+<path d="M418 330.000H552V330.000H686" fill="none" stroke="#83929f" stroke-width="3" stroke-dasharray="6 4"/>
+<path d="M418 152.609H552V152.609H686" fill="none" stroke="#187aa0" stroke-width="3"/>
+<text x="418" y="350" text-anchor="middle" font-size="12">0</text>
+<text x="552" y="350" text-anchor="middle" font-size="12">0.5</text>
+<text x="686" y="350" text-anchor="middle" font-size="12">1</text>
+<text x="552" y="370" text-anchor="middle" font-size="12">Position x</text>
+<text x="768" y="106" font-size="16" font-weight="700">Energy</text>
+<path d="M768 330.000h268" stroke="#dbe3e9"/><text x="759" y="334" text-anchor="end" font-size="11">0.00</text>
+<path d="M768 228.000h268" stroke="#dbe3e9"/><text x="759" y="232" text-anchor="end" font-size="11">1.44</text>
+<path d="M768 126.000h268" stroke="#dbe3e9"/><text x="759" y="130" text-anchor="end" font-size="11">2.88</text>
+<path d="M768 152.609H902V312.261H1036" fill="none" stroke="#83929f" stroke-width="3" stroke-dasharray="6 4"/>
+<path d="M768 187.533H902V277.337H1036" fill="none" stroke="#187aa0" stroke-width="3"/>
+<text x="768" y="350" text-anchor="middle" font-size="12">0</text>
+<text x="902" y="350" text-anchor="middle" font-size="12">0.5</text>
+<text x="1036" y="350" text-anchor="middle" font-size="12">1</text>
+<text x="902" y="370" text-anchor="middle" font-size="12">Position x</text>
+<text x="42" y="398" font-size="12" fill="#52687a">Lines show cell averages. Presentation only; exact words and theorem references accompany the dataset.</text></g></svg>

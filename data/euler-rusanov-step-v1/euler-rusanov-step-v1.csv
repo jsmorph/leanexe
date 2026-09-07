@@ -1,0 +1,3 @@
+cell,center_x,status_u64,density_bits,momentum_bits,energy_bits
+left,0.25,0,3fe9e00000000000,3fbccccccccccccc,4000100000000000
+right,0.75,0,3fd4400000000000,3fbcccccccccccce,3fe7c00000000000

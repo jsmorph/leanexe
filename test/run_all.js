@@ -47,6 +47,7 @@ function main() {
   run([process.execPath, path.join("test", "f64_dot.js")]);
   run([process.execPath, path.join("test", "euler_rusanov.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);
+  run([process.execPath, path.join("test", "euler_rusanov_step_data.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_interface.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_c.js")]);
   run([process.execPath, path.join("test", "matched_values.js")]);
