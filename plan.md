@@ -250,7 +250,9 @@ acceptance gates, and nonclaims.
       and model size, prefix-preservation and accepted-cell invariants.
 - [x] Prove exact model payload correspondence and transfer cell safety to
       every accepted output array entry.
-- [ ] Prove scan bounds, grid array execution and exact bytes.
+- [x] Prove accepted speed-scan positivity and its decoded-real bound on
+      every checked computed cell speed.
+- [ ] Prove grid array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
