@@ -9006,3 +9006,12 @@ results and the new scalar update theorem; standard axioms only. Explicit
 rounded-product guard hypotheses resolve a local-alias simplification gap.
 The unchanged 43 compiled vectors pass; the exact 4,592-byte binary remains
 pending its frozen-package gate. Broad source regression stays deferred.
+
+## 2026-09-07: Frozen checked cell binary
+
+Registered the exact 4,592-byte cell kernel as package 28, SHA256
+2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f.
+Its focused gate covers embedded bytes, decoding, validation, exact Talos
+translation and both execution/safety specifications. Verifier source and
+all 27 earlier manifest/binary pairs remain unchanged. Source count stays 32;
+the double-buffered array step and repeated Sod runner are next.

@@ -6215,3 +6215,75 @@ Review and stage these21 exact paths for non-forced verified publication:
 - proofs/talos/lean/Project/EulerCellStep/Update.lean
 - proofs/talos/lean/Project/EulerCellStep/Safety.lean
 - proofs/talos/lean/Project/EulerCellStep/README.md
+
+Published exact cell execution as a4930832e6792c952b076c217bad278e6c7fca6c,
+sole parent9763988cdce7e658d9ff76c2baf2ef79ffd5c0da and tree
+9c331098bf8de79b7ce8bc88cab274103c876a00. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS all passed;
+final status was clean and synchronized. Preparing only the new exact cell
+package, while preserving prior binaries/manifests and historical receipts.
+
+Created nine fresh cell-update exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 27 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler_cell_step",
+  "sha256": "2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f",
+  "byteLength": 4592,
+  "newFiles": [
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactCache.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/EulerCellStep/ArtifactTranslation.lean",
+    "proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/manifest.json",
+    "proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/program.wasm"
+  ],
+  "oldPackagesUnchanged": 27,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+Reconciled current package inventory to28 and linked the exact cell
+package from its README. The scoped gate is still running; these checkpoint
+documentation statements will be published only after it passes. The
+verifier source and all27 earlier packages remain unchanged, and source
+count stays32. Existing Wasmtime host support already accepts ArrayUInt64
+arguments/results; the planned array step can use it without C/API changes.
+
+The focused cell package gate completed with exit zero. Embedded byte match,
+exact decoding, validation, translation, behavioral declaration types and
+axiom audits pass. The execution and safety declarations use only the three
+standard logical axioms; exact-byte native decision witnesses remain within
+the existing package policy. Metadata, 91 maintained docs and all new
+package README links pass. Review/stage exactly these 22 paths:
+
+- DEVELOPING.md
+- README.md
+- devnotes.md
+- docs/spec.md
+- docs/status.md
+- docs/verifying.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/artifacts/registry.json
+- proofs/talos/README.md
+- proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean
+- proofs/talos/lean/Project/EulerCellStep/README.md
+- proofs/talos/lean/Project/EulerCellStep/ArtifactBytes.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactCache.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactDecode.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactDecoded.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactRawCache.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactTranslation.lean
+- proofs/talos/lean/Project/EulerCellStep/ArtifactValidation.lean
+- proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/manifest.json
+- proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/program.wasm
