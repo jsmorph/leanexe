@@ -8885,3 +8885,26 @@ models match; the three new focused proofs and 37 new runtime vectors pass.
 The new native-only legacy regression mode is syntax-checked but still awaits
 execution after the serialized aggregate.  Complete aggregate success is not
 claimed at this checkpoint.
+
+## 2026-09-07: independent FP binary profile in verification
+
+The source arithmetic recovery checkpoint is published at ab57101a17bc6b150b5abedc66a1c537571b4a80
+(tree a7c2a6e29d9784844ba20ccdea7eaa652cbe46ca).  All 29 model comparisons and
+the focused new proofs pass.  The source aggregate timed out after 20 minutes
+while compiling existing CLOB dependencies, without a theorem diagnostic;
+smaller missing targets must be built before the retry.  Legacy native-only
+arithmetic, runtime dot, Euler flux, and fixed-step regressions all pass.
+
+The independent sub/div/sqrt binary profile passes its decoder, validator,
+translation tests, and general soundness proofs.  Three new frozen primitive
+packages bring the registry to 25.  Existing WASM bytes are unchanged; their
+manifest verifier identity now names the extended source.  Focused exact-byte
+package checks are in progress.  The historical release draft remains intact.
+
+2026-09-07: The independent binary profile for f64 subtraction, division, and
+square root is complete. All three focused exact-package/behavior checks and
+the 25-package artifact-only aggregate pass, as do both Euler data checks.
+The 29-case source aggregate remains pending after the recorded dependency
+build timeout; next build smaller missing source boundaries. Next Euler
+implementation boundary: prove raw-bit finite/order guards, then connect the
+checked conservative side to the Talos model. Full 100-cell solver is pending.

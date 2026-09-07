@@ -68,6 +68,7 @@ inductive UnaryOp : Instr → ValType → ValType → Prop
   | i64Eqz : UnaryOp .i64Eqz .i64 .i32
   | i32WrapI64 : UnaryOp .i32WrapI64 .i64 .i32
   | i64ExtendI32U : UnaryOp .i64ExtendI32U .i32 .i64
+  | f64Sqrt : UnaryOp .f64Sqrt .f64 .f64
   | i64ReinterpretF64 : UnaryOp .i64ReinterpretF64 .f64 .i64
   | f64ReinterpretI64 : UnaryOp .f64ReinterpretI64 .i64 .f64
 
@@ -91,6 +92,8 @@ inductive BinaryOp : Instr → ValType → ValType → Prop
   | i64ShrU : BinaryOp .i64ShrU .i64 .i64
   | f64Add : BinaryOp .f64Add .f64 .f64
   | f64Mul : BinaryOp .f64Mul .f64 .f64
+  | f64Sub : BinaryOp .f64Sub .f64 .f64
+  | f64Div : BinaryOp .f64Div .f64 .f64
 
 mutual
   inductive InstrValid : Context → Nat → Stack → Instr → Stack → Prop

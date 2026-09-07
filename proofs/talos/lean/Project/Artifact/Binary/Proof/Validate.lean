@@ -559,6 +559,21 @@ mutual
         rw [hfinish]
         exact Validity.InstrValid.binary .f64Mul .f64 .f64 start.toValidity
           first second Validity.BinaryOp.f64Mul hfirst hsecond
+    | f64Sub =>
+        rcases binary_sound h with ⟨first, second, hfirst, hsecond, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.binary .f64Sub .f64 .f64 start.toValidity
+          first second Validity.BinaryOp.f64Sub hfirst hsecond
+    | f64Div =>
+        rcases binary_sound h with ⟨first, second, hfirst, hsecond, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.binary .f64Div .f64 .f64 start.toValidity
+          first second Validity.BinaryOp.f64Div hfirst hsecond
+    | f64Sqrt =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .f64Sqrt .f64 .f64 start.toValidity
+          popped Validity.UnaryOp.f64Sqrt heffect
     | i32WrapI64 =>
         rcases unary_sound h with ⟨popped, heffect, hfinish⟩
         rw [hfinish]

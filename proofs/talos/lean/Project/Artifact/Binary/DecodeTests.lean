@@ -50,8 +50,9 @@ example : resultEq (Parser.runAll expression (bytes [255, 11]))
   native_decide
 
 example : resultEq
-    (Parser.runAll expression (bytes [160, 162, 189, 191, 11]))
-    (.ok [.f64Add, .f64Mul, .i64ReinterpretF64, .f64ReinterpretI64]) = true := by
+    (Parser.runAll expression (bytes [160, 162, 161, 163, 159, 189, 191, 11]))
+    (.ok [.f64Add, .f64Mul, .f64Sub, .f64Div, .f64Sqrt,
+      .i64ReinterpretF64, .f64ReinterpretI64]) = true := by
   native_decide
 
 example : resultEq (Parser.runAll valType (bytes [124]))

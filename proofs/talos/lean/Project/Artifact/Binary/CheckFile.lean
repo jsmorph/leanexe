@@ -20,6 +20,9 @@ import Project.ClobMarket.ArtifactBytes
 import Project.ClobDepth.ArtifactBytes
 import Project.EulerRusanov.ArtifactBytes
 import Project.EulerRusanovStep.ArtifactBytes
+import Project.F64SubBits.ArtifactBytes
+import Project.F64DivBits.ArtifactBytes
+import Project.F64SqrtBits.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -44,6 +47,9 @@ private def artifactBytes : String → Option ByteArray
   | "clob_depth" => some Project.ClobDepth.Artifact.artifactBytes
   | "euler_rusanov" => some Project.EulerRusanov.Artifact.artifactBytes
   | "euler_rusanov_step" => some Project.EulerRusanovStep.Artifact.artifactBytes
+  | "f64_sub_bits" => some Project.F64SubBits.Artifact.artifactBytes
+  | "f64_div_bits" => some Project.F64DivBits.Artifact.artifactBytes
+  | "f64_sqrt_bits" => some Project.F64SqrtBits.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do

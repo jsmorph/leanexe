@@ -452,7 +452,7 @@ are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent subtraction, division, and square-root source proofs bring
 source status to twenty-nine registered cases, twenty-nine complete cases, and
-twenty-nine generated `Program.lean` caches; the extended aggregate is running.  Exact-artifact status is twenty-two packages;
+twenty-nine generated `Program.lean` caches; the extended aggregate awaits smaller CLOB builds after a 20-minute timeout.  Exact-artifact status is twenty-five packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -529,7 +529,7 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Add host CSV/plot presentation and independent numerical comparisons.
 - [x] Extend the source profile with subtraction, division, and square root,
       exact generated-WAT execution, and bounded-domain numerical theorems.
-- [ ] Extend the independent binary profile for those three operations.
+- [x] Extend the independent binary profile for those three operations.
 - [ ] Add classification and safe comparison support for the checked solver.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final

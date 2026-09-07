@@ -115,6 +115,9 @@ inductive Instr where
   | i64ExtendI32U
   | f64Add
   | f64Mul
+  | f64Sub
+  | f64Div
+  | f64Sqrt
   | i64ReinterpretF64
   | f64ReinterpretI64
   | i64Load (arg : MemArg)
