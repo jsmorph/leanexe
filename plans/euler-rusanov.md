@@ -450,9 +450,10 @@ against the decoded-input reference stencil are
 is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
-invariant-domain, convergence, or entropy-solution theorem.  The subsequent subtraction, division, and square-root source proofs bring
-source status to twenty-nine registered cases, twenty-nine complete cases, and
-twenty-nine generated `Program.lean` caches; the extended aggregate awaits smaller CLOB builds after a 20-minute timeout.  Exact-artifact status is twenty-five packages;
+invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive and checked conservative-side proofs bring source
+status to thirty registered and complete cases and thirty generated caches.
+The broader source aggregate remains deferred after the earlier 29-case
+timeout; focused Euler gates pass. Exact-artifact status is twenty-six packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -535,7 +536,7 @@ Every checked row ends in a passing commit, an update to this plan,
       and pure-model intermediate finiteness, and pass 38 compiled vectors.
 - [x] Prove exact generated-WAT execution of the conservative-state side
       and transfer admissibility and intermediate finiteness to that execution.
-- [ ] Freeze and independently verify the checked conservative-side bytes.
+- [x] Freeze and independently verify the checked conservative-side bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
