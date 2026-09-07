@@ -239,6 +239,8 @@ acceptance gates, and nonclaims.
 - [x] Prove exact generated-WAT execution of the conservative-state side
       and transfer admissibility and intermediate finiteness to that execution.
 - [x] Freeze and independently verify the checked conservative-side bytes.
+- [x] Add dynamic Rusanov flux source, model safety proofs, and 76 focused vectors.
+- [ ] Prove and freeze exact dynamic-interface execution.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
