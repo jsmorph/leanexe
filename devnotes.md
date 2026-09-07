@@ -8943,3 +8943,12 @@ frame; the isolated rejection boundary and failed diagnostics are retained.
 Checks stay focused on this case, runtime pins, identity metadata and docs.
 The source and 38 previously passing runtime vectors are unchanged. Frozen
 side bytes, dynamic flux, array step and the 100-cell run remain next.
+
+## 2026-09-07: Conservative-side frozen binary
+
+Registered the exact 2,019-byte conservative-side module as package 26,
+SHA-256 351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114.
+The scoped gate checks embedded bytes, decoding, validation, exact translation
+and both behavioral specifications. Verifier source and the 25 prior
+manifest/binary pairs are unchanged; historical release records are preserved.
+The source case count remains 30. Dynamic Rusanov flux is next.

@@ -28,10 +28,13 @@ IR/WAT arithmetic counts. It covers the Sod states, signed zero, adjacent
 guard boundaries, invalid values, intermediate underflow/overflow, and the
 published cancellation and one-sided-NaN examples.
 
-The generated module is 2,019 bytes; source/cache regeneration is checked.
-The frozen binary package, dynamic Rusanov interface, array step, and
-100-cell runner remain pending. It makes no general
-roundoff, invariant-domain preservation, stability, or PDE convergence claim.
+The [frozen package](../../../../artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/manifest.json)
+contains the exact 2,019-byte module. [ArtifactTranslation.lean](ArtifactTranslation.lean)
+closes decoding, validation and equality with the proved execution module.
+The focused package gate checks both behavioral declarations and their axioms.
+The dynamic Rusanov interface, array step and 100-cell runner remain pending.
+This makes no general roundoff, invariant-domain preservation, stability,
+or PDE convergence claim.
 
 Run the focused checks serially from the repository root:
 
