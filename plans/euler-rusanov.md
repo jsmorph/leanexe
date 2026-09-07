@@ -530,7 +530,10 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Extend the source profile with subtraction, division, and square root,
       exact generated-WAT execution, and bounded-domain numerical theorems.
 - [x] Extend the independent binary profile for those three operations.
-- [ ] Add classification and safe comparison support for the checked solver.
+- [x] Prove raw-word finite/positive classification and magnitude comparison.
+- [x] Implement the checked conservative-state side, prove input admissibility
+      and pure-model intermediate finiteness, and pass 38 compiled vectors.
+- [ ] Prove exact generated-WAT execution of the conservative-state side.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

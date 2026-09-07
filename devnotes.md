@@ -8920,3 +8920,13 @@ steering, remaining CLOB builds and the full source aggregate are deferred
 while focused Euler work continues. Next: connect
 the conservative input guard and checked thermodynamic arithmetic to this
 helper, then the dynamic flux and array recurrence.
+
+2026-09-07: EulerConservative side source builds and all 38 focused compiled
+vectors pass (6 accepted, 32 rejected), with exact IR/WAT arithmetic counts.
+Guard and Safety prove physical input admissibility, internal energy >= rho/2,
+and finiteness of all 12 rounded intermediates on model acceptance. All six
+public proofs use only the standard logical axioms. Focused safety build passes
+3063 jobs with a 2.7-second module build. The current side is not yet a
+registered generated-WAT proof case; that exact execution boundary is next,
+followed by dynamic flux and array stepping. Regressions remain manageable and
+focused; the broad source suite is pending.
