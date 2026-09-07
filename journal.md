@@ -5869,3 +5869,103 @@ non-forced with the usual full parent/tree/content equality checks:
 - `proofs/talos/lean/Project/EulerDynamicFlux/Safety.lean`
 - `test/euler_dynamic_flux.js`
 - `test/run_all.js`
+
+Published dynamic flux source/model checkpoint as 8591ffe023199b5016160e54f293185e1b49d694,
+sole parent f8a1d80bc39a579b390bba4696ef80052cc2c1ae, tree
+d6646b888e6d1167acb560684f2795ce50e1aca4. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS update passed;
+final status was clean and synchronized. Added one deliberately incomplete
+dynamic-flux source registration and fresh Spec import boundary. The next
+scoped prepare may create only this case Program/WASM/WAT and its own fresh
+staging path. Existing conservative-side functions occupy 0..5 unchanged in
+the inspected compiled WAT, checked component is 9, main flux is 16, and
+runtime helpers are 17..20. Getter functions are emitted but inlined in the
+main body; exact main composition needs two side calls and three component
+calls, with reject helper 15 and no getter calls.
+
+Dynamic prepare passed, using only fresh staging tmp/leanexe-talos-bhS0V2.
+Added the exact shared-function layout and two reject-helper proof boundaries,
+plus four runtime pins for functions 17..20. The layout checks shared side
+functions directly against the already proved conservative definitions.
+No generated Program text was edited by hand. Exact generated identities:
+
+[
+  {
+    "path": "proofs/talos/lean/Project/EulerDynamicFlux/Program.lean",
+    "bytes": 32770,
+    "sha256": "c8dfaa49d27023dece69d549536a89baea8be6089f65daafd738b13ad52324a0"
+  },
+  {
+    "path": "proofs/talos/.generated/euler_dynamic_flux/program.wasm",
+    "bytes": 3167,
+    "sha256": "304dba74824ae38465a91c83c20b3aa9b8fe9310a761ca2c7135edc22bf9e022"
+  },
+  {
+    "path": "proofs/talos/.generated/euler_dynamic_flux/program.wat",
+    "bytes": 32864,
+    "sha256": "ca3c822bfbb2fc0c1567e50cefd5c8c8dae5e2d337285f18ee71ec229c6616af"
+  }
+]
+
+The closed dynamic module layout, shared conservative helper identities,
+two reject functions, and four runtime pins all pass (3387 jobs; Helpers
+3.6 seconds, Runtime.Checks 3.7 seconds). Audits contain only standard axioms.
+Added the fresh Component.lean exact execution boundary for function 9: all
+eleven helper guards and six IEEE operations in source order, each rejection
+via the proved two-word helper, arbitrary raw inputs and full store preservation.
+Concrete local-frame normalization is reused from the accepted side proof.
+
+The input-generic component exact execution proof passed on its first build
+(3357 jobs), standard logical axioms only. Removed only the unused simp
+arguments identified at exact diagnostic locations. Added the fresh main
+Execution proof boundary: reuse two previously proved side calls, select
+the speed by unsigned order, compose three proved component calls, and
+handle every accepted/rejected status path. The two speed branches use
+explicit selected words and named pure component records to keep local
+frame reduction separate from IEEE internals. Main execution remains
+unclaimed until its focused three-minute check passes.
+
+Main dynamic-interface exact execution passed on its first build (3358 jobs),
+standard logical axioms only. Removed only diagnostic-identified unused simp
+arguments. Installed the completed Spec draft composing exact execution with
+physical input admissibility, finite output fluxes and positive finite alpha.
+The public safety theorem is pending the focused Spec check; no generated
+Program, source, model or runtime vector changed.
+
+Dynamic Spec passed (3373 jobs; Spec 3.6 seconds), both public theorems with
+standard logical axioms only and no new dynamic warnings. Marked the registry
+entry complete, imported Spec, raised the cached-program identity count to
+31, and reconciled the eight inventories/plans plus the dynamic README and
+devnotes. Exact binary is 3,167 bytes; package count remains 26. Source, model
+and runtime vectors are unchanged. The next gate regenerates only this
+source cache and checks its Spec, followed by lightweight docs/identity/import
+checks and incremental publication.
+
+Focused dynamic source/cache regeneration and Spec gate pass. All 31
+registration/import/cache memberships agree, identity metadata passes, and
+91 maintained docs pass. Runtime pins already passed for these unchanged
+bytes; the 76 compiled vectors need no rerun. Clarified the Euler plan count
+sentence to include the new interface. Reviewed exact helper layout, component
+proof, main call composition, both public Specs and all standard-axiom audits.
+Stage only these 20 paths and publish a non-forced verified checkpoint:
+
+- `DEVELOPING.md`
+- `README.md`
+- `devnotes.md`
+- `docs/spec.md`
+- `docs/status.md`
+- `docs/verifying.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/talos/README.md`
+- `proofs/talos/cases.json`
+- `proofs/talos/lean/Project.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Component.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Execution.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Helpers.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Program.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/README.md`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Spec.lean`
+- `proofs/talos/lean/Project/Runtime/Checks.lean`
+- `test/artifact_identity.js`

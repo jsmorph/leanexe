@@ -18,6 +18,7 @@ import Project.ClobMatchFuel.Program
 import Project.ClobPostOnly.Program
 import Project.ClobQuote.Program
 import Project.EulerConservative.Program
+import Project.EulerDynamicFlux.Program
 import Project.EulerRusanov.Program
 import Project.EulerRusanovStep.Program
 import Project.FoldSum.Program
@@ -188,5 +189,10 @@ example : eraseTypeIdx Project.EulerConservative.func6Def = eraseTypeIdx allocFu
 example : eraseTypeIdx Project.EulerConservative.func7Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerConservative.func8Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerConservative.func9Def = eraseTypeIdx (releaseFuncDef 9) := rfl
+
+example : eraseTypeIdx Project.EulerDynamicFlux.func17Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerDynamicFlux.func18Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerDynamicFlux.func19Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerDynamicFlux.func20Def = eraseTypeIdx (releaseFuncDef 20) := rfl
 
 end Project.Runtime

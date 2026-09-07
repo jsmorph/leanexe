@@ -311,6 +311,18 @@
         "Project.EulerConservative.Spec.sideCheckedBits_wat_safe"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_dynamic_flux",
+      "module": "LeanExe.Examples.EulerDynamicFlux",
+      "entry": "LeanExe.Examples.EulerDynamicFlux.fluxCheckedBits",
+      "leanModule": "EulerDynamicFlux",
+      "specTarget": "Project.EulerDynamicFlux.Spec",
+      "behaviorTheorems": [
+        "Project.EulerDynamicFlux.Spec.fluxCheckedBits_exact",
+        "Project.EulerDynamicFlux.Spec.fluxCheckedBits_wat_safe"
+      ],
+      "complete": true
     }
   ]
 }

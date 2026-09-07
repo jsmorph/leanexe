@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-07.  The source-driven registry contains thirty Talos cases, all complete.  The separate exact-artifact registry contains twenty-six frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-07.  The source-driven registry contains thirty-one Talos cases, all complete.  The separate exact-artifact registry contains twenty-six frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty-one cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -9,7 +9,7 @@ This report describes the repository state on 2026-09-07.  The source-driven reg
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers thirty complete cases, and the proof tree tracks thirty corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
+| Source-driven proofs | `proofs/talos/cases.json` registers thirty-one complete cases, and the proof tree tracks thirty-one corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-six frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
@@ -28,11 +28,12 @@ The focused package gate checks its exact 2,019 bytes through decoding,
 validation, translation equality, both behavioral theorems and axiom audits.
 See [the side checkpoint](../proofs/talos/lean/Project/EulerConservative/README.md).
 
-The dynamic Rusanov interface now validates both conservative sides before
-speed selection and checks each rounded flux component. Its pure model
-proves finite accepted fluxes and physically admissible input states; 76
-compiled regression vectors pass. Exact interface WAT and frozen-byte proofs
-remain next, so source/artifact inventories remain 30 and 26. See the
+The dynamic Rusanov interface now has total exact generated-WAT execution
+and safety theorems for every six raw input words, preserving the complete
+store. Accepted output has finite mass/momentum/energy fluxes, positive finite
+signal speed and physically admissible input states. Its 76 compiled vectors
+pass. The frozen interface package remains next; source/artifact inventories
+are 31 and 26. See the
 [dynamic interface checkpoint](../proofs/talos/lean/Project/EulerDynamicFlux/README.md).
 
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
@@ -76,7 +77,7 @@ artifact receipt remains pending for the updated input identity.
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
 | Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  The 2026-09-04 current-input attempt matched all fifteen exact invalid-module classifications, then timed out while warming the pinned runner's broad Mathlib import closure; it emitted no conformance receipt. |
-| Proof generation | Generation time remains variable and can exceed thirty minutes for structured loops.  Proof size, retrieval, revisions, checked abstraction use, and transfer across demos remain relevant measurements. |
+| Proof generation | Generation time remains variable and can exceed thirty-one minutes for structured loops.  Proof size, retrieval, revisions, checked abstraction use, and transfer across demos remain relevant measurements. |
 
 ## Immediate work
 
