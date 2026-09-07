@@ -85,7 +85,7 @@ for (const source of proofSources) {
   }
 }
 const programSources = proofSources.filter((source) => source.relative.endsWith("/Program.lean"));
-if (programSources.length !== 30) {
+if (programSources.length !== 31) {
   throw new Error(`release identity found ${programSources.length} cached Talos programs`);
 }
 const localImports = localLeanImportClosure(repoRoot, [

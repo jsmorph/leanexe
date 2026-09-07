@@ -15,9 +15,15 @@ at least density. The implementation rejects invalid states and overflow.
 [Safety.lean](Safety.lean) proves component intermediate/result finiteness,
 both-side acceptance and physical admissibility, finite accepted fluxes,
 and positive finite selected speed. The speed-order lemma bounds both decoded
-computed speeds. These are pure IEEE model theorems; the exact generated-WAT
-and frozen-byte interface proofs remain pending. They make no general
-roundoff, invariant-domain preservation, stability or convergence claim.
+computed speeds. [Component.lean](Component.lean) proves all scalar component
+paths, and [Execution.lean](Execution.lean) composes two state calls and three
+component calls into total exact generated-WAT execution for all six raw
+inputs, with five exact result words and complete store preservation.
+[Spec.lean](Spec.lean) attaches the model safety properties to execution.
+All public execution/safety theorems use only the standard logical axioms.
+The 3,167-byte module passes source/cache regeneration; its frozen-byte
+package remains pending. No general roundoff, invariant-domain preservation,
+stability or convergence claim is made.
 
 [The regression](../../../../../test/euler_dynamic_flux.js) checks 15 component
 cases and 61 interfaces in compiled Wasmtime execution, plus IR/WAT operation
@@ -30,6 +36,6 @@ Run these focused checks serially:
 ```sh
 source tools/macos-env.sh
 tools/leanrun --timeout 2m lake --no-ansi build LeanExe.Examples.EulerDynamicFlux
-tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerDynamicFlux.Safety
+node tools/talos-proof.js check euler_dynamic_flux
 node test/euler_dynamic_flux.js
 ```

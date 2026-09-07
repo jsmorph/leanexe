@@ -8965,3 +8965,14 @@ proofs use only the standard logical axioms. The 76 focused compiled vectors
 pass, including both published issue orientations and interface overflow.
 Exact generated-WAT and frozen-byte interface proofs remain next. Counts stay
 at 30 complete source cases and 26 frozen packages.
+
+## 2026-09-07: Dynamic interface exact execution
+
+The 31st source case proves total exact generated-WAT execution and accepted
+output safety for the dynamic Rusanov interface. The proof reuses exact
+conservative-side helpers, proves the guarded component once, and composes
+two side calls plus three component calls with complete store preservation.
+All execution and safety audits contain only standard logical axioms. The
+3,167-byte interface module remains pending frozen-package verification.
+Focused source/cache and metadata checks accompany the unchanged 76 passing
+runtime vectors; broad regression and release work remain deferred.
