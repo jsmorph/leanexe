@@ -100,6 +100,24 @@ theorem accepted_courant (ratio rhoL momentumL energyL rho momentum energy rhoR 
   rw [abs_of_pos hvalue, half_value, abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at horder
   exact ⟨hfinite, hvalue, horder⟩
 
+/-- The selected diagnostic speed is finite and strictly positive on acceptance. -/
+theorem accepted_alpha (ratio rhoL momentumL energyL rho momentum energy rhoR momentumR energyR : UInt64)
+    (h : (Model.cellCheckedBits ratio rhoL momentumL energyL rho momentum energy rhoR momentumR energyR).status = 0) :
+    positiveBits (Model.cellCheckedBits ratio rhoL momentumL energyL rho momentum energy rhoR momentumR energyR).alpha = true := by
+  generalize hresult : Model.cellCheckedBits ratio rhoL momentumL energyL rho momentum energy rhoR momentumR energyR = result at h ⊢
+  unfold Model.cellCheckedBits at hresult
+  dsimp only at hresult
+  split_ifs at hresult
+  all_goals
+    subst result
+    first
+    | exact False.elim ((by decide : (1 : UInt64) ≠ 0) h)
+    | simp only [beq_iff_eq] at *
+      first
+      | exact (Project.EulerDynamicFlux.Safety.accepted_fields rho momentum energy rhoR momentumR energyR (by assumption)).2.2.2
+      | exact (Project.EulerDynamicFlux.Safety.accepted_fields rhoL momentumL energyL rho momentum energy (by assumption)).2.2.2
+
+#print axioms accepted_alpha
 #print axioms accepted_courant
 #print axioms update_intermediates_finite
 #print axioms accepted_state

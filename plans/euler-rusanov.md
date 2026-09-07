@@ -451,7 +451,7 @@ is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side and dynamic-interface proofs bring source
-status to thirty-one registered and complete cases and thirty-one generated caches.
+status to thirty-two registered and complete cases and thirty-two generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
 timeout; focused Euler gates pass. Exact-artifact status is twenty-seven packages;
 the fixed-step package carries both registered behavior theorems.
@@ -542,7 +542,8 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Freeze and independently verify the dynamic-interface bytes.
 - [x] Add checked cell updates and model proofs of accepted-state safety and
       the decoded rounded Courant ceiling; add 43 focused compiled vectors.
-- [ ] Prove exact cell-update WAT execution and frozen-byte closure.
+- [x] Prove exact cell-update WAT execution with accepted-state/Courant safety.
+- [ ] Freeze and independently verify the checked cell-update bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
