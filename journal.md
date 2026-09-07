@@ -6287,3 +6287,131 @@ package README links pass. Review/stage exactly these 22 paths:
 - proofs/talos/lean/Project/EulerCellStep/ArtifactValidation.lean
 - proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/manifest.json
 - proofs/artifacts/euler_cell_step/2f6f8c1717d35fe1dbd236855620fade2e083d76d5163c69e6f1f41507bb346f/program.wasm
+
+Published the exact cell package as 12a2dda2bf28bed106e29e58ab89798d185d0a05,
+sole parent a4930832e6792c952b076c217bad278e6c7fca6c and tree
+ec0d0ad13f15d3b00e8d71df3ce56c954f0763b7. Non-forced update, fetch,
+commit/parent/message/tree/index/worktree equality, local CAS and clean
+synchronized status passed. A read-only example lookup guessed absent
+LeanExe/Examples/F64Dot.lean; discovery identified Float64Bits.lean.
+Added fresh EulerGridStep source from the separately prepared draft. The
+read-only maximum-speed scan checks every conservative state. The step
+reads immutable flat triples and fills a separate array: leading status,
+then six words per cell (density, momentum, energy, pressure, alpha, CFL).
+It clamps boundary neighbors to the end state and stops on first rejection.
+Rejected payload is not interpreted as a grid. Exact grid proofs and full
+Sod evaluation remain pending; no new complete-case registration is made.
+
+The grid source builds (6 jobs, 203 ms). Added 31 focused grid/scan
+regressions using the existing generic test host wrapper. Five accepted
+grids include one-cell boundaries, two-cell Sod, the 100-cell initial step
+and a uniform moving state, with fixed raw expected outputs. Rejection
+cases cover malformed shape, invalid ratio, bad state placement, CFL and
+post-update domain failure. IR/WAT operation counts check both exports.
+
+The first compiled-grid test was rejected immediately at the scan entry
+signature; no Wasmtime vectors ran, and tmp/euler-grid-step-EH2m5f remains.
+Inspection of Extract/Types.lean shows the public ABI accepts named
+structures but does not export product types. Replaced the pair return with
+CheckedSpeed (status, speed), retaining the same two raw slots and behavior.
+This corrects the initial tentative loop-form diagnosis; no compiler change
+or new ABI feature is needed. The original source draft remains outside
+the checkout as the preserved first attempt.
+
+The structured scan compiled and its operation counts matched. The grid
+shape test stopped before numerical vectors: emitted IR/WAT contain 14
+f64 multiplies rather than 10. Inspection of retained module
+tmp/euler-grid-step-rTMtUl shows four inlined cell Courant calculations in
+the grid entry, plus the separate original cell function; this is not
+integer indexing emitted as floating point. The extra copies arise in the
+multi-slot loop form. Preserved source/IR/WAT and replaced the body with a
+named advanceAt helper returning the output array, using output[0] as the
+status guard. Each cell still reads the old grid and writes only its own
+six fields, or marks rejection. The source boundary is chosen to support
+reuse of the already proved cell call; no compiler changes are made.
+
+Added a fresh pure IEEE grid model with explicit finite recursion for the
+speed scan and cell fill. The recursion parameter counts remaining cells;
+it is not execution fuel. The model names the cell payload and six writes
+for reusable array invariants. It matches the revised named-body source,
+and preserves rejected partial payload rather than pretending it is a grid.
+No grid execution theorem or completed registry entry is claimed yet.
+
+The named body reduces the emitted extra cell copies from four to one,
+but the shape check still finds 11 multiplies (10 shared plus one inlined
+Courant in advanceAt). Preserved the helper draft and tmp/euler-grid-step-wdQrGj.
+Separated writeCell, taking the checked result as an explicit parameter,
+so the argument boundary can materialize the complete cell call once before
+any output mutation. The pure model remains unchanged by this source-only
+factoring; numerical vectors have not yet run because shape checking stops
+on the differing instruction count.
+
+Added the first grid model invariant boundary: output sizes, preservation
+of earlier payload words and status by cell writes, rejection persistence,
+and accepted-fill implication for every requested cell computation. These
+are model-level facts pending their Lean check; exact array memory/loop
+execution and output-payload correspondence remain separate open obligations.
+
+The writer boundary leaves one inlined cell body (11 multiplies); retained
+tmp/euler-grid-step-8ejoow and the writer draft. Demand.lean identifies the
+reason: potentially trapping Array.get! arguments prevent a strict call
+when the checked callee can reject before demanding every argument. Changed
+input reads in source/model to total Array.getD with default zero. Valid
+grid indices retain identical words; out-of-range state reads give zero
+density and are rejected. This permits a strict reusable cell-call boundary
+without modifying the compiler or trusted base.
+
+The total-read grid test passes all 31 cases, retaining
+tmp/euler-grid-step-FbrhmU. Scan bytes: 5,311, SHA256
+86bc0a010fffc55441684298a58af9c8099552515f436acccd27a94594105286.
+Step bytes: 11,222, SHA256
+c7c0bb1425a0adb567b4b5cf96f62112181519078297fb3d4a3f5a8691695a02.
+Step34 calls Cell25 once and writer33 once; entry35 calls Step34 in its
+loop. Shared functions0–25 are retained, with no FP instructions in the
+array wrapper. The pure Model builds (3s). First Safety proof attempt
+needs local-let reduction before two case splits and an explicit split for
+the size projection over fill. Preserved the first draft/log and made those
+local proof corrections. No numerical or compiler failure remains.
+
+The second grid Safety build reached the one-million-heartbeat limit in
+advanceAt_accepted while resolving an anonymous guard over the full IEEE
+cell expression. The failed draft and euler-grid-safety-splits.log remain.
+Generalized the checked-cell result to an opaque record and named the guard
+before extracting Boolean equality; this reduces the proof boundary without
+raising its budget. The resumed session reread both operating contracts and
+confirmed the pinned Mac environment.
+
+The preliminary compiled 100-cell Sod runner completed 93 steps to t=0.2.
+Maximum CFL was 0.4500000000000001; minimum density 0.125 and pressure 0.1.
+Mass/momentum/energy boundary-balance residuals were approximately
+1.53e-15, 2.78e-17, 3.45e-15. All 300 final state words exactly match the
+independent host design calculation. The external script and JSON preserve
+this runtime regression; grid WAT, bytes, and runner proofs remain pending.
+
+The opaque-record correction passes Project.EulerGridStep.Safety in 2.6s
+(3,070 jobs). The accepted-cell theorem audits to propext, Classical.choice
+and Quot.sound; prefix preservation to propext and Quot.sound. No admitted
+proof is present. An inline Node documentation edit failed at JavaScript
+parse time because of a template-literal fence escape; it made no edits.
+Applied the bounded edits with apply_patch after a fresh status check.
+Added a README spelling out the remaining payload, scan, WAT, byte and
+runner boundaries, registered the focused test/source build in run_all
+without running that aggregate, imported Safety in Project, and synchronized
+plan/devnotes. Complete source/package inventories remain 32/28.
+
+Grid source/model checkpoint gates: 31 focused compiled vectors pass;
+Safety builds with accepted standard axioms; 91 maintained Markdown files
+and all new README links pass; JavaScript syntax and git diff --check pass.
+Registry/aggregate import metadata checks pass without building the aggregate.
+No source or frozen-package count changes. Reviewed explicit staging intent:
+- LeanExe/Examples/EulerGridStep.lean
+- proofs/talos/lean/Project/EulerGridStep/Model.lean
+- proofs/talos/lean/Project/EulerGridStep/Safety.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- test/euler_grid_step.js
+- test/run_all.js
+- proofs/talos/lean/Project.lean
+- plan.md
+- plans/euler-rusanov.md
+- devnotes.md
+- journal.md

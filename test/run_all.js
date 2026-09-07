@@ -34,6 +34,7 @@ function main() {
     "LeanExe.Examples.EulerConservative",
     "LeanExe.Examples.EulerDynamicFlux",
     "LeanExe.Examples.EulerCellStep",
+    "LeanExe.Examples.EulerGridStep",
     "LeanExe.Examples.JsonGcTreeRewrite",
     "LeanExe.Examples.JsonMergeTreeCommand",
     "LeanExe.Examples.JsonObjectArrayDecode",
@@ -54,6 +55,7 @@ function main() {
   run([process.execPath, path.join("test", "euler_conservative.js")]);
   run([process.execPath, path.join("test", "euler_dynamic_flux.js")]);
   run([process.execPath, path.join("test", "euler_cell_step.js")]);
+  run([process.execPath, path.join("test", "euler_grid_step.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step_data.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_interface.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_c.js")]);
