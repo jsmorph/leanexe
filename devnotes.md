@@ -8985,3 +8985,13 @@ The focused gate checks embedded bytes, decoding, validation, translation
 and both behavioral specifications. Verifier source and all 26 earlier
 manifest/binary pairs are unchanged; source case count stays 31. The next
 implementation boundaries are checked cell update/CFL and the array step.
+
+## 2026-09-07: Checked cell source and model safety
+
+Added the dt/dx-guarded conservative update and three-state cell kernel.
+Two dynamic interfaces precede the rounded CFL ceiling (1/2), three checked
+updates, and a final thermodynamic validation. Four model safety theorems
+prove finite intermediates, finite/admissible accepted state, positive
+pressure and decoded Courant bounds using standard logical axioms. The
+focused regression has 16 scalar and 27 cell vectors; WAT/byte proofs and
+the array runner remain next. Inventories stay 31 source cases/27 packages.

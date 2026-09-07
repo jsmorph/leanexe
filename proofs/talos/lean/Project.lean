@@ -37,3 +37,4 @@ import Project.Runtime.Spec
 import Project.ProofKit.F64Order
 import Project.EulerConservative.Spec
 import Project.EulerDynamicFlux.Spec
+import Project.EulerCellStep.Safety

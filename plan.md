@@ -242,6 +242,9 @@ acceptance gates, and nonclaims.
 - [x] Add dynamic Rusanov flux source, model safety proofs, and 76 focused vectors.
 - [x] Prove total exact dynamic-interface execution and attach model safety.
 - [x] Freeze and independently verify the dynamic-interface bytes.
+- [x] Add checked cell updates and model proofs of accepted-state safety and
+      the decoded rounded Courant ceiling; add 43 focused compiled vectors.
+- [ ] Prove exact cell-update WAT execution and frozen-byte closure.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
