@@ -8952,3 +8952,16 @@ The scoped gate checks embedded bytes, decoding, validation, exact translation
 and both behavioral specifications. Verifier source and the 25 prior
 manifest/binary pairs are unchanged; historical release records are preserved.
 The source case count remains 30. Dynamic Rusanov flux is next.
+
+## 2026-09-07: Checked dynamic Rusanov interface
+
+Added dynamic conservative-state Rusanov flux and a pure IEEE model. Both
+sides must succeed before speed selection; all component inputs and rounded
+intermediates are checked. Six model-safety theorems prove finite component
+intermediates/results, accepted input admissibility, finite fluxes, positive
+signal speed, and decoded ordering of selected computed speeds. The new side
+output-positivity theorem supports that selection. All seven new public
+proofs use only the standard logical axioms. The 76 focused compiled vectors
+pass, including both published issue orientations and interface overflow.
+Exact generated-WAT and frozen-byte interface proofs remain next. Counts stay
+at 30 complete source cases and 26 frozen packages.

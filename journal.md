@@ -5797,3 +5797,75 @@ Review and stage only these 22 paths for a non-forced verified checkpoint:
 - `proofs/talos/lean/Project/EulerConservative/ArtifactValidation.lean`
 - `proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/manifest.json`
 - `proofs/artifacts/euler_conservative/351a5a9c30b785897afab2c351c265cafd5e060845cb924825cc6badb9459114/program.wasm`
+
+Published conservative-side exact bytes as f8a1d80bc39a579b390bba4696ef80052cc2c1ae,
+sole parent 59e486622cbafefc9c79cbd3a64f1f9e046f9b55, tree
+7e8b076645d43b45bbdcca844cab9a5afbb69345. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS update passed;
+final status was clean and synchronized. Installed the reviewed dynamic-flux
+source draft and corresponding pure IEEE model as fresh files. Both sides
+must succeed before unsigned speed selection; each scalar flux component
+checks all five inputs and six rounded intermediates. Added a fresh side
+output-positivity proof boundary for that selection. Source registries and
+artifact inventories remain at 30 and 26 until new exact execution passes.
+
+Dynamic-flux source builds (4 jobs, 187 ms). Its pure model and the separate
+accepted pressure/speed positivity theorem also pass first try (3065 jobs);
+accepted_outputPositive audits to propext and Quot.sound only. Added a fresh
+dynamic Safety boundary proving all six component intermediates finite,
+component result finiteness, both-side acceptance and physical admissibility.
+The next checks remain those focused proof targets and the new runtime vectors.
+
+Both component safety lemmas passed first try. accepted_sides stopped at
+a leading source let binding before its first if; added dsimp only at that
+exact point. No theorem using the failed lemma is claimed yet; retained
+dynamic-safety-first.log. Added accepted_fields to compose finite component
+outputs and the already proved positive finite speed selection. Added a
+focused 76-vector runtime script: 15 scalar-component checks and 61 interface
+checks, including both orientations of the published states and nonfinite
+words in each input position. The script preserves fresh WASM/WAT outputs.
+
+All 76 focused runtime vectors pass, including both issue orientations and
+accepted-side viscosity overflow; retained tmp/euler-dynamic-flux-QSr4kZ.
+The expanded Safety build identified a now-redundant dsimp after the first
+side branch, and split selected the nested maximum-speed if before the final
+component-status guard. The ensuing metavariable elaboration exhausted the
+default heartbeat limit after that concrete type mismatch. Removed the
+redundant simplification and explicitly split/simplified the two speed-order
+branches before the component-status split. This changes the failing proof
+boundary; no limit increase or unchanged timeout retry.
+
+Dynamic model Safety passes after explicit speed-order splitting (3066 jobs,
+2.6 seconds), with all five public theorems limited to the standard logical
+axioms. Added selected_speed_bound to make raw-positive ordering imply a
+decoded-real bound on both computed speeds, using F64Order rather than any
+new float assumption. Registered only the source build/runtime test and model
+Safety aggregate import, added the scoped README/status/plan checkpoint.
+Exact WAT and artifact registration stay pending; counts remain 30/26.
+
+Selected-speed bound passed on its first build (3066 jobs, Safety 2.7 seconds);
+all six dynamic safety theorems and the side output-positivity theorem audit
+to only the accepted standard logical axioms. No new warning. Source and
+76 compiled vectors have not changed since passing. Added concise devnotes.
+Remaining checkpoint checks are local doc links, JS syntax and aggregate
+registration membership, with no further Lean or runtime regression needed.
+
+The maintained 91-document gate, new dynamic README local links, both JS
+syntax checks and unchanged 30-case aggregate membership all pass. Reviewed
+the new source/model association, all seven theorem audits, 76 exact runtime
+vectors, and registration diff. Stage exactly these 13 paths and publish
+non-forced with the usual full parent/tree/content equality checks:
+
+- `LeanExe/Examples/EulerDynamicFlux.lean`
+- `devnotes.md`
+- `docs/status.md`
+- `journal.md`
+- `plan.md`
+- `plans/euler-rusanov.md`
+- `proofs/talos/lean/Project.lean`
+- `proofs/talos/lean/Project/EulerConservative/Outputs.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Model.lean`
+- `proofs/talos/lean/Project/EulerDynamicFlux/README.md`
+- `proofs/talos/lean/Project/EulerDynamicFlux/Safety.lean`
+- `test/euler_dynamic_flux.js`
+- `test/run_all.js`

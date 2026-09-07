@@ -537,6 +537,8 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove exact generated-WAT execution of the conservative-state side
       and transfer admissibility and intermediate finiteness to that execution.
 - [x] Freeze and independently verify the checked conservative-side bytes.
+- [x] Add dynamic Rusanov flux source, model safety proofs, and 76 focused vectors.
+- [ ] Prove and freeze exact dynamic-interface execution.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
