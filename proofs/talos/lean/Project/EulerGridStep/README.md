@@ -17,8 +17,12 @@ when the fill returns status zero. These model theorems use standard logical
 axioms. [Payload.lean](Payload.lean) proves exact correspondence of all six
 fields and preservation by subsequent cells. [Outputs.lean](Outputs.lean)
 transfers accepted state, pressure, speed and Courant safety to the actual
-returned array and proves its expected length. Scan bounds, generated-WAT
-array execution and frozen-byte verification remain open; this is not yet a
+returned array and proves its expected length. [Scan.lean](Scan.lean) proves
+that an accepted scan checks every input cell and returns a positive finite
+speed bounding all computed cell speeds in decoded-real order. This bounds
+the rounded computed speeds; it does not assert a bound on exact-real wave
+speeds. Generated-WAT array execution and frozen-byte verification remain
+open; this is not yet a
 registered complete source case or artifact package.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
@@ -37,5 +41,6 @@ Run focused checks serially:
 source tools/macos-env.sh
 tools/leanrun --timeout 2m lake --no-ansi build LeanExe.Examples.EulerGridStep
 tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Outputs
+tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Scan
 node test/euler_grid_step.js
 ```

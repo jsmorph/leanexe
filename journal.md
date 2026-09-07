@@ -6459,3 +6459,30 @@ Explicit reviewed staging intent:
 Payload checkpoint review: diff whitespace, all new README links, 91
 maintained Markdown files, registry/import metadata and no-admission source
 checks pass. No broad regression or release gate was run.
+
+Published payload checkpoint 741bd65380cb962b9723b9094d9e82fca40aea83, sole
+parent 64a28d5145be90bbc19831e9d04a543e9e303120, tree
+b0ed5f20fd791d642b2449f0907e456491f2eeb2. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed, with
+clean synchronized status. Added a model scan-bound module. Its first
+focused build identified that UInt64 order needs its explicit core lemmas
+and toNat bridge, not generic preorder/omega inference. Preserved the draft
+and log; corrected those boundaries and the Boolean shape reduction.
+
+The scan-order build passes in 2.7s; one unnecessary tactic-sequencing
+warning was removed by explicit UInt64 reflexivity and comparison cases.
+The final focused rebuild also passes in 2.7s without local warnings.
+scan_bounds audits to propext/Quot.sound; maxSpeed_safe to propext,
+Classical.choice and Quot.sound. Updated docs and Project imports; no source
+or runtime change requires repeating compiled vectors. Reviewed stage paths:
+- proofs/talos/lean/Project/EulerGridStep/Scan.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project.lean
+- plan.md
+- plans/euler-rusanov.md
+- devnotes.md
+- journal.md
+
+Scan checkpoint review passes whitespace, all README links, 91 maintained
+Markdown files, registry/import metadata and no-admission source checks.
+No broad regression or release gate was run.
