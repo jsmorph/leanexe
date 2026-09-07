@@ -4633,3 +4633,144 @@ before the local branch advanced by exact compare-and-swap.  Final status was
 clean and synchronized.  This is the single receipt follow-up for the setup
 checkpoint; only journal.md and devnotes.md are staged for it.  Its own identity
 is verified externally, with no recursive receipt chain.
+
+## 2026-09-07: approved local priority exception and proof recovery
+
+The preceding setup receipt was published and verified as
+`a140f027eeef3f4f556de06d40659efd0a3192cc`, sole parent
+`030a433688380534d2db62c2ab0e6bdb18d86693`, tree
+`032522d87994ddf6d2463e96a5e9124f52960165`; status was clean and synchronized.
+The user has now answered the pending question with “Nice is approved.”  This
+approves the proposed inherited-priority fallback when the sandbox rejects
+nice, while retaining the shared lock, one Lean thread, and explicit timeout.
+The approval is recorded in the branch operating contract and enabled by
+`tools/macos-env.sh`; no further approval is needed for this same exception.
+
+The reviewed next commands select the previously hashed repository-local ARM
+Mac tools and run `tools/leanrun --timeout 30s lean --version`, followed by the
+bounded root compiler build `tools/leanrun --timeout 15m lake --no-ansi build
+lean-wasm LeanExe.Examples.EulerRusanovStep`.  Ordinary root `.lake` build
+outputs are in scope and all earlier helper caches and downloads are retained.
+No Linux preload, alternate toolchain, or remote executor is involved.
+
+The first actual Lean invocation passed: 4.34.0-rc2, arm64-apple-darwin24.6.0,
+commit 6a10ac8c22beadecabdbb0919c2b50214762f91d, Release.  The local runner
+reported the approved inherited-priority fallback.  Root compiler and fixed-step
+source build is progressing with a single runner slot; initial warnings are
+existing deprecated if_true/if_false names.
+
+The absent CodeLib `.lake/packages` path is now a relative symlink to the
+already pinned parent package tree (`../..` from CodeLib/.lake), following the
+dependency's shared-package layout.  No second dependency versions are selected
+and no existing path was replaced.  MATHLIB_CACHE_DIR is set explicitly to
+`build/cache/mathlib` so the upcoming pinned cache fetch writes only within this
+checkout, not the user's home cache.  After the compiler finishes, the next
+bounded command is `tools/leanrun --timeout 15m lake -d proofs/talos/lean exe
+cache get`; it will materialize matching Mathlib build products and retains
+existing local state.
+
+### Successful compiler, cache, and exact step regeneration
+
+The root compiler plus fixed-step source build passed (60 jobs).  The pinned
+Mathlib cache tool built (27 jobs), downloaded and decompressed all 8,747
+requested files from the official cache for the pinned checkout, and exited
+successfully.  The fresh shared dependency layout was retained unchanged.
+
+`tools/talos-artifact.js prepare euler_rusanov_step` passed locally.  The pinned
+Talos verifier build completed 53 jobs, including a 146-second native C compile
+of Verifier.Emit; the compiler/source stage replayed the passing 60-job build.
+The driver used only its own fresh `tmp/leanexe-talos-9cBXOu` staging path and
+removed that path internally after success.  The new `.generated` step WASM
+is exactly 2,551 bytes with SHA-256
+`0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511`.
+The tracked Program.lean was byte-identical, retaining SHA-256
+`fee069ab47b6c96abc44d1b902cbcfbaa5996174517f7d7c2a215366c7d7f2bc`.
+This recovers the precise artifact-producing inputs recorded before the prior
+workspace loss, across Linux x86-64 and native ARM Mac execution.
+
+The next reviewed mutation is `node tools/artifact-migrate.js migrate
+euler_rusanov_step`: create the seven missing artifact modules and the
+content-addressed WASM/manifest package, and update only the artifact registry
+and binary-check dispatch needed to register it.  The user-authorized recovery
+covers those named step deliverables.  Existing artifact packages and release
+receipts are preserved; focused verification will follow migration.
+
+A future raw-data generator draft remains outside the checkout in the current
+task's work directory.  Its independent BigInt rational model reconstructs
+conservative states and three Rusanov fluxes from exact decoded inputs.  It
+matches all six signed cell errors and residuals
+`[0, 1/144115188075855872, -1/72057594037927936]` for the recorded step words.
+One draft had a corrected malformed hex literal, and the first ad hoc Node
+module loader omitted its filename and failed relative-import resolution;
+the corrected pinned-Node invocation passes.  These were draft-only failures,
+not artifact or theorem failures, and no data publication is claimed yet.
+
+### Exact-artifact recovery gates
+
+The scoped migration passed its seven-job raw decoder build and recovered the
+seven EulerRusanovStep artifact modules, frozen binary and manifest, registry
+entry, and embedded-byte dispatch.  The manifest SHA-256 is
+ae92a42d9ed961507cccbeed8e573244aa757d3f167e10a7c20dd40950bce870,
+matching the pre-loss record.  Its host-assumption list is empty; the verifier
+source digest remains
+bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7.
+
+The focused command tools/artifact-proof.js check
+proofs/talos/.generated/euler_rusanov_step/program.wasm
+Project.EulerRusanovStep.ArtifactTranslation passed.  The separated shared
+Talos build completed 3,346 jobs, then exact embedded-byte equality, decoding,
+validation, CoreValid, and translation equality all passed.  The behavior
+closure completed 3,399 jobs and all manifest declaration checks passed.
+Both public execution/numerical theorems, sodQuarterStepCheckedBits_exact and
+sodQuarterStepCheckedBits_wat_real, report only propext, Classical.choice, and
+Quot.sound.  The generated exact-artifact witnesses retain the existing
+native_decide policy; no changed proof introduces an admission or new axiom.
+
+The focused Node regression test/euler_rusanov_step.js passed runtime raw words,
+IR operations, and exact WAT call shape.  test/artifact_migrate.js passed
+transactional migration, frozen identity, and cold-cache decoder checks;
+test/artifact_identity.js passed.  tools/check-docs.js accepts 91 maintained
+Markdown files, and git diff --check passes.  Existing dependency deprecation
+and unused-variable warnings remain nonfatal.
+
+The registry now has 22 packages; the source registry remains 26 complete
+cases and 38 behavior names.  Current-facing inventories were updated in
+README.md, DEVELOPING.md, docs/status.md, docs/artifact-format.md, plan.md,
+plans/euler-rusanov.md, and proofs/talos/README.md.  Historical 21-package
+receipts and release drafts are preserved, with no current-release claim.
+The bounded aggregate tools/artifact-proof.js check-artifacts is running
+serially; its fresh retained log is
+tmp/euler-recovery-20260907/artifact-aggregate.log.  It checks the changed
+22-package registry boundary and does not refresh a release receipt.
+
+The aggregate check-artifacts command exited zero and reported
+"Aggregate artifact theorem pass completed: 22 artifacts".  Every frozen
+identity, embedded-byte comparison, and artifact theorem passed.  The final
+91-file documentation, artifact identity, and whitespace checks also pass.
+This aggregate covers artifacts; the new step's behavior and axiom gates were
+checked separately above.  No old release receipt was modified.
+
+During independent preparation of the next phase, one read-only lookup used
+the wrong CodeLib source prefix and was corrected after rg --files located
+the codelib subdirectory.  A scratch compiler-patch script initially had
+unescaped Lean quotation backticks in a JS template and ran with the host
+Node26 default; it failed before writing previews.  After correcting the
+quoting and sourcing pinned Node24, it produced 14 preview files outside
+the checkout.  A separate verifier-preview script initially assumed a test
+used rfl rather than simp; its unique-anchor check failed before output, then
+the corrected script produced 12 preview files.  Three primitive proof drafts
+also remain outside the checkout.  None of those future drafts is installed,
+compiled, staged, or represented as a completed solver change.  The proposed
+conservative-state guard domain was raised with the user for design discussion.
+
+The exact reviewed recovery staging list is DEVELOPING.md, README.md,
+devnotes.md, docs/artifact-format.md, docs/status.md, journal.md, plan.md,
+plans/euler-rusanov.md, plans/talosfp-euler-operations.md,
+proofs/artifacts/registry.json, proofs/talos/README.md,
+proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean, tools/macos-env.sh,
+the seven Project/EulerRusanovStep/Artifact*.lean modules, and manifest.json
+plus program.wasm under the step's frozen SHA-256 directory.  Publication uses
+exact index blobs, tree equality, a sole current remote parent, force:false,
+and fetch-side commit/parent/message/tree/index/worktree checks before the
+local compare-and-swap ref update.  Actual identities will be recorded in the
+next substantive data checkpoint rather than a recursive receipt chain.

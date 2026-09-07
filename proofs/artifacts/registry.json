@@ -126,6 +126,12 @@
       "sha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
       "manifest": "euler_rusanov/145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546/manifest.json",
       "proofTarget": "Project.EulerRusanov.ArtifactTranslation"
+    },
+    {
+      "case": "euler_rusanov_step",
+      "sha256": "0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511",
+      "manifest": "euler_rusanov_step/0e4ec3be7480e0490a8637536501ba4b2adf84df66c4a4a45819b0e62d622511/manifest.json",
+      "proofTarget": "Project.EulerRusanovStep.ArtifactTranslation"
     }
   ]
 }

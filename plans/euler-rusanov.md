@@ -3,8 +3,9 @@
 **Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
 genuine Fréchet Jacobian, complete strictly ordered eigenbasis, and decoded
 finite-volume error layer are proved and integrated.  The fixed compiled step
-now has source, generated Talos cache, pure model, runtime pins, and a passing
-Wasmtime/WAT regression; its exact generated-WAT execution theorem is next.
+now has source, generated Talos cache, pure model, runtime pins, exact WAT
+execution and numerical theorems, and its recovered 2,551-byte exact artifact.
+Verified raw step data is the next checkpoint.
 This document expands phase 8 of the root
 [Development Plan](../plan.md).
 
@@ -430,8 +431,9 @@ raw words, and `sodQuarterStepCheckedBits_exact` composes all nine calls through
 the actual generated function-6 status gate.  It proves fuel-independent
 termination, complete store preservation, and the seven pure-model words.  The
 registry marks all twenty-six cases complete, the `Project` aggregate imports
-the step specification, and the full source-driven gate passes.  No exact-byte
-step package or publishable raw step data is claimed at this checkpoint.
+the step specification, and the full source-driven gate passes.  The subsequent
+ARM Mac recovery also closes the exact-byte step package; raw step data remains
+the next publication checkpoint.
 
 The decoded-real transfer for those executed words is also complete.  Write
 `epsilon = 2^-52`.  The public theorem
@@ -448,8 +450,8 @@ are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  Source status
 remains twenty-six registered cases, twenty-six complete cases, and twenty-six
-generated `Program.lean` caches.  Exact-artifact status remains twenty-one
-packages until this step receives its frozen-byte proof.
+generated `Program.lean` caches.  Exact-artifact status is twenty-two packages;
+the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
 
@@ -520,7 +522,8 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Transfer the executed words to decoded-real admissibility and exact
       signed cell and balance errors through the public
       `sodQuarterStepCheckedBits_wat_real` theorem.
-- [ ] Freeze the proved step bytes and publish the verified raw state data.
+- [x] Freeze and independently verify the proved fixed-step bytes.
+- [ ] Publish the verified raw state data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
       comparison support as demanded by the checked multi-step solver.
@@ -615,7 +618,7 @@ The guarded scalar kernel, its real-domain and generated-WAT proofs, and the
 first f64 exact-byte package are complete.  Fixed-step compilation, pure-model
 evaluation, runtime pinning, generated-WAT composition, decoded-real transfer,
 and Wasmtime/WAT regression are also complete.  The remaining fixed-step work
-is exact-byte closure and raw-data publication.  No missing compiler or
+is verified raw-data publication.  No missing compiler or
 floating-point semantic feature blocks that work.
 
 The full checked grid step is a larger but compatible extension.  Its main cost

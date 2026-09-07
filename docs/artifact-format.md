@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty-one registered artifacts.  The proof workspace and
+**Status:** Implemented for twenty-two registered artifacts.  The proof workspace and
 checked-in draft release record now identify exact Lean 4.34.0-rc2,
 Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release inputs.
