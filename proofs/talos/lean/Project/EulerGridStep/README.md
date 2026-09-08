@@ -7,7 +7,8 @@ and fills a separate result array: a leading status, followed by six words
 per cell (density, momentum, energy, pressure, signal speed, rounded Courant).
 Malformed shape or invalid ratio returns `#[1]`. A cell rejection sets status
 one and stops; its partially written payload must not be used as a new grid.
-Input reads use total `getD` with zero defaults, which preserves strict calls
+The scan uses a named `scanAt` body; its exact execution work is recorded
+[separately](../EulerGridScan/README.md). Input reads use total `getD` with zero defaults, which preserves strict calls
 to the existing checked-cell function without changing the compiler.
 
 [Model.lean](Model.lean) names the finite scan and fill recurrences.
