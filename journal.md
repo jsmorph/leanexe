@@ -8710,3 +8710,19 @@ Reviewed/stage/publish exactly devnotes.md, journal.md, plan.md,
 plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
 EulerGridStep/{README.md,InitializationShape.lean,InitialAllocationBump.lean,
 FillState.lean,FillLoop.lean,InitializationFill.lean}.
+
+### 2026-09-08: Arena and initialization publication receipt
+
+Published 71e930645f3c7ec18ef3217c29f737955cea053b, sole parent
+845bcb0c77048a163d929997d3651b24d382c61f, tree
+ab9bd36d467838f233d787106cd3fbeee03518bf. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. This closes seven substantive incremental
+checkpoints from5c9fb6b through71e9306. The complete cell/arena outcomes and
+entry allocation/zero-fill regions are checked; guards, capacity arithmetic,
+initialized arena and full loop/final-release composition remain open.
+The current regression scope was only changed Euler targets and small
+Markdown/registry/import checks, as requested. This single follow-up receipt
+stages exactly journal.md and devnotes.md; it makes no new code/proof claim
+and needs no repeated Lean or runtime checks. Its identity is verified
+externally and will be recorded in the next substantive entry.
