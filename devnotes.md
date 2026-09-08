@@ -9115,3 +9115,12 @@ read-back proof reconstructs all64 bits in the kernel, avoiding the existing
 CodeLib native-decision witness. All new theorems audit to standard logical
 axioms; the field-memory build takes 3.7s. These are memory-model facts;
 allocator/copy execution and the full grid step remain pending.
+
+## 2026-09-07: Exact grid-writer copy loop
+
+The generated copy region now has a terminating execution theorem with exact
+array contents, source preservation, unchanged non-memory store fields and
+an outside-byte frame. CopyLoop builds in 6.1s with only standard logical
+axioms. A generated-region equality connects it to field writer27. It requires
+valid disjoint source and destination arrays; allocator ownership, release,
+neighbor reads and full grid execution remain open.
