@@ -6915,3 +6915,55 @@ Review/stage exactly:
 - proofs/talos/lean/Project/EulerGridStep/README.md
 - proofs/talos/lean/Project/EulerGridStep/FieldMemory.lean
 - proofs/talos/lean/Project/EulerGridStep/WordRoundtrip.lean
+
+### 2026-09-07: Copy-loop invariant
+
+Published memory checkpoint 1233f0a591c9f3b8c3108e8858bb6a7f4dad5085, sole
+parent 52953b4a225b55d52ffcde40d14675fe2138d47f and tree
+07d84e6ad108456a45aa20ff4c1052ebf220e8f2. Non-forced update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. A read-only Store.lean lookup guessed an
+absent file; no mutation resulted. Added CopyModel.lean with an invariant
+for exact prefix copying, both logical arrays, unchanged non-memory store
+fields and bytes outside the destination payload. Its initial, one-write
+step and completed-copy conclusions are the next focused target.
+
+The first CopyModel check hit the reserved syntax name prefix as a field;
+renamed it copied and exposed the size equality to omega before arithmetic.
+The initial failed draft and diagnostics remain.
+
+CopyModel passes in3.5s with standard axioms. CopyFrame passes in3.6s; it
+reuses the existing counter-frame lemmas and proves a general encoded-address
+identity with propext only. The first CopyLoop check completes its exit branch
+but needs the load/store bounds stated with the same wordAddress spelling
+as the instruction goal. Preserved the draft/log, made those two conversions
+explicit and used the current conditional rewrite names.
+
+The corrected CopyLoop check passes in6.1s (3,349 jobs, mostly cached),
+log euler-grid-copy-loop-addresses.log. Its exact terminating execution
+theorem reports only propext, Classical.choice and Quot.sound. Exit and
+advance paths both pass, retaining the complete non-memory store and outside
+bytes. Added FieldShape.lean to identify the exact generated function27
+copy region by definitional equality; updated aggregate imports, README,
+plan.md, plans/euler-rusanov.md and devnotes.md. No source/runtime change.
+
+The first FieldShape check selected the false branch when extracting iff
+(the scan example used a false-branch valid case). The definitional equality
+correctly rejected it. Preserved that draft/log and selected the field
+writer's true branch explicitly; the copy-loop proof itself remains accepted.
+
+FieldShape now passes in3.6s with propext only; the exact emitted copy
+region equals the proved program. All91 maintained Markdown files, case
+README links, registry/import metadata, no-admission scan and whitespace
+checks pass. No compiled runtime suite was repeated for this proof-only
+checkpoint. Review/stage exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/CopyModel.lean
+- proofs/talos/lean/Project/EulerGridStep/CopyFrame.lean
+- proofs/talos/lean/Project/EulerGridStep/CopyLoop.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldShape.lean

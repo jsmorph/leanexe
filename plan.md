@@ -255,6 +255,8 @@ acceptance gates, and nonclaims.
 - [x] Prove exact terminating maximum-speed array execution, shape guards,
   complete store preservation and the accepted computed-speed certificate.
 - [x] Freeze and verify the exact maximum-speed scan bytes.
+- [x] Prove the emitted grid-writer copy loop, preserving disjoint input and
+  outside memory; allocation preconditions and the remaining writer stay open.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
