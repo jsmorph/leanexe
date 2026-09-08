@@ -7612,3 +7612,75 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/WriterCalls.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterFrames.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterCopies.lean
+
+### 2026-09-07: Intermediate cell-buffer releases
+
+Published six-call checkpointc6c174ea9029aab35e793bf96f7d4cdf7aa67b6d,
+sole parent3aab80780b900ae6eb8bce249c5d954daed90601 and tree
+d9965fa59097b8d4cf04a3883ff06266a36d01fd. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added CellReleaseCall.lean for one reverse-
+order intermediate release, preserving the completed sixth output and all
+earlier live prefixes while adding the released buffer to the free chain.
+
+CellReleaseCall passes in3.5s with standard logical axioms, log
+euler-grid-cell-release-call-first.log. Added WriterReleaseOne.lean for the
+exact nonzero-pointer release conditional, preserving the caller frame and
+composing an explicit terminating release contract with its continuation.
+
+The first conditional-release check reaches the chosen branch with a residual
+if True then1 else0 condition. Preserved the draft/log and reduced that true
+conditional alongside the already-reduced false one before applying the
+structural branch rule.
+
+WriterReleaseOne passes in3.7s with standard logical axioms, log
+euler-grid-writer-release-one-condition.log. Added WriterReleaseShape.lean
+using the successful short-prefix/list-reconstruction pattern to identify
+six setup instructions, five release conditionals and the exact empty tail.
+The default shape-proof recursion limit remains unchanged.
+
+WriterReleaseShape passes in3.7s at the default recursion limit, log
+ euler-grid-writer-release-shape-first.log, with propext only. After context
+recovery reread AGENTS.md and this branch's operating contract; verified the
+pinned Darwin Lean/Lake, Node, wasm-tools and Wasmtime executables exist at
+the already-recorded tools/macos-env.sh paths. No toolchain substitution or
+Linux preload. Added WriterReleaseFrame.lean for the six exact save instructions
+and the saved intermediate/result pointer locals. This isolates pure local
+frame facts before composing the five release calls. Checks remain focused.
+
+WriterReleaseFrame passes in4.1s, log euler-grid-writer-release-frame-first.log.
+The setup WP theorem uses the standard three logical axioms; all saved-pointer
+facts use propext only. Added WriterReleases.lean to compose the five exact
+reverse-order release conditionals. Its postcondition retains the completed
+six-field output and original input, restores the five intermediate free-list
+heads in forward order, and increments release/free counters by5.
+The preceding append to this journal followed its source patch without a new
+status inspection; this was a mutation-protocol lapse. Subsequent edits and
+journal appends are grouped into one reviewed command after fresh status.
+
+The first WriterReleases check reaches all five release continuations but
+requires explicit normalization of numeral subtraction and free-list cons/
+append forms when transporting the counter equalities. Preserved the draft
+and first log, then added those small structural simplifications. The failed
+build axiom output is not accepted evidence; no proof resources increased.
+
+WriterReleases passes in3.8s with propext, Classical.choice and Quot.sound,
+log euler-grid-writer-releases-normalize.log. Reviewed the release order,
+exact saved locals, free-list ordering, kept arrays, counter equalities and
+short telemetry alongside the proofs. Added the Project import, README,
+notes and both plan substeps; full grid execution remains explicitly open.
+No source, generated program or binary changed, so no runtime rerun is needed.
+
+All91 maintained Markdown files, registry/import metadata, grid README links,
+no-admission/no-trace scan and git diff --check pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/CellReleaseCall.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterReleaseOne.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterReleaseShape.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterReleaseFrame.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterReleases.lean
