@@ -9351,3 +9351,13 @@ retains the heap across each intermediate release; WriterAcceptedSequence
 shares full writer34 control over proved write/release invariants. Focused
 checks take3.4–3.8s with standard axioms. Whole mixed writer instantiation,
 growing arena, initialization and the outer loop remain open.
+
+## 2026-09-08: Complete mixed writer and cell advance
+
+MixedWriterFramed/Accepted and AdvanceMixed prove the actual later-cell path:
+five reused clones, one fresh final object, five intermediate releases,
+exact model result and old-grid preservation. The heap advances by one
+output object, page count stays fixed, and exact runtime counters/free-list
+state are retained. The shared release invariant can also carry additional
+memory observations for the loop. Focused checks take3.5–3.7s with standard
+axioms. Growing arena, initialization and the outer loop remain open.
