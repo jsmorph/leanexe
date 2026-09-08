@@ -66,5 +66,7 @@ import Project.EulerGridStep.ArenaAllocation
 import Project.EulerGridStep.FreshWriterAccepted
 import Project.EulerGridStep.FreshWriterRejected
 import Project.EulerGridStep.AdvanceReads
+import Project.EulerGridStep.AdvanceAccepted
+import Project.EulerGridStep.AdvanceRejected
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

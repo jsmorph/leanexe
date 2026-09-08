@@ -577,6 +577,11 @@ Every checked row ends in a passing commit, an update to this plan,
   outcomes now cover fresh and reused storage.
 - [x] Prove clamped neighbor offsets and all nine emitted reads in advance35,
   preserving the old grid and staging the exact cell25 arguments.
+- [x] Compose complete advance35 reads, checked-cell and writer calls for
+  six-fresh/six-reused accepted storage and either rejected allocation path.
+- [ ] Compose the actual later-cell writer path: five reused buffers then
+  one fresh allocation. Account for prior outputs retained by the emitted
+  outer loop; the seven-object first-cell budget is not a whole-grid bound.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
