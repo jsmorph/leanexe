@@ -346,7 +346,7 @@
         "Project.EulerGridScan.Spec.maxSpeedCheckedBits_exact",
         "Project.EulerGridScan.Spec.maxSpeedCheckedBits_wat_safe"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

@@ -252,7 +252,10 @@ acceptance gates, and nonclaims.
       every accepted output array entry.
 - [x] Prove accepted speed-scan positivity and its decoded-real bound on
       every checked computed cell speed.
-- [ ] Prove grid array execution and exact bytes.
+- [x] Prove exact terminating maximum-speed array execution, shape guards,
+  complete store preservation and the accepted computed-speed certificate.
+- [ ] Freeze and verify the exact maximum-speed scan bytes.
+- [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
