@@ -185,8 +185,8 @@ accounted for, and the five intermediate buffers form the expected free chain.
 The proof requires six suitable free buffers and explicit separation; it does
 not establish their initial availability for the grid. Builds take4.0s and3.8s
 with standard logical axioms. The rejected-writer theorem follows below.
-Whole-grid allocation, preservation
-of the separate old grid, neighbor reads and the outer loop remain pending.
+Whole-grid allocation, neighbor reads and the outer loop remain pending.
+Separate old-grid preservation is established by WriterProtected below.
 
 [CopyUpdate.lean](CopyUpdate.lean) generalizes the checked copy/update tail
 over the local-variable window; FieldTail now specializes it without changing
@@ -214,8 +214,21 @@ result metadata, and preserves all bytes outside the destination object.
 Both proofs use the explicit sufficient-free-head and separation contract;
 they build in3.5s and3.7s with standard logical axioms. Both writer outcomes
 now have complete conditional execution proofs. Fresh allocation in the
-writer, initial grid storage availability, separate old-grid preservation
-across the accepted writer, neighbor reads and the outer loop remain open.
+writer, initial grid storage availability, neighbor reads and the outer loop
+remain open.
+
+[CellFieldFramed.lean](CellFieldFramed.lean) and
+[CellReleaseFramed.lean](CellReleaseFramed.lean) carry an additional property
+justified by each exact memory result.
+[WriterCopiesFramed.lean](WriterCopiesFramed.lean) and
+[WriterReleasesFramed.lean](WriterReleasesFramed.lean) preserve that property
+through all six writes and five releases.
+[WriterProtected.lean](WriterProtected.lean) applies these contracts to a
+separate represented array, proving that the accepted writer preserves the
+old grid as well as its exact output and buffer-state result. The old-grid
+array may have a different length; separation from each output slot is
+explicit. These builds take3.5–3.7s with standard logical axioms. The theorem
+uses the same six-reusable-buffer premise as WriterAccepted.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
