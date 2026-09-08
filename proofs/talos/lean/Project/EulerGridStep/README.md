@@ -160,8 +160,20 @@ limit. [WriterCalls.lean](WriterCalls.lean) proves each emitted local handoff;
 [WriterCopies.lean](WriterCopies.lean) composes all six emitted calls into
 one execution theorem, ending at the release tail with seven live arrays,
 the exact sixth logical update and allocation count increased by six.
-Its build takes3.7s and audits to standard logical axioms. The five releases,
-outer status dispatch, rejection and whole-grid execution remain pending.
+Its build takes3.7s and audits to standard logical axioms.
+
+[CellReleaseCall.lean](CellReleaseCall.lean) preserves the completed result
+and earlier prefixes across one intermediate release.
+[WriterReleaseOne.lean](WriterReleaseOne.lean) proves the emitted conditional;
+[WriterReleaseShape.lean](WriterReleaseShape.lean) identifies the five exact
+release boundaries, and [WriterReleaseFrame.lean](WriterReleaseFrame.lean)
+proves the saved pointer locals. [WriterReleases.lean](WriterReleases.lean)
+composes the full tail: the final result and original input remain owned,
+the five intermediates return to the free list, and release/free counters
+increase by five. Builds take3.5–4.1s with standard logical axioms. These
+contracts assume explicitly separated live slots and a suitable initial free
+chain. Outer status dispatch, rejection, whole-grid allocation and execution
+remain pending.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

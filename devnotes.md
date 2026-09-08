@@ -9226,3 +9226,13 @@ the sixth output equal to Model.putCell, and allocation count advanced by6.
 WriterCopies builds in3.7s with standard logical axioms. Short generated-shape
 boundaries avoid raising the default recursion limit. The five releases,
 outer dispatch/rejection, neighbors and complete grid remain pending.
+
+## 2026-09-07: Complete intermediate release tail
+
+The emitted writer tail now has an exact execution proof, including pointer
+saves and all five conditional releases. It retains the original array and
+completed six-field result, returns intermediates to the free chain in the
+emitted order, and increments release/free counters by5. Focused builds
+take3.5–4.1s and use only standard logical axioms. Explicit slot/free-chain
+separation remains assumed; status dispatch, rejection, grid allocation and
+whole-grid execution remain open. No runtime or broad aggregate rerun.
