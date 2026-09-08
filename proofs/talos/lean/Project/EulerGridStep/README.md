@@ -89,6 +89,16 @@ update and release/free counters. These checks take under four seconds each
 and audit to standard logical axioms. Composition of these facts across the
 writer and its intermediate buffers remains pending.
 
+[FieldIndexing.lean](FieldIndexing.lean) proves checked field-offset guards
+and exact scalar-array byte capacity for bounded lengths.
+[FieldPrefix.lean](FieldPrefix.lean) proves the first44 emitted instructions,
+including zero/nonzero index paths, checked additions, the length-header read
+and the true bounds test, with an exact20-local frame.
+[FieldCapacity.lean](FieldCapacity.lean) proves the next22 instructions
+inside the accepted branch, setting copy count and normalized capacity.
+These builds take6.8s and3.8s respectively and audit to standard logical
+axioms. Whole-function allocation/ownership composition remains pending.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
