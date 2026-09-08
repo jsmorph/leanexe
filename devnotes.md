@@ -9096,3 +9096,13 @@ both behavioral declarations and axiom audits. All 28 prior packages and the
 historical release draft are unchanged. Inventories now agree at 33 completed
 source cases, 33 Program caches and 29 frozen packages. The source aggregate
 remains deferred; no current aggregate or release-ready result is claimed.
+
+## 2026-09-07: Factored grid writer and exact module
+
+The named field writer reduces grid-step bytes from 11,222 to 8,866, preserving
+all 31 compiled regression results and the exact frozen scan binary. Prepared
+the new Program and proved checked-cell layout reuse plus runtime pins. Both
+layout theorems use propext only; final layout build takes 3.6s. The grid step
+is explicitly incomplete: copying writes, allocation/free-list ownership,
+neighbor loads and the outer loop remain. Inventory is 34 registered cases,
+33 complete, 34 Program caches and 29 frozen packages.

@@ -347,6 +347,18 @@
         "Project.EulerGridScan.Spec.maxSpeedCheckedBits_wat_safe"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_grid_step",
+      "module": "LeanExe.Examples.EulerGridStep",
+      "entry": "LeanExe.Examples.EulerGridStep.stepCheckedBits",
+      "leanModule": "EulerGridStep",
+      "specTarget": "Project.EulerGridStep.Spec",
+      "behaviorTheorems": [
+        "Project.EulerGridStep.Spec.stepCheckedBits_exact",
+        "Project.EulerGridStep.Spec.stepCheckedBits_wat_safe"
+      ],
+      "complete": false
     }
   ]
 }
