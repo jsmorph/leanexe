@@ -9179,3 +9179,14 @@ allocator theorem requires explicit availability, capacity and separation;
 frame proofs establish every live copy/update local. Focused builds take
 3.5–4.0s, all with standard logical axioms. Whole-field and multi-buffer
 composition remain open; no source/runtime change or broad regression run.
+
+## 2026-09-07: Complete generated field writer
+
+Function27 now has an exact terminating theorem for the full index checks,
+capacity setup, fresh/reused allocation, copy/update and pointer-pair return.
+It preserves input, page count and bytes outside the result object; proves
+the exact logical update and owned result metadata; and frames other store
+fields by the chosen allocator. The explicit conditions require bounded,
+separate, sufficiently sized existing storage and a supported free-list
+state. FieldBody builds in3.5s and FieldExecution in3.9s with standard logical
+axioms. Multi-buffer cell writer, rejection, neighbors and outer grid remain.
