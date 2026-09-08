@@ -9,6 +9,15 @@ structure CheckedSpeed where
   speed : UInt64
   deriving Inhabited
 
+/-- One scan iteration with an explicit checked-side call boundary. -/
+def scanAt (input : Array UInt64) (index : Nat) (speed : UInt64) : CheckedSpeed :=
+  let offset := 3 * index
+  let state := sideCheckedBits (input.getD offset 0)
+    (input.getD (offset + 1) 0) (input.getD (offset + 2) 0)
+  if state.status == 0 then
+    ⟨0, if speed ≤ state.speed then state.speed else speed⟩
+  else ⟨1, 0⟩
+
 /-- Scan checked state speeds to choose the next dt/dx. The input is flat
 conservative triples. Rejection returns status one and positive zero. -/
 def maxSpeedCheckedBits (input : Array UInt64) : CheckedSpeed := Id.run do
@@ -18,13 +27,11 @@ def maxSpeedCheckedBits (input : Array UInt64) : CheckedSpeed := Id.run do
   let mut status : UInt64 := 0
   let mut speed : UInt64 := 0
   while index < count && status == 0 do
-    let offset := 3 * index
-    let state := sideCheckedBits (input.getD (offset) 0) (input.getD (offset + 1) 0) (input.getD (offset + 2) 0)
-    if state.status == 0 then
-      if speed ≤ state.speed then speed := state.speed
-    else status := 1
+    let result := scanAt input index speed
+    status := result.status
+    speed := result.speed
     index := index + 1
-  if status == 0 then return ⟨0, speed⟩ else return ⟨1, 0⟩
+  return ⟨status, speed⟩
 
 /-- Store a checked cell or mark the output rejected. -/
 def writeCell (output : Array UInt64) (index : Nat)
