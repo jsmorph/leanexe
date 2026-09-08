@@ -9217,3 +9217,12 @@ and each field call advances the corresponding live prefix and free chain.
 Focused builds3.6–3.9s, all standard logical axioms. Slot/free-tail separation
 remains explicit; the generated cell-writer sequence and its five intermediate
 releases still need composition before the whole-grid theorem.
+
+## 2026-09-07: Complete six-call writer sequence
+
+The six actual generated field calls now compose into one execution theorem,
+ending before release with all seven live arrays, exact logical prefixes,
+the sixth output equal to Model.putCell, and allocation count advanced by6.
+WriterCopies builds in3.7s with standard logical axioms. Short generated-shape
+boundaries avoid raising the default recursion limit. The five releases,
+outer dispatch/rejection, neighbors and complete grid remain pending.
