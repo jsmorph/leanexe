@@ -64,5 +64,6 @@ import Project.EulerGridStep.WriterSequence
 import Project.EulerGridStep.FreshBufferState
 import Project.EulerGridStep.ArenaAllocation
 import Project.EulerGridStep.FreshWriterAccepted
+import Project.EulerGridStep.FreshWriterRejected
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

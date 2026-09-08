@@ -8046,3 +8046,57 @@ the user's manageable-regression instruction, no broad gate was run.
 Stage/publish exactly devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,FreshCellState.lean,
 FreshWriterCopies.lean,FreshWriterAccepted.lean}.
+
+### 2026-09-08: Fresh rejected writer allocation
+
+Published e5148ff3a52ce00c13d069bec24a4c52530e182b, sole parent
+a7f7173f3e9efbd4124cf13806966cf36bab6754, tree
+b096c59e81fa85c3a97fa0e86a891b3fd92b2b68. Non-forced update, fetch,
+commit/parent/message/tree/index/worktree verification and local CAS passed;
+clean synchronization confirmed. Added RejectedAllocationBump.lean by
+instantiating the existing fresh allocation proof at the rejected writer's
+local window67, with10 parameters and72 locals. Generic metadata stores
+remain shared; byte offsets and capacity semantics are unchanged. The
+explicit existing-page budget excludes memory growth.
+
+Pinned Darwin Lean/Lake and wasm-tools paths were validated executable after
+compaction; no preload is used. The first focused RejectedAllocationBump
+build failed in5.6s at the heap lookup: simplification had not opened the
+extra rejectedCloneBody definition. Its log is
+euler-grid-rejected-fresh-allocation-first.log; failed draft preserved
+externally as work/euler-grid-rejected-fresh-allocation-first.lean. Added
+that missing shape definition to the existing bounded simplification.
+No timeout or resource increase; failed-build axiom output is not evidence.
+
+RejectedAllocationBump passes in7.3s with standard logical axioms; log
+euler-grid-rejected-fresh-allocation-shape.log. Review with the proof shows
+only the extra shape unfolding was missing; metadata stores stay shared.
+Added FreshRejectedFrame.lean to establish the exact rejected-copy window
+after fresh allocation and its returned counter frame.
+
+FreshRejectedFrame passes in4.3s with propext only; log
+euler-grid-fresh-rejected-frame-first.log. Added FreshRejectedClone.lean
+to compose capacity, fresh allocation and the shared copy_update_spec67,
+writing status one and retaining the full memory frame. Only this new
+composition target is next; successful dependencies remain cached.
+
+FreshRejectedClone passes in3.8s with standard logical axioms; log
+euler-grid-fresh-rejected-clone-first.log. Added FreshWriterRejected.lean
+for the complete generated function34 when the cell is rejected and the
+free list is empty. Its exact FieldResult retains old-grid preservation
+through the existing object-frame theorem; no numerical or byte claim changes.
+
+FreshWriterRejected passes in3.0s with propext, Classical.choice and
+Quot.sound, log euler-grid-fresh-writer-rejected-first.log. Reviewed the
+complete conditional body, allocation/copy continuation and exact return
+against telemetry. Four narrow modules establish this missing fresh outcome;
+all previous successful proofs were replayed from cache. Updated README,
+aggregate import, notes and both plan substeps. No runtime, source, bytes,
+CLOB, full aggregate or release gates were touched.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly
+devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,
+RejectedAllocationBump.lean,FreshRejectedFrame.lean,FreshRejectedClone.lean,
+FreshWriterRejected.lean}.
