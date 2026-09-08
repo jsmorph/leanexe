@@ -193,7 +193,17 @@ same tail in the rejected-cell branch at local67, including the surrounding
 bounds conditional and result saves. [RejectedPrefix.lean](RejectedPrefix.lean)
 proves its header read, index-zero bounds test and exact local frame for a
 nonempty output. These builds take3.6–3.8s with standard logical axioms.
-Rejected-branch allocation and full rejection execution remain to connect.
+[RejectedCapacity.lean](RejectedCapacity.lean) proves the copy-count and
+capacity setup. [RejectedReuseHit.lean](RejectedReuseHit.lean) and
+[RejectedReuseSearch.lean](RejectedReuseSearch.lean) prove the terminating
+first-sufficient-head search at this local window.
+[RejectedAllocationShape.lean](RejectedAllocationShape.lean) identifies the
+exact allocator block, and [RejectedAllocationReuse.lean](RejectedAllocationReuse.lean)
+proves its complete reuse path with exact metadata, globals and selected root.
+[RejectedFrame.lean](RejectedFrame.lean) proves every live variable required
+by the copy/update tail. New targets take3.7–5.4s and use standard logical
+axioms. Joining these contracts into complete rejection execution remains
+open; fresh allocation for rejection is not yet connected.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
