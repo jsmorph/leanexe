@@ -9246,3 +9246,12 @@ owned and unchanged. Exact free-chain and counter changes are included.
 The build passes in3.8s with standard logical axioms. Six suitable free
 buffers and separation are explicit assumptions; rejection, initial grid
 allocation, old-grid framing, neighbors and the outer loop remain open.
+
+## 2026-09-08: Shared copy/update and rejection prefix
+
+CopyUpdate abstracts the existing exact copy/update proof over the emitted
+local-variable window. FieldTail now specializes it with its public contract
+unchanged. Exact generated shapes connect the rejection branch to this proof
+at local67; its17-instruction prefix proves the header read, nonempty index-
+zero bound and resulting frame. New targets take3.6–3.8s with standard logical
+axioms. Allocation in the rejected branch and full rejection remain open.
