@@ -6723,3 +6723,83 @@ Explicit reviewed checkpoint paths:
 - proofs/talos/lean/Project/EulerGridScan/README.md
 - proofs/talos/lean/Project/EulerGridScan/Execution.lean
 - proofs/talos/lean/Project/EulerGridScan/Spec.lean
+
+Published completed scan execution as 7f3ff3f553b60d19b409780c40550b5f99250863,
+sole parent 10e2990acd1f71b9b901c2f310478096806beedb and tree
+34f34f5659361c6ac5d82da8933efd1ccb596d28. Non-forced GitHub update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS all passed;
+final status was clean and synchronized. Prepared a scoped freezer for only
+the scan's nine fresh package files, registry row and CheckFile arm/import.
+It checks prior package and historical receipt preservation, expected path
+membership, exact bytes and the unchanged normative verifier digest.
+
+Created nine fresh grid-scan exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 28 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler_grid_scan",
+  "sha256": "279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9",
+  "byteLength": 3292,
+  "newFiles": [
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactCache.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/EulerGridScan/ArtifactTranslation.lean",
+    "proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/manifest.json",
+    "proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/program.wasm"
+  ],
+  "oldPackagesUnchanged": 28,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The scan freezer completed successfully; the single-package gate is running.
+Reconciled package inventories to 29 and corrected remaining stale 32-source
+counts in DEVELOPMENT documentation, the second main README inventory,
+language/verifying docs and both plans. Correction to the previous inventory
+entry: its registry/import changes were complete, but several duplicated
+prose counts were missed; this checkpoint brings all maintained counts to
+33 completed source cases / 33 caches / 29 packages. Updated scan package
+claims are staged only after its focused gate passes. No broader regression.
+
+The focused scan package gate completed with exit zero. Its 3,292 embedded
+bytes match; exact decoding, validation, translation, both behavioral
+declaration types and axiom audits pass. Public execution and safety use
+only propext, Classical.choice and Quot.sound; exact-byte native decision
+witnesses remain within the existing policy. Metadata checks validate all
+29 manifests and 33/33 source/import membership, all 91 maintained Markdown
+files and scan README links. The final no-admission rg returned no matches
+(exit 1, expected). No broad source/artifact aggregate or release gate ran.
+The next grid-step boundary needs copying-array writes and ownership proofs;
+read-only WAT inspection confirms six copies and five releases in writeCell.
+Explicit reviewed checkpoint paths:
+- DEVELOPING.md
+- README.md
+- devnotes.md
+- docs/spec.md
+- docs/status.md
+- docs/verifying.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/artifacts/registry.json
+- proofs/talos/README.md
+- proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md
+- proofs/talos/lean/Project/EulerGridScan/ArtifactBytes.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactCache.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactDecode.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactDecoded.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactRawCache.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactTranslation.lean
+- proofs/talos/lean/Project/EulerGridScan/ArtifactValidation.lean
+- proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/manifest.json
+- proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/program.wasm
