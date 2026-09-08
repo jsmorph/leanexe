@@ -6617,3 +6617,58 @@ Reviewed explicit stage intent:
 Iteration checkpoint checks pass: whitespace, all README links, 91
 maintained Markdown files, registry/import metadata and no-admission or
 remaining diagnostic-source checks. No broad regression or release run.
+
+Published iteration checkpoint 7036a04302ea398c3257dff55325da59d41c94cb, sole
+parent 81d59be763c57245236f376ac277c9f6b585be47, tree
+2ee80b5e02edea7a6fb00274b11966ba58f67f9d. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed; clean
+synchronized status. Added remaining-scan composition and exit lemmas.
+The first model check rewrote the wrong occurrence of scan; targeting only
+the RHS fixes it. Exit arithmetic also needs the explicit negated-index
+fact extracted from its conjunction. The next run showed that the corrected
+rewrite closes the goal, so removed redundant trailing tactics. Both failed
+logs remain. Added structural loop extraction directly from Program and a
+40-local frame/invariant preserving local27 between result projections.
+
+LoopModel now passes; the shape extraction requires all five explicit
+block/loop constructor fields, including the default type lists, in patterns.
+Added explicit Instruction/Option types and constructor names. A read-only
+lookup guessed absent Interpreter/Wasm/Instructions.lean; discovery found
+Syntax.lean, which documents those fields. Added the exact scratch-slot
+updates for continuing and exiting loop bodies; neither changes Program.
+
+LoopShape and LoopFrame pass in 3.5s/3.6s; both exact loop-shape equalities
+audit to propext. The first Loop execution attempt finishes in 4.4s but
+rewrites the abstract count through input.size/3, so the encoded guard no
+longer matches its prepared comparison. Preserved the draft/log, derived
+the required count and cell-index bounds first, and removed that rewrite
+hypothesis from the local simplifier context. The loop proof remains pending.
+
+The count-isolated loop check completes both exit branches and all memory,
+call, scratch-frame and decreasing-measure obligations in 9 seconds. One
+remaining invariant equality needs its target normalized by the original
+hTarget, which the instruction simplifier already used. Preserved the draft
+and log, made that transport explicit, and removed two unused simp arguments.
+
+The final loop proof passes in 10s (3,380 jobs), with no new local warnings.
+scan_loop_spec audits to propext, Classical.choice and Quot.sound. It is
+parameterized by the following continuation, proves both exit paths and
+strictly decreasing iteration measure, retains the exact modeled status/
+speed, preserves the complete store and preserves local27 for the second
+projection. Both copied compiler loops are definitionally the same extracted
+instruction list. Updated README, aggregate import and concise notes. Entry
+guards/projection composition are pending; case count remains 33 registered
+with 32 complete and 28 frozen packages. No source/runtime changes require
+another compiled regression. Explicit reviewed stage intent:
+- proofs/talos/lean/Project/EulerGridScan/LoopModel.lean
+- proofs/talos/lean/Project/EulerGridScan/LoopShape.lean
+- proofs/talos/lean/Project/EulerGridScan/LoopFrame.lean
+- proofs/talos/lean/Project/EulerGridScan/Loop.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md
+- proofs/talos/lean/Project.lean
+- devnotes.md
+- journal.md
+
+Loop checkpoint checks pass: whitespace, all README links, 91 maintained
+Markdown files, registry/import metadata and no-admission/diagnostic source
+checks. No broad regression or release gate was run.
