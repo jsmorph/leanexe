@@ -7015,3 +7015,91 @@ links, no-admission scan and whitespace checks pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/HeaderMemory.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldTailModel.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldTail.lean
+
+### 2026-09-07: Fresh field allocation
+
+Published field-tail checkpoint00a2f02b373bc14c3053d277688884442702e08d,
+sole parentdb53437535e25f777bc30c2e101a3f0b090957b2 and tree
+13a2800a388124581a23e7bda2ce6c3271ef3b34. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed; clean
+synchronization confirmed. Added FieldAllocationBump.lean, adapting the
+checked allocator-window proof to the exact field function's five parameters,
+20 locals and return-pointer slot14. It reuses shared allocation arithmetic,
+search/bump instruction definitions and store model. Its explicit scope is
+empty free list and sufficient existing memory; buffer reuse remains pending.
+
+The first allocator check built missing shared dependencies (Allocation3.6s,
+FixedArrayAllocator23s, Capacity2.9s, Window31s), then failed its shape
+equality and reached the recursion limit at the third header store. No
+timeout occurred. A read-only instruction comparison identifies the exact
+difference: generated bump uses localTee22 where the older helper uses
+localSet22/localGet22. The i32 failure constant also has signed spelling
+(-1), representing the same word. Preserved the failed draft/log. Added
+HeaderStores.lean to isolate constant/local header stores with opaque store
+results and complete local-frame preservation before retrying composition.
+No recursion/heartbeat/time budget was increased.
+
+The isolated HeaderStores check passes in3.4s with standard axioms. Removed
+one reported unused simp argument. Added AllocationHeader.lean: its bump body
+is extracted directly from generated WAT, its six metadata stores compose
+through the small accepted store theorems, and the emitted allocation-region
+equality now preserves localTee22. This isolates header execution before the
+fresh-allocation proof is retried.
+
+AllocationHeader passes in4.7s: both exact generated shapes use propext,
+and the six-store execution theorem uses the standard three logical axioms.
+Reworked FieldAllocationBump to call that accepted theorem, preserving the
+actual emitted tee instruction and replacing the deep inline six-store
+simplification with one opaque continuation boundary. Recursion remains16384
+and the command timeout remains120s.
+
+The isolated allocator retry reaches a no-progress simplification before the
+overflow guard, with no recursion failure. Preserved the draft and added
+one goal trace at that exact boundary to inspect the remaining program.
+
+The trace shows the extracted generated list still suspended at getElem?0.
+Selected the existing wp_alloc_window_lists variant, which supplies both
+cons-index reductions, and removed the temporary goal trace after preserving
+it and its log. This is a list-normalization correction, not allocator logic.
+
+List normalization now completes the emitted search, overflow and no-growth
+branches and reaches the accepted header-store theorem. Its remaining
+continuation is the enclosing iff return, rather than the outer Q directly.
+Preserved the draft/log and retained that inferred continuation while applying
+the header theorem with an empty inner remainder.
+
+The next diagnostic isolates the remaining boundary mismatch to the operand
+stack: the emitted header frame has an empty stack, while fieldBumpFrame
+inherited the original stack propositionally. Preserved the draft/log and
+made the empty stack explicit in that result-frame definition.
+
+The explicit frame reaches the final exact-store comparison. Broad
+simplification normalized metadata addresses into UInt32 arithmetic, unlike
+the shared store model's natural-offset spelling. Preserved the draft/log
+and used a globals-only header projection in the return-path simplifier,
+keeping header memory opaque until the final explicit address conversion.
+
+The globals-only projection preserves exact header addresses and leaves
+only the allocator-count read beneath the heap-top global update. Preserved
+this draft/log and added that separate unchanged-slot read equality to the
+final explicit simplification. The execution and store-shape goals agree.
+
+The corrected fresh-allocation theorem passes in7.4s, log
+euler-grid-field-alloc-bump-count.log (3,359 jobs, mostly cached). Its axiom
+audit is exactly propext, Classical.choice and Quot.sound. The emitted tee
+and six header stores are pinned; exact state includes the heap-top and
+allocation-count updates plus every other original store field. All earlier
+failed drafts/logs remain. Added aggregate import, README and concise notes.
+The source/binary and runtime regressions are unchanged; free-list reuse
+and ownership transfer remain explicit pending work.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/HeaderStores.lean
+- proofs/talos/lean/Project/EulerGridStep/AllocationHeader.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldAllocationBump.lean

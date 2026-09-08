@@ -9134,3 +9134,12 @@ accepts arbitrary existing payload bytes. FieldTail builds in3.9s with only
 standard logical axioms; bounded disjoint allocation and live-local setup
 remain explicit preconditions. Allocation/ownership and full grid execution
 remain pending.
+
+## 2026-09-07: Fresh grid-field allocation
+
+The exact generated allocator region now has a fresh-allocation theorem for
+an empty free list and sufficient existing memory. It proves exact metadata
+stores, heap-top/allocation-count updates and the returned local frame.
+Factoring six header stores removes the inline recursion failure while keeping
+the original limit. Final build7.4s, standard logical axioms. Free-list reuse,
+ownership transfer and complete grid execution remain pending.
