@@ -9303,3 +9303,12 @@ objects. It performs six exact fresh calls, releases five intermediates,
 returns Model.putCell and preserves the separate old grid. Builds take3.4–
 3.6s with standard logical axioms. Initial output allocation, fresh rejection,
 neighbor reads and whole-grid execution remain open.
+
+## 2026-09-08: Complete fresh rejected writer
+
+FreshWriterRejected proves all generated writer34 for a nonzero cell status
+from an empty free list. It allocates one fresh clone, writes status one,
+returns the exact result and retains the destination-object memory frame.
+The whole theorem builds in3.0s with standard logical axioms. Both writer
+outcomes now cover fresh and reused storage. Initial output allocation,
+neighbor reads and whole-grid execution remain open.

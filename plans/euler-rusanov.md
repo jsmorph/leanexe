@@ -572,6 +572,9 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove the full fresh accepted writer from an empty free list, using six
   fresh slots after the initialized output, with a seven-object memory budget,
   exact releases/output and separate old-grid preservation.
+- [x] Prove the full fresh rejected writer from an empty free list, returning
+  a status-one clone with exact allocation and memory frame. Both writer
+  outcomes now cover fresh and reused storage.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
