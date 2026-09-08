@@ -21,6 +21,13 @@ execution of the named scan body for every valid grid index, arbitrary seed
 speed and array-capacity word, with three exact input loads, the checked-side
 call, both status/max branches, and complete store preservation. It composes
 with any module satisfying the shared layout and uses only standard logical
-axioms. Whole-scan loop termination and result correspondence, execution
-safety and frozen-byte verification remain open.
+axioms. [LoopModel.lean](LoopModel.lean) relates each iteration to the
+remaining scan. [LoopShape.lean](LoopShape.lean) proves that both generated
+loops have identical instructions. [LoopFrame.lean](LoopFrame.lean) records
+the scratch slots and preserved first-result slot. [Loop.lean](Loop.lean)
+proves termination, exact result correspondence and store preservation for
+either loop under an arbitrary following continuation. Its measure counts
+remaining cells and decreases on every continuing iteration. Entry guards,
+the two-projection composition, execution safety and frozen-byte verification
+remain open.
 There is no completed behavioral specification or frozen package yet.

@@ -9066,3 +9066,12 @@ status/max branches and complete store preservation. Indexing supplies
 reusable memory/encoded-word facts; the full iteration builds in 15 seconds
 with standard axioms only. The complete scan loop remains pending; source
 inventories stay 33 registered / 32 complete, with 28 frozen packages.
+
+## 2026-09-07: Exact terminating grid-scan loop
+
+The generated scan loop now composes the proved iteration with a remaining
+work invariant and decreasing measure. Both exit cases, exact resulting
+status/speed, full store preservation and preservation of the first-result
+slot pass; both output projections have definitionally identical loop code.
+The final loop build takes 10 seconds with standard axioms only. Entry guards
+and two-projection composition remain next; registration is still incomplete.
