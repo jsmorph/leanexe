@@ -7216,3 +7216,71 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/ReuseHit.lean
 - proofs/talos/lean/Project/EulerGridStep/ReuseSearch.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldAllocationReuse.lean
+
+### 2026-09-07: Field index and capacity setup
+
+Published reuse checkpoint006f97c81a05894324ba1c7b0c21accd06314f92, sole
+parent888fec522a1cb31389b728ab48f280993e66a62b and tree
+e3960c55de2377312e139e839da69fe8019e84ab. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed; clean
+synchronization confirmed. Added FieldIndexing.lean for the checked six-word
+offset multiplication, bounded additions, encoded field index and exact
+rounded/normalized scalar-array capacity. These provide the arithmetic
+preconditions for joining field setup to the accepted allocator/tail proofs.
+
+The first arithmetic check accepts both overflow guards. Generic reverse
+rewrites fail to infer natural literal factors from UInt64 numerals in the
+index/capacity equalities. Preserved the draft/log and instantiated the
+conversion equalities explicitly before using them; arithmetic assumptions
+and resource limits are unchanged.
+
+FieldIndexing passes in3.5s: guards/capacity use propext and Quot.sound,
+and encoded index equality uses propext. Added FieldPrefix.lean to execute
+the first44 emitted instructions, including zero-index handling, all checked
+arithmetic guards and the length-header read, ending at the true array-bound
+condition with an exact20-local frame. This target is independent of
+allocator ownership composition.
+
+The first FieldPrefix check stops at addition guards normalized by the
+interpreter simplifier into equality with zero. Preserved the draft/log;
+added explicit nonzero offset/destination facts in both encoded and emitted
+spellings, plus the corresponding encoded second-addition guard. Their
+natural bounds already follow from the valid field index.
+
+The nonzero-index prefix now reaches the correct final frame behind only
+the explicit header-load bound. The zero branch needs its specialized raw
+nonzero destination fact normalized after substitution. Preserved the
+draft/log and added those two local reductions to the existing proof steps.
+
+The next FieldPrefix check completes the nonzero path; the zero path now
+only needs its specialized final in-bounds comparison. Preserved the draft/log
+and added that normalized fact. Added FieldCapacity.lean for the exact
+22-instruction count/capacity setup, generic in the raw length word; its
+physical byte-count interpretation is supplied separately by FieldIndexing.
+
+FieldPrefix passes in6.8s with standard logical axioms. FieldCapacity has
+a record-field continuation indentation error; its failed parser recovery
+is not an accepted proof. Preserved the draft/log and placed the complete
+local-set expression on one field line before checking it again.
+
+FieldCapacity passes in3.8s with standard logical axioms, log
+euler-grid-field-capacity-record.log. Together with the6.8s FieldPrefix
+check, both setup regions now have exact frame/store contracts. Added
+aggregate imports, README links and concise notes. A read-only generated-call
+inspection confirms function34 performs all six field calls27 before its
+five releases40; function35 calls25/34, and entry36 calls0/35/40. Thus an
+accepted cell can keep seven output buffers live before release, and the
+upcoming arena invariant must budget for that actual ordering. This is code
+inspection for proof planning, not a new complete memory/execution claim.
+No source/runtime changes or compiled regression reruns.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/FieldIndexing.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldPrefix.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldCapacity.lean
