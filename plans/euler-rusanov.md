@@ -550,7 +550,10 @@ Every checked row ends in a passing commit, an update to this plan,
       every accepted output array entry.
 - [x] Prove accepted speed-scan positivity and its decoded-real bound on
       every checked computed cell speed.
-- [ ] Prove grid array execution and exact bytes.
+- [x] Prove exact terminating maximum-speed array execution, shape guards,
+  complete store preservation and the accepted computed-speed certificate.
+- [ ] Freeze and verify the exact maximum-speed scan bytes.
+- [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.

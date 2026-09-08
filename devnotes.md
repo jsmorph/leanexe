@@ -9075,3 +9075,14 @@ status/speed, full store preservation and preservation of the first-result
 slot pass; both output projections have definitionally identical loop code.
 The final loop build takes 10 seconds with standard axioms only. Entry guards
 and two-projection composition remain next; registration is still incomplete.
+
+## 2026-09-07: Complete exact maximum-speed scan
+
+The exported scan now composes both generated loops with empty/malformed
+shape rejection and exact result projections. Execution builds in 6.5s;
+both public exact/safety theorems build in 3.5s with standard logical axioms.
+Every logical input array fitting memory terminates with the model's exact
+status/speed and preserves the complete store. Accepted speed is positive
+finite and bounds all checked computed cell speeds. Registry and imports now
+record 33 completed source cases; 28 frozen packages remain, with scan bytes
+next. Full grid-step WAT, repeated stepping and scientific outputs remain.
