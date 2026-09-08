@@ -8458,3 +8458,65 @@ mixed writer and still-open arena proof. Reviewed/stage/publish exactly
 devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,WriterReleaseState.lean,
 MixedWriterFramed.lean,MixedWriterAccepted.lean,AdvanceMixed.lean}.
+
+### 2026-09-08: Growing grid arena bounds
+
+Published e46bb794c9dfbf02627d1bd0415c57952656c719, sole parent
+bdb576dd7d16f0a6a12ccb616d2b91fac7a3601b, tree
+7352d6b0283c8842034ab2f43c44d712471b25e1. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. Reread the exact outer-loop tail: the
+only release follows the loop and targets initial output local7. Added
+ArenaBounds.lean to generalize the preserved seven-slot worked geometry
+to any explicit slot count, retaining exact word addresses and separation.
+A focused search found no existing advanceAt/putCell size lemma in Model
+or Outputs; no state changed. Outer-loop resource execution remains open.
+
+ArenaBounds passes in3.4s with propext/Quot.sound, log
+euler-grid-arena-bounds-first.log. Added LaterArena.lean: after a positive
+number i of accepted cells, writer source slot is i+5, reusable slots stay
+1..5 and the next fresh destination is i+6. The seven logical writer roots
+are distinct and fit within cells+6 physical slots when i<cells. This is
+geometry for the actual retained-output path, still conditional on the
+execution invariant and explicit existing-memory budget.
+
+LaterArena passes in3.5s with propext/Quot.sound, log
+euler-grid-later-arena-first.log. Added GridSizes.lean for unchanged output
+length through putCell, advanceAt and fill. Added LaterArenaState.lean
+to retain the current output, fixed five-node pool, growing heap and budget
+after accepted cells. Its mixed-writer precondition requests one remaining
+object only while another cell remains; terminal state needs no extra slot.
+
+Added AdvanceArena.lean to connect the complete accepted advance to the
+growing arena: current output slot i+5 becomes slot i+6, the five-node
+pool is restored, the heap becomes slot i+7 and the same whole-grid budget
+survives. Restricting the live list records the output needed by the next
+iteration; it performs no runtime release of the previous output.
+
+The LaterArenaState dependency check stops at GridSizes: splitting the
+advanceAt conditional requires reducing its local cell binding first.
+Preserved the failed log and external draft; changed that leaf from unfold
+to dsimp only, retaining the symbolic cell model. No execution theorem or
+failed-build axiom output is claimed from this run.
+
+GridSizes passes in3.5s and LaterArenaState in3.6s with standard axioms.
+AdvanceArena reaches its final address normalization in3.7s; simp already
+closes that equality, so the following congr tactic reports no goals.
+Preserved log/draft and removed only that redundant tactic. No timeout
+or changed proof claim; failed-run audits remain excluded.
+
+AdvanceArena passes in3.7s with standard logical axioms, log
+euler-grid-advance-arena-normalized.log. Reviewed all five new modules
+and telemetry: variable geometry preserves the seven-slot worked example,
+size equalities keep array-dependent addresses fixed, and the full advance
+retains the bounded arena without releasing a previous output. Updated
+plans, README, imports and notes with the precise completed per-cell claim
+and remaining first-cell/rejection/loop boundaries. No runtime code changed.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Aligned the earlier README cross-references with the checked later-cell
+arena transition. Reviewed/stage/publish exactly devnotes.md, journal.md,
+plan.md, plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+EulerGridStep/{README.md,ArenaBounds.lean,LaterArena.lean,GridSizes.lean,
+LaterArenaState.lean,AdvanceArena.lean}.

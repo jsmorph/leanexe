@@ -283,8 +283,10 @@ acceptance gates, and nonclaims.
   six-fresh/six-reused accepted storage and either rejected allocation path.
 - [x] Compose the actual later-cell writer and full advance35: five reused
   buffers then one fresh allocation, preserving the old grid and exact heap/pages.
-- [ ] Prove the growing arena budget accounting for prior outputs retained by
-  the outer loop; the seven-object first-cell budget is not a whole-grid bound.
+- [x] Prove variable arena bounds and preservation of the cells+6 object
+  budget by each later accepted advance, accounting for retained prior outputs.
+- [ ] Connect initialization, first-cell heap state and rejection to the
+  growing arena invariant, then compose the actual outer loop.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 

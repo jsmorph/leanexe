@@ -76,5 +76,6 @@ import Project.EulerGridStep.MixedCellState
 import Project.EulerGridStep.CellReleaseHeap
 import Project.EulerGridStep.WriterAcceptedSequence
 import Project.EulerGridStep.AdvanceMixed
+import Project.EulerGridStep.AdvanceArena
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

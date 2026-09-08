@@ -286,7 +286,7 @@ The actual outer loop releases its initial output only after the loop; it
 does not release each prior iteration output. Thus an accepted writer
 leaves five reusable intermediates, and the next accepted writer requires
 five reused buffers followed by one fresh allocation. The mixed writer and advance path are now composed below;
-the growing arena budget remains open. The seven-object bound
+the later-cell arena transition is also checked below. The seven-object bound
 above applies to the first fresh writer, not the entire grid step. Initial
 output allocation and full grid execution also remain open.
 
@@ -297,8 +297,7 @@ global0. [ReleaseHeap.lean](ReleaseHeap.lean) preserves that heap address
 through the full scalar release. [FreshSpace.lean](FreshSpace.lean) establishes
 fresh-allocation validity from one available object, independent of the
 seven-slot first-cell layout. These focused builds take3.4–3.8s and use
-standard logical axioms. They support the complete mixed writer below and the pending growing
-arena proof.
+standard logical axioms. They support the complete mixed writer below and the growing arena transition below.
 
 [WriterPool.lean](WriterPool.lean) describes the actual five reusable nodes.
 [MixedState.lean](MixedState.lean), [MixedReuseCall.lean](MixedReuseCall.lean),
@@ -319,7 +318,19 @@ of a separate old grid; [AdvanceMixed.lean](AdvanceMixed.lean) connects it to
 all neighbor reads, cell25 and advance35. The full result includes the exact
 model update, five-node free list, counters, one-object heap advance and
 unchanged page count. These checks take3.5–3.7s with standard axioms.
-Initialization, growing arena and the outer loop still need proof.
+Initialization and the outer loop still need proof.
+
+[ArenaBounds.lean](ArenaBounds.lean) generalizes address bounds and object
+separation to an explicit variable slot count. [LaterArena.lean](LaterArena.lean)
+maps the later writer's source to slot i+5, free buffers to slots1–5 and
+fresh result to slot i+6. [GridSizes.lean](GridSizes.lean) proves that all
+model updates preserve output length. [LaterArenaState.lean](LaterArenaState.lean)
+records the current output, fixed free list, growing heap and cells+6 object
+budget. [AdvanceArena.lean](AdvanceArena.lean) proves that a complete later
+accepted advance preserves this invariant and the old grid. These builds
+take3.4–3.7s with standard axioms. This remains conditional on the initial
+state and budget; first-cell handoff, rejection and outer-loop composition
+are still pending.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
