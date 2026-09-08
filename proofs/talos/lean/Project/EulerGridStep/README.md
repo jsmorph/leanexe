@@ -60,6 +60,16 @@ fields and bytes outside the destination array. This theorem requires
 bounded, disjoint allocated storage and the expected live locals; its
 allocator preconditions remain to prove. Its axiom audit is standard.
 
+[HeaderStores.lean](HeaderStores.lean) proves individual metadata stores with
+unchanged local frames. [AllocationHeader.lean](AllocationHeader.lean) proves
+the six emitted metadata writes and identifies the exact allocator region,
+including its localTee instruction.
+[FieldAllocationBump.lean](FieldAllocationBump.lean) proves fresh allocation
+with an empty free list and enough existing memory: exact metadata, updated
+heap top and allocation count, and the resulting local frame. It builds in
+7.4s with standard logical axioms. Free-list reuse, ownership transfer and
+composition with the field-write tail remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
