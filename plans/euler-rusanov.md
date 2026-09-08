@@ -558,6 +558,9 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove complete field-write execution for a bounded index and either fresh
   allocation or a sufficient free-list head, with explicit memory/separation
   conditions, exact logical update, owned metadata and object footprint.
+- [x] Compose the six emitted field calls and five intermediate releases,
+  with explicit separated-buffer/free-chain assumptions, exact live outputs
+  and runtime counters. Full writer dispatch and grid allocation remain open.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
