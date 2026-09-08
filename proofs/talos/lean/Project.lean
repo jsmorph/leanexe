@@ -72,5 +72,8 @@ import Project.EulerGridStep.WriterReleaseSequence
 import Project.EulerGridStep.BufferResults
 import Project.EulerGridStep.ReleaseHeap
 import Project.EulerGridStep.FreshSpace
+import Project.EulerGridStep.MixedCellState
+import Project.EulerGridStep.CellReleaseHeap
+import Project.EulerGridStep.WriterAcceptedSequence
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
