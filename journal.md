@@ -7427,3 +7427,50 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/ReleaseMemory.lean
 - proofs/talos/lean/Project/EulerGridStep/FreeFrame.lean
 - proofs/talos/lean/Project/EulerGridStep/ReleaseFramed.lean
+
+### 2026-09-07: Uniform free-buffer chains
+
+Published buffer-frame checkpoint99961e75b01cde0a5e249ac942774511a5041e99,
+sole parent50a1917f574f50ef5653e9f6613306f6ea8509b8 and tree
+dee4509359ccc9926cb45b909a779f61b8d476ca. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added FreeChain.lean for finite uniformly
+sized free buffers with header links and physical bounds, preservation by
+separate operations, conversion of the first node into actual allocation
+preconditions, and adding a released buffer to the preserved chain.
+
+FreeChain passes in3.6s; all five audited theorems use only propext and
+Quot.sound, log euler-grid-free-chain-first.log. Added FreeChainExecution.lean
+to attach chain consumption/extension and exact runtime-global updates to
+the proved full field and release functions. Pairwise separation remains an
+explicit caller obligation; the list predicate alone does not assert it.
+
+The first FreeChainExecution check accepts release/chain composition. The
+field-global projection needs a local congrArg fact before reducing away the
+memory-only record update; direct expected-type inference instead asked for
+full Store equality. Preserved the draft/log and isolated that projection.
+
+FreeChainExecution passes in3.9s, standard logical axioms, log
+euler-grid-free-chain-execution-globals.log. Added LiveBuffers.lean to track
+uniform-size owned arrays, preserve an entire separate live list through
+cloning/release, and prepend the exact updated clone. This avoids manually
+repeating header/payload preservation for every intermediate buffer.
+
+LiveBuffers passes in3.7s, all four theorem audits use propext/Quot.sound,
+log euler-grid-live-buffers-first.log. Reviewed the accepted chain/live-list
+proofs and short telemetry together. Shared list contracts eliminate repeated
+per-buffer framing while keeping physical bounds, exact contents and
+separation obligations visible. Added aggregate import and README/notes.
+No source, runtime, dependency, binary or trusted-base changes; no broad
+regression or current aggregate run.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/FreeChain.lean
+- proofs/talos/lean/Project/EulerGridStep/FreeChainExecution.lean
+- proofs/talos/lean/Project/EulerGridStep/LiveBuffers.lean

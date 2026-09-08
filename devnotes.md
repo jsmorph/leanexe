@@ -9199,3 +9199,12 @@ reusable metadata with unchanged payload/page count, and preserves separate
 live/free buffers. These facts are attached to exact generated release40;
 focused builds take3.5–3.8s with standard logical axioms. Six-write cell
 composition and the multi-buffer arena invariant remain open.
+
+## 2026-09-07: Free chains and live intermediate lists
+
+Bounded uniform free chains now supply concrete allocation preconditions.
+Exact field execution consumes one node; exact release adds one node with
+the expected runtime-global updates. Separate remaining chains and lists of
+live owned arrays are preserved, and a field clone adds its exact updated
+contents to the live list. Focused builds3.6–3.9s, standard logical axioms.
+Pairwise separation and complete cell/grid pool composition remain explicit.
