@@ -230,6 +230,19 @@ array may have a different length; separation from each output slot is
 explicit. These builds take3.5–3.7s with standard logical axioms. The theorem
 uses the same six-reusable-buffer premise as WriterAccepted.
 
+[WriterSequence.lean](WriterSequence.lean) abstracts the exact six-call
+control flow over a staged invariant and explicit terminating field calls.
+[FreshBufferState.lean](FreshBufferState.lean) extends the live list across a
+fresh field clone, keeps the free list empty and exposes the updated heap.
+[ArenaLayout.lean](ArenaLayout.lean) proves exact addresses, bounds and
+metadata-inclusive separation for seven consecutive output slots; each grid
+output object occupies64+48*cells bytes.
+[ArenaAllocation.lean](ArenaAllocation.lean) establishes the fresh allocator's
+complete validity contract from the slot budget, globals and distinct source/
+destination slots. These builds take3.5–3.7s and audit to standard logical
+axioms. The address budget is explicit; composing all fresh first-cell calls
+and connecting the initial grid allocation remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid

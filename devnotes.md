@@ -9284,3 +9284,13 @@ through all six writes and five releases. Builds take3.5–3.7s and audit to
 standard logical axioms. Six suitable reusable buffers and separation from
 the observed array remain explicit. Fresh writer allocation, neighbors and
 whole-grid initialization/execution remain open.
+
+## 2026-09-08: Fresh output arena foundations
+
+WriterSequence supports a staged store invariant independent of allocation
+choice. FreshBufferState tracks an exact fresh clone, empty free chain and
+heap advance. ArenaLayout proves seven non-overlapping objects, exact heap/
+root words and64+48*cells bytes per output object. ArenaAllocation discharges
+fresh allocation validity from the explicit memory budget and globals.
+Builds take3.5–3.7s with standard logical axioms. The fresh first-cell sequence
+and initial grid allocation are still to compose; no full-grid claim changed.
