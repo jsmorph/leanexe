@@ -33,8 +33,8 @@ reduced from 11,222 bytes without changing any of the 31 regression results.
 The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
-complete checked-cell layout unchanged at functions0–25. Allocation, release,
-neighbor reads and the outer fill loop remain to prove.
+complete checked-cell layout unchanged at functions0–25. Allocator reuse,
+ownership transfer, neighbor reads and the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -69,6 +69,16 @@ with an empty free list and enough existing memory: exact metadata, updated
 heap top and allocation count, and the resulting local frame. It builds in
 7.4s with standard logical axioms. Free-list reuse, ownership transfer and
 composition with the field-write tail remain open.
+
+[ArrayFrame.lean](ArrayFrame.lean) transfers represented arrays across
+byte-preserving store changes. [AllocationMemory.lean](AllocationMemory.lean)
+proves exact owned-header values, the 48-byte metadata footprint, preservation
+of disjoint arrays, and preservation of metadata by field writes.
+[Release.lean](Release.lean) applies the existing scalar-array runtime proof
+at function40: an owned array is freed with exact memory writes, free-list
+update and release/free counters. These checks take under four seconds each
+and audit to standard logical axioms. Composition of these facts across the
+writer and its intermediate buffers remains pending.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
