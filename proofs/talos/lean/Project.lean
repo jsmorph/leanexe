@@ -40,4 +40,4 @@ import Project.EulerDynamicFlux.Spec
 import Project.EulerCellStep.Spec
 import Project.EulerGridStep.Outputs
 import Project.EulerGridStep.Scan
-import Project.EulerGridScan.Iteration
+import Project.EulerGridScan.Loop
