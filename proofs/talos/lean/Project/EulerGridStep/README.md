@@ -285,8 +285,8 @@ and use standard logical axioms.
 The actual outer loop releases its initial output only after the loop; it
 does not release each prior iteration output. Thus an accepted writer
 leaves five reusable intermediates, and the next accepted writer requires
-five reused buffers followed by one fresh allocation. That mixed path and
-its growing arena budget still need composition. The seven-object bound
+five reused buffers followed by one fresh allocation. The mixed writer and advance path are now composed below;
+the growing arena budget remains open. The seven-object bound
 above applies to the first fresh writer, not the entire grid step. Initial
 output allocation and full grid execution also remain open.
 
@@ -297,8 +297,8 @@ global0. [ReleaseHeap.lean](ReleaseHeap.lean) preserves that heap address
 through the full scalar release. [FreshSpace.lean](FreshSpace.lean) establishes
 fresh-allocation validity from one available object, independent of the
 seven-slot first-cell layout. These focused builds take3.4–3.8s and use
-standard logical axioms. They support the mixed writer and growing arena
-proof; that composition remains open.
+standard logical axioms. They support the complete mixed writer below and the pending growing
+arena proof.
 
 [WriterPool.lean](WriterPool.lean) describes the actual five reusable nodes.
 [MixedState.lean](MixedState.lean), [MixedReuseCall.lean](MixedReuseCall.lean),
@@ -308,8 +308,18 @@ five-reused/one-fresh sequence, retaining prefixes, counters and exact heap
 movement. [CellReleaseHeap.lean](CellReleaseHeap.lean) preserves that heap
 through each intermediate release. [WriterAcceptedSequence.lean](WriterAcceptedSequence.lean)
 shares the complete accepted writer control over proved staged invariants.
-Focused builds take3.4–3.8s with standard logical axioms. Instantiating the
-whole mixed writer and growing arena remains next.
+Focused builds take3.4–3.8s with standard logical axioms. These support the complete mixed writer below.
+
+[WriterReleaseState.lean](WriterReleaseState.lean) gives the releases a
+shared invariant with exact heap/page state and a framed property.
+[MixedWriterFramed.lean](MixedWriterFramed.lean) composes all of writer34
+for five reused buffers followed by one fresh object.
+[MixedWriterAccepted.lean](MixedWriterAccepted.lean) discharges preservation
+of a separate old grid; [AdvanceMixed.lean](AdvanceMixed.lean) connects it to
+all neighbor reads, cell25 and advance35. The full result includes the exact
+model update, five-node free list, counters, one-object heap advance and
+unchanged page count. These checks take3.5–3.7s with standard axioms.
+Initialization, growing arena and the outer loop still need proof.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

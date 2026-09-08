@@ -8405,3 +8405,56 @@ Reviewed/stage/publish exactly devnotes.md, journal.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,WriterPool.lean,
 MixedState.lean,MixedReuseCall.lean,MixedFreshCall.lean,MixedCellState.lean,
 CellReleaseHeap.lean,WriterAcceptedSequence.lean}.
+
+### 2026-09-08: Complete mixed writer storage composition
+
+Published bdb576dd7d16f0a6a12ccb616d2b91fac7a3601b, sole parent
+5c9fb6b9cc83f669b4bb0580559b57514ee86e7f, tree
+7fed2f2e6529f25d1f02ff40a796a6a6e0bfffac. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. A read of the summary's misspelled
+FramedCellField.lean path found no file; no state changed. Added
+WriterReleaseState.lean: one indexed release state now retains buffers,
+heap, exact page count and a property preserved by each ReleaseResult.
+This can carry old-grid data and additional initial-output observations
+needed by the eventual loop, without duplicating writer control.
+
+WriterReleaseState passes in3.5s with standard logical axioms, log
+euler-grid-writer-release-state-first.log. Added MixedWriterFramed.lean
+to instantiate the complete accepted control with mixed field calls and
+the shared release state. The framed predicate is carried from explicit
+FieldResult/ReleaseResult preservation lemmas; exact heap and pages are
+retained directly by the checked storage calls.
+
+MixedWriterFramed passes in3.6s with standard logical axioms, log
+euler-grid-mixed-writer-framed-first.log. Added MixedWriterAccepted.lean
+to discharge both frame callbacks for a separate old-grid array. The
+complete theorem reports the actual six allocations/five releases, five
+reusable nodes, one-object heap advance and unchanged memory page count.
+
+Added AdvanceMixed.lean to compose the complete mixed writer with the
+already checked neighbor reads, numerical cell call and advance35 return.
+The public postcondition includes Model.advanceAt, the five-buffer pool,
+exact allocation/release counters, heap advance, pages and preserved input.
+
+MixedWriterAccepted first check fails in3.6s on the small fresh-root
+equality: simp only substituted field=5 before reducing the literal
+5<5 test. Preserved the log and external draft; changed just that leaf
+to ordinary simplification of the literal guard. Failed-build axiom output
+is not accepted evidence. No timeout, limit increase or runtime change.
+
+MixedWriterAccepted now passes in3.6s and AdvanceMixed in3.7s, both with
+standard logical axioms, log euler-grid-advance-mixed-first.log. Reviewed
+the complete proofs and telemetry: the only correction was the small
+literal guard simplification; full call composition remains small. This
+closes the actual later accepted-cell allocation path. Updated plans,
+README, aggregate imports and notes, retaining explicit open initialization,
+growing-arena and outer-loop claims. No source/byte/runtime changes.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Corrected the earlier README support paragraph to identify the now-complete
+mixed writer and still-open arena proof. Reviewed/stage/publish exactly
+devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,WriterReleaseState.lean,
+MixedWriterFramed.lean,MixedWriterAccepted.lean,AdvanceMixed.lean}.
