@@ -9162,3 +9162,11 @@ path proves unlinking, metadata initialization, skipped bump and final
 allocation-count/frame results in3.0s. Fresh allocation rebuilds in7.2s;
 a focused metadata/release dependency check passes in3.9s. All audits remain
 standard. Ownership composition and full grid execution remain open.
+
+## 2026-09-07: Exact field index and capacity setup
+
+The bounded index/capacity arithmetic uses standard logical axioms. The
+first44 emitted field-writer instructions now have an exact frame/store
+execution theorem for both zero and nonzero indices (6.8s); the accepted
+branch's22-instruction copy-count/capacity setup passes in3.8s. Joining
+setup, allocation, ownership and tail proofs into the whole function remains.
