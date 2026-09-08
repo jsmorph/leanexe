@@ -9056,3 +9056,13 @@ while the grid-step binary is unchanged. Generated the exact Talos cache;
 helper-layout equality and runtime pins pass. The registry now has 33 cases
 with 32 complete, 33 Program caches and 28 frozen packages. The new case is
 explicitly incomplete pending exact reads, loop execution and byte proofs.
+
+## 2026-09-07: Exact grid-scan iteration
+
+The named scan body now has a generic-module exact execution theorem for
+every valid grid index and arbitrary seed/capacity word. It proves offset
+checks, all three input reads, reuse of the conservative-side theorem, both
+status/max branches and complete store preservation. Indexing supplies
+reusable memory/encoded-word facts; the full iteration builds in 15 seconds
+with standard axioms only. The complete scan loop remains pending; source
+inventories stay 33 registered / 32 complete, with 28 frozen packages.

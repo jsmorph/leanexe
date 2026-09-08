@@ -6551,3 +6551,69 @@ Reviewed explicit stage paths:
 - proofs/talos/lean/Project/EulerGridScan/Program.lean
 - proofs/talos/lean/Project/EulerGridScan/Helpers.lean
 - proofs/talos/lean/Project/EulerGridScan/README.md
+
+Published the scan-module checkpoint 81d59be763c57245236f376ac277c9f6b585be47,
+sole parent dfe2964f5b374ac4dd93b31b12bd92a9fec4da35, tree
+25a3ab6b9cdf2ae0a23f3a3e927c4ef1e0112674. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed with
+clean synchronized status. New Indexing lemmas pass in 3.4s, proving triple
+read bounds and checked multiplication/addition guards; audited arithmetic
+lemmas use propext and Quot.sound. The first incomplete iteration diagnostic
+reached the initial WAT if in both index-zero cases. Preserved draft/log and
+added the existing explicit-if peeling pattern to reach memory-load goals.
+
+The explicit-if iteration diagnostic reached the first memory read in the
+zero-index branch; unrestricted simp hit its recursion limit in the nonzero
+branch. Preserved both draft and log, replaced it with explicit simp-only
+rules, and isolated arrayRead_facts in Indexing before retry. The smaller
+read-fact module builds in 3.5s and audits to propext/Quot.sound. It supplies
+the exact encoded index, length comparison, byte bound and model getD word
+for each of the three reads. Added those facts and nonempty length-word
+evidence to the pending iteration proof; no larger recursion limit is used.
+
+The read-fact iteration diagnostic finishes in 4.2s without recursion errors,
+but simp-only leaves ground zero/nonzero tests unreduced. Retained the
+draft/log. Restored the normal ground simplifications while excluding the
+two ofNat distribution rules that oppose the explicit folded-word arithmetic
+facts; this narrows the rewrite loop rather than increasing recursion limits.
+
+The folded-word iteration diagnostic reaches the first element load and
+next offset addition without recursion failure (7.4s). The zero case needs
+its index substitution applied to all memory facts; encoded literal one/two
+in the addition hypotheses need the same surface form as emitted constants.
+Preserved the draft/log, made those reductions explicit, and allow the
+existing linear arithmetic facts to discharge memory-bound conjunctions.
+
+The literal-aligned iteration diagnostic reaches the second read guard
+(8.4s). Normalize the zero-index facts after substitution, and fold each
+addition guard with the same word equality used in the emitted frame.
+The previous draft and diagnostics remain preserved.
+
+The offset-normalized diagnostic reaches the conservative call for nonzero
+indices; the zero branch reaches its third read and needs the literal-two
+comparison normalized. Added the existing exact side-call theorem with an
+opaque checked-side record, then composed the status and maximum branches.
+Preserved the previous diagnostic source/log. This iteration proof is still
+pending its final focused check.
+
+The call-composition attempt completed every nonzero-index branch; the zero
+case needed its side-model equality stated with literal indices 0,1,2.
+After that correction the entire Iteration module passes in 15s (3,376 jobs)
+with no new local warnings. scanAt_exact audits to propext, Classical.choice
+and Quot.sound. It proves all three array reads, guarded offset arithmetic,
+the checked-side call, both status/max branches and full store preservation
+for any valid grid index, seed word and capacity word in a matching module.
+Updated README, Project import and devnotes. Whole-loop execution remains
+pending, and the case remains incomplete. Source/runtime code is unchanged
+since the passing 31-vector check, so no runtime repeat is needed.
+Reviewed explicit stage intent:
+- proofs/talos/lean/Project/EulerGridScan/Indexing.lean
+- proofs/talos/lean/Project/EulerGridScan/Iteration.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md
+- proofs/talos/lean/Project.lean
+- devnotes.md
+- journal.md
+
+Iteration checkpoint checks pass: whitespace, all README links, 91
+maintained Markdown files, registry/import metadata and no-admission or
+remaining diagnostic-source checks. No broad regression or release run.

@@ -15,6 +15,12 @@ The prepared scan binary has 3,292 bytes and SHA-256
 The same 31 focused grid/scan tests pass. The named iteration reduces code
 duplication; the compiler emits two compact loops for the two returned
 projections. This source factoring leaves the separate 11,222-byte grid-step
-binary unchanged. Exact iteration memory reads, loop termination and result
-correspondence, execution safety and frozen-byte verification remain open.
+binary unchanged. [Indexing.lean](Indexing.lean) proves read bounds and
+checked offset arithmetic. [Iteration.lean](Iteration.lean) proves exact
+execution of the named scan body for every valid grid index, arbitrary seed
+speed and array-capacity word, with three exact input loads, the checked-side
+call, both status/max branches, and complete store preservation. It composes
+with any module satisfying the shared layout and uses only standard logical
+axioms. Whole-scan loop termination and result correspondence, execution
+safety and frozen-byte verification remain open.
 There is no completed behavioral specification or frozen package yet.
