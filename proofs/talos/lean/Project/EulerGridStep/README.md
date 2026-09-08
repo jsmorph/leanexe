@@ -329,8 +329,16 @@ records the current output, fixed free list, growing heap and cells+6 object
 budget. [AdvanceArena.lean](AdvanceArena.lean) proves that a complete later
 accepted advance preserves this invariant and the old grid. These builds
 take3.4–3.7s with standard axioms. This remains conditional on the initial
-state and budget; first-cell handoff, rejection and outer-loop composition
+state and budget; initial allocation, rejection and outer-loop composition
 are still pending.
+
+[FreshWriterFramed.lean](FreshWriterFramed.lean) and
+[FreshWriterHeap.lean](FreshWriterHeap.lean) strengthen the complete first
+writer with exact heap slot7, unchanged pages and framed observations.
+[AdvanceFirstArena.lean](AdvanceFirstArena.lean) connects the first accepted
+advance to the later-cell arena state, including the whole-grid budget and
+old-grid preservation. Checks take3.5–3.7s with standard axioms. Slot0 must
+already be initialized; initial allocation and the outer loop remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
