@@ -7152,3 +7152,67 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/ArrayFrame.lean
 - proofs/talos/lean/Project/EulerGridStep/AllocationMemory.lean
 - proofs/talos/lean/Project/EulerGridStep/Release.lean
+
+### 2026-09-07: Reusing a suitable free-list head
+
+Published ownership/release checkpoint888fec522a1cb31389b728ab48f280993e66a62b,
+sole parentba7d34131ee5cc33532d0e441d13e262c058aa65 and tree
+880163a03d9e73ea610d96e2ebb54afcef64a347. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed; clean
+synchronization confirmed. The reuse path resets the same six metadata fields
+but reads root/capacity from locals21/22, rather than24/19. Generalized the
+accepted header program/theorem over those two indices and retained the
+existing field theorem as a specialization, with unchanged emitted shapes.
+
+The generalized header theorem passes in4.5s with standard logical axioms;
+all existing generated shapes remain definitionally equal. Added ReuseHit.lean
+for the exact successful first-candidate branch: unlink the head, execute
+those six header writes through locals21/22, and select the resulting pointer.
+The outer search still must establish candidate capacity and execute its
+loop/return path.
+
+ReuseHit passes on its first check with standard logical axioms; removed
+one reported unused simp argument. Added ReuseSearch.lean with two exact
+loop states (before and after selecting the head) and a one-to-zero measure.
+It requires that the head capacity covers the request, reads only that head,
+and composes the accepted unlink/reset/select theorem. Other free-list
+search cases are outside this theorem's explicit scope.
+
+The first ReuseSearch check normalizes both header loads and their values;
+only their two in-bounds conditionals remain before the candidate branch.
+Preserved the draft/log, explicitly rewrote those guards using the proved
+bounds, and made store/frame substitution directions explicit so the
+original initial-store name remains available to the continuation.
+
+The bounded-load retry proves the successful iteration, selected-state
+invariant and decreasing measure. The exit branch retains a concrete
+i32-one branch match; preserved the draft/log and used ordinary simplification
+at that final continuation to reduce the known tag/value comparison.
+
+ReuseSearch passes in5.3s with standard logical axioms; it selects a
+sufficient head in one successful iteration, then exits, preserving the
+exact resulting store and local frame. Removed one reported unused simp
+argument. Added FieldAllocationReuse.lean to compose initialization, this
+search, the skipped bump branch, allocation counter and returned-pointer
+slot for the entire exact emitted allocator region.
+
+FieldAllocationReuse passes on its first check in3.0s, log
+euler-grid-field-allocation-reuse-first.log. The same focused build rebuilds
+the affected fresh-allocation proof in7.2s and search in5.3s; all axiom audits
+are standard. The focused Release dependency check also passes in3.9s, log
+euler-grid-release-generic-header.log, validating the existing metadata and
+release users of the generalized header theorem. No source/runtime changes,
+aggregate runs or repeated compiled regressions. Added aggregate import,
+README explanation and concise notes.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/AllocationHeader.lean
+- proofs/talos/lean/Project/EulerGridStep/ReuseHit.lean
+- proofs/talos/lean/Project/EulerGridStep/ReuseSearch.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldAllocationReuse.lean
