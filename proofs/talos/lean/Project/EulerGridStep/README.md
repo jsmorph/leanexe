@@ -33,7 +33,7 @@ reduced from 11,222 bytes without changing any of the 31 regression results.
 The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
-complete checked-cell layout unchanged at functions0–25. Allocator/ownership
+complete checked-cell layout unchanged at functions0–25. Multi-buffer ownership
 composition, neighbor reads and the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
@@ -48,8 +48,8 @@ non-memory store fields and bytes outside the destination payload.
 [CopyLoop.lean](CopyLoop.lean) proves the complete terminating copy loop under
 valid, disjoint source/destination array assumptions, preserving the input
 and outside memory. [FieldShape.lean](FieldShape.lean) identifies that exact
-loop in generated field writer27. Allocation must still establish those
-preconditions. The copy execution theorem uses only standard logical axioms.
+loop in generated field writer27. The complete field theorem below establishes those
+preconditions from explicit allocation bounds and separation. The copy execution theorem uses only standard logical axioms.
 
 [HeaderMemory.lean](HeaderMemory.lean) initializes the array length over
 arbitrary existing payload bytes. [FieldTailModel.lean](FieldTailModel.lean)
@@ -58,7 +58,7 @@ combines that header, copying and one store into an exact logical update.
 allocation, including the returned pointer, unchanged source, other store
 fields and bytes outside the destination array. This theorem requires
 bounded, disjoint allocated storage and the expected live locals; its
-allocator preconditions remain to prove. Its axiom audit is standard.
+allocator preconditions are discharged by the complete field theorem below. Its axiom audit is standard.
 
 [HeaderStores.lean](HeaderStores.lean) proves individual metadata stores with
 unchanged local frames. [AllocationHeader.lean](AllocationHeader.lean) proves
@@ -76,8 +76,8 @@ terminating search with a one-to-zero measure.
 emitted allocator path when the free-list head has sufficient capacity: it
 unlinks and initializes that block, skips bump allocation, increments the
 allocation counter and returns the exact local frame. This build takes3.0s
-with standard logical axioms. Ownership transfer and composition with the
-field-write tail remain open.
+with standard logical axioms. The complete field theorem composes this path
+with the tail; ownership across multiple intermediate buffers remains open.
 
 [ArrayFrame.lean](ArrayFrame.lean) transfers represented arrays across
 byte-preserving store changes. [AllocationMemory.lean](AllocationMemory.lean)
@@ -97,7 +97,7 @@ and the true bounds test, with an exact20-local frame.
 [FieldCapacity.lean](FieldCapacity.lean) proves the next22 instructions
 inside the accepted branch, setting copy count and normalized capacity.
 These builds take6.8s and3.8s respectively and audit to standard logical
-axioms. Whole-function allocation/ownership composition remains pending.
+axioms. The complete field theorem below joins these regions.
 
 [AllocationPost.lean](AllocationPost.lean) connects both allocator memory
 models to represented input, initialized owned metadata, destination bounds
@@ -106,7 +106,21 @@ provides a common exact execution theorem with explicit capacity, availability
 and separation conditions. [FieldFrame.lean](FieldFrame.lean) proves the live
 local-variable conditions required by the copy/update tail for both paths.
 These focused builds take3.5–4.0s and use only standard logical axioms.
-Whole-function composition and the multi-buffer arena invariant remain open.
+The complete field theorem below joins these contracts; the multi-buffer
+arena invariant remains open.
+
+[FieldBody.lean](FieldBody.lean) composes the complete accepted branch.
+[FieldExecution.lean](FieldExecution.lean) proves exact terminating execution
+of generated function27, including checked index setup and both returned
+pointer values. It realizes the logical array update, preserves the input,
+keeps the new result metadata owned, preserves page count and all memory
+outside the new object's metadata and used array bytes. Allocation globals
+and other store fields are framed by the exact chosen allocator model.
+The theorem assumes an in-bounds field, sufficient existing memory, explicit
+source/destination separation and either an empty free list for fresh
+allocation or a sufficient first free block. Builds take3.5s and3.9s, with
+only standard logical axioms. Composition across six field writes and five
+intermediate releases, rejection, neighbor reads and the grid loop remains.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
