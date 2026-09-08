@@ -9341,3 +9341,13 @@ checks with standard logical axioms. They retain the heap address through
 reused allocations and releases, advance it exactly on fresh allocation,
 and discharge fresh validity from one available object's space. The
 actual five-reused/one-fresh writer composition remains next.
+
+## 2026-09-08: Exact mixed field calls and shared writer control
+
+The actual five-reused/one-fresh field sequence now has complete checked
+calls with prefix, pool, counter and heap invariants. Keeping the field
+index symbolic avoids an elaboration heartbeat failure. CellReleaseHeap
+retains the heap across each intermediate release; WriterAcceptedSequence
+shares full writer34 control over proved write/release invariants. Focused
+checks take3.4–3.8s with standard axioms. Whole mixed writer instantiation,
+growing arena, initialization and the outer loop remain open.

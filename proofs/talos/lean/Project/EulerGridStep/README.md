@@ -300,6 +300,17 @@ seven-slot first-cell layout. These focused builds take3.4–3.8s and use
 standard logical axioms. They support the mixed writer and growing arena
 proof; that composition remains open.
 
+[WriterPool.lean](WriterPool.lean) describes the actual five reusable nodes.
+[MixedState.lean](MixedState.lean), [MixedReuseCall.lean](MixedReuseCall.lean),
+[MixedFreshCall.lean](MixedFreshCall.lean) and
+[MixedCellState.lean](MixedCellState.lean) prove each full field call in the
+five-reused/one-fresh sequence, retaining prefixes, counters and exact heap
+movement. [CellReleaseHeap.lean](CellReleaseHeap.lean) preserves that heap
+through each intermediate release. [WriterAcceptedSequence.lean](WriterAcceptedSequence.lean)
+shares the complete accepted writer control over proved staged invariants.
+Focused builds take3.4–3.8s with standard logical axioms. Instantiating the
+whole mixed writer and growing arena remains next.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
