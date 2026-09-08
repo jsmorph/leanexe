@@ -267,7 +267,7 @@ signed errors against the decoded-input exact stencil are respectively
 `[0, 5*epsilon/64, -25*epsilon/512]`, while the physical mass, momentum, and
 energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
-or convergence result.  Source status is thirty-three registered and complete cases with thirty-three generated
+or convergence result.  Source status is thirty-four registered cases, thirty-three complete, with thirty-four generated
 `Program.lean` caches; the exact-artifact registry contains twenty-nine packages.  The recovered step
 bytes match the historical checkpoint; its schema-3 manifest identifies the
 current verifier source.

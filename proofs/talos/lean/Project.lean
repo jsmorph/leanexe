@@ -39,5 +39,6 @@ import Project.EulerConservative.Spec
 import Project.EulerDynamicFlux.Spec
 import Project.EulerCellStep.Spec
 import Project.EulerGridStep.Outputs
+import Project.EulerGridStep.Helpers
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

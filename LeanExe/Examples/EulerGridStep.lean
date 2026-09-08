@@ -33,17 +33,20 @@ def maxSpeedCheckedBits (input : Array UInt64) : CheckedSpeed := Id.run do
     index := index + 1
   return ⟨status, speed⟩
 
+/-- One checked cell-field write with an explicit array-copy call boundary. -/
+def writeCellField (output : Array UInt64) (index field : Nat) (value : UInt64) : Array UInt64 :=
+  output.set! (1 + 6 * index + field) value
+
 /-- Store a checked cell or mark the output rejected. -/
 def writeCell (output : Array UInt64) (index : Nat)
     (cell : LeanExe.Examples.EulerCellStep.CheckedCell) : Array UInt64 :=
   if cell.status == 0 then
-    let destination := 1 + 6 * index
-    let output := output.set! destination cell.density
-    let output := output.set! (destination + 1) cell.momentum
-    let output := output.set! (destination + 2) cell.energy
-    let output := output.set! (destination + 3) cell.pressure
-    let output := output.set! (destination + 4) cell.alpha
-    output.set! (destination + 5) cell.courant
+    let output := writeCellField output index 0 cell.density
+    let output := writeCellField output index 1 cell.momentum
+    let output := writeCellField output index 2 cell.energy
+    let output := writeCellField output index 3 cell.pressure
+    let output := writeCellField output index 4 cell.alpha
+    writeCellField output index 5 cell.courant
   else output.set! 0 1
 
 /-- One array-loop body with an explicit checked-cell call boundary. -/

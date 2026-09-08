@@ -23,8 +23,18 @@ that an accepted scan checks every input cell and returns a positive finite
 speed bounding all computed cell speeds in decoded-real order. This bounds
 the rounded computed speeds; it does not assert a bound on exact-real wave
 speeds. Generated-WAT array execution and frozen-byte verification remain
-open; this is not yet a
-registered complete source case or artifact package.
+open; the grid-step source case is explicitly registered as incomplete.
+
+The named writeCellField helper isolates the common copying array write;
+writeCell calls it six times and releases five intermediate arrays. The
+current binary has 8,866 bytes (SHA256
+bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297),
+reduced from 11,222 bytes without changing any of the 31 regression results.
+The separate verified scan remains byte-identical. [Program.lean](Program.lean)
+is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
+field write27, writer34, advance35, entry36 and release40, and proves the
+complete checked-cell layout unchanged at functions0–25. Array copying,
+allocation, release, neighbor reads and the outer fill loop remain to prove.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
