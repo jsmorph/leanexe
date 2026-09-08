@@ -78,5 +78,7 @@ import Project.EulerGridStep.WriterAcceptedSequence
 import Project.EulerGridStep.AdvanceMixed
 import Project.EulerGridStep.AdvanceArena
 import Project.EulerGridStep.AdvanceFirstArena
+import Project.EulerGridStep.AdvanceLaterRejected
+import Project.EulerGridStep.AdvanceFirstRejected
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
