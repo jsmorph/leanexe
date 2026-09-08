@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_grid_scan",
+  "sha256": "279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9",
+  "byteLength": 3292,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerGridScan.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerGridScan.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerGridScan.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerGridScan.Program",
+  "cachedProgramDefinition": "Project.EulerGridScan.module",
+  "specModule": "Project.EulerGridScan.Spec",
+  "proofTarget": "Project.EulerGridScan.ArtifactTranslation",
+  "identityTheorem": "Project.EulerGridScan.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerGridScan.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerGridScan.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerGridScan.Spec.maxSpeedCheckedBits_exact",
+    "Project.EulerGridScan.Spec.maxSpeedCheckedBits_wat_safe"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

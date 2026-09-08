@@ -9086,3 +9086,13 @@ status/speed and preserves the complete store. Accepted speed is positive
 finite and bounds all checked computed cell speeds. Registry and imports now
 record 33 completed source cases; 28 frozen packages remain, with scan bytes
 next. Full grid-step WAT, repeated stepping and scientific outputs remain.
+
+## 2026-09-07: Exact maximum-speed scan package
+
+The 3,292-byte scan package (SHA256
+279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9)
+passes its focused full gate: embedded bytes, decode, validation, translation,
+both behavioral declarations and axiom audits. All 28 prior packages and the
+historical release draft are unchanged. Inventories now agree at 33 completed
+source cases, 33 Program caches and 29 frozen packages. The source aggregate
+remains deferred; no current aggregate or release-ready result is claimed.

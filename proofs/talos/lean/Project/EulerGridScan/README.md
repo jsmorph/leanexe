@@ -35,4 +35,12 @@ accepted speed certificate to those returned words. Empty arrays and arrays
 whose lengths are not multiples of three return status one and zero speed.
 Both public theorems use only propext, Classical.choice and Quot.sound.
 The bound concerns checked computed speeds; it is not an exact-real Euler
-wave-speed bound. Frozen-byte verification remains pending.
+wave-speed bound.
+
+The [frozen package](../../../../artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/manifest.json)
+contains those exact 3,292 bytes. [ArtifactTranslation.lean](ArtifactTranslation.lean)
+connects their decoded and validated module to this exact execution model.
+The focused package gate checks embedded-byte equality, decoding, validation,
+translation and both behavioral declarations with axiom audits. The existing
+exact-byte native decision policy is unchanged; execution and safety use only
+the three standard logical axioms. The separate full grid-step proof remains open.
