@@ -1,6 +1,6 @@
-# Exact checked grid-scan execution work
+# Exact checked grid-scan execution
 
-This explicitly incomplete source case prepares the exact maximum-speed
+This completed source case proves the exact maximum-speed
 scan from [EulerGridStep](../../../../../LeanExe/Examples/EulerGridStep.lean).
 The [model bound](../EulerGridStep/Scan.lean) proves accepted state checks,
 positive finite selected speed and decoded-real comparison with every
@@ -27,7 +27,12 @@ loops have identical instructions. [LoopFrame.lean](LoopFrame.lean) records
 the scratch slots and preserved first-result slot. [Loop.lean](Loop.lean)
 proves termination, exact result correspondence and store preservation for
 either loop under an arbitrary following continuation. Its measure counts
-remaining cells and decreases on every continuing iteration. Entry guards,
-the two-projection composition, execution safety and frozen-byte verification
-remain open.
-There is no completed behavioral specification or frozen package yet.
+remaining cells and decreases on every continuing iteration.
+[Execution.lean](Execution.lean) composes both loops with the exact header
+guards and output projections. [Spec.lean](Spec.lean) proves total exact
+execution for every logical input array fitting memory and attaches the
+accepted speed certificate to those returned words. Empty arrays and arrays
+whose lengths are not multiples of three return status one and zero speed.
+Both public theorems use only propext, Classical.choice and Quot.sound.
+The bound concerns checked computed speeds; it is not an exact-real Euler
+wave-speed bound. Frozen-byte verification remains pending.

@@ -6672,3 +6672,54 @@ another compiled regression. Explicit reviewed stage intent:
 Loop checkpoint checks pass: whitespace, all README links, 91 maintained
 Markdown files, registry/import metadata and no-admission/diagnostic source
 checks. No broad regression or release gate was run.
+
+### 2026-09-07: Exported grid-scan execution
+
+Published loop checkpoint 10e2990acd1f71b9b901c2f310478096806beedb, sole parent
+7036a04302ea398c3257dff55325da59d41c94cb, tree
+db3d3a322557eea9b9a9ea9a3785eb7641eba499. Non-forced GitHub update, fetch,
+commit/parent/message/tree/index/worktree equality and clean synchronization
+all passed. Reread AGENTS and the operations contract after compaction;
+verified the existing pinned Mac Lean and wasm-tools paths before execution.
+
+Added EulerGridScan/Execution.lean for header guards and both result loops.
+The first focused 120-second build failed in 4 seconds at the header load's
+unnormalized address/bounds conditional. The draft and complete log remain.
+Added a separate standard simplification step before branch composition so
+the existing array read facts can apply; no source or runtime changes.
+Failed elaboration's sorryAx audit is not an accepted theorem.
+
+The normalized header load closes the full exported execution theorem in
+6.5 seconds (3,381 jobs), with propext, Classical.choice and Quot.sound only.
+Both compiler-generated loops instantiate the same proved continuation rule;
+the first status survives the second speed projection. Added Spec.lean: both
+public declarations pass in 3.5 seconds (3,382 jobs), with the same standard
+axioms. The contract covers every logical array fitting memory, all shape
+guards, exact status/speed, termination and complete store preservation.
+AcceptedSafety transfers the model's positive finite upper bound on checked
+computed cell speeds, without an exact-real wave-speed claim.
+
+Marked the scan registration complete, imported Spec, updated the scan README,
+main/status/proof inventories and both plans to 33 completed cases / 33 caches
+/ 28 frozen packages. Next gate is only talos-proof check euler_grid_scan,
+plus small docs/metadata/whitespace checks; no repeated runtime or broad suite.
+
+The focused source gate passes: current compilation/WAT decoding reproduces
+the tracked scan Program, then both public specifications build and audit
+with standard axioms only. No Program byte changes. All 91 maintained
+Markdown files, scan README links, 33/33 registry and import metadata,
+whitespace and changed-proof no-admission checks pass. The complete current
+source aggregate and the scan's frozen package are not claimed.
+Explicit reviewed checkpoint paths:
+- README.md
+- devnotes.md
+- docs/status.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/README.md
+- proofs/talos/cases.json
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md
+- proofs/talos/lean/Project/EulerGridScan/Execution.lean
+- proofs/talos/lean/Project/EulerGridScan/Spec.lean
