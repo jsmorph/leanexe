@@ -9208,3 +9208,12 @@ the expected runtime-global updates. Separate remaining chains and lists of
 live owned arrays are preserved, and a field clone adds its exact updated
 contents to the live list. Focused builds3.6–3.9s, standard logical axioms.
 Pairwise separation and complete cell/grid pool composition remain explicit.
+
+## 2026-09-07: Combined buffer state and cell-field stages
+
+Exact clone/release transitions now preserve a combined live/free/head/
+counter/page state. The six logical prefixes agree exactly with Model.putCell,
+and each field call advances the corresponding live prefix and free chain.
+Focused builds3.6–3.9s, all standard logical axioms. Slot/free-tail separation
+remains explicit; the generated cell-writer sequence and its five intermediate
+releases still need composition before the whole-grid theorem.
