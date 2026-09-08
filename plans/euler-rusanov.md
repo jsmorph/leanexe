@@ -560,7 +560,10 @@ Every checked row ends in a passing commit, an update to this plan,
   conditions, exact logical update, owned metadata and object footprint.
 - [x] Compose the six emitted field calls and five intermediate releases,
   with explicit separated-buffer/free-chain assumptions, exact live outputs
-  and runtime counters. Full writer dispatch and grid allocation remain open.
+  and runtime counters.
+- [x] Prove whole accepted writer execution, including status dispatch and
+  returned pointer pair, equal to Model.putCell under explicit reusable-buffer
+  assumptions. Rejection and grid allocation remain open.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final

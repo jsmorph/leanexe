@@ -33,8 +33,9 @@ reduced from 11,222 bytes without changing any of the 31 regression results.
 The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
-complete checked-cell layout unchanged at functions0–25. Multi-buffer ownership
-composition, neighbor reads and the outer fill loop remain to prove.
+complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
+composition under explicit storage assumptions. Rejection, neighbor reads and
+the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -77,7 +78,7 @@ emitted allocator path when the free-list head has sufficient capacity: it
 unlinks and initializes that block, skips bump allocation, increments the
 allocation counter and returns the exact local frame. This build takes3.0s
 with standard logical axioms. The complete field theorem composes this path
-with the tail; ownership across multiple intermediate buffers remains open.
+with the tail and the accepted-writer ownership proof below.
 
 [ArrayFrame.lean](ArrayFrame.lean) transfers represented arrays across
 byte-preserving store changes. [AllocationMemory.lean](AllocationMemory.lean)
@@ -86,8 +87,8 @@ of disjoint arrays, and preservation of metadata by field writes.
 [Release.lean](Release.lean) applies the existing scalar-array runtime proof
 at function40: an owned array is freed with exact memory writes, free-list
 update and release/free counters. These checks take under four seconds each
-and audit to standard logical axioms. Composition of these facts across the
-writer and its intermediate buffers remains pending.
+and audit to standard logical axioms. The accepted-writer theorem below
+composes these facts across its intermediate buffers.
 
 [FieldIndexing.lean](FieldIndexing.lean) proves checked field-offset guards
 and exact scalar-array byte capacity for bounded lengths.
@@ -119,8 +120,8 @@ and other store fields are framed by the exact chosen allocator model.
 The theorem assumes an in-bounds field, sufficient existing memory, explicit
 source/destination separation and either an empty free list for fresh
 allocation or a sufficient first free block. Builds take3.5s and3.9s, with
-only standard logical axioms. Composition across six field writes and five
-intermediate releases, rejection, neighbor reads and the grid loop remains.
+only standard logical axioms. The accepted-writer theorem below composes six
+field writes and five releases; rejection, neighbors and the grid loop remain.
 
 [ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
 runtime headers and proves that field writes preserve other live buffers.
@@ -129,8 +130,8 @@ release, unchanged payload/page count and preservation of separate buffers.
 [FreeFrame.lean](FreeFrame.lean) preserves existing free-list nodes across
 field writes and release. [ReleaseFramed.lean](ReleaseFramed.lean) attaches
 these facts to exact generated release function40. Builds take3.5–3.8s with
-standard logical axioms. These facts support the upcoming multi-buffer
-invariant; they do not yet prove the complete cell writer or grid loop.
+standard logical axioms. These facts support the accepted-writer invariant
+below; rejection and the grid loop remain open.
 
 [FreeChain.lean](FreeChain.lean) represents finite, uniformly sized free
 buffers with physical bounds and exact next links. Its first node establishes
@@ -140,7 +141,7 @@ with exact runtime-global updates and preserved remaining chain.
 [LiveBuffers.lean](LiveBuffers.lean) preserves lists of owned intermediate
 arrays and adds the exact updated clone. These builds take3.6–3.9s with
 standard logical axioms. Pairwise buffer separation remains explicit; the
-complete cell-writer and grid arena invariants remain pending.
+accepted-writer theorem below uses it. The grid arena invariant remains open.
 
 [BufferState.lean](BufferState.lean) combines live arrays, free chains,
 head pointer, runtime counters and page limit, with exact clone/release
@@ -149,8 +150,8 @@ logical outputs and proves that the sixth equals the existing cell model.
 [CellFieldCall.lean](CellFieldCall.lean) specializes exact field execution to
 any of those six stages, advancing its live/free/counter state under explicit
 slot and free-tail separation. These builds take3.6–3.9s with standard logical
-axioms. Connecting these stages to the emitted cell-writer sequence and its
-five intermediate releases remains pending.
+axioms. The accepted-writer theorem below connects these stages to the emitted
+six-call sequence and five intermediate releases.
 
 [WriterShape.lean](WriterShape.lean) splits the actual accepted writer
 instructions at the six call boundaries. Its deepest shape equality uses a
@@ -172,8 +173,18 @@ composes the full tail: the final result and original input remain owned,
 the five intermediates return to the free list, and release/free counters
 increase by five. Builds take3.5–4.1s with standard logical axioms. These
 contracts assume explicitly separated live slots and a suitable initial free
-chain. Outer status dispatch, rejection, whole-grid allocation and execution
-remain pending.
+chain.
+
+[WriterStatus.lean](WriterStatus.lean) proves the exact ten-instruction status
+test for both outcomes. [WriterAccepted.lean](WriterAccepted.lean) proves
+terminating execution of the whole generated writer34 when cell status is
+zero: the returned pointer pair represents exactly Model.putCell, the original
+output remains owned and unchanged, six allocations and five releases are
+accounted for, and the five intermediate buffers form the expected free chain.
+The proof requires six suitable free buffers and explicit separation; it does
+not establish their initial availability for the grid. Builds take4.0s and3.8s
+with standard logical axioms. Rejection, whole-grid allocation, preservation
+of the separate old grid, neighbor reads and the outer loop remain pending.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
