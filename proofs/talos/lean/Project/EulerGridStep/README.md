@@ -142,6 +142,16 @@ arrays and adds the exact updated clone. These builds take3.6–3.9s with
 standard logical axioms. Pairwise buffer separation remains explicit; the
 complete cell-writer and grid arena invariants remain pending.
 
+[BufferState.lean](BufferState.lean) combines live arrays, free chains,
+head pointer, runtime counters and page limit, with exact clone/release
+transitions. [CellPrefixes.lean](CellPrefixes.lean) names the successive
+logical outputs and proves that the sixth equals the existing cell model.
+[CellFieldCall.lean](CellFieldCall.lean) specializes exact field execution to
+any of those six stages, advancing its live/free/counter state under explicit
+slot and free-tail separation. These builds take3.6–3.9s with standard logical
+axioms. Connecting these stages to the emitted cell-writer sequence and its
+five intermediate releases remains pending.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
