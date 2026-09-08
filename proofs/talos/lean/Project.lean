@@ -42,5 +42,6 @@ import Project.EulerGridStep.Outputs
 import Project.EulerGridStep.Helpers
 import Project.EulerGridStep.FieldMemory
 import Project.EulerGridStep.FieldShape
+import Project.EulerGridStep.FieldTail
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

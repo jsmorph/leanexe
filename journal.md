@@ -6967,3 +6967,51 @@ checkpoint. Review/stage exactly:
 - proofs/talos/lean/Project/EulerGridStep/CopyFrame.lean
 - proofs/talos/lean/Project/EulerGridStep/CopyLoop.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldShape.lean
+
+### 2026-09-07: Field-write tail after allocation
+
+Published copy checkpoint db53437535e25f777bc30c2e101a3f0b090957b2, sole
+parent1233f0a591c9f3b8c3108e8858bb6a7f4dad5085 and tree
+6974c1625da407c0c15a5a8f51e04ceb133fb9d4. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree comparisons and local CAS passed;
+clean synchronization confirmed. A read-only dependency search guessed an
+absent root .lake/packages/CodeLib path; no mutation resulted. No additional
+dependency source is needed for this step. Added HeaderMemory.lean to prove
+that a length-header write creates a represented array over arbitrary existing
+payload bytes, preserves a disjoint source and has an exact byte footprint.
+The next composition will discharge the generated writer tail after allocation.
+
+HeaderMemory passes in3.5s with standard logical axioms. Added
+FieldTailModel.lean to combine a completed copy and one field store into
+an exact logical-update/post-memory contract. FieldTail.lean extracts and
+composes the complete generated post-allocation region, including its returned
+pointer. It requires only region bounds, source separation and the live
+locals; allocation remains a separate pending obligation.
+
+FieldTailModel passes in3.5s, including its full state/frame audit. The
+first exact-tail check accepts the generated shape but stops at the wrapped
+header address: the goal spells its modulus as2^32 and the shared lemma as
+4294967296. Preserved the draft/log and gave that identity the goal's exact
+spelling before rewriting. No timeout or budget change.
+
+The wrapped-address correction reaches the final continuation; its sole
+remaining mismatch is the opaque writeWord spelling versus the expanded
+physical store. Preserved this draft and unfolded writeWord in that final
+simplification. All header, copy and final-store bounds already elaborate.
+
+FieldTail passes in3.9s (3,354 jobs, mostly cached), log
+euler-grid-field-tail-store.log. Generated-shape equality uses propext;
+exact tail execution uses only propext, Classical.choice and Quot.sound.
+The result includes the returned pointer, exact Array.set! contents, source
+preservation and full outside/store frame. Added aggregate import and README
+links; no source, byte artifact or runtime regression changes.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission scan and whitespace checks pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/HeaderMemory.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldTailModel.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldTail.lean
