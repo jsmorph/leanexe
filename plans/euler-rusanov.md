@@ -450,10 +450,10 @@ against the decoded-input reference stencil are
 is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
-invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side, dynamic-interface and cell-update proofs bring source
-status to thirty-two registered and complete cases and thirty-two generated caches.
+invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side, dynamic-interface, cell-update and grid-scan proofs bring source
+status to thirty-three registered and complete cases and thirty-three generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
-timeout; focused Euler gates pass. Exact-artifact status is twenty-eight packages;
+timeout; focused Euler gates pass. Exact-artifact status is twenty-nine packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -552,7 +552,7 @@ Every checked row ends in a passing commit, an update to this plan,
       every checked computed cell speed.
 - [x] Prove exact terminating maximum-speed array execution, shape guards,
   complete store preservation and the accepted computed-speed certificate.
-- [ ] Freeze and verify the exact maximum-speed scan bytes.
+- [x] Freeze and verify the exact maximum-speed scan bytes.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
