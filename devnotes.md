@@ -9294,3 +9294,12 @@ root words and64+48*cells bytes per output object. ArenaAllocation discharges
 fresh allocation validity from the explicit memory budget and globals.
 Builds take3.5–3.7s with standard logical axioms. The fresh first-cell sequence
 and initial grid allocation are still to compose; no full-grid claim changed.
+
+## 2026-09-08: Complete fresh accepted writer
+
+FreshWriterAccepted proves all generated writer34 for status zero from an
+empty free list, with the initialized output in slot0 and room for seven
+objects. It performs six exact fresh calls, releases five intermediates,
+returns Model.putCell and preserves the separate old grid. Builds take3.4–
+3.6s with standard logical axioms. Initial output allocation, fresh rejection,
+neighbor reads and whole-grid execution remain open.
