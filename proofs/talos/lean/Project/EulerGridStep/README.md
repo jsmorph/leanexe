@@ -33,8 +33,8 @@ reduced from 11,222 bytes without changing any of the 31 regression results.
 The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
-complete checked-cell layout unchanged at functions0–25. Allocator reuse,
-ownership transfer, neighbor reads and the outer fill loop remain to prove.
+complete checked-cell layout unchanged at functions0–25. Allocator/ownership
+composition, neighbor reads and the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -67,8 +67,17 @@ including its localTee instruction.
 [FieldAllocationBump.lean](FieldAllocationBump.lean) proves fresh allocation
 with an empty free list and enough existing memory: exact metadata, updated
 heap top and allocation count, and the resulting local frame. It builds in
-7.4s with standard logical axioms. Free-list reuse, ownership transfer and
-composition with the field-write tail remain open.
+7.4s with standard logical axioms.
+
+[ReuseHit.lean](ReuseHit.lean) proves the successful first-candidate branch.
+[ReuseSearch.lean](ReuseSearch.lean) reads that candidate and proves the
+terminating search with a one-to-zero measure.
+[FieldAllocationReuse.lean](FieldAllocationReuse.lean) composes the complete
+emitted allocator path when the free-list head has sufficient capacity: it
+unlinks and initializes that block, skips bump allocation, increments the
+allocation counter and returns the exact local frame. This build takes3.0s
+with standard logical axioms. Ownership transfer and composition with the
+field-write tail remain open.
 
 [ArrayFrame.lean](ArrayFrame.lean) transfers represented arrays across
 byte-preserving store changes. [AllocationMemory.lean](AllocationMemory.lean)
