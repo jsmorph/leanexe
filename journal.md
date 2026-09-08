@@ -7385,3 +7385,45 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/README.md
 - proofs/talos/lean/Project/EulerGridStep/FieldBody.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldExecution.lean
+
+### 2026-09-07: Preserving other live grid buffers
+
+Published full-field checkpoint50a1917f574f50ef5653e9f6613306f6ea8509b8,
+sole parent568409a73f106d6162fb70413d6511d5c5e72696 and tree
+29e709c46e2f0f1a88b4b610137f418a3a47b28b. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added ObjectFrame.lean for full object
+separation (including runtime metadata), metadata transfer across byte frames,
+and preservation of other live headers/payloads by the full field theorem.
+
+ObjectFrame passes in3.5s; its metadata and payload preservation theorems use
+only propext and Quot.sound. Added ReleaseMemory.lean for the two exact
+release writes, free-header read-back, unchanged payload/page count and
+preservation of other separately allocated live headers and arrays.
+
+ReleaseMemory passes in3.6s with only standard logical axioms, log
+euler-grid-release-memory-first.log. Added FreeFrame.lean to preserve other
+free-list nodes across cloning/release, and ReleaseFramed.lean to attach all
+memory postconditions to the existing exact release call theorem. The
+release theorem still specifies exact memory/globals and derived framing;
+it does not assert an unproved equality of every Store field.
+
+FreeFrame passes in3.7s (propext/Quot.sound); ReleaseFramed passes in3.8s
+(standard three logical axioms), log euler-grid-release-framed-first.log.
+Reviewed all four accepted proofs, standard audits and short telemetry:
+full object separation protects both owned metadata and free-chain links,
+while the release memory model touches only its two runtime header words.
+Added the aggregate import and README/notes. No source/binary/runtime changes,
+no dependency or trusted-base expansion and no broad regression rerun.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/ObjectFrame.lean
+- proofs/talos/lean/Project/EulerGridStep/ReleaseMemory.lean
+- proofs/talos/lean/Project/EulerGridStep/FreeFrame.lean
+- proofs/talos/lean/Project/EulerGridStep/ReleaseFramed.lean
