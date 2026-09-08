@@ -9106,3 +9106,12 @@ layout theorems use propext only; final layout build takes 3.6s. The grid step
 is explicitly incomplete: copying writes, allocation/free-list ownership,
 neighbor loads and the outer loop remain. Inventory is 34 registered cases,
 33 complete, 34 Program caches and 29 frozen packages.
+
+## 2026-09-07: Grid payload memory facts
+
+A physical payload store now has an exact logical Array.set! theorem,
+disjoint-input preservation and an exact eight-byte footprint. The same-word
+read-back proof reconstructs all64 bits in the kernel, avoiding the existing
+CodeLib native-decision witness. All new theorems audit to standard logical
+axioms; the field-memory build takes 3.7s. These are memory-model facts;
+allocator/copy execution and the full grid step remain pending.
