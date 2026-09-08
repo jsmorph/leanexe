@@ -132,6 +132,16 @@ these facts to exact generated release function40. Builds take3.5–3.8s with
 standard logical axioms. These facts support the upcoming multi-buffer
 invariant; they do not yet prove the complete cell writer or grid loop.
 
+[FreeChain.lean](FreeChain.lean) represents finite, uniformly sized free
+buffers with physical bounds and exact next links. Its first node establishes
+the actual allocator preconditions. [FreeChainExecution.lean](FreeChainExecution.lean)
+proves that a full field write consumes one node and that release adds a node,
+with exact runtime-global updates and preserved remaining chain.
+[LiveBuffers.lean](LiveBuffers.lean) preserves lists of owned intermediate
+arrays and adds the exact updated clone. These builds take3.6–3.9s with
+standard logical axioms. Pairwise buffer separation remains explicit; the
+complete cell-writer and grid arena invariants remain pending.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
