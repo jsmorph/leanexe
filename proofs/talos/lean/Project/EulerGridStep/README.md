@@ -122,6 +122,16 @@ allocation or a sufficient first free block. Builds take3.5s and3.9s, with
 only standard logical axioms. Composition across six field writes and five
 intermediate releases, rejection, neighbor reads and the grid loop remains.
 
+[ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
+runtime headers and proves that field writes preserve other live buffers.
+[ReleaseMemory.lean](ReleaseMemory.lean) proves exact reusable metadata after
+release, unchanged payload/page count and preservation of separate buffers.
+[FreeFrame.lean](FreeFrame.lean) preserves existing free-list nodes across
+field writes and release. [ReleaseFramed.lean](ReleaseFramed.lean) attaches
+these facts to exact generated release function40. Builds take3.5–3.8s with
+standard logical axioms. These facts support the upcoming multi-buffer
+invariant; they do not yet prove the complete cell writer or grid loop.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
