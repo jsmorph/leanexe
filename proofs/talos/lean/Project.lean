@@ -81,5 +81,7 @@ import Project.EulerGridStep.AdvanceFirstArena
 import Project.EulerGridStep.AdvanceLaterRejected
 import Project.EulerGridStep.AdvanceFirstRejected
 import Project.EulerGridStep.ArenaAdvance
+import Project.EulerGridStep.InitialAllocationBump
+import Project.EulerGridStep.InitializationFill
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

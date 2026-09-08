@@ -358,6 +358,17 @@ unchanged pages and old grid. The combined target passes in3.6s with standard
 axioms. This is the cell-call interface for the pending outer-loop proof;
 initial output allocation and final release are still explicit open work.
 
+[InitializationShape.lean](InitializationShape.lean) identifies the actual
+entry allocation and zero-fill regions. [InitialAllocationBump.lean](InitialAllocationBump.lean)
+proves fresh allocation in the valid entry's local window.
+[FillState.lean](FillState.lean) and [FillLoop.lean](FillLoop.lean) prove a
+constant-fill loop with exact prefix, termination and store/memory frames.
+[InitializationFill.lean](InitializationFill.lean) composes the actual length
+store and zero loop, producing an exact replicated-zero array from arbitrary
+payload bytes. Allocation takes7.2s; the fill loop and its entry composition
+take3.6–3.7s, with standard logical axioms. Entry guards, capacity arithmetic,
+initialized arena composition and the outer loop still remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
