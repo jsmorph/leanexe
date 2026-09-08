@@ -7284,3 +7284,51 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/FieldIndexing.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldPrefix.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldCapacity.lean
+
+### 2026-09-07: Allocation postconditions for the field tail
+
+Published setup checkpoint735b60f1838d9361e063a5e02ea6b3ad2c09bdda, sole
+parent006f97c81a05894324ba1c7b0c21accd06314f92 and tree
+aeabd7f46bf6c7e616603b51dfff3e9297b2fdad. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed; clean
+synchronization confirmed. Added AllocationPost.lean: a shared postcondition
+for fresh/reused regions (represented source, owned header, destination bounds,
+pages and outside bytes), exact memory bridges from both allocation models,
+and the combined allocation/payload object footprint.
+
+AllocationPost passes in3.5s, all four audited theorems use only standard
+logical axioms (log euler-grid-allocation-post-first.log). After compaction,
+reread AGENTS.md and the operating contract and validated the pinned Darwin
+Lean, wasm-tools, Wasmtime and Node paths; no toolchain replacement. Added
+AllocationChoice.lean to give the two already-proved allocator paths one
+explicit capacity/separation contract and common exact execution interface.
+
+AllocationChoice's first check passes the memory bridge and fresh execution;
+the reuse comparison rewrite does not unfold the emitted greater-or-equal
+relation. Preserved the draft/log and changed that local goal directly to
+its natural-number comparison. A read-only search also guessed a missing
+EulerConservativeCell path; rediscovery locates EulerCellStep/Execution.lean.
+No absent path or dependency was changed.
+
+AllocationChoice passes in3.7s with only standard logical axioms, log
+euler-grid-allocation-choice-comparison.log. Added FieldFrame.lean for the
+allocator input shape and preservation of every live tail local under either
+allocation path. These are frame facts over the exact emitted slot layout.
+
+FieldFrame passes in4.0s, with propext/Quot.sound or propext alone. Added its
+aggregate import and README/notes for all three modules. Reviewed the new
+proofs, capacity and separation assumptions, exact emitted-frame mappings,
+and standard axiom audits together with the short build telemetry. No source,
+binary, dependency or trusted-base changes, so runtime reruns are unnecessary.
+The remaining whole-function theorem can now consume these small contracts.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/AllocationPost.lean
+- proofs/talos/lean/Project/EulerGridStep/AllocationChoice.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldFrame.lean

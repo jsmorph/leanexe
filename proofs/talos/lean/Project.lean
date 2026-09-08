@@ -47,6 +47,7 @@ import Project.EulerGridStep.FieldAllocationBump
 import Project.EulerGridStep.FieldAllocationReuse
 import Project.EulerGridStep.FieldPrefix
 import Project.EulerGridStep.FieldCapacity
+import Project.EulerGridStep.FieldFrame
 import Project.EulerGridStep.Release
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
