@@ -35,6 +35,12 @@ is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. Array copying,
 allocation, release, neighbor reads and the outer fill loop remain to prove.
+[FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
+realizes the logical array update, preserves a disjoint input array and
+leaves all bytes outside that word unchanged. Its
+[WordRoundtrip.lean](WordRoundtrip.lean) helper reconstructs the eight stored
+bytes with a kernel-checked bit proof. These theorems use only standard
+logical axioms; the existing native-decision read-back lemma is not used.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
