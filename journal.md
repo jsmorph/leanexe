@@ -6868,3 +6868,50 @@ Explicit reviewed stage intent:
 - proofs/talos/lean/Project/EulerGridStep/Program.lean
 - proofs/talos/lean/Project/Runtime/Checks.lean
 - test/artifact_identity.js
+
+### 2026-09-07: Grid field memory semantics
+
+Published writer checkpoint 52953b4a225b55d52ffcde40d14675fe2138d47f, sole
+parent bd58550520d7ae31f26697ba9cc13920623a3dbb and tree
+0b093024505ca3e234d8f4e524a31d6562e92b4c. Exact non-forced publication,
+fetch, complete identity/content checks and local CAS passed, with clean
+synchronization. Its 91-doc/whitespace checks and no-admission scan also pass.
+
+Added FieldMemory: a payload store realizes Array.set! and preserves a
+disjoint input array. The first build fails only on the remaining array
+read simplification (missing its bounds hypothesis); disjoint-array
+preservation already audits to propext and Quot.sound. The same-address
+read used CodeLib's bv_decide theorem, whose native certificate is outside
+the agreed new public execution axiom set. Preserved the draft and replaced
+that dependency with a separate WordRoundtrip bitwise kernel proof, currently
+checking; no dependency or trusted-base change. A read-only BVDecide lookup
+guessed an absent Elab directory; discovery found Std/Tactic/BVDecide/Syntax
+and Lean/Meta/Tactic/BVDecide instead.
+
+The first isolated round-trip check hit an incorrect lemma name; replaced
+UInt64.toBitVec.inj with the verified core UInt64.toBitVec_inj.mp API.
+
+The bitwise check then rejected an attribute name used as a simp lemma.
+Replaced it with the explicit verified UInt64/UInt8 conversion lemmas;
+the failed draft and log remain. No timeout or resource-limit change.
+
+The explicit bitwise round-trip proof passes in8 seconds and audits to
+propext, Classical.choice and Quot.sound. FieldMemory then passes in3.7s;
+added and checked its exact outside-word byte footprint, also in3.7s.
+No new theorem depends on the old native read-back certificate. Reduced
+WordRoundtrip imports to array memory plus IntervalCases so these generic
+facts do not depend on any Euler numerical or generated-module definitions;
+one focused build checks that smaller import boundary. Added aggregate
+import, README explanations and concise notes.
+
+The isolated memory boundary passes (3,345 jobs): WordRoundtrip8.1s and
+FieldMemory3.7s, with only the audited standard axioms. All91 maintained
+Markdown files, grid README links, registry/import metadata and whitespace
+checks pass. No source/runtime changes or repeated compiled regression.
+Review/stage exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/FieldMemory.lean
+- proofs/talos/lean/Project/EulerGridStep/WordRoundtrip.lean
