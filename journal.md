@@ -8236,3 +8236,53 @@ proofs/talos/lean/Project.lean and EulerGridStep/{README.md,
 NeighborIndexing.lean,AdvanceOffsets.lean,AdvanceReadFrames.lean,
 AdvanceReadLeft.lean,AdvanceReadCentre.lean,AdvanceReadRight.lean,
 AdvanceReads.lean}. No broader checks are required for these proof changes.
+
+### 2026-09-08: Full cell-advance call composition
+
+Publishedcee31f7bdcabcac27a05284b1f480e6ea5f49f60, sole parent
+454325c9fc5b89841cb6ed73158dead2a77ccea4, tree
+27a629f798fd86aaa04c58dcb8ac0209e60bcc3b. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS succeeded;
+clean synchronization confirmed. Added AdvanceExecution.lean to connect
+the proved offsets/reads to unchanged cell25 and the applicable writer34
+contract, then return the exact pointer pair from all of generated
+advance35. The writer postcondition stays generic so fresh/reuse and
+accepted/rejected storage contracts can instantiate the same control proof.
+
+AdvanceExecution passes in6.5s with standard logical axioms; log
+euler-grid-advance-execution-first.log. It proves every instruction of
+advance35 using the actual cell25 theorem and an applicable writer theorem.
+Added AdvanceAccepted.lean to instantiate it for accepted fresh and reused
+writers, returning exact Model.advanceAt output, live/free buffers and
+counters while preserving the old-grid array.
+
+AdvanceAccepted passes in3.5s with standard logical axioms for both storage
+paths; log euler-grid-advance-accepted-first.log. Added AdvanceRejected.lean
+to dispatch the fresh/reuse rejected writers and instantiate the same full
+advance35 control proof. Its postcondition includes Model.advanceAt array
+contents, exact destination FieldResult and preservation of the old grid.
+
+AdvanceRejected passes in3.7s, log euler-grid-advance-rejected-first.log,
+with standard logical axioms. Reviewed complete advance call/return wiring
+and all four currently instantiated writer outcomes with the telemetry.
+Updated imports, README, notes and plan substeps.
+
+Correction to the earlier working resource agenda: inspecting exact func36
+lines4110–4284 shows call35 inside the loop, but release40 only after both
+loop/block closures. Its argument is local7, the initial output. There is
+no per-iteration release of the previous output. The earlier inference of
+a sustained six-node free pool was wrong; no published whole-grid theorem
+claimed it. Existing seven-object/fresh and six-reused writer theorems
+remain correct under their explicit premises. After a successful first
+cell, five intermediates are free; later successful cells must reuse those
+five and allocate their final output fresh. For N successful cells the
+call pattern suggests N+6 physical output objects, a resource count still
+to prove. Initial allocation and outer-loop proofs remain open. The
+repository source, exact Program and bytes are unchanged; prove this
+actual mixed allocation path before connecting the loop invariant.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Stage/publish exactly devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,
+AdvanceExecution.lean,AdvanceAccepted.lean,AdvanceRejected.lean}.

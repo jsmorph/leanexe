@@ -9321,3 +9321,15 @@ conservative words plus ratio for cell25. A timed-out monolithic read proof
 was split into nine checked slices. The offset proof takes11s, three read
 groups7.4–10s and composition4.3s, all with standard logical axioms. Initial
 output allocation, advance35 call composition and the grid loop remain open.
+
+## 2026-09-08: Full advance control and corrected loop resource agenda
+
+AdvanceExecution/Accepted/Rejected pass in3.5–6.5s with standard axioms.
+All advance35 control is composed with the checked cell and applicable
+writer contracts. Accepted cases currently require six fresh allocations
+or six reusable buffers; rejection covers either one-allocation path.
+Inspection of func36 shows release40 occurs only after the outer loop, for
+the initial output. Later accepted cells therefore need five reused buffers
+plus one fresh allocation. Prove that mixed writer path and growing arena
+budget next, followed by initialization and the loop. Existing seven-object
+proofs remain valid for the first fresh writer only.
