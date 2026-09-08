@@ -9190,3 +9190,12 @@ fields by the chosen allocator. The explicit conditions require bounded,
 separate, sufficiently sized existing storage and a supported free-list
 state. FieldBody builds in3.5s and FieldExecution in3.9s with standard logical
 axioms. Multi-buffer cell writer, rejection, neighbors and outer grid remain.
+
+## 2026-09-07: Live and free buffer preservation
+
+Full object separation now includes runtime headers. Field writes preserve
+other live headers/payloads and existing free-list nodes. Release establishes
+reusable metadata with unchanged payload/page count, and preserves separate
+live/free buffers. These facts are attached to exact generated release40;
+focused builds take3.5–3.8s with standard logical axioms. Six-write cell
+composition and the multi-buffer arena invariant remain open.
