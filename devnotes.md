@@ -9124,3 +9124,13 @@ an outside-byte frame. CopyLoop builds in 6.1s with only standard logical
 axioms. A generated-region equality connects it to field writer27. It requires
 valid disjoint source and destination arrays; allocator ownership, release,
 neighbor reads and full grid execution remain open.
+
+## 2026-09-07: Generated field-write tail
+
+The exact generated tail after allocation now terminates with the destination
+pointer and logical Array.set! result, preserving source, non-memory store
+fields and all bytes outside the destination array. Header initialization
+accepts arbitrary existing payload bytes. FieldTail builds in3.9s with only
+standard logical axioms; bounded disjoint allocation and live-local setup
+remain explicit preconditions. Allocation/ownership and full grid execution
+remain pending.

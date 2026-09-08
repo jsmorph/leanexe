@@ -51,6 +51,15 @@ and outside memory. [FieldShape.lean](FieldShape.lean) identifies that exact
 loop in generated field writer27. Allocation must still establish those
 preconditions. The copy execution theorem uses only standard logical axioms.
 
+[HeaderMemory.lean](HeaderMemory.lean) initializes the array length over
+arbitrary existing payload bytes. [FieldTailModel.lean](FieldTailModel.lean)
+combines that header, copying and one store into an exact logical update.
+[FieldTail.lean](FieldTail.lean) proves the complete generated tail after
+allocation, including the returned pointer, unchanged source, other store
+fields and bytes outside the destination array. This theorem requires
+bounded, disjoint allocated storage and the expected live locals; its
+allocator preconditions remain to prove. Its axiom audit is standard.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
