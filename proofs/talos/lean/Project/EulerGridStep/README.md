@@ -186,6 +186,15 @@ not establish their initial availability for the grid. Builds take4.0s and3.8s
 with standard logical axioms. Rejection, whole-grid allocation, preservation
 of the separate old grid, neighbor reads and the outer loop remain pending.
 
+[CopyUpdate.lean](CopyUpdate.lean) generalizes the checked copy/update tail
+over the local-variable window; FieldTail now specializes it without changing
+its public contract. [RejectedShape.lean](RejectedShape.lean) identifies that
+same tail in the rejected-cell branch at local67, including the surrounding
+bounds conditional and result saves. [RejectedPrefix.lean](RejectedPrefix.lean)
+proves its header read, index-zero bounds test and exact local frame for a
+nonempty output. These builds take3.6–3.8s with standard logical axioms.
+Rejected-branch allocation and full rejection execution remain to connect.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid

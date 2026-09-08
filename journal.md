@@ -7738,3 +7738,57 @@ no-admission/no-trace scan and git diff --check pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/README.md
 - proofs/talos/lean/Project/EulerGridStep/WriterStatus.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterAccepted.lean
+
+### 2026-09-08: Reusable copying update for rejected cells
+
+Published accepted-writer checkpoint226ccfb740e3a8308ee4d596871f05d9eb9a11b3,
+sole parent2709a539c92d427e5a2ff26df3bd399ab2b89478, tree
+166f0f7422332a2a39e040c17d1dd65ec49eb15e. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Inspected the rejected branch: its copy/
+update local window begins at67 instead of10 and writes index0/value1.
+Added CopyUpdate.lean, parameterizing the proven header/copy/store/return
+tail by that local-window offset. It retains the existing FieldWriteState
+contract and kernel-checked byte roundtrip. The existing FieldTail theorem
+will be specialized from this reusable result after its focused check.
+
+CopyUpdate passes in3.6s with standard logical axioms, log
+euler-grid-copy-update-first.log. Preserved the previous FieldTail source
+externally and specialized its unchanged public theorem from the new offset
+proof, eliminating duplicated proof steps. Added RejectedShape.lean with
+exact prefix/branch/finish shapes and the rejected copy tail at offset67.
+The generated Program.lean remains unchanged.
+
+The specialized FieldTail passes in3.7s with the same standard axiom audit,
+log euler-grid-field-tail-window.log. RejectedShape is rebuilding its affected
+Euler dependencies serially under120s; no unrelated aggregate is included.
+Added RejectedPrefix.lean for the exact17-instruction header read and index-
+zero bound, with its six local assignments and true branch-condition stack.
+
+RejectedShape and all affected dependencies pass, with propext-only shape
+audits; the target itself takes3.8s. The first RejectedPrefix check reaches
+its exact continuation with a residual explicit header bound and a record
+layout parse diagnostic. Preserved the draft/log, aligned the record fields
+and applied the already-proven generated header bound directly.
+
+RejectedPrefix passes in3.6s with propext, Classical.choice and Quot.sound,
+log euler-grid-rejected-prefix-bound.log. Reviewed the exact local window,
+nonempty index-zero precondition, generated shapes and shared copy/update
+contract. Added the import, README and concise notes. The unchanged full
+accepted-writer target is rebuilding affected dependencies as the focused
+regression for the shared FieldTail proof refactor. No source or bytes changed.
+
+The accepted writer and its affected dependencies pass, with the accepted
+writer target taking3.8s and retaining standard logical axioms, log
+euler-grid-writer-accepted-copy-window.log. This completes the focused
+regression required by the shared-copy proof change. All91 maintained
+Markdown files, registry/import metadata, README links, no-admission/no-trace
+scan and whitespace checks pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/CopyUpdate.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldTail.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedShape.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedPrefix.lean
