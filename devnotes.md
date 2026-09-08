@@ -9264,3 +9264,13 @@ updates and returned root. Its ready-frame proof supplies all copy/update
 locals, including index0/value1. Builds take3.7–5.4s and use only standard
 logical axioms. Full rejected-writer composition and fresh allocation for
 this branch remain open. Source, binaries and runtime results are unchanged.
+
+## 2026-09-08: Complete rejected writer execution
+
+WriterRejected proves all generated function34 for nonzero cell status,
+including dispatch, cloning, status-one update and pointer-pair return.
+It preserves the original array and establishes owned result metadata and
+an exact object footprint. The clone and full function build in3.5s/3.7s
+with standard logical axioms. Sufficient reusable capacity and separation
+are explicit premises. Both writer outcomes are now covered conditionally;
+fresh storage, old-grid framing, neighbors and the outer loop remain open.
