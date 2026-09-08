@@ -8100,3 +8100,139 @@ devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,
 RejectedAllocationBump.lean,FreshRejectedFrame.lean,FreshRejectedClone.lean,
 FreshWriterRejected.lean}.
+
+### 2026-09-08: Clamped neighbor indexing
+
+Published454325c9fc5b89841cb6ed73158dead2a77ccea4, sole parent
+e5148ff3a52ce00c13d069bec24a4c52530e182b, tree
+cad218785db54a41ce16583a188782ad7122cdea. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed,
+with clean synchronization. Inspected all297 top-level instructions of
+advance35: its first47 calculate clamped offsets, call25 is instruction236,
+and writer34 is instruction288. Added NeighborIndexing.lean with all nine
+in-bounds facts, checked-add safety, the next-cell word comparison and exact
+model correspondence. Reuses the established scan index/memory lemmas.
+
+NeighborIndexing passes in3.5s with standard logical axioms; log
+euler-grid-neighbor-indexing-first.log. Added AdvanceOffsets.lean for the
+exact first47 instructions and explicit outgoing frame. Separates endpoint
+branches and checked word arithmetic from the subsequent nine memory reads,
+keeping the next proof boundary bounded.
+
+AdvanceOffsets first build fails in3.9s at its first typed conditional;
+log euler-grid-advance-offsets-first.log and external failed draft
+work/euler-grid-advance-offsets-first.lean are preserved. The local peeling
+tactic needed wp_iff_control_types before the untyped conditional rule,
+as earlier writer proofs already established. Added that normalization,
+without changing the program, specification or resource budget.
+
+The typed-boundary variant still stops at the first conditional in3.0s,
+log euler-grid-advance-offsets-typed.log; saved its external draft as
+work/euler-grid-advance-offsets-typed.lean. Isolating that boundary with
+explicit rewrite/application outside the repeat tactic to expose the exact
+remaining mismatch. No resource increase or unchanged retry.
+
+The explicit diagnostic identified an earlier obstruction: the straight-line
+simplifier had left the concrete prefix appended to abstract rest, so it
+could not reach the conditional. The final simpa in prior failures had
+partially reduced that goal and obscured this. Preserved boundary log/draft
+euler-grid-advance-offsets-boundary; added List.cons_append/List.nil_append
+to the local peeling tactic and removed the temporary explicit diagnostic.
+Typed conditional normalization remains appropriate once the prefix unfolds.
+
+The append-normalized proof reaches the array-length memory guard in10s,
+log/draft euler-grid-advance-offsets-append. Added the explicit negated
+out-of-bounds test from generatedLengthBound so the straight-line
+simplifier can discharge it. The mathematical bound was already present;
+this is the exact Boolean guard form required by emitted load semantics.
+
+The length-guard variant completes both nonzero-index branches in11s but
+the two zero-index branches retain the next-cell test. Preserved log/draft
+euler-grid-advance-offsets-length-guard. Normalize the comparison lemma's
+zero-index encoding explicitly to the literal word1 after substitution,
+so simplification matches the generated test. No theorem premise changes.
+
+AdvanceOffsets now passes in11s with standard logical axioms, log
+euler-grid-advance-offsets-zero-word.log. Review confirms exact scratch
+locals in all endpoint/interior branches, safe checked arithmetic and
+unchanged memory. Added AdvanceReads.lean for the following189 instructions: 
+nine guarded conservative-word loads and exact reversed cell25 arguments.
+The proof supplies each physical bound/read fact explicitly and retains
+the complete generated frame.
+
+AdvanceReads exceeded the explicit120s limit without a theorem diagnostic,
+exit124, log euler-grid-advance-reads-first.log. Preserved its full draft
+externally as work/euler-grid-advance-reads-first.lean. Do not repeat that
+unchanged target. Added AdvanceReadFrames and three independent groups of
+three single-read proofs, each with its own small exact instruction slice.
+The shared staged frame records only emitted local updates; each proof
+uses one element's bounds/read facts. This reduces the elaboration boundary
+without raising limits. The original composition module will be rewritten
+to apply these proved slices.
+
+Whitespace review also found one trailing space in the preceding new journal
+paragraph. It is retained under the append-only journal contract; this is
+a documented journal-only whitespace exception, not a failed code check.
+
+The first split-read build stopped in3.5s on an unmatched parenthesis in
+AdvanceReadFrames, before checking a read theorem. Preserved log
+euler-grid-advance-read-left-first.log and external frame draft
+euler-grid-advance-read-frames-first.lean; replaced the nested list update
+with short sequential let bindings. Rewrote AdvanceReads to compose nine
+single-read lemmas and the final10 local gets, replacing its timed-out
+monolithic peeling proof. The original failed proof remains preserved.
+
+The split left-read target now finishes diagnostics in15s. Reads1/2
+(second/third fields) execute completely but their returned getD expressions
+need the known index bound to match dependent array access. Read0 stops at
+a not-yet-normalized memory guard. Preserved log
+euler-grid-advance-read-left-frames.log and the four affected external
+normalization drafts. Added bounded arithmetic simplification to the shared
+peeler and explicit Array.getD/hBound normalization at each return.
+This addresses representation mismatches; no source, memory premise,
+semantic claim or resource limit changed.
+
+The normalized left group finishes in6.7s: read0 passes, while reads1/2
+need the bounds of earlier staged fields at their return. The shared
+simplifier had reduced those earlier getD expressions using arithmetic,
+while the final comparison had not. Preserved normalized log and external
+prior-bounds drafts. Supply the maximum-field bound for each of the three
+neighbors and use omega in final simplification; these facts derive from
+the same hi premise. This also handles earlier neighbors in later stages.
+
+The aggregate-bound version finishes in6.9s with the same final dependent
+if mismatch: simplifier discharge does not itself rewrite the earlier
+getD conditions. Preserved log euler-grid-advance-read-left-all-bounds.log
+and explicit-bounds drafts. Destructure all nine already-proved bounds,
+normalize field-zero offsets and pass those facts directly to final simp.
+This targets the remaining dependent-if expressions without extra execution.
+
+All nine individual reads now pass: AdvanceReadLeft7.4s, Centre10s and
+Right10s, each audited to propext, Classical.choice and Quot.sound. Logs
+euler-grid-advance-read-left-explicit-bounds.log,
+euler-grid-advance-read-centre-first.log and
+euler-grid-advance-read-right-first.log are retained. Review of each exact
+slice, staged frame and telemetry confirms no memory mutation and correct
+left/centre/right conservative fields. The full AdvanceReads target is
+now materially reduced to composition of these checked boundaries.
+
+AdvanceReads composition passes in4.3s, log
+euler-grid-advance-reads-composed.log, with standard logical axioms; its
+exact instruction-slice identity uses none. Reviewed the accepted proof
+and telemetry together: splitting the nine reads into independent slices
+removed the120s elaboration bottleneck, and composition is now small.
+Retain these fixed generated slices as worked examples; a future shared
+compiler-read window could abstract their repeated staging/bounds work.
+Updated aggregate import, README, both plan substeps and concise notes.
+The complete advance35 calls, initial output and grid loop remain open.
+No source, bytes, runtime or unrelated regression work was done.
+
+The91 maintained Markdown files,34 registry/import entries, README links
+and new-proof no-admission/no-trace/whitespace scans pass. Tracked source
+and documentation whitespace checks pass; the single previously documented
+append-only journal trailing space is the only full-diff whitespace finding.
+Stage/publish exactly devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,
+NeighborIndexing.lean,AdvanceOffsets.lean,AdvanceReadFrames.lean,
+AdvanceReadLeft.lean,AdvanceReadCentre.lean,AdvanceReadRight.lean,
+AdvanceReads.lean}. No broader checks are required for these proof changes.
