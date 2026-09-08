@@ -9371,3 +9371,12 @@ accounts for earlier outputs staying allocated. GridSizes keeps the output
 object size fixed. Checks take3.4–3.7s with standard axioms. Initial output
 allocation, first-cell heap handoff, rejection and the outer loop remain
 open; there is no unconditional whole-grid execution claim yet.
+
+## 2026-09-08: First accepted cell establishes the later arena state
+
+FreshWriterFramed/Heap retain heap slot7 and exact pages through the first
+writer. AdvanceFirstArena establishes LaterArenaState after the first
+accepted advance: output slot6, reusable slots1–5, exact counters and old
+grid, under the full cells+6 object budget. Checks take3.5–3.7s with standard
+axioms. Slot0 must already be initialized. Initial allocation, rejection
+state and outer-loop execution remain open.

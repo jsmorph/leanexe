@@ -285,8 +285,10 @@ acceptance gates, and nonclaims.
   buffers then one fresh allocation, preserving the old grid and exact heap/pages.
 - [x] Prove variable arena bounds and preservation of the cells+6 object
   budget by each later accepted advance, accounting for retained prior outputs.
-- [ ] Connect initialization, first-cell heap state and rejection to the
-  growing arena invariant, then compose the actual outer loop.
+- [x] Connect the first accepted cell to the later-cell arena invariant,
+  retaining exact heap/pages from all six fresh writes and five releases.
+- [ ] Connect initial output allocation and rejection to the arena state,
+  then compose the actual outer loop.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 

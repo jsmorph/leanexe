@@ -8520,3 +8520,41 @@ arena transition. Reviewed/stage/publish exactly devnotes.md, journal.md,
 plan.md, plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
 EulerGridStep/{README.md,ArenaBounds.lean,LaterArena.lean,GridSizes.lean,
 LaterArenaState.lean,AdvanceArena.lean}.
+
+### 2026-09-08: First-cell heap handoff
+
+Published 47a4be94f9f6ef197d1ab86bb9d454c7bad3aa49, sole parent
+e46bb794c9dfbf02627d1bd0415c57952656c719, tree
+249d8efb248b7cb9f312fccf42dbaa233600bae8. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. A speculative FreeExecution.lean search
+named no existing file; subsequent unknown-path reads must first discover
+the actual filenames. Added FreshWriterFramed.lean using the shared complete
+writer/release control to retain the first writer's exact heap slot7 and
+page count. The earlier accepted writer theorem remains a checked example.
+
+FreshWriterFramed passes in3.5s with standard logical axioms, log
+euler-grid-fresh-writer-framed-first.log. Added FreshWriterHeap.lean to
+discharge old-grid preservation while keeping exact heap slot7 and pages.
+The shared control avoids repeating the first writer’s instruction proof.
+
+Added AdvanceFirstArena.lean to establish LaterArenaState at index1 from
+the initialized slot0 and the explicit cells+6 object budget. The first
+advance’s exact six fresh writes and five releases supply output slot6,
+heap slot7 and the same five-node pool used by later advances. Actual
+initial output allocation remains a separate unproved entry boundary.
+
+FreshWriterHeap passes in3.6s and AdvanceFirstArena in3.7s with standard
+logical axioms; logs euler-grid-fresh-writer-heap-first.log and
+euler-grid-advance-first-arena-first.log. Reviewed proofs/telemetry: the
+new shared writer control carries stronger state without duplicating the
+instruction sequence, and the first advance now establishes exactly the
+invariant consumed by later accepted advances. Updated plans, README,
+imports and checkpoint notes. Initial allocation/rejection/outer-loop
+claims remain explicitly open. No executable source or bytes changed.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Reviewed/stage/publish exactly devnotes.md, journal.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+EulerGridStep/{README.md,FreshWriterFramed.lean,FreshWriterHeap.lean,AdvanceFirstArena.lean}.
