@@ -6486,3 +6486,68 @@ or runtime change requires repeating compiled vectors. Reviewed stage paths:
 Scan checkpoint review passes whitespace, all README links, 91 maintained
 Markdown files, registry/import metadata and no-admission source checks.
 No broad regression or release gate was run.
+
+Published scan-model checkpoint dfe2964f5b374ac4dd93b31b12bd92a9fec4da35,
+sole parent 741bd65380cb962b9723b9094d9e82fca40aea83, tree
+476508fe325b5dcf03b7f61f11e22ab4e0910a67. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronized status. Inspection of the retained scan WAT found
+multiple checked-side call sites in the expanded loop and 93 local slots.
+Preserved the source and introduced scanAt as a named iteration, returning
+a CheckedSpeed record carried by the loop. Model behavior is unchanged:
+the first rejection returns one/zero and accepted scans fold maximum speed.
+This source boundary is intended to reduce exact-loop proof duplication;
+no compiler or trusted-base change is made. Focused build/runtime gates follow.
+
+The named scan-body source builds in 212ms and all 31 compiled vectors pass,
+retaining tmp/euler-grid-step-EIzYr5. Its scan entry is much smaller but
+record projection in the loop guard places a getter before the conservative
+helpers, shifting their function indices and preventing direct reuse of
+the existing module-layout theorem. Preserved that draft and restored scalar
+status/speed loop variables around the named scanAt call. This aims to keep
+the dependency order while retaining the smaller call boundary. Correction:
+the prior scan used 92 local variables plus its parameter (93 frame slots).
+
+The scalar-loop source builds, and direct WAT inspection confirms the
+conservative functions remain at 0–5. scanAt is function8, with one call
+to checked side5; entry11 repeats a compact loop for the two result
+projections. The 31-case focused rerun is pending. Registered euler_grid_scan
+explicitly incomplete to prepare its exact generated module next; no
+execution theorem or additional complete source case is claimed.
+
+The scalar-loop revision passes all 31 focused cases; retained
+tmp/euler-grid-step-nZTlii. Exact step bytes remain c7c0bb1425a0adb567b4b5cf96f62112181519078297fb3d4a3f5a8691695a02.
+The scoped prepare euler_grid_scan gate passes using fresh staging
+tmp/leanexe-talos-wtKk6r; only that invocation-owned staging was removed
+by its tool. Prepared identities:
+proofs/talos/lean/Project/EulerGridScan/Program.lean 32859 SHA256 8506a2ea5d5af3b0798c92a4b9c977ad5953d3bc16283bcb5c2bc6e47029d011
+proofs/talos/.generated/euler_grid_scan/program.wasm 3292 SHA256 279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9
+proofs/talos/.generated/euler_grid_scan/program.wat 35251 SHA256 fb2a173b45553e528fe1792337161150a6109bf06fee6bf6ddf95869382a8d90
+Helper layout and runtime pins pass (3.6s and 3.7s); concreteLayout audits
+to propext. Corrected the new structure syntax deprecation before its final
+check. Updated runtime imports and the literal cache inventory to 33;
+registry has 32 complete cases plus one explicitly incomplete scan.
+A read-only docs search guessed absent docs/talos-proof-library.md; existing
+README, proofs/talos/README.md and docs/status.md own these inventories.
+Updated those maintained counts and documented the pending exact obligations.
+
+Final Helpers build passes in 3.4s without new local warnings; two existing
+Array proof deprecations are replayed. The small metadata/import check passes
+33 registered / 32 complete; identity test and all README links pass, as do
+91 maintained Markdown files. Registry formatting churn from JSON printing
+was narrowed to the single reviewed addition after asserting that all prior
+entries are unchanged. No aggregate execution or release gate was run.
+Reviewed explicit stage paths:
+- LeanExe/Examples/EulerGridStep.lean
+- README.md
+- devnotes.md
+- docs/status.md
+- journal.md
+- proofs/talos/README.md
+- proofs/talos/cases.json
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/Runtime/Checks.lean
+- test/artifact_identity.js
+- proofs/talos/lean/Project/EulerGridScan/Program.lean
+- proofs/talos/lean/Project/EulerGridScan/Helpers.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md

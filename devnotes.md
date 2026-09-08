@@ -9046,3 +9046,13 @@ order. The proof composes UInt64 selection bounds, checked-side positivity
 and the existing IEEE magnitude-order theorem. Its focused build takes
 2.7 seconds, uses only standard logical axioms and has no local warnings.
 Exact array execution and bytes remain open; inventories stay 32/28.
+
+## 2026-09-07: Exact grid-scan module and reusable call layout
+
+Factored scanAt and retained scalar loop state to keep the conservative
+functions at indices 0–5. All 31 compiled tests pass; scan bytes shrink from
+5,311 to 3,292 (SHA256 279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9),
+while the grid-step binary is unchanged. Generated the exact Talos cache;
+helper-layout equality and runtime pins pass. The registry now has 33 cases
+with 32 complete, 33 Program caches and 28 frozen packages. The new case is
+explicitly incomplete pending exact reads, loop execution and byte proofs.
