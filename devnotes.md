@@ -9390,3 +9390,13 @@ nodes and heap slot2; later rejection leaves slots2–5 free and preserves
 the current heap. Old grid, pages and budget are retained. Initial output
 allocation, initial-output preservation/final release, and outer-loop
 execution remain open.
+
+## 2026-09-08: Unified complete arena cell calls
+
+ArenaAdvance combines the four checked storage/numerical cases into complete
+first-cell and later-cell interfaces, exposing the exact returned root,
+model output, outcome-specific counters/arena, pages and old grid. The
+combined target passes in3.6s with standard axioms. Initial allocation,
+initial-output preservation/final release and actual grid-loop execution
+remain open. All checks in this sequence stayed focused on changed Euler
+proofs and small documentation/registry checks.
