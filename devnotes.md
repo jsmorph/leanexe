@@ -9170,3 +9170,12 @@ first44 emitted field-writer instructions now have an exact frame/store
 execution theorem for both zero and nonzero indices (6.8s); the accepted
 branch's22-instruction copy-count/capacity setup passes in3.8s. Joining
 setup, allocation, ownership and tail proofs into the whole function remains.
+
+## 2026-09-07: Common field allocation contract
+
+Fresh and reused buffers now establish the same represented-input, owned
+metadata, destination-bound and outside-byte conditions. A common exact
+allocator theorem requires explicit availability, capacity and separation;
+frame proofs establish every live copy/update local. Focused builds take
+3.5–4.0s, all with standard logical axioms. Whole-field and multi-buffer
+composition remain open; no source/runtime change or broad regression run.

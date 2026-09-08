@@ -99,6 +99,15 @@ inside the accepted branch, setting copy count and normalized capacity.
 These builds take6.8s and3.8s respectively and audit to standard logical
 axioms. Whole-function allocation/ownership composition remains pending.
 
+[AllocationPost.lean](AllocationPost.lean) connects both allocator memory
+models to represented input, initialized owned metadata, destination bounds
+and the object footprint. [AllocationChoice.lean](AllocationChoice.lean)
+provides a common exact execution theorem with explicit capacity, availability
+and separation conditions. [FieldFrame.lean](FieldFrame.lean) proves the live
+local-variable conditions required by the copy/update tail for both paths.
+These focused builds take3.5–4.0s and use only standard logical axioms.
+Whole-function composition and the multi-buffer arena invariant remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
