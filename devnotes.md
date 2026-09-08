@@ -9274,3 +9274,13 @@ an exact object footprint. The clone and full function build in3.5s/3.7s
 with standard logical axioms. Sufficient reusable capacity and separation
 are explicit premises. Both writer outcomes are now covered conditionally;
 fresh storage, old-grid framing, neighbors and the outer loop remain open.
+
+## 2026-09-08: Old-grid preservation through the accepted writer
+
+WriterProtected strengthens the complete accepted-writer result with
+preservation of an arbitrary separate represented array, including one with
+a different length. Exact field/release memory results carry this property
+through all six writes and five releases. Builds take3.5–3.7s and audit to
+standard logical axioms. Six suitable reusable buffers and separation from
+the observed array remain explicit. Fresh writer allocation, neighbors and
+whole-grid initialization/execution remain open.
