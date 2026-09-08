@@ -271,8 +271,24 @@ updates; [AdvanceReadLeft.lean](AdvanceReadLeft.lean),
 reversed argument list for cell25, preserving the complete store. The offset
 proof takes11s, read groups7.4–10s, and final composition4.3s; all execution
 theorems use standard logical axioms. Splitting the original timed-out
-read proof keeps subsequent checks small. Initial output allocation, the
-remaining advance35 call composition and whole-grid execution remain open.
+read proof keeps subsequent checks small.
+
+[AdvanceExecution.lean](AdvanceExecution.lean) composes the complete generated
+advance35 with cell25 and an applicable writer34 contract.
+[AdvanceAccepted.lean](AdvanceAccepted.lean) instantiates it for six fresh
+allocations or six reused buffers, returning Model.advanceAt, exact buffer
+state and the preserved old grid. [AdvanceRejected.lean](AdvanceRejected.lean)
+covers a rejected cell with either fresh or reused storage, returning the
+status-one model output and its full memory frame. These builds take3.5–6.5s
+and use standard logical axioms.
+
+The actual outer loop releases its initial output only after the loop; it
+does not release each prior iteration output. Thus an accepted writer
+leaves five reusable intermediates, and the next accepted writer requires
+five reused buffers followed by one fresh allocation. That mixed path and
+its growing arena budget still need composition. The seven-object bound
+above applies to the first fresh writer, not the entire grid step. Initial
+output allocation and full grid execution also remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
