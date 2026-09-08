@@ -34,7 +34,7 @@ The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
-composition under explicit storage assumptions. Initial grid allocation, neighbor reads and
+composition under explicit storage assumptions. Initial grid allocation and
 the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
@@ -122,7 +122,7 @@ source/destination separation and either an empty free list for fresh
 allocation or a sufficient first free block. Builds take3.5s and3.9s, with
 only standard logical axioms. The accepted-writer theorem below composes six
 field writes and five releases. The rejected-writer theorem follows below;
-initial grid allocation, neighbors and the grid loop remain.
+initial grid allocation and the grid loop remain.
 
 [ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
 runtime headers and proves that field writes preserve other live buffers.
@@ -213,7 +213,7 @@ pointer pair for input.set! 0 1, preserves the original array, establishes owned
 result metadata, and preserves all bytes outside the destination object.
 Both proofs use the explicit sufficient-free-head and separation contract;
 they build in3.5s and3.7s with standard logical axioms. Both writer outcomes
-now have complete conditional execution proofs. Initial grid storage availability, neighbor reads and the outer loop
+now have complete conditional execution proofs. Initial grid storage availability and the outer loop
 remain open.
 
 [CellFieldFramed.lean](CellFieldFramed.lean) and
@@ -258,8 +258,21 @@ copy-and-update proof. [FreshWriterRejected.lean](FreshWriterRejected.lean)
 proves the full rejected writer from an empty free list, returning a fresh
 clone with status one and the exact destination-object memory frame. The
 complete theorem builds in3.0s with standard logical axioms. Both writer
-outcomes now cover fresh and reused storage. Initial grid allocation,
-neighbor reads and whole-grid execution remain open.
+outcomes now cover fresh and reused storage.
+
+[NeighborIndexing.lean](NeighborIndexing.lean) establishes all nine valid
+neighbor indices and exact word guards. [AdvanceOffsets.lean](AdvanceOffsets.lean)
+proves the first47 instructions of advance35, including both clamped endpoints.
+[AdvanceReadFrames.lean](AdvanceReadFrames.lean) records the staged local
+updates; [AdvanceReadLeft.lean](AdvanceReadLeft.lean),
+[AdvanceReadCentre.lean](AdvanceReadCentre.lean) and
+[AdvanceReadRight.lean](AdvanceReadRight.lean) prove each actual memory read.
+[AdvanceReads.lean](AdvanceReads.lean) composes all nine reads and the exact
+reversed argument list for cell25, preserving the complete store. The offset
+proof takes11s, read groups7.4–10s, and final composition4.3s; all execution
+theorems use standard logical axioms. Splitting the original timed-out
+read proof keeps subsequent checks small. Initial output allocation, the
+remaining advance35 call composition and whole-grid execution remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

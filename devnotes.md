@@ -9312,3 +9312,12 @@ returns the exact result and retains the destination-object memory frame.
 The whole theorem builds in3.0s with standard logical axioms. Both writer
 outcomes now cover fresh and reused storage. Initial output allocation,
 neighbor reads and whole-grid execution remain open.
+
+## 2026-09-08: Exact clamped neighbor reads
+
+AdvanceOffsets proves the first47 instructions of advance35; AdvanceReads
+proves the next189, preserving the store and staging the exact nine
+conservative words plus ratio for cell25. A timed-out monolithic read proof
+was split into nine checked slices. The offset proof takes11s, three read
+groups7.4–10s and composition4.3s, all with standard logical axioms. Initial
+output allocation, advance35 call composition and the grid loop remain open.

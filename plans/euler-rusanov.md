@@ -575,6 +575,8 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove the full fresh rejected writer from an empty free list, returning
   a status-one clone with exact allocation and memory frame. Both writer
   outcomes now cover fresh and reused storage.
+- [x] Prove clamped neighbor offsets and all nine emitted reads in advance35,
+  preserving the old grid and staging the exact cell25 arguments.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
