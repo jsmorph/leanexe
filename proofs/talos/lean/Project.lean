@@ -52,5 +52,6 @@ import Project.EulerGridStep.FieldExecution
 import Project.EulerGridStep.Release
 import Project.EulerGridStep.ReleaseFramed
 import Project.EulerGridStep.LiveBuffers
+import Project.EulerGridStep.CellFieldCall
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

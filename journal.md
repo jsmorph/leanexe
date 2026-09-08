@@ -7474,3 +7474,56 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/FreeChain.lean
 - proofs/talos/lean/Project/EulerGridStep/FreeChainExecution.lean
 - proofs/talos/lean/Project/EulerGridStep/LiveBuffers.lean
+
+### 2026-09-07: Buffer state across successive calls
+
+Published buffer-list checkpointbcc8cedf51457f180fdb9cd1eaeb3d2a86714c47,
+sole parent99961e75b01cde0a5e249ac942774511a5041e99 and tree
+580386211e51d8e60255ec387b5142e26e50d6fb. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added BufferState.lean to combine the live
+arrays, bounded free chain, head pointer, allocation/release/free counters
+and page limit. Exact clone/release transitions preserve this combined state
+under explicit source/live/free separation conditions.
+
+The first BufferState check reduces the call/state contracts and leaves only
+three direct global-list index bounds (1,2,5 below its length). The existing
+frees-counter read already proves length greater than5. Preserved the draft/
+log and discharged the remaining arithmetic after simplification.
+
+BufferState passes with standard logical axioms, log
+euler-grid-buffer-state-indices.log. Added CellPrefixes.lean to name the six
+successive logical array updates, equate the sixth with Model.putCell, and
+track the corresponding newest-first live-buffer list. Membership and
+separation facts connect that list to fixed physical buffer roots.
+
+BufferState's successful build is3.9s. CellPrefixes accepts the size, exact
+six-update identity, membership decomposition and separation facts; the
+zero-case membership proof has a one-line tactic-scope error. Preserved its
+draft/log and separated the local equality, substitution and closing step
+onto distinct lines. No proof assumptions or budgets changed.
+
+CellPrefixes passes in3.7s with propext or propext/Quot.sound, log
+euler-grid-cell-prefixes-scope.log. Added CellFieldCall.lean: any one of the
+six exact field calls advances the corresponding logical prefix and live/
+free/counter state. The seven relevant buffer roots require explicit pairwise
+object separation; remaining free-tail separation is also retained.
+
+CellFieldCall passes in3.6s with the standard three logical axioms, log
+euler-grid-cell-field-call-first.log. Reviewed the BufferState, CellPrefixes
+and field-stage proof interfaces with their short telemetry: each stage
+consumes one distinct free buffer and preserves all earlier live prefixes;
+no interleaved release is assumed. Added aggregate import and README/notes.
+No source/binary/runtime changes, no new dependency or trusted axiom, and no
+broad regression or current aggregate run.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/BufferState.lean
+- proofs/talos/lean/Project/EulerGridStep/CellPrefixes.lean
+- proofs/talos/lean/Project/EulerGridStep/CellFieldCall.lean
