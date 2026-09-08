@@ -9255,3 +9255,12 @@ unchanged. Exact generated shapes connect the rejection branch to this proof
 at local67; its17-instruction prefix proves the header read, nonempty index-
 zero bound and resulting frame. New targets take3.6–3.8s with standard logical
 axioms. Allocation in the rejected branch and full rejection remain open.
+
+## 2026-09-08: Rejected-cell reuse allocation
+
+The rejected branch now has exact capacity setup, terminating first-head
+search and full allocator-reuse contracts, with exact metadata, global
+updates and returned root. Its ready-frame proof supplies all copy/update
+locals, including index0/value1. Builds take3.7–5.4s and use only standard
+logical axioms. Full rejected-writer composition and fresh allocation for
+this branch remain open. Source, binaries and runtime results are unchanged.

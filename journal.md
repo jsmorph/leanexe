@@ -7792,3 +7792,63 @@ scan and whitespace checks pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/FieldTail.lean
 - proofs/talos/lean/Project/EulerGridStep/RejectedShape.lean
 - proofs/talos/lean/Project/EulerGridStep/RejectedPrefix.lean
+
+### 2026-09-08: Rejection allocation and ready frame
+
+Published shared-copy checkpoint654347ab3dce162964819b8372edd41b0cc013f6,
+sole parent226ccfb740e3a8308ee4d596871f05d9eb9a11b3, tree
+f5255c1bf25cf34c7ac2b15ca8d6b6ec99885624. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added RejectedCapacity.lean for the emitted
+copy-count/capacity setup at locals70/76, and RejectedReuseHit.lean for the
+first sufficient free-block branch at locals77–81. The latter shares the
+existing unlink-store model and generic six-metadata-store execution theorem;
+only the generated local/frame scaffold is specialized.
+
+RejectedCapacity passes in3.7s with standard logical axioms, log
+euler-grid-rejected-capacity-first.log. Added RejectedReuseSearch.lean for
+the exact first-head search at offset67, reusing the physical allocation
+store model and the generic metadata theorem through RejectedReuseHit.
+The search retains the one-to-zero termination measure and explicit capacity,
+header-read, root-bound and free-head premises of the accepted field path.
+
+RejectedReuseHit passes in4.1s and RejectedReuseSearch in5.4s, logs
+euler-grid-rejected-reuse-hit-first.log and
+euler-grid-rejected-reuse-search-first.log. Both execution audits use standard
+logical axioms; shape audits use propext. Added RejectedAllocationShape.lean
+and RejectedAllocationReuse.lean to connect that search to the exact17-
+instruction allocator region, skip bump allocation after a hit, increment
+the allocation counter, and store the selected root in local71.
+
+The allocation-shape check verifies the allocator and bump-header slices;
+its full clone decomposition used an ambiguous rewrite that collapsed the
+outer split first. Preserved the draft/log and replaced that rewrite with an
+explicit congrArg over the17-instruction inner split. No resource increase;
+the exact generated-slice checks were already accepted.
+
+RejectedAllocationShape and RejectedAllocationReuse pass, log
+euler-grid-rejected-allocation-reuse-split.log, with propext-only shapes and
+standard execution axioms. Added RejectedFrame.lean to prove the capacity
+request, frame shape and every live getter required by CopyUpdate at offset67,
+including index0/value1 and valid counter local72.
+
+RejectedFrame passes in4.3s, log euler-grid-rejected-frame-first.log. Its
+capacity fact uses propext/Quot.sound and other frame facts use propext. The
+complete allocator-reuse target took3.9s; its shape dependency took4.8s.
+Reviewed all six new modules, the exact local numbers, capacity normalization,
+first-head assumptions, generic metadata/store reuse and counter frame facts
+with the telemetry. Added Project import, README and notes. No changed source
+or bytes; no runtime or broad aggregate rerun is justified.
+
+All91 maintained Markdown files, registry/import metadata, grid README links,
+no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/RejectedCapacity.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedReuseHit.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedReuseSearch.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedAllocationShape.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedAllocationReuse.lean
+- proofs/talos/lean/Project/EulerGridStep/RejectedFrame.lean
