@@ -9152,3 +9152,13 @@ The existing scalar-array release theorem applies at exact grid function40,
 with exact free-list/memory/counter results. AllocationMemory and Release
 build in3.8s each, with standard logical axioms. Buffer reuse and composition
 across the full writer/grid remain pending.
+
+## 2026-09-07: Reuse of a suitable free-list head
+
+Generalized the checked metadata writer over its two local indices, preserving
+the prior field specialization. The exact free-list search now selects a
+sufficient first block with a decreasing measure. Its complete allocation
+path proves unlinking, metadata initialization, skipped bump and final
+allocation-count/frame results in3.0s. Fresh allocation rebuilds in7.2s;
+a focused metadata/release dependency check passes in3.9s. All audits remain
+standard. Ownership composition and full grid execution remain open.

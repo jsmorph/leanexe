@@ -12,10 +12,12 @@ def fieldBumpBody : Wasm.Program :=
   | some (Wasm.Instruction.iff _ _ body _ _ _) => body
   | _ => []
 
-def fieldHeaderStores : Wasm.Program :=
-  headerConstStore 24 48 5501223100278326855 ++ headerConstStore 24 40 1 ++
-  headerLocalStore 24 19 32 ++ headerConstStore 24 24 2 ++
-  headerConstStore 24 16 1 ++ headerConstStore 24 8 0
+def allocationHeaderProgram (rootLocal capacityLocal : Nat) : Wasm.Program :=
+  headerConstStore rootLocal 48 5501223100278326855 ++ headerConstStore rootLocal 40 1 ++
+  headerLocalStore rootLocal capacityLocal 32 ++ headerConstStore rootLocal 24 2 ++
+  headerConstStore rootLocal 16 1 ++ headerConstStore rootLocal 8 0
+
+def fieldHeaderStores : Wasm.Program := allocationHeaderProgram 24 19
 
 theorem field_bump_header_shape : fieldBumpBody =
     fieldBumpBody.take 28 ++ fieldHeaderStores := rfl
@@ -43,6 +45,34 @@ theorem headerAddress_bound (root offset : UInt64) (pages : Nat)
   omega
 
 /-- Six exact metadata stores, with the entire remaining store and locals preserved. -/
+theorem allocation_header_program_spec (rootLocal capacityLocal : Nat)
+    (m : Wasm.Module) (env : HostEnv Unit)
+    (initial : Store Unit) (frame : Locals) (root capacity : UInt64)
+    (hRoot : frame.get rootLocal = some (.i64 root))
+    (hCapacity : frame.get capacityLocal = some (.i64 capacity)) (hValues : frame.values = [])
+    (hRoot48 : 48 ≤ root.toNat) (hRoot32 : root.toNat < 4294967296)
+    (hFit : root.toNat ≤ initial.mem.pages * 65536)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp m rest Q (writeAllocationHeader initial root capacity) frame env) :
+    wp m (allocationHeaderProgram rootLocal capacityLocal ++ rest) Q initial frame env := by
+  have hBound (offset : UInt64) (ho : 8 ≤ offset.toNat ∧ offset.toNat ≤ 48) :=
+    headerAddress_bound root offset initial.mem.pages hRoot48 hRoot32 ho hFit
+  simp only [allocationHeaderProgram, List.append_assoc]
+  apply header_const_store_spec rootLocal root 48 5501223100278326855 m env _ frame hRoot hValues
+    (hBound 48 (by decide)) Q _
+  apply header_const_store_spec rootLocal root 40 1 m env _ frame hRoot hValues
+    (by simpa only [writeHeaderWord_pages] using hBound 40 (by decide)) Q _
+  apply header_local_store_spec rootLocal capacityLocal root 32 capacity m env _ frame hRoot hCapacity hValues
+    (by simpa only [writeHeaderWord_pages] using hBound 32 (by decide)) Q _
+  apply header_const_store_spec rootLocal root 24 2 m env _ frame hRoot hValues
+    (by simpa only [writeHeaderWord_pages] using hBound 24 (by decide)) Q _
+  apply header_const_store_spec rootLocal root 16 1 m env _ frame hRoot hValues
+    (by simpa only [writeHeaderWord_pages] using hBound 16 (by decide)) Q _
+  apply header_const_store_spec rootLocal root 8 0 m env _ frame hRoot hValues
+    (by simpa only [writeHeaderWord_pages] using hBound 8 (by decide)) Q _
+  exact hNext
+
+/-- Six exact metadata stores, with the entire remaining store and locals preserved. -/
 theorem allocation_header_spec (m : Wasm.Module) (env : HostEnv Unit)
     (initial : Store Unit) (frame : Locals) (root capacity : UInt64)
     (hRoot : frame.get 24 = some (.i64 root))
@@ -52,24 +82,11 @@ theorem allocation_header_spec (m : Wasm.Module) (env : HostEnv Unit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp m rest Q (writeAllocationHeader initial root capacity) frame env) :
     wp m (fieldHeaderStores ++ rest) Q initial frame env := by
-  have hBound (offset : UInt64) (ho : 8 ≤ offset.toNat ∧ offset.toNat ≤ 48) :=
-    headerAddress_bound root offset initial.mem.pages hRoot48 hRoot32 ho hFit
-  simp only [fieldHeaderStores, List.append_assoc]
-  apply header_const_store_spec 24 root 48 5501223100278326855 m env _ frame hRoot hValues
-    (hBound 48 (by decide)) Q _
-  apply header_const_store_spec 24 root 40 1 m env _ frame hRoot hValues
-    (by simpa only [writeHeaderWord_pages] using hBound 40 (by decide)) Q _
-  apply header_local_store_spec 24 19 root 32 capacity m env _ frame hRoot hCapacity hValues
-    (by simpa only [writeHeaderWord_pages] using hBound 32 (by decide)) Q _
-  apply header_const_store_spec 24 root 24 2 m env _ frame hRoot hValues
-    (by simpa only [writeHeaderWord_pages] using hBound 24 (by decide)) Q _
-  apply header_const_store_spec 24 root 16 1 m env _ frame hRoot hValues
-    (by simpa only [writeHeaderWord_pages] using hBound 16 (by decide)) Q _
-  apply header_const_store_spec 24 root 8 0 m env _ frame hRoot hValues
-    (by simpa only [writeHeaderWord_pages] using hBound 8 (by decide)) Q _
-  exact hNext
+  exact allocation_header_program_spec 24 19 m env initial frame root capacity
+    hRoot hCapacity hValues hRoot48 hRoot32 hFit Q rest hNext
 
 #print axioms field_bump_header_shape
 #print axioms field_allocation_shape
+#print axioms allocation_header_program_spec
 #print axioms allocation_header_spec
 end Project.EulerGridStep.Execution
