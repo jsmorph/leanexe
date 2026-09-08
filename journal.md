@@ -7953,3 +7953,55 @@ no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/WriterCopiesFramed.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterReleasesFramed.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterProtected.lean
+
+### 2026-09-08: Fresh first-cell allocation sequence
+
+Published protected-grid checkpointf99dbab1349b5ce6a07b387b8e73b5edc0e8b0d7,
+sole parent0564972942a15680fe755c8f5ad9285dcb59d23c, tree
+0d02d094458956a586a6de1eaa2aafa9b688f057. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. The first nonempty cell begins without six
+reusable buffers, so its emitted writes require fresh allocation. Added
+WriterSequence.lean to abstract the exact six-call control flow over a staged
+store invariant and explicit terminating field calls, retaining every saved
+pointer/local handoff. It can compose fresh or reusable allocation contracts
+without assuming the first cell starts with a prefilled free list.
+
+WriterSequence passes in3.5s with standard logical axioms, log
+euler-grid-writer-sequence-first.log. Added FreshBufferState.lean to lift the
+existing complete fresh field-write theorem into the live-buffer/counter
+invariant, keeping the free list empty and exposing the exact updated heap
+pointer. Its physical capacity and separation premises remain explicit.
+
+FreshBufferState passes with standard logical axioms, log
+euler-grid-fresh-buffer-state-first.log. Added ArenaLayout.lean for seven
+consecutive output objects: exact root/heap words, physical slot bounds,
+metadata-inclusive separation, heap advancement, and the64+48*cells byte
+size of each grid output object. These are conditional address/layout facts;
+full fresh-writer and grid execution still need composition.
+
+ArenaLayout passes in3.5s with propext/Quot.sound (root/heap word equality
+uses propext), log euler-grid-arena-layout-first.log. FreshBufferState also
+took3.5s. Added ArenaAllocation.lean to discharge the existing fresh
+allocation-validity contract from the seven-slot memory budget, exact runtime
+globals and distinct source/destination slots. No implicit preallocated free
+pool or unbounded-memory assumption is introduced.
+
+ArenaAllocation passes in3.7s with propext/Quot.sound, log
+euler-grid-arena-allocation-first.log. Reviewed all four new modules with
+the telemetry: the generic call sequence, fresh live/global transition,
+seven-slot geometric bounds, exact word conversions and capacity/separation
+preconditions. Added their imports, README and notes. The initial array and
+six fresh calls still need composition, and full grid execution stays open.
+No source, binary, runtime, broad aggregate or release-boundary change.
+
+All91 maintained Markdown files, registry/import metadata, grid README links,
+no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/WriterSequence.lean
+- proofs/talos/lean/Project/EulerGridStep/FreshBufferState.lean
+- proofs/talos/lean/Project/EulerGridStep/ArenaLayout.lean
+- proofs/talos/lean/Project/EulerGridStep/ArenaAllocation.lean

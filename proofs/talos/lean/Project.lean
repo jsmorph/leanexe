@@ -60,5 +60,8 @@ import Project.EulerGridStep.RejectedPrefix
 import Project.EulerGridStep.RejectedFrame
 import Project.EulerGridStep.WriterRejected
 import Project.EulerGridStep.WriterProtected
+import Project.EulerGridStep.WriterSequence
+import Project.EulerGridStep.FreshBufferState
+import Project.EulerGridStep.ArenaAllocation
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
