@@ -9333,3 +9333,11 @@ the initial output. Later accepted cells therefore need five reused buffers
 plus one fresh allocation. Prove that mixed writer path and growing arena
 budget next, followed by initialization and the loop. Existing seven-object
 proofs remain valid for the first fresh writer only.
+
+## 2026-09-08: Heap-preserving allocation and release support
+
+WriterReleaseSequence, BufferResults, ReleaseHeap and FreshSpace pass focused
+checks with standard logical axioms. They retain the heap address through
+reused allocations and releases, advance it exactly on fresh allocation,
+and discharge fresh validity from one available object's space. The
+actual five-reused/one-fresh writer composition remains next.

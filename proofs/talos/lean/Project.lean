@@ -68,5 +68,9 @@ import Project.EulerGridStep.FreshWriterRejected
 import Project.EulerGridStep.AdvanceReads
 import Project.EulerGridStep.AdvanceAccepted
 import Project.EulerGridStep.AdvanceRejected
+import Project.EulerGridStep.WriterReleaseSequence
+import Project.EulerGridStep.BufferResults
+import Project.EulerGridStep.ReleaseHeap
+import Project.EulerGridStep.FreshSpace
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

@@ -290,6 +290,16 @@ its growing arena budget still need composition. The seven-object bound
 above applies to the first fresh writer, not the entire grid step. Initial
 output allocation and full grid execution also remain open.
 
+[WriterReleaseSequence.lean](WriterReleaseSequence.lean) exposes the five
+release calls with a generic staged invariant. [BufferResults.lean](BufferResults.lean)
+connects either allocation result to live/free buffer state while tracking
+global0. [ReleaseHeap.lean](ReleaseHeap.lean) preserves that heap address
+through the full scalar release. [FreshSpace.lean](FreshSpace.lean) establishes
+fresh-allocation validity from one available object, independent of the
+seven-slot first-cell layout. These focused builds take3.4–3.8s and use
+standard logical axioms. They support the mixed writer and growing arena
+proof; that composition remains open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
