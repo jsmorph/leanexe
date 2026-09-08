@@ -152,6 +152,17 @@ slot and free-tail separation. These builds take3.6–3.9s with standard logical
 axioms. Connecting these stages to the emitted cell-writer sequence and its
 five intermediate releases remains pending.
 
+[WriterShape.lean](WriterShape.lean) splits the actual accepted writer
+instructions at the six call boundaries. Its deepest shape equality uses a
+short prefix check and generic list lemmas to retain the default recursion
+limit. [WriterCalls.lean](WriterCalls.lean) proves each emitted local handoff;
+[WriterFrames.lean](WriterFrames.lean) tracks the exact resulting frames.
+[WriterCopies.lean](WriterCopies.lean) composes all six emitted calls into
+one execution theorem, ending at the release tail with seven live arrays,
+the exact sixth logical update and allocation count increased by six.
+Its build takes3.7s and audits to standard logical axioms. The five releases,
+outer status dispatch, rejection and whole-grid execution remain pending.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid

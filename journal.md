@@ -7527,3 +7527,88 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/BufferState.lean
 - proofs/talos/lean/Project/EulerGridStep/CellPrefixes.lean
 - proofs/talos/lean/Project/EulerGridStep/CellFieldCall.lean
+
+### 2026-09-07: Generated cell-writer call stages
+
+Published cell-field-stage checkpoint3aab80780b900ae6eb8bce249c5d954daed90601,
+sole parentbcc8cedf51457f180fdb9cd1eaeb3d2a86714c47 and tree
+58dea63348b2ed6e26474b38bb023531d58cc580. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added WriterShape.lean to identify the exact
+accepted/rejected outer branches, first field call, five uniform subsequent
+call stages, and the release tail after instruction126. These equalities are
+checked against the generated Program; no generated content is hand-edited.
+
+The first WriterShape check confirms the10-parameter/72-local frame, but
+branch extraction needs an explicit Option Wasm.Instruction type, as in the
+existing FieldShape module. Preserved the failed draft/log and added that
+type plus the qualified constructor before checking the generated equalities.
+The parser-recovery axiom reports are not accepted proof audits.
+
+Typed WriterShape accepts the outer branch and frame facts, but the combined
+six-stage equality reaches the default recursion boundary. Preserved that
+draft/log and replaced the single expansion with six separate exact equalities:
+the first16 instructions, then five22-instruction stages. Each keeps the
+remaining generated tail opaque at a concrete drop boundary. No recursion
+limit or timeout increase; no unchanged failing target retry.
+
+The split shape check accepts stages0–4; only the deepest stage5 equality
+still reaches the default recursion boundary while reducing its whole tail.
+Preserved the draft/log and isolated its22-instruction prefix as a closed
+kernel-decided equality, then derived the full tail equality using the generic
+List.take_append_drop and List.drop_drop lemmas. The same default recursion
+limit and120s timeout remain unchanged; no native decision is used.
+
+The smaller prefix check cannot use decide because this instruction type has
+no DecidableEq instance. Its generic tail reconstruction is accepted. Preserved
+the draft/log and checked just the isolated22-instruction prefix by rfl;
+the problematic full-tail definitional comparison remains eliminated.
+
+WriterShape passes in3.9s at its unchanged default recursion limit, log
+euler-grid-writer-shape-prefix-rfl.log. All outer/stage equalities use
+propext; the frame shape uses no axioms. Added WriterCalls.lean for the
+first-call setup and the five uniform local handoff stages, each composing
+an explicit terminating field-call contract with its exact resulting frame.
+
+The first WriterCalls check executes every local/call stage and reaches its
+continuation. The resulting frame comparison needs the explicit unchanged
+parameter list, and the next-stage model must store the returned second slot
+before the first, matching the emitted localSet order. Preserved the draft/
+log, corrected that model order and supplied the parameter-list equality.
+
+WriterCalls passes in4.1s with the standard three logical axioms, log
+euler-grid-writer-calls-frame.log. Added WriterFrames.lean to name the exact
+frame after each completed field call and prove preserved parameter/local
+shape and the expected pointer-pair stack. These frame facts support composing
+the six checked stages without unfolding their accumulated local updates.
+
+WriterFrames passes in3.7s with propext only, log
+euler-grid-writer-frames-first.log. Added WriterCopies.lean to compose all
+six emitted call stages with the checked buffer-state transitions, retaining
+seven live arrays and advancing allocation count by6 before entering the
+release tail. The proof keeps explicit slot and remaining-free-chain
+separation assumptions and reuses the small frame lemmas at each boundary.
+
+The first WriterCopies check composes the six stages and leaves only explicit
+normalization of the UInt64 allocation-counter constants1+1 through5+1.
+Preserved the draft/log and supplied five small kernel-decided word equalities
+alongside associativity. No execution, storage or separation assumption changed.
+
+WriterCopies passes in3.7s with propext, Classical.choice and Quot.sound,
+log euler-grid-writer-copies-counters.log. Reviewed its exact six-call shape,
+slot/free-chain assumptions, seven-live-buffer postcondition, frame/counter
+transitions and short telemetry alongside the supporting proofs. Added the
+aggregate import and README/notes. The source and generated binary are
+unchanged; no runtime, broad regression or current aggregate rerun is needed.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/WriterShape.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterCalls.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterFrames.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterCopies.lean
