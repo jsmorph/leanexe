@@ -567,6 +567,8 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove whole rejected writer execution via a sufficient free-list head,
   returning a clone with status one, owned metadata and an exact object
   footprint. Fresh writer allocation and whole-grid execution remain open.
+- [x] Preserve a separate old-grid array through all accepted writer calls
+  and releases, under explicit reusable-buffer and object-separation premises.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final

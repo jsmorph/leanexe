@@ -7892,3 +7892,64 @@ rejection theorem. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/README.md
 - proofs/talos/lean/Project/EulerGridStep/RejectedClone.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterRejected.lean
+
+### 2026-09-08: Carrying protected old-grid observations through cell calls
+
+Published rejected-writer checkpoint0564972942a15680fe755c8f5ad9285dcb59d23c,
+sole parent66fb14bebd88cd8de5f1e8d5c534a4671ed84fa0, tree
+906bd1cdbb7aae57e616a7925775a76467560c22. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. The current accepted-writer theorem retains
+its original output array but does not carry an arbitrary separate old-grid
+observation through all calls. Added CellFieldFramed.lean, preserving an
+extra postcondition derived from the primitive FieldResult instead of losing
+that result when projecting to BufferState. This supports the required
+old-grid frame without changing numerical source or generated instructions.
+
+CellFieldFramed passes in3.5s with standard logical axioms, log
+euler-grid-cell-field-framed-first.log. Added CellReleaseFramed.lean with
+the corresponding extra postcondition obtained from the exact ReleaseResult.
+Both extend the cell-stage contracts so a separate old-grid array observation
+can survive each operation under its physical-separation proof.
+
+Added WriterCopiesFramed.lean to carry the extra property through the six
+emitted calls, with an explicit per-field preservation rule over the exact
+FieldResult and an initial property premise. The checked pointer frames,
+seven-live-buffer state, free-list transitions and allocation counts remain
+unchanged. This will instantiate to preservation of the separate old grid.
+
+CellReleaseFramed passes in3.5s with standard logical axioms, log
+euler-grid-cell-release-framed-first.log. Added WriterReleasesFramed.lean
+to carry the same extra property through the five exact release conditionals,
+with an explicit preservation rule over each ReleaseResult. The original
+input/completed output, free-chain order and release/free counts are retained.
+
+WriterCopiesFramed passes in3.7s with standard logical axioms, log
+euler-grid-writer-copies-framed-first.log. Added WriterProtected.lean to
+instantiate the extra property as an arbitrary separate represented array,
+using FieldResult.preserves_array and ReleaseResult.preserves_array at every
+step. The final postcondition retains both the exact writer result/buffer
+state and the observed old-grid array, with explicit object separation.
+
+WriterReleasesFramed passes in3.7s and WriterProtected in3.6s, logs
+euler-grid-writer-releases-framed-first.log and
+euler-grid-writer-protected-first.log. All new execution audits use only
+propext, Classical.choice and Quot.sound. Reviewed the additional property
+premises, exact field/release observations, every stage continuation and the
+concrete different-length array preservation result. Added the import, README,
+notes and both plan substeps. Full grid execution remains open. No source,
+bytes, runtime or unrelated regression change.
+
+All91 maintained Markdown files, registry/import metadata, grid README links,
+no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/CellFieldFramed.lean
+- proofs/talos/lean/Project/EulerGridStep/CellReleaseFramed.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterCopiesFramed.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterReleasesFramed.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterProtected.lean
