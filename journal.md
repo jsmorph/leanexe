@@ -6803,3 +6803,68 @@ Explicit reviewed checkpoint paths:
 - proofs/talos/lean/Project/EulerGridScan/ArtifactValidation.lean
 - proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/manifest.json
 - proofs/artifacts/euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/program.wasm
+
+### 2026-09-07: Grid writer proof boundary
+
+Published scan package bd58550520d7ae31f26697ba9cc13920623a3dbb, sole parent
+7f3ff3f553b60d19b409780c40550b5f99250863 and tree
+3a44cbb437d123068dc7aaa2a504b158f331f3a3. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed; clean
+synchronized status confirmed. Preserved the existing grid source externally
+and factored the six accepted cell writes through writeCellField. Offset
+arithmetic stays inside the helper so call arguments are total variables.
+This aims to expose one reusable copy/write proof boundary, without compiler
+or numerical changes. Compilation and focused 31-vector regression are next.
+
+The field helper builds in 207ms and all 31 focused compiled grid/scan cases
+pass, retaining tmp/euler-grid-step-uCXTlz. The scan remains exactly 3,292
+bytes with its frozen digest. Grid step shrinks from 11,222 to 8,866 bytes,
+SHA256 bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297.
+Read-only inspection initially hit a JavaScript shadowed-variable error; the
+corrected command confirms field write function27, writer34 (six calls27 and
+five releases40), advance35, entry36 and runtime37–40. Existing cell functions
+0–25 remain the reusable layout boundary. Added the explicitly incomplete
+grid-step registry row, matching runtime pins/import and expected34 Program
+caches. Current complete count is still33 and package count29.
+
+The explicit grid-step preparation passes, with fresh staging
+tmp/leanexe-talos-nOW1UJ and only that invocation-owned staging removed by
+the tool. Program is generated, not hand edited. Added Helpers.lean to
+identify the new call layout, preserve the full checked-cell proof and pin
+release/memory32; its focused build and shared runtime pins are running.
+Updated imports and maintained inventories to 34 registered / 33 complete /
+34 Program caches / 29 frozen packages, retaining the incomplete entry claim.
+
+Runtime pins pass in 3.8s. The first Helpers check proves cellLayout with
+propext, but fails defining the extended layout because its default parent
+projection toLayout collides with an inherited projection. Preserved that
+draft/log and named the new parent projection toCellLayout explicitly.
+This is a declaration error, not an execution failure or timeout.
+
+The corrected layout check passes in 3.6s (3,387 jobs); cellLayout and
+concreteLayout audit to propext only. Shared runtime pins passed previously
+in3.8s. Program has 90,075 bytes and SHA256
+c05b49f9b1dcbeeb1b17beb5477e321a48796a34bcb7c29b19125ce5c034560f;
+the prepared 8,866-byte WASM matches the tested bc546b72 digest. All34/33
+registry/import checks and both grid README link checks pass. The completed
+model safety and scan proofs remain separate from pending grid execution.
+Explicit reviewed stage intent:
+- DEVELOPING.md
+- LeanExe/Examples/EulerGridStep.lean
+- README.md
+- devnotes.md
+- docs/spec.md
+- docs/status.md
+- docs/verifying.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/README.md
+- proofs/talos/cases.json
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridScan/README.md
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/Helpers.lean
+- proofs/talos/lean/Project/EulerGridStep/Program.lean
+- proofs/talos/lean/Project/Runtime/Checks.lean
+- test/artifact_identity.js

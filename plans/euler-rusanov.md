@@ -451,7 +451,7 @@ is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side, dynamic-interface, cell-update and grid-scan proofs bring source
-status to thirty-three registered and complete cases and thirty-three generated caches.
+status to thirty-four registered cases, thirty-three complete, and thirty-four generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
 timeout; focused Euler gates pass. Exact-artifact status is twenty-nine packages;
 the fixed-step package carries both registered behavior theorems.

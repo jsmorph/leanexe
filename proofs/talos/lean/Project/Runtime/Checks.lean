@@ -21,6 +21,7 @@ import Project.EulerConservative.Program
 import Project.EulerDynamicFlux.Program
 import Project.EulerCellStep.Program
 import Project.EulerGridScan.Program
+import Project.EulerGridStep.Program
 import Project.EulerRusanov.Program
 import Project.EulerRusanovStep.Program
 import Project.FoldSum.Program
@@ -206,5 +207,10 @@ example : eraseTypeIdx Project.EulerGridScan.func12Def = eraseTypeIdx allocFuncD
 example : eraseTypeIdx Project.EulerGridScan.func13Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerGridScan.func14Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerGridScan.func15Def = eraseTypeIdx (releaseFuncDef 15) := rfl
+
+example : eraseTypeIdx Project.EulerGridStep.func37Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerGridStep.func38Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerGridStep.func39Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerGridStep.func40Def = eraseTypeIdx (releaseFuncDef 40) := rfl
 
 end Project.Runtime

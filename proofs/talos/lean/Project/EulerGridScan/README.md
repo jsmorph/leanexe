@@ -14,8 +14,9 @@ The prepared scan binary has 3,292 bytes and SHA-256
 `279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9`.
 The same 31 focused grid/scan tests pass. The named iteration reduces code
 duplication; the compiler emits two compact loops for the two returned
-projections. This source factoring leaves the separate 11,222-byte grid-step
-binary unchanged. [Indexing.lean](Indexing.lean) proves read bounds and
+projections. This scan factoring left the then-current 11,222-byte grid-step
+binary unchanged; its later writer factoring is recorded in the
+[grid-step checkpoint](../EulerGridStep/README.md). [Indexing.lean](Indexing.lean) proves read bounds and
 checked offset arithmetic. [Iteration.lean](Iteration.lean) proves exact
 execution of the named scan body for every valid grid index, arbitrary seed
 speed and array-capacity word, with three exact input loads, the checked-side
