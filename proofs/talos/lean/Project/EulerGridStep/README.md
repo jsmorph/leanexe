@@ -34,7 +34,7 @@ The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
-composition under explicit storage assumptions. Rejection, neighbor reads and
+composition under explicit storage assumptions. Fresh allocation, neighbor reads and
 the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
@@ -121,7 +121,8 @@ The theorem assumes an in-bounds field, sufficient existing memory, explicit
 source/destination separation and either an empty free list for fresh
 allocation or a sufficient first free block. Builds take3.5s and3.9s, with
 only standard logical axioms. The accepted-writer theorem below composes six
-field writes and five releases; rejection, neighbors and the grid loop remain.
+field writes and five releases. The rejected-writer theorem follows below;
+fresh allocation, neighbors and the grid loop remain.
 
 [ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
 runtime headers and proves that field writes preserve other live buffers.
@@ -131,7 +132,7 @@ release, unchanged payload/page count and preservation of separate buffers.
 field writes and release. [ReleaseFramed.lean](ReleaseFramed.lean) attaches
 these facts to exact generated release function40. Builds take3.5–3.8s with
 standard logical axioms. These facts support the accepted-writer invariant
-below; rejection and the grid loop remain open.
+below; fresh writer allocation and the grid loop remain open.
 
 [FreeChain.lean](FreeChain.lean) represents finite, uniformly sized free
 buffers with physical bounds and exact next links. Its first node establishes
@@ -183,7 +184,8 @@ output remains owned and unchanged, six allocations and five releases are
 accounted for, and the five intermediate buffers form the expected free chain.
 The proof requires six suitable free buffers and explicit separation; it does
 not establish their initial availability for the grid. Builds take4.0s and3.8s
-with standard logical axioms. Rejection, whole-grid allocation, preservation
+with standard logical axioms. The rejected-writer theorem follows below.
+Whole-grid allocation, preservation
 of the separate old grid, neighbor reads and the outer loop remain pending.
 
 [CopyUpdate.lean](CopyUpdate.lean) generalizes the checked copy/update tail
@@ -202,8 +204,18 @@ exact allocator block, and [RejectedAllocationReuse.lean](RejectedAllocationReus
 proves its complete reuse path with exact metadata, globals and selected root.
 [RejectedFrame.lean](RejectedFrame.lean) proves every live variable required
 by the copy/update tail. New targets take3.7–5.4s and use standard logical
-axioms. Joining these contracts into complete rejection execution remains
-open; fresh allocation for rejection is not yet connected.
+axioms.
+
+[RejectedClone.lean](RejectedClone.lean) composes capacity, reuse allocation
+and the complete copy/update tail. [WriterRejected.lean](WriterRejected.lean)
+proves all of generated writer34 when cell status is nonzero: it returns the
+pointer pair for input.set! 0 1, preserves the original array, establishes owned
+result metadata, and preserves all bytes outside the destination object.
+Both proofs use the explicit sufficient-free-head and separation contract;
+they build in3.5s and3.7s with standard logical axioms. Both writer outcomes
+now have complete conditional execution proofs. Fresh allocation in the
+writer, initial grid storage availability, separate old-grid preservation
+across the accepted writer, neighbor reads and the outer loop remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

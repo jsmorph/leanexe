@@ -265,7 +265,10 @@ acceptance gates, and nonclaims.
   and runtime counters.
 - [x] Prove whole accepted writer execution, including status dispatch and
   returned pointer pair, equal to Model.putCell under explicit reusable-buffer
-  assumptions. Rejection and grid allocation remain open.
+  assumptions.
+- [x] Prove whole rejected writer execution via a sufficient free-list head,
+  returning a clone with status one, owned metadata and an exact object
+  footprint. Fresh writer allocation and whole-grid execution remain open.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 

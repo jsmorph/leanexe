@@ -7852,3 +7852,43 @@ no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/RejectedAllocationShape.lean
 - proofs/talos/lean/Project/EulerGridStep/RejectedAllocationReuse.lean
 - proofs/talos/lean/Project/EulerGridStep/RejectedFrame.lean
+
+### 2026-09-08: Complete rejected writer composition
+
+Published allocation checkpoint66fb14bebd88cd8de5f1e8d5c534a4671ed84fa0,
+sole parent654347ab3dce162964819b8372edd41b0cc013f6, tree
+a7b10d776acc1313d2b093e050d8ef97d39083d7. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added RejectedClone.lean to join capacity,
+reuse allocation and the generic copy/update tail into exact index0/value1
+execution with the established allocation-validity contract.
+
+RejectedClone passes in3.5s with standard logical axioms, log
+euler-grid-rejected-clone-first.log. Added WriterRejected.lean to compose the
+complete generated function34 for nonzero cell status: status dispatch,
+header/bounds prefix, reuse clone, result-local saves and pointer-pair return.
+Its FieldResult postcondition preserves the original array and metadata/
+object footprint while representing input.set! 0 1. Initial reuse capacity
+and physical separation remain explicit premises.
+
+WriterRejected passes in3.7s with propext, Classical.choice and Quot.sound,
+log euler-grid-writer-rejected-first.log. Reviewed complete function34 ABI/
+branch handling, index-zero update, unchanged original array, owned result
+metadata, object footprint and explicit reuse-only allocation premises with
+the telemetry. Added its import, README, notes and both plan substeps.
+Both accepted/rejected writer outcomes are now covered under their explicit
+reusable-buffer assumptions; full grid execution and initial/fresh allocation
+are not claimed. No runtime or unrelated aggregate rerun.
+
+All91 maintained Markdown files, registry/import metadata, README links,
+no-admission/no-trace scan and whitespace checks pass. Corrected four earlier
+README pending-work sentences to point to the newly complete conditional
+rejection theorem. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/RejectedClone.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterRejected.lean
