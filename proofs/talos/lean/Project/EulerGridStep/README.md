@@ -34,7 +34,7 @@ The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
-composition under explicit storage assumptions. Fresh allocation, neighbor reads and
+composition under explicit storage assumptions. Fresh rejection allocation, neighbor reads and
 the outer fill loop remain to prove.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
@@ -122,7 +122,7 @@ source/destination separation and either an empty free list for fresh
 allocation or a sufficient first free block. Builds take3.5s and3.9s, with
 only standard logical axioms. The accepted-writer theorem below composes six
 field writes and five releases. The rejected-writer theorem follows below;
-fresh allocation, neighbors and the grid loop remain.
+fresh rejection allocation, neighbors and the grid loop remain.
 
 [ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
 runtime headers and proves that field writes preserve other live buffers.
@@ -132,7 +132,7 @@ release, unchanged payload/page count and preservation of separate buffers.
 field writes and release. [ReleaseFramed.lean](ReleaseFramed.lean) attaches
 these facts to exact generated release function40. Builds take3.5–3.8s with
 standard logical axioms. These facts support the accepted-writer invariant
-below; fresh writer allocation and the grid loop remain open.
+below; fresh rejection allocation and the grid loop remain open.
 
 [FreeChain.lean](FreeChain.lean) represents finite, uniformly sized free
 buffers with physical bounds and exact next links. Its first node establishes
@@ -214,7 +214,7 @@ result metadata, and preserves all bytes outside the destination object.
 Both proofs use the explicit sufficient-free-head and separation contract;
 they build in3.5s and3.7s with standard logical axioms. Both writer outcomes
 now have complete conditional execution proofs. Fresh allocation in the
-writer, initial grid storage availability, neighbor reads and the outer loop
+rejected writer, initial grid storage availability, neighbor reads and the outer loop
 remain open.
 
 [CellFieldFramed.lean](CellFieldFramed.lean) and
@@ -240,8 +240,18 @@ output object occupies64+48*cells bytes.
 [ArenaAllocation.lean](ArenaAllocation.lean) establishes the fresh allocator's
 complete validity contract from the slot budget, globals and distinct source/
 destination slots. These builds take3.5–3.7s and audit to standard logical
-axioms. The address budget is explicit; composing all fresh first-cell calls
-and connecting the initial grid allocation remain open.
+axioms. The address budget is explicit.
+
+[FreshCellState.lean](FreshCellState.lean) advances the initialized live prefix,
+next heap slot and budget after each exact fresh field call.
+[FreshWriterCopies.lean](FreshWriterCopies.lean) composes all six calls while
+preserving a separate old-grid array.
+[FreshWriterAccepted.lean](FreshWriterAccepted.lean) proves the whole accepted
+writer from an empty free list: six fresh allocations, five releases, exact
+Model.putCell result and old-grid preservation, with a seven-object memory
+budget. Slot0 must already hold the initialized output. Builds take3.4–3.6s
+and use standard logical axioms. Fresh rejection, initial grid allocation,
+neighbor reads and whole-grid execution remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
