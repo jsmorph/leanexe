@@ -7332,3 +7332,56 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/AllocationPost.lean
 - proofs/talos/lean/Project/EulerGridStep/AllocationChoice.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldFrame.lean
+
+### 2026-09-07: Complete field-writer composition
+
+Published allocation-contract checkpoint568409a73f106d6162fb70413d6511d5c5e72696,
+sole parent735b60f1838d9361e063a5e02ea6b3ad2c09bdda and tree
+c1e5831f568f389ff772e1874501ee3a14757436. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added FieldBody.lean to compose the exact
+capacity, allocation and copy/update regions under the established contracts.
+
+FieldBody passes in3.5s, standard logical axioms, log
+euler-grid-field-body-first.log. Added FieldExecution.lean to connect the
+checked index prefix, accepted branch and two-pointer function return, with
+exact logical update, owned result metadata, unchanged pages and outside
+object bytes. Its preconditions retain explicit allocation availability,
+capacity, separation and the existing-memory limit.
+
+The first FieldExecution check accepts the shape and result/footprint facts;
+the outer generated if carries an explicit i64 result-type annotation, while
+the structural rule matches the default annotation. Preserved the draft/log
+and inserted the existing wp_iff_control_types semantic equality before the
+structural rule. No generated program or dependency was changed.
+
+The annotation correction reaches the six final return instructions. Their
+simplification rewrites counter-frame lengths to the underlying allocation
+frame, so added those already-proved underlying lengths and exact result
+arity to the local simplifier. Preserved the prior draft/log; no resource
+limit increase and no theorem-precondition change.
+
+The return instructions now simplify completely, including the pointer pair;
+the final goal is the already-proved FieldResult alone. Preserved that draft
+and changed the closing proof from a redundant pair constructor to hResult.
+
+FieldExecution passes in3.9s, log euler-grid-field-execution-result.log;
+writeCellField_exact_in_module and field_result_of_write audit to propext,
+Classical.choice and Quot.sound only. The checked subject is exact generated
+function27 under bounded index and explicit FieldAllocation.Valid conditions,
+not arbitrary free-list traversal or memory growth. Reviewed the theorem,
+preconditions, object footprint and short telemetry together. Added aggregate
+import and README links, updated both maintained Euler agendas and concise
+notes. No source/runtime changes; no compiled or broad aggregate rerun.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/FieldBody.lean
+- proofs/talos/lean/Project/EulerGridStep/FieldExecution.lean
