@@ -9236,3 +9236,13 @@ emitted order, and increments release/free counters by5. Focused builds
 take3.5–4.1s and use only standard logical axioms. Explicit slot/free-chain
 separation remains assumed; status dispatch, rejection, grid allocation and
 whole-grid execution remain open. No runtime or broad aggregate rerun.
+
+## 2026-09-08: Complete accepted writer execution
+
+WriterAccepted proves the entire emitted function34 for cell status zero,
+including status dispatch, six field calls, five releases and its pointer-pair
+return. The actual result is Model.putCell; the original output remains
+owned and unchanged. Exact free-chain and counter changes are included.
+The build passes in3.8s with standard logical axioms. Six suitable free
+buffers and separation are explicit assumptions; rejection, initial grid
+allocation, old-grid framing, neighbors and the outer loop remain open.

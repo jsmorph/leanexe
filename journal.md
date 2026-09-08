@@ -7684,3 +7684,57 @@ no-admission/no-trace scan and git diff --check pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/WriterReleaseShape.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterReleaseFrame.lean
 - proofs/talos/lean/Project/EulerGridStep/WriterReleases.lean
+
+### 2026-09-07: Complete accepted cell-writer execution
+
+Published release checkpoint2709a539c92d427e5a2ff26df3bd399ab2b89478,
+sole parentc6c174ea9029aab35e793bf96f7d4cdf7aa67b6d, tree
+5c3497c1559c8972ae28f634c31030197d0f8f95. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added WriterStatus.lean to isolate the
+exact ten-instruction status prefix and prove both branch-condition outcomes
+without unfolding either large branch.
+
+The first WriterStatus check unfolded the generic local lookup before using
+its supplied equality. Preserved its draft/log and made that first lookup
+an explicit atomic WP reduction; the remaining prefix has only constants,
+comparisons and conditionals. No target or proof resource increase.
+
+WriterStatus passes in4.0s with standard logical axioms, log
+euler-grid-writer-status-lookup.log. Added WriterAccepted.lean to join the
+status prefix, all six field calls, five releases and exact pointer-pair
+return. Its postcondition names Model.putCell directly and retains the original
+array, with explicit free-slot separation and availability. This conditional
+writer result does not establish cold arena initialization or the grid loop.
+
+The first WriterAccepted check executes the entire function and reaches its
+return contract. Preserved the draft/log; split the final ABI pointer equality
+from the buffer-state proof and used the named six-prefix equality before
+unfolding any recurrence. This prevents simplification from expanding the
+logical update prematurely. All earlier execution stages were accepted.
+
+The return-boundary check accepts the ABI equality and leaves only the type
+of the anonymous buffer constructors in a change tactic. Preserved its draft/
+log and annotated that list as List LiveBuffer. No logical contract changed.
+The local calendar rolled to2026-09-08 during this continuation; existing
+20260907 log directories remain preserved and in use for this recovery run.
+
+WriterAccepted passes in3.8s with propext, Classical.choice and Quot.sound,
+log euler-grid-writer-accepted-typed.log. Reviewed the full exact function34
+contract, ABI order, status premise, Model.putCell equality, unchanged input
+output-buffer ownership, free-chain/counter transitions and fast telemetry.
+Added its aggregate import and synchronized README, notes and both plan
+substeps. Full grid execution remains incomplete; in particular separate
+old-grid framing and initial storage availability are not inferred from this
+conditional writer theorem. No source/binary/runtime changes or broad tests.
+
+All91 maintained Markdown files, registry/import metadata, README links,
+no-admission/no-trace scan and git diff --check pass. Stage/publish exactly:
+- devnotes.md
+- journal.md
+- plan.md
+- plans/euler-rusanov.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/WriterStatus.lean
+- proofs/talos/lean/Project/EulerGridStep/WriterAccepted.lean
