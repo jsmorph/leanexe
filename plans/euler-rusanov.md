@@ -585,8 +585,10 @@ Every checked row ends in a passing commit, an update to this plan,
   budget by each later accepted advance, accounting for retained prior outputs.
 - [x] Connect the first accepted cell to the later-cell arena invariant,
   retaining exact heap/pages from all six fresh writes and five releases.
-- [ ] Connect initial output allocation and rejection to the arena state,
-  then compose the actual outer loop.
+- [x] Connect first/later rejected advances to exact status-one arena states,
+  with one allocation, the appropriate remaining pool and unchanged release counters.
+- [ ] Prove initial output allocation and compose the actual outer loop,
+  including preservation and final release of the initial output.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
