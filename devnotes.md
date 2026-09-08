@@ -9361,3 +9361,13 @@ output object, page count stays fixed, and exact runtime counters/free-list
 state are retained. The shared release invariant can also carry additional
 memory observations for the loop. Focused checks take3.5–3.7s with standard
 axioms. Growing arena, initialization and the outer loop remain open.
+
+## 2026-09-08: Growing arena through later accepted advances
+
+Variable arena geometry and AdvanceArena now preserve the cells+6 object
+budget through each later accepted cell: result slot i+6, next heap slot
+i+7, reusable slots1–5, exact counters and unchanged old grid/pages. This
+accounts for earlier outputs staying allocated. GridSizes keeps the output
+object size fixed. Checks take3.4–3.7s with standard axioms. Initial output
+allocation, first-cell heap handoff, rejection and the outer loop remain
+open; there is no unconditional whole-grid execution claim yet.
