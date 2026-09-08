@@ -351,6 +351,13 @@ and no intermediate releases, preserve the old grid, and retain the explicit
 budget. Checks take3.6–3.7s with standard axioms. Initial allocation and the
 actual outer loop, including final release of the initial output, remain open.
 
+[ArenaAdvance.lean](ArenaAdvance.lean) combines all four first/later and
+accepted/rejected cases into two complete cell-call interfaces. Each exposes
+the exact result pointer, model output, outcome-specific arena/counters,
+unchanged pages and old grid. The combined target passes in3.6s with standard
+axioms. This is the cell-call interface for the pending outer-loop proof;
+initial output allocation and final release are still explicit open work.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
