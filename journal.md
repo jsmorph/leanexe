@@ -8643,3 +8643,70 @@ The91 maintained Markdown files,34 registry/import entries, README links,
 new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
 Reviewed/stage/publish exactly devnotes.md, journal.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,ArenaAdvance.lean}.
+
+### 2026-09-08: Grid initialization allocator
+
+Published 845bcb0c77048a163d929997d3651b24d382c61f, sole parent
+0e620143dce9b2b8e276a5464b66369928b5eeed, tree
+efdbcab3a124a9d799649a057f5b49c0274eb7b9. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. Read-only Node bracket inspection of the
+exact Program finds19 top-level instructions, main iff at17, and102
+instructions in the valid arm. Allocation is54..70, length/zero setup71..77,
+outer loop92 and final initial-output release101. Added InitializationShape
+with kernel-equality boundaries and InitialAllocationBump for the valid
+entry's empty-free-list allocation window (params2, locals43). It reuses
+checked generic metadata stores and bump facts; no Program edits.
+
+InitializationShape passes with kernel equalities (some list metadata uses
+propext); InitialAllocationBump passes in7.2s with standard logical axioms,
+log euler-grid-initial-allocation-bump-first.log. Added FillState.lean
+for constant-prefix initialization using the existing exact writeWord
+semantics, with page/store frame and outside-payload byte preservation.
+This supplies the invariant for the emitted zero-fill loop.
+
+Added FillLoop.lean for the emitted constant-fill loop with arbitrary
+local indices. It reuses the copy counter/frame/termination machinery,
+removes the source-load boundary and advances the checked fill invariant
+with each exact scalar store. The initial zero loop is its concrete
+34/33/35/36 local-index instance.
+
+FillState first check rejects prefix as a reserved declaration keyword,
+causing downstream structure-constructor diagnostics. Preserved log/draft
+and renamed that field to filled; no invariant or runtime behavior changes.
+Failed-run axiom output is excluded.
+
+FillState’s renamed invariant elaborates; the remaining diagnostic is an
+incorrectly qualified get-element lemma name in the completed-array leaf.
+Preserved log/draft and removed that nonexistent simp name, retaining the
+valid-index simplification already supplied by the standard simp set.
+
+FillState now passes with standard logical axioms. FillLoop reaches the
+store address and needs the emitted stride-one multiplication simplified
+before using copyRuntimeAddress. Preserved its log/draft and added exactly
+UInt64.mul_one at that boundary. No timeout, budget increase or semantic
+change. The source-copy loop did not contain this extra multiplication.
+
+Added InitializationFill.lean to compose the exact valid-arm length store
+and zero loop from arbitrary existing payload bytes. Its InitializedArray
+result includes the replicated zero array, unchanged pages/non-memory
+store and byte equality outside the length/payload footprint. No zeroed
+allocation assumption is introduced.
+
+FillLoop passes in3.6s with standard logical axioms, log
+euler-grid-fill-loop-stride-one.log. InitializationFill passes in3.7s
+with standard logical axioms, log euler-grid-initialization-fill-first.log.
+Reviewed the five new modules and telemetry: the fill proof shares exact
+word-store and counter/termination support, keeps arbitrary initial bytes
+and supplies an outside-array frame. Allocator and initializer are checked
+regions; entry guards/capacity/arena composition and outer-loop execution
+remain open. Updated plans, imports, README and notes. The current changed
+proof checks and small docs/registry checks are the full verification scope
+for this proof-only checkpoint; no CLOB/runtime/full aggregate/release work.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Reviewed/stage/publish exactly devnotes.md, journal.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+EulerGridStep/{README.md,InitializationShape.lean,InitialAllocationBump.lean,
+FillState.lean,FillLoop.lean,InitializationFill.lean}.
