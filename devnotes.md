@@ -9380,3 +9380,13 @@ accepted advance: output slot6, reusable slots1–5, exact counters and old
 grid, under the full cells+6 object budget. Checks take3.5–3.7s with standard
 axioms. Slot0 must already be initialized. Initial allocation, rejection
 state and outer-loop execution remain open.
+
+## 2026-09-08: First and later rejected arena states
+
+RejectedBuffers and both arena rejection wrappers pass focused checks in
+3.6–3.7s with standard axioms. Each returns slot1 with status one using one
+allocation and no intermediate releases. First rejection leaves no free
+nodes and heap slot2; later rejection leaves slots2–5 free and preserves
+the current heap. Old grid, pages and budget are retained. Initial output
+allocation, initial-output preservation/final release, and outer-loop
+execution remain open.

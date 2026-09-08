@@ -329,7 +329,7 @@ records the current output, fixed free list, growing heap and cells+6 object
 budget. [AdvanceArena.lean](AdvanceArena.lean) proves that a complete later
 accepted advance preserves this invariant and the old grid. These builds
 take3.4–3.7s with standard axioms. This remains conditional on the initial
-state and budget; initial allocation, rejection and outer-loop composition
+state and budget; initial allocation and outer-loop composition
 are still pending.
 
 [FreshWriterFramed.lean](FreshWriterFramed.lean) and
@@ -339,6 +339,17 @@ writer with exact heap slot7, unchanged pages and framed observations.
 advance to the later-cell arena state, including the whole-grid budget and
 old-grid preservation. Checks take3.5–3.7s with standard axioms. Slot0 must
 already be initialized; initial allocation and the outer loop remain open.
+
+[RejectedBuffers.lean](RejectedBuffers.lean) retains the complete rejected
+advance's buffer, heap, page and memory results for either allocation choice.
+[RejectedArenaState.lean](RejectedArenaState.lean) records the terminal
+status-one output in slot1. [AdvanceLaterRejected.lean](AdvanceLaterRejected.lean)
+leaves slots2–5 free and the heap unchanged;
+[AdvanceFirstRejected.lean](AdvanceFirstRejected.lean) allocates slot1,
+leaves the pool empty and advances the heap to slot2. Both use one allocation
+and no intermediate releases, preserve the old grid, and retain the explicit
+budget. Checks take3.6–3.7s with standard axioms. Initial allocation and the
+actual outer loop, including final release of the initial output, remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

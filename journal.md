@@ -8558,3 +8558,56 @@ new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
 Reviewed/stage/publish exactly devnotes.md, journal.md, plan.md,
 plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
 EulerGridStep/{README.md,FreshWriterFramed.lean,FreshWriterHeap.lean,AdvanceFirstArena.lean}.
+
+### 2026-09-08: Rejected advance storage transitions
+
+Published b9581224b5a8b05353cc8033566c4045461f0176, sole parent
+47a4be94f9f6ef197d1ab86bb9d454c7bad3aa49, tree
+8fd7d17d770e905d6e75c996c73c1e364b8719b7. Non-forced update/fetch, exact
+commit/parent/message/tree/index/worktree checks and local CAS passed;
+clean synchronization confirmed. Discovered/read the actual FreeChain and
+FreeChainExecution paths. Added RejectedBuffers.lean to retain exact live/
+free state, counters, heap, pages, memory frame and old grid through the
+complete rejected advance, for either a free-node or fresh allocation.
+No accepted-path release counts are assumed on rejection.
+
+RejectedBuffers first check reports an untyped singleton in each local
+separation predicate. Preserved log and external draft; annotated only
+those two binders as LiveBuffer. No failed-build audit is evidence.
+Reading Safety.lean also found existing size facts in the Safety namespace:
+the previous GridSizes search covered Model/Outputs only. The execution
+namespace wrappers are valid, but the existing Safety facts should be
+reused rather than independently maintained in future size work.
+
+Added RejectedArenaState.lean with output slot1, exact rejected pool/heap,
+whole-grid budget and status one. Added AdvanceLaterRejected.lean to
+connect the complete one-node rejected advance to that state: slots2–5
+remain free, the heap is unchanged, and no intermediate release occurs.
+
+The typed rejection check rejects the bounded-quantifier syntax after a
+parenthesized typed binder. Preserved that log/draft and wrote the two
+predicates as explicit typed binders followed by membership implications.
+This is a parser correction; no semantic or resource premise changed.
+
+Added AdvanceFirstRejected.lean to establish the other terminal rejection
+state from initialized slot0: one fresh status clone in slot1, empty free
+list and next heap slot2. The explicit whole-grid budget suffices, and
+old-grid/page preservation follows from the complete rejected call.
+
+RejectedBuffers passes in3.6s, RejectedArenaState in3.6s and
+AdvanceLaterRejected in3.7s, log euler-grid-advance-later-rejected-first.log.
+AdvanceFirstRejected passes in3.7s, log euler-grid-advance-first-rejected-first.log.
+All audits use standard logical axioms. Reviewed proofs and telemetry: the
+only failed leaves were local binder elaboration/syntax, now explicit;
+shared result-to-buffer lemmas retain both allocation choices without
+re-proving runtime instructions. Updated plans, README, imports and notes.
+The pending actual outer loop must additionally preserve and finally
+release the original initialized output; current arena summaries do not
+claim that missing composed boundary. No executable source/bytes changed.
+
+The91 maintained Markdown files,34 registry/import entries, README links,
+new-proof no-admission/no-trace/whitespace scan and git diff --check pass.
+Reviewed/stage/publish exactly devnotes.md, journal.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+EulerGridStep/{README.md,RejectedBuffers.lean,RejectedArenaState.lean,
+AdvanceLaterRejected.lean,AdvanceFirstRejected.lean}.
