@@ -9143,3 +9143,12 @@ stores, heap-top/allocation-count updates and the returned local frame.
 Factoring six header stores removes the inline recursion failure while keeping
 the original limit. Final build7.4s, standard logical axioms. Free-list reuse,
 ownership transfer and complete grid execution remain pending.
+
+## 2026-09-07: Grid allocation metadata and release
+
+Owned metadata now has exact read-back, a 48-byte footprint and preservation
+through field updates. A byte-frame theorem preserves disjoint logical arrays.
+The existing scalar-array release theorem applies at exact grid function40,
+with exact free-list/memory/counter results. AllocationMemory and Release
+build in3.8s each, with standard logical axioms. Buffer reuse and composition
+across the full writer/grid remain pending.

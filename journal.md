@@ -7103,3 +7103,52 @@ exactly:
 - proofs/talos/lean/Project/EulerGridStep/HeaderStores.lean
 - proofs/talos/lean/Project/EulerGridStep/AllocationHeader.lean
 - proofs/talos/lean/Project/EulerGridStep/FieldAllocationBump.lean
+
+### 2026-09-07: Allocation metadata and ownership
+
+Published fresh-allocation checkpointba7d34131ee5cc33532d0e441d13e262c058aa65,
+sole parent00a2f02b373bc14c3053d277688884442702e08d and tree
+79f0e945de88054c39a7a039c15e590b74dd47e9. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed; clean
+synchronization confirmed. Added ArrayFrame.lean for byte-preserving logical
+array transfer, plus AllocationMemory.lean for exact owned metadata, its
+48-byte footprint, disjoint-array preservation and preservation of metadata
+through the already-proved field-write tail. Read-back proofs explicitly use
+the kernel word round-trip theorem, never the older native witness.
+
+The first ArrayFrame build hits the default recursion limit in an omega call
+for page-count monotonicity. Preserved the draft/log and replaced that search
+with direct transitivity and Nat.mul_le_mul_right, isolating the arithmetic
+from the byte-frame context without increasing any resource limit.
+
+ArrayFrame passes in3.7s with propext and Quot.sound. AllocationMemory
+already proves metadata preservation through field writes, but the repeated
+read/byte frame rewrites leave constant UInt64.toNat offsets opaque to omega.
+Preserved the draft/log and gave the six offset equalities explicit natural
+literal result types before those arithmetic rewrites.
+
+AllocationMemory passes in3.8s. Exact metadata read-back uses the standard
+three axioms; the outside-byte, disjoint-array and field-preservation
+theorems use propext and Quot.sound only. Added Release.lean to instantiate
+the existing scalar-array runtime theorem at exact grid function40 using
+OwnedHeader and represented-array facts. Its full axiom audit is the next
+focused gate; no new release algorithm or source change is introduced.
+
+Release passes in3.8s (3,410 jobs, mostly cached), log
+euler-grid-release-owned-first.log. Its exact function40 execution theorem
+uses only propext, Classical.choice and Quot.sound; the existing runtime
+proof can be reused without expanding the trusted base. It specifies exact
+release memory, free-list and counter results, without claiming preservation
+of other store fields beyond that existing theorem. Added aggregate import,
+README explanations and concise notes. No source/binary/runtime changes.
+
+All91 maintained Markdown files, registry/import metadata, grid README
+links, no-admission/no-trace scan and whitespace checks pass. Stage/publish
+exactly:
+- devnotes.md
+- journal.md
+- proofs/talos/lean/Project.lean
+- proofs/talos/lean/Project/EulerGridStep/README.md
+- proofs/talos/lean/Project/EulerGridStep/ArrayFrame.lean
+- proofs/talos/lean/Project/EulerGridStep/AllocationMemory.lean
+- proofs/talos/lean/Project/EulerGridStep/Release.lean
