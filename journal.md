@@ -8005,3 +8005,44 @@ no-admission/no-trace scan and whitespace checks pass. Stage/publish exactly:
 - proofs/talos/lean/Project/EulerGridStep/FreshBufferState.lean
 - proofs/talos/lean/Project/EulerGridStep/ArenaLayout.lean
 - proofs/talos/lean/Project/EulerGridStep/ArenaAllocation.lean
+
+### 2026-09-08: Complete fresh first-cell stages
+
+Published fresh-arena checkpointa7f7173f3e9efbd4124cf13806966cf36bab6754,
+sole parentf99dbab1349b5ce6a07b387b8e73b5edc0e8b0d7, tree
+b4c0449ba5d3c7d376dbf0716e46a488dcb0cd96. Non-forced update, fetch, exact
+commit/parent/message/tree/index/worktree equality and local CAS passed;
+clean synchronization confirmed. Added FreshCellState.lean: a staged live-
+prefix/free/counter invariant with the next heap slot and explicit seven-
+object budget, advanced by one complete fresh field call. Its postcondition
+also retains the exact FieldResult for old-grid preservation.
+
+FreshCellState passes in3.5s with standard logical axioms, log
+euler-grid-fresh-cell-state-first.log. Added FreshWriterCopies.lean to
+instantiate WriterSequence with the fresh staged invariant and a separate
+observed-array predicate. It composes all six emitted allocations/writes,
+retaining the old grid and ending with seven initialized live slots.
+
+FreshWriterCopies passes in3.4s with standard logical axioms, log
+euler-grid-fresh-writer-copies-first.log. Added FreshWriterAccepted.lean
+for the full generated accepted writer from an empty free list: six fresh
+allocations, five intermediate releases, exact Model.putCell result and
+old-grid preservation. Seven-slot availability comes from the explicit
+budget; the initial output in slot0 is still an input to this theorem.
+
+FreshWriterAccepted passes in3.6s with propext, Classical.choice and
+Quot.sound, log euler-grid-fresh-writer-accepted-first.log. Reviewed the
+full generated writer contract, staged heap/allocation transitions, empty
+initial free chain, exact final live/free lists, seven-object budget and
+protected old grid with the telemetry. Added the import, README, notes and
+both plan substeps. Slot0 initialization remains a premise, and fresh
+rejection/full grid execution are not claimed. No source/byte/runtime change.
+
+Post-compaction review reread AGENTS.md and the operating contract. Confirmed
+all three new proofs and their successful logs; no additional proof run was
+needed. The91 maintained Markdown files,34 registry/import entries, README
+links, no-admission/no-trace scan and git diff --check pass. In response to
+the user's manageable-regression instruction, no broad gate was run.
+Stage/publish exactly devnotes.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,FreshCellState.lean,
+FreshWriterCopies.lean,FreshWriterAccepted.lean}.

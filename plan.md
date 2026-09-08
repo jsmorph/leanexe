@@ -271,6 +271,9 @@ acceptance gates, and nonclaims.
   footprint. Fresh writer allocation and whole-grid execution remain open.
 - [x] Preserve a separate old-grid array through all accepted writer calls
   and releases, under explicit reusable-buffer and object-separation premises.
+- [x] Prove the full fresh accepted writer from an empty free list, using six
+  fresh slots after the initialized output, with a seven-object memory budget,
+  exact releases/output and separate old-grid preservation.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
 
