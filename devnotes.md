@@ -9514,3 +9514,15 @@ ArtifactRunner attaches the same contract to the frozen bytes. Focused builds
 pass in3.8/3.7/3.7s; public recurrence/WAT audits use the standard three axioms;
 artifact transfer retains the existing three native decoder-cache witnesses.
 Host runtime/data and true2D work remain.
+
+### 2026-09-09: maintained Sod data
+
+The maintained Node runtime executes only exact verified scan11, step36 and
+reset38, with explicit arena/counter checks. Published data/euler-sod-v1
+contains raw100-cell outputs, four resolutions, time/CFL/minimum/boundary
+balance records, final conservative/primitive cells, SVG and reviewed PNG.
+The six canonical text files reproduce byte for byte. All four final raw
+grids match an independent IEEE implementation; density/momentum/energy
+L1 errors decrease against exact Riemann conservative cell averages.
+Host orchestration and these scientific diagnostics are outside the formal
+proof; no convergence claim. The true2D extension is next.
