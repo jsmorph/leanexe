@@ -9597,3 +9597,15 @@ transfers the contract to the existing5,190-byte cell package. Sweep3.5s,
 Runner5s, ArtifactRunner3.6s; behavior audits are standard, byte transfer uses
 only established artifact cache witnesses. Next: separate native2D Wasmtime
 host, reproducible data with full raw comparisons and polished visualization.
+
+### 2026-09-09: native 2D runs and figure renderer
+
+Sweep/run cf4b18d84ab1cf51826b05ba3f97c5ef36294cfa is pushed. A separate
+Wasmtime44 host calls only the three proved numerical exports and retains
+immutable build/run evidence. The192² quadrant and circular pulse runs
+finish in165/130 steps without retries; every saved frame, timestep,
+diagnostic and final state word matches the independent oracle. Rounded
+CFL stays below.401 and balance residual below2.4e-16. Pulse initial-state
+Lean certificate passes. Both posterior PNGs were visually inspected;
+standalone SVG/HTML renderer includes21 frames and fixed field scales.
+Next: publish canonical data, final PNG/SVG and browser-checked animation.
