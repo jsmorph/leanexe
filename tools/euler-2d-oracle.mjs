@@ -32,10 +32,12 @@ export function cell(ratio,left,center,right) {
   return {state,p:next.p,alpha,courant};
 }
 export const swap=([rho,mx,my,E])=>[rho,my,mx,E];
-export function initial(n) {
+export function initial(n,scenario='four-quadrants') {
   if(!Number.isInteger(n)||n<2||n%2)throw Error('mesh must be positive even');
+  if(!['four-quadrants','circular-blast'].includes(scenario))throw Error('unknown scenario');
   return Array.from({length:n*n},(_,index)=>{
     const x=index%n,y=Math.floor(index/n);
+    if(scenario==='circular-blast'){const a=2*x+1-n,b=2*y+1-n;return [1,0,0,16*(a*a+b*b)<n*n?5:2.5];}
     const rho=x<n/2?(y<n/2?.25:.4):(y<n/2?.7:1);
     return [rho,0,0,2.5*rho];
   });

@@ -91,6 +91,25 @@ theorem initial_safe (nx ny : Nat) : GridSafe (initial nx ny) := by
   dsimp only [initial]
   split <;> split <;> exact guarded _ _ (by decide)
 
+/-- A centered circular pressure pulse: rho=1, pressure2 inside radius1/8,
+pressure1 outside. Integer cell-center coordinates avoid geometry rounding. -/
+def blastInitial (n : Nat) : Grid n n := fun j i =>
+  let x : Int := 2*(i.val : Int)+1-(n : Int)
+  let y : Int := 2*(j.val : Int)+1-(n : Int)
+  if 16*(x*x+y*y) < (n : Int)*(n : Int) then
+    ⟨0x3FF0000000000000, 0, 0, 0x4014000000000000⟩
+  else ⟨0x3FF0000000000000, 0, 0, 0x4004000000000000⟩
+
+theorem blastInitial_safe (n : Nat) : GridSafe (blastInitial n) := by
+  have guarded (energy : UInt64)
+      (h : Project.Euler2DConservative.Model.stateGuard 0x3FF0000000000000 0 0 energy = true) :
+      StateSafe ⟨0x3FF0000000000000, 0, 0, energy⟩ :=
+    ⟨Project.Euler2DConservative.Guard.stateGuard_spec _ _ _ _ h,
+      Project.Euler2DConservative.Guard.stateGuard_admissible _ _ _ _ h⟩
+  intro j i
+  dsimp only [blastInitial]
+  split <;> exact guarded _ (by decide)
+
 noncomputable def RunnerSpecFor (m : Wasm.Module) : Prop :=
   ∀ nx ny ratios (input : Grid nx ny) results,
     run ratios input = some results → Trace m input ratios results
@@ -99,6 +118,7 @@ theorem runner_wat_exact_safe : RunnerSpecFor Project.Euler2DCellStep.«module»
   intro nx ny ratios input results h
   exact run_exact_safe Spec.cellCheckedBits_wat_safe ratios input results h
 
+#print axioms blastInitial_safe
 #print axioms initial_safe
 #print axioms step_exact_safe
 #print axioms run_exact_safe
