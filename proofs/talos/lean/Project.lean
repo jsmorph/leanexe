@@ -115,3 +115,4 @@ import Project.EulerGridScan.Spec
 
 import Project.ProofKit.F64StrictOrder
 import Project.Euler2DConservative.Outputs
+import Project.Euler2DConservative.Spec

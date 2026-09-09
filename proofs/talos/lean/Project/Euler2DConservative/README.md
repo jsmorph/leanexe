@@ -18,5 +18,17 @@ finite rounded pressure and signal speed.
 The shared [strict magnitude-order lemma](../ProofKit/F64StrictOrder.lean)
 handles sign-cleared encodings, including zero/subnormal/exponent boundaries.
 All public numerical audits use only the accepted standard logical axioms.
-Source and pure-model builds pass. Generated-WAT execution, exact bytes,
-dynamic interfaces and directional updates are still pending.
+The [exact generated-WAT execution](Execution.lean) and [public safety contract](Spec.lean)
+pass for all raw inputs, including every rejection branch and complete store
+preservation. [Helpers](Helpers.lean) reuses the three shared scalar guard
+proofs under a minimal layout; [StateGuard](StateGuard.lean) handles both
+momenta and the strict energy boundary.
+
+The2,212-byte [frozen package](../../../../artifacts/euler2_d_conservative/e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9/manifest.json)
+passes its independent embedded-byte, decoder, validator, translation and
+behavioral gate. [ArtifactTranslation](ArtifactTranslation.lean) connects the
+exact bytes to the execution module; generated decoder-cache witnesses follow
+the existing policy, while public execution/numerical audits use standard
+axioms only. The [focused test](../../../../../test/euler_2d_conservative.js)
+passes44 Wasmtime vectors, all output words and the16 f64 operation counts.
+Dynamic interfaces and directional updates remain.
