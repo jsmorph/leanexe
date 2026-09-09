@@ -8899,3 +8899,50 @@ The intended eleven checkpoint paths are journal.md, devnotes.md, plan.md,
 plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
 EulerGridStep/{README.md,EntryGuards.lean,InvalidEntryShape.lean,
 InvalidEntryAllocation.lean,InvalidEntry.lean,RejectedEntryExecution.lean}.
+
+### 2026-09-09: Preserve the initial output for the outer loop's final release
+
+Published entry rejection checkpoint 0bb336db352625d989515997e32254059ae0b22a,
+sole parent 108bfd405bb3c71b27708d13e48e590b5e4b37c1, tree
+70fa7ad68ade01a7f44cdf1503dfb6aa8c46fe54. Eleven-path non-forced update/fetch,
+commit/parent/message/tree/index/worktree equality and CAS passed; clean sync.
+The focused dependency chain, 91 Markdown files, 34 registry/import cases,
+README links, proof scans and diff checks all passed before publication.
+Added ProtectedBuffer.lean and MixedWriterProtected.lean to retain a separate
+owned array across each field clone and intermediate release, then through
+the complete mixed writer. This is needed for actual function36's release
+of the initial output after the loop, which the prior current-output-only
+arena summaries did not retain. No claim or change to per-iteration release
+behavior is made: previous result objects continue to occupy the arena.
+
+ProtectedBuffer and MixedWriterProtected pass in 3.5s and 3.6s with standard
+axioms, log euler-grid-mixed-writer-protected-first.log. AdvanceMixedProtected
+and AdvanceLaterProtected pass in 3.6s and 3.7s, retaining both the prior output
+array for the emitted post-body condition and the initial owned output for
+final release; log euler-grid-advance-later-protected-first.log.
+AdvanceFirstPreserved, AdvanceFirstRejectedPreserved and
+AdvanceLaterRejectedProtected each pass in 3.8s; their shared focused log is
+euler-grid-advance-preserved-first-rejected.log. The first-cell cases recover
+initial ownership from the exact live-buffer postcondition; the later rejected
+case uses the complete field-result byte frame. All audits are standard.
+Added ProtectedArenaAdvance to combine both outcomes for the first and later
+cells while retaining these observations. No new numerical computation or
+source/byte changes.
+
+ProtectedArenaAdvance passes in 3.7s with standard logical axioms; the complete
+successful dependency-chain log is euler-grid-protected-arena-advance-first.log.
+The eight new modules pass on their first focused checks. Reviewed proof
+structure and telemetry: generic field/release frames and the existing framed
+writer remain the shared execution machinery, while the new wrappers preserve
+observations previously discarded by narrower arena summaries. Those prior
+checked interfaces remain intact as examples and callers. This supplies the
+actual post-body reads and final-release ownership needed by the next loop
+proof, without changing allocator behavior or treating prior outputs as freed.
+
+Updated Project imports, README, plans and notes. Intended checkpoint paths
+are journal.md, devnotes.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,ProtectedBuffer.lean,
+MixedWriterProtected.lean,AdvanceMixedProtected.lean,AdvanceLaterProtected.lean,
+AdvanceFirstPreserved.lean,AdvanceLaterRejectedProtected.lean,
+AdvanceFirstRejectedPreserved.lean,ProtectedArenaAdvance.lean}. Only focused
+Euler builds and the small docs/registry/import/proof scans are applicable.
