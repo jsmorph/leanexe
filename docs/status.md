@@ -57,8 +57,10 @@ accepted-payload safety proofs, including malformed entries, numerical
 rejection, allocation, all cell updates and final release. Its public contract
 requires a represented input and a disjoint bounded arena with an empty free
 list. Its 8,866-byte frozen package passes independent decoding, validation,
-translation and all three behavior checks, including reset. The maintained
-repeated-step runner and requested true 2D visualization remain. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
+translation and all three behavior checks, including reset. The generic
+repeated-step proof and [maintained Sod data](../data/euler-sod-v1/README.md)
+are complete: 100 cells reach t=0.2 in93 accepted steps, and100–800-cell
+refinement errors decrease. The requested true2D visualization remains. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
 
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
 

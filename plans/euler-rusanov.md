@@ -606,7 +606,7 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Freeze and independently verify the exact grid-step bytes.
 - [x] Prove the generic guarded recurrence, every accepted intermediate grid,
       actual WASM call trace and the stationary100-cell Sod specialization.
-- [ ] Publish the maintained first-order Sod runtime and scientific data.
+- [x] Publish the maintained first-order Sod runtime and scientific data.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
 
@@ -727,7 +727,7 @@ update, boundary conditions and time stepping. Every WASM module used by the
 simulation must have an exact-byte execution theorem and audited safety
 contract. Host presentation remains distinct from the verified calculation.
 
-- [ ] Complete the 1D grid, exact bytes, guarded Sod runner and scientific data.
+- [x] Complete the 1D grid, exact bytes, guarded Sod runner and scientific data.
 - [ ] Implement and prove the 2D conservative-state and directional update model.
 - [ ] Prove the actual 2D execution and freeze every WASM module used by the run.
 - [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.

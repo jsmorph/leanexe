@@ -433,5 +433,6 @@ The ordered extension is recorded in [the Euler plan](plans/euler-rusanov.md).
 
 The generic guarded recurrence, intermediate-state safety and actual WASM
 call trace are proved, including stationary100-cell Sod specialization and
-exact-byte transfer. Maintained runtime/data publication and the2D extension
-remain in the Euler plan.
+exact-byte transfer. The maintained100-cell Sod runtime/data and100–800-cell
+refinement validation are published in data/euler-sod-v1. The2D extension
+remains in the Euler plan.
