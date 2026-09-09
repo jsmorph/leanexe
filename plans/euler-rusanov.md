@@ -597,6 +597,8 @@ Every checked row ends in a passing commit, an update to this plan,
   function, including fresh singleton allocation, stores and returned pointer.
 - [x] Retain initial-output ownership and the prior current output's readable
   array through all first/later accepted/rejected cell outcomes.
+- [x] Prove the cell-to-loop storage transition and define the exact loop
+  frame, remaining recurrence and decreasing measure.
 - [ ] Compose the guarded initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.

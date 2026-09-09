@@ -411,6 +411,17 @@ for first/later cells. These checks take 3.5–3.8s with standard axioms. They
 supply the observations needed for the actual loop's post-body condition and
 final release of the initial output; the loop itself remains open.
 
+[GridLoopModel.lean](GridLoopModel.lean) relates the remaining recurrence to
+each advance and exact header. [GridLoopStorage.lean](GridLoopStorage.lean)
+unifies initial, accepted and rejected arena states.
+[GridLoopTransition.lean](GridLoopTransition.lean) and
+[GridLoopAdvance.lean](GridLoopAdvance.lean) prove that each actual cell call
+establishes the next storage phase, retaining both required old buffers.
+[GridLoopShape.lean](GridLoopShape.lean) extracts the exact outer loop;
+[GridLoopFrame.lean](GridLoopFrame.lean) defines its complete locals, invariant
+and decreasing measure. The focused dependency check passes with standard
+axioms. Composing the loop execution and final release remains open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
