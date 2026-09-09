@@ -436,3 +436,7 @@ call trace are proved, including stationary100-cell Sod specialization and
 exact-byte transfer. The maintained100-cell Sod runtime/data and100–800-cell
 refinement validation are published in data/euler-sod-v1. The2D extension
 remains in the Euler plan.
+
+The2D conservative-state model and its accepted-state/16-intermediate safety
+proofs now pass, with both momentum components in the physical internal energy.
+Directional flux/update, actual WASM execution and2D data remain.

@@ -728,7 +728,9 @@ simulation must have an exact-byte execution theorem and audited safety
 contract. Host presentation remains distinct from the verified calculation.
 
 - [x] Complete the 1D grid, exact bytes, guarded Sod runner and scientific data.
-- [ ] Implement and prove the 2D conservative-state and directional update model.
+- [x] Prove the2D conservative-state model, both kinetic terms and accepted
+      input/intermediate/output safety in an explicit sufficient domain.
+- [ ] Implement and prove the2D directional flux and update model.
 - [ ] Prove the actual 2D execution and freeze every WASM module used by the run.
 - [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.
 - [ ] Publish and visually inspect a polished 2D density/pressure visualization,
