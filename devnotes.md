@@ -9415,3 +9415,15 @@ Publication verified through71e930645f3c7ec18ef3217c29f737955cea053b:
 seven substantive checkpoints, exact fetched/index/worktree equality and
 clean synchronization. Remaining work is the entry/arena/outer-loop
 composition already recorded above.
+
+### 2026-09-09: Euler entry arithmetic and initialized memory
+
+The valid entry's cell count, checked output dimension and capacity calculation
+are proved. InitialMemory connects allocation plus zero fill to a live owned
+output, exact heap/counters and separate-input preservation. The dimension
+proof passes in 5.6s; public results use only accepted logical axioms.
+Guard dispatch, initialization/outer-loop composition, final release, exact
+grid bytes and the guarded runner remain open. The user extended completion
+to a true 2D visualization, with all used WASM properly verified; the detailed
+plan now records the required transverse-state and directional-update work.
+Checks remain focused on changed Euler targets and small docs/import checks.
