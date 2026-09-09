@@ -9586,3 +9586,14 @@ signature. Old1D Spec/runtime pins pass.79 Wasmtime vectors plus one
 post-update rejection pass; maintained test contains all80. Inventories37
 complete cases/caches,17 FP registrations,33 exact packages. Next: compile
 prepared sweep/runner proof drafts, then maintained2D Wasmtime data/visuals.
+
+### 2026-09-09: 2D sweep/run trace
+
+Cell0d373da3caaaded056ddbee5f1885439f26409c2 is pushed. Sweep proves
+axis exchange, clamped neighbors, accepted output/grid safety and actual
+per-cell calls. Runner proves successful x/y transitions and arbitrary finite
+ratio-list traces; initial_safe certifies the four quadrants. ArtifactRunner
+transfers the contract to the existing5,190-byte cell package. Sweep3.5s,
+Runner5s, ArtifactRunner3.6s; behavior audits are standard, byte transfer uses
+only established artifact cache witnesses. Next: separate native2D Wasmtime
+host, reproducible data with full raw comparisons and polished visualization.

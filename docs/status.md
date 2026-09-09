@@ -142,3 +142,10 @@ store preservation, updated-state safety and rounded CFL in (0,1/2]. Its
 5,190-byte package passes independent verification. All79 original Wasmtime
 vectors and one targeted post-update rejection pass; the old1D cell Spec
 regression also passes. The sweep/run bridge and final2D data remain.
+
+The2D x/y sweep and finite accepted-run trace now pass, including physical
+state preservation under momentum exchange and the four-quadrant initial
+state certificate. Every pointwise numerical call is linked to actual WASM;
+the runner contract transfers to the existing exact cell bytes. Native C/JS
+grid/time orchestration is outside the formal proof. Runtime2D data and
+visualization are next.

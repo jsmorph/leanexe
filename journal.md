@@ -9800,3 +9800,45 @@ test/euler_2d_cell_step.js and its run_all.js registration; README.md,
 docs/status.md, docs/verifying.md, proofs/talos/README.md, plan.md,
 plans/euler-rusanov.md, devnotes.md, journal.md. Intended publication
 “Verify the 2D conservative cell update”.
+
+### 2026-09-09: 2D sweep and finite-run composition
+
+Cell checkpoint0d373da3caaaded056ddbee5f1885439f26409c2 is published,
+parent9c3022ff4cff47c4a525bbc56eec7a23e126135c, tree
+21b18399379bce2e996bb7d390d58f9e2e2c3d49. Non-forced API publication,
+fetch, commit/tree/index/worktree checks and local CAS pass, clean. Added
+three reviewed proof drafts: Sweep (clamped neighbors, axis exchange,
+pointwise safety and actual calls), Runner (x/y full-step rejection and
+finite accepted-run trace), ArtifactRunner (transfer to exact existing cell
+bytes). Native C/JS grid/time orchestration remains outside formal proof;
+the intended contract covers the pure recurrence and every actual numerical
+WASM call. No new WASM or package bytes are introduced here.
+
+Sweep builds first try in3.5s: axis exchange preserves physical state safety,
+clamped-grid outputs transfer all cell invariants and pointwise actual-WASM
+calls. All four public audits are standard. The first Runner build stops
+at its initial split because the unfolded definition retains local lets;
+preserved the draft/log and added dsimp only before splitting. No numerical
+code, formula, budget or artifact changed.
+
+The initial dsimp expands both sets of local lets, so the formerly placed
+inner dsimp now reports no progress. Preserved that draft and log, and
+removed only the redundant inner simplification. The following build tests
+this changed proof at the same bounded target.
+
+The single-dsimp Runner/ArtifactRunner build passes. Generic successful
+finite runs carry both intermediate/final grid safety and every actual
+cell-call execution contract. Byte transfer uses the same existing artifact
+identity witnesses, with standard axioms only in the sweep/runner behavior.
+Added the specific stationary four-quadrant initial grid and a bit-guard
+certificate for all four states; no IEEE evaluation assumption is used.
+
+The initial-grid certificate build passes: Runner5s and ArtifactRunner3.6s.
+All initial/sweep/step/run behavioral audits are standard. Byte transfer adds
+only the existing three cell artifact cache witnesses, without new WASM
+bytes, verifier inputs or registry changes. Updated the cell README and
+current agenda/status to distinguish proved recurrence/call traces from
+native C/JS orchestration. Remaining work is actual runtime2D data and
+visualization. Reviewed staging: Sweep.lean, Runner.lean, ArtifactRunner.lean,
+cell README, plan.md, plans/euler-rusanov.md, docs/status.md, devnotes.md,
+journal.md. Intended checkpoint “Prove 2D sweep and finite-run call traces”.

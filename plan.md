@@ -441,5 +441,7 @@ The2D conservative-state model and its accepted-state/16-intermediate safety
 proofs now pass, with both momentum components in the physical internal energy.
 The directional flux now has all-input actual-WASM execution and accepted
 safety proofs. The four-component cell update now has total actual-WASM
-execution and accepted updated-state/CFL safety. The sweep runner and2D
-data remain.
+execution and accepted updated-state/CFL safety. The x/y sweep and accepted
+finite-run call trace are proved and transferred to the exact cell bytes,
+with a certificate for the four initial quadrants. Native runtime/data and
+the2D visualization remain.
