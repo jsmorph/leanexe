@@ -97,5 +97,9 @@ import Project.EulerGridStep.GridLoopTransition
 import Project.EulerGridStep.GridLoopAdvance
 import Project.EulerGridStep.GridLoopShape
 import Project.EulerGridStep.GridLoopFrame
+import Project.EulerGridStep.GridLoop
+import Project.EulerGridStep.GridFinalGeometry
+import Project.EulerGridStep.GridFinalRelease
+import Project.EulerGridStep.GridFinish
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
