@@ -9464,3 +9464,15 @@ recurrence, canonical pointer/pool/heap and exact locals/measure. The successful
 focused chain has only standard axioms; shape and frame take 3.9s/3.8s. The
 full loop execution, final release, exact grid bytes, maintained runner and
 requested true 2D visualization remain open. Source/bytes unchanged.
+
+### 2026-09-09: Euler outer loop and final release proved
+
+GridLoop proves exact outer-loop termination and the remaining recurrence,
+including rejection and its extra no-call exit iteration (12s). GridFinalGeometry
+and GridFinalRelease separate/release initial slot zero while preserving the
+returned output and exact heap/pages/counters. GridFinish composes the emitted
+return staging and release guard. All public audits in the successful focused
+chain use accepted standard logical axioms. Joining initialization to these
+regions and full entry/byte verification remain; then the maintained runner
+and true 2D extension/visualization. Numerical exports directly name functions
+36 (step) and 11 (scan); any invoked runtime utilities also need coverage.

@@ -34,8 +34,8 @@ The separate verified scan remains byte-identical. [Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
-composition under explicit storage assumptions. Initial grid allocation and
-the outer fill loop remain to prove.
+composition under explicit storage assumptions. Initialization, the outer loop and the final release are proved below;
+full entry composition remains.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -409,7 +409,7 @@ the initial output's ownership and the old current output's readable array.
 [ProtectedArenaAdvance.lean](ProtectedArenaAdvance.lean) combines both outcomes
 for first/later cells. These checks take 3.5–3.8s with standard axioms. They
 supply the observations needed for the actual loop's post-body condition and
-final release of the initial output; the loop itself remains open.
+final release of the initial output; both are composed by the checked modules below.
 
 [GridLoopModel.lean](GridLoopModel.lean) relates the remaining recurrence to
 each advance and exact header. [GridLoopStorage.lean](GridLoopStorage.lean)
@@ -420,7 +420,15 @@ establishes the next storage phase, retaining both required old buffers.
 [GridLoopShape.lean](GridLoopShape.lean) extracts the exact outer loop;
 [GridLoopFrame.lean](GridLoopFrame.lean) defines its complete locals, invariant
 and decreasing measure. The focused dependency check passes with standard
-axioms. Composing the loop execution and final release remains open.
+axioms. [GridLoop.lean](GridLoop.lean) proves the complete terminating outer
+loop, including rejection and the extra no-call exit iteration, in 12s.
+[GridFinalGeometry.lean](GridFinalGeometry.lean) proves that initial slot zero
+is separate from the final current output and remaining free-list nodes.
+[GridFinalRelease.lean](GridFinalRelease.lean) proves its actual release40 call
+preserves the output, heap and pages, and records exact counters/free pool.
+[GridFinish.lean](GridFinish.lean) composes return-pointer staging and the
+guarded final release. All public audits use only standard logical axioms.
+Joining these regions to entry initialization and freezing exact bytes remains.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
