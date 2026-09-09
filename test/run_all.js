@@ -55,6 +55,7 @@ function main() {
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);
   run([process.execPath, path.join("test", "euler_conservative.js")]);
   run([process.execPath, path.join("test", "euler_2d_conservative.js")]);
+  run([process.execPath, path.join("test", "euler_2d_dynamic_flux.js")]);
   run([process.execPath, path.join("test", "euler_dynamic_flux.js")]);
   run([process.execPath, path.join("test", "euler_cell_step.js")]);
   run([process.execPath, path.join("test", "euler_grid_step.js")]);

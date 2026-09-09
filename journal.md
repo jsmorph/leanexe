@@ -9597,3 +9597,108 @@ SVG/PNG), data/euler-sod-v1/README.md, plan.md, plans/euler-rusanov.md,
 docs/status.md, proofs/talos/lean/Project/EulerGridStep/README.md,
 devnotes.md, journal.md. Intended checkpoint
 “Run verified Sod simulations through pinned Wasmtime”.
+
+### 2026-09-09: directional 2D flux implementation
+
+Prior publication Run verified Sod simulations through pinned Wasmtime completed
+as 483e119e8276c8ca6ddb070d2128ee38b9c1e106, sole parent
+a54b92e9b8a6627b0801b5cba0bfbb64ad8dcbcd, tree
+339ca581d12611afd07091eb4c4a2eb7b785caac. Non-forced API update, fetch,
+commit/parent/message/tree/index/worktree equality and local CAS all passed;
+checkout clean. Reread AGENTS and operating contract after compaction.
+The installed macOS envelope remains pinned Lean4.34.0-rc2, one thread,
+runner, inherited-priority exception and no Linux preload. Session permission
+renewed for this checkout and GitHub publication. Added Euler2DDynamicFlux
+source and pure model, extending the checked scalar Rusanov component to
+four state/flux components; registered only its new incomplete source case.
+No old dataset/host source or artifact bytes changed. Next inspect emitted
+function structure, share the minimal scalar-component proof, and establish
+all-input actual-WASM execution plus accepted-state/field safety.
+
+Scoped prepare euler-2d-flux-prepare-first.log passes; fresh staging
+tmp/leanexe-talos-CBYIpF was scoped to this case. Inspected generated
+function graph: side5, component9, rejectFlux16, flux17; functions0/1/2/8/9
+are text-identical to the existing 1D cache. Added a minimal ComponentLayout
+and core theorem with the original 1D public wrapper retained, plus 2D
+layout and accepted-input/field safety. Corrected incidental JSON formatting
+from the initial insertion; old case entries are byte-preserved.
+
+Focused helper/safety/old1D Spec build passes, all axiom audits standard.
+The first2D execution build failed immediately on a macro parser keyword:
+condition was already reserved by the imported side_checked syntax.
+Preserved draft in task work/euler-2d-flux-Execution-first.lean and complete
+log euler-2d-flux-execution-first.log; its failed theorem audit is not evidence.
+Renamed the syntax binder checkCond; no formula or budget change.
+
+The parser-fixed flux proof elaborated in23s but left only the left-speed
+branch conclusions open: simp_all changed a negated UInt64 comparison into
+a reversed strict comparison before reducing the model selection. Preserved
+the full diagnostic log and speed-draft Lean file. Disabled that one simp
+rule at the closing simplification, retaining the original selection fact.
+No changed heartbeat/timeout or numerical implementation.
+
+The corrected flux Spec/Runtime.Checks build passes: total all-eight-input
+execution of function17, six exact results, unchanged store, admissible sides
+and finite flux fields/positive alpha. All successful public audits use only
+propext, Classical.choice, Quot.sound. Runtime4 shared equalities also pass.
+Execution23s; Spec3.8s. Binary3514 bytes SHA394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734;
+Program SHA cdb00fb705019f52ce2fdcd246fced3fc126d385448c5f2d3a4901fa385ac375.
+Marked only this source case complete and imported its public Spec. Created
+a scoped freezer for nine absent package files, protecting31 prior pairs.
+
+Created nine fresh 2D directional-flux exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 31 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler2_d_dynamic_flux",
+  "sha256": "394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734",
+  "byteLength": 3514,
+  "newFiles": [
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactCache.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/Euler2DDynamicFlux/ArtifactTranslation.lean",
+    "proofs/artifacts/euler2_d_dynamic_flux/394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734/manifest.json",
+    "proofs/artifacts/euler2_d_dynamic_flux/394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734/program.wasm"
+  ],
+  "oldPackagesUnchanged": 31,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+All71 focused Wasmtime flux regressions pass, retaining tmp/euler-2d-dynamic-flux-xGBcdu;
+fresh source gate passes and matches the complete Program cache. New package
+files are exclusively created and31 prior pairs/release/verifier stay fixed.
+Updated only current inventories to36 source/32 frozen packages and16 FP
+registrations; retained historical aggregate results. Two read-only searches
+briefly referenced nonexistent guessed documentation paths (artifacts README
+and docs/overview); no state changed. Subsequent documentation edits use
+confirmed paths. The independent package check is still running.
+
+The independent euler-2d-flux-package-first.log check exits zero. It checks
+exact bytes, decoder/validator/translation, public behavior and all seven
+manifest declarations; only the three existing-policy generated cache
+witnesses supplement standard axioms in artifact identities, while both
+public behavior theorems audit to standard axioms alone. The71-vector log,
+focused source gate,91-file docs check, new README links and expanded JS
+execution-policy check all pass. No aggregate/CLOB suite was run.
+Prepared later cell source/model drafts only in task work while this gate
+ran; these are not claimed as checked or included in this checkpoint.
+
+Reviewed staging intent: LeanExe/Examples/Euler2DDynamicFlux.lean; new
+Euler2DDynamicFlux proof directory (Model,Program,Helpers,Execution,Safety,
+Spec,README and seven Artifact modules); exact manifest/WASM pair;
+EulerDynamicFlux/Helpers.lean and Component.lean; cases and artifact
+registries; Project.lean, Runtime/Checks.lean, Artifact/Binary/CheckFile.lean;
+test/euler_2d_dynamic_flux.js and run_all.js registration only; README.md,
+docs/status.md, docs/verifying.md, proofs/talos/README.md, plan.md,
+plans/euler-rusanov.md, devnotes.md, journal.md. Intended publication
+“Verify the four-component 2D Rusanov flux”.
