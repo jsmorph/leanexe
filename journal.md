@@ -9314,3 +9314,50 @@ Stage exactly journal.md, devnotes.md, plan.md, plans/euler-rusanov.md,
 proofs/talos/lean/Project.lean and EulerGridStep README.md, Runner.lean,
 RunnerExecution.lean, ArtifactRunner.lean. Intended checkpoint:
 “Prove guarded Euler runner traces and intermediate-state safety”.
+
+Published runner checkpoint d9f1ad801b61b35db230a0f3a80e938e0cc4ffc4, sole
+parent783412ef92193baa76c4fcc640fb7e1744dee693, tree
+2c5a7f7362cf2c4e590c1e038390f56509e8c913; all nonforced publication, fetch,
+identity/index/worktree/CAS checks passed and status clean. A read-only
+exploratory examples directory lookup was absent; no state changed.
+Created maintained tools/euler-sod-oracle.mjs, euler-sod-riemann.mjs and
+euler-sod-runtime.mjs from the retained successful prototypes. Runtime loads
+only the two frozen verified modules, calls only scan11/step36/reset38, checks
+the explicit arena layout and allocator counters, and records raw ratios,
+outputs, extrema and host-derived boundary-flux balance diagnostics. It
+compares every final conservative word to the independent host oracle.
+
+Created tools/euler-sod-data.mjs and exclusively generated six canonical files
+in data/euler-sod-v1: raw.json, summary.json, cells.csv, history.csv,
+refinement.csv, cell-averages.svg. Write log euler-sod-data-write-first.log
+passes all4 resolutions, full word matches, per-step guards/counters, strictly
+decreasing conservative L1 errors and balance equality to the independent
+host oracle. Raw100-cell outputs are captured at every accepted step.
+Rendered the SVG using the already bundled Sharp library to the task outputs
+euler-sod-100-cell.png, visually inspected all six panels, axes, title,
+legends, numerical limits and proof-scope footer: legible and unclipped.
+Copied that derivative exclusively to the dataset as cell-averages.png and
+added its README with reproducibility, exact-byte contracts and host boundary.
+PNG SHA256 d113f943caa9936646365fee905a3946b5365afc8b16e9715b1833682b31c9f7.
+
+Canonical check euler-sod-data-check-first.log exited zero: rerunning every
+resolution reproduces all six text files byte for byte. No further numeric
+regression is necessary for these unchanged verified kernels. Updated the
+Euler/root plans, status and grid README to close the1D runner/data scope.
+Reviewed generated columns, raw word fields, source provenance and plot.
+Checkpoint files and SHA256:
+tools/euler-sod-data.mjs 6b48ea7ccf47047dfa2f9a07db37eaef7ad33482fbb62cd7c4b59c9a71e5ce46
+tools/euler-sod-runtime.mjs 6ecf112582587f74bf1b0e29fd630b182d98cdedad6d39e989465fc32732c3a9
+tools/euler-sod-oracle.mjs 1e67a363b2135711d83705f3507c22c6d0cfc17148e4baae1db0415c5a1f0545
+tools/euler-sod-riemann.mjs 9c85ce5c2cdd82375a4c5c9abec24b208256478be438076535fdd7c0e0b1e8ad
+data/euler-sod-v1/raw.json 4f74f8d88c1e24496801c1d4461a19d619e816a822de21556b89f37edd2a89e6
+data/euler-sod-v1/summary.json 306ba46c61d2ac0ce5ab336e133f072d8dba9c6c8b4da20b3538780d6d7df061
+data/euler-sod-v1/cells.csv c87789d159a79e209c8a9912906ea8842effcc92a834433df0b60a2ce1df1735
+data/euler-sod-v1/history.csv 0700e5fb42ceb6334432fd6c0d798e93ec18d625ed6c158e907a23ce80baaa44
+data/euler-sod-v1/refinement.csv 79e39b182339aea99272216f8a87a1300ef3bfb3380fec62f20d793e034fe5a9
+data/euler-sod-v1/cell-averages.svg 021bfa33446ea7a178befa71ec346f36397a39839f8da01c32691cf6478ca3ce
+data/euler-sod-v1/cell-averages.png d113f943caa9936646365fee905a3946b5365afc8b16e9715b1833682b31c9f7
+data/euler-sod-v1/README.md 193e621b528434298460257ac4af58154e706d5b1552b151f552e98288215863
+Stage exactly these12 paths plus journal.md, devnotes.md, plan.md,
+plans/euler-rusanov.md, docs/status.md, and the grid README.md. Intended
+checkpoint “Publish reproducible verified Sod runs and refinement plots”.
