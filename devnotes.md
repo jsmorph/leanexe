@@ -9526,3 +9526,15 @@ grids match an independent IEEE implementation; density/momentum/energy
 L1 errors decrease against exact Riemann conservative cell averages.
 Host orchestration and these scientific diagnostics are outside the formal
 proof; no convergence claim. The true2D extension is next.
+
+### 2026-09-09: two-dimensional conservative-state safety
+
+Sod data checkpoint62eb25df663d6dd4bc515e19dadb4eb510b7e2db is pushed.
+The2D source/model includes both kinetic terms and transverse flux. Guard,
+all16-intermediate finiteness, physical admissibility and positive output
+pressure/speed proofs pass with standard axioms. New strict magnitude ordering
+is reusable across exponent/subnormal boundaries. Source builds in232ms;
+Guard/Safety/Outputs build in2.8/2.7/2.7s. A host-only80² four-quadrant design
+experiment reaches t=.2 in67 steps with maxCFL.4000000000000001, velocity
+guard ratio<.436 and energy/density>2.176. It is not WASM proof evidence.
+WASM execution and directional flux/update proofs remain.
