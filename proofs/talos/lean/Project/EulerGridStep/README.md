@@ -452,7 +452,7 @@ proves exact equality to the execution model. The independent package gate
 checks that closure and all three behavior declarations. The decoder cache
 witnesses use the existing native-decision policy; execution/safety/reset
 proofs use only the accepted standard logical axioms.
-The repeated-step recurrence and [scientific data](../../../../../data/euler-sod-v1/README.md) are complete. The 2D extension remains.
+The repeated-step recurrence and [scientific data](../../../../../data/euler-sod-v2/README.md) are complete. The 2D extension remains.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
