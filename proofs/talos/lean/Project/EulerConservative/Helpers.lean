@@ -19,7 +19,17 @@ structure HelperLayout (m : Wasm.Module) : Prop where
 
 def boolWord (b : Bool) : UInt64 := if b then 1 else 0
 
-theorem absBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+/-- Only the three bit predicates are required by these shared scalar proofs. -/
+structure ScalarLayout (m : Wasm.Module) : Prop where
+  noImports : m.imports = []
+  positive : m.funcs[0]? = some func0Def
+  abs : m.funcs[1]? = some func1Def
+  finite : m.funcs[2]? = some func2Def
+
+def HelperLayout.scalar {m : Wasm.Module} (layout : HelperLayout m) : ScalarLayout m :=
+  ⟨layout.noImports, layout.positive, layout.abs, layout.finite⟩
+
+theorem absBits_exact_core {m : Wasm.Module} (layout : ScalarLayout m)
     (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
     TerminatesWith env m 1 initial [.i64 word]
       (fun final values => final = initial ∧ values = [.i64 (Model.absBits word)]) := by
@@ -30,7 +40,7 @@ theorem absBits_exact {m : Wasm.Module} (layout : HelperLayout m)
   wp_run
   simp [Model.absBits, func1Def]
 
-theorem positiveBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+theorem positiveBits_exact_core {m : Wasm.Module} (layout : ScalarLayout m)
     (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
     TerminatesWith env m 0 initial [.i64 word]
       (fun final values => final = initial ∧ values = [.i64 (boolWord (Model.positiveBits word))]) := by
@@ -47,7 +57,7 @@ theorem positiveBits_exact {m : Wasm.Module} (layout : HelperLayout m)
         simp [hlo, hhi]
     simp [hlo, hhi, boolWord, Model.positiveBits, func0Def]
 
-theorem finiteBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+theorem finiteBits_exact_core {m : Wasm.Module} (layout : ScalarLayout m)
     (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
     TerminatesWith env m 2 initial [.i64 word]
       (fun final values => final = initial ∧ values = [.i64 (boolWord (Model.finiteBits word))]) := by
@@ -57,7 +67,7 @@ theorem finiteBits_exact {m : Wasm.Module} (layout : HelperLayout m)
     { params := [.i64 word], locals := [.i64 0, .i64 0], values := [] } env
   unfold func2
   wp_run
-  refine wp_call_tw (absBits_exact layout env initial word) ?_
+  refine wp_call_tw (absBits_exact_core layout env initial word) ?_
   rintro final values ⟨rfl, rfl⟩
   by_cases hfinite : Model.absBits word < (0x7FF0000000000000 : UInt64)
   all_goals
@@ -67,6 +77,24 @@ theorem finiteBits_exact {m : Wasm.Module} (layout : HelperLayout m)
       | refine wp_iff_cons rfl ?_
         simp
     simp [hfinite, boolWord, Model.finiteBits, func2Def]
+
+theorem absBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+    (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
+    TerminatesWith env m 1 initial [.i64 word]
+      (fun final values => final = initial ∧ values = [.i64 (Model.absBits word)]) :=
+  absBits_exact_core layout.scalar env initial word
+
+theorem positiveBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+    (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
+    TerminatesWith env m 0 initial [.i64 word]
+      (fun final values => final = initial ∧ values = [.i64 (boolWord (Model.positiveBits word))]) :=
+  positiveBits_exact_core layout.scalar env initial word
+
+theorem finiteBits_exact {m : Wasm.Module} (layout : HelperLayout m)
+    (env : HostEnv Unit) (initial : Store Unit) (word : UInt64) :
+    TerminatesWith env m 2 initial [.i64 word]
+      (fun final values => final = initial ∧ values = [.i64 (boolWord (Model.finiteBits word))]) :=
+  finiteBits_exact_core layout.scalar env initial word
 
 theorem rejectedSide_exact {m : Wasm.Module} (layout : HelperLayout m)
     (env : HostEnv Unit) (initial : Store Unit) :

@@ -32,6 +32,7 @@ function main() {
   for (const target of [
     "LeanExe.Examples.ByteArrayPrograms",
     "LeanExe.Examples.EulerConservative",
+    "LeanExe.Examples.Euler2DConservative",
     "LeanExe.Examples.EulerDynamicFlux",
     "LeanExe.Examples.EulerCellStep",
     "LeanExe.Examples.EulerGridStep",
@@ -53,6 +54,7 @@ function main() {
   run([process.execPath, path.join("test", "euler_rusanov.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);
   run([process.execPath, path.join("test", "euler_conservative.js")]);
+  run([process.execPath, path.join("test", "euler_2d_conservative.js")]);
   run([process.execPath, path.join("test", "euler_dynamic_flux.js")]);
   run([process.execPath, path.join("test", "euler_cell_step.js")]);
   run([process.execPath, path.join("test", "euler_grid_step.js")]);
