@@ -112,3 +112,6 @@ import Project.EulerGridStep.Runner
 import Project.EulerGridStep.RunnerExecution
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
+
+import Project.ProofKit.F64StrictOrder
+import Project.Euler2DConservative.Outputs

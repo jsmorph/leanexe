@@ -9361,3 +9361,53 @@ data/euler-sod-v1/README.md 193e621b528434298460257ac4af58154e706d5b1552b151f552
 Stage exactly these12 paths plus journal.md, devnotes.md, plan.md,
 plans/euler-rusanov.md, docs/status.md, and the grid README.md. Intended
 checkpoint “Publish reproducible verified Sod runs and refinement plots”.
+
+Published Sod checkpoint62eb25df663d6dd4bc515e19dadb4eb510b7e2db, soleparent
+d9f1ad801b61b35db230a0f3a80e938e0cc4ffc4, tree
+6cdae2258dcadaeaaeb6faf99329082951bb9e90. Nonforced update/fetch and all
+identity/index/worktree/CAS checks passed; status clean.
+
+Started the true2D extension as checked directional sweeps, including both
+momentum components in pressure and transporting transverse momentum in each
+flux. This first-order dimensional-splitting architecture reuses the scalar
+proof pattern; host grid orchestration remains explicit. Created only
+LeanExe/Examples/Euler2DConservative.lean, its pure Project model, and
+ProofKit/F64StrictOrder.lean. The sufficient guard |mn|,|mt|≤rho and E>rho
+ensures positive exact internal energy. A reusable strict encoding-order
+lemma supplies the decoded strict E margin including subnormal boundaries.
+These new source/model paths are not yet registered or compiled to WASM.
+
+The strict order lemma and2Dmodel both pass first try in2.8/2.6s; strict
+order audits to standard axioms. Added Guard/Safety/Outputs for the2Dmodel:
+exact-real positivity with both kinetic terms, all16 rounded intermediates
+finite, accepted input admissibility and positive finite pressure/speed.
+
+The first2D Guard build rejected two simp transports between the model and
+shared absBits definitions. Preserved the draft and made those definitional
+changes explicit before rewriting. The real two-component kinetic-energy
+margin theorem itself passed; failed invocation audits are not accepted.
+
+The corrected Guard/Safety/Outputs build passes in2.8/2.7/2.7s with accepted
+standard-only public audits; no timeout. Source module builds in232ms via
+tools/leanrun --timeout120s lake build LeanExe.Examples.Euler2DConservative.
+The focused logs are euler-2d-safety-guard-definitions.log and
+euler-2d-source-first.log. Reviewed source/model operation order and every
+guard against the safety proof; shared strict order avoids a domain-specific
+rounding premise. Corrected a trailing space in this checkpoint's new journal
+append before publication; no earlier journal history changed. A read-only
+query also guessed absent test/registry_imports.js; discovery found
+test/talos_cache.js, with no mutation.
+
+Created and ran exclusive task-work euler-2d-host-prototype.mjs/.json: an80²
+stationary four-quadrant case, density=pressure at .25/.4/.7/1, E=2.5p,
+transmissive boundaries and directional sweeps. Host design result67 steps to
+t=.2, maxCFL.4000000000000001, minimum density.250000027/pressure.250000038,
+maximum component velocity ratio.4351, minimum E/rho2.1764. These measurements
+select a nontrivial demonstration within the sufficient guard; no WASM or
+formal trajectory claim is attached.
+
+Reviewed exact staging: LeanExe/Examples/Euler2DConservative.lean;
+proofs/talos/lean/Project/ProofKit/F64StrictOrder.lean; Euler2DConservative
+Model.lean, Guard.lean, Safety.lean, Outputs.lean, README.md; Project.lean;
+plan.md, plans/euler-rusanov.md, devnotes.md, journal.md. Publish as
+“Prove two-dimensional Euler conservative-state safety”.
