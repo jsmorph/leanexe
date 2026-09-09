@@ -9411,3 +9411,144 @@ proofs/talos/lean/Project/ProofKit/F64StrictOrder.lean; Euler2DConservative
 Model.lean, Guard.lean, Safety.lean, Outputs.lean, README.md; Project.lean;
 plan.md, plans/euler-rusanov.md, devnotes.md, journal.md. Publish as
 “Prove two-dimensional Euler conservative-state safety”.
+
+Published2D model checkpoint21e3c8f6fb036c699ca062e2ff05342505cc4355, sole
+parent62eb25df663d6dd4bc515e19dadb4eb510b7e2db, tree
+3bc3c1ec1127a2e234aaa238fd297ca6b37cba43. All nonforced API/fetch/identity/
+index/worktree/CAS checks passed; status clean. A read-only guessed
+tools/talos-artifact-lib.js path was absent; the actual implementation is the
+already read tools/talos-lib.js. No state changed from that lookup.
+
+Registered only euler2_d_conservative as pending (35 registered,34 complete).
+The spelling follows the existing snake-to-Pascal registry rule for
+Euler2DConservative. Preparing this new case is authorized to create only
+its generated program.wasm/program.wat and Project/Euler2DConservative/Program.lean,
+plus normal scoped compiler/proof caches and one fresh task staging directory.
+No prior artifact or cache is refreshed. The source module already builds.
+
+Scoped2D preparation passes; its fresh staging path was tmp/leanexe-talos-rjbw0t
+and the tool removed only that same task-created staging path. Inspected the
+new generated WAT/Program: bit predicates0/1/2 are identical to their1D
+functions, stateGuard3, rejectedSide4, side5, runtime6–9. The body contains
+the extra transverse division/product, kinetic sum and transverse flux.
+Refactored only EulerConservative/Helpers.lean to expose the existing three
+scalar predicate proofs under a minimal ScalarLayout; old public signatures
+remain wrappers with the same contract. This avoids copying those proofs
+into2D. Added2D Helpers identifying the exact three shared functions and new
+state/rejection functions. No generated cache was edited manually.
+
+The shared scalar-helper build passes, including the existing1D public Spec
+regression and its standard-only audits. Added the2D stateGuard call proof
+and compact side_checked continuation tactic for the sixteen guard calls in
+Execution.lean. It reuses the existing deterministic instruction-peeling
+tactic and preserves each rejected branch as an exact model result.
+
+The first2D execution proof hit a tactic focus error: the macro opened an
+accepted bullet whose continuation intentionally remains for the next call.
+Preserved the draft. Replaced the accepted bullet with an unfocused remaining
+goal after the explicit false case, retaining exactly the same checked call
+semantics. No failed-build audit is accepted.
+
+The unfocused continuation now reaches all sixteen checks, but the first
+macro revision did not unfold local let words in its closing simplification;
+its hygienic rfl binder also remained an equality rather than substitution.
+Preserved the exact draft and20317-line diagnostics. Added explicit values
+substitution and zetaDelta to normalize local definitions before matching
+guard facts. This reduces repeated proof scaffolding without changing WAT.
+The independent regression test/euler_2d_conservative.js passes44 vectors,
+all8 raw result words, exact f64 opcode counts and memory/global preservation.
+Its retained log is euler-2d-conservative-regression-first.log.
+
+The normalized2D execution proof passes in28s, standard axioms only. Added
+Spec attaching exact execution, decoded physical admissibility, all16 finite
+intermediates and positive rounded pressure/speed. Added the new Program's
+four runtime identity examples and registered the dedicated source/test in
+test/run_all.js without running that aggregate.
+
+While reading that test registry, discovered test/no_js_wasm_execution.js,
+which encodes a Wasmtime-only execution policy for maintained tools/tests.
+The earlier Node execution prototypes and published Sod runtime had missed
+this policy (its scanner currently covers .js but not .mjs). This is a runtime
+policy violation, not a failure of the exact WASM proofs. Preserved the new
+2D test's Node draft in task work; switched the maintained test to fresh scoped
+compilation and the existing pinned Wasmtime host. The historical Node44-vector
+result remains recorded; repeat under Wasmtime next. The Sod runtime must
+switch to a persistent Wasmtime host and a new dataset revision preserving
+v1; extend the guard to .mjs as part of that correction. Do not bypass it.
+
+The2D public Spec passes in3.4s with standard-only exact/safety audits;
+Runtime.Checks passes in3.7s and covers the new four runtime identities.
+Marked the source case complete and imported its Spec (35/35 complete).
+2D WASM 2212 bytes SHA256 e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9.
+Generated Program SHA256 7b68cfdba293c36c7dbe70fd6ec1bc704cf5ea8937b717887cf755a80347b798.
+Next focused gates: fresh source/cache match and Wasmtime44-vector regression,
+serialized because both may invoke compiler processes.
+
+Fresh source/cache gate euler-2d-source-gate-first.log passes, preserving
+the exact generated model. Prepared a scoped freezer in task work for the
+2,212-byte2D conservative artifact, requiring exactly nine absent output
+paths and preserving all30 prior manifest/WASM pairs, release/evidence and
+verifier-source identities. Run only after the Wasmtime regression finishes.
+
+Created nine fresh 2D conservative exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 30 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler2_d_conservative",
+  "sha256": "e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9",
+  "byteLength": 2212,
+  "newFiles": [
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactCache.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/Euler2DConservative/ArtifactTranslation.lean",
+    "proofs/artifacts/euler2_d_conservative/e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9/manifest.json",
+    "proofs/artifacts/euler2_d_conservative/e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9/program.wasm"
+  ],
+  "oldPackagesUnchanged": 30,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The focused Wasmtime regression passes44 vectors with fresh retained
+tmp/euler-2d-conservative-TAft4g output. Scoped freezer preserves all30 prior
+packages and verifier/release/evidence identities. The independent package
+gate euler-2d-conservative-package-first.log exits zero: exact2212 embedded
+bytes, decode/validate/translation, both public behaviors and all7 manifest
+declarations pass under their respective axiom policies. No aggregate or
+unrelated behavior suite ran. Updated current inventory prose to35 complete
+source cases/35caches/15FP registrations/31packages. Also corrected a missed
+current29-package count in docs/verifying.md. Historical aggregate receipts
+remain explicitly historical. Documented the pending Wasmtime host-policy
+correction rather than concealing the earlier Node execution.
+
+Prepared only task-work/euler-wasmtime-host-draft.c for a persistent pinned
+Wasmtime C host; it calls no runtime exports during instantiation and only
+the proved scan11/step36/reset38 during Sod iteration. This draft is not yet
+compiled or published. Runtime policy correction will be a separate checkpoint.
+
+Final pre-publication metadata checks pass:35 complete source cases with
+matching aggregate/runtime imports,31 valid manifests,91 maintained Markdown
+files plus dedicated2D README links, proof hygiene and git diff --check.
+Reviewed the103-line exact execution theorem/tactic against the generated
+function and successful28s build; shared predicate layout and guard
+continuations reduce repeated scaffolding without altering numeric code.
+
+Stage exactly DEVELOPING.md, README.md, devnotes.md, docs/spec.md,
+docs/status.md, docs/verifying.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/artifacts/registry.json, proofs/talos/README.md, proofs/talos/cases.json,
+proofs/talos/lean/Project.lean, Project/Artifact/Binary/CheckFile.lean,
+Project/EulerConservative/Helpers.lean, Project/Runtime/Checks.lean,
+test/run_all.js, test/euler_2d_conservative.js, the2D README/Program/Helpers/
+StateGuard/Execution/Spec files, and the seven2D Artifact modules plus its
+manifest/WASM pair listed by the freezer. The twelve source/model files from
+21e3c8f remain unchanged except the updated2D README and Project imports.
+Intended checkpoint “Verify exact two-dimensional Euler state WASM”.

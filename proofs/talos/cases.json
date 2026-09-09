@@ -360,6 +360,18 @@
         "Project.EulerGridStep.Spec.reset_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "euler2_d_conservative",
+      "module": "LeanExe.Examples.Euler2DConservative",
+      "entry": "LeanExe.Examples.Euler2DConservative.sideCheckedBits",
+      "leanModule": "Euler2DConservative",
+      "specTarget": "Project.Euler2DConservative.Spec",
+      "behaviorTheorems": [
+        "Project.Euler2DConservative.Spec.sideCheckedBits_exact",
+        "Project.Euler2DConservative.Spec.sideCheckedBits_wat_safe"
+      ],
+      "complete": true
     }
   ]
 }

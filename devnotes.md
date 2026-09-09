@@ -9538,3 +9538,16 @@ Guard/Safety/Outputs build in2.8/2.7/2.7s. A host-only80² four-quadrant design
 experiment reaches t=.2 in67 steps with maxCFL.4000000000000001, velocity
 guard ratio<.436 and energy/density>2.176. It is not WASM proof evidence.
 WASM execution and directional flux/update proofs remain.
+
+### 2026-09-09: exact2D conservative-side WASM
+
+The2,212-byte artifact e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9
+passes fresh source/WAT matching and independent package verification. Public
+exact execution and16-intermediate/input/output safety audit to standard axioms.
+All44 Wasmtime regression vectors pass. Three shared predicate proofs now
+require only their minimal scalar layout, preserving old1D public signatures;
+its public Spec regression passes. Inventories35 complete/31 exact packages.
+The discovered Wasmtime-only policy requires correcting the earlier maintained
+Sod Node runtime and extending the .js-only guard to .mjs. That correction is
+next; retain v1 and publish a new dataset revision. Directional2D flux/update
+and visualization remain.
