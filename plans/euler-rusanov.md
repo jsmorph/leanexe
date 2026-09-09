@@ -736,7 +736,9 @@ contract. Host presentation remains distinct from the verified calculation.
       policy, extend the JS guard to .mjs, and preserve the v1 dataset.
 - [x] Implement and prove the2D directional flux model and actual execution.
 - [x] Implement and prove the2D directional cell update.
-- [ ] Prove the actual 2D execution and freeze every WASM module used by the run.
+- [x] Prove the actual 2D numerical calls/sweep/run trace and freeze every WASM
+      module planned for the run: side, flux and cell. Native orchestration
+      remains outside formal proof.
 - [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.
 - [ ] Publish and visually inspect a polished 2D density/pressure visualization,
       with reproducible data and an explicit verification scope.

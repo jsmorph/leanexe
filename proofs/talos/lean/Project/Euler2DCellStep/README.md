@@ -33,5 +33,10 @@ neighbors, and post-update rejection despite valid inputs and CFL. All raw
 results and emitted opcode counts are checked under the pinned Wasmtime C API.
 The independent [host oracle](../../../../../tools/euler-2d-oracle.mjs) is
 regression evidence; no claim is made that its JavaScript implementation is
-formally proved. The complete2D sweep trace and visualization remain in the
-[active plan](../../../../../plans/euler-rusanov.md).
+formally proved. [Sweep.lean](Sweep.lean) proves axis exchange, clamped neighbor selection,
+accepted-grid safety and every actual cell call. [Runner.lean](Runner.lean)
+proves the accepted x/y time-step trace for arbitrary finite ratio lists and
+certifies the four-quadrant initial states. [ArtifactRunner.lean](ArtifactRunner.lean)
+transfers that contract to the exact cell bytes. The native grid/time
+orchestration remains outside formal proof; runtime data and the visualization
+remain in the [active plan](../../../../../plans/euler-rusanov.md).
