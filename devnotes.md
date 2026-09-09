@@ -9551,3 +9551,14 @@ The discovered Wasmtime-only policy requires correcting the earlier maintained
 Sod Node runtime and extending the .js-only guard to .mjs. That correction is
 next; retain v1 and publish a new dataset revision. Directional2D flux/update
 and visualization remain.
+
+### 2026-09-09: Wasmtime runtime correction
+
+The maintained Sod runner now uses a persistent Wasmtime44 C host, compiled
+without contraction/fast-math to a fresh content-addressed executable. It
+instantiates without implicit runtime calls and uses only the proved scan11,
+step36 and reset38. The execution-policy guard now covers .js/.mjs/.cjs and
+passes. data/euler-sod-v2 reproduces every retained v1 output/history/frame/
+diagnostic at all four resolutions and passes its own six-file canonical
+recheck. V1 data is untouched; its README records the historical policy
+violation. The reviewed PNG/SVG remains numerically identical.

@@ -58,7 +58,7 @@ rejection, allocation, all cell updates and final release. Its public contract
 requires a represented input and a disjoint bounded arena with an empty free
 list. Its 8,866-byte frozen package passes independent decoding, validation,
 translation and all three behavior checks, including reset. The generic
-repeated-step proof and [maintained Sod data](../data/euler-sod-v1/README.md)
+repeated-step proof and [maintained Sod data](../data/euler-sod-v2/README.md)
 are complete: 100 cells reach t=0.2 in93 accepted steps, and100–800-cell
 refinement errors decrease. The requested true2D visualization remains. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
 
@@ -127,6 +127,7 @@ The ClobDepth compiler run preserved the registered 3,602-byte artifact and iden
 
 The2D conservative-state function now passes exact generated-WAT execution,
 physical/rounded safety,44 Wasmtime vectors and independent verification of
-its2,212 frozen bytes. Directional interfaces and updates remain. The earlier
-Sod v1 dataset used Node execution; migration of its host runner to the
-repository's Wasmtime-only policy is in progress, preserving that publication.
+its2,212 frozen bytes. Directional interfaces and updates remain. The maintained
+Sod v2 runtime uses the pinned Wasmtime44 C API and passes the execution-policy
+guard, now covering .js/.mjs/.cjs. All retained v1 raw results and diagnostics
+are reproduced exactly; v1 remains preserved as a historical publication.

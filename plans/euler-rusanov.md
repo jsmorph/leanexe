@@ -732,7 +732,7 @@ contract. Host presentation remains distinct from the verified calculation.
       input/intermediate/output safety in an explicit sufficient domain.
 - [x] Prove actual2D conservative-side execution and independently check
       its2,212 frozen bytes, including the accepted safety contract.
-- [ ] Align the maintained Sod runtime with the Wasmtime-only execution
+- [x] Align the maintained Sod runtime with the Wasmtime-only execution
       policy, extend the JS guard to .mjs, and preserve the v1 dataset.
 - [ ] Implement and prove the2D directional flux and update model.
 - [ ] Prove the actual 2D execution and freeze every WASM module used by the run.

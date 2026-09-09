@@ -8,7 +8,7 @@ import {runFrozen,decodeWord,artifacts} from './euler-sod-runtime.mjs';
 import {average,referenceSummary} from './euler-sod-riemann.mjs';
 import {side} from './euler-sod-oracle.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const directory=path.join(root,'data/euler-sod-v1');
+const directory=path.join(root,'data/euler-sod-v2');
 const json=x=>JSON.stringify(x,null,2)+'\n';
 const csv=rows=>rows.map(row=>row.join(',')).join('\n')+'\n';
 const derived=q=>[...q,q[1]/q[0],side(q).p];
@@ -54,7 +54,7 @@ function figure(cells,refs,rows){
  parts.push('<path d="M54 808h1212" stroke="#2b3b51"/>',
   '<text x="54" y="842" font-size="16">Max CFL 0.4500</text><text x="350" y="842" font-size="16">Minimum density 0.125</text><text x="720" y="842" font-size="16">Minimum pressure 0.100</text>',
   '<text x="54" y="876" font-size="13" fill="#aebbd0">Exact-byte execution + accepted-state safety are proved. Riemann comparison and refinement are numerical validation.</text>',
-  '<text x="54" y="900" font-size="12" fill="#8095b0">First-order finite volume · transmissive boundaries · no reconstruction · data/euler-sod-v1</text></g></svg>');
+  '<text x="54" y="900" font-size="12" fill="#8095b0">First-order finite volume · transmissive boundaries · no reconstruction · data/euler-sod-v2</text></g></svg>');
  return parts.join('\n')+'\n';
 }
 async function build(){
@@ -69,8 +69,8 @@ async function build(){
  }
  const first=runs[0],cells=Array.from({length:100},(_,i)=>first.gridWords.slice(3*i,3*i+3).map(decodeWord));
  const refs=Array.from({length:100},(_,i)=>average(i/100,(i+1)/100));
- const sources={};for(const name of ['euler-sod-data.mjs','euler-sod-runtime.mjs','euler-sod-oracle.mjs','euler-sod-riemann.mjs'])sources[name]=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'tools',name))).digest('hex');
- const summary={schemaVersion:1,artifacts,sources,node:process.versions.node,referenceSummary,rows,scope:'WASM step/scan/reset are exact-byte verified. Generic Lean recurrence and call-trace theorem is conditional on accepted outputs and host-prepared memory. Host controller, diagnostics, oracle and rendering are outside the proof. No convergence theorem.'};
+ const sources={};for(const name of ['euler-sod-data.mjs','euler-sod-runtime.mjs','euler-sod-oracle.mjs','euler-sod-riemann.mjs','euler-wasmtime-host.c','euler-wasmtime-host.mjs'])sources[name]=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'tools',name))).digest('hex');
+ const summary={schemaVersion:1,artifacts,sources,node:process.versions.node,runtime:'Wasmtime 44.0.0 C API',referenceSummary,rows,scope:'WASM step/scan/reset are exact-byte verified. Generic Lean recurrence and call-trace theorem is conditional on accepted outputs and host-prepared memory. C/JS host controller, diagnostics, oracle and rendering are outside the proof. No convergence theorem.'};
  const fileCells=[['cell','x','density','momentum','energy','velocity','pressure','alpha','courant','reference_density','reference_momentum','reference_energy']];
  cells.forEach((q,i)=>{const fields=first.frames.at(-1).outputWords.slice(1+6*i,1+6*i+6).map(decodeWord);fileCells.push([i,(i+.5)/100,...q,q[1]/q[0],...fields.slice(3),...refs[i]]);});
  return new Map([
