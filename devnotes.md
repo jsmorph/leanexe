@@ -9454,3 +9454,13 @@ for the emitted post-body condition. It builds in 3.7s with standard axioms;
 all eight new focused modules pass in 3.5–3.8s. Shared framed writer and
 field/release results supply the observations. The actual loop, final release,
 exact grid bytes, 1D runner and 2D visualization remain open.
+
+### 2026-09-09: Euler loop storage transition
+
+GridLoopAdvance now carries every actual cell call into the common initial/
+accepted/rejected storage invariant, retaining initial ownership and old-output
+reads. GridLoopModel, Storage, Transition, Shape and Frame supply the remaining
+recurrence, canonical pointer/pool/heap and exact locals/measure. The successful
+focused chain has only standard axioms; shape and frame take 3.9s/3.8s. The
+full loop execution, final release, exact grid bytes, maintained runner and
+requested true 2D visualization remain open. Source/bytes unchanged.

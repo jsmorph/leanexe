@@ -8946,3 +8946,65 @@ MixedWriterProtected.lean,AdvanceMixedProtected.lean,AdvanceLaterProtected.lean,
 AdvanceFirstPreserved.lean,AdvanceLaterRejectedProtected.lean,
 AdvanceFirstRejectedPreserved.lean,ProtectedArenaAdvance.lean}. Only focused
 Euler builds and the small docs/registry/import/proof scans are applicable.
+
+### 2026-09-09: Outer-loop invariant construction
+
+Published protected cell outcomes as a43301ba81bca88cfbc844d9be9e329cb0376f25,
+sole parent 0bb336db352625d989515997e32254059ae0b22a, tree
+dccda950eee92167cbcf41a80a04c23906c8ac12. Fourteen-path non-forced update,
+fetch/content/parent/message/tree/index checks and local CAS passed; clean
+sync confirmed. The 91 Markdown files, 34 registry/import cases, README links
+and changed-proof/diff scans passed. Added GridLoopModel for the remaining
+pure recurrence and exact output header, plus GridLoopStorage for initial,
+accepted and stopped storage phases and their common pointer/pool/heap facts.
+
+First focused loop model/storage build failed with two local elaboration
+diagnostics: simplification unfolded set! before its supplied self-read lemma,
+and the live-buffer projection left its buffer implicit. Preserved both drafts
+as work/euler-GridLoop{Model,Storage}-first.lean in the task workspace. Applied
+the existing rejected-header simpa pattern and supplied the explicit live
+buffer. Failed invocation audits are not acceptance evidence.
+
+The corrected GridLoopModel and GridLoopStorage focused build passed, with
+only standard logical axioms (storage 3.7s). Added GridLoopTransition to
+identify the next canonical pointer and construct the next storage phase from
+either checked cell outcome. No WASM/source changes.
+
+GridLoopTransition passes on its first 3.8s check with standard axioms. Added
+GridLoopAdvance to dispatch the storage phase into the already checked first
+or later call and to retain the initial buffer and the old output after that
+call. Its stopped phase is excluded by the explicit zero-status premise.
+
+GridLoopAdvance first check reported dependent case-pattern names already
+substituted by existing theorem arguments and an equality composed backwards.
+Preserved its draft in task work/euler-GridLoopAdvance-first.lean and used the
+existing argument names and corrected composition. Added exact loop extraction
+(GridLoopShape) and explicit frame, scratch updates, invariant and decreasing
+measure (GridLoopFrame). The invariant keeps the zero-filled initial owned
+buffer separately from the current output.
+
+The frame dependency check reached a recursion diagnostic in the broad rfl
+region decomposition (GridLoopShape), after the corrected advance compiled.
+Preserved the failing shape draft and replaced whole-program reduction with
+three standard list decomposition steps using the already checked indexed
+loop shape; no recursion/heartbeat limit was increased. Audits from this
+failed invocation are not the acceptance gate.
+
+The reduced shape proof exposed an unavailable Nat.reduceMin simp name;
+preserved the second draft and replaced it with the explicit closed minimum
+equality and the existing addition reducer. No semantic boundary changed.
+
+The final focused chain passed in euler-grid-loop-frame-minimum.log:
+GridLoopShape 3.9s and GridLoopFrame 3.8s, with accepted standard logical axioms
+for all six new modules and replayed dependencies. Reviewed their proof
+structure and diagnostics: generic list decomposition replaces deep whole-code
+reduction; the complete cell call supplies memory facts through the existing
+framed writer, with no duplicated execution semantics. Harmless simp/linter
+warnings remain visible in the retained logs. No source, Program or WASM
+changed. Updated Project imports, README, plans and concise notes. Intended
+checkpoint paths: journal.md, devnotes.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep/{README.md,GridLoopModel.lean,
+GridLoopStorage.lean,GridLoopTransition.lean,GridLoopAdvance.lean,
+GridLoopShape.lean,GridLoopFrame.lean}. Next is the actual loop body/termination
+composition. Apply only small docs/import/changed-proof checks for this
+proof-only checkpoint.

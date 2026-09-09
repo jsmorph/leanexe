@@ -91,5 +91,11 @@ import Project.EulerGridStep.InitialArena
 import Project.EulerGridStep.EntryGuards
 import Project.EulerGridStep.RejectedEntryExecution
 import Project.EulerGridStep.ProtectedArenaAdvance
+import Project.EulerGridStep.GridLoopModel
+import Project.EulerGridStep.GridLoopStorage
+import Project.EulerGridStep.GridLoopTransition
+import Project.EulerGridStep.GridLoopAdvance
+import Project.EulerGridStep.GridLoopShape
+import Project.EulerGridStep.GridLoopFrame
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
