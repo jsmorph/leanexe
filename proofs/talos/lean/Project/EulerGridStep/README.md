@@ -397,6 +397,20 @@ The guard, allocation, singleton body and complete rejection checks pass in
 6.5s, 7.3s, 4.1s and 3.0s, with accepted logical axioms. Valid-entry loop and
 final-release composition remain open.
 
+[ProtectedBuffer.lean](ProtectedBuffer.lean) frames a separately owned array
+through clones and releases. [MixedWriterProtected.lean](MixedWriterProtected.lean)
+and [AdvanceMixedProtected.lean](AdvanceMixedProtected.lean) carry that
+observation through the complete mixed writer and advance.
+[AdvanceLaterProtected.lean](AdvanceLaterProtected.lean),
+[AdvanceFirstPreserved.lean](AdvanceFirstPreserved.lean),
+[AdvanceLaterRejectedProtected.lean](AdvanceLaterRejectedProtected.lean) and
+[AdvanceFirstRejectedPreserved.lean](AdvanceFirstRejectedPreserved.lean) retain
+the initial output's ownership and the old current output's readable array.
+[ProtectedArenaAdvance.lean](ProtectedArenaAdvance.lean) combines both outcomes
+for first/later cells. These checks take 3.5–3.8s with standard axioms. They
+supply the observations needed for the actual loop's post-body condition and
+final release of the initial output; the loop itself remains open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
