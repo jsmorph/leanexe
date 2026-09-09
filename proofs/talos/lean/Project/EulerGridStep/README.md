@@ -26,7 +26,8 @@ speeds. Complete generated-WAT array execution and accepted-payload safety are p
 in [Spec.lean](Spec.lean), under the explicit input representation, empty free
 list, page/counter and disjoint arena assumptions of
 [GridEntryReady.lean](GridEntryReady.lean). For N cells, that arena reserves
-N+6 objects of 64+48N bytes each. Frozen-byte verification is the next gate.
+N+6 objects of 64+48N bytes each. The 8,866-byte frozen package passes
+independent exact-byte decoding, validation, translation and behavioral checks.
 
 The named writeCellField helper isolates the common copying array write;
 writeCell calls it six times and releases five intermediate arrays. The
@@ -436,8 +437,22 @@ join the concrete initialized frame to the loop.
 [GridValidBody.lean](GridValidBody.lean) composes the entire valid branch, and
 [GridExecution.lean](GridExecution.lean) proves the complete exported function
 for all raw ratio/shape and numerical outcomes under the arena assumptions.
-Both public Spec declarations audit to standard logical axioms; frozen exact
-bytes and the maintained repeated-step runner remain.
+The public execution and safety declarations audit to standard logical axioms.
+[GridReset.lean](GridReset.lean) proves the actual reset export38 preserves
+memory and restores the six allocator globals; its ready-state lemma
+establishes the step preconditions at base4096. Spec registers reset_exact
+as a third behavior contract for the repeated-step runner.
+
+[ArtifactBytes.lean](ArtifactBytes.lean) embeds the exact 8,866 bytes.
+[ArtifactCache.lean](ArtifactCache.lean), [ArtifactDecoded.lean](ArtifactDecoded.lean),
+[ArtifactRawCache.lean](ArtifactRawCache.lean) and [ArtifactDecode.lean](ArtifactDecode.lean)
+identify their decoded syntax; [ArtifactValidation.lean](ArtifactValidation.lean)
+proves profile validation, and [ArtifactTranslation.lean](ArtifactTranslation.lean)
+proves exact equality to the execution model. The independent package gate
+checks that closure and all three behavior declarations. The decoder cache
+witnesses use the existing native-decision policy; execution/safety/reset
+proofs use only the accepted standard logical axioms.
+The maintained repeated-step recurrence, scientific data and 2D extension remain.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

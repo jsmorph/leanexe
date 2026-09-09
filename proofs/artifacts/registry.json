@@ -174,6 +174,12 @@
       "sha256": "279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9",
       "manifest": "euler_grid_scan/279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9/manifest.json",
       "proofTarget": "Project.EulerGridScan.ArtifactTranslation"
+    },
+    {
+      "case": "euler_grid_step",
+      "sha256": "bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297",
+      "manifest": "euler_grid_step/bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297/manifest.json",
+      "proofTarget": "Project.EulerGridStep.ArtifactTranslation"
     }
   ]
 }

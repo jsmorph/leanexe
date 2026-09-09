@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-09.  The source-driven registry contains thirty-four Talos cases, all thirty-four complete.  The separate exact-artifact registry contains twenty-nine frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty-four cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-09.  The source-driven registry contains thirty-four Talos cases, all thirty-four complete.  The separate exact-artifact registry contains thirty frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty-four cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -10,7 +10,7 @@ This report describes the repository state on 2026-09-09.  The source-driven reg
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
 | Source-driven proofs | `proofs/talos/cases.json` registers thirty-four complete cases, and the proof tree tracks thirty-four corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
-| Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-nine frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
+| Exact-artifact proofs | `proofs/artifacts/registry.json` registers thirty frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
@@ -41,7 +41,7 @@ all ten raw inputs, complete store preservation, and seven exact result words.
 Its safety specification attaches finite/admissible updated state, positive
 finite pressure and signal speed, and a decoded rounded Courant number in
 (0, 1/2]. All 43 compiled vectors pass. The 4,592-byte cell binary passes its focused
-frozen-package gate; inventories are 34 complete source cases and 29 packages. See
+frozen-package gate; inventories are 34 complete source cases and 30 packages. See
 [the cell checkpoint](../proofs/talos/lean/Project/EulerCellStep/README.md).
 
 The checked maximum-speed scan now has exact generated-WAT execution for
@@ -56,8 +56,9 @@ The complete grid-step export now has exact terminating execution and
 accepted-payload safety proofs, including malformed entries, numerical
 rejection, allocation, all cell updates and final release. Its public contract
 requires a represented input and a disjoint bounded arena with an empty free
-list. Exact-byte freezing, repeated stepping and the requested true 2D
-visualization remain. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
+list. Its 8,866-byte frozen package passes independent decoding, validation,
+translation and all three behavior checks, including reset. The maintained
+repeated-step runner and requested true 2D visualization remain. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
 
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
 

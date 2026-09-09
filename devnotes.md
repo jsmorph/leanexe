@@ -9488,3 +9488,18 @@ list, counters, pages and a separate N+6 object arena (64+48N bytes/object).
 All six new modules pass focused checks with standard logical axioms. Source
 registry/imports mark all 34 cases complete; the focused source/WAT gate
 passes with unchanged generated inputs. Exact packages remain 29 pending grid freezing.
+
+### 2026-09-09: Grid exact bytes and reset verified
+
+The grid package is 8,866 bytes, SHA256
+bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297. Its focused
+independent gate passes embedded identity, decoding, validation, exact Talos
+translation and all three behavior declarations (step, accepted safety, reset).
+All three behavioral audits are standard; cache decisions follow the existing
+artifact policy. GridReset also reconstructs the bounded ready state after
+clearing allocator globals without changing memory. All 29 earlier packages,
+the verifier and historical release remain unchanged; inventory is now
+34 complete source cases / 34 caches / 30 packages. A frozen-byte host runner
+prototype reaches the 100-cell Sod target in93 steps with exact 300-word host
+agreement, CFL0.4500000000000001 and positive minima. The maintained generic
+runner proof/data and true 2D extension/visualization remain.
