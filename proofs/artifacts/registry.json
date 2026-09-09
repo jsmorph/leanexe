@@ -192,6 +192,12 @@
       "sha256": "394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734",
       "manifest": "euler2_d_dynamic_flux/394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734/manifest.json",
       "proofTarget": "Project.Euler2DDynamicFlux.ArtifactTranslation"
+    },
+    {
+      "case": "euler2_d_cell_step",
+      "sha256": "b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0",
+      "manifest": "euler2_d_cell_step/b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0/manifest.json",
+      "proofTarget": "Project.Euler2DCellStep.ArtifactTranslation"
     }
   ]
 }
