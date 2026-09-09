@@ -367,7 +367,16 @@ constant-fill loop with exact prefix, termination and store/memory frames.
 store and zero loop, producing an exact replicated-zero array from arbitrary
 payload bytes. Allocation takes7.2s; the fill loop and its entry composition
 take3.6–3.7s, with standard logical axioms. Entry guards, capacity arithmetic,
-initialized arena composition and the outer loop still remain open.
+initialized arena composition and the outer loop remained open at that checkpoint.
+
+[InitialDimensions.lean](InitialDimensions.lean) proves the actual valid-entry
+cell-count and output-length calculation, including the integer overflow guards.
+[InitialCapacity.lean](InitialCapacity.lean) proves the emitted normalized
+capacity arithmetic. [InitialMemory.lean](InitialMemory.lean) connects allocation
+and completed zero fill to owned output metadata and exact runtime counters,
+and preserves a separate old grid through initialization. The dimension target
+passes in 5.6s with standard logical axioms. Entry guard dispatch and the
+composition through the outer loop/final release remain open.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

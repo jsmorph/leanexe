@@ -291,7 +291,9 @@ acceptance gates, and nonclaims.
   with one allocation, the appropriate remaining pool and unchanged release counters.
 - [x] Prove the valid entry’s fresh allocation region and exact length/zero
   initialization loop, retaining the store and outside-array frame.
-- [ ] Compose entry guards, capacity arithmetic and initialized arena state
+- [x] Prove valid-entry dimension/overflow guards and normalized capacity,
+  plus the initialized owned-output/counter memory result.
+- [ ] Compose entry guard dispatch and initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the guarded 100-cell Sod runner.
@@ -414,3 +416,7 @@ repository status, registries, proof inventories, plans, documentation, active
 release evidence, and pushed `talosfp-euler` tree must agree at that revision.  A
 release-ready state still additionally requires the deferred cold-checkout
 receipt and a successful `check-ready` result.
+
+The 2026-09-09 user request extends the Euler completion target through a true
+2D flow visualization, with exact-byte verification of every WASM module used.
+The ordered extension is recorded in [the Euler plan](plans/euler-rusanov.md).

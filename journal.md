@@ -8726,3 +8726,95 @@ Markdown/registry/import checks, as requested. This single follow-up receipt
 stages exactly journal.md and devnotes.md; it makes no new code/proof claim
 and needs no repeated Lean or runtime checks. Its identity is verified
 externally and will be recorded in the next substantive entry.
+
+### 2026-09-09: Resume the complete agenda through a verified 2D visualization
+
+The user requests the entire agenda without stopping before a polished 2D
+visualization like the Lanyon post, and requires all WASM to be properly
+verified. Reread AGENTS.md and plans/talosfp-euler-operations.md. The recovered
+checkout is clean and synchronized at receipt 23afc282571f992468a2eb0b9878979f3b8bcb22,
+parent 71e930645f3c7ec18ef3217c29f737955cea053b, tree
+4ffad319fba044828d1a9de76b9d6897ec6e2cd9. This records the terminating receipt
+from the preceding checkpoint; no receipt recursion is introduced.
+
+Validated the executable ARM Mach-O paths selected by tools/macos-env.sh:
+build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/{lean,lake},
+build/tools/wasm-tools-1.251.0-aarch64-macos/wasm-tools,
+build/tools/wasmtime-v44.0.0-aarch64-macos/wasmtime and
+build/tools/node-v24.13.0-darwin-arm64/bin/node (v24.13.0). No substitutions or
+Darwin preload. Repository write and network access were granted for the
+session. All proof checks retain tools/leanrun, --timeout 120s, one thread,
+local execution and the approved inherited-priority fallback.
+
+Read the primary https://lanyon.ai/research/euler-equations/ post. Its 2D
+Riemann problem is a two-spatial-dimensional simulation, beyond the prior 1D
+phase. Asked an asynchronous scope clarification and continued shared 1D
+proof work; the stated default is a true 2D flow, subject to user steering.
+The new request supersedes the earlier 2D non-goal. No claim is made that a
+1D plot, host computation, or merely validated binary meets this requirement.
+
+Read-only discovery included three incorrect path guesses: the ProofKit
+root lacks Project/, FieldAllocation.lean is named AllocationChoice.lean,
+and EulerConservativeSide is named EulerConservative. Those reads failed
+without mutation; subsequent reads use discovered paths. No Python, remote
+executor, CLOB check, full aggregate, release or cleanup operation was used.
+
+Added InitialCapacity.lean for the actual valid-body instructions 36..53,
+InitialDimensions.lean for instructions 0..35, and InitialMemory.lean for
+owned metadata, disjoint input and exact allocator-counter preservation
+through the completed zero fill. InitialCapacity reuses the normalized
+capacity model and InitialDimensions reuses six_mul_guard/small_add_guard.
+InitialMemory reuses generic byte frames rather than re-proving stores.
+
+The first focused build of InitialCapacity and InitialDimensions is retained
+in tmp/euler-recovery-20260907/euler-grid-initial-dimensions-capacity-first.log.
+It found structure-field indentation/parser errors; the dimensions proof
+also exhausted its existing 1,000,000 heartbeat budget in 43s. Preserved both
+failed drafts outside the checkout with exclusive creation, corrected the
+syntax and replaced a repeated broad simplifier with instruction-progress
+peeling. No unchanged retry or budget increase. The reduced build log is
+euler-grid-initial-dimensions-reduced-memory-first.log: capacity passes in
+4.1s with propext, Classical.choice and Quot.sound; dimensions reaches a
+nonzero-count branch; memory reaches global list lookups. Failed build axiom
+output is excluded even when an individual declaration prints an audit.
+
+Further retained logs are euler-grid-initial-dimensions-nonzero-memory-diagnostic.log
+and euler-grid-initial-dimensions-branch-memory-counters.log. These isolate the
+remaining instruction normalization and optional-versus-total global list
+reads. The temporary memory trace was removed. Preserved failed drafts are
+work/euler-grid-initialcapacity-first.lean and
+work/euler-grid-initial{dimensions,memory}-{first,second,third,fourth}.lean
+under the projectless task directory (the memory first draft is named second;
+there is no memory-first file). All writes use exclusive new scratch names.
+The next check uses exact getElem? witnesses for the counter frame and a
+single bounded allocator-window normalization after instruction peeling.
+
+The window-memory-get check proves InitialMemory with standard logical axioms.
+The dimension proof then exposes two remaining representation details: the
+division word must normalize before the nonzero branch, and its exact frame
+must retain the three earlier header-read scratch assignments. Preserved the
+fifth and sixth dimension drafts; division-normalization and exact-frame logs
+retain both boundaries. InitialDimensions passes in 5.6s with only propext,
+Classical.choice and Quot.sound. No generated Program or WASM changes.
+
+The final focused acceptance command builds InitialCapacity, InitialDimensions
+and InitialMemory together under the same 120s local runner into
+euler-grid-initial-arithmetic-memory-acceptance.log, so no audit from an
+overall failed invocation is used for publication. Updated Project imports,
+README, both plans and concise notes; reviewed the final proof structure and
+its telemetry. The exact initial counter result reuses existing byte frames;
+the dimension theorem follows all emitted checked arithmetic under its stated
+bounds. Entry dispatch and complete loop execution remain open.
+
+The intended explicit checkpoint paths are journal.md, devnotes.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+proofs/talos/lean/Project/EulerGridStep/{README.md,InitialCapacity.lean,
+InitialDimensions.lean,InitialMemory.lean}. Publication will use exact staged
+blobs/tree, a sole current parent, force:false, fetch/content equality and CAS.
+
+Final acceptance exits 0: all three focused targets pass and the public audits
+contain only propext, Classical.choice and Quot.sound (or subsets). Existing
+linter warnings are retained. The 91 Markdown files, 34 registry/import cases,
+README links, changed-proof scans and git diff --check all pass. Reviewed
+the exact nine-path diff; no runtime or unrelated regression gate is needed
+for this proof-only checkpoint.
