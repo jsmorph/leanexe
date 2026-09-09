@@ -473,3 +473,16 @@ tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.Eul
 tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Scan
 node test/euler_grid_step.js
 ```
+
+## Repeated steps
+
+[Runner.lean](Runner.lean) projects the three conservative fields and rejects
+a failed step before copying its partial output. Its generic induction theorem
+records each exact IEEE output, pressure/speed/CFL diagnostics and the finite,
+admissible conservative grid passed to the next step.
+[RunnerExecution.lean](RunnerExecution.lean) transfers the actual terminating
+WASM call contract to every step, for any host-prepared store satisfying
+GridEntryReady. It includes the stationary100-cell Sod initial data.
+[ArtifactRunner.lean](ArtifactRunner.lean) connects this contract to the same
+frozen8,866 bytes. Host time selection, memory preparation/copying, scientific
+validation and presentation remain outside the formal execution theorem.

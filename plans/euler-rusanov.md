@@ -604,7 +604,9 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Join guarded initialization, loop and final release into the full entry.
 - [x] Prove complete grid-step array execution and accepted-payload safety.
 - [x] Freeze and independently verify the exact grid-step bytes.
-- [ ] Implement and prove the checked first-order 100-cell Sod runner.
+- [x] Prove the generic guarded recurrence, every accepted intermediate grid,
+      actual WASM call trace and the stationary100-cell Sod specialization.
+- [ ] Publish the maintained first-order Sod runtime and scientific data.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
 

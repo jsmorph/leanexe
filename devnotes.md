@@ -9503,3 +9503,14 @@ the verifier and historical release remain unchanged; inventory is now
 prototype reaches the 100-cell Sod target in93 steps with exact 300-word host
 agreement, CFL0.4500000000000001 and positive minima. The maintained generic
 runner proof/data and true 2D extension/visualization remain.
+
+### 2026-09-09: guarded repeated-step proof
+
+Published exact-grid package783412ef92193baa76c4fcc640fb7e1744dee693.
+Runner/RunnerExecution now prove exact repeated IEEE outputs, safe intermediate
+conservative grids and actual terminating calls from correctly prepared stores.
+The100-cell stationary Sod specialization avoids manual trajectory unrolling.
+ArtifactRunner attaches the same contract to the frozen bytes. Focused builds
+pass in3.8/3.7/3.7s; public recurrence/WAT audits use the standard three axioms;
+artifact transfer retains the existing three native decoder-cache witnesses.
+Host runtime/data and true2D work remain.

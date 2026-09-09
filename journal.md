@@ -9267,3 +9267,50 @@ proofs/talos/cases.json, proofs/talos/lean/Project.lean,
 proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean, and the grid README,
 Spec, GridReset, seven generated Artifact modules and exact manifest/WASM
 pair listed above. Publish as “Freeze and independently verify Euler grid-step WASM”.
+
+Published exact-grid checkpoint 783412ef92193baa76c4fcc640fb7e1744dee693,
+sole parent6c987917df904a382cce8e61bc6a1d8c533262bd, tree
+719be03360c40671d9fc938b5726f2d4480c626b. The nonforced API update, fetch,
+commit/parent/message/tree/index/worktree equality and CAS local ref passed;
+status clean. Closed publication session93776 and refinement session80202.
+
+Created only EulerGridStep/Runner.lean for the generic checked recurrence.
+It projects the conservative fields and stops before copying rejected output;
+the intended inductive certificate records exact IEEE outputs, finite/admissible
+intermediate grids and each output's pressure/speed/CFL safety. Raw ratio
+selection and host execution remain explicitly separate from this pure proof.
+
+Runner first focused build failed in5s on a nonexistent Array-qualified
+getElem!_pos and normalization of the zero-field projection. Preserved the
+exact draft in task work/euler-Runner-first.lean; use the global theorem and
+normalize h0 before rewriting. Failed-build axiom output is not accepted.
+
+Runner projection/recurrence build passes in3.8s; both public audits use only
+propext/Classical.choice/Quot.sound. Added RunnerExecution.lean: a separate
+WASM call trace transfers the exact grid-step contract at every recurrence
+step, universally over correctly prepared host stores. The stationary100-cell
+Sod corollary specializes initial raw words without unrolling a numerical run.
+
+RunnerExecution first build rejected the induction nil pattern: cells is a
+fixed parameter, leaving one constructor binder. Preserved the draft; use
+the single input binder and infer cells. No audit accepted from this failure.
+
+Added ArtifactRunner.lean to transfer the generic recurrence contract through
+the existing exact-byte theorem, without modifying any frozen package bytes
+or manifest. Added Runner/RunnerExecution imports and their scope to README.
+
+RunnerExecution passes in3.7s with standard logical axiom audits for both
+generic and Sod-specialized public declarations. ArtifactRunner passes in3.7s
+and adds only the existing three native decoder/validation cache witnesses.
+Logs: euler-runner-projection.log, euler-runner-execution-induction.log,
+euler-runner-artifact-first.log. Reviewed the89-line recurrence,58-line call
+bridge and15-line byte transfer alongside telemetry; reuse of the per-call
+contract and pure induction avoids redoing allocator or instruction proofs.
+No new automation or source-case registration is needed: this composes the
+existing exact grid module without changing its bytes. Scope now splits the
+completed recurrence proof from pending maintained runtime/data publication.
+
+Stage exactly journal.md, devnotes.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project.lean and EulerGridStep README.md, Runner.lean,
+RunnerExecution.lean, ArtifactRunner.lean. Intended checkpoint:
+“Prove guarded Euler runner traces and intermediate-state safety”.

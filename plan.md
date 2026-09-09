@@ -430,3 +430,8 @@ receipt and a successful `check-ready` result.
 The 2026-09-09 user request extends the Euler completion target through a true
 2D flow visualization, with exact-byte verification of every WASM module used.
 The ordered extension is recorded in [the Euler plan](plans/euler-rusanov.md).
+
+The generic guarded recurrence, intermediate-state safety and actual WASM
+call trace are proved, including stationary100-cell Sod specialization and
+exact-byte transfer. Maintained runtime/data publication and the2D extension
+remain in the Euler plan.
