@@ -22,8 +22,11 @@ returned array and proves its expected length. [Scan.lean](Scan.lean) proves
 that an accepted scan checks every input cell and returns a positive finite
 speed bounding all computed cell speeds in decoded-real order. This bounds
 the rounded computed speeds; it does not assert a bound on exact-real wave
-speeds. Generated-WAT array execution and frozen-byte verification remain
-open; the grid-step source case is explicitly registered as incomplete.
+speeds. Complete generated-WAT array execution and accepted-payload safety are proved
+in [Spec.lean](Spec.lean), under the explicit input representation, empty free
+list, page/counter and disjoint arena assumptions of
+[GridEntryReady.lean](GridEntryReady.lean). For N cells, that arena reserves
+N+6 objects of 64+48N bytes each. Frozen-byte verification is the next gate.
 
 The named writeCellField helper isolates the common copying array write;
 writeCell calls it six times and releases five intermediate arrays. The
@@ -35,7 +38,7 @@ is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
 composition under explicit storage assumptions. Initialization, the outer loop and the final release are proved below;
-full entry composition remains.
+full entry composition is supplied below.
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -428,7 +431,13 @@ is separate from the final current output and remaining free-list nodes.
 preserves the output, heap and pages, and records exact counters/free pool.
 [GridFinish.lean](GridFinish.lean) composes return-pointer staging and the
 guarded final release. All public audits use only standard logical axioms.
-Joining these regions to entry initialization and freezing exact bytes remains.
+[GridSetup.lean](GridSetup.lean) and [GridInitialFacts.lean](GridInitialFacts.lean)
+join the concrete initialized frame to the loop.
+[GridValidBody.lean](GridValidBody.lean) composes the entire valid branch, and
+[GridExecution.lean](GridExecution.lean) proves the complete exported function
+for all raw ratio/shape and numerical outcomes under the arena assumptions.
+Both public Spec declarations audit to standard logical axioms; frozen exact
+bytes and the maintained repeated-step runner remain.
 
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,

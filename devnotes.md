@@ -9476,3 +9476,15 @@ chain use accepted standard logical axioms. Joining initialization to these
 regions and full entry/byte verification remain; then the maintained runner
 and true 2D extension/visualization. Numerical exports directly name functions
 36 (step) and 11 (scan); any invoked runtime utilities also need coverage.
+
+### 2026-09-09: Complete grid-step export and public safety
+
+GridSetup/InitialFacts join initialized ownership to the exact loop. GridValidBody
+composes allocation through final release; GridExecution covers the entire
+export for every raw ratio/shape and numerical outcome. Spec registers exact
+finite-grid output and accepted payload length/admissibility/Courant safety.
+The explicit GridEntryReady contract requires a represented input, empty free
+list, counters, pages and a separate N+6 object arena (64+48N bytes/object).
+All six new modules pass focused checks with standard logical axioms. Source
+registry/imports mark all 34 cases complete; the focused source/WAT gate
+passes with unchanged generated inputs. Exact packages remain 29 pending grid freezing.
