@@ -386,6 +386,17 @@ exact counters/pages and preserved input grid. Targets pass in 5.1s and 4.8s
 with standard axioms. Initial guard dispatch and outer-loop/final-release
 composition remain open.
 
+[EntryGuards.lean](EntryGuards.lean) proves the exact ratio/empty/remainder
+short-circuit prefix and its scratch locals. [InvalidEntryShape.lean](InvalidEntryShape.lean),
+[InvalidEntryAllocation.lean](InvalidEntryAllocation.lean) and
+[InvalidEntry.lean](InvalidEntry.lean) cover the rejected arm's fresh allocation
+and exact singleton stores. [RejectedEntryExecution.lean](RejectedEntryExecution.lean)
+composes the full function36 entry rejection, returning the pointer to [1]
+and an exact final store under explicit empty-free-list and memory bounds.
+The guard, allocation, singleton body and complete rejection checks pass in
+6.5s, 7.3s, 4.1s and 3.0s, with accepted logical axioms. Valid-entry loop and
+final-release composition remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
