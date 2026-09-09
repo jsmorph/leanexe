@@ -9008,3 +9008,79 @@ GridLoopStorage.lean,GridLoopTransition.lean,GridLoopAdvance.lean,
 GridLoopShape.lean,GridLoopFrame.lean}. Next is the actual loop body/termination
 composition. Apply only small docs/import/changed-proof checks for this
 proof-only checkpoint.
+
+### 2026-09-09: Exact outer-loop execution
+
+Published the loop storage checkpoint as 16c1d68b4e4fc07ab5504252bf2eb72da1122cfd,
+sole parent a43301ba81bca88cfbc844d9be9e329cb0376f25, tree
+5a2b5a7b8c4f1eae07cf1029aba0783e742efa9f. Twelve explicit paths, non-forced
+update, fetch/parent/message/content/tree/index checks and local CAS passed;
+clean synchronization confirmed. Small docs (91), registry/import (34), README
+links and six changed-proof scans passed before staging. Added GridLoop.lean
+to compose the exact body using the checked cell transition, separate before/
+after memory-read facts, the decreasing measure and a final no-call iteration.
+
+The first loop check failed in 5.5s with an unavailable UInt64.ofNat_zero
+name and mismatches caused by default simplification of word division, array
+status indexing and output-size substitutions before matching the memory
+facts. Preserved the complete draft in task work/euler-GridLoop-first.lean.
+Replaced the closed zero name by rfl, prevented premature division/index
+rewrites and normalized the before/after read facts to the actual frame
+expressions. No budget increase or unchecked execution claim.
+
+The normalized loop check ran 11s and left only the decreasing-measure goal:
+the successor word-to-Nat equality was proved but not supplied to its simp
+step. Preserved the second draft and supplied hSuccNat explicitly while
+retaining the encoded addition. Every body branch had elaborated, but only a
+successful invocation can accept the full theorem. Added GridFinalGeometry
+to show the final current root and all remaining free-list nodes are
+separate from initial slot zero.
+
+The complete loop and final geometry focused invocation passed:
+euler-grid-loop-successor-final-geometry.log, 12s for grid_loop_spec and
+3.6s for geometry. All audits contain only propext, Classical.choice and
+Quot.sound or subsets. This proves exact loop termination through numerical
+rejection and the extra no-call exit iteration, with the finite recurrence as
+result and bounded ownership maintained. Reviewed telemetry: precise memory
+facts allowed the existing WP engine to handle the body without another
+execution abstraction or a larger budget. Added GridFinalRelease to compose
+the actual release40 call using separation of root0/current/free nodes and
+to establish that every terminal nonempty run has advanced at least once.
+
+The final-release first check found an unavailable Array.getElem!_replicate
+name in the terminal-index helper; preserved its draft and used the ordinary
+replicate simplifier. The release-call proof itself elaborated, but the whole
+invocation must pass. Added GridFinish to connect the exact post-loop return
+staging and nonzero-root release guard to that checked call.
+
+The final wrapper first check stopped before matching its release call; the
+extracted drop/append program had not been normalized by the loop-only tactic.
+Preserved GridFinish-first and added only the explicit list normalization
+needed for this concatenated region. The corrected release helper compiled
+in the dependency chain; acceptance remains the successful full check.
+
+Correction: explicit append normalization did not resolve the wrapper call
+match (3.7s); the prior explanation was a hypothesis, not an established
+cause. Preserved the second draft and added one local goal trace to inspect
+the exact remaining WP boundary before changing the proof further.
+
+The exact goal trace confirms the nine-instruction finish region remains
+behind append after the first peel exposes it. Preserved the traced draft
+and normalized that now-visible append before a second peel; removed the
+trace from the maintained proof. Also inspected generated export tables:
+stepCheckedBits is directly function36 and maxSpeedCheckedBits directly11;
+37/12 begin runtime utilities, not extra numerical-entry wrappers. The
+maintained runner must account for any utility export it actually invokes.
+
+The final finish check passes in euler-grid-finish-exposed-append.log, with
+standard logical axioms throughout the complete loop/release/finish dependency
+chain. Reviewed the full accepted proof and telemetry: exact emitted loop
+semantics use the earlier framed cell-call theorem, and release uses shared
+owned-buffer/free-chain machinery. No changed source, Program or binary; no
+new axioms, trusted-base changes, or broader regressions. Updated Project
+imports, README and both plans to distinguish checked loop/final regions from
+the remaining full entry composition. Intended checkpoint: journal.md,
+devnotes.md, plan.md, plans/euler-rusanov.md, proofs/talos/lean/Project.lean,
+and EulerGridStep/{README.md,GridLoop.lean,GridFinalGeometry.lean,
+GridFinalRelease.lean,GridFinish.lean}. Apply the small docs/import/link/proof
+scans, stage only these ten reviewed paths and publish an exact fast-forward.

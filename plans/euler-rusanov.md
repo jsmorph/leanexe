@@ -599,8 +599,9 @@ Every checked row ends in a passing commit, an update to this plan,
   array through all first/later accepted/rejected cell outcomes.
 - [x] Prove the cell-to-loop storage transition and define the exact loop
   frame, remaining recurrence and decreasing measure.
-- [ ] Compose the guarded initialized arena state
-  with the actual outer loop, including the initial output’s final release.
+- [x] Prove the exact terminating outer loop, including rejection and the
+  extra exit iteration, and its final initial-output release/return staging.
+- [ ] Join guarded initialization, loop and final release into the full entry.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
