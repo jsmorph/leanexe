@@ -358,7 +358,7 @@
         "Project.EulerGridStep.Spec.stepCheckedBits_exact",
         "Project.EulerGridStep.Spec.stepCheckedBits_wat_safe"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

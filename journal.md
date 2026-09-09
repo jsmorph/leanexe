@@ -9084,3 +9084,74 @@ devnotes.md, plan.md, plans/euler-rusanov.md, proofs/talos/lean/Project.lean,
 and EulerGridStep/{README.md,GridLoop.lean,GridFinalGeometry.lean,
 GridFinalRelease.lean,GridFinish.lean}. Apply the small docs/import/link/proof
 scans, stage only these ten reviewed paths and publish an exact fast-forward.
+
+### 2026-09-09: Complete grid entry composition
+
+Published loop/final release as 4ebfeb8f3b9bf8b42b12f503ddd8cde81c4faed6, sole
+parent 16c1d68b4e4fc07ab5504252bf2eb72da1122cfd, tree
+0b1a8dfd299b6baad8892002553f80b18353be0b. Ten explicit paths, non-forced update,
+fetch/content/parent/message/tree/index verification and local CAS succeeded;
+clean sync confirmed. The 91 docs, 34 registry/import cases, README links and
+four changed-proof scans passed before publication. Added GridSetup for the
+exact fourteen-instruction initialization-to-loop handoff and the concrete
+entry frame equality, isolated from the full entry proof.
+
+GridSetup passes on its first 3.8s focused check with standard axioms. Added
+GridInitialFacts for its concrete frame facts and valid-entry model guards,
+and GridValidBody to join initialization, the fourteen-instruction setup,
+the exact loop and final release into the complete valid branch. The body
+theorem retains a continuation over its actual return frame and array.
+
+The valid-branch dependency check found only a conjunction-association
+mismatch in grid_valid_cells (3.5s). Preserved its draft and added and_assoc
+to the guard simplification; concrete initialization frame facts elaborated.
+
+GridInitialFacts and the complete valid-branch composition both pass in 3.7s
+with standard axioms. Added GridEntryReady to state the exact host-visible
+array, page, arena, counter, empty-free-list and separation assumptions and
+its invalid-singleton bound. Added GridExecution to compose the complete
+export for valid entry and unify all invalid ratio/shape paths with the
+already checked rejection function. These declarations cover all raw inputs
+under the stated memory preconditions, including numerical cell rejection.
+
+GridEntryReady and GridExecution pass on their first 3.8s checks. The complete
+stepCheckedBits_exact_in_module and valid-entry theorem audit to standard
+logical axioms. Added public ExactSpecFor/SafeSpecFor and both registered
+behavior declarations in Spec.lean, explicitly quantifying the bounded arena
+preconditions and transferring accepted payload state/Courant safety.
+Source registration remains incomplete until this public target and its
+focused source/WAT gate pass. Exact bytes are the following separate gate.
+
+The public Spec target passes in 3.6s; both registered behavior audits contain
+only propext, Classical.choice and Quot.sound. Marked euler_grid_step complete
+and added its public Spec plus new composition modules to Project imports,
+pending the focused tools/talos-proof.js check euler_grid_step source/WAT gate
+before publication. Expected Program SHA c05b49f9b1dcbeeb1b17beb5477e321a48796a34bcb7c29b19125ce5c034560f
+and WASM SHA bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297
+(8,866 bytes) are unchanged. An inventory search named nonexistent
+docs/verifying-artifacts.md and made no mutation; recovered the actual
+docs/verifying.md through rg --files before further inspection.
+
+Updated current inventories and grid completion claims in README, DEVELOPING,
+docs/{status,spec,verifying}.md, proofs/talos/README.md, both plans and the grid
+README. Counts are 34 complete source cases/34 Program caches/29 packages,
+with fourteen completed raw-bit floating-point registrations. Kept historical
+aggregate results and the pending current aggregate explicit. The new grid
+inventory row records all memory assumptions and leaves exact-byte freezing
+pending. The source/WAT gate remains running; publication waits for it.
+
+The focused source gate passed with exit zero in
+euler-grid-full-source-gate-first.log: pinned compiler regeneration, exact
+tracked WAT-model comparison and completed public Spec build all passed. No
+full source/artifact aggregate or unrelated regression was run. The initial
+JSON serialization expanded unrelated single-element registry arrays; saved
+that draft in task work/euler-grid-cases-expanded-draft.json, verified parsed
+equality to the sole intended complete-flag change, and retained the original
+registry formatting with only that flag changed. Fixed the new inventory row
+to remain in its existing Markdown table. Intended explicit checkpoint paths:
+README.md, DEVELOPING.md, docs/{status,spec,verifying}.md, proofs/talos/README.md,
+proofs/talos/cases.json, proofs/talos/lean/Project.lean, plan.md,
+plans/euler-rusanov.md, devnotes.md, journal.md and
+EulerGridStep/{README.md,GridSetup.lean,GridInitialFacts.lean,GridValidBody.lean,
+GridEntryReady.lean,GridExecution.lean,Spec.lean}. Exact-byte packaging follows
+publication of this complete source/WAT checkpoint.
