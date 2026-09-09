@@ -117,3 +117,4 @@ import Project.ProofKit.F64StrictOrder
 import Project.Euler2DConservative.Outputs
 import Project.Euler2DConservative.Spec
 import Project.Euler2DDynamicFlux.Spec
+import Project.Euler2DCellStep.Spec

@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, thirty-six completed source-driven Talos proofs, thirty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, thirty-seven completed source-driven Talos proofs, thirty-three exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -306,7 +306,7 @@ acceptance gates, and nonclaims.
 - [x] Join guarded initialization, loop and final release into the full entry.
 - [x] Prove complete grid-step array execution and accepted-payload safety.
 - [x] Freeze and independently verify the exact grid-step bytes.
-- [ ] Implement and prove the guarded 100-cell Sod runner.
+- [x] Implement and prove the guarded 100-cell Sod runner.
 
 For `epsilon = 2^-52`, the public generated-WAT theorem
 `sodQuarterStepCheckedBits_wat_real` now certifies status zero and six finite
@@ -317,8 +317,8 @@ signed errors against the decoded-input exact stencil are respectively
 `[0, 5*epsilon/64, -25*epsilon/512]`, while the physical mass, momentum, and
 energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
-or convergence result.  Source status is thirty-six registered cases, all thirty-six complete, with thirty-six generated
-`Program.lean` caches; the exact-artifact registry contains thirty-two packages.  The recovered step
+or convergence result.  Source status is thirty-seven registered cases, all thirty-seven complete, with thirty-seven generated
+`Program.lean` caches; the exact-artifact registry contains thirty-three packages.  The recovered step
 bytes match the historical checkpoint; its schema-3 manifest identifies the
 current verifier source.
 
@@ -440,4 +440,6 @@ remains in the Euler plan.
 The2D conservative-state model and its accepted-state/16-intermediate safety
 proofs now pass, with both momentum components in the physical internal energy.
 The directional flux now has all-input actual-WASM execution and accepted
-safety proofs. Cell updates and2D data remain.
+safety proofs. The four-component cell update now has total actual-WASM
+execution and accepted updated-state/CFL safety. The sweep runner and2D
+data remain.
