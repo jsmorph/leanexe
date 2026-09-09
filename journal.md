@@ -9155,3 +9155,115 @@ plans/euler-rusanov.md, devnotes.md, journal.md and
 EulerGridStep/{README.md,GridSetup.lean,GridInitialFacts.lean,GridValidBody.lean,
 GridEntryReady.lean,GridExecution.lean,Spec.lean}. Exact-byte packaging follows
 publication of this complete source/WAT checkpoint.
+
+### 2026-09-09: Grid exact-byte package and invoked reset coverage
+
+Published complete grid source/WAT proof as 6c987917df904a382cce8e61bc6a1d8c533262bd,
+sole parent 4ebfeb8f3b9bf8b42b12f503ddd8cde81c4faed6, tree
+f465b85434b00e7d70ef0fd96832886bdb5d15bc. Nineteen explicit paths passed the
+non-forced update, fetch/parent/message/content/tree/index verification and
+local CAS; clean synchronization confirmed. Small docs (91), registry/import
+(34/34, fourteen FP), six changed-proof scans and unchanged Program/WASM SHA
+checks passed. Preparing exact bytes now. The planned maintained runner can
+write input memory from the host and invoke the proved numerical exports;
+added GridReset to verify the only additional intended WASM utility call,
+reset38. It resets six allocator globals without touching memory, and its
+ready-state lemma reconstructs the step preconditions at base4096. Added the
+public reset contract before freezing so the package can cover this actual
+repeated-step execution path as well.
+
+Reset first check (3.5s) needed explicit valid-index witnesses for the six
+existing global slots and a discharger for bounded set/get reductions.
+Preserved GridReset-first.lean in task work and supplied those finite index
+facts; no runtime instruction or memory behavior changed.
+
+The reset execution now elaborates; ready-state simplification leaves the
+five explicit index inequalities as goals. Preserved the second draft and
+closed those residual arithmetic goals after the bounded simplifier.
+
+The complete reset/ready and public Spec check passes in
+euler-grid-reset-ready-arithmetic.log (3.8s and 3.7s); all three public
+behavior declarations use standard logical axioms. Registered reset_exact
+and its Project import. Prepared task work/freeze-euler-grid-step.mjs by
+adapting the previously reviewed scoped scan freezer for exactly the nine
+new grid-step package paths, 29 preserved packages, one new registry row and
+one CheckFile arm/import. It checks the 8,866-byte SHA, expected-path
+membership, exclusive output creation and unchanged verifier/release/earlier
+manifest/WASM identities. It invokes only serialized pinned local decoder
+preparation, not migration/cleanup of existing packages.
+
+Created nine fresh grid-step exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 29 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler_grid_step",
+  "sha256": "bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297",
+  "byteLength": 8866,
+  "newFiles": [
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactCache.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/EulerGridStep/ArtifactTranslation.lean",
+    "proofs/artifacts/euler_grid_step/bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297/manifest.json",
+    "proofs/artifacts/euler_grid_step/bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297/program.wasm"
+  ],
+  "oldPackagesUnchanged": 29,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The exact-byte artifact theorem and embedded-byte comparison have passed;
+the scoped package driver is walking its 191 local behavioral dependencies
+before final declaration checks. In parallel, without another Lean process,
+created and ran task work/sod-frozen-grid-preliminary.mjs using only the
+frozen scan export11 and grid exports36/38. The 100-cell run reaches t=0.2
+in 93 accepted steps, all 300 final words match the independent host oracle,
+max rounded CFL is 0.4500000000000001, minima are density0.125/pressure0.1.
+Input at519728 is beyond the reserved arena ending519680, within 1MiB;
+observed per-step counters are601 allocations/501 releases/501 frees. Saved
+the full raw history and result with exclusive creation. This is runner
+prototype regression evidence, not the maintained runner theorem/data gate.
+Prepared separate frozen-runtime/reference/refinement drafts in task work to
+check N100/200/400/800 against the independent exact-Riemann cell averages
+while the single package gate remains serialized.
+
+The complete scoped package gate exited zero in euler-grid-package-first.log.
+It checks the matching 8,866 embedded bytes, the exact artifact theorem, all
+191 local behavioral dependencies, the public Spec target and all eight
+manifest theorem declarations. The decoder/validation cache witnesses use
+the existing generated native-decision policy; decode_sound/validate_sound,
+translation equality, and all three execution/safety/reset behavior audits
+meet their accepted axiom policies. No full aggregate, release, conformance
+or unrelated regression was run. Earlier package pairs and release/verifier
+identities remained protected by the freezer. Updated all current maintained
+package inventories to30 and closed the exact-grid-byte agenda row. Added
+explicit reset and byte-proof scope to the grid README. New package files
+are still the freezer's exact nine paths; no existing package was replaced.
+
+Pre-publication checks: node tools/check-docs.js passed 91 maintained files;
+loadRegistry/checkAggregateImports passed; all30 artifact manifests passed
+metadata validation. The Program and historical release hashes remain exactly
+c05b49f9b1dcbeeb1b17beb5477e321a48796a34bcb7c29b19125ce5c034560f and
+fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1.
+GridReset/Spec contain no sorry/admit/newaxiom or trace; links resolve and
+git diff --check passes. Frozen refinement finished: N100/200/400/800 use
+93/190/385/774 accepted steps, each final raw grid matches the independent
+host implementation. L1 density errors decrease .023762708/.016645769/
+.010889543/.006977522; momentum and energy errors also strictly decrease.
+All reported CFL maxima are .4500000000000001. This is numerical validation.
+
+Reviewed explicit checkpoint staging: DEVELOPING.md, README.md, devnotes.md,
+docs/spec.md, docs/status.md, docs/verifying.md, journal.md, plan.md,
+plans/euler-rusanov.md, proofs/artifacts/registry.json, proofs/talos/README.md,
+proofs/talos/cases.json, proofs/talos/lean/Project.lean,
+proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean, and the grid README,
+Spec, GridReset, seven generated Artifact modules and exact manifest/WASM
+pair listed above. Publish as “Freeze and independently verify Euler grid-step WASM”.

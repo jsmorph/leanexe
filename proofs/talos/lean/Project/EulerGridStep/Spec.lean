@@ -1,4 +1,5 @@
 import Project.EulerGridStep.GridExecution
+import Project.EulerGridStep.GridReset
 
 namespace Project.EulerGridStep.Spec
 open Wasm
@@ -38,6 +39,15 @@ theorem stepCheckedBits_wat_safe : SafeSpecFor Project.EulerGridStep.«module» 
   intro hAccepted
   exact ⟨Safety.step_accepted_size ratio input hAccepted, Safety.step_accepted_safe ratio input hAccepted⟩
 
+def ResetSpecFor (m : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (initial : Store Unit), 6 ≤ initial.globals.globals.length →
+    TerminatesWith env m 38 initial [] (fun final values => final = gridResetStore initial ∧ values = [])
+
+theorem reset_exact : ResetSpecFor Project.EulerGridStep.«module» := by
+  intro env initial hGlobals
+  exact grid_reset_exact rfl rfl env initial hGlobals
+
+#print axioms reset_exact
 #print axioms stepCheckedBits_exact
 #print axioms stepCheckedBits_wat_safe
 end Project.EulerGridStep.Spec

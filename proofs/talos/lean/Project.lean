@@ -106,6 +106,7 @@ import Project.EulerGridStep.GridInitialFacts
 import Project.EulerGridStep.GridValidBody
 import Project.EulerGridStep.GridEntryReady
 import Project.EulerGridStep.GridExecution
+import Project.EulerGridStep.GridReset
 import Project.EulerGridStep.Spec
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

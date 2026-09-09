@@ -453,7 +453,7 @@ only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side, dynamic-interface, cell-update and grid-scan proofs bring source
 status to thirty-four registered cases, all thirty-four complete, and thirty-four generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
-timeout; focused Euler gates pass. Exact-artifact status is twenty-nine packages;
+timeout; focused Euler gates pass. Exact-artifact status is thirty packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -603,7 +603,7 @@ Every checked row ends in a passing commit, an update to this plan,
   extra exit iteration, and its final initial-output release/return staging.
 - [x] Join guarded initialization, loop and final release into the full entry.
 - [x] Prove complete grid-step array execution and accepted-payload safety.
-- [ ] Freeze and independently verify the exact grid-step bytes.
+- [x] Freeze and independently verify the exact grid-step bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
 - [ ] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
