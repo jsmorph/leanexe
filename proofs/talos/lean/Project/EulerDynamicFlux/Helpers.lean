@@ -16,6 +16,14 @@ structure Layout (m : Wasm.Module) extends Project.EulerConservative.Execution.H
   rejectedFlux : m.funcs[15]? = some func15Def
   flux : m.funcs[16]? = some func16Def
 
+/-- A scalar Rusanov component depends only on the bit predicates and its own two functions. -/
+structure ComponentLayout (m : Wasm.Module) extends Project.EulerConservative.Execution.ScalarLayout m where
+  rejectedComponent : m.funcs[8]? = some func8Def
+  component : m.funcs[9]? = some func9Def
+
+def Layout.components {m : Wasm.Module} (layout : Layout m) : ComponentLayout m :=
+  ⟨layout.toHelperLayout.scalar, layout.rejectedComponent, layout.component⟩
+
 theorem concreteLayout : Layout Project.EulerDynamicFlux.«module» := by
   exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, rfl, rfl, rfl, rfl, rfl⟩
 
@@ -28,7 +36,7 @@ macro "dynamic_peel" : tactic => `(tactic|
     | refine wp_iff_cons rfl ?_
       simp [boolWord, *])
 
-theorem rejectedComponent_exact {m : Wasm.Module} (layout : Layout m)
+theorem rejectedComponent_exact_core {m : Wasm.Module} (layout : ComponentLayout m)
     (env : HostEnv Unit) (initial : Store Unit) :
     TerminatesWith env m 8 initial []
       (fun final values => final = initial ∧ values = [.i64 0, .i64 1]) := by
@@ -38,6 +46,12 @@ theorem rejectedComponent_exact {m : Wasm.Module} (layout : Layout m)
   unfold func8
   wp_run
   simp [func8Def]
+
+theorem rejectedComponent_exact {m : Wasm.Module} (layout : Layout m)
+    (env : HostEnv Unit) (initial : Store Unit) :
+    TerminatesWith env m 8 initial []
+      (fun final values => final = initial ∧ values = [.i64 0, .i64 1]) :=
+  rejectedComponent_exact_core layout.components env initial
 
 theorem rejectedFlux_exact {m : Wasm.Module} (layout : Layout m)
     (env : HostEnv Unit) (initial : Store Unit) :
@@ -53,6 +67,7 @@ theorem rejectedFlux_exact {m : Wasm.Module} (layout : Layout m)
   simp [func15Def]
 
 #print axioms concreteLayout
+#print axioms rejectedComponent_exact_core
 #print axioms rejectedComponent_exact
 #print axioms rejectedFlux_exact
 end Project.EulerDynamicFlux.Execution

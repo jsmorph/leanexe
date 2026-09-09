@@ -451,9 +451,9 @@ is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
 are not used as exact-real conservation evidence.  This certificate concerns
 only the selected fixed Sod quarter step; it establishes no general stability,
 invariant-domain, convergence, or entropy-solution theorem.  The subsequent primitive, conservative-side, dynamic-interface, cell-update and grid-scan proofs bring source
-status to thirty-five registered cases, all thirty-five complete, and thirty-five generated caches.
+status to thirty-six registered cases, all thirty-six complete, and thirty-six generated caches.
 The broader source aggregate remains deferred after the earlier 29-case
-timeout; focused Euler gates pass. Exact-artifact status is thirty-one packages;
+timeout; focused Euler gates pass. Exact-artifact status is thirty-two packages;
 the fixed-step package carries both registered behavior theorems.
 
 ## Follow-on full shock-tube generator
@@ -734,7 +734,8 @@ contract. Host presentation remains distinct from the verified calculation.
       its2,212 frozen bytes, including the accepted safety contract.
 - [x] Align the maintained Sod runtime with the Wasmtime-only execution
       policy, extend the JS guard to .mjs, and preserve the v1 dataset.
-- [ ] Implement and prove the2D directional flux and update model.
+- [x] Implement and prove the2D directional flux model and actual execution.
+- [ ] Implement and prove the2D directional cell update.
 - [ ] Prove the actual 2D execution and freeze every WASM module used by the run.
 - [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.
 - [ ] Publish and visually inspect a polished 2D density/pressure visualization,
