@@ -103,7 +103,7 @@ tools/artifact-proof.js check \
   Project.FoldSum.ArtifactTranslation
 ```
 
-`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty-nine packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 twenty-one-package receipt belongs to its recorded earlier input; the retained 21-package release draft records digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11` and its aggregate receipt is pending.  The accepted 2026-08-26 receipt covers the twenty packages registered at that time.
+`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all thirty packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 twenty-one-package receipt belongs to its recorded earlier input; the retained 21-package release draft records digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11` and its aggregate receipt is pending.  The accepted 2026-08-26 receipt covers the twenty packages registered at that time.
 
 ## Semantic Conformance Tool
 

@@ -356,7 +356,8 @@
       "specTarget": "Project.EulerGridStep.Spec",
       "behaviorTheorems": [
         "Project.EulerGridStep.Spec.stepCheckedBits_exact",
-        "Project.EulerGridStep.Spec.stepCheckedBits_wat_safe"
+        "Project.EulerGridStep.Spec.stepCheckedBits_wat_safe",
+        "Project.EulerGridStep.Spec.reset_exact"
       ],
       "complete": true
     }
