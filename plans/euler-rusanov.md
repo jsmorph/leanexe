@@ -589,7 +589,9 @@ Every checked row ends in a passing commit, an update to this plan,
   with one allocation, the appropriate remaining pool and unchanged release counters.
 - [x] Prove the valid entry’s fresh allocation region and exact length/zero
   initialization loop, retaining the store and outside-array frame.
-- [ ] Compose entry guards, capacity arithmetic and initialized arena state
+- [x] Prove valid-entry dimension/overflow guards and normalized capacity,
+  plus the initialized owned-output/counter memory result.
+- [ ] Compose entry guard dispatch and initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
@@ -697,7 +699,25 @@ The following are explicit non-goals of this phase:
   shock-tube run;
 - entropy stability, high-order accuracy, Roe or HLLC fluxes;
 - componentwise minmod or another unproved reconstruction;
-- two- or three-dimensional solvers;
+- three-dimensional solvers;
 - general Lean `Float` compilation or a complete WebAssembly FP profile; and
 - claiming general verified compilation without the separate source-theorem
   transport chain.
+
+## User extension: verified 2D visualization, 2026-09-09
+
+The user expanded the completion target to a polished visualization of a
+flow in two spatial dimensions, like the [Lanyon Euler post](https://lanyon.ai/research/euler-equations/).
+This supersedes the previous 2D non-goal. Complete the existing 1D grid/runner
+agenda, then extend conservative states with transverse momentum and its
+kinetic-energy contribution, directional fluxes, a checked multidimensional
+update, boundary conditions and time stepping. Every WASM module used by the
+simulation must have an exact-byte execution theorem and audited safety
+contract. Host presentation remains distinct from the verified calculation.
+
+- [ ] Complete the 1D grid, exact bytes, guarded Sod runner and scientific data.
+- [ ] Implement and prove the 2D conservative-state and directional update model.
+- [ ] Prove the actual 2D execution and freeze every WASM module used by the run.
+- [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.
+- [ ] Publish and visually inspect a polished 2D density/pressure visualization,
+      with reproducible data and an explicit verification scope.
