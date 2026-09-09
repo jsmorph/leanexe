@@ -19,6 +19,7 @@ import Project.ClobPostOnly.Program
 import Project.ClobQuote.Program
 import Project.EulerConservative.Program
 import Project.Euler2DConservative.Program
+import Project.Euler2DDynamicFlux.Program
 import Project.EulerDynamicFlux.Program
 import Project.EulerCellStep.Program
 import Project.EulerGridScan.Program
@@ -219,5 +220,10 @@ example : eraseTypeIdx Project.Euler2DConservative.func6Def = eraseTypeIdx alloc
 example : eraseTypeIdx Project.Euler2DConservative.func7Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Euler2DConservative.func8Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Euler2DConservative.func9Def = eraseTypeIdx (releaseFuncDef 9) := rfl
+
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func18Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func19Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func20Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func21Def = eraseTypeIdx (releaseFuncDef 21) := rfl
 
 end Project.Runtime

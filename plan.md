@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, thirty-five completed source-driven Talos proofs, thirty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, thirty-six completed source-driven Talos proofs, thirty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -317,8 +317,8 @@ signed errors against the decoded-input exact stencil are respectively
 `[0, 5*epsilon/64, -25*epsilon/512]`, while the physical mass, momentum, and
 energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
 for the one fixed Sod quarter step, not a general stability, invariant-domain,
-or convergence result.  Source status is thirty-five registered cases, all thirty-five complete, with thirty-five generated
-`Program.lean` caches; the exact-artifact registry contains thirty-one packages.  The recovered step
+or convergence result.  Source status is thirty-six registered cases, all thirty-six complete, with thirty-six generated
+`Program.lean` caches; the exact-artifact registry contains thirty-two packages.  The recovered step
 bytes match the historical checkpoint; its schema-3 manifest identifies the
 current verifier source.
 
@@ -439,4 +439,5 @@ remains in the Euler plan.
 
 The2D conservative-state model and its accepted-state/16-intermediate safety
 proofs now pass, with both momentum components in the physical internal energy.
-Directional flux/update, actual WASM execution and2D data remain.
+The directional flux now has all-input actual-WASM execution and accepted
+safety proofs. Cell updates and2D data remain.

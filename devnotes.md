@@ -9562,3 +9562,14 @@ passes. data/euler-sod-v2 reproduces every retained v1 output/history/frame/
 diagnostic at all four resolutions and passes its own six-file canonical
 recheck. V1 data is untouched; its README records the historical policy
 violation. The reviewed PNG/SVG remains numerically identical.
+
+### 2026-09-09: verified 2D directional flux
+
+Euler2DDynamicFlux now proves exact function17 execution for all eight raw
+inputs, six result words, unchanged store and admissible sides/finite fields/
+positive alpha. The 3,514-byte SHA394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734
+passes source regeneration and independent package/declaration gates.
+The scalar component proof takes a minimal layout and preserves the old
+1D public signature; focused old1D Spec and all71 new Wasmtime vectors pass.
+Current inventories36 complete cases,36 caches,16 FP cases,32 packages.
+Next: four-component cell update, directional sweep/run bridge and2D data.
