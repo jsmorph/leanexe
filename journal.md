@@ -8854,3 +8854,48 @@ Checkpoint paths are journal.md, devnotes.md, plan.md, plans/euler-rusanov.md,
 proofs/talos/lean/Project.lean and EulerGridStep/{README.md,InitialOutput.lean,
 InitialArena.lean}. Only the two focused targets and small docs/registry
 checks apply; no broad runtime, release or aggregate check is introduced.
+
+### 2026-09-09: Exact grid entry guard dispatch
+
+Published initialized-arena checkpoint 108bfd405bb3c71b27708d13e48e590b5e4b37c1,
+sole parent 86de5ff99b8c782518d9981adc751f2a9b2118a0, tree
+5c4c3aacb18de4ba138c4c68069cb7c62796037d. Focused proofs, 91 Markdown files,
+34 registry/import cases, README links and proof/diff scans passed.
+Eight-path non-forced API update/fetch, complete commit/parent/message/tree/
+index/worktree verification and local CAS passed; clean synchronization.
+Added EntryGuards.lean for the exact positive-ratio, empty-array and remainder
+short-circuit prefix, reusing the complete positiveBits call and array reads.
+
+EntryGuards first check needed list-append normalization before the actual
+positiveBits call. Preserved draft/log; euler-grid-entry-guards-append.log
+passes in 6.5s with standard logical axioms. The prefix handles bad ratio,
+empty input, malformed length and the valid branch with exact scratch state.
+Read-only bracket parsing identified all 57 invalid-arm instructions. Added
+InvalidEntryShape and InvalidEntryAllocation for its distinct local window,
+reusing the accepted fresh-allocation proof structure and generic metadata
+stores. The exact local remap is allocator window30 to28, capacity39 to37,
+selected44 to42, with the returned root in local33; generated code is unchanged.
+
+InvalidEntryShape and InvalidEntryAllocation pass in 4.6s and 7.3s with
+standard logical axioms. Reviewed the frame remap before building, including
+multiline set calls. InvalidEntry reuses the exact two-store singleton pattern
+but proves reads through read64_write64_exact, avoiding the native memory
+shortcut in the older generic singleton theorem. The first singleton check
+reached only the two runtime memory guards; preserved its log/draft and added
+explicit negated bounds using Nat.not_lt.mpr. The corrected
+euler-grid-invalid-entry-store-bounds.log passes in 4.1s with standard axioms.
+
+RejectedEntryExecution composes guard dispatch, the invalid body and function
+return. Its first check left one unconstrained length argument in the constant
+parameter-count lemma. Preserved draft/log and instantiated all guard-frame
+arguments explicitly. euler-grid-rejected-entry-execution-frame-arguments.log
+passes in 3.0s, including all dependencies, with only propext, Classical.choice
+and Quot.sound. This is a complete function36 theorem for entry rejection,
+not a whole valid-grid or exact-byte claim. No Program, WASM, compiler, runtime
+or trusted-base changes occurred. Reviewed the five modules and shared proof
+use, updated imports, plans, README and notes.
+
+The intended eleven checkpoint paths are journal.md, devnotes.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/lean/Project.lean and
+EulerGridStep/{README.md,EntryGuards.lean,InvalidEntryShape.lean,
+InvalidEntryAllocation.lean,InvalidEntry.lean,RejectedEntryExecution.lean}.
