@@ -90,5 +90,6 @@ import Project.EulerGridStep.InitialOutput
 import Project.EulerGridStep.InitialArena
 import Project.EulerGridStep.EntryGuards
 import Project.EulerGridStep.RejectedEntryExecution
+import Project.EulerGridStep.ProtectedArenaAdvance
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec

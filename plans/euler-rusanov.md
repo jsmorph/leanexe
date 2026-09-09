@@ -595,6 +595,8 @@ Every checked row ends in a passing commit, an update to this plan,
   into owned slot0 and heap slot1 under the whole-grid arena budget.
 - [x] Prove complete entry guard dispatch and the entire entry-rejection
   function, including fresh singleton allocation, stores and returned pointer.
+- [x] Retain initial-output ownership and the prior current output's readable
+  array through all first/later accepted/rejected cell outcomes.
 - [ ] Compose the guarded initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.

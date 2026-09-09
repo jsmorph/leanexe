@@ -9445,3 +9445,12 @@ stores. RejectedEntryExecution composes complete function36 for entry rejection
 with an exact final store and returned pointer, under explicit memory/free-list
 assumptions. The final target passes in 3.0s with standard axioms. The valid
 outer loop, final release and exact grid bytes remain open.
+
+### 2026-09-09: Euler outer-loop memory observations
+
+ProtectedArenaAdvance combines all four cell outcomes while retaining the
+initial output's ownership for final release and the previous current output
+for the emitted post-body condition. It builds in 3.7s with standard axioms;
+all eight new focused modules pass in 3.5–3.8s. Shared framed writer and
+field/release results supply the observations. The actual loop, final release,
+exact grid bytes, 1D runner and 2D visualization remain open.
