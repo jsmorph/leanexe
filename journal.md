@@ -9552,3 +9552,48 @@ StateGuard/Execution/Spec files, and the seven2D Artifact modules plus its
 manifest/WASM pair listed by the freezer. The twelve source/model files from
 21e3c8f remain unchanged except the updated2D README and Project imports.
 Intended checkpoint “Verify exact two-dimensional Euler state WASM”.
+
+Published2D exact package checkpointa54b92e9b8a6627b0801b5cba0bfbb64ad8dcbcd,
+soleparent21e3c8f6fb036c699ca062e2ff05342505cc4355, tree
+db04fac4ef7e096f18b0ec8f3971042bb3650a6c; all nonforced update/fetch/identity/
+index/worktree/CAS checks passed, status clean.
+
+Compiled the retained C host draft with the existing Wasmtime44 C API using
+cc -std=c11 -O2 -Wall -Wextra -Werror -fno-fast-math -ffp-contract=off; no
+new dependency. First100-cell run passes and matches all93 complete raw
+outputs, raw time/dt/ratio/speed words and final grid from v1. Exact host
+layout is unchanged. Added tools/euler-wasmtime-host.c/.mjs, with immutable
+source/flags/API-addressed build filenames; existing binaries are preserved.
+Switched only the maintained euler-sod-runtime.mjs to this host and retained
+its prior Node version plus generator in task work. The generator now creates
+new data/euler-sod-v2; no v1 data file is overwritten. Extended the execution
+policy guard from .js to .js/.mjs/.cjs to cover the previously missed extension.
+
+Maintained Wasmtime write euler-sod-v2-write-first.log passes all four meshes.
+Compared v2 against preserved v1, excluding only its engine-scope prose: every
+retained field, raw word, time-step history,100-cell frame, diagnostic and
+final result matches exactly at N100/200/400/800. Added a v2 README and PNG
+render from the canonical SVG; appended a historical-policy correction to
+v1 README without altering its data. The next canonical check reexecutes the
+Wasmtime route and compares all six v2 text outputs.
+
+The Wasmtime canonical recheck euler-sod-v2-check-first.log exits zero,
+reproducing all six text outputs. The reviewed v2 PNG is legible and unclipped;
+only its dataset-revision footer changes from v1. The expanded JS execution
+policy check passes across test/tools including .mjs and .cjs. No Lean source,
+WASM bytes, package manifest or proof is changed by this host correction.
+The host checks arena bounds, reset/step counters, every numerical payload,
+positive progress/end time and a finite step budget; Node independently
+rechecks control words, output shape, diagnostics and exact host-oracle words.
+No new library was introduced; this uses the already pinned Wasmtime44 C API.
+The active plan/status/grid README now link to v2 and close the policy
+correction. This is host validation, never presented as a C/JS proof.
+
+Reviewed explicit staging: tools/euler-wasmtime-host.c,
+tools/euler-wasmtime-host.mjs, tools/euler-sod-runtime.mjs,
+tools/euler-sod-data.mjs, test/no_js_wasm_execution.js, all eight new
+data/euler-sod-v2 files (README, raw/summary JSON, cells/history/refinement CSV,
+SVG/PNG), data/euler-sod-v1/README.md, plan.md, plans/euler-rusanov.md,
+docs/status.md, proofs/talos/lean/Project/EulerGridStep/README.md,
+devnotes.md, journal.md. Intended checkpoint
+“Run verified Sod simulations through pinned Wasmtime”.

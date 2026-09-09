@@ -87,7 +87,7 @@ function walk(dir, out) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       walk(full, out);
-    } else if (entry.isFile() && full.endsWith(".js")) {
+    } else if (entry.isFile() && /\.(?:js|mjs|cjs)$/.test(full)) {
       out.push(path.normalize(full));
     }
   }

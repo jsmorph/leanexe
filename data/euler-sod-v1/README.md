@@ -9,7 +9,8 @@ transmissive boundaries, first-order Rusanov flux, no reconstruction,
 [SVG](cell-averages.svg), [final cells](cells.csv), [time history](history.csv),
 [refinement](refinement.csv), [raw words](raw.json), [summary](summary.json).
 
-Run from the repository root with the pinned Node environment:
+This revision is historical. For the maintained Wasmtime v2 reproduction,
+run from the repository root with the pinned Node environment:
 
 ```sh
 source tools/macos-env.sh
@@ -47,3 +48,12 @@ This stationary Sod case differs from moving-left-state numerical examples.
 Boundary fluxes and balance residuals are host diagnostics computed from the
 WASM states with the independent flux formula. Refinement and small balance
 residuals are scientific validation, not a convergence or entropy theorem.
+
+## Historical runtime revision
+
+This first publication used Node execution, which conflicts with the repository
+Wasmtime-only runtime policy. Its numerical data is retained unchanged. The
+maintained generator now targets [v2](../euler-sod-v2/README.md), using the pinned
+Wasmtime44 C API, and reproduces every v1 raw result/history/diagnostic exactly.
+The generator source for this historical revision is recorded in commit
+62eb25df663d6dd4bc515e19dadb4eb510b7e2db.
