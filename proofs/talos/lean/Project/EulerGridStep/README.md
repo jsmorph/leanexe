@@ -378,6 +378,14 @@ and preserves a separate old grid through initialization. The dimension target
 passes in 5.6s with standard logical axioms. Entry guard dispatch and the
 composition through the outer loop/final release remain open.
 
+[InitialOutput.lean](InitialOutput.lean) composes actual capacity, fresh allocation,
+length storage and zero fill. [InitialArena.lean](InitialArena.lean) prepends
+the checked dimension calculation and derives its space requirements from the
+cells+6 arena budget. The result is the owned zero-filled slot0, heap slot1,
+exact counters/pages and preserved input grid. Targets pass in 5.1s and 4.8s
+with standard axioms. Initial guard dispatch and outer-loop/final-release
+composition remain open.
+
 [The focused regression](../../../../../test/euler_grid_step.js) passes 31
 compiled cases covering single-cell boundaries, moving uniform states,
 two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid

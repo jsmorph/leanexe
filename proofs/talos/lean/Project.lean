@@ -86,5 +86,7 @@ import Project.EulerGridStep.InitializationFill
 import Project.EulerGridStep.InitialCapacity
 import Project.EulerGridStep.InitialDimensions
 import Project.EulerGridStep.InitialMemory
+import Project.EulerGridStep.InitialOutput
+import Project.EulerGridStep.InitialArena
 import Project.EulerGridStep.Scan
 import Project.EulerGridScan.Spec
