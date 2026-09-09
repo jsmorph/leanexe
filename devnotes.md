@@ -9436,3 +9436,12 @@ provides the first cell's owned slot0, heap slot1, exact counters/pages and
 preserved old grid from the same cells+6 budget. Builds pass in 5.1s and 4.8s
 with accepted logical axioms. Entry guard dispatch, outer loop/final release
 and exact grid bytes remain open; the 2D extension follows the 1D runner.
+
+### 2026-09-09: Complete Euler entry rejection
+
+EntryGuards proves all short-circuit outcomes. InvalidEntryShape/Allocation
+and InvalidEntry prove the distinct rejected allocator window and exact [1]
+stores. RejectedEntryExecution composes complete function36 for entry rejection
+with an exact final store and returned pointer, under explicit memory/free-list
+assumptions. The final target passes in 3.0s with standard axioms. The valid
+outer loop, final release and exact grid bytes remain open.

@@ -593,7 +593,9 @@ Every checked row ends in a passing commit, an update to this plan,
   plus the initialized owned-output/counter memory result.
 - [x] Compose the valid entry through dimension/capacity/allocation/zero fill
   into owned slot0 and heap slot1 under the whole-grid arena budget.
-- [ ] Compose entry guard dispatch and initialized arena state
+- [x] Prove complete entry guard dispatch and the entire entry-rejection
+  function, including fresh singleton allocation, stores and returned pointer.
+- [ ] Compose the guarded initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.
 - [ ] Implement and prove the checked first-order 100-cell Sod runner.
