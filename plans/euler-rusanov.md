@@ -591,6 +591,8 @@ Every checked row ends in a passing commit, an update to this plan,
   initialization loop, retaining the store and outside-array frame.
 - [x] Prove valid-entry dimension/overflow guards and normalized capacity,
   plus the initialized owned-output/counter memory result.
+- [x] Compose the valid entry through dimension/capacity/allocation/zero fill
+  into owned slot0 and heap slot1 under the whole-grid arena budget.
 - [ ] Compose entry guard dispatch and initialized arena state
   with the actual outer loop, including the initial output’s final release.
 - [ ] Prove grid-step array execution and exact bytes.

@@ -9427,3 +9427,12 @@ grid bytes and the guarded runner remain open. The user extended completion
 to a true 2D visualization, with all used WASM properly verified; the detailed
 plan now records the required transverse-state and directional-update work.
 Checks remain focused on changed Euler targets and small docs/import checks.
+
+### 2026-09-09: Initialized Euler arena composition
+
+InitialOutput and InitialArena compose the actual valid-entry instructions
+through dimension, capacity, allocation and zero initialization. The result
+provides the first cell's owned slot0, heap slot1, exact counters/pages and
+preserved old grid from the same cells+6 budget. Builds pass in 5.1s and 4.8s
+with accepted logical axioms. Entry guard dispatch, outer loop/final release
+and exact grid bytes remain open; the 2D extension follows the 1D runner.
