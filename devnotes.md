@@ -9573,3 +9573,16 @@ The scalar component proof takes a minimal layout and preserves the old
 1D public signature; focused old1D Spec and all71 new Wasmtime vectors pass.
 Current inventories36 complete cases,36 caches,16 FP cases,32 packages.
 Next: four-component cell update, directional sweep/run bridge and2D data.
+
+### 2026-09-09: verified 2D directional cell
+
+Flux9c3022ff4cff47c4a525bbc56eec7a23e126135c is pushed. The2D cell
+function27 now has total exact13-input/eight-output execution and unchanged
+store; accepted updated-state/pressure/alpha/CFL safety uses standard axioms.
+Execution46s, Spec3.7s; fresh source and independent exact-byte gates pass
+for5,190 bytes, SHAb7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0.
+The scalar update proof now permits relocation and preserves its old public
+signature. Old1D Spec/runtime pins pass.79 Wasmtime vectors plus one
+post-update rejection pass; maintained test contains all80. Inventories37
+complete cases/caches,17 FP registrations,33 exact packages. Next: compile
+prepared sweep/runner proof drafts, then maintained2D Wasmtime data/visuals.

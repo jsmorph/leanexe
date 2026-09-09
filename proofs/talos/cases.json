@@ -384,6 +384,18 @@
         "Project.Euler2DDynamicFlux.Spec.fluxCheckedBits_wat_safe"
       ],
       "complete": true
+    },
+    {
+      "name": "euler2_d_cell_step",
+      "module": "LeanExe.Examples.Euler2DCellStep",
+      "entry": "LeanExe.Examples.Euler2DCellStep.cellCheckedBits",
+      "leanModule": "Euler2DCellStep",
+      "specTarget": "Project.Euler2DCellStep.Spec",
+      "behaviorTheorems": [
+        "Project.Euler2DCellStep.Spec.cellCheckedBits_exact",
+        "Project.Euler2DCellStep.Spec.cellCheckedBits_wat_safe"
+      ],
+      "complete": true
     }
   ]
 }

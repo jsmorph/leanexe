@@ -9702,3 +9702,101 @@ test/euler_2d_dynamic_flux.js and run_all.js registration only; README.md,
 docs/status.md, docs/verifying.md, proofs/talos/README.md, plan.md,
 plans/euler-rusanov.md, devnotes.md, journal.md. Intended publication
 “Verify the four-component 2D Rusanov flux”.
+
+### 2026-09-09: four-component directional cell update
+
+Flux checkpoint9c3022ff4cff47c4a525bbc56eec7a23e126135c is published,
+parent483e119e8276c8ca6ddb070d2128ee38b9c1e106, tree
+a6fb4ee3fc9e0ddea6aa46cec516b03e761e98f0. Non-forced API publication,
+fetch, all commit/tree/index/worktree checks and local CAS passed; clean.
+Added Euler2DCellStep source/model from reviewed task drafts and one
+incomplete source-case registration. It updates density, normal and
+transverse momenta and energy, checks the rounded CFL in (0,1/2], then
+checks the complete updated2D side before acceptance. The host target
+is .4 in each direction. Scalar update association matches the proved1D
+subtraction/multiply/subtraction operation.
+
+Scoped cell prepare passes with source build234ms and fresh stage
+tmp/leanexe-talos-kD1a4T. Inspected graph: flux17 unchanged, update20,
+reject26, cell27, runtime28–31. Scalar update20 has the exact old19 body/ABI
+and helper calls, differing only in function/type index. Generalized its
+proof over those indices and minimal component layout, preserving old
+public wrapper. Added new concrete layout, rejection/update wrappers and
+2D accepted state/CFL/alpha safety, plus shared runtime pins.
+
+Cell Helpers/Safety pass, including generalized exact update20 and
+standard axiom audits for state/CFL/alpha safety (Safety6.3s). The first
+full cell Spec attempt fails in13s at the CFL comparison continuation,
+where the local courant alias prevents instruction simplification. Preserved
+the execution draft and log; no failed audit is accepted. Used the explicit
+IEEE multiply expression in that comparison, matching the established1D
+proof pattern, without changing implementation or budget.
+
+The corrected full cell Spec passes: execution46s, Spec3.7s; all public
+audits standard. Exact all13 raw inputs, eight results, full store
+preservation and accepted state/pressure/alpha/CFL safety. Binary5190 bytes
+SHAb7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0;
+Program SHA57e0f9cd57401dc3716346f4809f7191fb8e0260bc8dc126ddc210b54f9de568.
+The79-case Wasmtime regression passes all raw words and f64 opcode counts,
+retaining tmp/euler-2d-cell-step-vX5u1z. Added a specific post-update guard
+rejection with valid initial sides and CFL.38228756555322957; this isolates
+the last safety check beyond invalid-input tests. Marked new case complete
+and imported public Spec; prepared scoped32-prior-package freezer.
+
+Created nine fresh 2D directional-cell exact-package files using the output
+preparer, with exclusive writes and exact expected-path membership. Added
+one registry row and one CheckFile import/arm. All 32 prior manifest/WASM
+pairs and the protected historical release draft remain byte-identical.
+The verifier source did not change. This is pending the focused package gate.
+
+{
+  "case": "euler2_d_cell_step",
+  "sha256": "b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0",
+  "byteLength": 5190,
+  "newFiles": [
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactBytes.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactCache.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactDecoded.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactRawCache.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactDecode.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactValidation.lean",
+    "proofs/talos/lean/Project/Euler2DCellStep/ArtifactTranslation.lean",
+    "proofs/artifacts/euler2_d_cell_step/b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0/manifest.json",
+    "proofs/artifacts/euler2_d_cell_step/b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0/program.wasm"
+  ],
+  "oldPackagesUnchanged": 32,
+  "protectedRelease": [
+    "proofs/artifacts/release.json",
+    "fae0891f6c0694dae3d0b7855c8844e3cab12cf0277634b4d272dc78c88256f1"
+  ]
+}
+
+The additional post-update rejection test passes on the retained compiled
+WASM (79 original plus1 targeted vector); its independent input/CFL assertions
+also pass. Focused old1D cell Spec and Runtime.Checks pass with standard
+public audits. The complete new source gate passes, matching fresh WAT to
+Program; scoped freezer creates only nine absent files and preserves all32
+prior pairs. Independent package gate now runs. Updated current inventory
+prose to37 complete source cases/caches,17 FP registrations and33 frozen
+packages. Corrected a stale unchecked100-cell-runner item in plan.md; that
+work was already proved and published. Historical aggregate receipts remain
+unchanged.
+
+Independent euler-2d-cell-package-first.log exits zero: exact identity,
+decoder, validator, translation, behavioral specification and seven manifest
+declarations pass. Public behaviors audit to standard axioms, artifact
+identities include only the three established generated cache witnesses.
+The91-file docs check and no-JS-WASM guard pass. Reviewed the exact source,
+model, safety and execution changes; no sorry/admit/new axioms introduced.
+Prepared sweep, runner and byte-transfer drafts only in task work; they
+remain uncompiled and excluded from this checkpoint.
+
+Reviewed staging: LeanExe/Examples/Euler2DCellStep.lean; all14 new cell
+proof/README files (Model,Program,Helpers,Execution,Safety,Spec,README and
+seven Artifact modules); the new exact manifest/WASM pair; old
+EulerCellStep/Update.lean; cases/registry, Project.lean, Runtime/Checks.lean,
+Artifact/Binary/CheckFile.lean; tools/euler-2d-oracle.mjs,
+test/euler_2d_cell_step.js and its run_all.js registration; README.md,
+docs/status.md, docs/verifying.md, proofs/talos/README.md, plan.md,
+plans/euler-rusanov.md, devnotes.md, journal.md. Intended publication
+“Verify the 2D conservative cell update”.
