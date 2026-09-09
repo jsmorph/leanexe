@@ -9842,3 +9842,62 @@ native C/JS orchestration. Remaining work is actual runtime2D data and
 visualization. Reviewed staging: Sweep.lean, Runner.lean, ArtifactRunner.lean,
 cell README, plan.md, plans/euler-rusanov.md, docs/status.md, devnotes.md,
 journal.md. Intended checkpoint “Prove 2D sweep and finite-run call traces”.
+
+### 2026-09-09: native 2D Wasmtime runtime
+
+Sweep/run checkpointcf4b18d84ab1cf51826b05ba3f97c5ef36294cfa is pushed,
+parent0d373da3caaaded056ddbee5f1885439f26409c2, tree
+cf2ef40aecaf289a7bb4558ee88c7addfc302c74. Non-forced API publication,
+fetch, commit/tree/index/worktree checks and local CAS passed; clean.
+Prepared a separate2D C host in task work, compiled with pinned Wasmtime44
+C API and strict IEEE flags, no warnings. It calls only side5/flux17/cell27,
+no runtime helpers or memory writes. A16² prototype reaches t=.2 in13 steps,
+no retries, retains all5 requested frames and1024 final raw state words.
+Its C source/executable, empty compile/stderr logs and complete NDJSON are
+preserved in task work. Added maintained copies euler-2d-wasmtime-host.c/.mjs
+and euler-2d-runtime.mjs. The wrapper validates immutable host build receipts,
+retains fresh run logs, checks all three WASM digests, and independently
+recomputes every step/controller/frame/final word plus diagnostics/balance.
+No maintained Sod v2 source or provenance input changed.
+
+The maintained80² and192² runs pass complete independent raw comparison:
+67/165 steps, no retries, maxCFL.4000000000000001.192² retains21 frames
+and147456 final state words; largest balance residual1.94e-16. Fresh native
+records remain in tmp/euler-2d-run-UDWmBA and -z76oUR. The first192² SVG/HTML
+and inspected1600×940 PNG are preserved in task work. Added a lossless
+RGB8 PNG encoder with CRC/DEFLATE for embedded field rasters; the bundled
+Sharp decoder checks all3 dimensions/channels, then renders the poster.
+To make radial wave propagation visible alongside the quadrant interaction,
+added a second initial-condition option: centered radius1/8, rho1, p2 inside
+and p1 outside, ending at t=.15. Both states use the same verified numerical
+kernels. Preserved the first host/runtime/oracle/figure drafts in task work;
+added a direct bit-guard initial-state certificate in Runner. No WASM bytes
+change. Current host/source drafts now need the focused second-scenario run.
+
+The circular-pulse initial certificate and ArtifactRunner pass in5.7s/3.6s
+(log euler-2d-blast-runner-first.log), standard behavior axioms, only the
+existing exact-artifact cache witnesses. The updated strict C build has
+no warnings. Its192² run (tmp/euler-2d-run-68S0mF) reaches t=.15 in130 steps,
+zero retries; all21 frames and147456 final words plus complete controller/
+diagnostic records exactly match the independent oracle. MaxCFL
+.40012883135090027, minrho .45436324244238646, minp .6656093194268456,
+max component velocity ratio .3822606026027337, min E/rho2.5; largest
+boundary-corrected balance residual2.363968512792841e-16. Figure scales now
+use full-run extrema rounded outward, fixed across frames, with scenario
+text and explicit retry counts. Corrected panel-axis spacing. First render
+failed before any output due to a shadowed ticks helper; preserved that
+draft and renamed the legend helper. No numerical data changed.
+
+The pulse preview renders successfully and was visually inspected: three
+legible square spatial fields, circular expanding fronts, unclipped captions
+and corrected axes. Added test/euler_2d_runtime.js: two8² native runs and
+six deliberate record corruptions each (time, diagnostic, frame, final
+state, call count, missing final). Registered it without executing the
+aggregate. Intended checkpoint paths: Runner.lean, oracle, native C/wrapper,
+runtime, figure renderer, focused runtime test, test/run_all.js registration,
+devnotes.md, journal.md. Canonical data/browser publication remains next.
+
+Focused runtime test passes both8² native/oracle runs and all12 corruption
+rejections (retained -zFHVVS and -613n5q). The .js/.mjs/.cjs execution guard
+passes. git diff --check passes; reviewed all ten exact checkpoint paths.
+Intended publication: “Run verified 2D kernels in a checked native host”.
