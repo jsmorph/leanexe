@@ -20,7 +20,7 @@ const {
 const moduleName = "LeanExe.Examples.Correctness";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
-const outDir = path.join(".lake", "build", "core-correctness");
+const outDir = fs.mkdtempSync(path.join("tmp", "core-correctness-"));
 
 const watSizeGuards = [
   { name: "arrayStructureReplicateHelperRead", maxBytes: 20_000 },
@@ -394,6 +394,15 @@ const accepted = [
   { name: "byteArrayFieldStructureArrayFold", args: [], expected: 6n },
   { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "nestedArrayRuntimeReleaseFrees", args: [], expected: 202n },
+  { name: "flatArrayCopyRuntimeRelease", args: [], expected: 202n },
+  {
+    name: "flatArrayCallAppend", args: [], expected: [null],
+    memoryArrays: [{ resultIndex: 0, values: [3n, 11n, 21n] }],
+  },
+  {
+    name: "flatArrayConstantAppend", args: [], expected: [null],
+    memoryArrays: [{ resultIndex: 0, values: [7n, 11n, 13n] }],
+  },
   { name: "structArrayFieldRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "optionByteArrayArrayRuntimeReleaseFrees", args: [], expected: 303n },
   { name: "publicTokenArrayRuntimeReleaseFrees", args: [], expected: 303n },
@@ -1404,6 +1413,14 @@ const accepted = [
 
 const rejected = [
   {
+    name: "rejectReleaseFlatArrayAlias",
+    message: "reason: copied into heap-bearing binding alias",
+  },
+  {
+    name: "rejectReleaseFreshNestedArray",
+    message: "reason: copied into heap-bearing binding held",
+  },
+  {
     name: "recursiveScenarioRuntimeReleaseStats",
     message: "reason: ownership is branch-dependent",
   },
@@ -1744,7 +1761,7 @@ async function main() {
   }
 
   process.stdout.write(
-    `checked ${accepted.length} accepted, ${rejected.length} rejected, and ${trapped.length} trapped cases\n`
+    `checked ${accepted.length} accepted, ${rejected.length} rejected, and ${trapped.length} trapped cases; retained ${outDir}\n`
   );
 }
 

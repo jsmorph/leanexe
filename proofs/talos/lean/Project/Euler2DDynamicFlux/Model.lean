@@ -5,7 +5,8 @@ namespace Project.Euler2DDynamicFlux.Model
 open Project.Euler2DConservative.Model
 
 abbrev CheckedComponent := Project.EulerDynamicFlux.Model.CheckedComponent
-abbrev componentCheckedBits := Project.EulerDynamicFlux.Model.componentCheckedBits
+abbrev componentCheckedBits (alpha fluxL fluxR stateL stateR : UInt64) :=
+  Project.EulerDynamicFlux.Model.componentCheckedBits alpha fluxL fluxR stateL stateR
 
 structure CheckedFlux where
   status : UInt64
