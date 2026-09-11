@@ -1,0 +1,22 @@
+{
+  "scope": "PNG derivatives of canonical SVG; presentation only, excluded from the eight-file canonical numerical check",
+  "renderer": {
+    "sharp": "0.35.4",
+    "librsvg": "2.62.91",
+    "vips": "8.18.6"
+  },
+  "files": {
+    "pulse.png": {
+      "sha256": "760c438633c41cab614e32bdf720debd6a9d819d42d885cf76a47de012820a03",
+      "bytes": 216497,
+      "width": 1600,
+      "height": 940
+    },
+    "quadrants.png": {
+      "sha256": "1f17311764d178c7b0c602c5ab8bb7c231f0df51e0650944670c208f57af8e60",
+      "bytes": 205993,
+      "width": 1600,
+      "height": 940
+    }
+  }
+}

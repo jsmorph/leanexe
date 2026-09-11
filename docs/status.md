@@ -60,7 +60,7 @@ list. Its 8,866-byte frozen package passes independent decoding, validation,
 translation and all three behavior checks, including reset. The generic
 repeated-step proof and [maintained Sod data](../data/euler-sod-v2/README.md)
 are complete: 100 cells reach t=0.2 in93 accepted steps, and100–800-cell
-refinement errors decrease. The requested true2D visualization remains. See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
+refinement errors decrease. The requested true2D visualization is [published](../data/euler-2d-v1/README.md). See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
 
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
 
@@ -127,7 +127,7 @@ The ClobDepth compiler run preserved the registered 3,602-byte artifact and iden
 
 The2D conservative-state function now passes exact generated-WAT execution,
 physical/rounded safety,44 Wasmtime vectors and independent verification of
-its2,212 frozen bytes. Directional interfaces and updates remain. The maintained
+its2,212 frozen bytes. Directional interfaces and updates are also complete. The maintained
 Sod v2 runtime uses the pinned Wasmtime44 C API and passes the execution-policy
 guard, now covering .js/.mjs/.cjs. All retained v1 raw results and diagnostics
 are reproduced exactly; v1 remains preserved as a historical publication.
@@ -135,17 +135,21 @@ are reproduced exactly; v1 remains preserved as a historical publication.
 The2D directional flux now has complete all-input exact-WASM execution and
 accepted-state/field safety. Its3,514-byte package passes independent
 verification;71 Wasmtime vectors and the focused old1D Spec regression pass.
-The sweep runner and2D visualization remain.
+The completed sweep runner and2D visualization are described below.
 
 The2D directional cell now proves all13-input execution, eight raw results,
 store preservation, updated-state safety and rounded CFL in (0,1/2]. Its
 5,190-byte package passes independent verification. All79 original Wasmtime
 vectors and one targeted post-update rejection pass; the old1D cell Spec
-regression also passes. The sweep/run bridge and final2D data remain.
+regression also passes. The sweep/run bridge and final2D data are complete.
 
 The2D x/y sweep and finite accepted-run trace now pass, including physical
 state preservation under momentum exchange and the four-quadrant initial
 state certificate. Every pointwise numerical call is linked to actual WASM;
 the runner contract transfers to the existing exact cell bytes. Native C/JS
-grid/time orchestration is outside the formal proof. Runtime2D data and
-visualization are next.
+grid/time orchestration is outside the formal proof. Both 192² native runs
+(pulse 130 steps, quadrants 165) and all saved raw/controller records match
+an independent oracle. Fresh Wasmtime runs reproduce all eight canonical
+files. [Data, 21-frame animations and inspected SVG/PNG posters](../data/euler-2d-v1/README.md)
+complete the Euler visualization agenda. Current inventories remain 37
+complete source cases/caches, 17 FP cases and 33 exact-byte packages.
