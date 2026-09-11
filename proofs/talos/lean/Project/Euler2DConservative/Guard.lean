@@ -4,7 +4,7 @@ import Project.EulerRusanov.RealConservative
 namespace Project.Euler2DConservative.Guard
 open Project.ProofKit.F64Order
 
-structure StateBounds (rho momentum transverse energy : UInt64) : Prop where
+structure NarrowStateBounds (rho momentum transverse energy : UInt64) : Prop where
   densityFinite : CodeLib.IEEE64.Finite rho
   momentumFinite : CodeLib.IEEE64.Finite momentum
   transverseFinite : CodeLib.IEEE64.Finite transverse
@@ -14,10 +14,10 @@ structure StateBounds (rho momentum transverse energy : UInt64) : Prop where
   transverseMagnitude : |CodeLib.IEEE64.value transverse| ≤ CodeLib.IEEE64.value rho
   energyLower : CodeLib.IEEE64.value rho < CodeLib.IEEE64.value energy
 
-theorem stateGuard_spec (rho momentum transverse energy : UInt64)
-    (hguard : Model.stateGuard rho momentum transverse energy = true) :
-    StateBounds rho momentum transverse energy := by
-  simp only [Model.stateGuard, Bool.and_eq_true_iff, decide_eq_true_eq] at hguard
+theorem narrowStateGuard_spec (rho momentum transverse energy : UInt64)
+    (hguard : Model.narrowStateGuard rho momentum transverse energy = true) :
+    NarrowStateBounds rho momentum transverse energy := by
+  simp only [Model.narrowStateGuard, Bool.and_eq_true_iff, decide_eq_true_eq] at hguard
   obtain ⟨⟨⟨⟨⟨⟨hr, hm⟩, ht⟩, he⟩, hmr⟩, htr⟩, hre⟩ := hguard
   change absBits momentum ≤ rho at hmr
   change absBits transverse ≤ rho at htr
@@ -45,7 +45,7 @@ noncomputable def Admissible (q : Vec4) : Prop := 0 < q 0 ∧ 0 < pressure q
 
 /-- Both kinetic-energy contributions are present in the exact-real margin. -/
 theorem internalEnergy_lower (rho momentum transverse energy : UInt64)
-    (h : StateBounds rho momentum transverse energy) :
+    (h : NarrowStateBounds rho momentum transverse energy) :
     CodeLib.IEEE64.value energy - CodeLib.IEEE64.value rho ≤
       internalEnergy (decodedState rho momentum transverse energy) := by
   let r := CodeLib.IEEE64.value rho
@@ -65,17 +65,42 @@ theorem internalEnergy_lower (rho momentum transverse energy : UInt64)
   change e-r ≤ e-(m^2+t^2)/(2*r)
   linarith
 
+structure StateBounds (rho momentum transverse energy : UInt64) : Prop where
+  densityFinite : CodeLib.IEEE64.Finite rho
+  momentumFinite : CodeLib.IEEE64.Finite momentum
+  transverseFinite : CodeLib.IEEE64.Finite transverse
+  energyFinite : CodeLib.IEEE64.Finite energy
+  densityPositive : 0 < CodeLib.IEEE64.value rho
+  energyPositive : 0 < CodeLib.IEEE64.value energy
+  internalPositive : 0 < internalEnergy (decodedState rho momentum transverse energy)
+
+theorem stateGuard_spec (rho momentum transverse energy : UInt64)
+    (hguard : Model.stateGuard rho momentum transverse energy = true) :
+    StateBounds rho momentum transverse energy := by
+  simp only [Model.stateGuard, Bool.or_eq_true] at hguard
+  rcases hguard with hn | he
+  · have hb := narrowStateGuard_spec rho momentum transverse energy hn
+    have hlo := internalEnergy_lower rho momentum transverse energy hb
+    exact ⟨hb.densityFinite, hb.momentumFinite, hb.transverseFinite, hb.energyFinite,
+      hb.densityPositive, hb.densityPositive.trans hb.energyLower, by linarith [hb.energyLower]⟩
+  · change Project.ProofKit.F64Admissibility.checked rho momentum transverse energy = true at he
+    obtain ⟨hr, hm, ht, he, hrp, hep, hi⟩ :=
+      Project.ProofKit.F64Admissibility.checked_sound rho momentum transverse energy he
+    refine ⟨hr, hm, ht, he, hrp, hep, ?_⟩
+    change 0 < CodeLib.IEEE64.value energy -
+      ((CodeLib.IEEE64.value momentum)^2 + (CodeLib.IEEE64.value transverse)^2) /
+        (2 * CodeLib.IEEE64.value rho)
+    apply sub_pos.mpr
+    apply (div_lt_iff₀ (by positivity : 0 < 2 * CodeLib.IEEE64.value rho)).mpr
+    nlinarith
+
 theorem stateGuard_admissible (rho momentum transverse energy : UInt64)
     (hguard : Model.stateGuard rho momentum transverse energy = true) :
     Admissible (decodedState rho momentum transverse energy) := by
   have hb := stateGuard_spec rho momentum transverse energy hguard
-  have hlo := internalEnergy_lower rho momentum transverse energy hb
-  refine ⟨hb.densityPositive, ?_⟩
-  unfold pressure
-  have hint : 0 < internalEnergy (decodedState rho momentum transverse energy) := by
-    linarith [hb.energyLower]
-  positivity
+  exact ⟨hb.densityPositive, mul_pos (by norm_num : (0 : ℝ) < 2 / 5) hb.internalPositive⟩
 
+#print axioms narrowStateGuard_spec
 #print axioms stateGuard_spec
 #print axioms internalEnergy_lower
 #print axioms stateGuard_admissible

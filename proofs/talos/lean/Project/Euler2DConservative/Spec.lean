@@ -7,7 +7,7 @@ open Project.Euler2DConservative.Execution
 
 def ExactSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit) (rho momentum transverse energy : UInt64),
-    TerminatesWith env m 5 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
+    TerminatesWith env m 13 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
       (fun final values => final = initial ∧ values = resultValues rho momentum transverse energy)
 
 noncomputable def AcceptedSafety (rho momentum transverse energy : UInt64) : Prop :=
@@ -19,7 +19,7 @@ noncomputable def AcceptedSafety (rho momentum transverse energy : UInt64) : Pro
 
 noncomputable def SafeSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit) (rho momentum transverse energy : UInt64),
-    TerminatesWith env m 5 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
+    TerminatesWith env m 13 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
       (fun final values => final = initial ∧ values = resultValues rho momentum transverse energy ∧
         AcceptedSafety rho momentum transverse energy)
 

@@ -120,6 +120,46 @@ theorem function21_eq :
       Project.Euler2DDynamicFlux.func21Def := by
   rfl
 
+theorem function22_eq :
+    Translation.functionToTalos Cache.raw 22 (Cache.raw.codes[22]!) =
+      Project.Euler2DDynamicFlux.func22Def := by
+  rfl
+
+theorem function23_eq :
+    Translation.functionToTalos Cache.raw 23 (Cache.raw.codes[23]!) =
+      Project.Euler2DDynamicFlux.func23Def := by
+  rfl
+
+theorem function24_eq :
+    Translation.functionToTalos Cache.raw 24 (Cache.raw.codes[24]!) =
+      Project.Euler2DDynamicFlux.func24Def := by
+  rfl
+
+theorem function25_eq :
+    Translation.functionToTalos Cache.raw 25 (Cache.raw.codes[25]!) =
+      Project.Euler2DDynamicFlux.func25Def := by
+  rfl
+
+theorem function26_eq :
+    Translation.functionToTalos Cache.raw 26 (Cache.raw.codes[26]!) =
+      Project.Euler2DDynamicFlux.func26Def := by
+  rfl
+
+theorem function27_eq :
+    Translation.functionToTalos Cache.raw 27 (Cache.raw.codes[27]!) =
+      Project.Euler2DDynamicFlux.func27Def := by
+  rfl
+
+theorem function28_eq :
+    Translation.functionToTalos Cache.raw 28 (Cache.raw.codes[28]!) =
+      Project.Euler2DDynamicFlux.func28Def := by
+  rfl
+
+theorem function29_eq :
+    Translation.functionToTalos Cache.raw 29 (Cache.raw.codes[29]!) =
+      Project.Euler2DDynamicFlux.func29Def := by
+  rfl
+
 theorem functions_eq : Translation.functions Cache.raw =
     Project.Euler2DDynamicFlux.«module».funcs := by
   change
@@ -145,10 +185,18 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 18 (Cache.raw.codes[18]!),
      Translation.functionToTalos Cache.raw 19 (Cache.raw.codes[19]!),
      Translation.functionToTalos Cache.raw 20 (Cache.raw.codes[20]!),
-     Translation.functionToTalos Cache.raw 21 (Cache.raw.codes[21]!)
+     Translation.functionToTalos Cache.raw 21 (Cache.raw.codes[21]!),
+     Translation.functionToTalos Cache.raw 22 (Cache.raw.codes[22]!),
+     Translation.functionToTalos Cache.raw 23 (Cache.raw.codes[23]!),
+     Translation.functionToTalos Cache.raw 24 (Cache.raw.codes[24]!),
+     Translation.functionToTalos Cache.raw 25 (Cache.raw.codes[25]!),
+     Translation.functionToTalos Cache.raw 26 (Cache.raw.codes[26]!),
+     Translation.functionToTalos Cache.raw 27 (Cache.raw.codes[27]!),
+     Translation.functionToTalos Cache.raw 28 (Cache.raw.codes[28]!),
+     Translation.functionToTalos Cache.raw 29 (Cache.raw.codes[29]!)
     ] =
-    [Project.Euler2DDynamicFlux.func0Def, Project.Euler2DDynamicFlux.func1Def, Project.Euler2DDynamicFlux.func2Def, Project.Euler2DDynamicFlux.func3Def, Project.Euler2DDynamicFlux.func4Def, Project.Euler2DDynamicFlux.func5Def, Project.Euler2DDynamicFlux.func6Def, Project.Euler2DDynamicFlux.func7Def, Project.Euler2DDynamicFlux.func8Def, Project.Euler2DDynamicFlux.func9Def, Project.Euler2DDynamicFlux.func10Def, Project.Euler2DDynamicFlux.func11Def, Project.Euler2DDynamicFlux.func12Def, Project.Euler2DDynamicFlux.func13Def, Project.Euler2DDynamicFlux.func14Def, Project.Euler2DDynamicFlux.func15Def, Project.Euler2DDynamicFlux.func16Def, Project.Euler2DDynamicFlux.func17Def, Project.Euler2DDynamicFlux.func18Def, Project.Euler2DDynamicFlux.func19Def, Project.Euler2DDynamicFlux.func20Def, Project.Euler2DDynamicFlux.func21Def]
-  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq, function16_eq, function17_eq, function18_eq, function19_eq, function20_eq, function21_eq]
+    [Project.Euler2DDynamicFlux.func0Def, Project.Euler2DDynamicFlux.func1Def, Project.Euler2DDynamicFlux.func2Def, Project.Euler2DDynamicFlux.func3Def, Project.Euler2DDynamicFlux.func4Def, Project.Euler2DDynamicFlux.func5Def, Project.Euler2DDynamicFlux.func6Def, Project.Euler2DDynamicFlux.func7Def, Project.Euler2DDynamicFlux.func8Def, Project.Euler2DDynamicFlux.func9Def, Project.Euler2DDynamicFlux.func10Def, Project.Euler2DDynamicFlux.func11Def, Project.Euler2DDynamicFlux.func12Def, Project.Euler2DDynamicFlux.func13Def, Project.Euler2DDynamicFlux.func14Def, Project.Euler2DDynamicFlux.func15Def, Project.Euler2DDynamicFlux.func16Def, Project.Euler2DDynamicFlux.func17Def, Project.Euler2DDynamicFlux.func18Def, Project.Euler2DDynamicFlux.func19Def, Project.Euler2DDynamicFlux.func20Def, Project.Euler2DDynamicFlux.func21Def, Project.Euler2DDynamicFlux.func22Def, Project.Euler2DDynamicFlux.func23Def, Project.Euler2DDynamicFlux.func24Def, Project.Euler2DDynamicFlux.func25Def, Project.Euler2DDynamicFlux.func26Def, Project.Euler2DDynamicFlux.func27Def, Project.Euler2DDynamicFlux.func28Def, Project.Euler2DDynamicFlux.func29Def]
+  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq, function16_eq, function17_eq, function18_eq, function19_eq, function20_eq, function21_eq, function22_eq, function23_eq, function24_eq, function25_eq, function26_eq, function27_eq, function28_eq, function29_eq]
 
 def executionCache : Wasm.Module :=
   Project.Euler2DDynamicFlux.«module»

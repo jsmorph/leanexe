@@ -25,9 +25,10 @@ theorem orient_safe (axis : Bool) (q : State) (h : StateSafe q) :
   · exact h
   · obtain ⟨hb, ha⟩ := h
     refine ⟨⟨hb.densityFinite, hb.transverseFinite, hb.momentumFinite,
-      hb.energyFinite, hb.densityPositive, hb.transverseMagnitude,
-      hb.momentumMagnitude, hb.energyLower⟩, ?_⟩
-    simpa [orient, Project.Euler2DConservative.Guard.Admissible,
+      hb.energyFinite, hb.densityPositive, hb.energyPositive, ?_⟩, ?_⟩
+    · simpa [orient, Project.Euler2DConservative.Guard.internalEnergy,
+        Project.Euler2DConservative.Guard.decodedState, add_comm] using hb.internalPositive
+    · simpa [orient, Project.Euler2DConservative.Guard.Admissible,
       Project.Euler2DConservative.Guard.pressure,
       Project.Euler2DConservative.Guard.internalEnergy,
       Project.Euler2DConservative.Guard.decodedState, add_comm] using ha
@@ -98,7 +99,7 @@ def outputValues (out : Model.CheckedCell) : List Value :=
 noncomputable def Executes {nx ny : Nat} (m : Wasm.Module) (ratio : UInt64)
     (axis : Bool) (grid : Grid nx ny) : Prop :=
   ∀ j i (env : HostEnv Unit) (initial : Store Unit),
-    TerminatesWith env m 27 initial (inputValues ratio (inputs axis grid j i))
+    TerminatesWith env m 35 initial (inputValues ratio (inputs axis grid j i))
       (fun final values => final = initial ∧
         values = outputValues (outputs ratio axis grid j i) ∧
         CellSafe (outputs ratio axis grid j i))

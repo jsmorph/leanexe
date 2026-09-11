@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler2_d_cell_step",
+  "sha256": "5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942",
+  "byteLength": 6171,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Euler2DCellStep.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Euler2DCellStep.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Euler2DCellStep.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Euler2DCellStep.Program",
+  "cachedProgramDefinition": "Project.Euler2DCellStep.module",
+  "specModule": "Project.Euler2DCellStep.Spec",
+  "proofTarget": "Project.Euler2DCellStep.ArtifactTranslation",
+  "identityTheorem": "Project.Euler2DCellStep.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Euler2DCellStep.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Euler2DCellStep.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Euler2DCellStep.Spec.cellCheckedBits_exact",
+    "Project.Euler2DCellStep.Spec.cellCheckedBits_wat_safe"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

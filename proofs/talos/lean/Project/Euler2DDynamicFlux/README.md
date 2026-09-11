@@ -16,18 +16,19 @@ scalar/component layout; the old public theorem signature is preserved.
 These are sufficient-domain, rounded-operation safety claims, not a proof of
 PDE convergence or unconditional acceptance.
 
-The [frozen package](../../../../artifacts/euler2_d_dynamic_flux/394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734/manifest.json)
-contains 3,514 bytes, SHA-256
-394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734.
-Function17 is the public flux; function5 is the 2D side and function9 is the
-shared scalar component. Public execution/safety audits use only propext,
+The [frozen package](../../../../artifacts/euler2_d_dynamic_flux/a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995/manifest.json)
+contains 4,495 bytes, SHA-256
+a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995.
+Function 25 is the public flux.  Function 13 is the 2D side, and function 17
+is the shared scalar component.  [Helper Execution](Helpers.lean) transports
+the component proof through the function-index change.  Public execution/safety audits use only propext,
 Classical.choice and Quot.sound. Exact-artifact cache witnesses follow the
 existing independent artifact policy.
 
-The focused [Wasmtime regression](../../../../../test/euler_2d_dynamic_flux.js)
-checks all six raw results for 71 cases: discontinuities in either order,
+The focused [Wasmtime test](../../../../../test/euler_2d_dynamic_flux.js)
+checks all six raw results for 75 cases: discontinuities in either order,
 nonzero transverse transport, signed zero, adjacent guard words, underflow,
-overflow and nonfinite inputs in every slot. It checks emitted f64 opcode
-counts as well. Runtime comparisons supplement the theorems. The four-component
-cell update and complete 2D visualization remain in the
-[active plan](../../../../../plans/euler-rusanov.md).
+overflow, the four Riemann quadrant states, and nonfinite inputs in every
+slot.  It checks emitted f64 opcode counts as well.  Runtime comparisons
+supplement the theorems.  The [Euler plan](../../../../../plans/euler-rusanov.md)
+records the visualization work.
