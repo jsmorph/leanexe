@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "artifacts": [
+    {
+      "case": "euler2_d_conservative",
+      "sha256": "e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9",
+      "bytes": 2212,
+      "export": "sideCheckedBits",
+      "index": 5
+    },
+    {
+      "case": "euler2_d_dynamic_flux",
+      "sha256": "394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734",
+      "bytes": 3514,
+      "export": "fluxCheckedBits",
+      "index": 17
+    },
+    {
+      "case": "euler2_d_cell_step",
+      "sha256": "b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0",
+      "bytes": 5190,
+      "export": "cellCheckedBits",
+      "index": 27
+    }
+  ],
+  "sources": {
+    "euler-2d-data.mjs": "e1299700aa8f4f16a683157409738bbd9321297b1606cba8247bd6e8aea50749",
+    "euler-2d-runtime.mjs": "d12669bdc5fcd3454ebc14ba2cee7fbc8b685a9daeac6d44ba9ad3fc2db8b8a4",
+    "euler-2d-oracle.mjs": "c54674aca3715a8d6d79ab8c7ad619b45674d15995d33bc7fb81a3c139da089f",
+    "euler-2d-figure.mjs": "5b343ea3219c6e4495a5d7f94f3cec8f1fc47a58b6222086dd3964eebc750948",
+    "euler-2d-wasmtime-host.c": "9df4343aa34eaf13d6b74c29a865b1b3012962df945200880b11ad43a28e17dd",
+    "euler-2d-wasmtime-host.mjs": "f699aa357250a7d7683ac7a195585ba99d9543d7982090fef03041bd083a6319"
+  },
+  "node": "24.13.0",
+  "runtime": "Wasmtime 44.0.0 C API",
+  "method": {
+    "scheme": "First-order finite volume, Rusanov, x then y splitting",
+    "domain": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "boundary": "Transmissive (clamped neighbors)",
+    "gamma": 1.4,
+    "targetCfl": 0.4,
+    "acceptedRoundedCflCeiling": 0.5,
+    "grid": [
+      192,
+      192
+    ],
+    "snapshots": 21,
+    "frameSchedule": "Initial frame, then first accepted state at or beyond each of 20 uniform target times"
+  },
+  "comparison": "Every raw saved density/pressure word, every final conservative word, every timestep/controller/diagnostic record and boundary-corrected integral match an independent binary64 JavaScript oracle exactly.",
+  "display": {
+    "densityPressure": "Full-run frame extrema rounded outward to two decimals; fixed across all frames",
+    "schlieren": "exp(-1.5 * hypot(centered density differences / (2*dx), centered density differences / (2*dy))); clamped boundary differences",
+    "orientation": "Physical y increases upward",
+    "interpolation": "Cell averages, no smoothing"
+  },
+  "initialConditions": {
+    "four-quadrants": "Zero velocity, rho=p: lower-left .25, upper-left .4, lower-right .7, upper-right 1. E=2.5*rho.",
+    "circular-blast": "rho=1, zero velocity; E=5 inside radius1/8 about (.5,.5), E=2.5 outside. Integer cell-center geometry; pressure2 inside,1 outside."
+  },
+  "runs": [
+    {
+      "scenario": "four-quadrants",
+      "n": 192,
+      "steps": 165,
+      "retries": 0,
+      "t": 0.2,
+      "maxCfl": 0.4000000000000001,
+      "minDensity": 0.25,
+      "minPressure": 0.25,
+      "maxVelocityGuard": 0.4423302532423212,
+      "minEnergyRatio": 2.1532791351484315,
+      "balanceResidual": [
+        1.1113270690498236e-16,
+        -1.942890293094024e-16,
+        -6.938893903907228e-17,
+        4.13952810616836e-19
+      ],
+      "savedFrames": 21,
+      "finalStateWords": 147456,
+      "calls": [
+        12201984,
+        126720,
+        12165120
+      ],
+      "initialTotals": [
+        0.5874999999999999,
+        0,
+        0,
+        1.46875
+      ],
+      "finalTotals": [
+        0.5875,
+        -0.10494449180816297,
+        -0.04486651504015146,
+        1.46875
+      ],
+      "boundaryIntegral": [
+        1.1040444246670642e-19,
+        0.10494449180816277,
+        0.04486651504015139,
+        4.13952810616836e-19
+      ]
+    },
+    {
+      "scenario": "circular-blast",
+      "n": 192,
+      "steps": 130,
+      "retries": 0,
+      "t": 0.15,
+      "maxCfl": 0.40012883135090027,
+      "minDensity": 0.45436324244238646,
+      "minPressure": 0.6656093194268456,
+      "maxVelocityGuard": 0.3822606026027337,
+      "minEnergyRatio": 2.5,
+      "balanceResidual": [
+        -9.926261535484106e-17,
+        4.95808130693283e-21,
+        6.501809293457613e-21,
+        -2.363968512792841e-16
+      ],
+      "savedFrames": 21,
+      "finalStateWords": 147456,
+      "calls": [
+        9621504,
+        99840,
+        9584640
+      ],
+      "initialTotals": [
+        1,
+        0,
+        0,
+        2.622341579861111
+      ],
+      "finalTotals": [
+        0.9999999999999993,
+        4.95808130693283e-21,
+        6.501809293457613e-21,
+        2.622341579861109
+      ],
+      "boundaryIntegral": [
+        5.668711994202529e-16,
+        -4.605600319253142e-47,
+        1.594739939145772e-46,
+        1.984049197971029e-15
+      ]
+    }
+  ],
+  "canonicalContentSha256": {
+    "quadrants.svg": "68460fe343719dd4d5b82b2a2494b547db0dc1b5882dff9ceceadfe06efd3c18",
+    "quadrants.html": "d97b1f3f70710e2615e230fec5cab830fcc12a7f811c3ed9291b90e808f68841",
+    "pulse.svg": "53521edc39d5e1d2eccf225c354dfeda86b8edf6eb2f696a0e4aa3c747913d5d",
+    "pulse.html": "23446ea78fd7d79adf049ca65b9f5d5ea4020c628ab988d01206c962b98d3674",
+    "raw.json.gz": "6a38d2808944f57c36deeea6885304d999a589ab9e53c73db7cde49553d0ac3a"
+  },
+  "scope": "All three numerical WASM modules have exact-byte execution and accepted-safety theorems. Lean proves axis exchange, clamped directional sweeps and successful finite-run call traces. Native C/JS grid/time orchestration, independent numerical comparison, diagnostics and rendering are outside the formal proof. No PDE convergence or exact entropy-solution claim."
+}

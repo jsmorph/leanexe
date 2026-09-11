@@ -434,8 +434,8 @@ The ordered extension is recorded in [the Euler plan](plans/euler-rusanov.md).
 The generic guarded recurrence, intermediate-state safety and actual WASM
 call trace are proved, including stationary100-cell Sod specialization and
 exact-byte transfer. The maintained100-cell Sod runtime/data and100–800-cell
-refinement validation are published in data/euler-sod-v2. The2D extension
-remains in the Euler plan.
+refinement validation are published in data/euler-sod-v2. The completed 2D
+extension is published in [data/euler-2d-v1](data/euler-2d-v1/README.md).
 
 The2D conservative-state model and its accepted-state/16-intermediate safety
 proofs now pass, with both momentum components in the physical internal energy.
@@ -443,5 +443,9 @@ The directional flux now has all-input actual-WASM execution and accepted
 safety proofs. The four-component cell update now has total actual-WASM
 execution and accepted updated-state/CFL safety. The x/y sweep and accepted
 finite-run call trace are proved and transferred to the exact cell bytes,
-with a certificate for the four initial quadrants. Native runtime/data and
-the2D visualization remain.
+with certificates for both initial scenarios. A maintained Wasmtime44 host
+completes 192² quadrant/pulse runs, independently checking every saved raw
+word and controller record. All eight canonical data/visualization files
+reproduce byte for byte. Standalone 21-frame animations and inspected SVG/PNG
+posters complete the requested 2D visualization; native orchestration and
+rendering remain outside formal proof.
