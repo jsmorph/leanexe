@@ -10374,3 +10374,111 @@ metadata.  The plot script joins the explicit publication path list.
 The repeated saved-data check passed with the revised plot-source hash.
 The fresh PNG/PDF byte comparison and SVG whitespace-only comparison pass.
 The final Euler publication now contains fourteen explicit paths.
+
+Published the completed Riemann experiment as
+4f0ec1f161b81a868aac241b248651ca7423bac1, parent
+7c7277d1e1ab8bc4ee5b4a014a8b975abb8b8054, tree
+6ccabe846d1aacf60950e0bdb88334d8d5c1a8e6.  Non-forced SSH push and
+fetch succeeded.  The fetched commit, parent, complete tree, and tracked
+worktree content agree.  The agent's report directory remains untracked
+and preserved.  Marked the Riemann goal complete after that verification.
+
+The report agent confirmed that marXiv is reachable at port 8405 and read
+the served standards and style manual.  Existing LaTeX and PDF inspection
+tools are installed.  Its read-only source comparison found the type
+documents and inspected compiler/specification files unchanged between
+the documentation and solver checkpoints.  Added the report's drafting,
+submission, and publication tasks to plan.md.
+
+The user asked what an additional 800 × 800 run would require.  Recorded
+the scaling estimate: 17.3611 times the cells and about 4.1667 times the
+timesteps, giving about 72.338 times the computation.  The current mesh
+ceiling is 384, and the data generator fixes the 192-grid metadata and
+output path.  A larger independent dataset also needs streamed records.
+At 800 × 800, 21 density/pressure frames and the final four-component
+state require at least 559,360,000 raw JSON bytes for the quoted words.
+The installed Node MAX_STRING_LENGTH is 536,870,888.  The current reader
+and writer materialize whole records as strings.  This is a concrete
+serialization limit in addition to memory and runtime estimates.  The
+800-grid calculation remains a prospective task pending an instruction.
+
+Root reviewed the report's v1 source.  The public-domain inclusion and
+owner-slot width propositions follow from the stated definitions.  The
+report distinguishes those mathematical arguments, implementation-graph
+definitions, existing artifact theorems, and open refinement obligations.
+Requested a correction to a missing LaTeX command escape and explicit
+set notation in the binary64 result relation.  The first PDF build failed
+because microtype font expansion encountered a non-scalable font.
+The agent preserved the failed source and log and selected installed
+Latin Modern fonts for a fresh v2 build.
+
+The user identified ssh dev as a larger machine available for the
+prospective 800 × 800 run and allowed use of its capacity.  That statement
+supersedes the historical local-only assumption for this proposed run.
+The user requested discussion.  The proposed next steps are hardware and
+tool inspection, a checked 192-grid timing there, streamed records, and
+a timing-based choice between serial execution and parallel sweeps.
+Current simulation and replay each use one CPU.  Wasmtime's C API thread
+safety documentation supports separate stores for parallel function
+calls: https://docs.wasmtime.dev/c-api/wasmtime_8h.html.
+
+The report's v3 PDF exposed an incomplete sentence before its corrected
+binary64 equation.  Root requested that correction.  The agent's v4
+source defines the permitted-result set and supplies the complete
+introduction.  Its 13-page PDF has SHA-256
+fb02518985ea0ad46ec3ed501f2b869bf188cbd3af117df567ccd076e62d11ef.
+The agent reports a warning-free final build and metadata extracted from
+the PDF.  Submission d75fc8acf1bc reached marXiv and is under review at
+http://127.0.0.1:8405/status/d75fc8acf1bc.  Public static export is off.
+
+The first submission connection failed inside the sandbox.  The retry
+used an approval tied to a shell wrapper and the full submission command.
+That scope was unsuitable for reuse.  The user corrected the approval
+practice.  Root instructed the agent to use literal curl as the first
+command token and the existing reusable tool approval for later archive
+requests.  The agent confirmed that change.
+
+The user requested a direct recommendation about dev.  Recommended using
+it for the additional 800 × 800 calculation, first timing the existing
+192-grid solver there and retaining serial execution unless that timing
+justifies parallel host work.  The output still needs streaming to avoid
+Node's single-string limit.  The completed 192-grid dataset remains a
+separate result.  No remote inspection, 800-grid implementation, or run
+has started.
+
+marXiv accepted submission d75fc8acf1bc as 2609.00005.  Its four remarks
+requested precise evidence-carrier names, the named release check, the
+position of the fuel parameter, and a direct statement of the missing
+ownership-mask bound.  Root reviewed the v4-to-v5 source diff and the
+agent's fixed-checkpoint source excerpts.  The replacement addresses those
+remarks and preserves the report's mathematical and source-audit scope.
+Submission aca93998161c was accepted as 2609.00005v2.  The second review
+says "Accepted." and leaves two table-punctuation remarks.  The accepted
+replacement PDF is v5/pass-02/main.pdf, with SHA-256
+57a2bcaf253c242d82de53ec01b42c6d490bc41bd8eb5243ebefcc3b0f7fe3ef.
+
+The report describes documentation checkpoint
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d.  Its two layout propositions
+have mathematical arguments, and it cites existing checked theorem
+boundaries.  General source refinement, independent recursor rules, and
+mechanization remain open.  The export-name and child-mask findings
+remain source inspection without a compiled reproducer.  The agent ran
+no Lean, compiler, or numerical process and installed no dependency.
+
+Root updated paper/README.md, plan.md, and devnotes.md with the accepted
+report and its scope.  The publication checkpoint will contain those
+three files, this journal, and the agent's explicit reviewed report-file
+list.  Intermediate build products and polling captures remain preserved
+locally.  Submitted PDFs, source revisions, final reviews, and relevant
+failure evidence belong in the checkpoint.  Documentation and whitespace
+checks will precede staging and non-forced GitHub publication.
+
+The agent froze the report directory and supplied its 39-file publication
+inventory.  Root verified all selected file sizes and SHA-256 identities.
+Changed only the unsubmitted README rebuild example to a repository-local
+tmp path required by the documentation gate, then updated that README's
+manifest entry.  All 39 inventory and digest checks pass.  The documentation
+gate passes for 103 maintained Markdown files.  The tracked diff whitespace
+check passes.  Raw logs, HTTP headers, accepted-status HTML, policy snapshots,
+extracted PDF text, and reviews retain their original whitespace and line
+endings.  The staged source check will exclude those immutable captures.

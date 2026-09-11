@@ -1,0 +1,20 @@
+{
+  "paper_id": "2609.00005",
+  "version": 2,
+  "submission_id": "aca93998161c",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00005",
+  "version_url": "http://127.0.0.1:8405/abs/2609.00005v2",
+  "pdf_url": "http://127.0.0.1:8405/pdf/2609.00005v2",
+  "pdf_sha256": "57a2bcaf253c242d82de53ec01b42c6d490bc41bd8eb5243ebefcc3b0f7fe3ef",
+  "archive_pdf_equals_submitted_pdf": true,
+  "archive_title_matches_pdf": true,
+  "archive_authors_match_pdf": true,
+  "archive_abstract_matches_pdf": true,
+  "public_static_export": false,
+  "archive_history_contains_versions": [
+    1,
+    2
+  ],
+  "review_decision": "accept",
+  "review_remaining_remarks": 2
+}

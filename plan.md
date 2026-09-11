@@ -467,3 +467,20 @@ The [Riemann article and dataset](data/euler-riemann-v1/README.md) contain
 the final PNG/SVG/PDF figures, 21 raw snapshots, complete final cell values,
 and the 808-step history.  The independent replay and canonical-file check
 pass.  The run retained positive density and pressure with zero retries.
+
+## 10. Publish the language specification report
+
+The 2026-09-11 request assigns an agent to draft and submit a marXiv report
+on the LeanExe type theory and formal specification.
+
+- [x] Complete and review the mathematical type-theory and specification documents.
+- [x] Draft the report with source evidence and explicit proof obligations.
+- [x] Build and inspect the PDF, submit it, and follow editorial review.
+- [x] Record the accepted report and publish its source and review evidence.
+
+The [type theory and specification report](paper/leanexe-type-theory-specification/README.md)
+is accepted as [marXiv:2609.00005v2](http://127.0.0.1:8405/abs/2609.00005).
+Its 13-page PDF, source revisions, metadata, reviews, and source evidence
+are preserved.  The report distinguishes its mathematical layout arguments,
+implementation-indexed definitions, existing checked theorems, and open
+mechanization and refinement obligations.

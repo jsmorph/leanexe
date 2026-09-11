@@ -1,0 +1,9 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 12, Grammar and mechanics, Table 2: “Size returns Nat64; emptiness returns Bool; indexed read returns τ or Option τ; default read also takes a fallback τ.” Replace the three semicolons joining independent clauses with periods.
+- Requirement 12, Grammar and mechanics, Table 2: “Map body has type υ and returns Array υ; modify body has type τ.” Replace the semicolon joining independent clauses with a period.
+
