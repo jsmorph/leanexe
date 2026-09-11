@@ -23,7 +23,7 @@ export function build(){
   assert.ok(fs.existsSync(receipt),'preserve incomplete build');const saved=JSON.parse(fs.readFileSync(receipt));assert.deepEqual(saved.input,input);
   for(const [name,hash]of Object.entries(saved.files))assert.equal(sha(fs.readFileSync(path.join(directory,name))),hash);
  }else{
-  fs.mkdirSync(directory);
+  fs.mkdirSync(directory,{recursive:true});
   execFileSync('cc',[...flags,'-I'+path.join(api,'include'),path.join(root,'tools',sources[0]),'-L'+path.join(api,'lib'),'-lwasmtime','-Wl,-rpath,'+path.join(api,'lib'),'-o',host],{timeout:120000,stdio:'inherit'});
   execFileSync(host,['prepare',directory,...artifacts,path.join(root,'tools',sources[1])],{timeout:120000,stdio:'inherit'});
   const files=Object.fromEntries(fs.readdirSync(directory).map(n=>[n,sha(fs.readFileSync(path.join(directory,n)))]));
@@ -75,7 +75,7 @@ function boundary(x,y,n){
 }
 export function runBlocks(n,directory,{maxSteps=10000}={}){
  assert.ok(Number.isInteger(n)&&n>=24&&n<=800&&n%2===0);assert.ok(!fs.existsSync(directory),'preserve existing run');
- const compiled=build(),started=performance.now();fs.mkdirSync(directory);const raw=path.join(directory,'initial-input'),first=path.join(directory,'initial');fs.mkdirSync(raw);fs.mkdirSync(first);initialize(raw,n);
+ const compiled=build(),started=performance.now();fs.mkdirSync(directory,{recursive:true});const raw=path.join(directory,'initial-input'),first=path.join(directory,'initial');fs.mkdirSync(raw);fs.mkdirSync(first);initialize(raw,n);
  execFileSync('bash',[path.join(root,'tools/euler-block-wave.sh'),compiled.host,compiled.directory,'init',String(n),raw,first,word(0)],{timeout:120000,stdio:'inherit'});
  const initialized=metadata(first);assert.ok(initialized.every((m,i)=>m.status===0&&m.calls===rows(n,i)*n));
  const record=path.join(directory,'run.ndjson'),fd=fs.openSync(record,'wx'),recordHash=crypto.createHash('sha256');

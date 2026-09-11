@@ -10842,3 +10842,15 @@ plans/euler-rusanov.md, plans/talosfp-euler-operations.md, devnotes.md,
 and this journal.  Unrelated report intermediates remain unstaged.
 The next gates are a published fresh dev source snapshot, a 192-grid
 process benchmark with exact serial comparison, and the 800-grid run.
+
+Published the 12-file process implementation as
+9a0d08df96e35ae77d4511e099a792fbd258e68a, parent
+14329c9f6f7b9d9eef910fbc058017ba21afefee, tree
+ea4f0f15051a5b81b4c764b738e00aa60b8a8772.  Non-forced push and fetch
+passed, with matching head, parent, tree, and tracked worktree.
+The fresh transfer list contains 6,783 tracked paths.  Before copying,
+source review found that the new driver assumed build/tools and tmp
+already existed.  Changed its two fresh-directory creations to create
+missing parents.  Existing output and incomplete-cache rejection remain
+in force.  Node syntax and whitespace checks pass.  The dev benchmark
+will test this fresh-snapshot path.
