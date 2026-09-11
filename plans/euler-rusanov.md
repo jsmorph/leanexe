@@ -797,5 +797,6 @@ and waits for each sweep's workers.  Completed block files supply the
 neighbor rows.  The 26-grid test matches the full serial record exactly,
 including unequal block sizes, all diagnostics, and final words.  The
 new batch orchestration has executable tests.  The three proved kernel
-artifacts are unchanged.  Dev benchmarking and the 800-grid result remain
-pending.
+artifacts are unchanged.  The dev 192-grid benchmark passes full record
+comparison in 16.896531634 seconds.  The 800-grid process run started at
+18:42:09 UTC.  Its final result remains pending.

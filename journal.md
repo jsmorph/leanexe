@@ -10877,3 +10877,60 @@ executed job.  Inspection of leanrun-dev-submit shows that caller-only
 environment assignments would not reach the systemd service.  The new
 source will use a fresh blocks-script snapshot.  Earlier snapshots and
 the unused inline-submission evidence remain preserved.
+
+Published the dev script as f4cb548765d3d297058176f082aac8892a44b17a,
+parent 991c03eb42d5b75cd8a4043e36980f7dceb81fb3, tree
+e1e549e76312a226a8622e68f6964bb61a57aa4b.  Bash syntax, 104-file
+documentation, and whitespace checks passed.  Non-forced push, fetch,
+head/parent/tree/worktree equality passed.  The fresh script snapshot
+contains 6,784 tracked files totaling 98,346,086 bytes.  Transfer and
+empty checksum comparison passed at
+/mnt/vq/leanexe-riemann-20260911-blocks-script.  The file-list SHA-256 is
+19363c4aca9438f58553eb59febfebb3e96cd099a8ad082d913614072cb97099.
+
+The first tools/euler-riemann-dev.sh start benchmark invocation returned
+SSH status 255 without a diagnostic and created no job.  Retried with
+the requested reusable script prefix.  Approval was saved for
+tools/euler-riemann-dev.sh, and submission returned zero.  Subsequent
+status, log, result, and full-run submission calls used that same script.
+The benchmark started at 18:41:16 UTC and returned final status zero.
+All 808 steps, frames, final words, diagnostics, and integrals match
+the completed serial benchmark record byte for byte.  There were zero
+retries.  The process run took 16.896531634 seconds excluding compilation,
+against 131.18569411 seconds including compilation for the serial host.
+The raw record SHA-256 is
+4c596d698c172aaddfa06b39d3e3cb19f392181318efdeda5af66b86dbb6a22a.
+The x86-64 host executable SHA-256 is
+d4d16ac507e73b58fc828c08dce6486d5c849bd4ac6d3edd86865e2cc86721c8.
+Retrieved the completed job directory and execution.json to
+tmp/riemann-dev-blocks-benchmark-job-20260911.  Each transfer and empty
+checksum comparison passed.
+
+Before the 800-grid submission, the parent had zero active tasks and
+finite 48G high, 52G maximum, and 2400% CPU limits.  Disk availability
+was 178,918,318,080 bytes after retaining the benchmark's full block
+files.  tools/euler-riemann-dev.sh start run returned zero and created
+leanexe-riemann-blocks-800-20260911-1 at 18:42:09 UTC.  It uses the
+unchanged f4cb548 snapshot and runner release, 16G high, 20G maximum,
+zero swap, 2400% CPU, 1,024 tasks, and 21,600 seconds.  The persistent
+command is bash tools/euler-riemann-dev.sh --remote execute run.  That
+command calculates the 800-grid record, packages it with independent
+JavaScript replay, and checks the resulting compressed dataset.
+
+At step 120, CPUUsageNSec was 302453071000, MemoryCurrent was
+6642348032 bytes, and TasksCurrent was 34.  At step 400, time was
+0.09490981659553173 with zero retries, CPUUsageNSec was 947953771000,
+MemoryCurrent was 17177202688 bytes, and TasksCurrent was 34.  These
+are partial observations.  Final status remains pending.  Explained
+the execution boundary in response to the user's question: the 24
+worker loops and Euler kernels execute in WASM, C handles files, Bash
+launches processes, Node initializes and coordinates the grid and
+records, and independent verification uses JavaScript.
+
+At 18:45:59 UTC, the run had reached step 690, time
+0.1639125755152466, with zero retries.  Estimated 15–20 minutes for
+the remaining WASM calculation from that progress rate.  Scaling the
+44.491457276-second 192-grid replay by grid cubed estimates about
+54 minutes for each verification pass.  Reported 2–2.25 hours remaining
+including transfer and figures.  This estimate awaits full-grid timing.
+The five-file checkpoint records benchmark success and the active run.

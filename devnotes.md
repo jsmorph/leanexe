@@ -9840,3 +9840,12 @@ The user requested one reusable script for dev commands.  Added
 tools/euler-riemann-dev.sh for submission, status, logs, and results.
 It contains the benchmark, full run, packaging, and verification commands
 and sets the Wasmtime environment inside the persistent job.
+
+The script is published as f4cb548 and has a saved reusable command
+approval.  Its fresh dev snapshot passed checksum comparison.  The
+192-grid job returned final status zero: 808 steps, zero retries, and
+complete byte-for-byte agreement with the serial record.  Runtime was
+16.896531634 seconds excluding compilation.  The 800-grid job started
+at 18:42:09 UTC and reached step 400 without retries.  The script will
+run the independent JavaScript replay and packaged-data check after the
+WASM calculation.  Final data and figures remain pending.
