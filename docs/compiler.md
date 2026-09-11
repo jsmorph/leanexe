@@ -8,6 +8,8 @@ LeanExe loads an elaborated declaration from a built Lean module, specializes th
 
 Extraction specializes static inputs before deciding whether a helper belongs to the executable subset.  Static inputs include concrete type arguments, erased proofs, direct lambdas used by recognized helpers, and resolved type-class evidence.  A bounded normalizer reduces applications and method projections until the remaining term is first-order, or reports the expression that failed to specialize.
 
+Recursive-expression discovery scans each supported first-order helper at its declaration boundary.  It expands a call during discovery only when that call requires static specialization, so repeated calls to an ordinary helper do not repeat its body traversal.
+
 | Module | Responsibility |
 |--------|----------------|
 | `LeanExe/Extract/Env.lean` | Module import and declaration lookup. |
@@ -21,6 +23,8 @@ Extraction specializes static inputs before deciding whether a helper belongs to
 | `LeanExe/Extract/Core.lean` | Dependency collection, two-pass ownership summaries, expression lowering, and module construction. |
 
 The compiler runs extraction twice.  The first pass computes function summaries, including fresh result-owner offsets, and the second pass lowers each function with the complete summaries available.  This structure allows the second pass to distinguish a fresh helper result from a borrowed heap reference and to insert releases only at supported ownership boundaries.
+
+An internal array result has separate owner and data-pointer slots.  When a helper call supplies an operand to an array primitive, expression extraction binds both returned slots before selecting the data pointer.  Nullary and applied calls use this same lowering.
 
 ## IR and ownership
 

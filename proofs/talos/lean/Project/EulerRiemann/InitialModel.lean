@@ -22,13 +22,13 @@ def topLeft : State :=
 def topRight : State :=
   conservative 0x3FF8000000000000 0x3FF8000000000000 0 0
 
-def fifths : Nat → UInt64
-  | 0 => 0
-  | 1 => 0x3FC999999999999A
-  | 2 => 0x3FD999999999999A
-  | 3 => 0x3FE3333333333333
-  | 4 => 0x3FE999999999999A
-  | _ => 0x3FF0000000000000
+def fifths (n : Nat) : UInt64 :=
+  if n = 0 then 0
+  else if n = 1 then 0x3FC999999999999A
+  else if n = 2 then 0x3FD999999999999A
+  else if n = 3 then 0x3FE3333333333333
+  else if n = 4 then 0x3FE999999999999A
+  else 0x3FF0000000000000
 
 def weightedWord (x y bl br tl tr : UInt64) : UInt64 :=
   let right := sub 0x3FF0000000000000 x

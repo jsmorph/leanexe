@@ -52,7 +52,30 @@ function main() {
     assert.equal(Number(call("lowerFractionNumerator", "i64", [n, coordinate])), expected);
     checks++;
   }
-  console.log(`Passed ${checks} grid geometry and index tests; retained ${output}`);
+  const proofRoot = path.resolve("proofs/talos/lean");
+  const proofEnv = args => run(["lake", "-d", proofRoot, "env", ...args]);
+  const traversalModule = "Project.EulerRiemann.TraversalTest";
+  run(["lake", "-d", proofRoot, "build", traversalModule]);
+  const rows = proofEnv(["lean", "--run", path.resolve("test/euler_riemann_traversal.lean")])
+    .trim().split(/\r?\n/).map(line => line.split(" ").map(BigInt));
+  const traversalWasm = path.resolve(output, "traversal.wasm");
+  proofEnv([path.resolve(compiler), "compile", "--module", traversalModule,
+    "--entry", traversalModule + ".sample", "--out", traversalWasm]);
+  for (const [n, advance, ...expected] of rows) {
+    const text = run(["tools/leanrun", "--timeout", "30s", host.ensureHost(), "call",
+      traversalWasm, "sample", "array-u64", host.i64(n), host.i64(advance)]).trim();
+    assert.match(text, /^\[(?:\d+(?:,\s*\d+)*)?\]$/);
+    const actual = text.slice(1, -1).split(",").filter(Boolean).map(BigInt);
+    assert.deepEqual(actual, expected, `grid ${n}, advance ${advance}`);
+    assert.equal(actual.length, 2 + 7 * Number(n * n));
+    assert.equal(actual[0], 0n);
+    for (let i = 0; i < Number(n * n); i++) {
+      assert.equal(actual[2 + 7 * i], BigInt(i));
+      assert.equal(actual[2 + 7 * i + 6], 0n);
+    }
+    checks++;
+  }
+  console.log(`Passed ${checks} grid geometry, initialization, and split-step tests; retained ${output}`);
 }
 
 try { main(); } catch (error) { console.error(error.stack); process.exitCode = 1; }

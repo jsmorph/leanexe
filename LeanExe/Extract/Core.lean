@@ -3600,9 +3600,7 @@ mutual
             match constNatValue? ctx.env name with
             | some value => .ok (← boundedNatExpr value, nextLocal)
             | none =>
-                match functionIndex? ctx name with
-                | some index => .ok (.call index [], nextLocal)
-                | none => .error s!"unsupported constant in expression: {name}"
+                extractPrimitiveApplicationFrom ctx locals nextLocal name []
     | _ =>
         match scalarLiteralExpr? expr with
         | some result => .ok (← result, nextLocal)
@@ -4782,7 +4780,16 @@ mutual
                   | none => .error s!"declaration disappeared during extraction: {primitive}"
                 strictCallMaterializationCheck ctx primitive sig.params args
                 let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
+                let slotCount := internalSlots sig.result
+                if slotCount == 1 then
+                  .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
+                else
+                  let slotStart := argsResult.nextLocal
+                  let slots := (List.range slotCount).map (fun offset => slotStart + offset)
+                  let value := valueFromInternalSlots sig.result fun offset => .local (slotStart + offset)
+                  .ok (wrapExprLets argsResult.lets
+                    (.letCall slots index argsResult.args (← scalarValue value)),
+                    slotStart + slotCount)
             | none =>
                 if primitive == ``BEq.beq && primitiveStringReceiver? args then
                   match primitiveArgPair? args with
@@ -7095,6 +7102,7 @@ def inlineSpecializedValueForSynthetics?
     (args : List Expr) :
     Option (Signature × Expr) := do
   if compilerPrimitiveName name || name.getRoot != root ||
+      (supportedFunction? env info).isSome ||
       containsConstant ``Nat.brecOn info || containsConstant name info then
     none
   else

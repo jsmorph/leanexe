@@ -11208,3 +11208,192 @@ devnotes.md, and this journal.  Its focused tests and WAT gate passed.
 The aggregate proof gate is still running, and the complete execution
 gate has the release-record failure described above.  Preserve the five
 unchecked solver modules and all unrelated report intermediates.
+
+### 2026-09-11: solver traversal and time helper proofs
+
+Published the ten-file arithmetic checkpoint as
+c155c3a10d363fbeb7aa5b033b505ba85eef8d5c, parent
+1b4bdb2ca7f229e84b59b0db540638ffa2812ef1, tree
+3d0d73d55174d661b7d8b068ac4676cd3242ae45.  The non-forced push,
+fetch, commit/parent/tree comparison, and tracked index/worktree equality
+checks passed.  Five solver draft modules remained untracked and intact.
+
+The aggregate proof build reached its twenty-minute timeout with runner
+status 124 and driver status 1.  It had completed 3,594 of the 4,056
+discovered jobs, including the old InternalTradeBump target.  A bounded
+process inspection at 19 minutes 27 seconds confirmed one Lean child.
+The timeout reported no theorem error.  Do not rerun the unchanged
+aggregate boundary.  Divide the case builds before its next attempt.
+
+Read the fixed-array map, allocation, and free-list proof interfaces.
+The existing map-add theorem is specialized to a scalar mapper.  The
+solver needs a multi-field map theorem and an allocator-reuse argument.
+The source array stores seven scalar words per cell, including its index,
+pressure, and status.  Its complete memory bound remains unproved.
+
+A three-minute focused Lake invocation checked TraversalSweep and
+TimeBounds.  Traversal and Time compiled, and TraversalInitial passed
+in 1.4 seconds with only the accepted standard axioms.  The finite
+integer-to-binary64 and time-progress checks passed.  The decoded-value
+proof left a numeral/power normalization goal.  The sweep proofs exposed
+an unreduced let, an unparenthesized explicit array-index proof, and an
+ambiguous index argument.  Corrected those proof terms.  Failed-target
+axiom output contained Lean's error placeholders and is not acceptance
+evidence.  The corrected targets remain to be checked.
+
+The corrected three-minute focused build passed TraversalSweep in
+1.5 seconds and TimeBounds in 2.0 seconds, with 3,429 discovered jobs.
+All audited declarations use the accepted standard axioms.  The five
+new modules are checked source/model components.  The aggregate gate,
+complete solver execution theorem, allocation bound, and successful
+final-time completion remain open.
+
+After context recovery, reread AGENTS.md, README.md, the branch operating
+instructions, DEVELOPING.md, and the leanrunner skill.  The first
+combined output truncated the operating instructions, so read that file
+separately.  The installed local toolchain and standard runner remain
+unchanged.  Started a three-minute ownership report for Traversal.step
+through the nested proof workspace.  Added TraversalModel.lean to connect
+array initialization, directional sweeps, and accepted full steps to
+the existing functional-grid model.  This additional module is unchecked.
+An empty journal edit failed its context match before mutation.  The
+corrected append preserves all preceding entries.
+
+The Traversal.step ownership report timed out at three minutes with
+status 124 and no diagnostic.  At 160 seconds, its compiler process had
+159 seconds of CPU time and 3,450,820 KiB RSS.  The smaller updateCell
+report also timed out at one minute.  A retained diagnostic at
+tmp/riemann-extract-diagnostic.lean prints compiler phase boundaries.
+Its first two checks failed on the diagnostic's missing Inhabited
+Signature instance and nonexistent Option.toExcept helper.  Explicit
+option matching corrected those diagnostic errors.  The two-minute
+trace loaded the environment, collected 61 reachable declarations, and
+spent its time in recursive-expression discovery for successive scalar
+guards, reaching stateGuard before timeout.
+
+The recursive-expression discovery pass specializes and scans ordinary
+first-order callees at every call site, although their bodies are already
+in its separate declaration list.  Changed
+inlineSpecializedValueForSynthetics? to leave those supported function
+bodies to that list.  Static specializations still use the existing
+inline discovery.  The compiler change is pending build and tests.
+
+The first TraversalModel build failed on dependent getElem rewriting,
+division/modulo identities, a wrong Boolean theorem name, ambiguous
+array-index arguments, and an unnecessary tactic after contradiction.
+sweep_asGrid already passed.  Corrected those proof terms using the
+pinned Lean array and natural-number lemmas.  The second focused build
+is checking the revised module.
+
+TraversalModel passed in 2.3 seconds.  Its initial-array, accepted-sweep,
+and split-step correspondence theorems have standard-only axiom audits.
+The compiler rebuild passed all 58 jobs after the recursive-discovery
+change.  The formerly timing-out step ownership report then returned a
+source diagnostic: two model function aliases lacked explicit binders.
+Added binders to the component and update aliases, retaining their
+definitional equations.  The full imported cell/flux proof chain and
+TraversalModel passed after that edit.  A second source diagnostic
+identified the abbreviated result type of the component wrapper.  Letting
+Lean infer the wrappers' result types exposes their original concrete
+structures to the compiler.
+
+The extended grid test retains the existing 48 geometry/index cases and
+adds formal-source comparisons at sizes 2, 3, and 5, both initially and
+after one split step at ratio 0.1.  It compares index, conserved fields,
+pressure, status, and scan results as full UInt64 words.  The first
+invocation passed the existing cases and reached a source rejection for
+the fifths table's generated numeric-pattern matcher: Eq.symm was outside
+the accepted runtime fragment.  Its outputs remain at
+tmp/euler-riemann-grid-VY3CpL.  Changed the same six-way table to explicit
+integer tests, preserving every stored value.  The initial-state and
+traversal proofs then passed again.
+
+The step ownership report now passes with 65 functions.  It recognizes
+sweep as returning a fresh array, but reports no intermediate-array
+release in step.  Added the documented Runtime.release call after the
+second sweep's last read of the intermediate grid.  Source correspondence
+proofs still pass.  The compiler ownership judgment and execution of that
+release remain under test.
+
+InitialThermoRow passed in 6.5 seconds: all six initial averages in its
+first row pass both directional thermodynamic/flux guards.  This kernel
+decision proof uses propext and Quot.sound.  Drafted the remaining finite
+table theorem and its initial-grid acceptance consequences.  The first
+scan proof failed because UInt64's builtin ordering does not supply the
+generic Mathlib order interface used by max_le_iff, and because the
+array-membership lemma was misnamed.  The retained order diagnostic
+confirmed instMaxUInt64 and its maxOfLe definition.  Added a direct
+word-order lemma and used the pinned UInt64 and array lemmas.  The scan
+status equivalence, least-upper-bound theorem, and per-cell speed bound
+now pass with standard-only axiom audits.  The latest focused build passed
+all 3,433 discovered jobs, including source/model correspondence after
+the release expression.  No production calculation has run.
+
+The next small-grid invocation rejected the named Array.foldl callback.
+Its evidence remains at tmp/euler-riemann-grid-7txxEp.  Used the documented
+explicit callback lambda and rechecked the scan proofs.  InitialThermo
+then passed its remaining finite thermodynamic guard table in 49 seconds.
+InitialThermoRow and InitialThermo prove both directional guards for all
+36 conservative averages.  InitialThermo and the initial-grid acceptance
+consequences passed in a 3,436-job focused build with standard-only axiom
+audits.
+
+The following compiler rejection, retained at tmp/euler-riemann-grid-9hzbXR,
+identified middle as escaping through the fresh second sweep result.
+The release checker had marked every heap-bearing binding as retaining
+referenced roots, including fresh arrays whose elements contain no heap
+references.  Updated markHeapBindingEscapes to use the existing fresh-result
+summary and zero child-reference mask for that case.  Added a successful
+copy/release/reallocation test and rejection tests for an alias and a fresh
+nested array.  The 62-job compiler/example build passed, followed by all
+13 ownership-report cases.  The core-correctness driver now creates a fresh
+unique output directory to preserve earlier generated evidence.
+
+The next small-grid module compiled but Wasmtime rejected function 82
+before execution: values remained on the stack at a block end, offset
+20,865.  Preserved its binary and a read-only wasm-tools rendering at
+tmp/euler-riemann-grid-dPwhuu/traversal.wasm and traversal.wat.  The words
+helper returns an owner and data pointer.  Its use as an array-append
+operand passed through scalar expression extraction, which consumed only
+one result.  Changed that call path to bind all internal result slots
+and select the array pointer.  Nullary calls use the same path.  Added
+applied and nullary array-helper tests.  This compiler correction remains
+under test.  Reread the repository instructions and runner skill after
+context recovery.  The installed local standard runner remains selected.
+
+The corrected compiler passed its 62-job build.  The first draft of the
+new core-test expectations used multiple WASM result slots for an array
+payload.  Review caught that before the test ran.  Replaced those
+expectations with the existing pointer-plus-memory assertions.  All 15
+focused ownership and array-call cases passed.  The 54 grid tests then
+passed, retaining tmp/euler-riemann-grid-UzDuwB.  The six numerical rows
+match the formal source word for word: sizes 2, 3, and 5, initially and
+after a split step, including pressure, status, and the speed reduction.
+Started node test/core_correctness.js under the standard local runner
+used by its compiler children.  Documentation records the result-slot
+lowering and the source proof scope.  The complete solver proof remains
+open, and neither production grid has run.
+
+The compiler core test passed 794 accepted, 47 rejected, and 14 trapped
+cases, retaining tmp/core-correctness-Wjc4q5.  The formal arithmetic test
+passed 24 source comparisons and six byte-identity checks, retaining
+tmp/ieee64-source-cwLcVy.  The maintained-document check passed 105 files.
+git diff --check passed, and a direct source scan found no sorry, admit,
+new axiom, or native_decide in the new solver proof modules.
+
+Inspected the successful tiny-grid WASM using the pinned wasm-tools.
+The initial stdout rendering exceeded the output limit.  Preserved the
+complete rendering at tmp/euler-riemann-grid-UzDuwB/traversal.wat instead.
+The split-step helper contains its explicit release call.  The map body
+currently calls the seven-result cell helper once per returned field,
+and the inlined cell input expression repeats its twelve-result helper.
+These are emitted-code observations, not a formal execution or resource
+bound.  The next compiler work must address per-iteration owner tracking
+and shared aggregate evaluation before a production resource estimate.
+
+Checkpoint intent: stage the three compiler/example files, the compiler
+and language documentation, the three existing numerical-model edits,
+the eleven new Riemann source/proof modules, the four test files, the
+complete-solver plan, devnotes.md, and this append-only journal.  Preserve
+all paper intermediates and ignored test/build evidence.  The complete
+solver and aggregate proof gate remain unfinished in this checkpoint.

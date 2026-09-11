@@ -5702,6 +5702,40 @@ def rejectReleaseUseAfter : UInt64 :=
   let released := LeanExe.Runtime.release tree
   released + u64BinaryNodeCount tree
 
+def flatArrayCopy (values : Array UInt64) : Array UInt64 :=
+  values.map (fun value => value + 1)
+
+def flatArrayConstant : Array UInt64 := #[7, 11]
+
+def flatArrayCallAppend : Array UInt64 :=
+  #[3] ++ flatArrayCopy #[10, 20]
+
+def flatArrayConstantAppend : Array UInt64 :=
+  flatArrayConstant ++ #[13]
+
+def flatArrayCopyRuntimeRelease : UInt64 :=
+  let original : Array UInt64 := #[10, 20]
+  let copied := flatArrayCopy original
+  let freed := LeanExe.Runtime.release original
+  let replacement : Array UInt64 := #[30, 40]
+  copied[0]! + copied[1]! + replacement[0]! + replacement[1]! + freed * 100
+
+def flatArrayAlias (values : Array UInt64) : Array UInt64 := values
+
+def rejectReleaseFlatArrayAlias : UInt64 :=
+  let original : Array UInt64 := #[10, 20]
+  let alias := flatArrayAlias original
+  let freed := LeanExe.Runtime.release original
+  freed + alias[0]!
+
+def freshNestedArray (values : Array UInt64) : Array (Array UInt64) := #[values]
+
+def rejectReleaseFreshNestedArray : UInt64 :=
+  let original : Array UInt64 := #[10, 20]
+  let held := freshNestedArray original
+  let freed := LeanExe.Runtime.release original
+  freed + held[0]![0]!
+
 def rejectReleaseTwice : UInt64 :=
   let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
   let first := LeanExe.Runtime.release tree

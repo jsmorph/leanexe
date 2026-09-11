@@ -5,7 +5,8 @@ namespace Project.Euler2DCellStep.Model
 open Project.Euler2DConservative.Model (positiveBits finiteBits sideCheckedBits)
 open Project.Euler2DDynamicFlux.Model (CheckedComponent fluxCheckedBits)
 
-abbrev updateCheckedBits := Project.EulerCellStep.Model.updateCheckedBits
+abbrev updateCheckedBits (ratio state fluxL fluxR : UInt64) :=
+  Project.EulerCellStep.Model.updateCheckedBits ratio state fluxL fluxR
 
 structure CheckedCell where
   status : UInt64
