@@ -62,11 +62,18 @@ gzip-compressed cell CSV.
 | Source transfer | 6,777 tracked files, 98,282,441 bytes, empty checksum comparison |
 | Available Lean toolchain | `/mnt/vq/elan/toolchains/leanprover--lean4---v4.34.0-rc2` |
 
-Dev's system Node is 18.20.8.  The required Node 24.13.0 and Wasmtime
-44.0.0 C API need installation in the project tools directory.  Approval
-was requested under the user's missing-tool instruction.  The source
-snapshot is copied and checked.  The remote 192-grid timing and 800-grid
-run remain pending.
+The user approved installation of Node 24.13.0 and the Wasmtime 44.0.0
+C API.  Both x86-64 archives passed their pinned SHA-256 checks and were
+extracted under the snapshot's `build/tools` directory.  Node reports
+24.13.0.  The host compiler is GCC 11.5.0.
+
+The first benchmark, `leanexe-riemann-192-20260911-1`, returned final status
+1 during linking: the C host omitted `-lm`, leaving `fmin` unresolved.
+The host build now links the system math library after the source input,
+following GCC's [library-order rules](https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html).
+The build receipt includes the library options.  The failed snapshot and
+job record remain preserved.  A corrected snapshot will precede the
+benchmark retry.  The remote timing and 800-grid run remain pending.
 
 The current leanrunner skill and its complete dev runbook govern source
 synchronization, checksum comparison, resource admission, persistent
