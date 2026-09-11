@@ -10934,3 +10934,64 @@ the remaining WASM calculation from that progress rate.  Scaling the
 54 minutes for each verification pass.  Reported 2–2.25 hours remaining
 including transfer and figures.  This estimate awaits full-grid timing.
 The five-file checkpoint records benchmark success and the active run.
+
+### 2026-09-11: rejected process work stopped and removed
+
+The last published checkpoint was
+5b900ac1ae36aaea6e47e0c17a71d169b78d4274, parent
+f4cb548765d3d297058176f082aac8892a44b17a, tree
+7ed2f6000c6a92e79fb9464aa0a2f5328928b569.  Its non-forced push,
+fetch, and head/parent/tree/worktree checks passed.
+
+The user rejected the handwritten worker loop because its computation
+lacked a proof.  On the explicit stop instruction, stopped only
+leanrun-job-leanexe-riemann-blocks-800-20260911-1.service.  Its durable
+final status is 143.  The queued replay and compressed-data check did
+not run.  Its last progress line is step 1540, time
+0.3663698051922056.  Subsequent service inspection found no active
+persistent job.
+
+The user then ordered the rejected work discarded and repeated the
+removal instruction after inspecting its disk use.  Before removal,
+the two process snapshots occupied 118 MiB and about 71 GiB.  The process
+retained a complete x and y output at every timestep, writing 46.08 MB
+of cell data per 800-grid step.  That choice produced the excessive
+storage use.  This removal follows the user's new deletion instruction.
+
+Removed exactly these remote directories through the canonical SSH
+helper after confirming both were directories and all jobs were stopped:
+/mnt/vq/leanexe-riemann-20260911-blocks and
+/mnt/vq/leanexe-riemann-20260911-blocks-script.  Removal returned zero.
+Both absence checks passed.  The volume reports 170 GiB available.
+
+Removed the following thirteen local generated directories:
+
+- tmp/leanexe-dev-blocks-20260911-stage
+- tmp/leanexe-dev-script-20260911-stage
+- tmp/riemann-dev-blocks-benchmark-job-20260911
+- tmp/euler-block-test-HZURTZ
+- tmp/euler-block-test-KBfesv
+- tmp/euler-block-test-Okuoqy
+- tmp/euler-2d-run-Mdzy47
+- tmp/euler-2d-run-L0FqMk
+- tmp/euler-2d-run-fW2LQH
+- build/tools/euler-block-7e80cba9998a564fa7c3b56512292d45e1bd0da2dfac70d862789675fd560a3a
+- build/tools/euler-block-bef5fea50b8ea22711d6ab4b68dbfe9c3f279ea65baafd049ddd527a0e80a93b
+- build/tools/euler-block-81260eaae4a26bff49a8a4538647a6697e19a7078817b6ea2fac70b8d66c4242
+- build/tools/euler-block-f046291407123040bb683a98bf10092268a3e1b825bce7fcf533c047988b267e
+
+Removed tools/euler-block-host.c, tools/euler-block-run.mjs,
+tools/euler-block-wave.sh, tools/euler-block-worker.wat,
+tools/euler-riemann-dev.sh, and test/euler_blocks.mjs.  Restored
+tools/euler-riemann-large.mjs to its version before the process changes.
+Its bytes match revision 14329c9.  Updated the active plans and concise
+notes to record cancellation.  The journal remains append-only.
+The original 192-grid dataset, proved kernels, shared tool installations,
+earlier serial-run evidence, and unrelated report files remain intact.
+
+The 104-file documentation gate, Node syntax check, whitespace check,
+and comparison of the restored data writer with revision 14329c9 pass.
+The generated-directory absence check passes, and the remaining tools,
+tests, and maintained documentation contain no references to the removed
+executables.  The 13-file checkpoint contains these six deletions, the
+restored data writer, five plan/note files, and this journal.

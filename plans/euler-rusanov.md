@@ -791,12 +791,7 @@ states the grid, method, initial conditions, numerical diagnostics, and
 proof scope.  It records the smoother central structure of this coarser,
 first-order result relative to the published 800 × 800 density figure.
 
-The additional 800-grid calculation uses the user-approved 24-process
-WASM design in the [dev run record](euler-riemann-dev.md).  Bash starts
-and waits for each sweep's workers.  Completed block files supply the
-neighbor rows.  The 26-grid test matches the full serial record exactly,
-including unequal block sizes, all diagnostics, and final words.  The
-new batch orchestration has executable tests.  The three proved kernel
-artifacts are unchanged.  The dev 192-grid benchmark passes full record
-comparison in 16.896531634 seconds.  The 800-grid process run started at
-18:42:09 UTC.  Its final result remains pending.
+The user canceled the additional 800-grid attempt after rejecting the
+unproved worker loop.  The implementation and its generated files have
+been removed.  The [dev run record](euler-riemann-dev.md) records the
+cancellation.
