@@ -607,7 +607,7 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Prove the generic guarded recurrence, every accepted intermediate grid,
       actual WASM call trace and the stationary100-cell Sod specialization.
 - [x] Publish the maintained first-order Sod runtime and scientific data.
-- [ ] Reconcile maintained documentation and proof inventories with the final
+- [x] Reconcile maintained documentation and proof inventories with the final
       implemented scope.
 
 ## Verification gates
@@ -739,6 +739,12 @@ contract. Host presentation remains distinct from the verified calculation.
 - [x] Prove the actual 2D numerical calls/sweep/run trace and freeze every WASM
       module planned for the run: side, flux and cell. Native orchestration
       remains outside formal proof.
-- [ ] Run a nontrivial 2D test with checked states, CFL and balance diagnostics.
-- [ ] Publish and visually inspect a polished 2D density/pressure visualization,
+- [x] Run two nontrivial 192² 2D tests with checked states, CFL and balance diagnostics.
+- [x] Publish and visually inspect polished 2D density/pressure/schlieren visualizations,
       with reproducible data and an explicit verification scope.
+
+The completed extension is published in [data/euler-2d-v1](../data/euler-2d-v1/README.md):
+two 192² scenarios, 21 frames each, standalone HTML, SVG and inspected PNG.
+Fresh Wasmtime runs reproduce all eight canonical files byte for byte.
+The conditional symbolic invariant-domain extension above remains a non-goal:
+accepted-state and rounded-CFL checks support the current claims.

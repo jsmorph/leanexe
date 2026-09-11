@@ -9901,3 +9901,57 @@ Focused runtime test passes both8² native/oracle runs and all12 corruption
 rejections (retained -zFHVVS and -613n5q). The .js/.mjs/.cjs execution guard
 passes. git diff --check passes; reviewed all ten exact checkpoint paths.
 Intended publication: “Run verified 2D kernels in a checked native host”.
+
+Runtime checkpoint01d93b568ede028feeed0397add84a9e97e313bb is published,
+parentcf4b18d84ab1cf51826b05ba3f97c5ef36294cfa, tree
+83f365cf222d6fd5d1fdeb3842aed90297542340. Non-forced remote update, fetch,
+exact parent/message/tree/index/worktree and local CAS checks pass; clean.
+Added tools/euler-2d-data.mjs to produce eight canonical files: compressed
+full raw records, summary/provenance, final cells/history CSV, two SVGs and
+two standalone HTML animations. Initial write may verify retained native
+records; check always reruns both192² cases via maintained Wasmtime.
+
+### 2026-09-10: canonical data and visualization publication
+
+Initial generator write verified both retained native streams and created
+eight new files in data/euler-2d-v1,25,095,936 bytes. Fresh canonical check
+passes both192² cases and all eight byte comparisons; log
+euler-2d-data-canonical-check-first.log retains native directories
+tmp/euler-2d-run-ml8dnh and -RDuXZX. No source changed after canonical
+generation/check. Raw compressed SHA6a38d2808944f57c36deeea6885304d999a589ab9e53c73db7cde49553d0ac3a.
+Opened the pulse HTML in the in-app browser on loopback54899; its rendered
+accessibility tree shows all fields, controls, diagnostics and proof scope.
+A separate bundled-Playwright headless Chrome attempt failed at launch with
+SIGABRT/EPERM before page execution; no browser QA pass is claimed. The
+fresh profile work/euler-browser-profile-2KHk9Q is retained. Fallback direct
+execution of each exact embedded animation script with a controlled DOM/
+clock passes slider, play/pause, speed changes, end-of-playback, all image
+bindings and final-image equality. No responsive screenshot was produced.
+
+Rendered both canonical SVGs with the already available Sharp0.35.4 tool
+to exclusive PNG paths, recorded actual renderer versions/hashes in
+presentation.json, and visually inspected both1600×940 outputs. Copied
+each SVG/PNG/HTML exclusively to task outputs/euler-2d-{pulse,quadrants}.*.
+Pulse PNG SHA760c438633c41cab614e32bdf720debd6a9d819d42d885cf76a47de012820a03;
+quadrants PNG SHA1f17311764d178c7b0c602c5ab8bb7c231f0df51e0650944670c208f57af8e60.
+An initial documentation writer had an unescaped template-string fence and
+failed parsing before any mutation. The README was then written with an
+exclusive quoted heredoc; current documentation edits use smaller scripts.
+Added dataset README with method, full provenance, proof/host boundary and
+reproduction commands. Updated README, plan, Euler plan, status and cell
+proof README to mark current Euler scope complete; inventories unchanged.
+The conditional symbolic invariant-domain item remains explicitly outside
+current claims. Existing release/conformance/CLOB work remains untouched.
+
+Final read-only gates pass: JS execution policy, unchanged six source
+provenance hashes, all recorded canonical/PNG hashes, all six exact output
+copies and all relative links in the two updated data/proof READMEs.
+Reviewed source generator, data schemas, both visuals and documentation
+diff; git diff --check passes. Prepared explicit staging: README.md,
+devnotes.md, docs/status.md, journal.md, plan.md, plans/euler-rusanov.md,
+proofs/talos/lean/Project/Euler2DCellStep/README.md,
+tools/euler-2d-data.mjs, and twelve named data/euler-2d-v1 files
+(README.md, cells.csv, history.csv, presentation.json, pulse.html/.png/.svg,
+quadrants.html/.png/.svg, raw.json.gz, summary.json). No existing dataset
+or proof artifact was overwritten. Intended checkpoint:
+“Publish verified 2D Euler data and visualizations”.

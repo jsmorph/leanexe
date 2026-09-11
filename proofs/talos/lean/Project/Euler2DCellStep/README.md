@@ -36,7 +36,8 @@ regression evidence; no claim is made that its JavaScript implementation is
 formally proved. [Sweep.lean](Sweep.lean) proves axis exchange, clamped neighbor selection,
 accepted-grid safety and every actual cell call. [Runner.lean](Runner.lean)
 proves the accepted x/y time-step trace for arbitrary finite ratio lists and
-certifies the four-quadrant initial states. [ArtifactRunner.lean](ArtifactRunner.lean)
+certifies the four-quadrant and circular-pulse initial states. [ArtifactRunner.lean](ArtifactRunner.lean)
 transfers that contract to the exact cell bytes. The native grid/time
-orchestration remains outside formal proof; runtime data and the visualization
-remain in the [active plan](../../../../../plans/euler-rusanov.md).
+orchestration remains outside formal proof. The [completed dataset and
+visualizations](../../../../../data/euler-2d-v1/README.md) contain two 192²
+runs with full raw-word comparisons, 21-frame animations and SVG/PNG posters.

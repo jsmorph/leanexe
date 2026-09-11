@@ -9609,3 +9609,15 @@ CFL stays below.401 and balance residual below2.4e-16. Pulse initial-state
 Lean certificate passes. Both posterior PNGs were visually inspected;
 standalone SVG/HTML renderer includes21 frames and fixed field scales.
 Next: publish canonical data, final PNG/SVG and browser-checked animation.
+
+### 2026-09-10: completed 2D visualization agenda
+
+Native runtime01d93b568ede028feeed0397add84a9e97e313bb is pushed.
+data/euler-2d-v1 has two192² runs,21 snapshots each, full raw records,
+CSV/summary, standalone animations and inspected1600×940 SVG/PNG posters.
+Fresh Wasmtime runs reproduce all eight canonical files byte for byte
+(25,095,936 bytes). Playback control/image binding checks pass; the in-app
+pulse view loads. Separate headless Chrome launch was sandbox-blocked,
+so responsive browser interaction is not claimed. Both PNGs were inspected.
+Docs/plans reconcile completed Euler scope; inventories37/37/17/33 unchanged.
+No WASM or proof source changes in this publication checkpoint.
