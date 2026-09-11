@@ -9627,3 +9627,33 @@ tree777c474e72849238dd6a18dd2d381bc0dabc3ea7. Non-forced publication,
 fetch and exact tree/index/worktree checks pass. Both SVG/PNG posters, both
 animations and the complete canonical dataset are pushed; Euler agenda
 complete. This receipt changes no computational or presentation content.
+
+### 2026-09-11: specified four-state Riemann problem
+
+The user approved extending the admissible domain and producing density and
+pressure figures for the [Lanyon 2D Riemann problem](https://lanyon.ai/research/euler-equations/),
+with the grid reduced to 192 × 192.  The target remains time 0.8 on the unit
+square, with interfaces at x = y = 0.8.  A short article will explain this
+experiment.  One-dimensional tests belong only where they test a required
+part of the two-dimensional calculation.
+
+The existing kernel rejects three initial quadrants through its unit-velocity
+guard.  All four states have positive density and physical internal energy.
+The implementation needs a broader sufficient check with a proof about the
+decoded input state and rounded operations.  Initial cells intersected by an
+interface will contain conservative area averages.  The existing Rusanov
+method, x-then-y splitting, gamma 1.4, transmissive boundaries, and target
+CFL 0.4 provide the proposed numerical settings accepted for this work.
+
+The current Linux toolchain is installed at the repository-selected Elan
+path.  `tools/leanrun --timeout 30s --lock-timeout 10 lean --version` passed
+with Lean 4.34.0-rc2, commit 6a10ac8c22beadecabdbb0919c2b50214762f91d,
+under the standard cgroup runner.  The historical container and ARM Mac
+environment exceptions are unnecessary for this version check.
+
+The three new shared proof modules build through the standard runner.
+`F64Admissibility.checked_sound` proves positive exact internal energy from
+the normalized floating-point guard.  The residual error is at most five
+epsilons, and acceptance requires a residual above eight epsilons.  Axiom
+audits contain only the standard logical axioms.  Source integration,
+artifact verification, and the numerical run remain pending.
