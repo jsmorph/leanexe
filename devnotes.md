@@ -9674,3 +9674,17 @@ recorded with declaration references as review items.  The agent changed
 no implementation and ran no Lean job.  Root reviewed the documents and
 added links to the documentation index and the existing theory overview.
 The documentation gate passes for 94 maintained Markdown files.
+
+### 2026-09-11: shared execution proof support
+
+FunctionRegion now transports bitwise-and, binary64 reinterpretations,
+addition, subtraction, and multiplication across function-index changes.
+The new CallRemainder theorem preserves arbitrary caller operands while
+reusing an exact-arity callee theorem.  Both modules pass Lean checks.
+TalosCompat now rewrites one interpreter step in its control-type lemmas,
+reducing their check from a four-minute timeout to 1.6 seconds.
+
+The broader two-dimensional state guard and complete state-calculation
+specification pass.  Flux and cell artifact regeneration, downstream
+checks, and the Riemann run remain pending.  The shared-support checkpoint
+contains only the checked reusable proofs and development records.
