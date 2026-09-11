@@ -10589,3 +10589,28 @@ paths: the three runtime/host files, large-data driver, plot reader, runtime
 test, detailed dev plan, plan index, operating instructions, root plan,
 devnotes, journal, and the original article's reproduction-version note.
 No numerical dataset, figure, Lean source, or WASM artifact is changed.
+
+Published the thirteen-file source checkpoint as
+76f874f660dd7e08d9d62d27470be12362b0cd4e, parent
+9d3f44a07ac0d39b248df1bc9144b9b846e1478a, tree
+53a8ef9752da86817845b7b7d8eb3390d8846770.  Non-forced SSH push and
+fetch succeeded.  The fetched head, parent, complete tree, and tracked
+worktree agree.  The staged whitespace check passed for all thirteen paths.
+
+Confirmed that /mnt/vq/leanexe-riemann-20260911-stream did not exist.
+Generated a NUL-delimited list of the committed tracked files after
+confirming a clean tracked tree and no Git submodules.  The list and source
+receipt remain in tmp/leanexe-dev-stage-20260911.  The list has SHA-256
+ddcc7fca25ca320514dc29b51330afe88ab4453eb1c6c0f52c8c5f33e637eda7.
+Rsync copied exactly 6,777 regular files, totaling 98,282,441 bytes, through
+the approved dev helper.  It returned status zero and reported zero
+deletions.  A separate checksum dry run returned status zero with no output.
+The remote snapshot remains the source checkpoint above.  This follow-up
+documentation records the completed transfer without changing that snapshot.
+
+The pinned Node and Wasmtime installation question remains unanswered.
+Source preparation and local tests are complete.  The remote 192-grid
+benchmark and 800-grid calculation await those required tools.  This
+receipt checkpoint contains only devnotes.md, the detailed dev run record,
+and journal.md.  Its publication receipt will be reported externally and
+recorded with the next substantive change.
