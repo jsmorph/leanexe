@@ -67,7 +67,7 @@ static bool sweep(Runtime *r,wasmtime_func_t *fn,const uint64_t *grid,uint64_t *
   double rho=positive(value(out[1])),p=positive(value(out[5])),cfl=positive(value(out[7]));
   positive(value(out[6])); require(cfl<=.5,"cell CFL ceiling");
   double velocity=fmax(fabs(value(out[2])),fabs(value(out[3])))/rho,energy_ratio=value(out[4])/rho;
-  require(velocity<=1&&energy_ratio>1,"updated sufficient domain");
+  require(isfinite(velocity)&&isfinite(energy_ratio)&&energy_ratio>0,"updated diagnostics");
   next[4*index]=out[1]; next[4*index+1]=out[y?3:2]; next[4*index+2]=out[y?2:3]; next[4*index+3]=out[4];
   pressures[index]=out[5]; metrics->max_cfl=fmax(metrics->max_cfl,cfl);
   metrics->min_rho=fmin(metrics->min_rho,rho); metrics->min_p=fmin(metrics->min_p,p);
@@ -98,7 +98,7 @@ static void frame(size_t index,size_t step,double t,const uint64_t *grid,const u
  for(size_t i=0;i<n*n;i++)printf("%s\"%016" PRIx64 "\",\"%016" PRIx64 "\"",i?",":"",grid[4*i],pressure[i]);
  printf("]}\n");fflush(stdout);
 }
-static void simulate(const char *side_path,const char *flux_path,const char *cell_path,size_t n,size_t frames,bool blast) {
+static void simulate(const char *side_path,const char *flux_path,const char *cell_path,size_t n,size_t frames,const char *scenario) {
  Runtime side,flux,cell;init(&side,side_path);init(&flux,flux_path);init(&cell,cell_path);
  wasmtime_func_t side_fn=exported(&side,"sideCheckedBits",WASMTIME_EXTERN_FUNC).of.func;
  wasmtime_func_t flux_fn=exported(&flux,"fluxCheckedBits",WASMTIME_EXTERN_FUNC).of.func;
@@ -108,12 +108,24 @@ static void simulate(const char *side_path,const char *flux_path,const char *cel
  for(size_t j=0;j<n;j++)for(size_t i=0;i<n;i++) {
   size_t index=j*n+i;double rho=i<n/2?(j<n/2?.25:.4):(j<n/2?.7:1);
   double energy=2.5*rho;
-  if(blast){int64_t x=2*(int64_t)i+1-(int64_t)n,y=2*(int64_t)j+1-(int64_t)n;rho=1;energy=16*(x*x+y*y)<(int64_t)(n*n)?5:2.5;}
+  if(strcmp(scenario,"circular-blast")==0){int64_t x=2*(int64_t)i+1-(int64_t)n,y=2*(int64_t)j+1-(int64_t)n;rho=1;energy=16*(x*x+y*y)<(int64_t)(n*n)?5:2.5;}
   grid[4*index]=bits(rho);grid[4*index+3]=bits(energy);
+  if(strcmp(scenario,"riemann")==0){
+   const double primitive[4][4]={{.029,.138,1.206,1.206},{.3,.5323,0,1.206},{.3,.5323,1.206,0},{1.5,1.5,0,0}};
+   double states[4][4];
+   for(size_t k=0;k<4;k++){
+    double p=primitive[k][0],r=primitive[k][1],u=primitive[k][2],v=primitive[k][3];
+    states[k][0]=r;states[k][1]=r*u;states[k][2]=r*v;states[k][3]=p/.4+.5*r*(u*u+v*v);
+   }
+   double fx=fmax(0,fmin(1,(4.0*(double)n-5.0*(double)i)/5.0));
+   double fy=fmax(0,fmin(1,(4.0*(double)n-5.0*(double)j)/5.0));
+   double weights[4]={fx*fy,(1-fx)*fy,fx*(1-fy),(1-fx)*(1-fy)};
+   for(size_t k=0;k<4;k++)grid[4*index+k]=bits(((weights[0]*states[0][k]+weights[1]*states[1][k])+weights[2]*states[2][k])+weights[3]*states[3][k]);
+  }
   uint64_t out[8];call(&side,&side_fn,grid+4*index,4,out,8);require(out[0]==0,"initial state rejected");pressure[index]=out[2];
  }
- double end=blast?.15:.2;
- printf("{\"kind\":\"header\",\"scenario\":\"%s\",\"n\":%zu,\"frames\":%zu,\"endTime\":\"%016" PRIx64 "\",\"targetCfl\":\"%016" PRIx64 "\"}\n",blast?"circular-blast":"four-quadrants",n,frames,bits(end),bits(.4));
+ double end=strcmp(scenario,"riemann")==0?.8:strcmp(scenario,"circular-blast")==0?.15:.2;
+ printf("{\"kind\":\"header\",\"scenario\":\"%s\",\"n\":%zu,\"frames\":%zu,\"endTime\":\"%016" PRIx64 "\",\"targetCfl\":\"%016" PRIx64 "\"}\n",scenario,n,frames,bits(end),bits(.4));
  frame(0,0,0,grid,pressure,n);
  double t=0,dx=1.0/(double)n,initial[4],balance[4]={0,0,0,0};totals(grid,n,initial);
  size_t steps=0,next_frame=1,retries=0;
@@ -145,8 +157,8 @@ static void simulate(const char *side_path,const char *flux_path,const char *cel
 }
 int main(int argc,char **argv) {
  require(argc==7,"usage: host scenario side.wasm flux.wasm cell.wasm mesh frames");
- require(strcmp(argv[1],"four-quadrants")==0||strcmp(argv[1],"circular-blast")==0,"unknown scenario");
+ require(strcmp(argv[1],"four-quadrants")==0||strcmp(argv[1],"circular-blast")==0||strcmp(argv[1],"riemann")==0,"unknown scenario");
  char *end=NULL;long n=strtol(argv[5],&end,10);require(end&&*end==0&&n>=4&&n<=384&&n%2==0,"mesh must be even,4..384");
  long frames=strtol(argv[6],&end,10);require(end&&*end==0&&frames>=2&&frames<=65,"frames must be2..65");
- simulate(argv[2],argv[3],argv[4],(size_t)n,(size_t)frames,strcmp(argv[1],"circular-blast")==0);return 0;
+ simulate(argv[2],argv[3],argv[4],(size_t)n,(size_t)frames,argv[1]);return 0;
 }

@@ -3,16 +3,16 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
-import {side,flux,cell,swap,initial} from './euler-2d-oracle.mjs';
+import {side,flux,cell,swap,initial,scenarios,endTime,NumericalRejection} from './euler-2d-oracle.mjs';
 import {run2DHost} from './euler-2d-wasmtime-host.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const buffer=Buffer.alloc(8);
 export const word=x=>{buffer.writeDoubleLE(x);return buffer.readBigUInt64LE().toString(16).padStart(16,'0');};
 export const value=s=>{assert.match(s,/^[0-9a-f]{16}$/);buffer.writeBigUInt64LE(BigInt('0x'+s));return buffer.readDoubleLE();};
 export const artifacts=[
- {case:'euler2_d_conservative',sha256:'e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9',bytes:2212,export:'sideCheckedBits',index:5},
- {case:'euler2_d_dynamic_flux',sha256:'394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734',bytes:3514,export:'fluxCheckedBits',index:17},
- {case:'euler2_d_cell_step',sha256:'b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0',bytes:5190,export:'cellCheckedBits',index:27},
+ {case:'euler2_d_conservative',sha256:'607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d',bytes:3193,export:'sideCheckedBits',index:13},
+ {case:'euler2_d_dynamic_flux',sha256:'a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995',bytes:4495,export:'fluxCheckedBits',index:25},
+ {case:'euler2_d_cell_step',sha256:'5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942',bytes:6171,export:'cellCheckedBits',index:35},
 ];
 function total(cells,n){
  const sum=[0,0,0,0],correction=[0,0,0,0],area=(1/n)*(1/n);
@@ -42,7 +42,7 @@ function sweep(cells,n,y,ratio,metrics,calls){
 }
 export function verifyEvents(events){
  assert.ok(Array.isArray(events)&&events.length>=4);const header=events[0];assert.equal(header.kind,'header');
- const scenario=header.scenario??'four-quadrants';assert.ok(['four-quadrants','circular-blast'].includes(scenario));const end=scenario==='circular-blast'?.15:.2;
+ const scenario=header.scenario??'four-quadrants';assert.ok(scenarios.includes(scenario));const end=endTime(scenario);
  const n=header.n,frames=header.frames;assert.ok(Number.isInteger(n)&&n>=4&&n<=384&&n%2===0);assert.ok(Number.isInteger(frames)&&frames>=2&&frames<=65);
  assert.equal(header.endTime,word(end));assert.equal(header.targetCfl,word(.4));
  let cells=initial(n,scenario),pressure=cells.map(q=>side(q).p),t=0,steps=0,frameIndex=0,retries=0;
@@ -60,7 +60,7 @@ export function verifyEvents(events){
    for(;;){
     assert.ok(attempts<24);assert.ok(dt>0&&t+dt>t&&t+dt<=end);ratio=dt/(1/n);metrics=[0,Infinity,Infinity,0,Infinity];
     try{middle=sweep(cells,n,false,ratio,metrics,calls);next=sweep(middle.cells,n,true,ratio,metrics,calls);break;}
-    catch(error){assert.ok(error instanceof Error);attempts++;dt*=.5;}
+    catch(error){if(!(error instanceof NumericalRejection))throw error;attempts++;dt*=.5;}
    }
    const bx=boundary(cells,n,false),by=boundary(middle.cells,n,true);for(let k=0;k<4;k++)balance[k]+=dt*(1/n)*(bx[k]+by[k]);
    const expected={kind:'step',step:++steps,t:word(t),dt:word(dt),ratio:word(ratio),alpha:word(alpha),retries:attempts,diagnostics:metrics.map(word),boundaryX:bx.map(word),boundaryY:by.map(word)};

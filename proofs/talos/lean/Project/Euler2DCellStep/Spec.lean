@@ -8,7 +8,7 @@ open Project.Euler2DCellStep.Execution
 def ExactSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit)
       (ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR : UInt64),
-    TerminatesWith env m 27 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energy, .i64 transverse, .i64 momentum, .i64 rho, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL, .i64 ratio]
+    TerminatesWith env m 35 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energy, .i64 transverse, .i64 momentum, .i64 rho, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL, .i64 ratio]
       (fun final values => final = initial ∧ values = resultValues ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR)
 
 noncomputable def AcceptedSafety (ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR : UInt64) : Prop :=
@@ -22,7 +22,7 @@ noncomputable def AcceptedSafety (ratio rhoL momentumL transverseL energyL rho m
 noncomputable def SafeSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit)
       (ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR : UInt64),
-    TerminatesWith env m 27 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energy, .i64 transverse, .i64 momentum, .i64 rho, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL, .i64 ratio]
+    TerminatesWith env m 35 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energy, .i64 transverse, .i64 momentum, .i64 rho, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL, .i64 ratio]
       (fun final values => final = initial ∧ values = resultValues ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR ∧
         AcceptedSafety ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR momentumR transverseR energyR)
 

@@ -217,19 +217,19 @@ example : eraseTypeIdx Project.EulerGridStep.func39Def = eraseTypeIdx retainFunc
 example : eraseTypeIdx Project.EulerGridStep.func40Def = eraseTypeIdx (releaseFuncDef 40) := rfl
 
 
-example : eraseTypeIdx Project.Euler2DConservative.func6Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DConservative.func7Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DConservative.func8Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DConservative.func9Def = eraseTypeIdx (releaseFuncDef 9) := rfl
+example : eraseTypeIdx Project.Euler2DConservative.func14Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DConservative.func15Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DConservative.func16Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DConservative.func17Def = eraseTypeIdx (releaseFuncDef 17) := rfl
 
-example : eraseTypeIdx Project.Euler2DDynamicFlux.func18Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DDynamicFlux.func19Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DDynamicFlux.func20Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DDynamicFlux.func21Def = eraseTypeIdx (releaseFuncDef 21) := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func26Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func27Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func28Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DDynamicFlux.func29Def = eraseTypeIdx (releaseFuncDef 29) := rfl
 
-example : eraseTypeIdx Project.Euler2DCellStep.func28Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DCellStep.func29Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DCellStep.func30Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.Euler2DCellStep.func31Def = eraseTypeIdx (releaseFuncDef 31) := rfl
+example : eraseTypeIdx Project.Euler2DCellStep.func36Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DCellStep.func37Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DCellStep.func38Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Euler2DCellStep.func39Def = eraseTypeIdx (releaseFuncDef 39) := rfl
 
 end Project.Runtime

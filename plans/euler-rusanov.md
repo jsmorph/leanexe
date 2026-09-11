@@ -763,13 +763,22 @@ final density and pressure figures, checked data, and a short article.
 | Bottom left | 0.029 | 0.138 | 1.206 | 1.206 |
 | Bottom right | 0.3 | 0.5323 | 0 | 1.206 |
 
-The current unit-velocity sufficient domain rejects three quadrants.  The
+The original unit-velocity sufficient domain rejects three quadrants.  The
 extension checks rho times energy minus half the squared momentum norm.
 Exact shared power-of-two normalization puts operands into a range supported
 by the existing roundoff theorems.  Acceptance requires the computed residual
 to exceed a proved error bound.  Existing accepted states retain the old
 sufficient-domain path.  Rounded thermodynamic and flux checks remain part
 of every accepted numerical call.
+
+The normalized guard, all three kernel specifications, axis exchange,
+clamped sweeps, and finite-run trace pass Lean checks.  The new binaries
+contain 3,193, 4,495, and 6,171 bytes.  Their independent exact-byte gates
+and the artifact finite-run theorem pass.  Focused Wasmtime tests pass
+54 state, 75 flux, and 84 cell cases.  The native runtime and independent
+checker agree for all three scenarios on 8 × 8 grids, including the
+requested Riemann problem through time 0.8.  The 192 × 192 experiment and
+figures remain pending.
 
 The simulation uses gamma 1.4, transmissive boundaries, first-order Rusanov
 fluxes, x-then-y splitting, and target CFL 0.4.  Initial cells intersected by

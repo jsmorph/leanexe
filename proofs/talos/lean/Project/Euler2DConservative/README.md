@@ -7,11 +7,16 @@ pressure, normal signal speed, and all four directional physical fluxes from
 roles supplies the other Cartesian direction. Both kinetic terms contribute
 to pressure; the transverse flux is transverse momentum times normal velocity.
 
-The explicit sufficient domain is positive finite density and energy, finite
-momenta with both magnitudes at most density, and energy strictly greater than
-density. This is narrower than all admissible Euler states.
-[Guard](Guard.lean) proves exact decoded internal energy at least E-rho>0.
-[Safety](Safety.lean) proves all16 rounded intermediates finite and accepted
+The guard accepts the union of two sufficient domains.  The original branch
+requires positive finite density and energy, finite momenta with magnitudes
+at most density, and energy greater than density.  The second branch uses
+an exact common power-of-two normalization and checks the residual
+rho times energy minus half the squared momentum norm.  Its rounded residual
+must exceed eight arithmetic epsilons, while its proved error is at most
+five epsilons.  [Guard](Guard.lean) proves positive exact internal energy
+for either accepted branch.  The second branch accepts the four states in
+the requested Lanyon Riemann problem.
+[Safety](Safety.lean) proves all 16 rounded thermodynamic intermediates finite and accepted
 input states physically admissible. [Outputs](Outputs.lean) proves positive
 finite rounded pressure and signal speed.
 
@@ -22,13 +27,12 @@ The [exact generated-WAT execution](Execution.lean) and [public safety contract]
 pass for all raw inputs, including every rejection branch and complete store
 preservation. [Helpers](Helpers.lean) reuses the three shared scalar guard
 proofs under a minimal layout; [StateGuard](StateGuard.lean) handles both
-momenta and the strict energy boundary.
+branches.  [Guard Operations](GuardOperations.lean) and
+[Energy Guard Execution](EnergyGuard.lean) prove the normalization path.
 
-The2,212-byte [frozen package](../../../../artifacts/euler2_d_conservative/e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9/manifest.json)
-passes its independent embedded-byte, decoder, validator, translation and
-behavioral gate. [ArtifactTranslation](ArtifactTranslation.lean) connects the
+The 3,193-byte [frozen package](../../../../artifacts/euler2_d_conservative/607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d/manifest.json)
+has public entry index 13.  [ArtifactTranslation](ArtifactTranslation.lean) connects the
 exact bytes to the execution module; generated decoder-cache witnesses follow
 the existing policy, while public execution/numerical audits use standard
 axioms only. The [focused test](../../../../../test/euler_2d_conservative.js)
-passes44 Wasmtime vectors, all output words and the16 f64 operation counts.
-Dynamic interfaces and directional updates remain.
+passes 54 Wasmtime vectors, all output words, and the 22 f64 operation counts.

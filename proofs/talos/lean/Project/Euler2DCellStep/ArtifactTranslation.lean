@@ -170,6 +170,46 @@ theorem function31_eq :
       Project.Euler2DCellStep.func31Def := by
   rfl
 
+theorem function32_eq :
+    Translation.functionToTalos Cache.raw 32 (Cache.raw.codes[32]!) =
+      Project.Euler2DCellStep.func32Def := by
+  rfl
+
+theorem function33_eq :
+    Translation.functionToTalos Cache.raw 33 (Cache.raw.codes[33]!) =
+      Project.Euler2DCellStep.func33Def := by
+  rfl
+
+theorem function34_eq :
+    Translation.functionToTalos Cache.raw 34 (Cache.raw.codes[34]!) =
+      Project.Euler2DCellStep.func34Def := by
+  rfl
+
+theorem function35_eq :
+    Translation.functionToTalos Cache.raw 35 (Cache.raw.codes[35]!) =
+      Project.Euler2DCellStep.func35Def := by
+  rfl
+
+theorem function36_eq :
+    Translation.functionToTalos Cache.raw 36 (Cache.raw.codes[36]!) =
+      Project.Euler2DCellStep.func36Def := by
+  rfl
+
+theorem function37_eq :
+    Translation.functionToTalos Cache.raw 37 (Cache.raw.codes[37]!) =
+      Project.Euler2DCellStep.func37Def := by
+  rfl
+
+theorem function38_eq :
+    Translation.functionToTalos Cache.raw 38 (Cache.raw.codes[38]!) =
+      Project.Euler2DCellStep.func38Def := by
+  rfl
+
+theorem function39_eq :
+    Translation.functionToTalos Cache.raw 39 (Cache.raw.codes[39]!) =
+      Project.Euler2DCellStep.func39Def := by
+  rfl
+
 theorem functions_eq : Translation.functions Cache.raw =
     Project.Euler2DCellStep.«module».funcs := by
   change
@@ -205,10 +245,18 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 28 (Cache.raw.codes[28]!),
      Translation.functionToTalos Cache.raw 29 (Cache.raw.codes[29]!),
      Translation.functionToTalos Cache.raw 30 (Cache.raw.codes[30]!),
-     Translation.functionToTalos Cache.raw 31 (Cache.raw.codes[31]!)
+     Translation.functionToTalos Cache.raw 31 (Cache.raw.codes[31]!),
+     Translation.functionToTalos Cache.raw 32 (Cache.raw.codes[32]!),
+     Translation.functionToTalos Cache.raw 33 (Cache.raw.codes[33]!),
+     Translation.functionToTalos Cache.raw 34 (Cache.raw.codes[34]!),
+     Translation.functionToTalos Cache.raw 35 (Cache.raw.codes[35]!),
+     Translation.functionToTalos Cache.raw 36 (Cache.raw.codes[36]!),
+     Translation.functionToTalos Cache.raw 37 (Cache.raw.codes[37]!),
+     Translation.functionToTalos Cache.raw 38 (Cache.raw.codes[38]!),
+     Translation.functionToTalos Cache.raw 39 (Cache.raw.codes[39]!)
     ] =
-    [Project.Euler2DCellStep.func0Def, Project.Euler2DCellStep.func1Def, Project.Euler2DCellStep.func2Def, Project.Euler2DCellStep.func3Def, Project.Euler2DCellStep.func4Def, Project.Euler2DCellStep.func5Def, Project.Euler2DCellStep.func6Def, Project.Euler2DCellStep.func7Def, Project.Euler2DCellStep.func8Def, Project.Euler2DCellStep.func9Def, Project.Euler2DCellStep.func10Def, Project.Euler2DCellStep.func11Def, Project.Euler2DCellStep.func12Def, Project.Euler2DCellStep.func13Def, Project.Euler2DCellStep.func14Def, Project.Euler2DCellStep.func15Def, Project.Euler2DCellStep.func16Def, Project.Euler2DCellStep.func17Def, Project.Euler2DCellStep.func18Def, Project.Euler2DCellStep.func19Def, Project.Euler2DCellStep.func20Def, Project.Euler2DCellStep.func21Def, Project.Euler2DCellStep.func22Def, Project.Euler2DCellStep.func23Def, Project.Euler2DCellStep.func24Def, Project.Euler2DCellStep.func25Def, Project.Euler2DCellStep.func26Def, Project.Euler2DCellStep.func27Def, Project.Euler2DCellStep.func28Def, Project.Euler2DCellStep.func29Def, Project.Euler2DCellStep.func30Def, Project.Euler2DCellStep.func31Def]
-  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq, function16_eq, function17_eq, function18_eq, function19_eq, function20_eq, function21_eq, function22_eq, function23_eq, function24_eq, function25_eq, function26_eq, function27_eq, function28_eq, function29_eq, function30_eq, function31_eq]
+    [Project.Euler2DCellStep.func0Def, Project.Euler2DCellStep.func1Def, Project.Euler2DCellStep.func2Def, Project.Euler2DCellStep.func3Def, Project.Euler2DCellStep.func4Def, Project.Euler2DCellStep.func5Def, Project.Euler2DCellStep.func6Def, Project.Euler2DCellStep.func7Def, Project.Euler2DCellStep.func8Def, Project.Euler2DCellStep.func9Def, Project.Euler2DCellStep.func10Def, Project.Euler2DCellStep.func11Def, Project.Euler2DCellStep.func12Def, Project.Euler2DCellStep.func13Def, Project.Euler2DCellStep.func14Def, Project.Euler2DCellStep.func15Def, Project.Euler2DCellStep.func16Def, Project.Euler2DCellStep.func17Def, Project.Euler2DCellStep.func18Def, Project.Euler2DCellStep.func19Def, Project.Euler2DCellStep.func20Def, Project.Euler2DCellStep.func21Def, Project.Euler2DCellStep.func22Def, Project.Euler2DCellStep.func23Def, Project.Euler2DCellStep.func24Def, Project.Euler2DCellStep.func25Def, Project.Euler2DCellStep.func26Def, Project.Euler2DCellStep.func27Def, Project.Euler2DCellStep.func28Def, Project.Euler2DCellStep.func29Def, Project.Euler2DCellStep.func30Def, Project.Euler2DCellStep.func31Def, Project.Euler2DCellStep.func32Def, Project.Euler2DCellStep.func33Def, Project.Euler2DCellStep.func34Def, Project.Euler2DCellStep.func35Def, Project.Euler2DCellStep.func36Def, Project.Euler2DCellStep.func37Def, Project.Euler2DCellStep.func38Def, Project.Euler2DCellStep.func39Def]
+  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq, function16_eq, function17_eq, function18_eq, function19_eq, function20_eq, function21_eq, function22_eq, function23_eq, function24_eq, function25_eq, function26_eq, function27_eq, function28_eq, function29_eq, function30_eq, function31_eq, function32_eq, function33_eq, function34_eq, function35_eq, function36_eq, function37_eq, function38_eq, function39_eq]
 
 def executionCache : Wasm.Module :=
   Project.Euler2DCellStep.«module»

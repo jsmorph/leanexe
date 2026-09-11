@@ -9688,3 +9688,20 @@ The broader two-dimensional state guard and complete state-calculation
 specification pass.  Flux and cell artifact regeneration, downstream
 checks, and the Riemann run remain pending.  The shared-support checkpoint
 contains only the checked reusable proofs and development records.
+
+### 2026-09-11: checked Riemann solver
+
+All three Euler kernel specifications, sweep/run theorems, and exact-byte
+artifact checks pass with the broader admissibility guard.  ArtifactRunner
+transfers the finite-run theorem to the new 6,171-byte cell module.
+The state, flux, and cell Wasmtime tests pass 54, 75, and 84 cases.
+The complete 8 × 8 runtime tests pass for the original quadrants, circular
+pulse, and requested Riemann problem, including six corrupted-record
+rejections per scenario.  All execution ran through the standard Linux
+resource limits.
+
+The LTG catalog gate has a pre-existing discrepancy: its generated check
+contains a CheckedArrayGet import and two theorem checks absent from the
+catalog.  Those unchanged files remain preserved.  Documentation checks
+pass.  The Riemann data and figure scripts are ready for the 192 × 192
+experiment.  No final dataset or figure exists at this checkpoint.

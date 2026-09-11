@@ -60,6 +60,46 @@ theorem function9_eq :
       Project.Euler2DConservative.func9Def := by
   rfl
 
+theorem function10_eq :
+    Translation.functionToTalos Cache.raw 10 (Cache.raw.codes[10]!) =
+      Project.Euler2DConservative.func10Def := by
+  rfl
+
+theorem function11_eq :
+    Translation.functionToTalos Cache.raw 11 (Cache.raw.codes[11]!) =
+      Project.Euler2DConservative.func11Def := by
+  rfl
+
+theorem function12_eq :
+    Translation.functionToTalos Cache.raw 12 (Cache.raw.codes[12]!) =
+      Project.Euler2DConservative.func12Def := by
+  rfl
+
+theorem function13_eq :
+    Translation.functionToTalos Cache.raw 13 (Cache.raw.codes[13]!) =
+      Project.Euler2DConservative.func13Def := by
+  rfl
+
+theorem function14_eq :
+    Translation.functionToTalos Cache.raw 14 (Cache.raw.codes[14]!) =
+      Project.Euler2DConservative.func14Def := by
+  rfl
+
+theorem function15_eq :
+    Translation.functionToTalos Cache.raw 15 (Cache.raw.codes[15]!) =
+      Project.Euler2DConservative.func15Def := by
+  rfl
+
+theorem function16_eq :
+    Translation.functionToTalos Cache.raw 16 (Cache.raw.codes[16]!) =
+      Project.Euler2DConservative.func16Def := by
+  rfl
+
+theorem function17_eq :
+    Translation.functionToTalos Cache.raw 17 (Cache.raw.codes[17]!) =
+      Project.Euler2DConservative.func17Def := by
+  rfl
+
 theorem functions_eq : Translation.functions Cache.raw =
     Project.Euler2DConservative.«module».funcs := by
   change
@@ -73,10 +113,18 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!),
      Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!),
      Translation.functionToTalos Cache.raw 8 (Cache.raw.codes[8]!),
-     Translation.functionToTalos Cache.raw 9 (Cache.raw.codes[9]!)
+     Translation.functionToTalos Cache.raw 9 (Cache.raw.codes[9]!),
+     Translation.functionToTalos Cache.raw 10 (Cache.raw.codes[10]!),
+     Translation.functionToTalos Cache.raw 11 (Cache.raw.codes[11]!),
+     Translation.functionToTalos Cache.raw 12 (Cache.raw.codes[12]!),
+     Translation.functionToTalos Cache.raw 13 (Cache.raw.codes[13]!),
+     Translation.functionToTalos Cache.raw 14 (Cache.raw.codes[14]!),
+     Translation.functionToTalos Cache.raw 15 (Cache.raw.codes[15]!),
+     Translation.functionToTalos Cache.raw 16 (Cache.raw.codes[16]!),
+     Translation.functionToTalos Cache.raw 17 (Cache.raw.codes[17]!)
     ] =
-    [Project.Euler2DConservative.func0Def, Project.Euler2DConservative.func1Def, Project.Euler2DConservative.func2Def, Project.Euler2DConservative.func3Def, Project.Euler2DConservative.func4Def, Project.Euler2DConservative.func5Def, Project.Euler2DConservative.func6Def, Project.Euler2DConservative.func7Def, Project.Euler2DConservative.func8Def, Project.Euler2DConservative.func9Def]
-  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq]
+    [Project.Euler2DConservative.func0Def, Project.Euler2DConservative.func1Def, Project.Euler2DConservative.func2Def, Project.Euler2DConservative.func3Def, Project.Euler2DConservative.func4Def, Project.Euler2DConservative.func5Def, Project.Euler2DConservative.func6Def, Project.Euler2DConservative.func7Def, Project.Euler2DConservative.func8Def, Project.Euler2DConservative.func9Def, Project.Euler2DConservative.func10Def, Project.Euler2DConservative.func11Def, Project.Euler2DConservative.func12Def, Project.Euler2DConservative.func13Def, Project.Euler2DConservative.func14Def, Project.Euler2DConservative.func15Def, Project.Euler2DConservative.func16Def, Project.Euler2DConservative.func17Def]
+  rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq, function16_eq, function17_eq]
 
 def executionCache : Wasm.Module :=
   Project.Euler2DConservative.«module»

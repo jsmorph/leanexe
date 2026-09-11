@@ -7,7 +7,7 @@ two dynamic Rusanov interfaces, checks the rounded CFL in (0,1/2], advances
 all four conserved quantities, and checks the complete updated state. The y
 sweep exchanges normal/transverse roles and uses dt/dy.
 
-[Spec.lean](Spec.lean) proves terminating actual-WASM execution of function27
+[Specification](Spec.lean) proves terminating WASM execution of function 35
 for every raw input and initial store, complete store preservation, and exact
 eight-word results: status, density, both momenta, energy, pressure, alpha and
 Courant number. An accepted result satisfies the sufficient physical-state
@@ -20,16 +20,17 @@ function/type index. Its generalized [proof](../EulerCellStep/Update.lean)
 preserves the old public signature. Public execution/safety audits use only
 propext, Classical.choice and Quot.sound.
 
-The [exact package](../../../../artifacts/euler2_d_cell_step/b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0/manifest.json)
-contains 5,190 bytes, SHA-256
-b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0.
+The [exact package](../../../../artifacts/euler2_d_cell_step/5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942/manifest.json)
+contains 6,171 bytes, SHA-256
+5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942.
 Its existing-policy generated decoder/validator witnesses are separate from
 the standard-axiom public behavior proofs.
 
-The [focused regression](../../../../../test/euler_2d_cell_step.js) covers
-80 cases, including moving transverse momentum, signed zero, subnormal time
+The [focused test](../../../../../test/euler_2d_cell_step.js) covers
+84 cases, including moving transverse momentum, signed zero, subnormal time
 ratio, exact and adjacent CFL words, every nonfinite input slot, invalid
-neighbors, and post-update rejection despite valid inputs and CFL. All raw
+neighbors, the four Riemann states, and an updated state accepted beyond the
+original sufficient domain.  All raw
 results and emitted opcode counts are checked under the pinned Wasmtime C API.
 The independent [host oracle](../../../../../tools/euler-2d-oracle.mjs) is
 regression evidence; no claim is made that its JavaScript implementation is

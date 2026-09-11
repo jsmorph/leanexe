@@ -8,7 +8,7 @@ open Project.Euler2DDynamicFlux.Execution
 def ExactSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit)
       (rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR : UInt64),
-    TerminatesWith env m 17 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL]
+    TerminatesWith env m 25 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL]
       (fun final values => final = initial ∧ values = resultValues rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR)
 
 noncomputable def AcceptedSafety (rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR : UInt64) : Prop :=
@@ -24,7 +24,7 @@ noncomputable def AcceptedSafety (rhoL momentumL transverseL energyL rhoR moment
 noncomputable def SafeSpecFor (m : Wasm.Module) : Prop :=
   ∀ (env : HostEnv Unit) (initial : Store Unit)
       (rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR : UInt64),
-    TerminatesWith env m 17 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL]
+    TerminatesWith env m 25 initial [.i64 energyR, .i64 transverseR, .i64 momentumR, .i64 rhoR, .i64 energyL, .i64 transverseL, .i64 momentumL, .i64 rhoL]
       (fun final values => final = initial ∧ values = resultValues rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR ∧
         AcceptedSafety rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR)
 

@@ -183,20 +183,20 @@
     },
     {
       "case": "euler2_d_conservative",
-      "sha256": "e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9",
-      "manifest": "euler2_d_conservative/e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9/manifest.json",
+      "sha256": "607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d",
+      "manifest": "euler2_d_conservative/607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d/manifest.json",
       "proofTarget": "Project.Euler2DConservative.ArtifactTranslation"
     },
     {
       "case": "euler2_d_dynamic_flux",
-      "sha256": "394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734",
-      "manifest": "euler2_d_dynamic_flux/394dd856d26b0eae32388a451765e7c2b623812376d585a896d87b820d0ef734/manifest.json",
+      "sha256": "a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995",
+      "manifest": "euler2_d_dynamic_flux/a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995/manifest.json",
       "proofTarget": "Project.Euler2DDynamicFlux.ArtifactTranslation"
     },
     {
       "case": "euler2_d_cell_step",
-      "sha256": "b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0",
-      "manifest": "euler2_d_cell_step/b7e190eaeb60752dbb2264fa9cb37c9e9525b20ff98909219b3c2285e3d479a0/manifest.json",
+      "sha256": "5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942",
+      "manifest": "euler2_d_cell_step/5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942/manifest.json",
       "proofTarget": "Project.Euler2DCellStep.ArtifactTranslation"
     }
   ]
