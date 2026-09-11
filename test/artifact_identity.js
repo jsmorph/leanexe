@@ -85,7 +85,7 @@ for (const source of proofSources) {
   }
 }
 const programSources = proofSources.filter((source) => source.relative.endsWith("/Program.lean"));
-if (programSources.length !== 34) {
+if (programSources.length !== 37) {
   throw new Error(`release identity found ${programSources.length} cached Talos programs`);
 }
 const localImports = localLeanImportClosure(repoRoot, [
@@ -94,6 +94,7 @@ const localImports = localLeanImportClosure(repoRoot, [
 ]);
 const expectedLocalImports = [
   "LeanExe/Examples/AsciiDigits.lean",
+  "LeanExe/Examples/EulerRiemann/Grid.lean",
   "LeanExe/Examples/TalosAssocList.lean",
 ];
 if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {
