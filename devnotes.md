@@ -9847,7 +9847,9 @@ including every index at size 800.  The initial guard proof was divided
 after two three-minute timeouts.  Shared state lemmas and kernel decision
 checks reduced the final proof target to 16 seconds.
 
-The proposed compiler mappings for Talos's five formal arithmetic
-operations await the user's design choice.  Complete solver construction,
+The user approved compiler mappings for Talos's five formal arithmetic
+operations.  The compiler build and 24 source comparisons pass.  Six
+expressions produce byte-identical WASM to the existing Float64 wrappers.
+Compiler-wide checks are in progress.  Complete solver construction,
 memory and time-control proofs, exact-WASM proof, production runs, and
 figures remain open.

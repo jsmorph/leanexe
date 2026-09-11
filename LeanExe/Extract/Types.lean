@@ -1322,12 +1322,23 @@ def usedValueConstantsOf (info : ConstantInfo) : Array Name :=
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
 
-/-- Compiler-recognized source operations whose executable Lean bodies are
-native comparison oracles, not part of the extracted program. -/
+def f64BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
+  if name == ``LeanExe.Float64.addBits || name == `Wasm.IEEE64.add then
+    some .f64AddBits
+  else if name == ``LeanExe.Float64.subBits || name == `Wasm.IEEE64.sub then
+    some .f64SubBits
+  else if name == ``LeanExe.Float64.mulBits || name == `Wasm.IEEE64.mul then
+    some .f64MulBits
+  else if name == ``LeanExe.Float64.divBits || name == `Wasm.IEEE64.div then
+    some .f64DivBits
+  else
+    none
+
+def f64SqrtPrimitiveName (name : Name) : Bool :=
+  name == ``LeanExe.Float64.sqrtBits || name == `Wasm.IEEE64.sqrt
+
 def compilerPrimitiveName (name : Name) : Bool :=
-  [``LeanExe.Float64.addBits, ``LeanExe.Float64.mulBits,
-    ``LeanExe.Float64.subBits, ``LeanExe.Float64.divBits,
-    ``LeanExe.Float64.sqrtBits].contains name
+  (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda
