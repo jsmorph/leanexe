@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "scenario": "riemann",
+  "artifacts": [
+    {
+      "case": "euler2_d_conservative",
+      "sha256": "607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d",
+      "bytes": 3193,
+      "export": "sideCheckedBits",
+      "index": 13
+    },
+    {
+      "case": "euler2_d_dynamic_flux",
+      "sha256": "a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995",
+      "bytes": 4495,
+      "export": "fluxCheckedBits",
+      "index": 25
+    },
+    {
+      "case": "euler2_d_cell_step",
+      "sha256": "5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942",
+      "bytes": 6171,
+      "export": "cellCheckedBits",
+      "index": 35
+    }
+  ],
+  "sources": {
+    "euler-riemann-data.mjs": "f1d4917777762e7b99f6ece8d76b926b3432d93aca733c9cf06fba70964e0b63",
+    "euler-riemann-plot.py": "ae67eb59534ba330cbcb193bf9319f79cbeeb4b65af349d7932a2e7f9aa762a0",
+    "riemann-plot-requirements.txt": "313118d7974231543d62f54d136d7568731b2a4531abb387d44b9caea8aa0985",
+    "euler-2d-runtime.mjs": "b9108c31b72aca5381f549298bb30791eda8d37b5e3aa55dca9c87828cd6661f",
+    "euler-2d-oracle.mjs": "d4d585ba574e895be61bc9ecc0e0955a30c1fd669cbb4168c853e6f3fb8f07ba",
+    "euler-2d-wasmtime-host.c": "603150e23e0d7a78c4a26f939acac04663bbd30b044f1ceaab9ed61d75d1dec9",
+    "euler-2d-wasmtime-host.mjs": "a6f4169226181db92607a75e68cebef61a42066b6887dd63f32eec9f53ad0413"
+  },
+  "node": "24.13.0",
+  "runtime": "Wasmtime 44.0.0 C API",
+  "method": {
+    "scheme": "First-order finite volume, Rusanov, x then y splitting",
+    "gamma": 1.4,
+    "domain": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "grid": [
+      192,
+      192
+    ],
+    "initialInterfaces": [
+      0.8,
+      0.8
+    ],
+    "boundary": "Transmissive (clamped neighbors)",
+    "targetCfl": 0.4,
+    "acceptedRoundedCflCeiling": 0.5,
+    "endTime": 0.8,
+    "initialization": "Conservative area averages; interface at exact four-fifths of the domain",
+    "snapshots": 21
+  },
+  "initialConditions": {
+    "order": [
+      "pressure",
+      "density",
+      "velocity_x",
+      "velocity_y"
+    ],
+    "quadrants": [
+      "bottom-left",
+      "bottom-right",
+      "top-left",
+      "top-right"
+    ],
+    "states": [
+      [
+        0.029,
+        0.138,
+        1.206,
+        1.206
+      ],
+      [
+        0.3,
+        0.5323,
+        0,
+        1.206
+      ],
+      [
+        0.3,
+        0.5323,
+        1.206,
+        0
+      ],
+      [
+        1.5,
+        1.5,
+        0,
+        0
+      ]
+    ]
+  },
+  "result": {
+    "steps": 808,
+    "retries": 0,
+    "time": 0.8,
+    "maxCfl": 0.40036161804323545,
+    "minDensity": 0.138,
+    "minPressure": 0.02899999999999994,
+    "maxComponentVelocity": 1.206000000000002,
+    "minEnergyDensityRatio": 1.7695833001840189,
+    "finalExtrema": {
+      "density": [
+        0.138,
+        1.4901312336016124
+      ],
+      "pressure": [
+        0.02899999999999997,
+        1.4767801078426048
+      ]
+    },
+    "calls": [
+      59609088,
+      620544,
+      59572224
+    ],
+    "initialTotals": [
+      0.318656,
+      0.209226528,
+      0.209226528,
+      0.688727192768
+    ],
+    "finalTotals": [
+      0.8996367933546637,
+      0.07328512496266755,
+      0.07307961279394631,
+      2.1979371934091185
+    ],
+    "boundaryIntegral": [
+      -0.5809807933546642,
+      0.1359414030373324,
+      0.13614691520605368,
+      -1.509210000641119
+    ],
+    "balanceResidual": [
+      -4.440892098500626e-16,
+      -2.7755575615628914e-17,
+      0,
+      -4.440892098500626e-16
+    ]
+  },
+  "comparison": "Every saved density/pressure word, final conservative word, timestep, control record, diagnostic, and boundary-corrected integral agrees with the independent binary64 JavaScript calculation.",
+  "proofScope": "The numerical WASM artifacts have exact-byte execution and accepted-state safety theorems. Lean proves axis exchange, clamped sweeps, and successful finite-run call traces. C/JS orchestration, initialization, diagnostics, and plotting use executable tests. PDE convergence remains an open proof obligation.",
+  "contentSha256": {
+    "raw.json.gz": "ff190beb052776c3ebec56c20eeb72ae8e926a31fee8f746c3c421aba32dcad0",
+    "cells.csv": "dd1a1f70ecce1520739d256a704e37fbd4b377f2dfa943197f0cdebcb41d32fb",
+    "history.csv": "45ebd83d5d9855c242b21f25798ec5f73ece03c5296f72c7b53988786a05e6ac"
+  }
+}

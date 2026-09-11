@@ -9705,3 +9705,21 @@ contains a CheckedArrayGet import and two theorem checks absent from the
 catalog.  Those unchanged files remain preserved.  Documentation checks
 pass.  The Riemann data and figure scripts are ready for the 192 × 192
 experiment.  No final dataset or figure exists at this checkpoint.
+
+### 2026-09-11: completed four-state Riemann experiment
+
+The [Riemann article and dataset](data/euler-riemann-v1/README.md) contain
+the 192 × 192 result at time 0.8, 21 raw snapshots, all final conservative
+values, the 808-step history, and inspected density/pressure PNG, SVG, and
+PDF figures.  Native Wasmtime and independent binary64 replay agree on
+all checked words and records.  The saved canonical-file check passes.
+The run used zero retries, maximum CFL 0.4003616180, minimum density 0.138,
+and minimum pressure about 0.029.  The largest absolute boundary-corrected
+balance residual is 4.440892098500626e-16.
+
+The article records the method, initial states, extended guard, proof
+scope, and reproduction commands.  Its visual comparison identifies
+broader central gradients and a lower peak density than the published
+800 × 800 result.  All simulation and plotting commands used the standard
+runner limits.  The separate marXiv report requested by the user is
+delegated to the type-theory agent.

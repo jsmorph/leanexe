@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from io import StringIO
 from pathlib import Path
 
 import matplotlib
@@ -29,7 +30,9 @@ def render(directory):
     if any(p.exists() for p in outputs):
         raise FileExistsError("preserve existing figures; select a fresh output directory")
     figure.savefig(outputs[0], dpi=220, metadata={"Software": "Matplotlib 3.10.8"})
-    figure.savefig(outputs[1], metadata={"Date": None, "Creator": "Matplotlib 3.10.8"})
+    svg = StringIO()
+    figure.savefig(svg, format="svg", metadata={"Date": None, "Creator": "Matplotlib 3.10.8"})
+    outputs[1].write_text("\n".join(line.rstrip() for line in svg.getvalue().splitlines()) + "\n")
     figure.savefig(outputs[2], metadata={"CreationDate": None, "ModDate": None, "Creator": "Matplotlib 3.10.8"})
     plt.close(figure)
     for output in outputs:
