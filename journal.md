@@ -10482,3 +10482,110 @@ gate passes for 103 maintained Markdown files.  The tracked diff whitespace
 check passes.  Raw logs, HTTP headers, accepted-status HTML, policy snapshots,
 extracted PDF text, and reviews retain their original whitespace and line
 endings.  The staged source check will exclude those immutable captures.
+
+The staged Markdown/TeX/JSON check reported trailing spaces in the three
+captured source-excerpt files.  Those numbered empty source lines are raw
+evidence and remain unchanged.  The check passes when those captures join
+the recorded evidence exclusions.  Published the 43-file report checkpoint
+as 9d3f44a07ac0d39b248df1bc9144b9b846e1478a, parent
+4f0ec1f161b81a868aac241b248651ca7423bac1, tree
+a0973f7c3f8c6178b6a3909ab5e580ac69b7640b.  The non-forced SSH push,
+fetch, fetched head/parent/tree checks, and tracked worktree comparison
+pass.  Unselected report drafts and captures remain local and preserved.
+
+The user then authorized the additional 800 × 800 plan.  Read the current
+leanrunner skill, complete dev runbook, and runner README.  The repository's
+older leanrun-dev helper uses superseded remote paths, so the current skill
+entry point governs this run.  AWS reports the documented instance running
+at 3.145.37.83, matching the dev helper's resolved SSH configuration.  The
+helper connects and reports x86_64.  The documented data volume is attached
+to that instance and mounted writable as ext4 at /mnt/vq, with 170 GiB free
+and over 18 million free inodes.  Root has 11 GiB free.  Linger is enabled.
+The aggregate leanrun slice is loaded with 48 GiB high, 52 GiB maximum,
+zero swap, a 24-CPU quota, and 2,048 tasks.  No persistent job service is
+active.  The local runner checkout is clean at
+297b46c55bfc127dad5b5bbc680fc28a1c3665e3 and passes shell syntax checks.
+
+Dev has the required Lean 4.34.0-rc2 toolchain directory, system Node
+18.20.8, and cc.  The historical leanexe build/tools directory is absent.
+A search found no accessible wasmtime.h under /mnt/vq and the remote home.
+It returned status 1 for protected lost+found and container directories.
+Checks of common alternate Node installation paths found none.  Asked for
+approval to install the repository's pinned Node 24.13.0 and Wasmtime
+44.0.0 C API in a project tools directory, following the user's missing-tool
+instruction.  Stream implementation can proceed while setup is resolved.
+
+The first plan-edit command had an incorrect journal context and failed
+before changing any file.  Rechecked status, corrected the context, and
+recorded the dev authorization and four implementation steps.
+
+Implemented a shared generator-based event verifier with the existing
+in-memory wrapper and a new asynchronous reader.  Streamed verification
+retains only the latest density/pressure frame.  UTF-8 decoding survives
+chunk boundaries, and records exceeding 64 MiB are rejected before parsing.
+The C host mesh ceiling is now 800, with progress on stderr every 50 steps.
+The record-only host wrapper preserves output paths and accepts an explicit
+timeout.  Numerical expressions and all three WASM binaries are unchanged.
+
+Added tools/euler-riemann-large.mjs with run, write, and check commands.
+It verifies the native recurrence before publishing a fresh dataset, then
+streams gzip event parts and compressed cell CSV.  Raw parts contain at
+most 64 MiB before compression.  The checker concatenates gzip members,
+replays all events, and reproduces both CSV hashes.  This avoids Node's
+single-string limit and GitHub's 100 MiB per-file restriction.  The source
+references Node 24.13.0 pipeline/gzip documentation and GitHub's official
+file-size documentation through the detailed run record.
+
+The three 8-grid runtime tests pass under tools/leanrun with a three-minute
+limit and the existing local Wasmtime44 C API.  Each scenario compares
+native, in-memory, and fragmented streamed records, rejects seven corrupted
+records through both readers, and propagates a source read error.  The
+oversized-record test passes.  Latest native evidence directories are
+tmp/euler-2d-run-xNIAGD, tmp/euler-2d-run-41JUw8, and
+tmp/euler-2d-run-EC6Noc.  Earlier test runs remain preserved.
+
+The 8-grid, 21-frame large-driver run completed 33 steps with zero retries
+in tmp/euler-riemann-stream-8-20260911, retaining native record
+tmp/euler-2d-run-7pidYu/run.ndjson.  Its compressed dataset check passes.
+A fresh two-part gzip fixture at tmp/euler-riemann-multipart-8-20260911
+passes the same compressed replay and CSV checks.
+
+Replayed the existing full native record through the large-data writer
+with a ten-minute standard runner limit.  All 808 steps pass.  The replay
+took 34.821723725 seconds and wrote the separate test directory
+tmp/euler-riemann-stream-192-20260911.  Its decompressed cells, history,
+raw event bytes, and every numerical result field equal the published
+192-grid experiment.  The plot script now accepts gzip CSV.  Rendering
+that test dataset under the two-minute standard runner produced PNG,
+SVG, and PDF byte-identical to the published figures.  Added the original
+publication revision to the 192-grid article's reproduction instructions
+because its summary records the original generator-source hashes.
+
+Confirmed that /mnt/vq/leanrunner-release-20260911-297b46c-leanexe did not
+exist, then synchronized the clean local runner there without deletion.
+Rsync completed with status zero.  The subsequent checksum dry run returned
+status zero with empty output.  Remote shell syntax checks pass, and all
+four persistent runner executables have mode 755.  The pinned Node and
+Wasmtime setup question remains pending.  No project copy or scientific
+job has started on dev.
+
+Review found that the old verifier checked the number of frames but did
+not require the final frame to have the final time.  Moving that frame
+to a duplicate of an earlier accepted snapshot could pass verification,
+while the CSV writer would use the earlier pressure.  Added that corrupted
+record as an eighth case.  The test failed with "Missing expected
+exception" and retained native evidence in tmp/euler-2d-run-Ce5yND.
+Added an explicit final-frame time equality before accepting the final
+record.  The published native record already has its last frame at 0.8.
+
+The corrected runtime test passes all three scenarios and eight corrupted
+records, plus read-error and oversized-record checks.  It preserves native
+records in tmp/euler-2d-run-wzFb62, tmp/euler-2d-run-bguXE0, and
+tmp/euler-2d-run-CZZFpe.  The full compressed 192-grid dataset check also
+passes under the corrected verifier, including regenerated CSV hashes.
+The documentation gate passes for 104 maintained Markdown files, and
+git diff --check passes.  The source checkpoint contains thirteen explicit
+paths: the three runtime/host files, large-data driver, plot reader, runtime
+test, detailed dev plan, plan index, operating instructions, root plan,
+devnotes, journal, and the original article's reproduction-version note.
+No numerical dataset, figure, Lean source, or WASM artifact is changed.

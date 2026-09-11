@@ -9743,3 +9743,30 @@ PDF has SHA-256
 The report directory preserves source revisions, submitted PDFs, extracted
 metadata, source evidence, reviews, and the initial font-build failure.
 No new dependency, Lean process, or implementation change was required.
+
+### 2026-09-11: streamed records for the 800-grid run
+
+The user authorized the additional calculation on dev.  The
+[run record](plans/euler-riemann-dev.md) identifies its host, current runner,
+data format, commands, and tests.  The fresh runner copy passed checksum,
+syntax, and executable-mode checks.  Pinned Node and Wasmtime installation
+approval remains pending.  The remote benchmark and 800-grid run have
+not started.
+
+The host now accepts grids through 800, and the checker consumes bounded
+JSON records while retaining the latest snapshot.  The large-run driver
+writes gzip event parts, compressed cell CSV, history, and provenance.
+The three native/oracle tests pass, including fragmented input, eight
+corrupted-record rejections, input-error propagation, and the 64 MiB event
+limit.  Single-part and multipart compressed dataset checks pass.
+
+The original 192-grid record passes the streamed replay.  Its cell CSV,
+history, raw bytes, and numerical summary match the published data, and
+compressed-CSV plotting reproduces all three figures byte for byte.
+The historical dataset's reproduction instructions now name its generator
+revision.  Its numerical files and figures are unchanged.
+
+A record with its final snapshot moved to an earlier accepted state exposed
+a missing verifier check.  The new test first failed with "Missing expected
+exception."  The verifier now requires the last snapshot to have the final
+time before using its pressure values for CSV output.
