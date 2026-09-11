@@ -9853,3 +9853,31 @@ expressions produce byte-identical WASM to the existing Float64 wrappers.
 Compiler-wide checks are in progress.  Complete solver construction,
 memory and time-control proofs, exact-WASM proof, production runs, and
 figures remain open.
+
+Source-array proofs now connect initialized cells and accepted split
+steps to the functional-grid recurrence.  They preserve indices and
+prove the directional wave-speed reduction.  The grid-size binary64
+encoding and remaining-time word measure are checked.  All completed
+solver theorem audits use only the accepted standard axioms.
+
+Compiler diagnostics found repeated expansion of ordinary callees in
+recursive-expression discovery.  The revised pass uses their separate
+declaration boundaries.  The step compiles after expressing two model
+aliases with explicit binders.  Its ownership report recognizes fresh
+sweep arrays and identifies an unreleased intermediate grid.  A source
+release expression now passes the ownership checker.  The checker uses
+fresh-result and element-layout evidence to distinguish flat copies from
+retained heap references.  Copy/release/reallocation passes, while alias
+and nested-array release cases reject.
+
+The numerical fixture exposed an array-helper call that consumed only one
+of its two WASM result slots.  The corrected lowering binds both slots.
+All 15 focused ownership and array-call tests pass.  All 54 grid tests
+pass, including full-word source/WASM comparisons for initialization and
+one split step at sizes 2, 3, and 5.  Both directional thermodynamic guards
+now have checked proofs for every initial cell average.  The broader
+compiler test passed 794 accepted, 47 rejected, and 14 trapped cases.
+The 24 formal arithmetic comparisons, six byte-identity checks, and
+105-file documentation check also pass.
+The complete allocator, time-control, successful-completion, and exact-WASM
+proofs remain open.  Production execution has not started.

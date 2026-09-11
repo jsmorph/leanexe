@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 const path = require("path");
+const fs = require("node:fs");
+const assert = require("node:assert/strict");
 const { runChecked } = require("../tools/run-process");
+const { callI64Slots, ensureHost } = require("../tools/wasmtime-host");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const correctnessModule = "LeanExe.Examples.Correctness";
@@ -123,6 +126,33 @@ function checkExplicitRecursiveReleaseSuppressesCompilerRelease() {
   assertContains(section, "explicit release expressions: 1", entry);
 }
 
+function checkFreshArrayRelease() {
+  const name = "flatArrayCopyRuntimeRelease";
+  const entry = `${correctnessModule}.${name}`;
+  const report = ownershipReport(correctnessModule, entry);
+  assertContains(report, "original: direct fresh allocation", entry);
+  const output = fs.mkdtempSync(path.join("tmp", "owned-array-copy-"));
+  const binary = path.join(output, "copy.wasm");
+  run([leanExe, "compile", "--module", correctnessModule, "--entry", entry, "--out", binary]);
+  assert.deepEqual(callI64Slots(binary, name, 1, []), [202n]);
+  for (const [helper, expected] of [
+    ["flatArrayCallAppend", [3, 11, 21]],
+    ["flatArrayConstantAppend", [7, 11, 13]],
+  ]) {
+    const wasm = path.join(output, `${helper}.wasm`);
+    run([leanExe, "compile", "--module", correctnessModule,
+      "--entry", `${correctnessModule}.${helper}`, "--out", wasm]);
+    assert.deepEqual(JSON.parse(run([ensureHost(), "call", wasm, helper, "array-u64"])), expected);
+  }
+  for (const [rejected, binding] of [
+    ["rejectReleaseFlatArrayAlias", "alias"],
+    ["rejectReleaseFreshNestedArray", "held"],
+  ]) {
+    assert.throws(() => ownershipReport(correctnessModule, `${correctnessModule}.${rejected}`),
+      new RegExp(`reason: copied into heap-bearing binding ${binding}`));
+  }
+}
+
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
@@ -130,7 +160,8 @@ function main() {
   checkSourceReleaseJudgments();
   checkHeapBearingArrayFoldAccumulators();
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
-  process.stdout.write("checked 10 ownership report cases\n");
+  checkFreshArrayRelease();
+  process.stdout.write("checked 15 ownership report and array-call cases\n");
 }
 
 try {

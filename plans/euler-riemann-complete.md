@@ -46,8 +46,10 @@ The complete source and exact-WASM proofs remain open.
 Array updates copy the array.  Each sweep must construct its result in
 linear time and reclaim obsolete storage.  The memory proof must account
 for temporary arrays, allocator metadata, retained references, and free
-storage, with a bound independent of elapsed timestep count.  Three arrays
-of four binary64 fields require 58.6 MiB at 800 by 800.  Separate final
+storage, with a bound independent of elapsed timestep count.  The current
+cell representation stores seven words: index, four conserved fields,
+pressure, and status.  Three such arrays require 102.5 MiB at 800 by 800.
+Separate final
 density and pressure arrays require 9.8 MiB.  These figures count payloads
 only and do not establish the complete peak-memory bound.
 
@@ -65,6 +67,7 @@ not evidence that the requested runs satisfy them.
 - [ ] Define the numerical recurrence, accepted sizes, and output layout.
 - [x] Add and test the approved compiler mappings for Talos's formal arithmetic definitions.
 - [ ] Implement and prove linear-time initialization and directional traversal.
+- [x] Prove source-array initialization, accepted-sweep correspondence, and the wave-speed reduction.
 - [ ] Prove allocator reuse and the complete memory bound.
 - [ ] Implement and prove timestep selection, retry, and final-time control.
 - [ ] Prove source correctness and successful completion for the supported inputs.
@@ -90,8 +93,27 @@ WASM proof.
 [Initial admissibility](../proofs/talos/lean/Project/EulerRiemann/Initial.lean)
 uses the specified primitive words and rounded conservative averages.
 All completed source/model theorem audits contain only the accepted
-standard logical axioms.  The 48 [grid tests](../test/euler_riemann_grid.js)
-pass.  Production execution remains behind the complete proof gate.
+standard logical axioms.  The 54 [grid tests](../test/euler_riemann_grid.js)
+pass, including full-word initialization and split-step comparisons at
+sizes 2, 3, and 5.  Production execution remains behind the complete proof
+gate.
 
-The user approved the compiler arithmetic mappings.  Their focused tests
-pass, and the compiler-wide checks are in progress.
+The source-array proofs connect initialization and accepted directional
+steps to the existing functional-grid recurrence.  The reduction proof
+identifies acceptance of every directional thermodynamic calculation and
+the maximum raw speed word.  Grid-size encoding and strictly decreasing
+remaining-time word bounds also pass their focused proofs.
+
+Compiler diagnostics found repeated ordinary-callee expansion during
+recursive-expression discovery.  The revised pass scans each ordinary
+function at its declaration boundary.  The step now compiles.  Its
+ownership report recognizes fresh sweep results and identified an
+unreleased intermediate grid.  The source release now passes the checker
+and numerical tests.  Array-helper expression lowering binds both owner
+and data-pointer results.  The focused ownership tests pass, including
+rejection of releases through aliases and nested arrays.
+
+The compiler-wide execution gate has a stale release-input record, and
+the aggregate proof build timed out after matching all 37 generated
+caches.  Preserve that evidence and divide the aggregate build before
+retrying.  These gates remain open.

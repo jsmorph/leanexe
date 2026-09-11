@@ -175,7 +175,13 @@ def markHeapBindingEscapes
     (type value : Expr)
     (bindings : List ReleaseBinding) :
     List ReleaseBinding :=
-  if !heapBearingType? ctx.env type then
+  let independentArray :=
+    match typeAtom? ctx.env type with
+    | some (.array item) =>
+        arrayElementChildMask item == 0 &&
+          (directFreshReleaseExpr? ctx type value || (freshHelperReleaseExpr? ctx value).isSome)
+    | _ => false
+  if !heapBearingType? ctx.env type || independentArray then
     bindings
   else
     bindings.zipIdx.foldl
