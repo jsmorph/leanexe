@@ -9,6 +9,8 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [LeanExe User Manual](manual.md) | Source patterns, examples, diagnostics, and authoring guidance. |
 | [Language Specification](spec.md) | Accepted Lean subset, numeric semantics, ABI, memory representation, ownership rules, and rejection boundaries. |
 | [LeanExe Type Theory](typetheory.md) | Relationship among Lean's source theory, the executable fragment, runtime values, and artifact propositions. |
+| [Type Theory of the LeanExe Fragment](leanexe-type-theory.md) | Mathematical typing, representation, specialization, and ownership judgments, with implementation-defined recognition premises. |
+| [Formal Specification of Compilation and Execution](leanexe-formal-specification.md) | Compilation and execution relations, numeric and collection operations, heap representation, ABI, WASI, and open proof obligations. |
 | [Compiler Architecture](compiler.md) | Extraction, specialization, IR, ownership analysis, WASM emission, annotations, and compiler theorem boundaries. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Canonical final-module image, host ABI, precise self-hosting claim, compatibility rules, and bootstrap receipt. |
 | [Architecture Diagram](leanexe.png) | High-level source, compilation, annotation, LTG, execution, and proof flow. |

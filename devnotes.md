@@ -9657,3 +9657,20 @@ the normalized floating-point guard.  The residual error is at most five
 epsilons, and acceptance requires a residual above eight epsilons.  Axiom
 audits contain only the standard logical axioms.  Source integration,
 artifact verification, and the numerical run remain pending.
+
+### 2026-09-11: mathematical language specification
+
+At the user's request, a separate agent wrote the [Type Theory of the
+LeanExe Fragment](docs/leanexe-type-theory.md) and the [Formal Specification
+of Compilation and Execution](docs/leanexe-formal-specification.md).
+The documents include explicit typing and layout rules, primitive
+signatures, operational equations, and function-graph definitions for the
+compiler's shape-sensitive acceptance rules.  Independent recursor rules,
+mechanization, and general preservation proofs remain open.
+
+The source review identified differences in reserved-export checking,
+heap child-mask width, and the documented proof-erasure stage.  These are
+recorded with declaration references as review items.  The agent changed
+no implementation and ran no Lean job.  Root reviewed the documents and
+added links to the documentation index and the existing theory overview.
+The documentation gate passes for 94 maintained Markdown files.

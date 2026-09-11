@@ -10033,3 +10033,119 @@ planning/journal documents.  The executable guard and simulation remain
 unchanged.  The next checkpoint integrates the proved check with the 2D
 source, model, and exact execution proofs.  An attempted combined journal
 and development-note edit failed its context check and changed no files.
+
+Checkpoint c7cd44cc59d003dbe807d43e25b8e9e7e7d0920f has parent
+2f5f598660d68160b1bac416eaef21649f7d9874 and tree
+42097d44a10d489f8e7ee2040109762c5bd180da.  The seven reviewed paths were
+staged explicitly.  `git diff --check` and `node tools/check-docs.js` passed.
+The SSH push succeeded after the sandbox rejected its system configuration
+permissions.  Fetch required write access to FETCH_HEAD and then succeeded.
+The fetched branch equals the local commit, and its complete tree has no
+diff against the worktree.  No forced update or cleanup was used.
+
+The source and model now include the normalized energy check after the old
+sufficient guard.  Their physical flux arithmetic is unchanged.  The new
+StateBounds structure records finite inputs, positive density and energy,
+and positive internal energy.  The narrower bound remains available for its
+old sufficient-domain theorem.  Guard integration and axis-exchange proofs
+are edited but unchecked at this entry.
+
+`tools/talos-artifact.js prepare euler2_d_conservative` is rebuilding the
+pinned verifier and compiler before producing the changed case.  Its
+separate verifier workspace materialized dependencies from its existing
+manifest.  The verifier build passed, including Verifier.Emit C compilation
+at 244 seconds.  The compiler build is running in the same serialized
+runner workflow.  The observed scope retains MemoryMax 6 GiB and CPU quota
+100 percent.  No second Lean-family job was started.
+
+Added the Riemann scenario to the C initialization and independent JS
+calculation.  Cell fractions use the exact interface position four-fifths
+before binary64 arithmetic.  A host check accepted all four primitive states
+and all 36,864 initialized cells.  The smallest recovered initial pressure
+is 0.028999999999999984.  The tests now include the requested states,
+nonpositive internal energy, residual-threshold cases, large and small
+common scales, and the new small-grid full-time scenario.  WASM tests await
+the changed artifacts.  The oracle retries only its declared numerical
+rejections and propagates other errors.
+
+The user requested a concurrent agent to derive a formal type theory for the
+accepted Lean fragment and then a full specification.  Agent
+`leanexe_type_theory` owns two new mathematical documents and its focused
+notes.  It has no permission to run Lean, mutate Git, or edit the existing
+journals and source.  Its first findings distinguish the limited IR
+comparison evaluator from production execution.  The user has been asked
+whether a Lean mechanization should follow the mathematical documents.
+
+The broadened `Euler2DConservative.Guard` theorem passes.  The first attempt
+used a Boolean simplification theorem as an iff projection and failed to
+elaborate.  Rewriting the Boolean expression first resolved that error.
+Failed elaboration printed sorryAx in the diagnostic audit.  The corrected
+module builds without that axiom.
+
+The four-minute Guard/Helpers build timed out during uncached probability
+dependencies, before checking Helpers.  It had already checked Guard.
+The unchanged target was not repeated.  A separate ten-minute build of
+`Interpreter.Wasm.Host.Random.Probability` completed successfully.  The
+next boundary is the new GuardOperations module, using the completed
+dependency cache.  Interpreter.Wasm.Wp.Atomic subsequently built in
+30 seconds.  The driver and all Lean targets retain the standard limits.
+
+The changed source emits helper indices 0–13, with the old narrow guard at
+3, common maximum at 4, exponent at 5, top exponent at 6, normalization
+predicate at 7, residual at 8, normalized magnitude at 9, energy guard at
+10, combined guard at 11, rejection at 12, and side calculation at 13.
+The new helper execution drafts follow that emitted order.  Downstream
+component and update helpers move to different indices.  Extended the
+existing FunctionRegion portability proof with bitwise-and, the two
+binary64 reinterpretations, addition, subtraction, and multiplication.
+`Project.FunctionRegion.Exec` builds successfully after those six additions.
+The 2D component and update drafts now reuse the unchanged 1D proofs by
+that checked renaming operation.
+
+The accepted figure plan uses Matplotlib.  Created the isolated environment
+`build/tools/riemann-figures-venv` with Python 3.13.5 and installed
+Matplotlib 3.10.8.  Recorded all eleven resolved package versions in
+`tools/riemann-plot-requirements.txt`.  These packages produce figures and
+do not participate in numerical execution or formal proofs.  The new data
+and plot scripts are drafts.  No dataset or final plot has been generated.
+
+The delegated mathematical documents are complete as drafts.  They include
+typing and layout rules, primitive signatures, operational equations,
+implementation-defined recognition premises, and stated proof obligations.
+The agent checked relative links and reported no whitespace diagnostics.
+It identified export-name checking and heap child-mask width as review
+items with source evidence.  No reproducer or Lean job ran in that agent.
+The documents make no independent mechanization or general preservation
+claim.  Root review and documentation integration remain pending.
+
+Root reviewed the language documents, requested explicit constructor,
+projection, match, callback-context, and primitive-signature rules, and
+reviewed those additions.  The documents retain the distinction between
+independent mathematical rules and predicates defined by compiler function
+graphs.  Added links in docs/README.md and docs/typetheory.md.  The root
+development note records the result and remaining formalization work.
+`node tools/check-docs.js` passes for 94 maintained Markdown files.
+The document checkpoint names only those two overview documents, the two
+new specifications, the agent's focused notes, devnotes.md, and journal.md.
+All ongoing Euler source, proof, and runtime edits remain outside it.
+
+The next four-minute GuardOperations build timed out in the existing
+TalosCompat dependency.  A focused diagnostic showed repeated expansion of
+the recursive interpreter in its two control-type compatibility proofs.
+The first isolated draft, using definitional equality, failed and remains
+at tmp/RiemannControlTypes.lean.  The second draft rewrites one execOne
+step and then one exec layer.  It passes at
+tmp/RiemannControlTypes2.lean.  Applied that proof to the two existing
+lemmas.  A 30-second bounded TalosCompat build passed in 1.6 seconds with
+standard logical axioms.  Existing one-dimensional Helpers, StateGuard,
+Rejection, and Execution subsequently rebuilt successfully.
+
+The new two-dimensional Helpers module passes.  GuardOperations then
+reported three proof failures and a heartbeat limit in topExponent.
+Its maxWord, exponentBits, and energyResidual theorems passed.  Diagnostic
+contexts retained a hypothesis named rfl instead of substituting a call's
+returned values: the new macro's hygienic binder did not perform the
+intended equality-pattern substitution.  Replaced that binder with an
+explicit equality and subst in guard_call and energy_checked.  The
+three-minute GuardOperations recheck is running.  These execution drafts
+remain outside the document checkpoint.
