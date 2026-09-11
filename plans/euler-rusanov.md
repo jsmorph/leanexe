@@ -777,14 +777,16 @@ contain 3,193, 4,495, and 6,171 bytes.  Their independent exact-byte gates
 and the artifact finite-run theorem pass.  Focused Wasmtime tests pass
 54 state, 75 flux, and 84 cell cases.  The native runtime and independent
 checker agree for all three scenarios on 8 × 8 grids, including the
-requested Riemann problem through time 0.8.  The 192 × 192 experiment and
-figures remain pending.
+requested Riemann problem through time 0.8.  The 192 × 192 experiment
+completed in 808 steps without retries.  The complete independent replay
+and saved-file check pass.  The [article and dataset](../data/euler-riemann-v1/README.md)
+contain inspected final density/pressure figures in PNG, SVG, and PDF.
 
 The simulation uses gamma 1.4, transmissive boundaries, first-order Rusanov
 fluxes, x-then-y splitting, and target CFL 0.4.  Initial cells intersected by
 an interface contain area averages of the conservative state.  Final plots
 show density and pressure recovered from that conservative state, with
-physical y increasing upward and equal coordinate scales.  The article will
-state the grid, method, initial conditions, numerical diagnostics, and proof
-scope.  One-dimensional runs belong only where they test a required part of
-this calculation.
+physical y increasing upward and equal coordinate scales.  The article
+states the grid, method, initial conditions, numerical diagnostics, and
+proof scope.  It records the smoother central structure of this coarser,
+first-order result relative to the published 800 × 800 density figure.

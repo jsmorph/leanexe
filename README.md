@@ -120,3 +120,9 @@ The Euler agenda now includes [two-dimensional flow visualizations](data/euler-2
 schlieren views, 21-frame standalone animations, SVG/PNG posters and
 reproducible raw data. Every numerical WASM module has exact-byte proofs;
 native orchestration is independently checked against all saved raw values.
+
+The [four-state Riemann experiment](data/euler-riemann-v1/README.md) uses the
+Lanyon article's initial states and interface positions on a 192 × 192 grid
+through time 0.8.  Its short article includes final density and pressure
+figures, the extended admissibility check, numerical diagnostics, and
+reproducible data.
