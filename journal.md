@@ -10149,3 +10149,50 @@ intended equality-pattern substitution.  Replaced that binder with an
 explicit equality and subst in guard_call and energy_checked.  The
 three-minute GuardOperations recheck is running.  These execution drafts
 remain outside the document checkpoint.
+
+Published the mathematical documents as
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d, parent
+c7cd44cc59d003dbe807d43e25b8e9e7e7d0920f, tree
+797e539df49ec4e339005d88d30e97e5f2d8a274.  The initial commit command
+was rejected by the read-only sandbox before writing Git state.  The
+approved Git invocation committed the seven reviewed documentation paths.
+A non-forced SSH push and fetch succeeded.  HEAD and the fetched remote
+commit and complete tree agree.  All in-progress Euler files remain local.
+
+The explicit call-result substitution removed the unused equality binder
+but did not resolve the helper proofs.  Top-exponent execution needed
+List.set and local-index simplification.  Conditional execution needed
+normalization of validation metadata before applying the existing iff
+rule.  A draft used an unavailable progress tactic and failed immediately.
+The next draft stopped when metadata simplification made no progress.
+The corrected tactic attempts that simplification and then applies the
+iff rule.  Maximum, exponent, and top-exponent proofs then passed.
+
+Three calls occur with an additional caller operand on the stack.
+Added ProofKit.CallRemainder to lift a successful exact-arity call theorem
+through an arbitrary caller remainder.  Its proof includes ordinary
+returns, function breaks, tail calls, and impossible failure outcomes.
+Two initial proof drafts failed while eliminating those outcomes.
+The corrected module passes in 2.4 seconds and reports standard logical
+axioms.  The normalization predicate additionally needed explicit
+UInt64-to-Nat reasoning for zero versus positive exponent.  Bare omega
+did not see that representation.  The corrected GuardOperations module
+passes in 10 seconds.  Its six execution theorems report only standard
+logical axioms.  EnergyGuard is the next bounded check.
+
+EnergyGuard initially left the negative residual-threshold branch open.
+Expanding its local abbreviation did not discharge that branch.  Explicit
+conditional rewriting before the next WP step resolved it.  EnergyGuard
+passes in 8.6 seconds.  The combined StateGuard proof needed to split its
+Boolean result before consuming the following conditional.  Its corrected
+proof passes in 5.8 seconds.  Importing the new macro also reserved the
+token condition before the existing side_checked macro declaration.
+Renamed that macro's parameter to predicate.  The complete conservative
+Execution module passes in 34 seconds, and Spec passes in 1.5 seconds.
+
+Prepared the reviewed shared-support checkpoint: FunctionRegion Syntax,
+Step, and NoTail, TalosCompat, ProofKit.CallRemainder, devnotes.md, and
+journal.md.  Their checked theorems contain no new axiom.  The Euler source,
+generated cache, kernel proofs, runtime drafts, and figures remain outside
+that checkpoint.  The flux artifact preparation is running sequentially
+after the conservative specification check.
