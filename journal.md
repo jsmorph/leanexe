@@ -10675,3 +10675,60 @@ tmp/euler-2d-run-WUsScd.  The documentation gate passes for 104 maintained
 Markdown files, and git diff --check passes.  The checkpoint stages only
 the host wrapper, detailed dev plan, devnotes, and journal.  The remote
 GCC build and 192-grid timing remain pending for the corrected source.
+
+Published the four-file linker correction as
+c64507bf0a0729cbab03cd1aee416471a74f222e, parent
+2a3cd90ec32f0149e22f6dcc382425404ebffcee, tree
+f1893ff86696d4e9810c33ae8c4cae2c89d5e156.  Non-forced push and fetch
+passed.  Fetched head, parent, complete tree, and tracked-worktree content
+agree.  Confirmed the fresh remote destination absent, then copied all
+6,777 tracked files, totaling 98,289,153 bytes, to
+/mnt/vq/leanexe-riemann-20260911-libm.  Transfer returned zero with no
+deletions.  A separate checksum comparison returned zero with empty
+output.  This snapshot remains immutable during its jobs.  The installed
+Node and C API retain their absolute paths in the first snapshot.
+
+Submitted leanexe-riemann-192-20260911-2 with the same benchmark limits,
+runner, command, and tool versions, selecting the corrected work directory.
+It started at 17:41:02 UTC and finished at 17:44:02 UTC.  Native evidence
+is tmp/euler-2d-run-5lFzER.  The host receipt records executable SHA-256
+59b6f0db3b889fb7a0fb5c72703f9edc4fc6e74f6e76fee66804f2e38c26d467,
+C source SHA-256 56bf959f44c134edb05abfde1d9921ed3c1bca539a1fc95f8d1ad690554d6aa4,
+the strict floating-point compiler flags, and -lwasmtime/-lm linkage.
+The persistent result command returned final status zero.  Native time
+including build was 131.18569411 seconds.  Replay took 44.491457276
+seconds.  All 808 steps and saved-word/control comparisons pass, with
+zero retries.  A separate Python comparison established exact equality
+of every numerical summary result field, decompressed cells.csv, and
+history.csv with the original published 192-grid dataset.
+
+Retrieved both completed benchmark job directories to
+tmp/riemann-dev-jobs-20260911 and the fresh benchmark dataset to
+tmp/riemann-dev-192-20260911.  Each transfer and subsequent empty checksum
+comparison returned zero.  No failed evidence or historical result was
+deleted or overwritten.
+
+Rechecked aggregate capacity: no active persistent services, zero current
+tasks, loaded parent limits of 48G high, 52G maximum, zero swap, 2400%
+CPU, and 2048 tasks.  Submitted leanexe-riemann-800-20260911-1 through
+the same runner and pinned tools, with corrected work directory,
+LEANRUN_TIMEOUT=21600, LEANRUN_MEMORY_HIGH=4G, LEANRUN_MEMORY_MAX=6G,
+LEANRUN_SWAP_MAX=0, LEANRUN_CPU_QUOTA=100%, and LEANRUN_TASKS_MAX=512.
+The command is the absolute Node executable followed by
+tools/euler-riemann-large.mjs run 800 data/euler-riemann-800-v1.
+Submission returned zero and the job started at 17:44:58 UTC.  Its native
+record is tmp/euler-2d-run-9lAWkE/run.ndjson.  At 17:45:53 UTC the job
+was active with MemoryCurrent=107270144 bytes and about 55 CPU seconds.
+No final result is claimed.  Cubic grid scaling predicts 2.64 hours
+native and 0.89 hours replay, plus a second replay for compressed-data
+verification.  Explained this estimate and the separate implementation
+and tests that parallel execution would require.  The approved serial
+run proceeds.
+
+Added tools/euler-riemann-compare.py for a two-resolution, two-field plot
+with common color scales and contour levels.  Ran its 8-grid/192-grid
+test with the pinned Matplotlib environment under the standard local
+runner and a two-minute limit.  PNG, SVG, and PDF were written at
+tmp/riemann-comparison-render-test-20260911, and the PNG was inspected.
+The plot has legible axes and color bars and uses the same ranges for
+both resolutions.  No 800-grid plot or data is present yet.
