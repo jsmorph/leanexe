@@ -1,0 +1,60 @@
+{
+  "checkpoint": "2f3ec33f6e98ad98ac94df277c91e5319763cf9d",
+  "comparison_head": "7c7277d1e1ab8bc4ee5b4a014a8b975abb8b8054",
+  "comparison_paths": [
+    "docs/leanexe-type-theory.md",
+    "docs/leanexe-formal-specification.md",
+    "LeanExe/Extract/Types.lean",
+    "LeanExe/Extract/Core.lean",
+    "LeanExe/Extract/Values.lean",
+    "LeanExe/IR/Core.lean",
+    "LeanExe/Wasm/Binary.lean"
+  ],
+  "comparison_diff_empty": true,
+  "source_files": [
+    {
+      "path": "docs/leanexe-type-theory.md",
+      "source_sha256": "ed9c34d5201a4e3ad397ff6432b9eab4c605b9dd33ddc07c3709e6e23535d933"
+    },
+    {
+      "path": "docs/leanexe-formal-specification.md",
+      "source_sha256": "64395120948a4d4516d1d92af6b90f535bbec441e3c85d193e23da23d2fcba24"
+    },
+    {
+      "path": "LeanExe/Extract/Types.lean",
+      "source_sha256": "d29ae6314ae92da8627555454ab94d267cf7823fe9467edf895ce3d98f8dd954"
+    },
+    {
+      "path": "LeanExe/Extract/Core.lean",
+      "source_sha256": "4697a94617eab50f8e4b8416ba5570d9e5ac3670e7df35267adeaeca0cd46f93"
+    },
+    {
+      "path": "LeanExe/Extract/Values.lean",
+      "source_sha256": "9357f6f1f359660ba4f537ee4ed0bfdcb909b72bb4796f308b4861a6e666f424"
+    },
+    {
+      "path": "LeanExe/IR/Core.lean",
+      "source_sha256": "523845d8d59a0a32ca8c4dfe9cbc6afd5d2c4372a485fa95558740e7a0c8ef09"
+    },
+    {
+      "path": "LeanExe/Wasm/Binary.lean",
+      "source_sha256": "fbf1b57a76075ed60309ce6b913ce4d4f32170d9a9de7b3224f8045a20867227"
+    },
+    {
+      "path": "LeanExe/Wasm/ScalarCertificate.lean",
+      "source_sha256": "dc2d561d4ecabb5a95de605463d3f7b94d524a33cf123b3322ff4f18add62ee8"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean",
+      "source_sha256": "242c3ae77b16e7e868f510cb079f788d62662ec98889b3abc657415891ca5f22"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Artifact/Binary/Proof/Validate.lean",
+      "source_sha256": "4851969386afcb89f55593843c74436c36baaa777da4a9d085c1f1f852865449"
+    }
+  ],
+  "lean_jobs_run": false,
+  "compiler_jobs_run": false,
+  "verifier_jobs_run": false,
+  "runtime_reproducer_run": false
+}

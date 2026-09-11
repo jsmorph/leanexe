@@ -1,0 +1,12 @@
+{
+  "title": "The LeanExe Fragment: Types, Extraction, and Execution",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "LeanExe compiles checked Lean declarations to WebAssembly through a restricted first-order extraction path. The LeanExe fragment is specified here by runtime typing and layout rules together with an implementation-indexed relation from checked declarations to WebAssembly execution. The report separates kernel typing, static specialization, extraction acceptance, ownership analysis, binary validity, and artifact behavior. It defines the internal and public type domains, proves two layout propositions, and states the numeric, collection, memory, and fixed-adapter semantics used by the implementation. A source audit identifies incomplete runtime export-name rejection and a child-mask width obligation. The reference IR evaluator has a narrower comparison domain than compiled execution. Existing emitter, decoder, validator, and artifact theorems support their named boundaries. An independent source operational semantics, mechanized acceptance judgments, and a general source-to-WebAssembly refinement theorem remain open.",
+  "subject": "cs.PL",
+  "secondary": "cs.LO",
+  "comments": "13 pages",
+  "replaces": "2609.00005",
+  "public_static_export": false,
+  "pdf": "pass-02/main.pdf",
+  "pdf_sha256": "57a2bcaf253c242d82de53ec01b42c6d490bc41bd8eb5243ebefcc3b0f7fe3ef"
+}

@@ -1,0 +1,11 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 9, §2.1: “evidence-carrier names” does not identify the excluded declarations or the predicate selecting them.  Specify which names this term denotes.
+- Requirement 9, Table 2: “subject to the ownership judgment” refers to an undefined judgment.  Identify it with the implemented release check described in §5.2, or define the intended judgment before use.
+- Requirement 9, §3.4: “first-Nat fuel recursion” leaves “first” ambiguous.  State which argument supplies the fuel and the position required by this recognition rule.
+- Requirement 12, “Throat-clearing and announcements,” §6.1: “The ownership-mask boundary follows from three declarations.”  This sentence announces the supporting evidence.  State the missing layout bound in the paragraph’s opening sentence.
+

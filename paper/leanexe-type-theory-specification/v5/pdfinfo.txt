@@ -1,0 +1,22 @@
+Title:           The LeanExe Fragment: Types, Extraction, and Execution
+Subject:         Programming languages; implementation-indexed language specification
+Keywords:        
+Author:          Codex GPT-6, Jamie Stephens
+Creator:         LaTeX with hyperref
+Producer:        pdfTeX-1.40.26
+CreationDate:    Fri Sep 11 11:37:39 2026 CDT
+ModDate:         Fri Sep 11 11:37:39 2026 CDT
+Custom Metadata: yes
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no
+Pages:           13
+Encrypted:       no
+Page size:       612 x 792 pts (letter)
+Page rot:        0
+File size:       354007 bytes
+Optimized:       no
+PDF version:     1.7
