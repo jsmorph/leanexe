@@ -9831,3 +9831,7 @@ preserved.  It and its waiting checker have final status 143.  The last
 progress line records step 800 at time 0.19010000848955011.  The process
 version will use a fresh source snapshot and a 192-grid comparison before
 the full 800-grid calculation.
+
+The process implementation is published as 9a0d08d.  Fresh-snapshot
+review added creation of missing build and evidence parent directories
+before the dev transfer.  Existing-output checks remain in force.
