@@ -11120,3 +11120,16 @@ time-control proof, exact-artifact proof, and both requested production
 runs remain unfinished.  The compiler arithmetic decision is pending.
 The intended publication contains these explicit paths only and preserves
 all unrelated report intermediates and existing numerical data.
+
+The 15-file foundation checkpoint was published as
+45f0c0f8e6566df23c00929ac5692d899458c492, parent
+75da68b446a1197b0eae475f0f17b715efaeae9b, tree
+7d7ed471e63c98edff5034ddfd906c4fd049887b.  Reviewed every new source,
+proof, and test file and the plan/note changes before explicit staging.
+The staged whitespace check passed.  The non-forced push advanced
+talosfp-euler from 75da68b to 45f0c0f.  Fetch returned the same commit,
+parent, tree, and headline.  Both index and tracked worktree comparisons
+with FETCH_HEAD passed.  Unrelated report intermediates remain untracked
+and unchanged.  Git commit, push, and fetch disabled automatic maintenance.
+This bounded receipt is the only follow-up publication record for that
+checkpoint.  The arithmetic design question remains unanswered.
