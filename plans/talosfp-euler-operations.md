@@ -11,6 +11,18 @@ execution, cleanup, or another action prohibited here.
 
 ## Immediate non-negotiable summary
 
+### 2026-09-11: additional 800 × 800 run on dev
+
+The user authorized an additional 800 × 800 Riemann calculation on `ssh dev`
+and allowed use of that machine's capacity.  This instruction supersedes
+the historical local-only statements below for this calculation.  Use the
+current leanrunner skill and its dev runbook, a fresh project snapshot,
+checksum-verified transfers, admitted resource limits, and persistent jobs.
+Preserve the completed 192 × 192 dataset and every existing remote tree.
+The approved sequence is a 192-grid timing, streamed records, the larger
+serial run, independent replay, final density/pressure figures, and a
+separate publication.  Discuss parallel execution if timing warrants it.
+
 - Work on this branch is always local.  There is no `dev` host: do not invoke,
   probe, discover, or fall back to one.  Direct local Lean is authorized.
 - Run at most one Lean-family process at a time, with one Lean thread, the

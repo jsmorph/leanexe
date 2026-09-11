@@ -10,7 +10,10 @@ import numpy as np
 
 
 def render(directory):
-    data = np.genfromtxt(directory / "cells.csv", delimiter=",", names=True)
+    inputs = [p for p in [directory / "cells.csv", directory / "cells.csv.gz"] if p.exists()]
+    if len(inputs) != 1:
+        raise ValueError("expected one cell CSV, plain or gzip-compressed")
+    data = np.genfromtxt(inputs[0], delimiter=",", names=True)
     n = int(round(np.sqrt(data.size)))
     if n * n != data.size:
         raise ValueError("cell count must be square")

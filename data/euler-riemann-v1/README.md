@@ -51,7 +51,7 @@ Lean checks exact-byte execution and accepted-state safety for all three numeric
 
 The [summary](summary.json) records settings, artifact and source hashes, diagnostics, and data hashes.  [Final cell values](cells.csv), [timestep history](history.csv), and the [compressed raw record](raw.json.gz) include 21 density/pressure snapshots and the complete final conservative state.
 
-With the repository's pinned Node 24.13.0, this command replays the saved run and compares all four canonical data files byte for byte:
+The commands in this section use [publication revision 4f0ec1f](https://github.com/jsmorph/leanexe/commit/4f0ec1f161b81a868aac241b248651ca7423bac1), which contains the generators identified by the summary's source hashes.  With the repository's pinned Node 24.13.0, this command replays the saved run and compares all four canonical data files byte for byte:
 
 ```sh
 tools/leanrun --timeout 10m node tools/euler-riemann-data.mjs check
