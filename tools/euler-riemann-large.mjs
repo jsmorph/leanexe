@@ -62,7 +62,11 @@ async function* compressedParts(directory,parts){for(const part of parts)yield* 
 function checkRun(run,n){assert.equal(run.scenario,'riemann');assert.equal(run.n,n);assert.equal(run.t,.8);assert.equal(run.frameCount,21);}
 export async function writeDataset(record,directory,timing={}){
  assert.ok(!fs.existsSync(directory),'preserve existing dataset');
+ const executionFile=path.join(path.dirname(record),'execution.json');
+ const execution=fs.existsSync(executionFile)?JSON.parse(fs.readFileSync(executionFile)):undefined;
+ if(execution)assert.equal(await fileHash(record),execution.recordSha256,'block execution record');
  const started=performance.now(),run=await verifyEventFile(record,{onEvent:progress});checkRun(run,run.n);
+ if(execution){assert.equal(execution.n,run.n);assert.equal(execution.steps,run.steps);assert.equal(execution.retries,run.retries);}
  timing={...timing,replaySeconds:(performance.now()-started)/1000};
  fs.mkdirSync(directory);fs.mkdirSync(path.join(directory,'raw'));
  const parts=await writeParts(record,directory);
@@ -72,10 +76,10 @@ export async function writeDataset(record,directory,timing={}){
  for(const name of sourceNames)sources[name]=await fileHash(path.join(root,'tools',name));
  for(const name of [...parts,'cells.csv.gz','history.csv'])contentSha256[name]=await fileHash(path.join(directory,name));
  const summary={schemaVersion:2,scenario:'riemann',artifacts,sources,node:process.versions.node,runtime:'Wasmtime 44.0.0 C API',
-  method:method(run.n),initialConditions,host:{platform:process.platform,arch:process.arch},
+  method:method(run.n),initialConditions,host:{platform:process.platform,arch:process.arch},execution,
   result:result(run),records:{format:'Concatenated gzip members containing newline-delimited JSON events',parts,maxUncompressedPartBytes:64*1024*1024},timing,
   comparison:'Every saved density/pressure word, final conservative word, timestep, control record, diagnostic, and boundary-corrected integral agrees with the independent binary64 JavaScript calculation.',
-  proofScope:'The numerical WASM artifacts have exact-byte execution and accepted-state safety theorems. Lean proves axis exchange, clamped sweeps, and successful finite-run call traces. C/JS orchestration, initialization, diagnostics, and plotting use executable tests. PDE convergence remains an open proof obligation.',contentSha256};
+  proofScope:'The numerical WASM artifacts have exact-byte execution and accepted-state safety theorems. Lean proves axis exchange, clamped sweeps, and successful finite-run call traces. C/JS and batch-WASM orchestration, initialization, diagnostics, and plotting use executable tests. PDE convergence remains an open proof obligation.',contentSha256};
  fs.writeFileSync(path.join(directory,'summary.json'),json(summary),{flag:'wx'});
  console.log(json({directory,...summary.result,timing}));return summary;
 }
@@ -90,7 +94,10 @@ export async function checkDataset(directory){
  assert.deepEqual(parts,parts.map((_,i)=>`raw/part-${String(i).padStart(3,'0')}.ndjson.gz`));
  assert.deepEqual(Object.keys(summary.contentSha256),[...parts,'cells.csv.gz','history.csv']);
  for(const [name,expected]of Object.entries(summary.contentSha256))assert.equal(await fileHash(path.join(directory,name)),expected,'content hash: '+name);
- const run=await pipeline(Readable.from(compressedParts(directory,parts),{objectMode:false}),createGunzip(),source=>verifyEventStream(readEvents(source),{onEvent:progress}));
+ const recordHash=crypto.createHash('sha256');
+ async function* hashed(source){for await(const chunk of source){recordHash.update(chunk);yield chunk;}}
+ const run=await pipeline(Readable.from(compressedParts(directory,parts),{objectMode:false}),createGunzip(),source=>verifyEventStream(readEvents(hashed(source)),{onEvent:progress}));
+ if(summary.execution)assert.equal(recordHash.digest('hex'),summary.execution.recordSha256,'block execution record');
  checkRun(run,summary.method.grid[0]);assert.deepEqual(summary.method,method(run.n));
  assert.deepEqual(result(run),summary.result);
  const cellsHash=await pipeline(Readable.from(cellRows(run),{objectMode:false}),createGzip({level:9}),source=>digest(source));
