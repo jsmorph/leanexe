@@ -13,13 +13,13 @@ def resultValues (rho momentum transverse energy : UInt64) : List Wasm.Value :=
     .i64 out.speed, .i64 out.pressure, .i64 out.velocity, .i64 out.status]
 
 /-- Discharge the rejected continuation once; keep the accepted guard for the next call. -/
-macro "side_checked" call:term "condition" condition:term "reject" rejection:term : tactic =>
+macro "side_checked" call:term "condition" predicate:term "reject" rejection:term : tactic =>
   `(tactic|
     (refine wp_call_tw $call ?_
      rintro st values ⟨hst, hvalues⟩
      subst st
      subst values
-     cases hcheck : $condition
+     cases hcheck : $predicate
      case false =>
        side_fp_peel
        refine wp_call_tw $rejection ?_
@@ -31,9 +31,9 @@ macro "side_checked" call:term "condition" condition:term "reject" rejection:ter
      all_goals side_fp_peel))
 
 theorem sideCheckedBits_exact_in_module {m : Wasm.Module}
-    (layout : HelperLayout m) (hside : m.funcs[5]? = some func5Def)
+    (layout : HelperLayout m) (hside : m.funcs[13]? = some func13Def)
     (env : HostEnv Unit) (initial : Store Unit) (rho momentum transverse energy : UInt64) :
-    TerminatesWith env m 5 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
+    TerminatesWith env m 13 initial [.i64 energy, .i64 transverse, .i64 momentum, .i64 rho]
       (fun final values => final = initial ∧ values = resultValues rho momentum transverse energy) := by
   let velocity := Wasm.IEEE64.div momentum rho
   let transport := Wasm.IEEE64.mul momentum velocity
@@ -52,11 +52,11 @@ theorem sideCheckedBits_exact_in_module {m : Wasm.Module}
   let enthalpy := Wasm.IEEE64.add energy pressure
   let energyFlux := Wasm.IEEE64.mul velocity enthalpy
   have rejectCall := rejectedSide_exact layout env initial
-  refine TerminatesWith.of_wp_entry_for (f := func5Def)
+  refine TerminatesWith.of_wp_entry_for (f := func13Def)
     (by simpa [layout.noImports] using hside) ?_ (by simp [layout.noImports])
-  change wp m func5 _ initial (func5Def.toLocals [.i64 rho, .i64 momentum, .i64 transverse, .i64 energy]) env
-  unfold func5
-  wp_run [func5Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+  change wp m func13 _ initial (func13Def.toLocals [.i64 rho, .i64 momentum, .i64 transverse, .i64 energy]) env
+  unfold func13
+  wp_run [func13Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   side_checked (stateGuard_exact layout env initial rho momentum transverse energy)
     condition (Model.stateGuard rho momentum transverse energy) reject rejectCall

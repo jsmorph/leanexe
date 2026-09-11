@@ -3,7 +3,7 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
 async function main(){
  const {run2D,verifyEvents}=await import('../tools/euler-2d-runtime.mjs');
- for(const scenario of ['four-quadrants','circular-blast']){
+ for(const scenario of ['four-quadrants','circular-blast','riemann']){
   const run=run2D(8,5,scenario);
   const events=fs.readFileSync(path.join(run.evidenceDirectory,'run.ndjson'),'utf8').trim().split('\n').map(JSON.parse);
   const flip=s=>(BigInt('0x'+s)^1n).toString(16).padStart(16,'0');

@@ -10196,3 +10196,94 @@ journal.md.  Their checked theorems contain no new axiom.  The Euler source,
 generated cache, kernel proofs, runtime drafts, and figures remain outside
 that checkpoint.  The flux artifact preparation is running sequentially
 after the conservative specification check.
+
+Published the shared execution support as
+03956a9c15b971dcfd8b09408fe7b8fa7aef6465, parent
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d, tree
+d5e7a694b53a9aab9239562ee895d2dfb454b670.  Non-forced SSH push and
+fetch succeeded.  The fetched commit and complete tree equal local HEAD.
+
+Prepared the dynamic-flux and cell artifacts with their repository driver.
+The new immutable packages contain 3,193, 4,495, and 6,171 bytes for the
+state calculation, flux, and cell update.  Their SHA-256 identities are
+607008ccfe4c7cc7c721aa459eb7c5442cbeb569b7281b9958f2cdce87132a1d,
+a35295b198aba7800be2f36c10c73d928225b11ac8a1fce8eb00f6848aef2995,
+and 5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942.
+The prepare and artifact-migrate commands updated only each case's named
+outputs and registry entry.  Previous immutable packages remain intact.
+
+The three-minute cell specification build passed.  It rebuilt the shared
+one-dimensional component and update execution proofs, the two-dimensional
+flux execution proof in 26 seconds, the cell execution proof in 53 seconds,
+and cell safety in 7.3 seconds.  Flux Spec and Runtime.Checks subsequently
+passed.  Sweep initially failed because its internal-energy simplification
+omitted the orient definition.  Adding that definition discharged the
+goal.  Sweep and Runner then passed in 1.8 and 3.2 seconds.  The checked
+public execution, safety, and sweep theorems report standard logical axioms.
+
+The focused conservative test's first invocation was rejected by the
+sandbox before its child runner executed.  It retained
+tmp/euler-2d-conservative-5id12O.  The approved invocation passed all
+54 cases and exact opcode-count checks, retaining
+tmp/euler-2d-conservative-cxfoHO.  The flux and cell tests now cover the
+four Riemann states and acceptance beyond the old sufficient guard.
+Unexpected host errors propagate instead of being classified as numerical
+rejections.  These two tests and the three-scenario runtime test remain
+pending at this entry.
+
+The independent artifact-proof check passed for the conservative and
+dynamic-flux binaries.  Each check verified embedded-byte identity,
+decoding, validation, Talos translation equality, the behavioral
+specification, and the manifest's axiom audit.  The public execution and
+safety specifications use standard logical axioms.  The generated decode
+and validation cache witnesses retain the existing native_decide trust
+boundary, reported by the audit.  The cell artifact check is running.
+All Lean-family commands ran sequentially under the standard Linux
+leanrunner cgroup limits.  No local-mode or remote-executor exception ran.
+
+The cell artifact check passed, including its seven axiom reports.
+ArtifactRunner then rebuilt in two seconds within a one-minute runner
+limit.  Its finite-run theorem transfers to the new exact cell bytes and
+reports the expected generated cache witnesses.  The underlying public
+Runner and Sweep theorems retain standard logical axioms.
+
+The documentation gate passes for 94 maintained Markdown files, and
+git diff --check reports no whitespace errors.  tools/ltg check failed
+because its tracked LTGCheck.lean contains three lines absent from the
+catalog-generated expectation: the CheckedArrayGet import and checks of
+checkedGetCore and checkedGetCore_spec.  Both the catalog and LTGCheck are
+unchanged by this task.  A read-only comparison found no missing expected
+line and exactly those three extra lines.  Rebuilding would remove this
+pre-existing checked material.  Preserved it and recorded the baseline
+catalog discrepancy instead.  No LTG entry was added or promoted here.
+
+The flux test's initial sandbox invocation could not start leanrun and
+retained tmp/euler-2d-dynamic-flux-HJonU0.  Its approved invocation is
+running under the normal resource limits.
+
+The focused flux test passed all 75 cases and emitted opcode counts,
+retaining tmp/euler-2d-dynamic-flux-ZBIqwL.  The cell test's first
+invocation received the same pre-execution EPERM and retained
+tmp/euler-2d-cell-step-72lhIS.  Its approved invocation passed all
+84 cases and opcode counts, retaining tmp/euler-2d-cell-step-ycz1fW.
+No expected classification needed changing after these runs.
+
+Ran the three-scenario runtime test under tools/leanrun with a two-minute
+timeout and WASMTIME_C_API set to the installed pinned 44.0.0 ARM Linux
+package.  All 8 × 8 full-time comparisons passed, including six deliberately
+corrupted-record rejections per scenario.  Native evidence remains in
+tmp/euler-2d-run-uqV27g, tmp/euler-2d-run-x2pDx5, and
+tmp/euler-2d-run-r4o8tV.  The C host compiled with its existing C11,
+no-fast-math, and disabled-contraction settings.  The Riemann case reached
+time 0.8.  This test invokes no Lean child, so the outer runner supplies
+the cgroup without a nested lock.
+
+Reviewed the solver checkpoint: the Euler2DConservative source, three
+generated programs, affected execution and safety proofs, the two new
+guard-execution modules, three exact-byte packages and registry entries,
+Runtime.Checks, four focused tests, four runtime sources, data and plot
+scripts with pinned plotting requirements, three kernel readmes, plan.md,
+plans/euler-rusanov.md, devnotes.md, and journal.md.  These explicit paths
+constitute the checkpoint.  Existing artifacts, LTG material, datasets,
+and retained diagnostic directories remain intact.  The 192 × 192 run
+and final figures are the next step.

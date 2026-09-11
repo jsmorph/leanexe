@@ -27,7 +27,7 @@ export function run2DHost(side,flux,cell,n,frames,scenario){
  const executable=ensure2DHost(),directory=fs.mkdtempSync(path.join(root,'tmp/euler-2d-run-'));
  const outPath=path.join(directory,'run.ndjson'),errPath=path.join(directory,'stderr.log');
  const output=fs.openSync(outPath,'wx'),error=fs.openSync(errPath,'wx');
- try{execFileSync(executable,[scenario,side,flux,cell,String(n),String(frames)],{cwd:root,timeout:600000,stdio:['ignore',output,error]});}
+ try{execFileSync(executable,[scenario,side,flux,cell,String(n),String(frames)],{cwd:root,timeout:scenario==='riemann'?1800000:600000,stdio:['ignore',output,error]});}
  finally{fs.closeSync(output);fs.closeSync(error);}
  const events=fs.readFileSync(outPath,'utf8').trim().split('\n').map(line=>JSON.parse(line));
  return {events,evidenceDirectory:path.relative(root,directory)};
