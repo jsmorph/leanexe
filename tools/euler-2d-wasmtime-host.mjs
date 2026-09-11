@@ -23,12 +23,19 @@ export function ensure2DHost(){
  }
  return executable;
 }
-export function run2DHost(side,flux,cell,n,frames,scenario){
+export function run2DHostRecord(side,flux,cell,n,frames,scenario,{timeout=1800000}={}){
+ assert.ok(Number.isSafeInteger(timeout)&&timeout>0);
  const executable=ensure2DHost(),directory=fs.mkdtempSync(path.join(root,'tmp/euler-2d-run-'));
  const outPath=path.join(directory,'run.ndjson'),errPath=path.join(directory,'stderr.log');
+ console.log('Native record: '+path.relative(root,outPath));
  const output=fs.openSync(outPath,'wx'),error=fs.openSync(errPath,'wx');
- try{execFileSync(executable,[scenario,side,flux,cell,String(n),String(frames)],{cwd:root,timeout:scenario==='riemann'?1800000:600000,stdio:['ignore',output,error]});}
+ try{execFileSync(executable,[scenario,side,flux,cell,String(n),String(frames)],{cwd:root,timeout,stdio:['ignore',output,error]});}
  finally{fs.closeSync(output);fs.closeSync(error);}
+ return {record:outPath,evidenceDirectory:path.relative(root,directory)};
+}
+export function run2DHost(side,flux,cell,n,frames,scenario){
+ assert.ok(n<=384,'use run2DHostRecord and streamed verification for larger grids');
+ const {record:outPath,evidenceDirectory}=run2DHostRecord(side,flux,cell,n,frames,scenario,{timeout:scenario==='riemann'?1800000:600000});
  const events=fs.readFileSync(outPath,'utf8').trim().split('\n').map(line=>JSON.parse(line));
- return {events,evidenceDirectory:path.relative(root,directory)};
+ return {events,evidenceDirectory};
 }

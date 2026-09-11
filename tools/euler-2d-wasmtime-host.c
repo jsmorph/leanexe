@@ -145,6 +145,7 @@ static void simulate(const char *side_path,const char *flux_path,const char *cel
   double d[5]={metrics.max_cfl,metrics.min_rho,metrics.min_p,metrics.max_velocity,metrics.min_energy_ratio};doubles(d,5);
   printf(",\"boundaryX\":");doubles(bx,4);printf(",\"boundaryY\":");doubles(by,4);printf("}\n");
   uint64_t *old=grid;grid=next;next=old;t+=dt;
+  if(steps%50==0||t==end)fprintf(stderr,"step=%zu time=%.17g retries=%zu\n",steps,t,retries);
   while(next_frame<frames&&t>=end*(double)next_frame/(double)(frames-1))frame(next_frame++,steps,t,grid,pressure,n);
  }
  require(next_frame==frames,"missing frames");
@@ -158,7 +159,7 @@ static void simulate(const char *side_path,const char *flux_path,const char *cel
 int main(int argc,char **argv) {
  require(argc==7,"usage: host scenario side.wasm flux.wasm cell.wasm mesh frames");
  require(strcmp(argv[1],"four-quadrants")==0||strcmp(argv[1],"circular-blast")==0||strcmp(argv[1],"riemann")==0,"unknown scenario");
- char *end=NULL;long n=strtol(argv[5],&end,10);require(end&&*end==0&&n>=4&&n<=384&&n%2==0,"mesh must be even,4..384");
+ char *end=NULL;long n=strtol(argv[5],&end,10);require(end&&*end==0&&n>=4&&n<=800&&n%2==0,"mesh must be even,4..800");
  long frames=strtol(argv[6],&end,10);require(end&&*end==0&&frames>=2&&frames<=65,"frames must be2..65");
  simulate(argv[2],argv[3],argv[4],(size_t)n,(size_t)frames,argv[1]);return 0;
 }
