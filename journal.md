@@ -10768,3 +10768,77 @@ The first SSH failure's cause is undetermined.  The successful follow-up
 status reports the check service active and awaiting its predecessor.
 The native run has reached step 150, time 0.035516486960735928, with
 zero retries.  Both final statuses remain pending.
+
+### 2026-09-11: Bash-controlled WASM row blocks
+
+Published the preceding queue checkpoint as
+14329c9f6f7b9d9eef910fbc058017ba21afefee, parent
+072bf82a04732fbeba4469da669182a7a1c55e0a, tree
+14679ffb5f68a655b7aa48e991e6e260f9bd63f8.  Non-forced push, fetch,
+head, parent, tree, and tracked-worktree equality passed.
+
+The user rejected the thread-pool proposal and authorized implementation
+and execution of 24 WASM processes controlled by Bash.  Added
+tools/euler-block-wave.sh, tools/euler-block-host.c,
+tools/euler-block-worker.wat, tools/euler-block-run.mjs, and
+test/euler_blocks.mjs.  Bash launches all 24 row blocks and waits for
+every PID.  WASM performs the block loops using the unchanged side,
+flux, and cell artifacts.  C reads immutable input blocks and neighboring
+rows and writes new output files.  Node coordinates scan/x/y barriers,
+global timestep retries, deterministic diagnostics, and raw records.
+Every intermediate attempt is preserved.  No third-party package or
+new Lean proof was added.  Installed Wasmtime 44 module.h and wat.h
+document the conversion, compilation, and local-module deserialization
+APIs used by the host.  The new batch module has executable tests.
+
+The first WAT draft had an extra closing parenthesis.  Its failed cache
+build/tools/euler-block-7e80cba9998a564fa7c3b56512292d45e1bd0da2dfac70d862789675fd560a3a
+remains preserved.  Correcting that expression produced a passing
+26-grid comparison in tmp/euler-block-test-Okuoqy.  Review then found
+initialization counted side calls while computing pressure in JavaScript.
+Added a WASM initialize entry and repeated the full test successfully in
+tmp/euler-block-test-HZURTZ.  This makes the reported physical calls
+correspond to executed numerical-kernel calls.
+
+The first file format stored 40 bytes per cell in both sweeps.  At about
+3,370 steps this would retain 172.5 GB before file-system metadata and
+records.  Dev reports 181,693,104,128 available bytes.  Omitted unused
+pressure from x output files, reducing cell data to 155.3 GB.  The host
+expands the four conserved words when loading an x file.  Y outputs
+retain pressure for snapshots.  No existing file was changed by this
+format adjustment.  Added generator source hashes and a streamed record
+hash to execution.json.  The large dataset writer preserves that receipt,
+and both writer and packaged-data checker verify the record binding.
+
+Ran tools/leanrun --timeout 5m env
+WASMTIME_C_API=/home/somebody/src/leanexe/build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api
+node test/euler_blocks.mjs.  Final status zero.  The latest evidence is
+tmp/euler-block-test-KBfesv.  All 110 steps through time 0.8, every frame,
+final conservative word, diagnostic, integral, and call count match
+the serial record tmp/euler-2d-run-fW2LQH/run.ndjson byte for byte.
+Independent replay, compressed-data replay, metadata preservation,
+32-byte x records, forced rejection, and missing-input failure pass.
+Runtime was 9.206926213 seconds under the standard local one-CPU limits.
+Worker WASM SHA-256 is
+9c7b6b055eaa5a72a16b3aabfa8f03a276ac2181b01b8222e5a230917eb8f3aa.
+C source SHA-256 is
+ab0351cfa33f45390e781e7a655682086dfb0a7af6f150afb45a93f6044e0ebd.
+The complete build receipt remains in the retained test directory.
+
+Stopped only leanrun-job-leanexe-riemann-800-20260911-1.service through
+the canonical SSH helper after confirming the two task-owned jobs were
+the only active persistent services.  Its final status is 143.  The
+queued checker propagated 143 without starting verification.  Their
+logs and partial native files remain preserved.  The last progress line
+is step 800, time 0.19010000848955011, zero retries.  No persistent job
+remains active.  The failed grep for Python runner files found that the
+runner is shell-only.  Reading leanrun-job established that stopping
+requires systemctl rather than a runner stop subcommand.
+
+The documentation gate passes all 104 maintained Markdown files.  Bash
+and Node syntax checks pass.  This checkpoint includes the six runtime
+and test files, plan.md, plans/euler-riemann-dev.md,
+plans/euler-rusanov.md, plans/talosfp-euler-operations.md, devnotes.md,
+and this journal.  Unrelated report intermediates remain unstaged.
+The next gates are a published fresh dev source snapshot, a 192-grid
+process benchmark with exact serial comparison, and the 800-grid run.

@@ -493,6 +493,8 @@ proved WASM kernels as the completed 192 × 192 calculation.
 
 - [x] Check dev, synchronize a fresh snapshot through leanrunner, and time the existing 192-grid solver with independent replay.
 - [x] Stream event reading, verification, compression, and CSV output, and test agreement with the existing small-run path.
+- [x] Implement the authorized 24-process WASM sweeps with Bash barriers and test complete agreement with the serial record on unequal row blocks.
+- [ ] Benchmark the process implementation on dev at 192 × 192 and compare its complete record with the serial benchmark.
 - [ ] Run 800 × 800 through time 0.8 in a persistent resource-limited job and verify its saved words and diagnostics.
 - [ ] Publish a separate dataset, density and pressure figures, and a short comparison with the 192-grid result.
 

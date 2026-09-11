@@ -790,3 +790,12 @@ physical y increasing upward and equal coordinate scales.  The article
 states the grid, method, initial conditions, numerical diagnostics, and
 proof scope.  It records the smoother central structure of this coarser,
 first-order result relative to the published 800 × 800 density figure.
+
+The additional 800-grid calculation uses the user-approved 24-process
+WASM design in the [dev run record](euler-riemann-dev.md).  Bash starts
+and waits for each sweep's workers.  Completed block files supply the
+neighbor rows.  The 26-grid test matches the full serial record exactly,
+including unequal block sizes, all diagnostics, and final words.  The
+new batch orchestration has executable tests.  The three proved kernel
+artifacts are unchanged.  Dev benchmarking and the 800-grid result remain
+pending.
