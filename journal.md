@@ -10614,3 +10614,64 @@ benchmark and 800-grid calculation await those required tools.  This
 receipt checkpoint contains only devnotes.md, the detailed dev run record,
 and journal.md.  Its publication receipt will be reported externally and
 recorded with the next substantive change.
+
+### 2026-09-11: approved dev tools and first benchmark build
+
+The preceding receipt checkpoint is 2a3cd90ec32f0149e22f6dcc382425404ebffcee,
+parent 76f874f660dd7e08d9d62d27470be12362b0cd4e, tree
+a403652fdcf5350cda3cb173b4921ec337965b62.  Its non-forced push, fetch,
+head, parent, tree, and tracked-worktree equality checks passed.
+
+The user answered yes to installing Node 24.13.0 and the Wasmtime 44.0.0
+C API under the prepared dev project's tools directory.  Downloaded the
+official x86-64 archives to build/tools/downloads-20260911 in
+/mnt/vq/leanexe-riemann-20260911-stream.  Node's archive digest is
+e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e,
+from https://nodejs.org/dist/v24.13.0/SHASUMS256.txt.  Wasmtime's C API
+archive digest is e193aa35338637d84f172323a909cebb907c14c55b5a4b5bdbf89f5cd0b89c81,
+matching the repository pin.  Both sha256sum checks passed.  Preserved
+the archives and SHA256SUMS, extracted into fresh directories, confirmed
+Node v24.13.0 and the C API header/libraries, and recorded GCC 11.5.0.
+No system package or existing remote tool path changed.
+
+The parent slice remains loaded with 48G high, 52G maximum, zero swap,
+2400% CPU, and 2048 tasks.  Linger is enabled and no persistent service
+was active before submission.  The runner checksum comparison returned
+zero with empty output.  Reconstructed source revision 76f874f in the
+fresh local tmp/leanexe-dev-source76-20260911 directory.  Its first
+comparison reported permission differences because git archive produced
+0644 modes while the original transferred checkout uses 0664.  Copied
+the original local file modes onto the fresh extraction.  A second
+checksum comparison returned zero with empty output.  Remote source
+content and modes did not change.
+
+Submitted leanexe-riemann-192-20260911-1 through the canonical dev helper
+and runner release leanrunner-release-20260911-297b46c-leanexe.  The
+command selected the installed Node by absolute path, supplied the pinned
+C API with env, and ran tools/euler-riemann-large.mjs run 192
+tmp/riemann-dev-192.  Limits were 1800 seconds, 4G high, 6G maximum,
+zero swap, 100% CPU, and 512 tasks, with the installed 4.34.0-rc2
+toolchain directory.  Submission returned zero.  The later result
+returned 1.  GCC's linker reported undefined fmin and a missing libm DSO,
+before any simulation started.  The complete diagnostic remains in the
+persistent job log.
+
+The C wrapper lacked explicit math-library linkage.  Added -lm after
+the source and Wasmtime library, and included the libraries array in the
+build receipt and executable identity.  GCC's authoritative link options
+document library selection and ordering at
+https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html.  This changes the
+build command without changing numerical expressions or WASM bytes.
+The first multi-file edit was rejected because its devnotes context
+omitted the beginning of a line.  It made no changes.  The corrected
+edit uses the complete line.
+
+The corrected wrapper passes test/euler_2d_runtime.js through the standard
+local runner with a three-minute timeout and the pinned aarch64 C API.
+All three native/oracle comparisons, eight corruption cases, input-error
+propagation, and oversized-record rejection pass.  Native evidence is
+retained in tmp/euler-2d-run-O8iP52, tmp/euler-2d-run-sATo9h, and
+tmp/euler-2d-run-WUsScd.  The documentation gate passes for 104 maintained
+Markdown files, and git diff --check passes.  The checkpoint stages only
+the host wrapper, detailed dev plan, devnotes, and journal.  The remote
+GCC build and 192-grid timing remain pending for the corrected source.

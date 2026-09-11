@@ -9775,3 +9775,13 @@ Source checkpoint 76f874f660dd7e08d9d62d27470be12362b0cd4e is published.
 Its 6,777 tracked files, totaling 98,282,441 bytes, are copied to the fresh
 dev snapshot at /mnt/vq/leanexe-riemann-20260911-stream.  The checksum
 comparison passes with empty output.  No file was deleted during transfer.
+
+### 2026-09-11: dev tools installed and linker correction
+
+The user approved the pinned Node and Wasmtime C API installations.
+Both official archives passed their SHA-256 checks on dev.  The first
+192-grid benchmark returned final status 1 before simulation because
+the host link command omitted the system math library.  Added `-lm`
+and included library options in the host build identity.  The failed
+snapshot and persistent job record remain preserved.  A fresh source
+snapshot will carry the corrected command for the benchmark retry.
