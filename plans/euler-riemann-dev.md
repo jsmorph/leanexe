@@ -187,8 +187,8 @@ run byte for byte.  Independent replay, compressed-data checking,
 execution-metadata preservation, forced rejection, and missing-input
 failure tests pass.  The latest local evidence is
 `tmp/euler-block-test-KBfesv`, with a measured process-run time of
-9.206926213 seconds under the standard one-CPU runner.  Dev timing and
-the full 800-grid result remain pending.
+9.206926213 seconds under the standard one-CPU runner.  The full 800-grid
+result remains pending.
 
 The [dev command script](../tools/euler-riemann-dev.sh) owns SSH access,
 persistent submission, tool paths, limits, benchmark comparison, the
@@ -200,3 +200,21 @@ benchmark.  Each phase requires an idle persistent-job slice before
 claiming its 24-CPU quota.  Both use 16G memory high, 20G maximum, zero
 swap, and 1,024 tasks.  The fresh project directory is
 `/mnt/vq/leanexe-riemann-20260911-blocks-script`.
+
+Source f4cb548765d3d297058176f082aac8892a44b17a passed publication and
+the fresh snapshot's checksum comparison.  The 6,784 tracked files total
+98,346,086 bytes.  The benchmark job
+`leanexe-riemann-blocks-192-20260911-1` returned final status zero.  Its
+808 steps through time 0.8 have zero retries, and its complete raw record
+matches the earlier serial benchmark byte for byte.  The process run
+took 16.896531634 seconds, excluding its one-time module build.  The
+earlier serial run took 131.18569411 seconds including its build.
+
+The 800-grid job `leanexe-riemann-blocks-800-20260911-1` started at
+2026-09-11 18:42:09 UTC.  At step 400 it had reached time
+0.09490981659553173 without retries.  Its command sequence runs the
+24 WASM workers, then performs independent JavaScript replay while
+packaging the data, then checks the compressed dataset.  Final status,
+retrieval, plots, and publication remain pending.  C handles worker file
+I/O.  Node initializes the grid, selects timesteps, combines diagnostics,
+and writes records.  Bash starts and waits for each wave of workers.
