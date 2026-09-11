@@ -491,10 +491,10 @@ The user approved the additional run on 2026-09-11.  It uses the same four
 states, domain, interface positions, final time, numerical method, and
 proved WASM kernels as the completed 192 × 192 calculation.
 
-- [ ] Check dev, synchronize a fresh snapshot through leanrunner, and time the existing 192-grid solver with independent replay.
+- [x] Check dev, synchronize a fresh snapshot through leanrunner, and time the existing 192-grid solver with independent replay.
 - [x] Stream event reading, verification, compression, and CSV output, and test agreement with the existing small-run path.
 - [ ] Run 800 × 800 through time 0.8 in a persistent resource-limited job and verify its saved words and diagnostics.
 - [ ] Publish a separate dataset, density and pressure figures, and a short comparison with the 192-grid result.
 
 The [dev run record](plans/euler-riemann-dev.md) contains the checked host
-configuration, streaming format, commands, and remaining setup requirement.
+configuration, streaming format, commands, measured timing, and active job.

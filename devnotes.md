@@ -9785,3 +9785,25 @@ the host link command omitted the system math library.  Added `-lm`
 and included library options in the host build identity.  The failed
 snapshot and persistent job record remain preserved.  A fresh source
 snapshot will carry the corrected command for the benchmark retry.
+
+### 2026-09-11: dev benchmark passed and 800-grid run started
+
+Corrected source c64507bf0a0729cbab03cd1aee416471a74f222e is published
+and checksum-verified at /mnt/vq/leanexe-riemann-20260911-libm.  The
+192-grid benchmark returned final status zero.  Native execution took
+131.1857 seconds and independent replay 44.4915 seconds.  All numerical
+results and both cell/history CSVs match the original dataset exactly.
+The failed and successful benchmark records remain preserved locally
+and on dev.
+
+Persistent job leanexe-riemann-800-20260911-1 started at 17:44:58 UTC,
+with 4G high, 6G maximum, zero swap, 100% CPU, 512 tasks, and a six-hour
+limit.  The benchmark predicts about 3.5 hours for native execution and
+replay, followed by roughly 0.9 hours for the compressed-data check.
+The [dev run record](plans/euler-riemann-dev.md) identifies source, tools,
+jobs, and evidence paths.  The 800-grid result is pending.
+
+Added a comparison renderer with common field ranges and contour levels.
+Its 8-grid/192-grid render test passes and the PNG has been inspected.
+The final comparison will use the preserved 192-grid dataset and the
+additional 800-grid result.

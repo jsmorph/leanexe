@@ -72,14 +72,53 @@ The first benchmark, `leanexe-riemann-192-20260911-1`, returned final status
 The host build now links the system math library after the source input,
 following GCC's [library-order rules](https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html).
 The build receipt includes the library options.  The failed snapshot and
-job record remain preserved.  A corrected snapshot will precede the
-benchmark retry.  The remote timing and 800-grid run remain pending.
+job record remain preserved.  Corrected revision
+`c64507bf0a0729cbab03cd1aee416471a74f222e` was copied to
+`/mnt/vq/leanexe-riemann-20260911-libm` and passed an empty checksum
+comparison.  Both runs below use that immutable source and the tools
+installed in the first snapshot.
 
 The current leanrunner skill and its complete dev runbook govern source
 synchronization, checksum comparison, resource admission, persistent
 submission, and final-status retrieval.  The older repository
 `tools/leanrun-dev` uses superseded remote paths.  Existing remote project
 and runner directories remain preserved.
+
+## Dev execution
+
+| Job | Limits | Result |
+|-----|--------|--------|
+| `leanexe-riemann-192-20260911-1` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 1: missing math-library linkage |
+| `leanexe-riemann-192-20260911-2` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 0: native run and independent replay pass |
+| `leanexe-riemann-800-20260911-1` | 4G high, 6G max, 100% CPU, 21,600 seconds | Started 2026-09-11 at 17:44:58 UTC.  Final result pending |
+
+Every job uses zero swap and a 512-task ceiling.  The successful benchmark
+ran from 17:41:02 to 17:44:02 UTC.  Native execution including compilation
+took 131.18569411 seconds.  Independent replay took 44.491457276 seconds.
+All 808 steps passed, with zero retries.  Its complete numerical result,
+decompressed cell CSV, and timestep CSV match the published 192-grid data
+exactly.  Local copies of both benchmark job records and the new 192-grid
+dataset passed checksum comparisons after retrieval.
+
+Scaling computation by `(800/192)^3` estimates 2.64 hours of native
+execution and 0.89 hours of replay, plus a comparable second replay for
+the packaged-data check.  These are estimates from the 192-grid timing.
+The approved serial calculation is running.  Parallel execution would
+require a separate host implementation with independent Wasmtime stores
+and further tests.
+
+The active native record is
+`/mnt/vq/leanexe-riemann-20260911-libm/tmp/euler-2d-run-9lAWkE/run.ndjson`.
+Its sibling `stderr.log` records progress every 50 steps.  The driver will
+write `data/euler-riemann-800-v1` only after its independent replay passes.
+The final compressed-data check, retrieval, figures, and article remain
+pending.
+
+The [comparison plot script](../tools/euler-riemann-compare.py) places two
+resolutions on shared density and pressure scales with identical contour
+levels.  It passed a render test using the existing 8-grid and 192-grid
+datasets, and its PNG was inspected.  Final comparison figures await the
+800-grid data.
 
 ## Completed local tests
 
