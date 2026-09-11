@@ -9807,3 +9807,10 @@ Added a comparison renderer with common field ranges and contour levels.
 Its 8-grid/192-grid render test passes and the PNG has been inspected.
 The final comparison will use the preserved 192-grid dataset and the
 additional 800-grid result.
+
+The packaged-data check is queued as
+leanexe-riemann-800-check-20260911-1.  Its eight-hour persistent service
+waits for the main run's final status zero before starting verification.
+It has the same memory, CPU, swap, and task limits as the main run.  The
+combined declared limits fit the parent slice.  Both final results remain
+pending.

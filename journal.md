@@ -10732,3 +10732,39 @@ runner and a two-minute limit.  PNG, SVG, and PDF were written at
 tmp/riemann-comparison-render-test-20260911, and the PNG was inspected.
 The plot has legible axes and color bars and uses the same ranges for
 both resolutions.  No 800-grid plot or data is present yet.
+
+The five-file checkpoint passed the 104-file documentation gate and
+staged whitespace check.  Published it as
+072bf82a04732fbeba4469da669182a7a1c55e0a, parent
+c64507bf0a0729cbab03cd1aee416471a74f222e, tree
+55cb92ac8e924140c997282902b5390f2cbe039e.  Non-forced push and fetch
+passed.  The fetched head, parent, complete tree, and tracked worktree
+agree.  The remote running source remains c64507b.
+
+The user asked for total duration.  Reported 4.5 to 5 hours, including
+both verification passes, transfer, and plots: about 17:15 to 17:45
+America/Chicago, based on the 12:45 start and the benchmark.  This is
+an estimate rather than a completion claim.
+
+Queued the already-planned compressed-data verification as a second
+persistent job so it can start after the main run succeeds.  Before
+submission, checked that the main run was the only active service and
+read its 4G high, 6G max, 100% CPU, and 512-task declarations.  The
+new job has the same declarations, zero swap, and an eight-hour limit.
+Combined high/max/CPU/tasks are 8G/12G/200%/1024, within the finite
+parent profile.  Both jobs use the unchanged c64507b snapshot, current
+runner, and pinned Node executable.
+
+The first submission returned SSH status 255 without a diagnostic.
+A separate status request returned "unknown job", establishing that
+the named service had not been created.  Retried through the same helper
+with its reusable approval prefix.  Submission returned zero, creating
+leanexe-riemann-800-check-20260911-1 at 17:52:43 UTC.  Its command uses
+sh -c with set -eu, then leanrun-job wait leanexe-riemann-800-20260911-1,
+then exec of the pinned Node with tools/euler-riemann-large.mjs check
+data/euler-riemann-800-v1.  A failed predecessor exits this command
+before the check.  No active job, input source, or limit was changed.
+The first SSH failure's cause is undetermined.  The successful follow-up
+status reports the check service active and awaiting its predecessor.
+The native run has reached step 150, time 0.035516486960735928, with
+zero retries.  Both final statuses remain pending.

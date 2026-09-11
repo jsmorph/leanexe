@@ -75,8 +75,8 @@ The build receipt includes the library options.  The failed snapshot and
 job record remain preserved.  Corrected revision
 `c64507bf0a0729cbab03cd1aee416471a74f222e` was copied to
 `/mnt/vq/leanexe-riemann-20260911-libm` and passed an empty checksum
-comparison.  Both runs below use that immutable source and the tools
-installed in the first snapshot.
+comparison.  The successful benchmark and both 800-grid jobs use that
+immutable source and the tools installed in the first snapshot.
 
 The current leanrunner skill and its complete dev runbook govern source
 synchronization, checksum comparison, resource admission, persistent
@@ -91,6 +91,7 @@ and runner directories remain preserved.
 | `leanexe-riemann-192-20260911-1` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 1: missing math-library linkage |
 | `leanexe-riemann-192-20260911-2` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 0: native run and independent replay pass |
 | `leanexe-riemann-800-20260911-1` | 4G high, 6G max, 100% CPU, 21,600 seconds | Started 2026-09-11 at 17:44:58 UTC.  Final result pending |
+| `leanexe-riemann-800-check-20260911-1` | 4G high, 6G max, 100% CPU, 28,800 seconds | Started at 17:52:43 UTC.  Waits for the run's final status zero, then checks the packaged data |
 
 Every job uses zero swap and a 512-task ceiling.  The successful benchmark
 ran from 17:41:02 to 17:44:02 UTC.  Native execution including compilation
@@ -113,6 +114,14 @@ Its sibling `stderr.log` records progress every 50 steps.  The driver will
 write `data/euler-riemann-800-v1` only after its independent replay passes.
 The final compressed-data check, retrieval, figures, and article remain
 pending.
+
+The check service waits through `leanrun-job wait` and invokes the
+large-run driver's `check` command only after that wait returns zero.
+Both services together declare 8G memory high, 12G maximum, 200% CPU,
+and 1,024 tasks, within the aggregate limits.  The first check submission
+returned SSH status 255 without a diagnostic and created no job.  The
+retry succeeded through the approved helper.  Each service retains its
+own final status and log.
 
 The [comparison plot script](../tools/euler-riemann-compare.py) places two
 resolutions on shared density and pressure scales with identical contour
