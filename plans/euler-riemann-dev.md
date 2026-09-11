@@ -57,12 +57,16 @@ gzip-compressed cell CSV.
 | Runner commit | `297b46c55bfc127dad5b5bbc680fc28a1c3665e3` |
 | Fresh runner directory | `/mnt/vq/leanrunner-release-20260911-297b46c-leanexe` |
 | Runner tests | Local and remote shell syntax, executable modes, and empty checksum comparison pass |
+| Source snapshot | `/mnt/vq/leanexe-riemann-20260911-stream` |
+| Source revision | `76f874f660dd7e08d9d62d27470be12362b0cd4e` |
+| Source transfer | 6,777 tracked files, 98,282,441 bytes, empty checksum comparison |
 | Available Lean toolchain | `/mnt/vq/elan/toolchains/leanprover--lean4---v4.34.0-rc2` |
 
 Dev's system Node is 18.20.8.  The required Node 24.13.0 and Wasmtime
 44.0.0 C API need installation in the project tools directory.  Approval
-was requested under the user's missing-tool instruction.  A project
-snapshot, remote 192-grid timing, and 800-grid run remain pending.
+was requested under the user's missing-tool instruction.  The source
+snapshot is copied and checked.  The remote 192-grid timing and 800-grid
+run remain pending.
 
 The current leanrunner skill and its complete dev runbook govern source
 synchronization, checksum comparison, resource admission, persistent

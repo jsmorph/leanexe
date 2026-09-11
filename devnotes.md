@@ -9770,3 +9770,8 @@ A record with its final snapshot moved to an earlier accepted state exposed
 a missing verifier check.  The new test first failed with "Missing expected
 exception."  The verifier now requires the last snapshot to have the final
 time before using its pressure values for CSV output.
+
+Source checkpoint 76f874f660dd7e08d9d62d27470be12362b0cd4e is published.
+Its 6,777 tracked files, totaling 98,282,441 bytes, are copied to the fresh
+dev snapshot at /mnt/vq/leanexe-riemann-20260911-stream.  The checksum
+comparison passes with empty output.  No file was deleted during transfer.
