@@ -11,20 +11,15 @@ execution, cleanup, or another action prohibited here.
 
 ## Immediate non-negotiable summary
 
-### 2026-09-11: additional 800 × 800 run on dev
+### 2026-09-11: canceled dev run and authorized removal
 
-The user authorized an additional 800 × 800 Riemann calculation on `ssh dev`
-and allowed use of that machine's capacity.  This instruction supersedes
-the historical local-only statements below for this calculation.  Use the
-current leanrunner skill and its dev runbook, a fresh project snapshot,
-checksum-verified transfers, admitted resource limits, and persistent jobs.
-Preserve the completed 192 × 192 dataset and every existing remote tree.
-After the serial timing, the user authorized 24 concurrent WASM processes
-controlled by Bash.  Each process owns a row block, reads completed input
-files including neighboring boundary rows, and writes separate output
-files.  Bash waits for every process before the next sweep.  The approved
-sequence is a 192-grid comparison, the 800-grid process run, independent
-replay, final density/pressure figures, and a separate publication.
+The user stopped the 800-grid process run and ordered removal of its
+rejected implementation and generated files.  This authorizes removal
+of the six process implementation/test files, their local builds and
+outputs, and the two snapshots at
+`/mnt/vq/leanexe-riemann-20260911-blocks` and
+`/mnt/vq/leanexe-riemann-20260911-blocks-script`.  The canceled job has
+final status 143.  The journal records the bounded removals.
 
 - Work on this branch is always local.  There is no `dev` host: do not invoke,
   probe, discover, or fall back to one.  Direct local Lean is authorized.

@@ -9815,37 +9815,12 @@ It has the same memory, CPU, swap, and task limits as the main run.  The
 combined declared limits fit the parent slice.  Both final results remain
 pending.
 
-### 2026-09-11: 24-process WASM sweeps
+### 2026-09-11: rejected process implementation removed
 
-Implemented the user's Bash-controlled row blocks.  Each wave launches
-24 independent Wasmtime processes, and each process executes the cell
-loop in WASM.  Completed block files supply neighboring rows.  Global
-barriers precede timestep selection and each directional sweep.  The
-26-grid test matches the full serial record byte for byte and passes
-independent replay, packaged-data checking, forced rejection, and missing
-input tests.  The [dev run record](plans/euler-riemann-dev.md) describes
-the implementation, file format, and proof boundary.
-
-The superseded serial 800-grid job was stopped with its partial evidence
-preserved.  It and its waiting checker have final status 143.  The last
-progress line records step 800 at time 0.19010000848955011.  The process
-version will use a fresh source snapshot and a 192-grid comparison before
-the full 800-grid calculation.
-
-The process implementation is published as 9a0d08d.  Fresh-snapshot
-review added creation of missing build and evidence parent directories
-before the dev transfer.  Existing-output checks remain in force.
-
-The user requested one reusable script for dev commands.  Added
-tools/euler-riemann-dev.sh for submission, status, logs, and results.
-It contains the benchmark, full run, packaging, and verification commands
-and sets the Wasmtime environment inside the persistent job.
-
-The script is published as f4cb548 and has a saved reusable command
-approval.  Its fresh dev snapshot passed checksum comparison.  The
-192-grid job returned final status zero: 808 steps, zero retries, and
-complete byte-for-byte agreement with the serial record.  Runtime was
-16.896531634 seconds excluding compilation.  The 800-grid job started
-at 18:42:09 UTC and reached step 400 without retries.  The script will
-run the independent JavaScript replay and packaged-data check after the
-WASM calculation.  Final data and figures remain pending.
+The user rejected the handwritten, unproved WASM worker loop and ordered
+the run stopped and the work discarded.  The 800-grid job returned final
+status 143.  Removed the six implementation/test files, restored the
+large-data writer to its pre-process version, and removed the associated
+local builds, test outputs, transfer lists, and two dev snapshots.  The
+larger snapshot occupied about 71 GiB.  The dev volume now has 170 GiB
+free.  The active plans record cancellation.

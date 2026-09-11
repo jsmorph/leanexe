@@ -1,9 +1,10 @@
 # Additional 800-grid Riemann calculation
 
-This record expands phase 11 of the [development plan](../plan.md).  The
-user authorized the additional run on 2026-09-11, using `ssh dev` and its
-available capacity.  The 192 × 192 [published experiment](../data/euler-riemann-v1/README.md)
-retains its numerical data and figures.
+The user canceled this attempt and ordered the rejected process
+implementation and generated files removed.  This record retains the
+earlier serial benchmark and streaming tests from phase 11 of the
+[development plan](../plan.md).  The completed 192 × 192 result is in the
+[published experiment](../data/euler-riemann-v1/README.md).
 
 ## Method and output
 
@@ -29,15 +30,6 @@ cell CSV keeps individual publication files below GitHub's
 [100 MiB limit](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
 The summary records part order, content hashes, source hashes, method,
 initial states, numerical diagnostics, and measured phase times.
-
-Within an admitted persistent dev job, the driver commands are:
-
-```text
-node tools/euler-block-run.mjs run 192 tmp/riemann-blocks-192
-node tools/euler-block-run.mjs run 800 tmp/riemann-blocks-800
-node tools/euler-riemann-large.mjs write tmp/riemann-blocks-800/run.ndjson data/euler-riemann-800-v1
-node tools/euler-riemann-large.mjs check data/euler-riemann-800-v1
-```
 
 The job selects the pinned Node executable and Wasmtime C API.  Each run
 requires a fresh output directory.  `write run.ndjson directory` verifies
@@ -113,8 +105,8 @@ step 800, time 0.19010000848955011, and zero retries.
 
 The preserved partial serial record is
 `/mnt/vq/leanexe-riemann-20260911-libm/tmp/euler-2d-run-9lAWkE/run.ndjson`.
-Its sibling `stderr.log` records progress every 50 steps.  The final
-compressed-data check, retrieval, figures, and article remain pending.
+Its sibling `stderr.log` records progress every 50 steps.  The user canceled
+further execution and publication of the 800-grid attempt.
 
 The check service waited through `leanrun-job wait`, whose nonzero result
 prevented the large-run driver's `check` command from starting.
@@ -127,8 +119,8 @@ own final status and log.
 The [comparison plot script](../tools/euler-riemann-compare.py) places two
 resolutions on shared density and pressure scales with identical contour
 levels.  It passed a render test using the existing 8-grid and 192-grid
-datasets, and its PNG was inspected.  Final comparison figures await the
-800-grid data.
+datasets, and its PNG was inspected.  The user canceled the final
+800-grid comparison.
 
 ## Completed local tests
 
@@ -147,74 +139,12 @@ establish the new record path's agreement with the existing result.  The
 verifier also requires the last snapshot to have the final time, because
 the cell CSV takes its pressure values from that snapshot.
 
-## Twenty-four WASM processes
+## Canceled process attempt
 
-The [Bash sweep](../tools/euler-block-wave.sh) starts 24 workers with `&`
-and waits for every PID.  Worker b owns rows floor(nb/24) through
-floor(n(b+1)/24) minus one.  The [WASM worker](../tools/euler-block-worker.wat)
-performs initialization checks, speed scans, cell updates, and boundary
-flux calls using the three unchanged numerical artifacts.  The
-[C host](../tools/euler-block-host.c) loads Wasmtime modules and transfers
-files.  Each process has its own store and memory.
-
-The [coordinator](../tools/euler-block-run.mjs) first waits for the speed
-scan and selects a global timestep.  Every x worker reads the previous
-accepted state.  After all x workers exit successfully, every y worker
-reads the completed x files and the adjacent block's boundary row.  The
-physical boundary copies its nearest interior row.  A rejected block
-causes a global retry at half the timestep.  Input files remain immutable,
-and every attempted sweep has a fresh output directory.
-
-Block files contain little-endian binary64 conserved quantities in cell
-order.  Accepted y files also contain pressure.  Omitting unused pressure
-from x files reduces retained cell data to 46.08 MB per 800-grid timestep.
-About 3,370 steps therefore require 155.3 GB of cell data, plus file-system
-metadata and raw records.  All intermediate files remain available.
-
-The Wasmtime 44 C API converts the worker WAT and compiles the four
-modules once per source/host build.  Subsequent processes load those local
-compiled modules.  The build receipt identifies source, frozen kernel
-bytes, flags, architecture, host executable, worker WASM, and compiled
-modules.  The execution receipt binds the raw record hash, coordinator
-sources, Node version, and physical call counts.  Dataset packaging and
-checking verify that raw-record binding.  The batch-WASM orchestration
-has executable tests.  The existing exact-byte theorems cover the three
-numerical kernels.
-
-The 26-grid test uses unequal block sizes and runs through time 0.8 in
-110 steps without retries.  Its complete NDJSON record matches the serial
-run byte for byte.  Independent replay, compressed-data checking,
-execution-metadata preservation, forced rejection, and missing-input
-failure tests pass.  The latest local evidence is
-`tmp/euler-block-test-KBfesv`, with a measured process-run time of
-9.206926213 seconds under the standard one-CPU runner.  The full 800-grid
-result remains pending.
-
-The [dev command script](../tools/euler-riemann-dev.sh) owns SSH access,
-persistent submission, tool paths, limits, benchmark comparison, the
-800-grid run, packaging, and verification.  Its local commands are
-`tools/euler-riemann-dev.sh start benchmark`, then
-`tools/euler-riemann-dev.sh start run`.  The same script accepts `status`,
-`log`, and `result` for either phase.  The run requires a successful
-benchmark.  Each phase requires an idle persistent-job slice before
-claiming its 24-CPU quota.  Both use 16G memory high, 20G maximum, zero
-swap, and 1,024 tasks.  The fresh project directory is
-`/mnt/vq/leanexe-riemann-20260911-blocks-script`.
-
-Source f4cb548765d3d297058176f082aac8892a44b17a passed publication and
-the fresh snapshot's checksum comparison.  The 6,784 tracked files total
-98,346,086 bytes.  The benchmark job
-`leanexe-riemann-blocks-192-20260911-1` returned final status zero.  Its
-808 steps through time 0.8 have zero retries, and its complete raw record
-matches the earlier serial benchmark byte for byte.  The process run
-took 16.896531634 seconds, excluding its one-time module build.  The
-earlier serial run took 131.18569411 seconds including its build.
-
-The 800-grid job `leanexe-riemann-blocks-800-20260911-1` started at
-2026-09-11 18:42:09 UTC.  At step 400 it had reached time
-0.09490981659553173 without retries.  Its command sequence runs the
-24 WASM workers, then performs independent JavaScript replay while
-packaging the data, then checks the compressed dataset.  Final status,
-retrieval, plots, and publication remain pending.  C handles worker file
-I/O.  Node initializes the grid, selects timesteps, combines diagnostics,
-and writes records.  Bash starts and waits for each wave of workers.
+The assistant added a handwritten WASM loop without proving its complete
+computation.  The user rejected that change, stopped the run, and ordered
+its removal.  Job leanexe-riemann-blocks-800-20260911-1 returned final
+status 143.  Its last progress line was step 1540 at time
+0.3663698051922056.  The worker code, test, launch script, local generated
+files, and both process snapshots on dev have been removed.  The journal
+retains the failure and removal record.

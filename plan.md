@@ -485,18 +485,10 @@ are preserved.  The report distinguishes its mathematical layout arguments,
 implementation-indexed definitions, existing checked theorems, and open
 mechanization and refinement obligations.
 
-## 11. Add an 800 × 800 Riemann calculation on dev
+## 11. Canceled 800-grid attempt
 
-The user approved the additional run on 2026-09-11.  It uses the same four
-states, domain, interface positions, final time, numerical method, and
-proved WASM kernels as the completed 192 × 192 calculation.
-
-- [x] Check dev, synchronize a fresh snapshot through leanrunner, and time the existing 192-grid solver with independent replay.
-- [x] Stream event reading, verification, compression, and CSV output, and test agreement with the existing small-run path.
-- [x] Implement the authorized 24-process WASM sweeps with Bash barriers and test complete agreement with the serial record on unequal row blocks.
-- [x] Benchmark the process implementation on dev at 192 × 192 and compare its complete record with the serial benchmark.
-- [ ] Run 800 × 800 through time 0.8 in a persistent resource-limited job and verify its saved words and diagnostics.
-- [ ] Publish a separate dataset, density and pressure figures, and a short comparison with the 192-grid result.
-
-The [dev run record](plans/euler-riemann-dev.md) contains the checked host
-configuration, streaming format, commands, measured timing, and active job.
+The user canceled the 800-grid run and ordered removal of the rejected
+24-process implementation.  Its handwritten WASM loop lacked the required
+proof.  The implementation and its generated files have been removed.
+The [dev run record](plans/euler-riemann-dev.md) retains the earlier serial
+benchmark and the cancellation record.
