@@ -11133,3 +11133,78 @@ with FETCH_HEAD passed.  Unrelated report intermediates remain untracked
 and unchanged.  Git commit, push, and fetch disabled automatic maintenance.
 This bounded receipt is the only follow-up publication record for that
 checkpoint.  The arithmetic design question remains unanswered.
+
+### 2026-09-11: formal IEEE64 source mappings approved
+
+The user approved compiling the five existing Wasm.IEEE64 arithmetic
+definitions through the corresponding WASM instructions.  This replaces
+the pending source-model choice.  The requested complete solver proofs
+and production-run order remain unchanged.  The preceding publication
+receipt is 1b4bdb2ca7f229e84b59b0db540638ffa2812ef1, parent
+45f0c0f8e6566df23c00929ac5692d899458c492, tree
+05790d7701151036b109af71372495361f29f753.  Its non-forced push, fetch,
+commit/parent/tree comparison, and tracked index/worktree checks passed.
+
+Read the repository setup and numeric-language documentation, extractor
+primitive handling, existing floating-point tests, and the installed
+leanrunner instructions.  The initial combined read truncated part of
+DEVELOPING.md.  A focused read recovered its setup and test requirements.
+The proof Lake configuration is lakefile.toml.  An initial search named
+the absent lakefile.lean.  Located wasm-tools at
+/home/somebody/.cargo/bin/wasm-tools.
+
+Two edit attempts failed before mutation because their documentation
+contexts did not match complete lines.  Status confirmed unchanged files.
+The corrected bounded edit adds binary-operation classification and the
+square-root name mapping in Extract/Types.lean, uses that classification
+in Extract/Core.lean, and adds Project/IEEE64Source/Source.lean.  The
+compiler build runs through tools/leanrun with a ten-minute timeout.
+Added a source comparison test for six expressions and 24 input rows,
+including signed zero, subnormal rounding, overflow, and NaN results.
+It compares finite raw words with Talos's source definitions and checks
+NaN class when the runtime may choose another NaN encoding.  It also
+requires byte identity with the corresponding existing Float64 wrappers.
+These are compiler tests.  The complete solver proof remains open.
+
+The compiler build passed all 58 jobs.  The first source-test invocation
+failed before child launch with leanrun EPERM.  The required escalation
+used the reusable node test/ieee64_source.js prefix, which the user
+approved.  The test then passed all 24 comparisons and six complete
+binary comparisons, retaining tmp/ieee64-source-v8zZNA.  The installed
+/home/somebody/.cargo/bin/wasm-tools reports the pinned version 1.251.0.
+
+The full execution gate reached test/artifact_identity.js and failed
+because its cached-program count still expected 34 while cases.json and
+the tracked cache contain 37.  The tool already checks exact membership
+against cases.json.  Updated the test's expected count and its explicit
+root import vector to include the new Riemann grid source.  The inspected
+closure contains AsciiDigits, EulerRiemann/Grid, and TalosAssocList.
+
+The next full execution-gate invocation passed artifact identity and
+stopped at the stale proofs/artifacts/release.json input identity.
+Preserved that release record and its evidence.  The full execution gate
+therefore remains failed.  tools/check-wat.sh passed all ten configured
+binary/text comparisons.  tools/talos-proof.js check --all regenerated
+all 37 programs with matching caches and is checking the aggregate Lean
+library under its twenty-minute runner limit.  The 105-file documentation
+check and whitespace check pass.
+
+Drafted five independent Riemann source/proof modules while the aggregate
+check owns the Lean slot: Traversal, TraversalInitial, TraversalSweep,
+Time, and TimeBounds.  Each cell carries its index, conservative state,
+pressure, and status, so one array map computes a directional sweep.
+Initialization doubles arrays of initialized cells and truncates the
+final prefix.  The drafts state the index, neighbor, initial-safety,
+accepted-sweep-safety, bounded integer-to-binary64, and time-progress
+properties.  They remain unchecked and outside the compiler checkpoint.
+Memory reclamation, successful final-time completion, and exact-WASM
+execution remain open.  No production run has begun.
+
+The compiler checkpoint stages exactly Extract/Core.lean,
+Extract/Types.lean, Project/IEEE64Source/Source.lean,
+test/ieee64_source.js, test/ieee64_source.lean,
+test/artifact_identity.js, docs/spec.md, plans/euler-riemann-complete.md,
+devnotes.md, and this journal.  Its focused tests and WAT gate passed.
+The aggregate proof gate is still running, and the complete execution
+gate has the release-record failure described above.  Preserve the five
+unchecked solver modules and all unrelated report intermediates.

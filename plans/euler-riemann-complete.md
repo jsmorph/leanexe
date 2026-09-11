@@ -36,13 +36,12 @@ and accepted-state safety.  Its mathematical sweep and finite-run theorems
 do not prove executable grid or time control.  The earlier 192-grid host
 calculation remains a comparison dataset with that recorded scope.
 
-The source uses the five definitions in `LeanExe/Float64.lean`.
-Lean 4.34.0-rc2 gives addition, subtraction, multiplication, division,
-square root, and bit conversion definitions through `Float.Model`.
-Talos uses the separate `Wasm.IEEE64` definitions.  Their agreement is
-an additional theorem obligation for the requested source proof.
-The pinned dependencies contain no existing bridge found by the source
-audit.  Prove the required agreement without adding an axiom.
+The user approved using Talos's five `Wasm.IEEE64` arithmetic definitions
+in the source and compiling their calls to the corresponding floating-point
+instructions.  Source and exact-WASM proofs can share these definitions.
+The five mappings and a composed division/square-root expression pass
+source comparisons and byte-identity tests against the existing wrappers.
+The complete source and exact-WASM proofs remain open.
 
 Array updates copy the array.  Each sweep must construct its result in
 linear time and reclaim obsolete storage.  The memory proof must account
@@ -64,7 +63,7 @@ not evidence that the requested runs satisfy them.
 - [x] Prove the four conservative states and admissibility of all 36 rounded cell-average combinations.
 - [x] Test the generated grid-helper WASM, including the complete 800-grid index array.
 - [ ] Define the numerical recurrence, accepted sizes, and output layout.
-- [ ] Prove the source/Talos floating-point correspondence needed by the solver.
+- [x] Add and test the approved compiler mappings for Talos's formal arithmetic definitions.
 - [ ] Implement and prove linear-time initialization and directional traversal.
 - [ ] Prove allocator reuse and the complete memory bound.
 - [ ] Implement and prove timestep selection, retry, and final-time control.
@@ -94,7 +93,5 @@ All completed source/model theorem audits contain only the accepted
 standard logical axioms.  The 48 [grid tests](../test/euler_riemann_grid.js)
 pass.  Production execution remains behind the complete proof gate.
 
-The compiler arithmetic decision is pending: add mappings from Talos's
-five existing formal IEEE64 definitions to WASM instructions and use those
-definitions in source, or retain Lean Float source and prove the models
-equivalent.  The proposed compiler change has not been implemented.
+The user approved the compiler arithmetic mappings.  Their focused tests
+pass, and the compiler-wide checks are in progress.
