@@ -449,3 +449,16 @@ word and controller record. All eight canonical data/visualization files
 reproduce byte for byte. Standalone 21-frame animations and inspected SVG/PNG
 posters complete the requested 2D visualization; native orchestration and
 rendering remain outside formal proof.
+
+## 9. Reproduce the four-state 2D Riemann problem
+
+The 2026-09-11 request specifies the four states from the Lanyon Euler article,
+interfaces at x = y = 0.8 on the unit square, final time 0.8, and a revised
+192 × 192 grid.  The deliverables are final density and pressure figures,
+reproducible numerical data, and a short article about this problem.
+
+- [ ] Extend the checked admissible domain beyond the current unit-velocity bounds and prove positive exact internal energy with rounded-operation safety.
+- [ ] Verify the resulting conservative-state, directional-flux, and cell-update WASM artifacts and their sweep/run theorems.
+- [ ] Add the requested initial states, conservative area averages for intersected cells, and final-time selection to the maintained 2D runtime and independent checker.
+- [ ] Test the requested states and a small full-time run, then run 192 × 192 to time 0.8 with timestep, positivity, and boundary-flux diagnostics.
+- [ ] Produce final density and pressure figures, retain checked data, and write and review a short article focused on the experiment.

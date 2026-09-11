@@ -748,3 +748,34 @@ two 192² scenarios, 21 frames each, standalone HTML, SVG and inspected PNG.
 Fresh Wasmtime runs reproduce all eight canonical files byte for byte.
 The conditional symbolic invariant-domain extension above remains a non-goal:
 accepted-state and rounded-CFL checks support the current claims.
+
+## Four-state Riemann problem, 2026-09-11
+
+This extends phase 9 of the [Development Plan](../plan.md).  The user requested
+the article's four states, with a revised 192 × 192 grid, interfaces at
+x = y = 0.8 on the unit square, and final time 0.8.  The deliverables are
+final density and pressure figures, checked data, and a short article.
+
+| Quadrant | Pressure | Density | x velocity | y velocity |
+|----------|---------:|--------:|-----------:|-----------:|
+| Top left | 0.3 | 0.5323 | 1.206 | 0 |
+| Top right | 1.5 | 1.5 | 0 | 0 |
+| Bottom left | 0.029 | 0.138 | 1.206 | 1.206 |
+| Bottom right | 0.3 | 0.5323 | 0 | 1.206 |
+
+The current unit-velocity sufficient domain rejects three quadrants.  The
+extension checks rho times energy minus half the squared momentum norm.
+Exact shared power-of-two normalization puts operands into a range supported
+by the existing roundoff theorems.  Acceptance requires the computed residual
+to exceed a proved error bound.  Existing accepted states retain the old
+sufficient-domain path.  Rounded thermodynamic and flux checks remain part
+of every accepted numerical call.
+
+The simulation uses gamma 1.4, transmissive boundaries, first-order Rusanov
+fluxes, x-then-y splitting, and target CFL 0.4.  Initial cells intersected by
+an interface contain area averages of the conservative state.  Final plots
+show density and pressure recovered from that conservative state, with
+physical y increasing upward and equal coordinate scales.  The article will
+state the grid, method, initial conditions, numerical diagnostics, and proof
+scope.  One-dimensional runs belong only where they test a required part of
+this calculation.

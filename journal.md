@@ -9971,3 +9971,65 @@ and devnotes.md; no numerical, proof or visual files change. The requested
 Euler implementation/data/2D visualization agenda is complete within the
 explicit documented proof scope. Its publication receipt will be verified
 externally without a further receipt-only commit.
+
+### 2026-09-11: four-state Riemann implementation started
+
+The user requested the Lanyon four-state 2D Riemann problem, reduced the grid
+to 192 × 192, and approved extending the proved admissible domain.  The target
+is time 0.8 with x = y = 0.8 initial interfaces, final density and pressure
+figures, and a short article focused on this problem.  The initial status was
+clean at 2f5f598660d68160b1bac416eaef21649f7d9874.
+
+Read the repository overview, process instructions, developing guide, and
+leanrunner skill.  The installed aarch64 Linux Lean 4.34.0-rc2 reports commit
+6a10ac8c22beadecabdbb0919c2b50214762f91d through the standard cgroup runner.
+The command was `tools/leanrun --timeout 30s --lock-timeout 10 lean --version`.
+The first dependency check is `tools/leanrun --timeout 10m --lock-timeout 10
+lake -d proofs/talos/lean build Project.ProofKit.F64Order`.
+
+Added the root-plan item and concise development note.  The proposed broader
+check compares rho times total energy with half the squared momentum norm.
+A shared exact power-of-two normalization puts the operands within the
+existing proved arithmetic bounds.  The check requires a positive residual
+larger than its proved rounding-error bound.  Normalization affects only the
+admissibility calculation.  The physical input state and flux evaluation
+remain in the original units.  The first proof module establishes the
+residual error on normalized inputs.  It is unchecked at this entry.
+
+The shared F64Order build passed after rebuilding missing cached dependencies.
+The largest reported dependency was Interpreter.Wasm.SmallStep at 332 seconds.
+Inspection of its systemd scope confirmed one Lean compiler process, a
+4 GiB MemoryHigh, 6 GiB MemoryMax, 1 GiB MemorySwapMax, and 100% CPU quota.
+A sandboxed systemd-cgls query was denied.  The approved read-only query
+succeeded.  A later attempt to read the compiler command line found that its
+process had already exited.  The build completed with status zero.
+
+The first checks of the two new proof modules found literal-reduction and
+decidability issues.  Focused two-minute checks isolated those errors.  The
+normalization theorem checks with the standard logical axioms after removing
+an extra tactic.  The residual lemma proves a five-epsilon absolute bound on
+normalized inputs.  Subsequent entries record the successful build before
+either lemma becomes a dependency of the executable guard.
+
+The new `F64InternalEnergy`, `F64Normalize`, and `F64Admissibility` modules
+now build.  The final command was `tools/leanrun --timeout 2m --lock-timeout
+10 lake -d proofs/talos/lean --log-level=error build
+Project.ProofKit.F64Admissibility`, which completed successfully.  The
+admissibility theorem proves finiteness, positive density and total energy,
+and positive exact rho-E-minus-half-momentum-squared residual.  All three
+public theorem audits report only propext, Classical.choice, and Quot.sound.
+The acceptance threshold is eight binary64 epsilons, compared with the
+proved five-epsilon residual error bound after exact common normalization.
+
+The final focused proof failure came from an underspecified second argument
+to the strict-order theorem.  Naming the residual resolved the metavariable
+before rewriting.  An earlier redirected runner invocation failed before
+Lean started because the sandbox could not reach the systemd user bus.  Its
+log remains at `tmp/riemann-foundation-build.log`.  Direct runner invocations
+use the working standard resource scope.  No timeout or OOM occurred.
+
+This checkpoint contains the three checked shared proof modules and the four
+planning/journal documents.  The executable guard and simulation remain
+unchanged.  The next checkpoint integrates the proved check with the 2D
+source, model, and exact execution proofs.  An attempted combined journal
+and development-note edit failed its context check and changed no files.
