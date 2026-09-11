@@ -189,3 +189,14 @@ failure tests pass.  The latest local evidence is
 `tmp/euler-block-test-KBfesv`, with a measured process-run time of
 9.206926213 seconds under the standard one-CPU runner.  Dev timing and
 the full 800-grid result remain pending.
+
+The [dev command script](../tools/euler-riemann-dev.sh) owns SSH access,
+persistent submission, tool paths, limits, benchmark comparison, the
+800-grid run, packaging, and verification.  Its local commands are
+`tools/euler-riemann-dev.sh start benchmark`, then
+`tools/euler-riemann-dev.sh start run`.  The same script accepts `status`,
+`log`, and `result` for either phase.  The run requires a successful
+benchmark.  Each phase requires an idle persistent-job slice before
+claiming its 24-CPU quota.  Both use 16G memory high, 20G maximum, zero
+swap, and 1,024 tasks.  The fresh project directory is
+`/mnt/vq/leanexe-riemann-20260911-blocks-script`.

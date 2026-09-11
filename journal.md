@@ -10854,3 +10854,26 @@ already existed.  Changed its two fresh-directory creations to create
 missing parents.  Existing output and incomplete-cache rejection remain
 in force.  Node syntax and whitespace checks pass.  The dev benchmark
 will test this fresh-snapshot path.
+
+Published the parent-directory correction as
+991c03eb42d5b75cd8a4043e36980f7dceb81fb3, parent
+9a0d08df96e35ae77d4511e099a792fbd258e68a, tree
+878f2068fcd729a84101fc6b6df835f772254177.  Non-forced push, fetch,
+head/parent/tree/worktree checks passed.  Copied the 6,783 tracked files
+to /mnt/vq/leanexe-riemann-20260911-blocks and obtained an empty checksum
+comparison.  The unchanged runner release also passed an empty checksum
+comparison.  Dev reported no active jobs, zero slice tasks, finite
+48G/52G/2400% parent limits, linger yes, and 181,569,675,264 bytes free.
+
+The inline benchmark submission returned SSH status 255 without a
+diagnostic.  A status query confirmed the job was unknown.  The escalated
+retry requested permission for a long quoted command.  The user aborted
+that request and required all commands in a script.  A subsequent status
+query again confirmed no benchmark job exists.  Added
+tools/euler-riemann-dev.sh with local SSH dispatch, remote submission,
+status/log/result commands, explicit limits, and complete benchmark and
+800-grid command sequences.  The script sets WASMTIME_C_API inside the
+executed job.  Inspection of leanrun-dev-submit shows that caller-only
+environment assignments would not reach the systemd service.  The new
+source will use a fresh blocks-script snapshot.  Earlier snapshots and
+the unused inline-submission evidence remain preserved.

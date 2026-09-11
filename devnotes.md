@@ -9835,3 +9835,8 @@ the full 800-grid calculation.
 The process implementation is published as 9a0d08d.  Fresh-snapshot
 review added creation of missing build and evidence parent directories
 before the dev transfer.  Existing-output checks remain in force.
+
+The user requested one reusable script for dev commands.  Added
+tools/euler-riemann-dev.sh for submission, status, logs, and results.
+It contains the benchmark, full run, packaging, and verification commands
+and sets the Wasmtime environment inside the persistent job.
