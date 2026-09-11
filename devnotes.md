@@ -9824,3 +9824,30 @@ large-data writer to its pre-process version, and removed the associated
 local builds, test outputs, transfer lists, and two dev snapshots.  The
 larger snapshot occupied about 71 GiB.  The dev volume now has 170 GiB
 free.  The active plans record cancellation.
+
+### 2026-09-11: complete Riemann solver authorized
+
+The user approved the [complete solver plan](plans/euler-riemann-complete.md):
+runtime grid size, one local process and thread, complete Lean-source and
+exact-WASM proofs, followed by the 192 run, its figure, the 800 run, and
+its figure.  Existing data remain preserved.
+
+The audit identified source/Talos floating-point correspondence,
+linear-time array traversal, bounded allocator reuse, and successful
+final-time completion as outstanding obligations.  The pinned Lean
+version supplies mathematical definitions for all five floating-point
+operations.  Their relation to Talos's separate arithmetic model still
+needs a proof.
+
+The first solver checkpoint proves the ordered cell indices, clamped
+neighbor bounds and coordinate correspondence, interface-fraction bounds,
+the four conservative states, and admissibility of all rounded initial
+cell averages.  The axiom audits pass, and 48 grid-helper WASM tests pass,
+including every index at size 800.  The initial guard proof was divided
+after two three-minute timeouts.  Shared state lemmas and kernel decision
+checks reduced the final proof target to 16 seconds.
+
+The proposed compiler mappings for Talos's five formal arithmetic
+operations await the user's design choice.  Complete solver construction,
+memory and time-control proofs, exact-WASM proof, production runs, and
+figures remain open.
