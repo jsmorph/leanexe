@@ -10287,3 +10287,90 @@ plans/euler-rusanov.md, devnotes.md, and journal.md.  These explicit paths
 constitute the checkpoint.  Existing artifacts, LTG material, datasets,
 and retained diagnostic directories remain intact.  The 192 × 192 run
 and final figures are the next step.
+
+Published the 54-path solver checkpoint as
+7c7277d1e1ab8bc4ee5b4a014a8b975abb8b8054, parent
+03956a9c15b971dcfd8b09408fe7b8fa7aef6465, tree
+a49c75aa38b20bd63d62cfb9431210c06b9b71bf.  The non-forced SSH push,
+fetch, exact commit/parent/tree comparison, and worktree comparison all
+passed.  The tracked worktree was clean and synchronized.
+
+Started tools/euler-riemann-data.mjs write through tools/leanrun with a
+35-minute outer limit, ten-second lock wait, and the pinned Wasmtime C API
+path.  The native host has its own 30-minute limit and retains evidence in
+tmp/euler-2d-run-huLnVr.  The process scope is
+run-p1681695-i5875638.scope.  Its observed properties are MemoryHigh 4 GiB,
+MemoryMax 6 GiB, MemorySwapMax 1 GiB, and CPUQuotaPerSecUSec 1s.  At
+step 303 it had reached time 0.29837075411421593 with no retry, rounded
+CFL 0.4, and about 30 MB of cgroup memory.  The final dataset is written
+only after the complete native record passes independent replay.
+
+The 192 × 192 run and complete independent replay passed.  The solver
+reached exactly time 0.8 in 808 steps without a rejected attempt.  Maximum
+checked CFL was 0.40036161804323545.  Minimum accepted density was 0.138,
+and minimum pressure was 0.02899999999999994.  The final density range is
+[0.138, 1.4901312336016124], and final pressure range is
+[0.02899999999999997, 1.4767801078426048].  The four boundary-corrected
+balance residuals are [-4.440892098500626e-16,
+-2.7755575615628914e-17, 0, -4.440892098500626e-16].
+
+The generator wrote the fresh data/euler-riemann-v1 directory with
+raw.json.gz, cells.csv, history.csv, and summary.json only after replay
+accepted the native record.  The plot script ran through the standard
+runner with a two-minute limit and a repository-local Matplotlib config
+directory.  It produced PNG, SVG, and PDF.  Inspected the PNG and the
+Lanyon reference image.  The main oblique fronts and junctions are
+comparable.  The 192 × 192 first-order result has smoother central
+structure and lacks the reference's pronounced central density peak.
+The article states that limitation and the separate final color ranges.
+
+Started the data check against the saved compressed record.  It replays
+the complete calculation and compares all canonical files byte for byte.
+Drafted the focused article in the dataset readme and added its root
+README link.  The article records the four states, method, finite-run
+metrics, proof and runtime boundaries, and reproducible commands.
+
+The saved-record data check passed and reproduced all four canonical
+files byte for byte.  Reviewed the article twice for numerical claims,
+proof scope, figure interpretation, reproduction commands, and prose.
+Clarified that the second directional sweep can exceed the target CFL
+while remaining below the checked ceiling.  Rounded the reported maximum
+balance residual to 4.44e-16.  Marked the five Riemann completion items
+checked in plan.md and reconciled plans/euler-rusanov.md and devnotes.md.
+
+The user requested an agent to draft and submit a marXiv report on the
+LeanExe type theory and specification.  Read the submit-marxiv skill and
+assigned the resumed type-theory agent the fresh
+paper/leanexe-type-theory-specification directory.  Its authority includes
+submission and the skill's revision/review cycle.  Root retains shared
+documentation, journal, and Git ownership.  The agent will read the live
+archive standards and style manual before drafting, preserve each
+submitted revision, and report the decision and evidence.
+
+The documentation gate passes for 97 maintained Markdown files, including
+the new Riemann article and the agent's current report records.
+git diff --check passes.  The final Euler checkpoint contains the eight
+files in data/euler-riemann-v1, README.md, plan.md,
+plans/euler-rusanov.md, devnotes.md, and journal.md.  The agent's report
+directory remains outside that checkpoint.  The source and artifact
+identities equal the previously checked solver revision.  The full
+numerical replay, saved-file reproduction, plot inspection, and article
+review complete the requested Riemann work.
+
+The staged-file whitespace check exposed Matplotlib's trailing spaces
+inside the new SVG path attributes.  The earlier unstaged check had not
+examined that untracked figure.  Added SVG serialization through StringIO
+with trailing whitespace removed before writing.  Retained the original
+SVG and summary in tmp/euler-riemann-svg-6ZCARB, alongside a copied cell
+CSV.  A fresh figure generation there passed under the two-minute runner.
+Its PNG and PDF are byte-identical to the original outputs.  Its SVG
+differs exactly by trailing whitespace.  Applied that reviewed SVG and
+updated only the plot-source hash in summary.json to
+ae67eb59534ba330cbcb193bf9319f79cbeeb4b65af349d7932a2e7f9aa762a0.
+The numerical records and numerical source hashes are unchanged.  The
+saved-data check is running again against the revised figure-source
+metadata.  The plot script joins the explicit publication path list.
+
+The repeated saved-data check passed with the revised plot-source hash.
+The fresh PNG/PDF byte comparison and SVG whitespace-only comparison pass.
+The final Euler publication now contains fourteen explicit paths.
