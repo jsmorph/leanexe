@@ -58,6 +58,12 @@ private theorem noReturnCall_aux : ∀ fuel,
         | subI64 => no_return_call_atomic
         | mulI64 => no_return_call_atomic
         | divUI64 => no_return_call_atomic
+        | andI64 => no_return_call_atomic
+        | f64ReinterpretI64 => no_return_call_atomic
+        | i64ReinterpretF64 => no_return_call_atomic
+        | f64Add => no_return_call_atomic
+        | f64Sub => no_return_call_atomic
+        | f64Mul => no_return_call_atomic
         | eqI64 => no_return_call_atomic
         | neI64 => no_return_call_atomic
         | eqz => no_return_call_atomic
