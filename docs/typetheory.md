@@ -1,5 +1,11 @@
 # LeanExe Type Theory and Executable Dialect
 
+The [Type Theory of the LeanExe Fragment](leanexe-type-theory.md) gives
+mathematical judgments and typing rules.  The [Formal Specification of
+Compilation and Execution](leanexe-formal-specification.md) defines the
+implementation-indexed compilation and execution relations and records the
+remaining independent formalization work.
+
 LeanExe uses exact Lean 4.34.0-rc2 as its source theory, elaborator, and kernel checker.  It does not define a second surface type system or accept unchecked syntax.  Its own language begins after elaboration: an extractor reads a kernel-checked declaration, removes static material, recognizes a restricted executable fragment, and assigns concrete runtime layouts before lowering the result to a first-order IR and WebAssembly.
 
 The phrase *LeanExe dialect* therefore names two related boundaries.  The checked boundary is Lean 4's dependent type theory, including propositions, universe-polymorphic definitions, dependent functions, inductive families, and proofs.  The executable boundary is the smaller set of elaborated terms for which LeanExe implements extraction, representation, evaluation order, memory management, and an ABI.  A source module may contain declarations outside the executable boundary when they do not contribute runtime behavior to the selected entry.
