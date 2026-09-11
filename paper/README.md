@@ -1,6 +1,6 @@
-# Exact-artifact verification paper
+# LeanExe research papers
 
-This directory contains the main research paper and three focused research notes on LeanExe's exact-artifact WebAssembly verification and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each note retains its source, bibliography, reviewed PDF, and publication record in a separate directory.
+This directory contains the main research paper and four focused reports on LeanExe's language, WebAssembly verification, and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each report retains its source, references, reviewed PDF, and publication record in a separate directory.
 
 | Work | Subject | Record |
 |------|---------|--------|
@@ -8,6 +8,7 @@ This directory contains the main research paper and three focused research notes
 | [Structured LTG note](structured-ltg-note/README.md) | Selective retrieval from the growing proof knowledge base. | [marXiv:2608.00029](http://localhost:8000/abs/2608.00029) |
 | [Frame-accessor note](frame-accessor-note/README.md) | Compiler-generated frame projections and their proof screens. | [marXiv:2608.00034](http://localhost:8000/abs/2608.00034) |
 | [Tactic-retrieval note](tactic-retrieval-note/README.md) | Goal-shape tactic indexing, selection, and accepted proof evidence. | [marXiv:2608.00036](http://localhost:8000/abs/2608.00036) |
+| [Type theory and specification report](leanexe-type-theory-specification/README.md) | Runtime typing, extraction acceptance, execution semantics, and open refinement obligations. | [marXiv:2609.00005](http://127.0.0.1:8405/abs/2609.00005) |
 
 The root manuscript consists of four publication files:
 

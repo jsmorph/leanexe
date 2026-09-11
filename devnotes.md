@@ -9723,3 +9723,23 @@ broader central gradients and a lower peak density than the published
 800 × 800 result.  All simulation and plotting commands used the standard
 runner limits.  The separate marXiv report requested by the user is
 delegated to the type-theory agent.
+
+### 2026-09-11: accepted language specification report
+
+[The LeanExe Fragment: Types, Extraction, and Execution](paper/leanexe-type-theory-specification/README.md)
+is accepted as [marXiv:2609.00005v2](http://127.0.0.1:8405/abs/2609.00005).
+The 13-page report defines runtime typing, layouts, extraction acceptance,
+and execution relative to documentation checkpoint
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d.  Its two layout propositions
+have mathematical arguments.  Independent recursor rules, mechanized
+acceptance judgments, and general source-to-WASM refinement remain open.
+Export-name rejection and child-mask width remain source-audit findings
+without compiled reproducers.
+
+The replacement resolves four editorial remarks.  The second review says
+"Accepted." and records two remaining table-punctuation remarks.  The final
+PDF has SHA-256
+57a2bcaf253c242d82de53ec01b42c6d490bc41bd8eb5243ebefcc3b0f7fe3ef.
+The report directory preserves source revisions, submitted PDFs, extracted
+metadata, source evidence, reviews, and the initial font-build failure.
+No new dependency, Lean process, or implementation change was required.
