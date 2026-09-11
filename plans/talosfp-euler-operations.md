@@ -19,9 +19,12 @@ the historical local-only statements below for this calculation.  Use the
 current leanrunner skill and its dev runbook, a fresh project snapshot,
 checksum-verified transfers, admitted resource limits, and persistent jobs.
 Preserve the completed 192 × 192 dataset and every existing remote tree.
-The approved sequence is a 192-grid timing, streamed records, the larger
-serial run, independent replay, final density/pressure figures, and a
-separate publication.  Discuss parallel execution if timing warrants it.
+After the serial timing, the user authorized 24 concurrent WASM processes
+controlled by Bash.  Each process owns a row block, reads completed input
+files including neighboring boundary rows, and writes separate output
+files.  Bash waits for every process before the next sweep.  The approved
+sequence is a 192-grid comparison, the 800-grid process run, independent
+replay, final density/pressure figures, and a separate publication.
 
 - Work on this branch is always local.  There is no `dev` host: do not invoke,
   probe, discover, or fall back to one.  Direct local Lean is authorized.

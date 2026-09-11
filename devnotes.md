@@ -9814,3 +9814,20 @@ waits for the main run's final status zero before starting verification.
 It has the same memory, CPU, swap, and task limits as the main run.  The
 combined declared limits fit the parent slice.  Both final results remain
 pending.
+
+### 2026-09-11: 24-process WASM sweeps
+
+Implemented the user's Bash-controlled row blocks.  Each wave launches
+24 independent Wasmtime processes, and each process executes the cell
+loop in WASM.  Completed block files supply neighboring rows.  Global
+barriers precede timestep selection and each directional sweep.  The
+26-grid test matches the full serial record byte for byte and passes
+independent replay, packaged-data checking, forced rejection, and missing
+input tests.  The [dev run record](plans/euler-riemann-dev.md) describes
+the implementation, file format, and proof boundary.
+
+The superseded serial 800-grid job was stopped with its partial evidence
+preserved.  It and its waiting checker have final status 143.  The last
+progress line records step 800 at time 0.19010000848955011.  The process
+version will use a fresh source snapshot and a 192-grid comparison before
+the full 800-grid calculation.

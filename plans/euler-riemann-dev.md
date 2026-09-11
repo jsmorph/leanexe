@@ -33,8 +33,9 @@ initial states, numerical diagnostics, and measured phase times.
 Within an admitted persistent dev job, the driver commands are:
 
 ```text
-node tools/euler-riemann-large.mjs run 192 tmp/riemann-dev-192
-node tools/euler-riemann-large.mjs run 800 data/euler-riemann-800-v1
+node tools/euler-block-run.mjs run 192 tmp/riemann-blocks-192
+node tools/euler-block-run.mjs run 800 tmp/riemann-blocks-800
+node tools/euler-riemann-large.mjs write tmp/riemann-blocks-800/run.ndjson data/euler-riemann-800-v1
 node tools/euler-riemann-large.mjs check data/euler-riemann-800-v1
 ```
 
@@ -90,8 +91,8 @@ and runner directories remain preserved.
 |-----|--------|--------|
 | `leanexe-riemann-192-20260911-1` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 1: missing math-library linkage |
 | `leanexe-riemann-192-20260911-2` | 4G high, 6G max, 100% CPU, 1,800 seconds | Final status 0: native run and independent replay pass |
-| `leanexe-riemann-800-20260911-1` | 4G high, 6G max, 100% CPU, 21,600 seconds | Started 2026-09-11 at 17:44:58 UTC.  Final result pending |
-| `leanexe-riemann-800-check-20260911-1` | 4G high, 6G max, 100% CPU, 28,800 seconds | Started at 17:52:43 UTC.  Waits for the run's final status zero, then checks the packaged data |
+| `leanexe-riemann-800-20260911-1` | 4G high, 6G max, 100% CPU, 21,600 seconds | Final status 143: stopped after the user authorized the process design |
+| `leanexe-riemann-800-check-20260911-1` | 4G high, 6G max, 100% CPU, 28,800 seconds | Final status 143: predecessor failed, so verification did not start |
 
 Every job uses zero swap and a 512-task ceiling.  The successful benchmark
 ran from 17:41:02 to 17:44:02 UTC.  Native execution including compilation
@@ -104,20 +105,20 @@ dataset passed checksum comparisons after retrieval.
 Scaling computation by `(800/192)^3` estimates 2.64 hours of native
 execution and 0.89 hours of replay, plus a comparable second replay for
 the packaged-data check.  These are estimates from the 192-grid timing.
-The approved serial calculation is running.  Parallel execution would
-require a separate host implementation with independent Wasmtime stores
-and further tests.
+The user superseded the serial execution design with 24 concurrent WASM
+processes.  The serial job was stopped with its partial output preserved.
+Its final status is 143, and the waiting checker returned the same status
+without starting verification.  The last serial progress line records
+step 800, time 0.19010000848955011, and zero retries.
 
-The active native record is
+The preserved partial serial record is
 `/mnt/vq/leanexe-riemann-20260911-libm/tmp/euler-2d-run-9lAWkE/run.ndjson`.
-Its sibling `stderr.log` records progress every 50 steps.  The driver will
-write `data/euler-riemann-800-v1` only after its independent replay passes.
-The final compressed-data check, retrieval, figures, and article remain
-pending.
+Its sibling `stderr.log` records progress every 50 steps.  The final
+compressed-data check, retrieval, figures, and article remain pending.
 
-The check service waits through `leanrun-job wait` and invokes the
-large-run driver's `check` command only after that wait returns zero.
-Both services together declare 8G memory high, 12G maximum, 200% CPU,
+The check service waited through `leanrun-job wait`, whose nonzero result
+prevented the large-run driver's `check` command from starting.
+Both services together declared 8G memory high, 12G maximum, 200% CPU,
 and 1,024 tasks, within the aggregate limits.  The first check submission
 returned SSH status 255 without a diagnostic and created no job.  The
 retry succeeded through the approved helper.  Each service retains its
@@ -145,3 +146,46 @@ reproduces the published PNG, SVG, and PDF byte for byte.  These tests
 establish the new record path's agreement with the existing result.  The
 verifier also requires the last snapshot to have the final time, because
 the cell CSV takes its pressure values from that snapshot.
+
+## Twenty-four WASM processes
+
+The [Bash sweep](../tools/euler-block-wave.sh) starts 24 workers with `&`
+and waits for every PID.  Worker b owns rows floor(nb/24) through
+floor(n(b+1)/24) minus one.  The [WASM worker](../tools/euler-block-worker.wat)
+performs initialization checks, speed scans, cell updates, and boundary
+flux calls using the three unchanged numerical artifacts.  The
+[C host](../tools/euler-block-host.c) loads Wasmtime modules and transfers
+files.  Each process has its own store and memory.
+
+The [coordinator](../tools/euler-block-run.mjs) first waits for the speed
+scan and selects a global timestep.  Every x worker reads the previous
+accepted state.  After all x workers exit successfully, every y worker
+reads the completed x files and the adjacent block's boundary row.  The
+physical boundary copies its nearest interior row.  A rejected block
+causes a global retry at half the timestep.  Input files remain immutable,
+and every attempted sweep has a fresh output directory.
+
+Block files contain little-endian binary64 conserved quantities in cell
+order.  Accepted y files also contain pressure.  Omitting unused pressure
+from x files reduces retained cell data to 46.08 MB per 800-grid timestep.
+About 3,370 steps therefore require 155.3 GB of cell data, plus file-system
+metadata and raw records.  All intermediate files remain available.
+
+The Wasmtime 44 C API converts the worker WAT and compiles the four
+modules once per source/host build.  Subsequent processes load those local
+compiled modules.  The build receipt identifies source, frozen kernel
+bytes, flags, architecture, host executable, worker WASM, and compiled
+modules.  The execution receipt binds the raw record hash, coordinator
+sources, Node version, and physical call counts.  Dataset packaging and
+checking verify that raw-record binding.  The batch-WASM orchestration
+has executable tests.  The existing exact-byte theorems cover the three
+numerical kernels.
+
+The 26-grid test uses unequal block sizes and runs through time 0.8 in
+110 steps without retries.  Its complete NDJSON record matches the serial
+run byte for byte.  Independent replay, compressed-data checking,
+execution-metadata preservation, forced rejection, and missing-input
+failure tests pass.  The latest local evidence is
+`tmp/euler-block-test-KBfesv`, with a measured process-run time of
+9.206926213 seconds under the standard one-CPU runner.  Dev timing and
+the full 800-grid result remain pending.
