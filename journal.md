@@ -9955,3 +9955,19 @@ tools/euler-2d-data.mjs, and twelve named data/euler-2d-v1 files
 quadrants.html/.png/.svg, raw.json.gz, summary.json). No existing dataset
 or proof artifact was overwritten. Intended checkpoint:
 “Publish verified 2D Euler data and visualizations”.
+
+### 2026-09-10: final visualization publication receipt
+
+Checkpoint d0d5a966d5a05b9c81ad527e3424bb727843fce8 is published,
+sole parent01d93b568ede028feeed0397add84a9e97e313bb, exact tree
+777c474e72849238dd6a18dd2d381bc0dabc3ea7. All20 reviewed paths were
+uploaded as exact blobs; API tree equals staged write-tree. The branch
+advanced with force:false; fetch with automatic maintenance disabled,
+fetched parent/message/tree checks, index/worktree equality and local
+compare-and-swap all passed. Final status is clean and synchronized.
+Both SVGs and PNGs are present in the fetched commit under
+data/euler-2d-v1. This single receipt checkpoint changes only journal.md
+and devnotes.md; no numerical, proof or visual files change. The requested
+Euler implementation/data/2D visualization agenda is complete within the
+explicit documented proof scope. Its publication receipt will be verified
+externally without a further receipt-only commit.

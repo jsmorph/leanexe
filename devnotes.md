@@ -9621,3 +9621,9 @@ pulse view loads. Separate headless Chrome launch was sandbox-blocked,
 so responsive browser interaction is not claimed. Both PNGs were inspected.
 Docs/plans reconcile completed Euler scope; inventories37/37/17/33 unchanged.
 No WASM or proof source changes in this publication checkpoint.
+
+Final data/visualization publication: d0d5a966d5a05b9c81ad527e3424bb727843fce8,
+tree777c474e72849238dd6a18dd2d381bc0dabc3ea7. Non-forced publication,
+fetch and exact tree/index/worktree checks pass. Both SVG/PNG posters, both
+animations and the complete canonical dataset are pushed; Euler agenda
+complete. This receipt changes no computational or presentation content.
