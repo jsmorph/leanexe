@@ -492,3 +492,14 @@ The user canceled the 800-grid run and ordered removal of the rejected
 proof.  The implementation and its generated files have been removed.
 The [dev run record](plans/euler-riemann-dev.md) retains the earlier serial
 benchmark and the cancellation record.
+
+## 12. Prove and run the complete Riemann solver
+
+The user authorized one LeanExe-generated WASM solver with runtime grid
+size, local execution in one process on one thread, and complete source
+and exact-WASM proofs.  The [complete solver plan](plans/euler-riemann-complete.md)
+records the numerical specification and outstanding proof obligations.
+
+- [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
+- [ ] Run 192 by 192 and then render its final density and pressure figure.
+- [ ] Run 800 by 800 and then render its final density and pressure figure.

@@ -1,5 +1,10 @@
 # Verified Euler Rusanov Data
 
+The current extension is the [complete Riemann solver](euler-riemann-complete.md)
+in phase 12 of the root plan.  The user requires complete Lean-source and
+exact-WASM proofs before the new 192-grid and 800-grid calculations and
+their figures.  The earlier phases below retain their recorded scope.
+
 **Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
 genuine Fréchet Jacobian, complete strictly ordered eigenbasis, and decoded
 finite-volume error layer are proved and integrated.  The fixed compiled step

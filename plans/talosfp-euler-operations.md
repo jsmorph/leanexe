@@ -11,6 +11,17 @@ execution, cleanup, or another action prohibited here.
 
 ## Immediate non-negotiable summary
 
+### 2026-09-11: complete solver development authorized
+
+The current task is the [complete Riemann solver](euler-riemann-complete.md).
+The user approved a Lean program with runtime grid size, compiled by
+LeanExe, with complete source and exact-WASM proofs.  Execution uses one
+local process on one thread through the installed standard runner limits.
+The earlier host-specific direct-local envelopes below are historical.
+Complete the proofs before running 192, plotting 192, running 800, and
+plotting 800, in that order.  Preserve the previous data and figures.
+Remote or parallel execution requires a further design discussion.
+
 ### 2026-09-11: canceled dev run and authorized removal
 
 The user stopped the 800-grid process run and ordered removal of its
