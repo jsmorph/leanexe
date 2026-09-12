@@ -9973,3 +9973,11 @@ exact source status/speed pair while preserving the complete store.
 The four modules pass their focused checks and standard-axiom audits.
 Allocation, directional traversal, control, successful completion, and
 exact-byte closure remain open.
+
+The generated clamped-neighbor function, state orientation, complete
+cell-input constructor, evaluator wrapper, and sweep callback now have
+checked execution theorems.  The callback proof covers supported grid
+sizes and valid cell indices with arbitrary field and ratio words,
+proves all eight neighbor reads bounded, and preserves the store.
+The focused build passed all 3,434 jobs with standard-only axiom audits.
+The allocating sweep loop and complete solver obligations remain open.

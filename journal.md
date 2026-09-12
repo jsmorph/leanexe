@@ -11908,3 +11908,53 @@ inventory, status, solver plan, and concise notes.  Checkpoint intent:
 publish those four proof modules and four current records plus this
 append-only journal.  Allocation, directional traversal, control,
 successful completion, and exact-byte closure remain open.
+
+Published the reviewed nine-path scan checkpoint as
+79e8a5e8733d4ca546fb4ea79bffd4e857eb0cfa, parent
+4ca2210e33a7a0e2989042e8b158cf84f551eac5, tree
+74ebba005e0ca83f9337ad6488704e4608865c0f.  The 105-file documentation
+check and whitespace check passed.  Non-forced SSH push, fetch, and exact
+commit/tree/index/tracked-worktree checks passed.  Added the next focused
+proof for the generated clamped-neighbor function, including bounded
+Nat-to-word arithmetic, division/remainder, and saturating subtraction.
+Its first check is next.
+
+The neighbor proof's arithmetic draft needed explicit lower-size facts,
+a rewrite of its local coordinate equality, and the standard division
+bound.  Removed the unnecessary Cartesian product of forward, zero, and
+subtraction cases.  The following diagnostic exposed simplification of
+the entire pending instruction continuation.  Restricting branch
+simplification to the selected program argument removed that recursion
+failure.  The theorem uses the same one-million-heartbeat allowance as
+the numerical execution modules under the unchanged two-minute runner
+limit.  Final diagnostics identified the explicit ofNat-one equality and
+the backward branch's no-underflow fact.  The corrected neighbor theorem
+and orientation helper passed all 3,428 jobs, in 9.0 and 2.4 seconds
+respectively, with standard-only axiom audits.  One case reports an unused
+simp argument.  Added the complete cell-input proof, composing two neighbor
+calls, bounded state reads, and three orientation calls.  Its check is next.
+
+The cell-input proof first stopped at the unsigned array-bound branch.
+Its trace showed that the known size had reduced to n squared while the
+local neighbor aliases remained folded in the comparison premises.
+Added the equivalent explicit comparison facts using UInt64.not_le,
+then reused the general bounded-read lemmas for both neighbors.  The last
+source-array equality needed explicitly typed getElem! equalities with
+the full neighbor expressions.  The final focused ExecutionInputs build
+passed all 3,428 jobs, with module time 7.5 seconds and standard-only
+audits for both orientation and the complete input constructor.  Added
+ExecutionUpdateCell to compose that constructor, the numerical evaluator,
+and the output orientation against the generated sweep callback.
+
+ExecutionUpdateCell's first build completed the callback composition but
+left the evaluator wrapper's argument-list length.  Adding the input
+representation definitions to that final simplification discharged it.
+The focused two-minute runner command passed all 3,434 jobs, with module
+time 5.7 seconds.  Both evaluator and sweep-callback axiom audits contain
+only propext, Classical.choice, and Quot.sound.  Reviewed the three new
+modules and their source/memory premises against the generated functions.
+They change no numerical source or artifact.  Updated the solver plan,
+proof inventory, status, and concise notes.  Checkpoint intent: publish
+the three checked execution modules and five current records.  The
+allocating traversal, allocator reuse, complete control, successful
+completion, and exact-byte closure remain open.
