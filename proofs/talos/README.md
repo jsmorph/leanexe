@@ -158,6 +158,12 @@ constant, positive-word predicate, rounded valid-advance guard,
 small-natural conversion, grid spacing, and CFL proposal.  The conversion
 covers every supported grid size.  The proofs preserve the full store
 and caller operands across nested calls and cover both minimum branches.
+A heap reservation theorem now counts sufficiently large free buffers
+and bounds the extra bytes needed for future allocations.  Allocation
+consumes one reservation, and release restores one.  The complete
+timestep derives its two allocation bounds from this invariant and
+returns one fewer reservation.  Releasing its result restores the
+original count.  Initialization must still establish the full byte limit.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
