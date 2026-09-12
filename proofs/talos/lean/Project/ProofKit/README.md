@@ -10,6 +10,9 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.MemoryGrowth` | Checked page-delta arithmetic and execution of the allocator's memory-growth sequence within the runtime cap. |
 | `Project.ProofKit.MemoryEnsure` | Checked conditional growth to the larger of the current and requested page counts, preserving memory bytes and the local frame. |
 | `Project.ProofKit.Frame` | Local-frame extensionality, operand-stack replacement projections, and conversion from combined `Locals.get` facts to internal-local optional and indexed getters. |
+| `Project.ProofKit.FuelGuard` | Short-circuit fuel and completion guards with exact store and frame preservation and arbitrary exit or body continuations. |
+| `Project.ProofKit.BlockLoop` | Empty-stack block/loop composition from a proved iteration, a decreasing natural measure, a completed-state predicate, and an arbitrary suffix continuation. |
+| `Project.ProofKit.CheckedArrayGet` | Bounds-checked `Array UInt64` loads for arbitrary staged pointer and index locals, preserving the store and an operand-stack tail. |
 | `Project.ProofKit.F64Bounds` | Raw binary64 sign-clearing guards, including the proof that an accepted half-unit encoding is finite with modeled real magnitude at most one half. |
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |

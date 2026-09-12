@@ -31,39 +31,22 @@ theorem retry_loop_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap
       wp Project.EulerRiemann.«module» rest Q final resultFrame env) :
     wp Project.EulerRiemann.«module» ([.block 0 0 [.loop 0 0 retryLoop]] ++ rest)
       Q store frame env := by
-  have hEntryValues := hInv.values
-  simp only [List.cons_append, List.nil_append]
-  apply wp_block_cons
-  apply wp_loop_cons (Inv := retryInvariant initial initialHeap n time source.root
+  refine Project.ProofKit.BlockLoop.program_spec _ env store frame retryLoop
+    (retryInvariant initial initialHeap n time source.root
     (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit)
-    (μ := fun _ current => retryMeasure current)
-  · exact hInv
+    (fun final resultFrame => ∃ heap, RetryStoreAt initial initialHeap final heap ∧
+      RetryDone initial initialHeap n time source.root
+        (normalizedCapacity (UInt64.ofNat grid.size) 7) expected spare limit final heap resultFrame)
+    (fun _ current => retryMeasure current) (fun _ _ h => h.values) ?_ hInv ?_ Q rest ?_
+  · intro final resultFrame ⟨heap, hStore, hDone⟩
+    exact (show retryInvariant initial initialHeap n time source.root
+      (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit final resultFrame
+      from ⟨heap, hStore, Or.inr hDone⟩).values
   · intro current currentFrame hCurrent
-    have hValues := hCurrent.values
-    refine wp.conseq ?_ (retry_iteration_spec env initial initialHeap source grid n time expected
-      spare limit current currentFrame hn hIndexed hOwner hSuccess hLimit hCap hCurrent)
-    intro cont hPost
-    cases cont with
-    | Break depth final resultFrame =>
-      cases depth with
-      | zero =>
-        obtain ⟨hResult, hDecrease⟩ := hPost
-        have hResultValues := hResult.values
-        have hTrim : { resultFrame with values := [] } = resultFrame := by rw [← hResultValues]
-        simpa only [List.take_zero, List.drop_zero, List.nil_append, hValues, hTrim]
-          using And.intro hResult hDecrease
-      | succ depth =>
-        cases depth with
-        | zero =>
-          obtain ⟨heap, hStore, hDone⟩ := hPost
-          have hResultValues := (show retryInvariant initial initialHeap n time source.root
-            (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit final resultFrame
-            from ⟨heap, hStore, Or.inr hDone⟩).values
-          have hTrim : { resultFrame with values := [] } = resultFrame := by rw [← hResultValues]
-          simpa only [List.take_zero, List.drop_zero, List.nil_append, hEntryValues, hTrim]
-            using hNext final heap resultFrame hStore hDone
-        | succ depth => exact False.elim hPost
-    | _ => exact False.elim hPost
+    exact retry_iteration_spec env initial initialHeap source grid n time expected
+      spare limit current currentFrame hn hIndexed hOwner hSuccess hLimit hCap hCurrent
+  · intro final resultFrame ⟨heap, hStore, hDone⟩
+    exact hNext final heap resultFrame hStore hDone
 
 #print axioms retry_loop_spec
 

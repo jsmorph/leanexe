@@ -62,6 +62,13 @@ tools/talos-artifact.js prepare fold_sum
 
 The generated files support inspection and proof development.  Read `proofs/talos/.generated/fold_sum/program.wat` when function indices, control flow, or instruction boundaries require examination, and import `Project.FoldSum.Program` from handwritten proof modules.  Regenerate these files after changing the source, compiler, Talos pin, or `wasm-tools` pin.
 
+A registration with `"annotations": true` also generates
+`program.annotations.json`, `proof-recipes.json`, and the tracked
+`AnnotationMatches.lean` module.  Preparation checks the compiler
+sidecar against the generated model before producing the Lean
+equalities.  The proof gate compares both tracked generated modules
+with fresh output.  The Riemann registration enables this support.
+
 ## Handwritten Proof
 
 Add the generated module import and four runtime equalities to [`Project/Runtime/Checks.lean`](../proofs/talos/lean/Project/Runtime/Checks.lean).  The runtime function indices follow the user functions in the generated module, and release takes its own index because its body calls itself recursively.  A failed `rfl` identifies a generated runtime change that the shared runtime library must address.

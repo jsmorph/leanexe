@@ -76,6 +76,11 @@ try {
   if (fs.readFileSync(destination, "utf8") !== "def value := 2\n") {
     throw new Error("Talos cache refresh did not install the generated cache");
   }
+  installProgramCache(item, generated, "refresh", root, "AnnotationMatches.lean");
+  installProgramCache(item, generated, "check", root, "AnnotationMatches.lean");
+  fs.writeFileSync(generated, "def value := 3\n");
+  assert.throws(() => installProgramCache(item, generated, "check", root,
+    "AnnotationMatches.lean"), /AnnotationMatches.lean differs from the tracked cache/);
 
   const normalized = normalizeExpandedProgram(expanded, "example");
   if (normalized !== normalizedExpanded) {

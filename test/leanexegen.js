@@ -881,6 +881,13 @@ def func1Def : Wasm.Function :=
 `;
   assert(proofRecipePlan(nested, nestedProgram).recipes.length === 1,
     "nested direct-call annotation did not match the decoded else branch");
+  for (const indentation of ["   ", "      "]) {
+    const formatted = nestedProgram.replace(/^    (?=\.)/gm, indentation);
+    assert(proofRecipePlan(nested, formatted).recipes.length === 1,
+      "nested direct-call matching depends on the printer indentation");
+    expectFailure(() => proofRecipePlan(nested,
+      formatted.replace(".localGet 4,", ".localGet 3,")), /do not match/);
+  }
 }
 
 function lengthDispatchProgram(encoding, expectedSize = 21) {
@@ -1022,6 +1029,11 @@ function testLengthDispatchAnnotationRecipes() {
     validateAnnotationDocument(document, wasm);
     const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
     validateProofRecipePlan(plan, document);
+    const bareConstants = program.replace(/\.constI64 \(([0-9]+) : UInt64\)/g,
+      ".constI64 $1");
+    assert(JSON.stringify(proofRecipePlan(document, bareConstants,
+      ["strategy.arrays", "strategy.frames"])) === JSON.stringify(plan),
+    `${encoding} matching depends on the integer printer spelling`);
     const equality = encoding === "eq-normalized-v1";
     const bounded = encoding === "le-unsigned-v1";
     const expectedTheorem = bounded ? "leProgram_spec" :
@@ -1866,6 +1878,29 @@ def func0Def : Wasm.Function :=
   "annotation region selection did not preserve the requested region");
   expectFailure(() => selectAnnotationRegions(whileDocument, ["missing"]),
     /does not exist/);
+  const fuelDocument = structuredClone(whileDocument);
+  fuelDocument.functions[0].regions[0].parameters.descriptor = null;
+  const fuelProgram = whileProgram.replace(
+    "      .eqI64,\n      .eqz,\n      .br_if 1,",
+    "      .eqI64,\n      .eqz,\n      .iff 0 1 [\n" +
+    "        .localGet 3,\n        .constI64 (0 : UInt64),\n        .eqI64\n" +
+    "      ] [\n        .const 0\n      ] [] [.i32],\n      .eqz,\n      .br_if 1,");
+  const hasFuelGuard = (source) => proofRecipePlan(fuelDocument, source)
+    .recipes[0].supporting.some((entry) =>
+      entry.declaration === "Project.ProofKit.FuelGuard.program_spec");
+  assert(hasFuelGuard(fuelProgram), "fuel guard was absent from the while recipe");
+  const fuelMatches = annotationMatchesSource(fuelDocument, {
+    namespace: "Example.Generated", programModule: "Example.Generated.Program",
+  }, fuelProgram).source;
+  assert(fuelMatches.includes("FuelGuard.program 0 3") &&
+    fuelMatches.includes("function_0_while_loop_0_guard_eq") &&
+    fuelMatches.includes("function_0_while_loop_0_guard_tail_eq"),
+  "fuel guard did not generate its exact region and tail equalities");
+  for (const altered of [
+    fuelProgram.replace(".const 0", ".const 1"),
+    fuelProgram.replace("        .eqI64", "        .neI64"),
+    fuelProgram.replace("] [] [.i32]", "] [] [.i64]"),
+  ]) assert(!hasFuelGuard(altered), "changed instructions selected the fuel-guard theorem");
   validateAnnotationDocument(whileDocument, wasm);
   const whilePlan = proofRecipePlan(whileDocument, whileProgram, [
     "strategy.loops", "strategy.frames", "strategy.arithmetic",
