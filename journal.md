@@ -12420,3 +12420,45 @@ catalog, proof inventory, complete plan, and concise notes.  Checkpoint
 intent: publish the three new state/preservation modules, the search
 proof's shared-lemma substitution, and these five records.  Full sweep
 setup and the full solver proof remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+nine-path allocation-state checkpoint as
+f8a39a5ac77a003c158dfc0290acf300662b8a74, parent
+f0e772fa02968a2072cfc34472e0a931844e45fe, tree
+b378431fcaf4f14a5eed71d275470ca9795cb22b.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Added SweepSetup to relate the generated function's initial locals to
+the allocator frame, read the represented source length, and transfer
+the allocated pointer into the sweep frame.  The destination-length
+store uses the existing shared local-length store execution theorem.
+
+The setup check accepted pointer installation and the length-store
+composition.  The entry proof required its bounds fact in the reduced
+UInt64-to-UInt32 modulo form.  Added that equality.  Added MemoryLength
+to establish the empty destination prefix using the kernel read/write
+round-trip theorem and preserve the disjoint input grid through the
+length store.
+
+SweepSetup and MemoryLength passed all 3,478 jobs, with module times
+2.8 and 1.7 seconds and standard-only audits.  Added ExecutionSweep to
+compose entry, capacity calculation, allocation, pointer and length
+installation, the complete traversal loop, and the returned owner/root
+pair.  Its theorem retains explicit free-list separation and available
+heap/runtime-cap premises for the forthcoming solver memory invariant.
+
+ExecutionSweep's first check required folding the selected-root name in
+the separation premise and reducing the function's result and parameter
+counts at return.  Added those reductions.  The focused check passed all
+3,480 jobs in 2.6 seconds.  The complete function theorem uses only
+propext, Classical.choice, and Quot.sound.
+
+Reviewed the generated whole-function decomposition, source entry read,
+capacity and allocator applications, the destination length-store bound,
+preservation of the source grid, the empty output prefix, full sweep-loop
+composition, and the returned owner/root pair.  Updated the proof
+inventory, complete solver plan, and concise notes.  Checkpoint intent:
+publish SweepSetup, MemoryLength, ExecutionSweep, and these four records.
+The complete solver's ownership, memory, initialization, control,
+successful-completion, and exact-byte obligations remain open.

@@ -10065,3 +10065,13 @@ byte-identical page growth.  The search proof now uses its predecessor
 lemma.  The dependent build passed all 3,452 jobs with standard-only
 axiom audits.  Full sweep setup and the complete solver's peak-memory
 invariant remain open.
+
+The complete generated sweep function now has a checked execution
+theorem.  It composes the source-length read, runtime capacity prefix,
+allocator, pointer and length installation, terminating traversal, and
+returned owner/root pair.  The result agrees with the source sweep,
+preserves the input grid, and confines loop writes to the destination
+payload.  The focused build passed all 3,480 jobs in 2.6 seconds with
+standard-only axioms.  Successive-sweep ownership and memory composition,
+initialization, complete control, successful completion, and exact-byte
+closure remain open.
