@@ -310,8 +310,10 @@ check both emitted regions and compose shared checked multiplication,
 division/remainder, and saturating subtraction for every grid size at
 most 800 and temporary initialization index below 1,048,576.  Both
 minimum branches preserve the parameters and non-scratch locals.
-Complete cell composition, grow/extract traversal, and initialization
-allocation remain open.
+The [complete cell initializer](../proofs/talos/lean/Project/EulerRiemann/ExecutionInitialCell.lean)
+composes both weights and the weighted-state and thermodynamic calls.
+It returns the source cell's seven words and preserves the full store.
+Grow/extract traversal and initialization allocation remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
