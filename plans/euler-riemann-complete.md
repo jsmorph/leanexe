@@ -190,8 +190,13 @@ proves the source grid survives allocation and the destination is disjoint
 when free nodes and the new heap region are separated from the source.
 Its shared byte-frame theorem covers predecessor unlinking and all header
 writes.  Free-list representation survives byte-identical page growth.
-Full sweep setup and the complete solver's peak-memory invariant remain
-open.
+[The complete sweep execution](../proofs/talos/lean/Project/EulerRiemann/ExecutionSweep.lean)
+composes entry, capacity calculation, allocation, destination setup, the
+terminating traversal, and the returned owner/root pair.  Its result
+agrees with the source sweep, preserves the input grid, and confines loop
+writes to the destination payload.  The theorem keeps the represented
+free-list separation and available heap/runtime-cap premises explicit.
+The complete solver's ownership and peak-memory invariants remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
