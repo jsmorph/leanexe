@@ -367,6 +367,12 @@ derives the allocated destination's bounds and separation from the
 existing heap model and returns ownership of both grids and the updated
 heap.  Its [completed-grid helper](../proofs/talos/lean/Project/EulerRiemann/HeapGridFinish.lean)
 applies to any width-seven grid that fits the requested allocation.
+The [complete map region](../proofs/talos/lean/Project/EulerRiemann/InitialMapExecute.lean)
+now starts from the source pointer in parameter 4 and composes input
+loading, capacity calculation, allocation, installation, and the map
+loop.  It derives the capacity and no-fit search premises from the grid
+bound and free-list invariant, and returns the updated heap and both
+grid owners.  Its execution audit uses standard axioms.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

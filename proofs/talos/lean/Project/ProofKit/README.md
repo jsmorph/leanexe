@@ -38,6 +38,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayBumpInstall` | Heap-top and root assignment with preservation of the remaining locals and store fields. |
 | `Project.ProofKit.FixedArraySearchFrame` | Six allocator scratch slots with arbitrary parameters, saved locals, and trailing locals. |
 | `Project.ProofKit.FixedArraySearchProjection` | Preserves parameter and saved-local getters before the allocator scratch window. |
+| `Project.ProofKit.FixedArraySearchPrepare` | Rewrites saved-local assignments and capacity preparation as canonical six-slot allocation frames. |
 | `Project.ProofKit.FixedArraySearchRead` | Bounded free-node capacity and next-pointer reads and search-pointer advancement. |
 | `Project.ProofKit.FixedArraySearchNone` | Terminating search of a represented free list whose capacities are all smaller than the request, preserving the exact store. |
 | `Project.ProofKit.FixedArraySearchRegion` | Application of the no-fit search theorem through an explicit equality with the emitted loop body. |
@@ -53,6 +54,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayFoldBody` | Composition of the continuing traversal guard and indexed load with a compiler-described scalar body, condition, continuation, and guarded back edge. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
+| `Project.ProofKit.FixedArrayLengthRead` | A bounded length-header load into an arbitrary valid internal local, preserving the complete store. |
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
 | `Project.ProofKit.FixedArrayMapAdd` | A bounded one-word fixed-array map with wrapping addition, allocation, loop, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayPairResult` | Complete allocation and two-word result semantics for the emitted twenty-four-local wrapper. |
