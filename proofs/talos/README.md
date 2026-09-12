@@ -140,6 +140,10 @@ preserve other globals and runtime memory caps, and place all remaining
 buffers below the resulting top.  A disjoint owned source retains its
 complete region through allocation and its fresh header through sweep
 writes.
+The complete acceptance scan now has an execution theorem covering its
+bounded length and cell reads, early rejection, loop termination, Boolean
+result, and complete store preservation.  It agrees with the source
+array's all-zero-status predicate, including the empty array.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

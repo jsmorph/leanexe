@@ -220,6 +220,12 @@ below the resulting top.
 retains the source's complete region through allocation and its fresh
 header through subsequent sweep writes.  The solver's persistent
 ownership and peak memory bound still require composition across calls.
+[The acceptance scan](../proofs/talos/lean/Project/EulerRiemann/ExecutionAccepted.lean)
+proves exact execution of the array's all-zero-status predicate.  Its
+loop covers every bounded seven-word cell read, early rejection at a
+nonzero status, termination, the empty array, and complete store
+preservation.  This result selects the second sweep and retry branches
+in the generated controller.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
