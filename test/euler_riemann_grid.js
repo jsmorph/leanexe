@@ -90,7 +90,24 @@ function main() {
       [reference[0], 0n, n, n, ...density, ...pressure]);
     checks++;
   }
-  console.log(`Passed ${checks} grid geometry, initialization, split-step, and output tests; retained ${output}`);
+  const controlModule = "Project.EulerRiemann.Control";
+  run(["lake", "-d", proofRoot, "build", controlModule]);
+  const finalRows = proofEnv(["lean", "--run", path.resolve("test/euler_riemann_control.lean")])
+    .trim().split(/\r?\n/).map(line => line.split(" ").map(BigInt));
+  const controlWasm = path.resolve(output, "control.wasm");
+  proofEnv([path.resolve(compiler), "compile", "--module", controlModule,
+    "--entry", controlModule + ".solve", "--out", controlWasm]);
+  for (const [n, ...expected] of finalRows) {
+    const actual = arrayWords(controlWasm, "solve", [n]);
+    assert.deepEqual(actual, expected, `complete control at grid ${n}`);
+    const valid = n >= 2n && n <= 800n;
+    assert.equal(actual[0], valid ? 0n : 1n);
+    assert.equal(actual[1], valid ? 0x3FE999999999999An : 0n);
+    assert.deepEqual(actual.slice(2, 4), [n, n]);
+    assert.equal(actual.length, valid ? 4 + 2 * Number(n * n) : 4);
+    checks++;
+  }
+  console.log(`Passed ${checks} grid geometry, initialization, split-step, output, and control tests; retained ${output}`);
 }
 
 try { main(); } catch (error) { console.error(error.stack); process.exitCode = 1; }

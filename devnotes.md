@@ -9899,3 +9899,23 @@ cases.  Full control extraction passes.  The ownership report identifies
 missing retry-result freshness evidence and a dropped explicit release
 in the continuing retry branch.  These compiler issues and shared
 aggregate evaluation remain next.
+
+The reduced tail-loop test confirmed that lowering dropped unused explicit
+releases.  The corrected lowering materializes used let bindings once,
+preserves the release, and carries their ownership facts into recursive
+continuations.  The complete solver report now contains the retry release.
+
+Fresh-result analysis now accounts for zero-initialized local slots and
+computes loop ownership facts to a fixed point.  The reduced fresh-return
+helper releases its result, and the two-iteration borrowed-pointer test
+passes.  All 25 focused ownership and array-call cases pass.  All 62 grid
+tests pass, including complete runs at sizes 2 and 3 that reach time 0.8
+and match every source output word.  The broader compiler test passed
+802 accepted, 48 rejected, and 14 trapped cases.
+
+The emitted time loop records each accepted retry result's owner and
+releases the preceding tracked grid before replacement.  The source
+control safety proof preserves cell bounds and Euler admissibility for
+all supported sizes, including failure results.  Its audits use only
+the accepted standard axioms.  The successful-completion, complete memory,
+and exact-WASM proofs remain open.

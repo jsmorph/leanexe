@@ -38,6 +38,8 @@ The compiler inserts releases for supported fresh nonrecursive temporaries and r
 
 Internal and public Nat-tail loops track owned roots acquired during iteration.  The initial carried arguments remain borrowed.  Each replacement stages its next value, releases a tracked root only when no next argument retains it, and records any fresh replacement root.  Direct array maps and concatenations count as fresh allocations in the explicit-release checker.  Their element child masks determine whether they retain earlier heap roots.
 
+Nat-tail let lowering materializes used supported bindings with the same machinery as ordinary value extraction and preserves an explicit release whose counter result is unused.  The continuation receives the materialized bindings' ownership facts.  The fresh-result analysis starts with unknown parameters and zero-valued non-parameter locals.  Null owners require no release.  At a loop, the analysis repeatedly removes ownership facts until every remaining fact survives the body.  This accounts for borrowed pointers propagated across several iterations and for fresh results assigned on every loop exit.
+
 ## WebAssembly backend
 
 `LeanExe.Wasm.Instr` is the structured instruction language shared by binary emission, WAT rendering, and annotation analysis.  The backend lowers each IR function to a `List Instr`, adds allocator and reference-counting runtime functions, assembles the required sections, and serializes the module as WASM bytes.  `compile-wat` prints the same instruction trees, and `tools/check-wat.sh` checks that `wasm-tools parse` reconstructs the direct binary byte for byte.

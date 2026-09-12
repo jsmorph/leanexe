@@ -11515,3 +11515,99 @@ modules, compiler and language documentation, complete-solver plan,
 development notes, and journal.  The dropped tail release and missing
 recursive-result freshness are recorded follow-up defects.  The complete
 solver proof and the aggregate compiler/proof gates remain unfinished.
+
+The 105-file documentation check and staged whitespace check passed.
+Published 75b2dbef4037f1b40634a0ad50ec80641f017717, parent
+9653995ed084a204a255d0c0c5d424d9d4ff04a6, tree
+c0bebeee4102fa8cedadbdc25cd1fc1d79460422.  The non-forced SSH push and
+fetch passed.  The remote commit, parent, tree, index, and tracked
+worktree identities match.  All unrelated paper intermediates remain.
+
+Added a reduced tail-recursion fixture that allocates an array, reads its
+length, releases it, and continues.  The base case returns allocation and
+free counters.  Zero and three iterations should yield zero and 30,303.
+This checks both preservation of the explicit release and sharing of the
+allocation between the length read and release.  The compiler is unchanged
+for the first run.
+
+The fixture built in 4.9 seconds.  The focused test failed as predicted:
+three iterations returned 30,003, recording three allocations and no frees,
+instead of 30,303.  Retained tmp/tail-array-release-L0Rjta.  Updated
+Nat-tail let lowering to preserve an unused Runtime.release and materialize
+used supported bindings with the existing internal-value machinery.
+The continuation carries the preceding let bindings' ownership facts,
+so a fresh array materialized before a recursive call remains eligible
+for the existing iteration tracker.  Compiler build and tests are pending.
+
+The corrected compiler passed its 58-job build and all 23 focused tests.
+The complete solver ownership report now contains the explicit retry
+release.  Materializing tail lets also reduced advance from 130 locals to
+47.  Retry still lacks a fresh-result summary.  Added a reduced helper
+whose every terminal branch returns a new array, with a caller that
+releases the result.  Added a dataflow test in which a borrowed root reaches
+another local only on the second loop iteration.  This checks whether the
+ownership analysis accounts for all iterations before inferring a result.
+
+The fresh-return fixture built, then compilation rejected its release:
+freshTailArrayFuel has no fresh-root ownership justification.  Retained
+tmp/fresh-tail-array-pKmfqc.  The direct loop-dataflow test also failed:
+one transfer kept local 2 fresh even though the second iteration copies
+the borrowed root into it.  The pinned interpreter's Function.toLocals
+definition in Interpreter/Wasm/Locals.lean initializes every non-parameter
+local with ValueType.zero.
+
+Updated the fresh-root analysis to track a null root as safe, initialize
+non-parameter locals accordingly, and intersect loop facts until they stop
+changing.  Each changing iteration removes a fact, so the finite set size
+bounds the analysis.  Parameter roots remain unknown.  This should infer
+the retry helper's fresh result while retaining conservative treatment of
+helpers that can return a borrowed argument.  The changes remain untested.
+
+The compiler rebuilt in 58 jobs.  Started the focused ownership tests.
+Extended the grid test with full-control source/WASM comparisons at sizes
+2 and 3 and invalid-size cases 0, 1, and 801.  Each accepted result must
+have status zero, the exact final-time word, dimensions, and the complete
+density and pressure arrays matching the formal Lean evaluator.  The
+192- and 800-grid production runs remain behind the complete proof gate.
+
+All 25 focused ownership and array-call tests passed, including the
+fresh-return release and the loop fixed-point test.  Started the extended
+grid/control test.  Updated the compiler and language references to record
+Nat-tail let materialization, preserved releases, zero-initialized local
+facts, and the loop analysis.  Complete solver ownership and broader
+compiler checks remain pending for this change.
+
+All 62 grid/control tests passed, retaining tmp/euler-riemann-grid-DPkuAj.
+Both complete tiny-grid runs reached time 0.8 with status zero and exact
+source/WASM agreement for every output word.  The broader core test passed
+802 accepted, 48 rejected, and 14 trapped cases, retaining
+tmp/core-correctness-QfqRsW.
+
+Saved the pinned wasm-tools rendering of the complete tiny-test artifact
+at tmp/euler-riemann-grid-DPkuAj/control.wat.  In advance, the generated
+loop releases the preceding tracked owner before replacing it and records
+the retry result's owner for the next iteration.  Retry releases the same
+owner used by its acceptance check before halving dt.  These are emitted
+instruction observations.  The complete exact-WASM and memory proofs remain
+open.
+
+ControlSafe passed its first 3,438-job focused build, with the final module
+at 2.4 seconds.  It proves that run preserves the cell bounds and Euler
+admissibility for every supported size, including a failure result that
+retains the last accepted grid.  All four audits report only propext,
+Classical.choice, and Quot.sound.  Successful completion remains open.
+
+Before running the serializer gate, changed its fixed output directory
+to a fresh per-invocation directory under tmp.  The previous gate artifacts
+remain preserved, matching the core-test evidence policy.  The ten checked
+entries and byte-equality requirement are unchanged.
+
+All ten WAT/binary round trips passed, retaining tmp/wat-check-Pdt3yt.
+Whitespace checks passed, and the new safety proof and dataflow test contain
+no sorry, admit, new axiom, or native_decide.  Checkpoint intent: publish
+the reviewed tail-let and loop-summary corrections, their three runtime
+fixtures and dataflow test, the extended grid/control comparisons, the
+checked source safety theorem, the serializer evidence-path correction,
+and the corresponding documentation and journal.  Preserve all prior
+generated artifacts and unrelated paper state.  The complete solver and
+aggregate proof gate remain unfinished.

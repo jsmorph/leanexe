@@ -85,18 +85,17 @@ execution requires discussion.  The complete proof remains unfinished.
 
 [Grid source](../LeanExe/Examples/EulerRiemann/Grid.lean) accepts sizes from
 2 through 800.  Its tail-recursive array construction passes the source
-sequence proof and compiler ownership report.  The report supplies no
-fresh-result summary or emitted releases for that recursive helper.
-Its allocations require a bounded initialization argument in the final
-WASM proof.
+sequence proof and compiler ownership report.  Its allocations require
+a bounded initialization argument in the final WASM proof.
 
 [Initial admissibility](../proofs/talos/lean/Project/EulerRiemann/Initial.lean)
 uses the specified primitive words and rounded conservative averages.
 All completed source/model theorem audits contain only the accepted
-standard logical axioms.  The 57 [grid tests](../test/euler_riemann_grid.js)
+standard logical axioms.  The 62 [grid tests](../test/euler_riemann_grid.js)
 pass, including full-word initialization, split-step, and output comparisons
-at sizes 2, 3, and 5.  Production execution remains behind the complete proof
-gate.
+at sizes 2, 3, and 5, and complete runs at sizes 2 and 3.  The complete runs
+reach time 0.8 with status zero and match every formal source output word.
+Production execution remains behind the complete proof gate.
 
 The source-array proofs connect initialization and accepted directional
 steps to the existing functional-grid recurrence.  The reduction proof
@@ -114,10 +113,13 @@ completion remains open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
-The complete control module passes extraction.  Its ownership report
-identifies missing retry-result freshness evidence and a dropped explicit
-release in the continuing retry branch.  Compiler corrections and the
-exact-WASM proof remain open.
+The complete control module compiles.  The compiler now preserves the
+continuing retry branch's explicit release and tracks the fresh retry
+result between timesteps.  The generated time loop releases its previous
+tracked owner before replacement.  The complete exact-WASM proof remains
+open.  The source safety theorem preserves cell bounds and Euler
+admissibility through control, including a failure result that retains
+the last accepted grid.
 
 Compiler diagnostics found repeated ordinary-callee expansion during
 recursive-expression discovery.  The revised pass scans each ordinary
@@ -132,9 +134,12 @@ Internal Nat-tail helpers now use the existing per-iteration owner
 tracking.  Tests cover replacement, retention, and preservation of the
 caller's initial array.  The explicit-release checker recognizes direct
 maps and concatenations while preserving rejection of retained nested
-roots.  All 21 focused ownership and array-call tests pass.  Recursive
-helper freshness summaries and shared evaluation of multi-field map
-results still require work before the solver's memory and runtime bounds.
+roots.  All 25 focused ownership and array-call tests pass.  Nat-tail lets
+now share their materialized value, preserve explicit releases, and pass
+ownership facts to continuations.  Fresh-result analysis accounts for
+zero-initialized locals and computes loop facts to a fixed point.  Shared
+evaluation of multi-field map results and the complete memory and runtime
+bounds remain open.
 
 The compiler-wide execution gate has a stale release-input record, and
 the aggregate proof build timed out after matching all 37 generated
