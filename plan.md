@@ -516,8 +516,11 @@ prefixes and derives allocation size and no-fit search from the grid
 and free-list invariant.  Its shared header-load and frame-preparation
 lemmas are indexed in LTG.
 The append allocation and copy composition now returns all three grid
-owners.  Its count prefix uses the checked scalar-statement descriptor,
-which is also indexed in LTG.  Pointer and length setup remain open.
+owners.  The complete append region adds pointer setup, both header loads,
+and capacity calculation, deriving allocation premises from the size and
+free-list invariant.  Its pointer and count prefixes use the checked
+scalar-statement descriptor indexed in LTG.  Shared heap-grid bounds
+replace repeated payload-bound and separation derivations.
 
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.

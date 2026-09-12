@@ -76,3 +76,22 @@ The initializer map's input and capacity frame equalities use both
 declarations and checked in 34 seconds.  Its getter conjunction uses
 the shared assignment theorem explicitly after removing intervening
 writes, because simplification left the valid-index premises open.
+
+The append setup supplies a second canonical-frame consumer at scratch
+start 59.  Its frame preparation checked in 91 seconds, and the complete
+append region checked in 78 seconds, with standard axioms.  The latter
+derives requested capacity and no-fit search from the combined size and
+free-list invariant before composing allocation and both copies.  Its
+first draft left a folded allocation-site length-local selector, which
+required explicit reduction before the generic capacity theorem applied.
+
+The shared heap-grid bounds now replace repeated payload-bound and
+separation derivations in map and append ownership.  Their public
+execution statement types remain unchanged.  These composition results
+still require the caller's heap, free-list, and memory-capacity premises.
+
+Extraction's ownership and allocation/data composition checked in 58 and
+85 seconds with standard axioms.  It uses the same payload-bound and
+separation lemmas, with scratch start 60 and no trailing local list.
+The source owner survives allocation and copying, and the continuation
+receives ownership of the extracted prefix and its bounded writes.

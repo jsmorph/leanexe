@@ -38,11 +38,6 @@ theorem initial_map_input_spec (env : HostEnv Unit) (store : Store Unit) (frame 
     (hGrid : Memory.GridAt store source grid) (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module rest Q store (initialMapInputFrame frame source (UInt64.ofNat grid.size)) env) :
     wp module (initialMapInputProgram ++ rest) Q store frame env := by
-  have hRoot32 : source.toNat < 4294967296 := by have := hGrid.1; omega
-  have hBound : source.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 := by
-    rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hRoot32]
-    have := hGrid.2.1
-    omega
   have hValid48 : frame.validIndex 48 := by simp [Locals.validIndex, hParams, hLocals]
   have hValid10 : frame.validIndex 10 := by simp [Locals.validIndex, hParams, hLocals]
   have hValid49 : frame.validIndex 49 := by simp [Locals.validIndex, hParams, hLocals]
@@ -52,7 +47,7 @@ theorem initial_map_input_spec (env : HostEnv Unit) (store : Store Unit) (frame 
   rw [initial_map_input_shape, List.append_assoc, List.append_assoc, List.append_assoc]
   apply resultProgram_spec 4 48 module env store frame source hValues hSource (by omega) hValid48
   apply FixedArrayLengthRead.program_spec module env store first source (UInt64.ofNat grid.size) 48 10
-    rfl (resultFrame_get_result frame 48 source (by omega) hValid48) hGrid.2.2.1 hBound
+    rfl (resultFrame_get_result frame 48 source (by omega) hValid48) hGrid.lengthRead hGrid.lengthBound
     (by change frame.params.length ≤ 10; omega)
     (by simpa only [first, Locals.validIndex, resultFrame_params, resultFrame_locals_length] using hValid10)
   have hSourceAgain : offset.get 4 = some (.i64 source) := by
@@ -68,7 +63,7 @@ theorem initial_map_input_spec (env : HostEnv Unit) (store : Store Unit) (frame 
     (by change frame.params.length ≤ 48; omega) hOffset48
   apply FixedArrayLengthRead.program_spec module env store second source (UInt64.ofNat grid.size) 48 49
     rfl (resultFrame_get_result offset 48 source (by change frame.params.length ≤ 48; omega) hOffset48)
-    hGrid.2.2.1 hBound (by change frame.params.length ≤ 49; omega)
+    hGrid.lengthRead hGrid.lengthBound (by change frame.params.length ≤ 49; omega)
     (by simpa only [second, offset, first, Locals.validIndex, resultFrame_params,
       resultFrame_locals_length] using hValid49)
   exact hNext
