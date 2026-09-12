@@ -10120,3 +10120,12 @@ complete sweep and preserves other live grids through its write frame.
 The focused check passed all 3,493 jobs in 1.4 seconds with standard-only
 axioms.  Two-sweep/release composition, retry, time control, initialization,
 peak memory, successful completion, and exact-byte closure remain open.
+
+The complete generated timestep now has an execution theorem composing
+both directional sweeps, acceptance selection, and the intermediate
+release.  It returns the source step's grid and resulting heap, preserves
+runtime limits, and preserves all live input grids separated from the
+result.  The focused check passed all 3,499 jobs in 2.7 seconds with
+standard-only axioms.  The theorem keeps both allocations' space/cap
+premises explicit.  Retry, time control, initialization, the full memory
+bound, successful completion, and exact-byte closure remain open.
