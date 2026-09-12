@@ -219,6 +219,13 @@ preserves the input grid and all store components outside the destination
 bytes, and records every caller local preserved by the emitted region.
 The shared ArrayField theorems cover arbitrary element widths and fields
 and are available through the provisional array-field-access LTG entry.
+All four initializer capacity prefixes and bump branches now have exact
+execution theorems.  Shared capacity arithmetic proves the byte count
+under a no-overflow bound, and the initializer instantiates it through
+1,048,576 temporary cells.  The shared bump theorem supports configurable
+local slots, conditional memory growth, exact heap-top updates, and the
+six header stores.  It preserves every other store component.  Free-list
+search and the initializer's full resource invariant remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
