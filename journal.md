@@ -13643,3 +13643,63 @@ the concrete Riemann prefix consumer, LTG entries and indexes, artifact
 import inventory, theorem inventory, and notes.  The next checkpoint
 stages only those twenty paths.  The existing paper outputs remain
 untouched.  No numerical source, generated program, or WASM bytes changed.
+
+Checkpoint 2d47e5a26bcafcbb51604d2612c14c78f93be525 is published
+and fetched with parent 99b44cbc84e24662649cd88a1ed94be6021158d0
+and tree fe3d4fcdeaf718d9ec0fae11f370f50b3e3066d5.  Local,
+remote, index, and tracked worktree content agree.  Added a shared
+CopyAddress draft for the compiler's zero-offset and local-offset word
+addresses.  Both shapes must preserve the caller's stack tail and store.
+
+CopyAddress's first two checks reported normalization errors: a guessed
+UInt64.ofNat_zero name does not exist, and the WASM wrap rule uses
+2^32 where the shared conversion lemma writes 4294967296.  The revision
+uses an explicit zero equality and Nat.reducePow at that boundary.
+The offset-word identity already passed with propext.  Added a shared
+WritesRange.read64 consequence for disjoint word reads and exposed the
+existing checked counter-initialization theorem for the offset loops.
+
+CopyAddress passed in 5.3 seconds, WritesRange.read64 in 2.8 seconds,
+and the existing copy library's newly exposed counter initialization
+passed its standard-axiom audit.  OffsetArrayCopy's drafts first used
+the reserved token invariant, then let inference select the pre-address
+frame when the second address needed a stack containing the first.
+The revised application names that stack.  A private counter setter
+was then exposed with its existing proof and audited.  The final
+measure goal required the canonical counter frame after branch stack
+trimming.  With that explicit frame boundary, the complete generic loop
+checked in 10 seconds under its default elaboration settings and the
+standard 2-minute runner.  Its audit contains the three standard axioms.
+
+InitialAppendCopy matches the compiler's destination-offset suffix and
+composes both loops.  One failed draft tried to rewrite a word-address
+theorem against its unfolded expression.  Naming the wordAddress form
+resolved the mismatch.  The complete append payload checked in 19
+seconds.  InitialExtractCopy matches both extraction sites and proves
+their first 70 instructions equal.  Its copy theorem reconstructs the
+source prefix and preserves the source grid, checking in 7.9 seconds.
+All public audits use standard axioms.  These theorems assume allocated
+target storage with its length header already written.  Initialization
+allocation, map execution, ownership transitions, source success, and
+exact-byte closure remain open.
+
+The provisional offset-array-copy entry records the compiler matches,
+shared address and loop results, concrete consumers, draft failures,
+and outstanding complete-artifact evidence.  Added the two shared
+modules to the artifact import inventory and LTG declaration check.
+WritesRange now advertises its checked disjoint-read consequence.
+
+The rebuilt catalog and forest accept 34 entries.  Their tests pass,
+as do the 111-document check and leanexegen protocol/package/publication
+tests.  The latter retain tmp/leanexegen-test-PaLIgI.  Reviewed the new
+address theorem, the shared loop's copied-word and write-interval
+invariant, and both concrete width-seven consumers.  No new axiom,
+native proof shortcut, numerical source change, or WASM mutation was
+introduced.  The current LTG declaration check includes both new modules.
+
+LTGCheck passed in 6.5 seconds with the expanded declaration inventory.
+The final documentation and whitespace checks pass.  The offset-copy
+checkpoint stages the two shared modules, two concrete initializer
+consumers, counter-support visibility and read-frame changes, LTG
+metadata and generated indexes, artifact import inventory, notes, plan,
+and theorem inventory.  The existing paper outputs remain unstaged.

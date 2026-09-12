@@ -6,6 +6,7 @@ import Project.ProofKit.CheckedDivMod
 import Project.ProofKit.CheckedNatMul
 import Project.ProofKit.CheckedNatMulArithmetic
 import Project.ProofKit.Control
+import Project.ProofKit.CopyAddress
 import Project.ProofKit.EncodedIndexDecoder
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
@@ -27,6 +28,7 @@ import Project.ProofKit.GuardedBackEdge
 import Project.ProofKit.Memory
 import Project.ProofKit.MemoryFrame
 import Project.ProofKit.NatSub
+import Project.ProofKit.OffsetArrayCopy
 import Project.ProofKit.ScalarTransition
 import Project.ProofKit.ScalarTransitionU64
 
@@ -49,6 +51,10 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.CheckedNatMul.program
 #check Project.ProofKit.CheckedNatMul.program_spec
 #check Project.ProofKit.CheckedNatMul.zero_spec
+#check Project.ProofKit.CopyAddress.OffsetAt
+#check Project.ProofKit.CopyAddress.offset_word
+#check Project.ProofKit.CopyAddress.program
+#check Project.ProofKit.CopyAddress.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.program
 #check Project.ProofKit.EncodedIndexDecoder.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame
@@ -159,12 +165,16 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FuelGuard.zeroFuel_spec
 #check Project.ProofKit.Memory.WritesRange
 #check Project.ProofKit.Memory.WritesRange.mono
+#check Project.ProofKit.Memory.WritesRange.read64
 #check Project.ProofKit.Memory.WritesRange.refl
 #check Project.ProofKit.Memory.WritesRange.trans
 #check Project.ProofKit.Memory.WritesRange.write64
 #check Project.ProofKit.Memory.read64_write64_disjoint
 #check Project.ProofKit.NatSub.program
 #check Project.ProofKit.NatSub.program_spec
+#check Project.ProofKit.OffsetArrayCopy.body
+#check Project.ProofKit.OffsetArrayCopy.program
+#check Project.ProofKit.OffsetArrayCopy.program_spec
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec

@@ -214,7 +214,7 @@ theorem counterFrame_counterFrame (frame : Locals)
   · simp [hParam, List.set_set]
   · simp [hParam, List.set_set]
 
-private theorem counterFrame_withValues_set?_counter (frame : Locals)
+theorem counterFrame_withValues_set?_counter (frame : Locals)
     (counterLocal current next : Nat) (values : List Value)
     (hCounter : frame.validIndex counterLocal) :
     ({ counterFrame frame counterLocal current hCounter with values := values }
@@ -228,7 +228,7 @@ private theorem counterFrame_withValues_set?_counter (frame : Locals)
       hCounter
     simp [hParam, hLocal, List.set_set]
 
-private theorem initializeCounter_spec
+theorem initializeCounter_spec
     {module_ : Wasm.Module} {env : HostEnv Unit} {store : Store Unit}
     {frame : Locals} {counterLocal counter : Nat}
     (hCounter : frame.validIndex counterLocal)
@@ -1194,6 +1194,8 @@ theorem eraseIdxProgram_spec
     simpa [cellRead, cellAddress, UInt64Array.wordAddress, hTargetIndex,
       hSourceIndex, Nat.add_assoc] using hSuffix (cell - erase) hOffset
 
+#print axioms initializeCounter_spec
+#print axioms counterFrame_withValues_set?_counter
 #print axioms prefixProgram_spec
 #print axioms prefixProgram_framed_spec
 #print axioms suffixProgram_spec

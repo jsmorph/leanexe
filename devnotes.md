@@ -10332,3 +10332,22 @@ its Lean 4.31 and Talos pins differ from the current toolchain.  That
 attempt stopped before compilation and leaves separate artifact
 verification open.  Append-suffix and extraction offset support, complete
 initialization, source success, and exact-byte closure remain open.
+
+Checkpoint 2d47e5a26bcafcbb51604d2612c14c78f93be525 is published
+and verified against tree fe3d4fcdeaf718d9ec0fae11f370f50b3e3066d5.
+The shared offset-copy loop now proves exact copies with independent
+source and destination offsets, preserving every byte outside the write
+interval and all other store fields.  Its address theorem preserves the
+operand-stack tail.  The loop checked in 10 seconds with standard axioms.
+
+The complete append payload theorem composes the two emitted loops and
+reconstructs the concatenated width-seven grid, preserving both input
+grids.  Extraction reconstructs the source prefix, preserves the source
+grid, and matches both the completed-size and exhausted-fuel code sites.
+Those checks took 19 and 7.9 seconds.  LTG records the shared support,
+concrete matches, and failed draft applications in its provisional
+offset-array-copy entry.  The 34-entry catalog, knowledge forest, and
+their tests pass, along with the proof-generator and documentation tests.
+Target allocation and length-header initialization remain premises of
+these copy theorems.  Complete initialization, source success, and
+exact-byte closure remain open.

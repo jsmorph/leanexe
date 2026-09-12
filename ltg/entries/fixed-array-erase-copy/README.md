@@ -22,8 +22,9 @@ Riemann's `initial_append_prefix_spec` matches the emitted region
 theorem to width-seven cells.  Its continuation receives the copied
 cell fields, preserved source grid and target header, and `WritesGrid`
 for the target allocation.  The focused check took 1.8 seconds with
-standard axioms.  The append suffix and extraction use different offset
-expressions and require separate matching support.
+standard axioms.  The append suffix and extraction use the checked
+`OffsetArrayCopy` support described in the
+[offset-copy entry](../offset-array-copy/README.md).
 
 The retained Demo 12 annotation attempt stopped before compilation
 because its Lean 4.31 and Talos pins differ from this checkout's Lean
