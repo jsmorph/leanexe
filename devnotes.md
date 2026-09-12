@@ -10054,3 +10054,14 @@ sweep specialization proves the requested byte count is exactly
 passed all 3,449 jobs with standard-only axiom audits.  Full sweep setup,
 the peak-memory invariant, complete control, successful completion, and
 exact-byte closure remain open.
+
+Allocation state proofs now establish sufficient capacity, bounded root
+and payload addresses, fresh metadata, and page-count bounds.  The source
+grid survives reuse and bump allocation under the represented separation
+premises, and the selected destination is disjoint from it.  The shared
+FreeListMemory module proves predecessor membership, byte preservation
+outside free-node regions during reuse, and free-list preservation during
+byte-identical page growth.  The search proof now uses its predecessor
+lemma.  The dependent build passed all 3,452 jobs with standard-only
+axiom audits.  Full sweep setup and the complete solver's peak-memory
+invariant remain open.

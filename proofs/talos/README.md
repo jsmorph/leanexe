@@ -110,9 +110,13 @@ The fitting branch selects the first sufficient node, removes it from the
 free list, writes its header, and returns its root.  The combined search,
 conditional bump, and allocation-counter sequence now has an execution
 theorem.  The capacity prefix has exact local-length execution and computes
-8 + 56 times the cell count in bytes for supported grids.  Full sweep
-setup, the peak-memory invariant, and the full solver obligations remain
-open.
+8 + 56 times the cell count in bytes for supported grids.  Allocation
+state proofs establish sufficient capacity, bounded payload addresses,
+fresh metadata, and bounded page counts.  They also preserve a source
+grid separated from the free nodes and new heap allocation, prove that
+the destination is disjoint, and preserve free-list representation during
+memory growth.  Full sweep setup, the peak-memory invariant, and the full
+solver obligations remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

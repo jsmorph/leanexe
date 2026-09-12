@@ -181,8 +181,17 @@ and counter advancement.  It requires address and runtime-cap bounds
 when no node fits.
 [The capacity proof](../proofs/talos/lean/Project/EulerRiemann/AllocationCapacity.lean)
 matches the local-length prefix and gives exactly 8 + 56 times the cell
-count in bytes for supported grids.  Full sweep setup and the peak-memory
-invariant remain open.
+count in bytes for supported grids.
+[Allocation bounds](../proofs/talos/lean/Project/EulerRiemann/AllocationBounds.lean)
+establish sufficient capacity, root and payload bounds, fresh metadata,
+and page-count bounds.
+[Allocation preservation](../proofs/talos/lean/Project/EulerRiemann/AllocationPreserve.lean)
+proves the source grid survives allocation and the destination is disjoint
+when free nodes and the new heap region are separated from the source.
+Its shared byte-frame theorem covers predecessor unlinking and all header
+writes.  Free-list representation survives byte-identical page growth.
+Full sweep setup and the complete solver's peak-memory invariant remain
+open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

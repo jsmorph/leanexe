@@ -1,4 +1,5 @@
 import Project.EulerRiemann.AllocationSearchNone
+import Project.ProofKit.FreeListMemory
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ClobMatchFuel.BookAllocFit Project.ProofKit.Memory
@@ -7,19 +8,7 @@ theorem choice_previous_bound {mem : Wasm.Mem} {nodes : List FreeNode}
     {need : UInt64} {choice : FreeChoice} (hList : FreeListAt mem nodes)
     (hTake : takeFirstFitFrom 0 need nodes = some choice) (hNonzero : choice.previous ≠ 0) :
     (choice.previous - 8).toUInt32.toNat + 8 ≤ mem.pages * 65536 := by
-  obtain ⟨skipped, tail, hNodes, hPrevious, _, _, _⟩ :=
-    takeFirstFitFrom_some_decompose hTake
-  have hSkipped : skipped ≠ [] := by
-    intro hEmpty
-    exact hNonzero (by simpa [hEmpty, previousRoot] using hPrevious)
-  let predecessor := skipped.getLast hSkipped
-  have hSplit : skipped.dropLast ++ [predecessor] = skipped :=
-    List.dropLast_append_getLast hSkipped
-  have hRoot : choice.previous = predecessor.root := by
-    rw [hPrevious, ← hSplit, previousRoot_append_singleton]
-  have hMem : predecessor ∈ nodes := by
-    rw [hNodes, ← hSplit]
-    simp
+  obtain ⟨predecessor, hMem, hRoot⟩ := Project.ProofKit.FreeListMemory.previous_mem hTake hNonzero
   obtain ⟨h48, h32, hFit⟩ := hList.mem_bounds hMem
   have hSub : (predecessor.root - 8).toNat = predecessor.root.toNat - 8 :=
     toNat_sub_of_le _ _ (by change 8 ≤ predecessor.root.toNat; omega)
