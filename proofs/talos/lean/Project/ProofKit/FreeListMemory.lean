@@ -61,8 +61,31 @@ theorem fit_bytes {mem : Mem} {nodes : List FreeNode} {need : UInt64} {choice : 
     frameWrite _ choice.node hChoiceMem 40 1 (by decide) (by decide),
     frameWrite _ choice.node hChoiceMem 48 5501223100278326855 (by decide) (by decide), hUnlink]
 
+theorem frame_headers {mem mem' : Mem} {nodes : List FreeNode}
+    (hList : FreeListAt mem nodes) (hPages : mem.pages ≤ mem'.pages)
+    (hBytes : ∀ node ∈ nodes, ∀ address : Nat,
+      node.root.toNat - 48 ≤ address → address < node.root.toNat →
+      mem'.bytes address = mem.bytes address) : FreeListAt mem' nodes := by
+  revert hBytes
+  induction hList with
+  | nil => exact fun _ => .nil
+  | @cons node rest h48 h32 hFit hRc hCapacity hNext hSep hTail ih =>
+    intro hBytes
+    have hRead (offset : UInt64) (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :
+        mem'.read64 (node.root - offset).toUInt32 = mem.read64 (node.root - offset).toUInt32 := by
+      apply read64_congr
+      intro i hi
+      rw [UInt64.toNat_toUInt32, toNat_sub_of_le _ _ (by omega), Nat.mod_eq_of_lt (by omega)]
+      exact hBytes node List.mem_cons_self _ (by omega) (by omega)
+    exact .cons h48 h32 (hFit.trans (Nat.mul_le_mul_right 65536 hPages))
+      ((hRead 40 (by decide) (by decide)).trans hRc)
+      ((hRead 32 (by decide) (by decide)).trans hCapacity)
+      ((hRead 8 (by decide) (by decide)).trans hNext) hSep
+      (ih (fun node hNode => hBytes node (List.mem_cons_of_mem _ hNode)))
+
 #print axioms previous_mem
 #print axioms frame_grow
 #print axioms fit_bytes
+#print axioms frame_headers
 
 end Project.ProofKit.FreeListMemory
