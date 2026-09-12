@@ -139,7 +139,12 @@ changes outside the grid.
 composes checked clamped-neighbor arithmetic, eight bounded field reads,
 momentum orientation, and the numerical cell evaluator.  It covers every
 valid cell index for sizes 2 through 800, with arbitrary cell words and
-ratio, and preserves the store.  Allocating traversal and allocator reuse remain open.
+ratio, and preserves the store.
+[The cell-write proof](../proofs/talos/lean/Project/EulerRiemann/MemoryWriteCell.lean)
+extends the destination prefix through all seven fields and preserves a
+disjoint source grid.  Its shared read/write round-trip theorem uses
+kernel-checked bit extensionality.  All audits contain only the accepted
+standard axioms.  Allocating traversal and allocator reuse remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

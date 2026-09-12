@@ -86,7 +86,9 @@ their focused checks and standard-axiom audits.  The complete scan function
 also has a terminating execution theorem for every represented grid,
 including bounded field reads and complete store preservation.  Checked
 neighbor arithmetic, bounded neighbor-state loads, and momentum orientation
-now compose into the complete per-cell sweep callback.  Successful completion,
+now compose into the complete per-cell sweep callback.  Destination-write
+lemmas establish the growing output prefix and preservation of the input
+grid, using a kernel-checked read/write round-trip theorem.  Successful completion,
 bounded memory, complete execution, and
 exact-byte closure remain open.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
