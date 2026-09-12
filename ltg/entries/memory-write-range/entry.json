@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "memory-write-range",
+  "title": "Store preservation outside a memory-write interval",
+  "summary": "Tracks exact preservation of non-memory store fields, memory pages, and every byte outside a half-open write interval, with composition and interval weakening.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "memory", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["disjoint-write", "frame", "memory", "ownership", "store-preservation", "write-interval"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.MemoryFrame"],
+  "declarations": ["Project.ProofKit.Memory.WritesRange", "Project.ProofKit.Memory.WritesRange.mono", "Project.ProofKit.Memory.WritesRange.refl", "Project.ProofKit.Memory.WritesRange.trans", "Project.ProofKit.Memory.WritesRange.write64"],
+  "premises": ["Initial and final stores and natural byte-interval endpoints", "For a write, the entire eight-byte word lies inside the interval", "For composition, the two writes use the same interval", "For interval weakening, the new interval contains the old interval"],
+  "result": "The final store preserves all fields except its primary memory, keeps the memory-page count, and preserves every byte outside the stated interval.",
+  "consumers": ["euler-riemann-initial-append-prefix", "fixed-array-copy-framed"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-erase-copy"],
+  "exclusion": null
+}

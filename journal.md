@@ -13566,3 +13566,80 @@ calls at [70,77) and [93,106), and the proof applies those two callees
 in that order.  The array initializer sidecar records a width-seven map,
 append, extraction, and the existing fuel/completion guard.  Its loop
 descriptor is null, so scalar-loop descriptor support cannot prove it.
+
+Reviewed the existing FixedArrayCopy prefix and suffix theorems before
+using them for initialization.  Its private cellRead_writeCell_same
+used Wasm.Mem.read64_write64_same, whose native bit-vector dependency
+is excluded from this solver's accepted axioms.  Replaced that use with
+the existing Project.ProofKit.Memory.read64_write64 and added its
+MemoryRoundtrip import.  The current public copy APIs also expose only
+page, header, source-cell, and copied-cell facts.  Initialization's
+ownership proof will require preservation of the remaining store fields
+and memory outside the copied payload.  First check the existing copy
+results with the kernel-only roundtrip, then strengthen the reusable
+copy evidence at the required frame boundary.
+
+All four public FixedArrayCopy results passed their new audits in
+6.8 seconds using only propext, Classical.choice, and Quot.sound after
+the roundtrip replacement.  Added a shared WritesRange draft for exact
+preservation of all non-memory store fields, page count, and bytes
+outside a half-open interval.  Its composition, interval weakening, and
+single-write lemmas will carry the additional facts through the copy
+invariants.  The existing copy APIs will remain available as projections.
+
+The cell checkpoint 99b44cbc84e24662649cd88a1ed94be6021158d0 is
+published and fetched with parent
+82f31df11a757e8706e3360da740b046395bd805 and tree
+0f94bcecfcfcebb328093d886adfe50940639253.  Local and fetched
+commit/tree identities agree.  Subsequent work consists of this journal,
+the shared copy correction, and its new frame dependency.
+
+WritesRange checked in 15 seconds.  The strengthened prefix and suffix
+copy theorems checked in 5.0 and 5.5 seconds, and their combined
+program_framed_spec checked in 5.8 seconds.  All seven public copy
+theorems use only the three accepted standard axioms.  The original
+APIs remain projections from the stronger results.  Added the framed
+declarations to the copy LTG entry and a provisional memory-write-range
+entry for the shared relation.  The artifact proof-kit inventory now
+includes MemoryFrame and the previously unlisted MemoryRoundtrip
+dependency.  The upcoming catalog and forest checks test that import
+closure as well as the new metadata.
+
+LTG, the knowledge forest, their test suites, leanexegen tests, and the
+110-document check passed.  LTGCheck passed in 9.3 seconds after checking
+the 33-entry declaration inventory.  The preserved leanexegen test
+directory is tmp/leanexegen-test-FxKL4N.
+
+The command tools/leanexegen annotate -o
+tmp/demo12-framed-copy-20260912.proof
+demos/demo-12/experiments/full-support-reproof.proof exited 5 before
+compilation or output creation.  Its recorded Lean 4.31 commit, Talos
+revision, Lake manifest, verifier source, and kernel review differ from
+the current Lean 4.34-rc2 pins.  The previously retained current-check
+package also records Lean 4.31.  No pin was changed or bypassed, and no
+new independent artifact verification is claimed.
+
+The retained compiler sidecar and emitter identify the first append
+copy at func88/block@4/loop@0/else@14:[125,128), with source local 48,
+target 55, raw-cell count 53, and counter 56.  InitialCopyPrefix proves
+the exact tail decomposition by reduction and applies the shared framed
+prefix theorem to width-seven cells.  Its result preserves the source
+grid and target header, establishes every copied field, and weakens
+WritesRange to the target's WritesGrid representation.  The module
+checked in 1.8 seconds with standard axioms after rebuilding affected
+allocator and ownership dependencies.  The standard 2-minute runner
+completed with status zero.  The append's second copy uses a destination
+offset, while extraction uses a source offset.  Their emitted shapes
+do not equal the existing shifted-suffix program.
+
+The consumer metadata rebuild rejected the new memory-write-range
+consumer array because it was unsorted.  Sorted the two identifiers
+and corrected a malformed line break in the copy entry's prose before
+repeating the metadata checks.
+
+The rebuilt 33-entry catalog, forest, and 110-document checks pass.
+Reviewed the copy-library proof diff, the new generic frame relation,
+the concrete Riemann prefix consumer, LTG entries and indexes, artifact
+import inventory, theorem inventory, and notes.  The next checkpoint
+stages only those twenty paths.  The existing paper outputs remain
+untouched.  No numerical source, generated program, or WASM bytes changed.

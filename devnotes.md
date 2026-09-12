@@ -10311,3 +10311,24 @@ and thermodynamic callees.  The function returns all seven words equal
 to Traversal.initialCell for n ≤ 800 and index < 1,048,576 and preserves
 the full store.  Array growth, extraction, allocation, and their memory
 bound remain open.
+
+## 2026-09-12: Framed copy support for initialization
+
+Checkpoint 99b44cbc84e24662649cd88a1ed94be6021158d0 is published
+and verified against tree 0f94bcecfcfcebb328093d886adfe50940639253.
+The copy library now uses the kernel-checked same-address read theorem.
+Its prefix, suffix, combined, and erase results pass standard-axiom
+audits.  Stronger prefix, suffix, and combined APIs preserve all
+non-memory store fields and bytes outside the copied interval through
+the shared WritesRange relation.  Existing APIs remain projections.
+
+The compiler's width-seven Riemann append prefix matches this support
+and checks in 1.8 seconds.  It preserves the source grid and target
+header and supplies WritesGrid for allocator and ownership composition.
+LTG records this consumer and the shared relation.  The 33-entry catalog,
+knowledge forest, proof-generator tests, and declaration checks pass.
+The retained Demo 12 package cannot enter controlled annotation because
+its Lean 4.31 and Talos pins differ from the current toolchain.  That
+attempt stopped before compilation and leaves separate artifact
+verification open.  Append-suffix and extraction offset support, complete
+initialization, source success, and exact-byte closure remain open.
