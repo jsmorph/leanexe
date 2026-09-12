@@ -138,4 +138,24 @@ theorem constantProgram_spec
     simpa [capacityFrame, normalizedCapacity, unnormalizedCapacity, hSmall,
       hSmall', hValues, hNotParam, hCapacityBound] using hNext
 
+def localProgram (lengthLocal : Nat) (stride : UInt64) (capacityLocal : Nat) :
+    Wasm.Program :=
+  [.constI64 8, .localGet lengthLocal] ++ (constantProgram 0 stride capacityLocal).drop 2
+
+theorem localProgram_spec (lengthLocal : Nat) (length stride : UInt64) (capacityLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
+    (hLength : frame.get lengthLocal = some (.i64 length)) (hValues : frame.values = [])
+    (hCapacityLocal : frame.params.length ≤ capacityLocal)
+    (hCapacityValid : frame.validIndex capacityLocal)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q store
+      (capacityFrame frame capacityLocal (normalizedCapacity length stride)) env) :
+    wp module_ (localProgram lengthLocal stride capacityLocal ++ rest) Q store frame env := by
+  have hConstant := constantProgram_spec length stride capacityLocal module_ env store frame
+    hValues hCapacityLocal hCapacityValid Q rest hNext
+  simpa only [localProgram, constantProgram, List.drop, List.cons_append, List.nil_append,
+    wp_constI64_cons, wp_localGet_cons, Frame.withValues_get, hLength] using hConstant
+
+#print axioms localProgram_spec
+
 end Project.ProofKit.FixedArrayCapacity

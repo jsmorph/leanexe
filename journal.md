@@ -12337,3 +12337,42 @@ solver plan, and concise notes.  Checkpoint intent: publish the three new
 search proof modules and these four records.  No source, compiler,
 generated artifact, or numerical-run files changed.  The complete solver
 proof and production runs remain pending.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path search checkpoint as c7c1d0a14becf88ca1174a0a76438071ea28aeb4,
+parent ff4aa16650782c405c3cdc3c484e49d7eab5312e, tree
+d992cfcc2ce2b2eb77be1028833f9835d193bf3e.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Added AllocationExecute to compose free-list initialization, the two
+search outcomes, conditional bump allocation, and allocation-counter
+advancement.  Its state and root definitions select the checked reuse
+or bump model from takeFirstFitFrom.  The bump-address and runtime-cap
+premises apply only when no free node fits.  Capacity preparation and
+the full memory invariant remain separate proof obligations.
+
+AllocationExecute's first check left an empty-stack record equality in
+the bump continuation.  Unfolded the existing allocation frame at that
+boundary.  The second check passed all 3,447 jobs in 3.8 seconds with
+standard-only audits for initialization, counter advancement, both-branch
+composition, and the exact generated sequence.  Added a shared
+local-length capacity-program theorem and its generated sweep
+specialization, including the requested payload-byte arithmetic bound.
+
+The shared local-length theorem passed in 1.8 seconds.  Its sweep
+specialization initially required an indexed local-read fact and explicit
+UInt64 literal-to-Nat equalities in the overflow arithmetic.  Added those
+facts.  AllocationCapacity passed all 3,449 jobs in 1.9 seconds, with
+standard-only execution and arithmetic audits.  The generated capacity
+region equality uses no axioms.  The previous entry rounded the allocator
+module duration incorrectly: Lake reported 3.7 seconds, not 3.8.
+
+Reviewed the shared constant/local-prefix equivalence, runtime read,
+capacity normalization, 640,000-cell bound, allocator initialization,
+conditional reuse/bump state, global-counter preservation and increment,
+and the generated 15-instruction top-level region equality.  Updated the
+shared proof catalog, inventory, complete solver plan, and concise notes.
+Checkpoint intent: publish AllocationExecute, AllocationCapacity, the
+shared FixedArrayCapacity addition, and these five records.  Full sweep
+setup and the complete solver proof remain open.
