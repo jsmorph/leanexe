@@ -10351,3 +10351,29 @@ their tests pass, along with the proof-generator and documentation tests.
 Target allocation and length-header initialization remain premises of
 these copy theorems.  Complete initialization, source success, and
 exact-byte closure remain open.
+
+## 2026-09-12: Initialization map execution
+
+Checkpoint c06f54f5f7247da222eba49ea80df4d19bc1db19 is published
+and verified against tree 8cac909247b3c05d49b6ac3adfdb3da06787b2ee.
+The initializer map now has a complete terminating execution theorem.
+It matches the compiler's 215-instruction loop and composes seven field
+loads, checked index addition, the proved initial-cell call, seven stores,
+and the counter transition.  The result equals the source map, while
+the source grid, store fields outside the destination bytes, and caller
+locals outside the scratch/counter slots remain unchanged.
+
+The shared ArrayField module covers arbitrary element widths and fields,
+preserves caller locals and operand-stack tails, and has standard-only
+axiom audits.  The complete update checked in 2.4 seconds and the map
+loop in 46 seconds.  The provisional array-field-access LTG entry records
+those uses and the failed nested-store expansion.  Frame guidance records
+optional/indexed getter selection and unequal-index update composition.
+The numerical source and frozen WASM did not change.  Growth allocation,
+complete initialization, output, memory bounds, source success, and
+exact-byte closure remain open.
+
+The exact enclosing map-block equality and the 35-entry LTG declaration
+check pass.  Catalog, forest, proof-generator, and documentation tests
+pass, including all 112 maintained Markdown files.  Complete artifact
+verification remains a separate gate.

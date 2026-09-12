@@ -205,13 +205,20 @@ multiplication, division/remainder, and saturating subtraction, then
 proves both minimum branches and preserves the non-scratch locals.
 The complete initial-cell execution theorem composes both weights,
 the weighted-state call, the thermodynamic call, and all seven returned
-words.  It preserves the full store.  Array construction, extraction,
-and initialization allocation remain open.  The complete append payload
+words.  It preserves the full store.  Growth traversal and initialization
+allocation remain open.  The complete append payload
 composes shared prefix and offset-copy support at width seven and
 reconstructs the concatenated grid.  Extraction matches both emitted
 copy sites and reconstructs the source prefix.  These results preserve
 the input grids and provide the store and outside-byte facts required
 by allocator and ownership composition.
+The initialization map now proves complete terminating traversal,
+including all seven field loads, checked index addition, the initial-cell
+call, all seven stores, and the loop counter.  It returns the source map,
+preserves the input grid and all store components outside the destination
+bytes, and records every caller local preserved by the emitted region.
+The shared ArrayField theorems cover arbitrary element widths and fields
+and are available through the provisional array-field-access LTG entry.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

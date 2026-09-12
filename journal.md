@@ -13703,3 +13703,97 @@ checkpoint stages the two shared modules, two concrete initializer
 consumers, counter-support visibility and read-frame changes, LTG
 metadata and generated indexes, artifact import inventory, notes, plan,
 and theorem inventory.  The existing paper outputs remain unstaged.
+
+Checkpoint c06f54f5f7247da222eba49ea80df4d19bc1db19 is published
+and fetched with parent 2d47e5a26bcafcbb51604d2612c14c78f93be525
+and tree 8cac909247b3c05d49b6ac3adfdb3da06787b2ee.  Local and
+fetched commit/tree identities, index, and tracked worktree content agree.
+The compiler's initializer map loads seven fields into locals 11 through
+17, stages the checked index addition at 54 through 56, calls initialCell
+at [102,112), then stores seven fields from locals 27 through 33.
+Added shared ArrayField address/load/store drafts to consume those
+repeated emitted regions with arbitrary width and field indices.
+
+ArrayField's address theorem passed on its first check.  Its load and
+store compositions initially omitted list-append reduction before the
+single-operation WP rules.  Adding that reduction produced passing
+address/load/store results in 6.6 seconds with standard axioms.
+InitialMapLoad's first check exposed optional-getter facts where ordinary
+simplification required indexed getters.  Using the existing Frame
+indexed projection resolved all seven read-local goals.  The explicit
+seven-application proof then checked in 8.9 seconds.  Replaced its repeated
+script with a seven-iteration application of the same checked load theorem.
+That revision needed final normalization of Array.getD to optional reads
+and then passed with standard axioms.
+
+The seven-store composition reached the default 200,000-heartbeat limit
+at weak-head normalization.  Its draft expanded nested stores at every
+subsequent field.  The existing sweep proof names each intermediate
+store at this boundary.  Applied that method here and retained the same
+heartbeat and runner limits.  The failed script remains in the session
+evidence as initialMapStoreUnfolded.  No unchanged timeout retry occurred.
+
+The named-store revision passed in 4.0 seconds with standard axioms and
+exact Memory.writeCell agreement.  InitialMapCall matches the next
+38 emitted instructions, including checked index addition and call 87.
+Its drafts exposed three focused simplification requirements: normalize
+the appended program before execution, use optional getter projections
+with restricted wp_run, and reduce the zero-valued branch condition
+before executing its body.  A diagnostic trace identified each residual
+goal.  A guessed Nat.reduceEq name failed and was replaced by the existing
+Nat.reduceEqDiff used in the controller proofs.  The completed call
+theorem passed in 4.1 seconds with standard axioms.  It preserves the
+complete store and returns the source initialCell's seven words to the
+compiler's recorded result locals.  Added frame-preservation lemmas for
+composition of the checked load, call, and store regions.
+
+The first frame-composition draft exceeded the default heartbeat budget
+while projecting through the call's combined setup and result locals.
+Separated those two frame definitions without changing their values.
+The next draft showed that expanding every List.getElem?_set into an
+if-expression also exceeded the budget for fourteen result assignments.
+Replaced that expansion with repeated applications of the standard
+List.getElem?_set_ne theorem, discharging each index inequality directly.
+This preserves the existing proof and runner limits.
+
+The frame module passed in 6.9 seconds after removing three redundant
+reflexivity steps, because each final rewrite had already closed its
+goal.  The composed 206-instruction map update passed in 2.4 seconds.
+The counter and preserved-local relation then passed in 8.3 seconds.
+All public audits contain standard axioms.  These proofs consume the
+compiler's exact load/call/store partition, the new ArrayField support,
+existing Frame projections, and the existing checked counter frame.
+Added the provisional array-field-access LTG entry and artifact import
+inventory, and recorded the optional/indexed projection and unequal-index
+rewrite lessons in local-frame-projection guidance.
+
+The first complete map-loop check reached the default recursion depth
+while reducing its 215-instruction partition.  Replaced full reflexive
+reduction with List.take_append_drop composition and a four-instruction
+guard equality.  Its other diagnostics required explicit reflexivity
+of the unsigned completion guard and the shared counter-frame getter
+at the decreasing-measure boundary.  The numerical source, compiler,
+and frozen WASM remain unchanged.
+
+The complete map loop passed in 46 seconds with standard axioms and the
+default heartbeat limit.  Its exact instruction partition uses checked
+list composition.  BlockLoop.program_spec handles the enclosing control,
+ArrayField supplies bounded load/store execution, and existing grid
+write-frame lemmas reconstruct the destination and preserve the source.
+The completed result includes every preserved caller local.  Added an
+explicit match for the enclosing block at growth-body instruction 53.
+The first LTG rebuild rejected unsorted declaration metadata before
+writing its indexes.  Sorting that list produced the 35-entry catalog.
+
+The enclosing map-block match and LTGCheck passed in one serialized
+two-minute runner invocation.  tools/ltg check and tools/knowledge check
+accept 35 entries, the catalog and forest tests pass, and the proof
+generator's protocol/package/publication tests pass with their retained
+temporary directory tmp/leanexegen-test-uFlMWp.  The documentation check
+accepts 112 maintained Markdown files.  The new proof modules contain
+no admitted goals, new axioms, native decision procedures, or limit
+overrides.  Complete source success and exact-byte verification remain
+open.  This checkpoint stages only ArrayField, the seven initializer map
+modules, LTG metadata/indexes/guidance, the artifact import inventory,
+and the notes, journal, plan, and theorem inventory.  The existing paper
+outputs remain unstaged.
