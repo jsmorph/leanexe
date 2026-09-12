@@ -233,6 +233,13 @@ The heap and owned-grid relations preserve other live grids through the
 same allocation and writes, including the original grid retained for
 retry.  Their allocation and release transformations compose the six
 runtime globals with represented free-list and buffer state.
+[The complete timestep](../proofs/talos/lean/Project/EulerRiemann/ExecutionStep.lean)
+composes the first sweep, acceptance test, conditional second sweep,
+and intermediate release.  It returns the source step's represented
+grid and resulting heap, preserves runtime limits, and preserves every
+live input grid with separation from the result.  The theorem retains
+explicit space and runtime-cap bounds for both possible allocations.
+The full solver's peak-memory invariant must discharge those premises.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
