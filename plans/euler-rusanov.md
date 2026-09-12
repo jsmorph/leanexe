@@ -801,7 +801,7 @@ unproved worker loop.  The implementation and its generated files have
 been removed.  The [dev run record](euler-riemann-dev.md) records the
 cancellation.
 
-The [complete solver development](euler-riemann-complete.md) now has a
-checked complete initializer map region.  The remaining initialization,
-time-control, output, memory, and exact-byte obligations precede the
-authorized 192-grid and 800-grid runs.
+The [complete solver development](euler-riemann-complete.md) now has
+checked initializer map execution and append allocation/copy composition.
+Full initialization, time-control, output, memory, and exact-byte proofs
+remain prerequisites for the authorized 192-grid and 800-grid runs.

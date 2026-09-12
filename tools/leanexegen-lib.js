@@ -82,6 +82,7 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.EncodedIndexDecoder",
   "Project.ProofKit.GuardedBackEdge",
   "Project.ProofKit.ScalarTransition",
+  "Project.ProofKit.ScalarFrame",
   "Project.ProofKit.ScalarTransitionU64",
 ]);
 const proofKitRelativeFiles = Object.freeze([
@@ -148,6 +149,7 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/EncodedIndexDecoder.lean",
   "proofs/talos/lean/Project/ProofKit/GuardedBackEdge.lean",
   "proofs/talos/lean/Project/ProofKit/ScalarTransition.lean",
+  "proofs/talos/lean/Project/ProofKit/ScalarFrame.lean",
   "proofs/talos/lean/Project/ProofKit/ScalarTransitionU64.lean",
   "proofs/talos/lean/Project/ProofKit/README.md",
 ]);

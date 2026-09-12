@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "scalar-statement",
+  "title": "Checked scalar expression and statement execution",
+  "summary": "Connects typed scalar descriptors and their evaluated state transitions to exact instruction execution, including assignments, sequences, conditionals, and preserved locals.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["assignment", "conditional", "descriptor", "expression", "frame", "scalar-state", "sequence"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.ScalarFrame", "Project.ProofKit.ScalarTransition"],
+  "declarations": ["Project.ProofKit.ScalarTransition.Expr.eval_preserves_below", "Project.ProofKit.ScalarTransition.Expr.program_spec", "Project.ProofKit.ScalarTransition.State.ofLocals_get", "Project.ProofKit.ScalarTransition.State.ofLocals_result_set", "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below", "Project.ProofKit.ScalarTransition.Stmt.program_frame_spec", "Project.ProofKit.ScalarTransition.Stmt.program_spec"],
+  "premises": ["An exact equality between the emitted region and the descriptor program", "A checked descriptor evaluation to the proposed resulting state", "The descriptor's scratch-local layout", "A continuation from the resulting state", "Empty initial and final operand stacks when using the Locals frame adapter"],
+  "result": "The exact scalar region preserves the store and reaches its continuation with the evaluated state. The write set and scratch boundary determine preserved getters.",
+  "consumers": ["euler-riemann-initial-append"],
+  "relatedEntries": ["counter-transition", "fixed-array-fold-body", "local-frame-projection", "scalar-post-test-loop"],
+  "exclusion": null
+}
