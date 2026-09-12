@@ -10533,3 +10533,29 @@ fixture remains at tmp/leanexegen-test-PQ7eVc.  Whole-solver proof and
 production-run prerequisites remain open.
 
 The generated LTG declaration check passes all 3,405 jobs in 76 seconds.
+
+## 2026-09-12: Complete initializer append region
+
+Checkpoint 27a683cf527f3d9484ccfc59cf83c39232af6e8a is published
+and verified against tree 8b9e0ed9fc8e6d68787d4ff93c72213aa38cf00b.
+InitialAppendExecute proves the complete emitted append region from
+pointer transfers through both copy loops.  It derives capacity and
+no-fit search from the combined size and free-list invariant, preserving
+both input owners and establishing the concatenated result's owner.
+The composition checked in 78 seconds with standard axioms.
+
+The pointer descriptor checked in 45 seconds, complete input setup in
+62 seconds, and canonical-frame preparation in 91 seconds.  LTG records
+the second header-load, scalar-statement, and frame-preparation consumers,
+including the indexed-getter and local-selector corrections.  Shared
+heap-grid bounds replace repeated arithmetic and separation derivations
+in the map and append ownership proofs without changing their theorem
+types.  Extraction ownership and allocation composition checked in 58
+and 85 seconds with standard axioms.  The seven new modules contain
+472 lines.  Catalog, package, and 116-file documentation tests pass.
+Full initialization, successful final-time completion, output, memory
+bounds, and exact-byte closure remain open.
+
+The simplified map input checked in 84 seconds, its frame preparation
+in 79 seconds, and the complete map region in 67 seconds.  All affected
+execution audits retain standard axioms.
