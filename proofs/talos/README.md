@@ -12,6 +12,12 @@ Every generated module ends with the same four runtime functions: allocate, rese
 
 [`lean/Project/Runtime/Spec.lean`](lean/Project/Runtime/Spec.lean) states the runtime's behavior generically over the module and the function index, with a lookup hypothesis each artifact discharges by `rfl`: the exported retain, the null release, the shared-object decrement, and the raw-object free.  An artifact proof consumes these through the call rule instead of re-proving them.
 
+[Fixed-array release](lean/Project/Runtime/FixedArraySpec.lean) covers
+refcount-one arrays with no pointer fields.  Its full theorem preserves
+every store component outside memory and globals, including runtime memory
+limits, while giving the exact freed-node writes and counter updates.
+The original theorem follows by projection.
+
 [`lean/Project/Runtime/Tree.lean`](lean/Project/Runtime/Tree.lean) and [`lean/Project/Runtime/TreeSpec.lean`](lean/Project/Runtime/TreeSpec.lean) carry the recursive case.  A `RelTree` models an ownership tree of slots-kind heap objects at refcount one whose masked slots hold null, an owned subtree, or a shared object; `TreeAt` ties the tree to a memory through the reads the release walk performs.  The generic teardown theorem, `release_frees_tree`, proves that releasing the root frees every owned node in traversal order, decrements every shared leaf, leaves the free list at the root, and advances the release and free counters by exactly the tree's event counts.  A new program's recursive teardown proof reduces to exhibiting the tree shape, footprint disjointness, and a page bound.
 
 [`lean/Project/Common.lean`](lean/Project/Common.lean) holds the shared mechanical layer: frame lemmas for reads over writes, the `read_frames` tactic that resolves a read over a write chain by peeling disjoint frames to the hit, `UInt64` and address-form bridges under `omega`, and the `BytesAt` predicate stating what the host wrote into linear memory at an input pointer.
@@ -120,7 +126,9 @@ calculation, allocation, pointer and length installation, traversal, and
 the returned owner/root pair.  Its theorem proves source agreement,
 input-grid preservation, and writes confined to the destination payload,
 under explicit free-list separation and allocation-space premises.  The
-peak-memory invariant and the full solver obligations remain open.
+peak-memory invariant and the full solver obligations remain open.  The
+Riemann fixed-array release specialization now gives an exact resulting
+store and proves preservation of its page count and memory limits.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

@@ -12,7 +12,7 @@ private def fixedFrame (p len stride i j : UInt64) : Locals :=
 
 /-- Releasing a refcount-one fixed array with no pointer fields frees the
 array without reading or releasing its element words. -/
-theorem release_frees_fixed_array_zero_mask
+theorem release_frees_fixed_array_zero_mask_full
     (env : HostEnv Unit) (m : Module) (id : Nat) (st : Store Unit)
     (p g1 g4 g5 : UInt64) (len stride : Nat)
     {typeIdx : Option Nat}
@@ -41,7 +41,8 @@ theorem release_frees_fixed_array_zero_mask
           ((p - 8).toUInt32) g1 ∧
         st'.globals.globals =
           ((st.globals.globals.set 4 (.i64 (g4 + 1))).set 5
-            (.i64 (g5 + 1))).set 1 (.i64 p)) := by
+            (.i64 (g5 + 1))).set 1 (.i64 p) ∧
+        st' = { st with mem := st'.mem, globals := st'.globals }) := by
   have hp0 : ¬p = 0 := by
     intro h
     rw [h] at hp48
@@ -178,14 +179,15 @@ theorem release_frees_fixed_array_zero_mask
         sL = fixedFrame p (UInt64.ofNat len) (UInt64.ofNat stride)
           (UInt64.ofNat i) j ∧
         stL.mem = st.mem ∧
-        stL.globals.globals = st.globals.globals.set 4 (.i64 (g4 + 1)))
+        stL.globals.globals = st.globals.globals.set 4 (.i64 (g4 + 1)) ∧
+        stL = { st with globals := { globals := st.globals.globals.set 4 (.i64 (g4 + 1)) } })
     (μ := fun _ sL =>
       match sL.locals with
       | _ :: _ :: _ :: _ :: _ :: _ :: .i64 i :: _ => len + 1 - i.toNat
       | _ => 0)
-  · refine ⟨0, 0, Nat.zero_le _, ?_, rfl, rfl⟩
+  · refine ⟨0, 0, Nat.zero_le _, ?_, rfl, rfl, rfl⟩
     simp [fixedFrame]
-  · rintro stL sL ⟨i, j, hile, rfl, hmemL, hglobalsL⟩
+  · rintro stL sL ⟨i, j, hile, rfl, hmemL, hglobalsL, hStoreL⟩
     have hiU : (UInt64.ofNat i).toNat = i := by u64_omega
     simp only [fixedFrame]
     wp_run
@@ -216,6 +218,8 @@ theorem release_frees_fixed_array_zero_mask
       refine ⟨?_, ?_⟩
       · simp [releaseFuncDef]
       · rw [hmemL, ha40, ha8]
+        rw [hStoreL]
+        simp
     · have hilt : i < len := Nat.lt_of_le_of_ne hile hiend
       have hnge : ¬UInt64.ofNat i ≥ UInt64.ofNat len := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hiU, hlenU]
@@ -232,15 +236,16 @@ theorem release_frees_fixed_array_zero_mask
               (UInt64.ofNat i) (UInt64.ofNat k) ∧
             stI.mem = st.mem ∧
             stI.globals.globals =
-              st.globals.globals.set 4 (.i64 (g4 + 1)))
+              st.globals.globals.set 4 (.i64 (g4 + 1)) ∧
+            stI = { st with globals := { globals := st.globals.globals.set 4 (.i64 (g4 + 1)) } })
         (μ := fun _ sI =>
           match sI.locals with
           | _ :: _ :: _ :: _ :: _ :: .i64 k :: _ =>
               stride + 1 - k.toNat
           | _ => 0)
-      · refine ⟨0, Nat.zero_le _, ?_, hmemL, hglobalsL⟩
+      · refine ⟨0, Nat.zero_le _, ?_, hmemL, hglobalsL, hStoreL⟩
         simp [fixedFrame]
-      · rintro stI sI ⟨k, hkle, rfl, hmemI, hglobalsI⟩
+      · rintro stI sI ⟨k, hkle, rfl, hmemI, hglobalsI, hStoreI⟩
         have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
         simp only [fixedFrame]
         wp_run
@@ -261,7 +266,7 @@ theorem release_frees_fixed_array_zero_mask
             rw [size_eq]
             omega
           rw [hiadd]
-          refine ⟨⟨i + 1, by omega, rfl, hmemI, hglobalsI⟩, ?_⟩
+          refine ⟨⟨i + 1, by omega, rfl, hmemI, hglobalsI, hStoreI⟩, ?_⟩
           rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
           omega
         · have hklt : k < stride := Nat.lt_of_le_of_ne hkle hkend
@@ -283,8 +288,40 @@ theorem release_frees_fixed_array_zero_mask
             rw [size_eq]
             omega
           rw [hkadd]
-          refine ⟨⟨k + 1, by omega, rfl, hmemI, hglobalsI⟩, ?_⟩
+          refine ⟨⟨k + 1, by omega, rfl, hmemI, hglobalsI, hStoreI⟩, ?_⟩
           rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
           omega
+
+theorem release_frees_fixed_array_zero_mask
+    (env : HostEnv Unit) (m : Module) (id : Nat) (st : Store Unit)
+    (p g1 g4 g5 : UInt64) (len stride : Nat)
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
+    (hImp : m.imports[id]? = none)
+    (hlen32 : len < 4294967296) (hstride32 : stride < 4294967296)
+    (hp48 : 48 ≤ p.toNat) (hp32 : p.toNat < 4294967296)
+    (hfit : p.toNat + 8 ≤ st.mem.pages * 65536)
+    (hmagic : st.mem.read64 ((p - 48).toUInt32) = 5501223100278326855)
+    (hrc : st.mem.read64 ((p - 40).toUInt32) = 1)
+    (hkind : st.mem.read64 ((p - 24).toUInt32) = 2)
+    (hlen : st.mem.read64 p.toUInt32 = UInt64.ofNat len)
+    (hstride : st.mem.read64 ((p - 16).toUInt32) = UInt64.ofNat stride)
+    (hmask : st.mem.read64 ((p - 8).toUInt32) = 0)
+    (hg1 : st.globals.globals[1]? = some (.i64 g1))
+    (hg4 : st.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st.globals.globals[5]? = some (.i64 g5)) :
+    TerminatesWith env m id st [.i64 p]
+      (fun st' vs => vs = [] ∧
+        st'.mem = (st.mem.write64 ((p - 40).toUInt32) 0).write64 ((p - 8).toUInt32) g1 ∧
+        st'.globals.globals =
+          ((st.globals.globals.set 4 (.i64 (g4 + 1))).set 5 (.i64 (g5 + 1))).set 1 (.i64 p)) := by
+  apply (release_frees_fixed_array_zero_mask_full env m id st p g1 g4 g5 len stride
+    hf hImp hlen32 hstride32 hp48 hp32 hfit hmagic hrc hkind hlen hstride hmask hg1 hg4 hg5).mono
+  rintro final values ⟨hValues, hMem, hGlobals, _⟩
+  exact ⟨hValues, hMem, hGlobals⟩
+
+#print axioms release_frees_fixed_array_zero_mask_full
+#print axioms release_frees_fixed_array_zero_mask
 
 end Project.Runtime
