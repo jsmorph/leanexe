@@ -162,6 +162,8 @@ state safety, output layout, and outer-loop fuel bound.  Its generated
 module has checked all-input execution theorems for the numerical side,
 flux, cell update, and scan callback.  The complete scan loop and function
 now have checked termination, bounded reads, source agreement, and store
-preservation.  Successful completion,
+preservation.  Checked neighbor arithmetic and state loads now connect
+the complete per-cell sweep callback to the source computation.
+Successful completion,
 bounded memory, full execution, and exact-byte closure remain open.
 The new 192-grid and 800-grid calculations await those proofs.

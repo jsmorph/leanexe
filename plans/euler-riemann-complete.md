@@ -134,7 +134,12 @@ now covers entry setup, every seven-field read, the callback, loop
 termination, and the returned status/speed pair.  It preserves the complete
 store and agrees with the source fold for every represented grid.
 The memory representation proves address bounds and preservation under
-changes outside the grid.  Allocating traversal and allocator reuse remain open.
+changes outside the grid.
+[The sweep callback proof](../proofs/talos/lean/Project/EulerRiemann/ExecutionUpdateCell.lean)
+composes checked clamped-neighbor arithmetic, eight bounded field reads,
+momentum orientation, and the numerical cell evaluator.  It covers every
+valid cell index for sizes 2 through 800, with arbitrary cell words and
+ratio, and preserves the store.  Allocating traversal and allocator reuse remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
