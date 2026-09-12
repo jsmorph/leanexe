@@ -12809,3 +12809,38 @@ solver plan, and concise notes.  Checkpoint intent: publish FreeListCount,
 HeapReserve, StepReserve, and these four records.  Initial memory setup,
 controller composition, successful completion, and exact-byte closure
 remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path reservation checkpoint as 8087b25da4ad8ecdd4bf79070f146f08b3e4bfb2,
+parent d3babf8f05a0c705999b65faddf93548473caa5b, tree
+054b8b58ddb90523c2532c125d37d799fbc100e3.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Added the generated retry loop and trial-region equalities and a
+continuation-generic trial execution proof.  It composes spacing, the
+reserved timestep, and acceptance without fixing scratch-local contents.
+Its continuation receives the resulting heap, represented grid, available
+reservations, runtime limits, and preservation of all live input grids.
+
+The initial region draft needed an explicit instruction type in the
+branch extractor and a corrected local-update expression.  Two targeted
+goal traces then identified missing list-append and Boolean-conditional
+reductions in the trial tactic.  Added those reductions and removed the
+temporary traces.  RetryTrial passed all 3,508 jobs in 1.6 seconds with
+standard-only axioms.  Added separate proofs for the accepted-result
+assignment and rejected-trial release, rounded halving, owner tracking,
+parameter replacement, and fuel decrement.
+
+The accepted branch passed its first check.  The rejected branch needed
+the optional-list getter reductions for its extracted instruction list,
+then an indexed form of the tracker-zero hypothesis after simplification.
+A targeted goal trace identified the first boundary and was removed.
+RetryBranches passed all 3,509 jobs in 3.1 seconds.  Both execution
+theorems and the region equality have standard-only axiom audits.
+Reviewed exact instruction extraction, scratch updates, call arguments,
+result placement, release state, rounded halving, both owner-tracking
+decisions, and fuel replacement.  Updated the proof inventory, solver
+plan, and concise notes.  Checkpoint intent: publish RetryLoopShape,
+RetryTrial, RetryBranches, and these four records.  Complete retry-loop
+composition and termination remain open.

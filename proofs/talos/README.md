@@ -164,6 +164,11 @@ consumes one reservation, and release restores one.  The complete
 timestep derives its two allocation bounds from this invariant and
 returns one fewer reservation.  Releasing its result restores the
 original count.  Initialization must still establish the full byte limit.
+The retry trial region now composes spacing, the reserved timestep, and
+acceptance for arbitrary scratch-local contents.  Separate branch proofs
+cover accepted-result assignment and rejected-result release, rounded
+halving, owner tracking, parameter replacement, and fuel decrement.
+The complete retry-loop invariant and termination remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
