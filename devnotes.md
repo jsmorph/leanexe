@@ -10015,3 +10015,12 @@ stores during simplification.  The focused AllocationHeader build passed
 all 3,436 jobs with standard-only axiom audits.  Allocator setup, free-list
 search and reuse, the peak-memory bound, control, successful completion,
 and exact-byte closure remain open.
+
+The complete generated sweep bump branch now has a checked execution
+theorem.  It composes overflow exclusion, page-count arithmetic, growth,
+heap-top and pointer assignment, and all metadata stores.  State lemmas
+give the exact pages and globals, fresh metadata, and preservation of
+disjoint grid bytes.  The focused build passed all 3,437 jobs in 2.7
+seconds with standard-only axiom audits.  Free-list search and reuse,
+complete allocator composition, and the full solver obligations remain
+open.
