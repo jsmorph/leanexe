@@ -144,6 +144,11 @@ The complete acceptance scan now has an execution theorem covering its
 bounded length and cell reads, early rejection, loop termination, Boolean
 result, and complete store preservation.  It agrees with the source
 array's all-zero-status predicate, including the empty array.
+The sweep ownership theorem now returns the updated heap, preserved
+source and fresh destination ownership, mutual separation, bounded pages,
+and the unchanged runtime cap.  Its write frame also preserves other
+live grids needed by retry.  Heap-state transformations separately prove
+allocation and release preserve the six globals and represented free list.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

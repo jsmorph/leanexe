@@ -226,6 +226,13 @@ loop covers every bounded seven-word cell read, early rejection at a
 nonzero status, termination, the empty array, and complete store
 preservation.  This result selects the second sweep and retry branches
 in the generated controller.
+[The sweep ownership theorem](../proofs/talos/lean/Project/EulerRiemann/SweepOwned.lean)
+returns the updated heap, the preserved source, a fresh destination,
+mutual separation, page-count bounds, and the unchanged runtime cap.
+The heap and owned-grid relations preserve other live grids through the
+same allocation and writes, including the original grid retained for
+retry.  Their allocation and release transformations compose the six
+runtime globals with represented free-list and buffer state.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

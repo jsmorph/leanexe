@@ -12635,3 +12635,63 @@ measure, returned word, and store preservation.  Updated the proof
 inventory, solver plan, and concise notes.  Checkpoint intent: publish
 AcceptedLoopShape, AcceptedLoop, ExecutionAccepted, and these four records.
 The next composition joins both sweeps and the intermediate release.
+
+The 105-document check passed.  Published the seven-path acceptance
+checkpoint as 0c8dd93e6ec095be8d2cef3b57d27993d6a233bf, parent
+7efb5181ef51d30eeb77dea8ae3e7f8e19644ed5, tree
+ab09efc2d71ed539614e5eef4411452954f42cfa.  Non-forced SSH push and fetch
+succeeded, and commit, parent, message, tree, index, and tracked worktree
+match.  The staged whitespace check reported an extra final blank line
+in AcceptedLoop.  The command batch continued to publication instead of
+stopping on that result.  Removed that blank line in the next bounded
+edit and will inspect the check's exit status before publication.
+
+Added a heap-state record for the generated six globals and represented
+free list.  Its allocation and release transformations compose the
+checked scalar, free-list, and heap-order facts.  This packages the
+state passed between controller calls without changing the program.
+
+HeapState's first check found a multiline record-layout error in the
+allocation transformation.  Put each updated field on its own line.
+The release transformation and memory-cap statement passed.  Added an
+owned-grid proposition packaging root/capacity bounds, fresh metadata,
+and represented values, with preservation across allocation, disjoint
+sweep writes, and disjoint release.
+
+HeapState and OwnedGrid passed all 3,469 jobs with standard-only axioms,
+each new module taking 1.3 seconds.  Added the relation between a live
+grid and its heap: owned buffer, placement below the heap top, and
+separation from free nodes.  Its preservation lemmas assemble the
+existing allocation, write-frame, and release facts for sequential calls.
+
+HeapGrid's allocation case required transporting the owned-grid
+proposition across the allocation-counter update.  Added an explicit
+memory-equality transport lemma.  The proposition's memory-only fields
+are preserved even though its Store parameter changes.
+
+HeapGrid passed.  Added the complete sweep specialization whose
+postcondition carries the updated heap, the preserved source ownership,
+the new destination ownership, mutual separation, bounded page count,
+and unchanged runtime cap.  It composes the exact function theorem with
+the checked resource and ownership lemmas.
+
+SweepOwned reached one source/destination separation arithmetic goal.
+The arithmetic solver saw the selected root both through allocatedNode
+and through allocatedRoot, with the local capacity abbreviation folded
+in one occurrence.  Normalized those names at that goal before checking
+the composition again.
+
+SweepOwned passed with standard-only axioms.  Reviewing the second-sweep
+call showed that it must preserve both its immediate input and the
+earlier source grid retained by retry.  Kept the checked write frame in
+the sweep postcondition and added a general live-grid preservation
+lemma for any source separated from the allocator's free nodes.
+
+The strengthened SweepOwned check passed all 3,493 jobs in 1.4 seconds
+with standard-only axioms.  Reviewed exact six-global transformations,
+owned-grid memory transport, allocation/write/release preservation,
+generic live-grid sweep framing, and the complete sweep postcondition.
+Updated the proof inventory, solver plan, and concise notes.  Checkpoint
+intent: publish HeapState, OwnedGrid, HeapGrid, SweepOwned, the accepted
+loop's final blank-line correction, and these four records.  The next
+execution boundary is the two-sweep step with its intermediate release.

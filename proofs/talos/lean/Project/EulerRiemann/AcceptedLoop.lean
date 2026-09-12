@@ -95,4 +95,3 @@ theorem accepted_loop_spec (env : HostEnv Unit) (initial : Store Unit)
 #print axioms accepted_loop_spec
 
 end Project.EulerRiemann.Execution
-
