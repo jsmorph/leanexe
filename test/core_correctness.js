@@ -395,6 +395,11 @@ const accepted = [
   { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "nestedArrayRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "flatArrayCopyRuntimeRelease", args: [], expected: 202n },
+  { name: "directFlatCopyRuntimeRelease", args: [], expected: 75n },
+  { name: "internalArrayLoopStats", args: [0n, 0n], expected: [10n, 10n, 0n, 0n] },
+  { name: "internalArrayLoopStats", args: [1n, 0n], expected: [11n, 10n, 0n, 0n] },
+  { name: "internalArrayLoopStats", args: [5n, 0n], expected: [15n, 10n, 4n, 4n] },
+  { name: "internalArrayLoopStats", args: [5n, 1n], expected: [12n, 10n, 1n, 1n] },
   {
     name: "flatArrayCallAppend", args: [], expected: [null],
     memoryArrays: [{ resultIndex: 0, values: [3n, 11n, 21n] }],
@@ -1412,6 +1417,10 @@ const accepted = [
 ];
 
 const rejected = [
+  {
+    name: "rejectReleaseDirectNestedMap",
+    message: "reason: copied into heap-bearing binding heldMap",
+  },
   {
     name: "rejectReleaseFlatArrayAlias",
     message: "reason: copied into heap-bearing binding alias",

@@ -1,5 +1,6 @@
 import Project.EulerRiemann.Traversal
 import Project.EulerRiemann.Time
+import Project.EulerRiemann.Output
 
 namespace Project.EulerRiemann.TraversalTest
 open Traversal
@@ -15,6 +16,12 @@ def sample (n : Nat) (advance : Bool) : Array UInt64 :=
     let grid := if advance then step n 0x3FB999999999999A initial else initial
     let result := scan grid
     #[result.status, result.alpha] ++ words grid
+  else #[]
+
+def packedInitial (n : Nat) : Array UInt64 :=
+  if 2 ≤ n ∧ n ≤ 5 then
+    let grid := initialCells n
+    Output.pack n 0 (scan grid).status grid
   else #[]
 
 end Project.EulerRiemann.TraversalTest

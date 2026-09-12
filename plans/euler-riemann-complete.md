@@ -64,7 +64,7 @@ not evidence that the requested runs satisfy them.
 - [x] Prove the ordered index array, clamped-neighbor bounds and coordinate correspondence, and interface-fraction bounds.
 - [x] Prove the four conservative states and admissibility of all 36 rounded cell-average combinations.
 - [x] Test the generated grid-helper WASM, including the complete 800-grid index array.
-- [ ] Define the numerical recurrence, accepted sizes, and output layout.
+- [x] Define the numerical recurrence, accepted sizes, and output layout.
 - [x] Add and test the approved compiler mappings for Talos's formal arithmetic definitions.
 - [ ] Implement and prove linear-time initialization and directional traversal.
 - [x] Prove source-array initialization, accepted-sweep correspondence, and the wave-speed reduction.
@@ -93,9 +93,9 @@ WASM proof.
 [Initial admissibility](../proofs/talos/lean/Project/EulerRiemann/Initial.lean)
 uses the specified primitive words and rounded conservative averages.
 All completed source/model theorem audits contain only the accepted
-standard logical axioms.  The 54 [grid tests](../test/euler_riemann_grid.js)
-pass, including full-word initialization and split-step comparisons at
-sizes 2, 3, and 5.  Production execution remains behind the complete proof
+standard logical axioms.  The 57 [grid tests](../test/euler_riemann_grid.js)
+pass, including full-word initialization, split-step, and output comparisons
+at sizes 2, 3, and 5.  Production execution remains behind the complete proof
 gate.
 
 The source-array proofs connect initialization and accepted directional
@@ -103,6 +103,21 @@ steps to the existing functional-grid recurrence.  The reduction proof
 identifies acceptance of every directional thermodynamic calculation and
 the maximum raw speed word.  Grid-size encoding and strictly decreasing
 remaining-time word bounds also pass their focused proofs.
+
+[Control](../proofs/talos/lean/Project/EulerRiemann/Control.lean) implements
+whole-step retries with halved timesteps and advances after acceptance.
+The checked source theorems connect accepted retries to the numerical
+recurrence, preserve grid indices through time control, and show that
+status zero implies final time 0.8.  The decreasing remaining-time word
+measure proves that the outer-loop fuel cannot exhaust.  Successful
+completion remains open.
+[Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
+time, two dimensions, and contiguous density and pressure blocks.  Its
+layout and maximum length of 1,280,004 words have checked source proofs.
+The complete control module passes extraction.  Its ownership report
+identifies missing retry-result freshness evidence and a dropped explicit
+release in the continuing retry branch.  Compiler corrections and the
+exact-WASM proof remain open.
 
 Compiler diagnostics found repeated ordinary-callee expansion during
 recursive-expression discovery.  The revised pass scans each ordinary
@@ -112,6 +127,14 @@ unreleased intermediate grid.  The source release now passes the checker
 and numerical tests.  Array-helper expression lowering binds both owner
 and data-pointer results.  The focused ownership tests pass, including
 rejection of releases through aliases and nested arrays.
+
+Internal Nat-tail helpers now use the existing per-iteration owner
+tracking.  Tests cover replacement, retention, and preservation of the
+caller's initial array.  The explicit-release checker recognizes direct
+maps and concatenations while preserving rejection of retained nested
+roots.  All 21 focused ownership and array-call tests pass.  Recursive
+helper freshness summaries and shared evaluation of multi-field map
+results still require work before the solver's memory and runtime bounds.
 
 The compiler-wide execution gate has a stale release-input record, and
 the aggregate proof build timed out after matching all 37 generated
