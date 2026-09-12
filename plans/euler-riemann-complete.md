@@ -197,6 +197,11 @@ agrees with the source sweep, preserves the input grid, and confines loop
 writes to the destination payload.  The theorem keeps the represented
 free-list separation and available heap/runtime-cap premises explicit.
 The complete solver's ownership and peak-memory invariants remain open.
+[The fixed-array release proof](../proofs/talos/lean/Project/EulerRiemann/ExecutionRelease.lean)
+gives the exact store after a refcount-one grid is freed.  The strengthened
+shared runtime theorem preserves all components outside memory and
+globals, including runtime memory limits.  Its existing public theorem
+retains the same statement through projection.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

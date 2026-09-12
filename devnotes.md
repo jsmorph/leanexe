@@ -10075,3 +10075,11 @@ payload.  The focused build passed all 3,480 jobs in 2.6 seconds with
 standard-only axioms.  Successive-sweep ownership and memory composition,
 initialization, complete control, successful completion, and exact-byte
 closure remain open.
+
+The shared zero-mask fixed-array release theorem now preserves every
+store component outside memory and globals, including runtime memory
+limits.  The original public theorem is a projection with its existing
+statement.  The Riemann specialization gives an exact resulting Store
+and explicit page-count and memory-cap equalities.  The shared theorem,
+specialization, and existing CLOB allocation caller pass focused builds.
+Both release theorem audits contain only standard logical axioms.

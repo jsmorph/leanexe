@@ -12462,3 +12462,43 @@ inventory, complete solver plan, and concise notes.  Checkpoint intent:
 publish SweepSetup, MemoryLength, ExecutionSweep, and these four records.
 The complete solver's ownership, memory, initialization, control,
 successful-completion, and exact-byte obligations remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path complete-sweep checkpoint as
+983d07dc163debee70eef63f3ec5aa4b21cdfb2a, parent
+f8a39a5ac77a003c158dfc0290acf300662b8a74, tree
+71ff6bd798d4ed0368c99eb47d46005e59aed2f6.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Inspected the shared fixed-array release theorem, prior framed release
+applications, and the current Store.memoryCap definition.  The release
+result specifies memory and globals but omits preservation of other store
+fields, including memoryCaps.  Added a stronger result and carried the
+unchanged store components through both release loops.  The original
+public theorem remains a projection with its existing statement.  This
+strengthening is needed to preserve runtime-cap premises across releases
+and subsequent allocations.
+
+The strengthened release proof reached the final store-field equalities
+on its first check.  Reduced those projections after substituting the
+preserved store.  The shared module then passed with standard-only
+audits for both the stronger theorem and the unchanged public
+projection.  Added the Riemann release specialization with an exact
+resulting Store, including its memory-cap and page-count equalities.
+
+The shared full-release module passed all 3,346 jobs in 9.3 seconds.
+The first Riemann specialization check found a multiline record-field
+indentation error.  Corrected that syntax, and ExecutionRelease passed
+all 3,431 jobs in 1.7 seconds.  The exact-store theorem has standard-only
+axioms.  Started the existing CLOB allocation caller check to verify that
+the projected public statement remains compatible.
+
+The CLOB allocation caller passed all 3,349 jobs in 1.9 seconds.  Reviewed
+the strengthened loop invariants, complete store preservation, unchanged
+public theorem statement, generated release lookup, exact store assembly,
+and preserved memory-cap and page-count projections.  Updated the shared
+runtime description, proof inventory, solver plan, and concise notes.
+Checkpoint intent: publish the shared runtime proof, Riemann release
+specialization, and these four records.  Free-list and owned-grid state
+composition across allocation, sweep writes, and release remains open.
