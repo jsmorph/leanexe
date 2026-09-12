@@ -12775,3 +12775,37 @@ cases, exact rounding association, and store preservation.  Updated the
 proof inventory, solver plan, and concise notes.  Checkpoint intent:
 publish ExecutionTimeGuard, ExecutionSpacing, ExecutionProposal, and
 these four records.  The full solver and production runs remain gated.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path time-helper checkpoint as d3babf8f05a0c705999b65faddf93548473caa5b,
+parent ddb3ac5004e23eb47039ae8984f35cfa75b45bca, tree
+2f23e2fd6a258a40c826402fcaf8106f0aee9246.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Retry composition requires repeated allocation-space premises.  Added
+a count of sufficiently large free buffers and a heap reservation bound:
+the current top plus space for the requested buffers that the free list
+cannot supply.  Allocation consumes one reservation, and releasing a
+sufficiently large buffer restores one.  The bound gives both the strict
+32-bit address limit and required runtime pages.  These are arithmetic
+lemmas over the existing allocator state, with no execution changes.
+
+The free-buffer count, allocation reservation, monotonicity, and bump
+bounds passed their first checks.  The release proof needed an explicit
+natural-subtraction identity after increasing both counts.  Added that
+identity and removed an unused count-proof simplification argument.
+StepReserve then composed both timestep branches and intermediate
+release.  Its execution theorem derives the two allocation premises
+from one reservation bound and retains source/grid ownership and runtime
+limits.  Releasing the returned buffer restores the original reservation
+count.  The focused StepReserve check passed all 3,502 jobs in 1.3
+seconds.  All new public theorems have standard-only axiom audits.
+
+Reviewed first-fit count preservation, saturating reservation arithmetic,
+both allocation branches, byte-to-page bounds, timestep composition,
+and restoration after result release.  Updated the proof inventory,
+solver plan, and concise notes.  Checkpoint intent: publish FreeListCount,
+HeapReserve, StepReserve, and these four records.  Initial memory setup,
+controller composition, successful completion, and exact-byte closure
+remain open.
