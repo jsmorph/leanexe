@@ -10453,3 +10453,34 @@ The 114-file documentation check also passes.  A focused Lean profile
 measured 172 seconds loading imports, so subsequent focused checks use
 six-minute timeouts with the same CPU and memory limits.  The profile
 and unfinished composition drafts remain recorded in the journal.
+
+## 2026-09-12: Initializer data and ownership
+
+Checkpoint 77a7ec1207825bbad2feb49016d23e8431ab686d is published
+and verified against tree e40a0e791c4184ced0a93f29582d438bec0f49d8.
+Map, append, and extraction now compose pointer installation, the length
+store, and the complete traversal or copy.  Their execution theorems
+preserve the source grids and bound the header and payload writes.
+The map ownership theorem derives the destination's bounds and source
+separation from the existing heap model and returns the updated heap
+and ownership of both grids.
+
+Map-data execution checked in 63 seconds, extraction in 40 seconds,
+and append in 43 seconds.  The completed-grid ownership helper checked
+in 40 seconds after correcting a definitionally equal address spelling
+at its arithmetic boundary.  Its map consumer checked in 41 seconds.
+All public audits use standard axioms.  The seven new data and ownership
+modules contain 358 lines.  The full growth loop, resource invariant,
+source success, output, and exact-byte closure remain open.
+
+The shared search-frame prefix projection checked in 40 seconds.
+InitialHeapAllocation now uses it to supply unchanged parameter and
+saved-local getters for all three allocation layouts.  That consumer
+checked in 50 seconds with standard axioms.  The provisional no-fit
+allocation LTG entry records the declaration, consumer, failed arithmetic
+bound, and map ownership composition.
+
+LTGCheck passes all 3,402 jobs.  Catalog, package, proof-generator, and
+documentation tests pass.  The proof-generator test preserves
+tmp/leanexegen-test-p5NAdv.  The eight new data, ownership, and projection
+modules contain 377 lines.

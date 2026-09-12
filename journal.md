@@ -14107,3 +14107,143 @@ modules totaling 258 lines.  Its staged whitespace check passes.
 Started the isolated map-data prefix check with the six-minute limit.
 The execution and ownership composition drafts remain outside the
 checkpoint while checking continues.
+
+Published and fetched checkpoint
+77a7ec1207825bbad2feb49016d23e8431ab686d with parent
+2ae3f6d4bbe1b16ad85d47da6c0fe2f8726c8cfa and tree
+e40a0e791c4184ced0a93f29582d438bec0f49d8.  Commit, parent,
+message, tree, index, and tracked worktree content match the fetched
+branch.  The final checkpoint has 470 inserted and seven removed lines.
+
+Checked the pending composition imports against their compiled setup
+records and source import lists.  MapData already receives MemoryLength
+through its dependency closure.  Added the explicit InitialAppendCopy
+import required by the append-data draft.  The prefix check is still
+running under the six-minute timeout and standard resource limits.
+
+InitialMapDataPrefix passed in 222 seconds with only propext in its
+public audit.  Its eight-instruction equality is now a checked dependency
+for InitialMapDataShape, whose remaining proof composes List.take_add_one
+with the existing checked map-block equality.  Started that consumer
+with the same six-minute limit.  This preserves the emitted program and
+reuses the complete loop result without comparing its body again.
+
+The LTG local-frame-projection and no-fit allocation entries supply
+the frame and allocation APIs for the next composition.  The existing
+search-frame getters cover its six scratch slots.  Added a pending
+shared projection theorem for every parameter or saved-local read before
+that window.  All three initializer layouts need those reads to retain
+the source pointer, dimensions, and copy counts across allocation.
+The theorem compares the read with the unchanged parameter/saved prefix
+and avoids another per-layout derivation.
+
+InitialMapDataShape passed in 62 seconds with only propext.  It now
+combines the checked prefix and the existing enclosing-loop equality.
+Started InitialMapData to check the complete root-installation,
+length-store, counter, and map-loop composition.  Its postcondition
+includes the unchanged source grid, represented mapped grid, caller
+frame relation, and the combined header/payload write range.
+
+InitialMapData passed in 63 seconds with standard axioms.  Its execution
+proof composes the existing installation, counter initialization, map
+loop, source preservation, and write-range theorems without new scalar
+or memory derivations.  The accepted proof has 67 lines.  Started the
+existing HeapGrid dependency boundary before checking HeapGridFinish,
+following the earlier timeout that stopped during dependency rebuilding.
+
+Correction: InitialMapData has 65 lines.  Its two shape modules have
+14 and 18 lines, for 97 total.  Added an ownership-composition draft
+that applies this checked execution theorem to an allocated buffer,
+derives address and source-separation premises from existing allocation
+bounds, and uses Heap.finishGrid and Heap.Owns.swept for the resulting
+heap and both live grids.  The helper keeps the original allocation
+store and bounded write range available to preserve additional owners.
+
+The isolated heap dependency build passed.  AllocationFrame rebuilt in
+44 seconds, OwnedGrid in 48 seconds, and HeapGrid in 45 seconds.  Their
+public audits use standard axioms.  Started InitialMapOwned, which first
+checks the pending HeapGridFinish result against these completed
+dependencies, then composes it with the checked map-data execution.
+
+HeapGridFinish reported a proof error in the fresh-header address bound.
+The arithmetic context used node.root while the inferred write-region
+root retained allocatedRoot, so omega treated them as separate terms.
+Changed the write-range and represented-grid hypotheses to use the named
+node and allocation store before composition.  The expressions are
+definitionally equal.  The failed declaration's audit included Lean's
+error placeholder and was not accepted.  No proof premise changed.
+
+The failed HeapGridFinish attempt took 49 seconds.  Its corrected proof
+passed in 40 seconds with standard axioms.  Naming the write-region root
+before applying the existing fresh-header theorem supplied the missing
+arithmetic identity.  The result now returns Heap.At and Heap.Owns for
+any completed width-seven grid that fits the requested allocation,
+including the initializer's temporary arrays.  InitialMapOwned is
+checking its use with source-owner preservation and the map theorem.
+
+InitialMapOwned passed in 41 seconds with standard axioms.  It derives
+the map's destination bounds and source separation from existing heap
+ownership and allocation results, then composes the checked execution
+with the completed-grid ownership theorem.  It returns the updated heap,
+both live-grid owners, the caller-frame relation, and the bounded write
+range.  The map-data and ownership modules total 221 lines.  Started
+the extraction root/length/copy composition with the same local limits.
+
+InitialExtractData passed in 40 seconds.  Its shape audit uses propext,
+and its execution audit uses standard axioms.  The theorem composes root
+installation, the length store, and the existing checked extraction loop.
+It preserves the source and combines the header and payload write ranges.
+Started the corresponding append composition against the frozen emitted
+installation and its two checked copy loops.
+
+InitialAppendData passed in 43 seconds.  Its emitted installation
+equality uses propext, and its execution theorem uses standard axioms.
+It returns the concatenated grid, preserves both source grids, and
+combines the header and payload write ranges.  All three initializer
+data operations now compose installation with their checked traversal
+or copy loops.  The enclosing growth loop and resource invariant remain
+open.  Started the shared search-frame prefix projection check.
+
+The projection check failed after 42 seconds on the expanded list-length
+bound.  Simplification rendered six scratch cells as six additions to
+the tail length, so the supplied equivalent bound was unused.  Removed
+that intermediate bound and discharged the remaining arithmetic goal
+with omega.  Updated the solver notes and documentation with the seven
+checked data/ownership modules and their remaining composition boundary.
+The 114-file documentation check passes.
+
+The corrected shared projection passed in 40 seconds with propext and
+Quot.sound.  Applied it directly to InitialHeapAllocation: the existing
+execution theorem now also supplies unchanged getters for every index
+before the compiler's six-slot scratch window.  This includes parameters
+and saved source/count locals for all three layouts.  Repository search
+found no callers requiring an API adjustment.  The next check validates
+this concrete consumer before exposing the projection through LTG.
+
+The strengthened InitialHeapAllocation consumer passed in 50 seconds
+with standard axioms.  Added the shared projection to the provisional
+no-fit allocation LTG entry and artifact import inventory.  The entry
+records the checked use across all three scratch layouts, the failed
+list-length simplification, and the map-data/ownership composition.
+Updated the concise notes.  Complete initializer and independent
+artifact verification remain explicit pending gates.
+
+LTGCheck passed all 3,402 jobs, with 40 seconds reported for its rebuilt
+module.  The 37-entry catalog, LTG tests, knowledge-package tests,
+proof-generator tests, and 114-file documentation check pass.  The
+proof-generator test preserves tmp/leanexegen-test-p5NAdv.
+
+The next checkpoint stages the eight checked new modules, the strengthened
+heap-allocation consumer, the LTG entry and six category indexes, LTGCheck,
+artifact import inventory, theorem and proof-kit documentation, solver
+plan, plan.md, devnotes.md, and journal.md.  The eight modules contain
+377 lines.  Their proofs compose existing allocation, frame, traversal,
+memory, and ownership declarations against exact emitted regions.
+Source success, complete traversal, memory bounds, output, and independent
+artifact verification remain open.  No numerical source or WASM changed.
+
+Added InitialMapAllocate as the next draft.  It uses the strengthened
+allocation theorem's preserved getters to compose no-fit allocation,
+the complete map data operation, and both grid owners.  Its frame records
+the allocator result before map counter initialization.  The draft is
+checking separately and remains outside the checkpoint until accepted.
