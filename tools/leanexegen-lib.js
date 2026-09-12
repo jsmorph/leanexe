@@ -23,6 +23,8 @@ const uint64Maximum = 18446744073709551615n;
 const proofKitModules = Object.freeze([
   "Project.ProofKit.Annotation",
   "Project.ProofKit.Memory",
+  "Project.ProofKit.MemoryFrame",
+  "Project.ProofKit.MemoryRoundtrip",
   "Project.ProofKit.Frame",
   "Project.ProofKit.FuelGuard",
   "Project.ProofKit.BlockLoop",
@@ -67,6 +69,8 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/TalosCompat.lean",
   "proofs/talos/lean/Project/ProofKit/Annotation.lean",
   "proofs/talos/lean/Project/ProofKit/Memory.lean",
+  "proofs/talos/lean/Project/ProofKit/MemoryFrame.lean",
+  "proofs/talos/lean/Project/ProofKit/MemoryRoundtrip.lean",
   "proofs/talos/lean/Project/ProofKit/Frame.lean",
   "proofs/talos/lean/Project/ProofKit/FuelGuard.lean",
   "proofs/talos/lean/Project/ProofKit/BlockLoop.lean",
