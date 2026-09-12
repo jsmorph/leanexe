@@ -20,7 +20,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayHeader` | Kernel-checked reads of all six allocation metadata words, root-relative header interpretation, and preservation of bytes outside the header. |
 | `Project.ProofKit.FixedArrayHeaderExec` | Bounded constant-word and local-word stores, composed into the six-word header instruction sequence with local-frame preservation. |
-| `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
+| `Project.ProofKit.FixedArrayCapacity` | Constant or local result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
 | `Project.ProofKit.FixedArrayCopy` | Complete block-wrapped raw-cell prefix and shifted-suffix copy loops with symmetric region separation and a one-word erase adapter. |
@@ -153,6 +153,11 @@ The projections `header40ToNat`, `header32ToNat`, `header24ToNat`, `header16ToNa
 ## Constant fixed-array capacity
 
 Import `Project.ProofKit.FixedArrayCapacity` when a result branch begins with the compiler's constant-length array-capacity calculation.  `constantProgram length stride capacityLocal` computes the eight-byte header plus `length * stride` payload words, rounds the result to an eight-byte boundary, enforces the minimum capacity of eight bytes, and writes it to the selected combined local.  `constantProgram_spec` executes that exact prefix for arbitrary parameters, internal-local counts, continuations, stores, and postconditions.
+
+`localProgram lengthLocal stride capacityLocal` reads the length from a
+combined local.  `localProgram_spec` derives its execution from the constant
+program theorem after checking that read.  It preserves the same
+normalized-capacity result and continuation frame.
 
 The length-dispatch annotation consumer recognizes this prefix independently in the valid and invalid branch.  It emits a checked region equality only when the complete arithmetic sequence, destination getter and setter, minimum-capacity comparison, replacement branch, and empty alternative match.  The proof recipe names `normalizedCapacity` and `capacityFrame`, letting the allocator theorem consume the computed local without a program-local capacity theorem.
 

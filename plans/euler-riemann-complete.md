@@ -174,8 +174,15 @@ zero selected pointer.
 [The fitting search proof](../proofs/talos/lean/Project/EulerRiemann/AllocationSearchFit.lean)
 proves termination, first-fit selection, bounded predecessor writes,
 unlinking, metadata construction, and the returned root.  Both execution
-audits contain only the accepted standard logical axioms.  Allocator
-composition and the peak-memory bound remain open.
+audits contain only the accepted standard logical axioms.
+[The allocator composition](../proofs/talos/lean/Project/EulerRiemann/AllocationExecute.lean)
+covers search initialization, both outcomes, conditional bump allocation,
+and counter advancement.  It requires address and runtime-cap bounds
+when no node fits.
+[The capacity proof](../proofs/talos/lean/Project/EulerRiemann/AllocationCapacity.lean)
+matches the local-length prefix and gives exactly 8 + 56 times the cell
+count in bytes for supported grids.  Full sweep setup and the peak-memory
+invariant remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

@@ -107,8 +107,12 @@ kernel-checked read/write facts.  Both complete search branches now prove
 termination and exact state updates for every represented free list.
 The no-fit branch preserves the store and returns a zero selected pointer.
 The fitting branch selects the first sufficient node, removes it from the
-free list, writes its header, and returns its root.  Allocator composition
-and the full solver obligations remain open.
+free list, writes its header, and returns its root.  The combined search,
+conditional bump, and allocation-counter sequence now has an execution
+theorem.  The capacity prefix has exact local-length execution and computes
+8 + 56 times the cell count in bytes for supported grids.  Full sweep
+setup, the peak-memory invariant, and the full solver obligations remain
+open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
