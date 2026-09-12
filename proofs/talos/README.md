@@ -153,6 +153,11 @@ The complete timestep now composes the first sweep, acceptance scan,
 conditional second sweep, and intermediate release.  It returns the
 source step's grid, preserves live input grids, and records the resulting
 heap and runtime limits under explicit bounds for both allocations.
+The time helpers now have exact execution theorems for the end-time
+constant, positive-word predicate, rounded valid-advance guard,
+small-natural conversion, grid spacing, and CFL proposal.  The conversion
+covers every supported grid size.  The proofs preserve the full store
+and caller operands across nested calls and cover both minimum branches.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

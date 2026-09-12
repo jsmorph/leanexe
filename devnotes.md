@@ -10129,3 +10129,12 @@ result.  The focused check passed all 3,499 jobs in 2.7 seconds with
 standard-only axioms.  The theorem keeps both allocations' space/cap
 premises explicit.  Retry, time control, initialization, the full memory
 bound, successful completion, and exact-byte closure remain open.
+
+The end-time constant, positive-word predicate, valid-advance guard,
+small-natural conversion, spacing, and CFL proposal now have exact
+execution proofs with full store preservation.  The conversion covers
+all supported sizes through ten exponent intervals with a scoped
+400,000-heartbeat limit.  The proposal check passed all 3,430 jobs in
+1.8 seconds with standard-only axioms.  Retry, time control,
+initialization, the full memory bound, successful completion, and
+exact-byte closure remain open.
