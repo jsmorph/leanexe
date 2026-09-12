@@ -245,6 +245,10 @@ ownership composition derives destination bounds and separation from
 the represented heap and returns ownership of both source and result.
 Its completed-grid helper covers the initializer's larger temporary
 arrays under the requested-capacity and address-bound premises.
+The complete emitted map region now composes input loading, capacity,
+allocation, and mapped-data construction.  It derives capacity and
+no-fit search from the bounded grid and free-list invariant.  Shared
+header-load and allocation-frame preparation lemmas are available in LTG.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

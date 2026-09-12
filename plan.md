@@ -511,6 +511,10 @@ buffers.  Execution must still establish and preserve that reservation.
 Map, append, and extraction now include pointer installation, the length
 store, and their complete data loops.  The map composition returns the
 updated heap and ownership of both grids under the allocation premises.
+The complete emitted map region now includes its input and capacity
+prefixes and derives allocation size and no-fit search from the grid
+and free-list invariant.  Its shared header-load and frame-preparation
+lemmas are indexed in LTG.
 
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.

@@ -24,11 +24,13 @@ import Project.ProofKit.FixedArrayFold
 import Project.ProofKit.FixedArrayFoldBody
 import Project.ProofKit.FixedArrayFrame
 import Project.ProofKit.FixedArrayLengthDispatch
+import Project.ProofKit.FixedArrayLengthRead
 import Project.ProofKit.FixedArrayMapAdd
 import Project.ProofKit.FixedArrayPairResult
 import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArraySearchNone
+import Project.ProofKit.FixedArraySearchPrepare
 import Project.ProofKit.FixedArraySearchProjection
 import Project.ProofKit.FixedArraySearchRead
 import Project.ProofKit.FixedArraySearchRegion
@@ -179,6 +181,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.program_spec
+#check Project.ProofKit.FixedArrayLengthRead.program
+#check Project.ProofKit.FixedArrayLengthRead.program_spec
 #check Project.ProofKit.FixedArrayMapAdd.expected
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
@@ -194,6 +198,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArraySearch.advanceProgram
 #check Project.ProofKit.FixedArraySearch.advanceProgram_spec
 #check Project.ProofKit.FixedArraySearch.body
+#check Project.ProofKit.FixedArraySearch.capacityFrame_need
 #check Project.ProofKit.FixedArraySearch.frame
 #check Project.ProofKit.FixedArraySearch.frame_get
 #check Project.ProofKit.FixedArraySearch.frame_get_before
@@ -204,6 +209,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArraySearch.program
 #check Project.ProofKit.FixedArraySearch.readProgram
 #check Project.ProofKit.FixedArraySearch.readProgram_spec
+#check Project.ProofKit.FixedArraySearch.resultFrame_before
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec

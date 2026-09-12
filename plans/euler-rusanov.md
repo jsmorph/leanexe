@@ -800,3 +800,8 @@ The user canceled the additional 800-grid attempt after rejecting the
 unproved worker loop.  The implementation and its generated files have
 been removed.  The [dev run record](euler-riemann-dev.md) records the
 cancellation.
+
+The [complete solver development](euler-riemann-complete.md) now has a
+checked complete initializer map region.  The remaining initialization,
+time-control, output, memory, and exact-byte obligations precede the
+authorized 192-grid and 800-grid runs.
