@@ -9,3 +9,20 @@ Use `FixedArrayFold.singletonResultProgram_spec` when the proof benefits from th
 Demo 10 supplies provisional evidence for this method.  Four related builds ended without a diagnostic while the fold loop carried its complete result suffix, and three of those builds recorded the six-gibibyte child-memory ceiling; moving the result placement, payload store, singleton reconstruction, and final root transfer into `productSuffix_spec` restored ordinary diagnostics and enabled an independently verified proof.  The shared theorem distills that accepted declaration while preserving arbitrary local roles and fold operations; a fresh fixed-artifact run must still test whether it replaces the artifact-local theorem and changes proof construction.
 
 A manual Demo 11 substitution uses the generated arbitrary-postcondition adapter on the unchanged XOR artifact.  The complete artifact result rebuilt after the proof removed `xorSingleton_spec` and its separate consequence theorem, reducing the behavioral source from 676 to 580 lines and from 2,798 to 2,350 whitespace-delimited words.  This result establishes checked applicability and a structural reduction without measuring proof-generation time.
+
+`BlockLoop.program_spec` composes a block containing a loop with zero
+operand parameters and results.  Its invariant and completed-state
+predicate require an empty operand stack.  A body proved against
+`BlockLoop.stepPost` either takes back edge 0 with a smaller natural
+measure or exits at depth 1 with the completed-state predicate.  The
+theorem composes that iteration proof with an arbitrary suffix
+continuation and handles stack trimming and branch-depth reduction.
+
+Riemann's retry and time-advance loops instantiate this theorem with
+different ownership invariants and measures.  Their iteration predicates
+instantiate the shared postcondition, which avoids separate match
+definitions at composition.  A store-independent measure can leave a
+beta redex after invariant decomposition.  `dsimp only` before a measure
+rewrite discharges that reduction.  Both loop checks pass with standard
+axioms.  Full Riemann artifact verification and a controlled fresh proof
+measurement remain open.

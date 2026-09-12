@@ -5,6 +5,13 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { makeTemporaryDirectory } = require("./temp-directory");
+const {
+  annotationMatchesSource,
+  matchAnnotationDocument,
+  proofRecipePlan,
+  validateAnnotationDocument,
+  validateProofRecipePlan,
+} = require("./leanexegen-annotations");
 
 const repoRoot = path.resolve(__dirname, "..");
 const talosRoot = path.join(repoRoot, "proofs", "talos");
@@ -113,6 +120,7 @@ function loadRegistry() {
         "behaviorTheorems",
         "complete",
         ...(Object.hasOwn(item, "sourceWorkspace") ? ["sourceWorkspace"] : []),
+        ...(Object.hasOwn(item, "annotations") ? ["annotations"] : []),
       ],
       description,
     );
@@ -141,6 +149,9 @@ function loadRegistry() {
       throw new Error(`${description}.complete must be a boolean`);
     }
     sourceWorkspace(item);
+    if (Object.hasOwn(item, "annotations") && typeof item.annotations !== "boolean") {
+      throw new Error(`${description}.annotations must be a boolean`);
+    }
     if (!Array.isArray(item.behaviorTheorems) || item.behaviorTheorems.length === 0 ||
         item.behaviorTheorems.some((theorem) =>
           typeof theorem !== "string" ||
@@ -377,8 +388,8 @@ function replaceIfChanged(source, destination) {
   return true;
 }
 
-function installProgramCache(item, generated, mode, root = proofRoot) {
-  const destination = path.join(root, "Project", item.leanModule, "Program.lean");
+function installProgramCache(item, generated, mode, root = proofRoot, filename = "Program.lean") {
+  const destination = path.join(root, "Project", item.leanModule, filename);
   if (mode === "refresh") {
     replaceIfChanged(generated, destination);
     return;
@@ -393,7 +404,7 @@ function installProgramCache(item, generated, mode, root = proofRoot) {
   const found = fs.readFileSync(generated);
   if (!expected.equals(found)) {
     throw new Error(
-      `${item.name}: generated program differs from the tracked cache; ` +
+      `${item.name}: generated ${filename} differs from the tracked cache; ` +
       `run tools/talos-artifact.js prepare ${item.name} to refresh it`,
     );
   }
@@ -407,10 +418,12 @@ function prepareCase(item, wasmTools, programMode) {
     const stageRoot = path.join(temporaryRoot, "stage");
     const wasm = path.join(stageRoot, "program.wasm");
     const wat = path.join(stageRoot, "program.wat");
+    const annotations = path.join(stageRoot, "program.annotations.json");
     fs.mkdirSync(stageRoot, { recursive: true });
 
     const sourceRoot = sourceWorkspace(item);
     const compileArgs = ["compile", "--module", item.module, "--entry", item.entry, "--out", wasm];
+    if (item.annotations) compileArgs.push("--annotations", annotations);
     runLimited(
       `${item.name} compiler run`,
       "10m",
@@ -458,10 +471,31 @@ function prepareCase(item, wasmTools, programMode) {
       normalizeExpandedProgram(fs.readFileSync(program, "utf8"), item.name),
     );
 
+    const annotationModule = path.join(path.dirname(program), "AnnotationMatches.lean");
+    const recipes = path.join(stageRoot, "proof-recipes.json");
+    if (item.annotations) {
+      const document = JSON.parse(fs.readFileSync(annotations, "utf8"));
+      const programSource = fs.readFileSync(program, "utf8");
+      validateAnnotationDocument(document, fs.readFileSync(wasm));
+      matchAnnotationDocument(document, programSource);
+      const namespace = `Project.${item.leanModule}`;
+      const plan = proofRecipePlan(document, programSource, [], `${namespace}.AnnotationMatches`);
+      validateProofRecipePlan(plan, document);
+      fs.writeFileSync(recipes, `${JSON.stringify(plan, null, 2)}\n`);
+      fs.writeFileSync(annotationModule, annotationMatchesSource(document, {
+        namespace, programModule: `${namespace}.Program`,
+      }, programSource).source);
+    }
+
     const artifactRoot = path.join(generatedRoot, item.name);
     replaceIfChanged(wasm, path.join(artifactRoot, "program.wasm"));
     replaceIfChanged(wat, path.join(artifactRoot, "program.wat"));
     installProgramCache(item, program, programMode);
+    if (item.annotations) {
+      replaceIfChanged(annotations, path.join(artifactRoot, "program.annotations.json"));
+      replaceIfChanged(recipes, path.join(artifactRoot, "proof-recipes.json"));
+      installProgramCache(item, annotationModule, programMode, proofRoot, "AnnotationMatches.lean");
+    }
   } catch (error) {
     operationError = error;
   }

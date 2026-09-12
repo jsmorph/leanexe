@@ -1,4 +1,4 @@
-import Interpreter
+import Interpreter.Wasm.Syntax
 
 namespace Project.ProofKit.Annotation
 

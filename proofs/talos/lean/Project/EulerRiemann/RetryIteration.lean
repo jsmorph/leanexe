@@ -1,4 +1,5 @@
 import Project.EulerRiemann.RetryResources
+import Project.ProofKit.BlockLoop
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ProofKit.FixedArrayCapacity
@@ -15,14 +16,12 @@ local macro "retry_iteration_peel" : tactic => `(tactic|
 
 def retryIterationPost (initial : Store Unit) (initialHeap : Heap) (n : Nat)
     (time source need : UInt64) (grid : Array Traversal.Cell) (expected : Control.Attempt)
-    (spare limit measure : Nat) : Assertion Unit
-  | .Break 0 store frame =>
-      retryInvariant initial initialHeap n time source need grid expected spare limit store frame ∧
-        retryMeasure frame < measure
-  | .Break 1 store frame =>
-      ∃ heap, RetryStoreAt initial initialHeap store heap ∧
-        RetryDone initial initialHeap n time source need expected spare limit store heap frame
-  | _ => False
+    (spare limit measure : Nat) : Assertion Unit :=
+  Project.ProofKit.BlockLoop.stepPost
+    (retryInvariant initial initialHeap n time source need grid expected spare limit)
+    (fun store frame => ∃ heap, RetryStoreAt initial initialHeap store heap ∧
+      RetryDone initial initialHeap n time source need expected spare limit store heap frame)
+    (fun _ frame => retryMeasure frame) measure
 
 theorem retry_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
     (source : FreeNode) (grid : Array Traversal.Cell) (n : Nat) (time : UInt64)
@@ -98,7 +97,8 @@ theorem retry_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (initia
         hFinalReserved, hCapacity, hSeparated⟩⟩, ?_⟩
       · simpa only [hDt] using hDoneFrame
       · simpa only [hGrid] using hFinalOwner
-      · rw [hDoneFrame.measure, hFrame.measure]
+      · dsimp only
+        rw [hDoneFrame.measure, hFrame.measure]
         simp
     | false =>
       have hTrialFrame := (hFrame.guard true).trial ratio result.2.root false
@@ -124,6 +124,7 @@ theorem retry_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (initia
       change retryInvariant _ _ _ _ _ _ _ _ _ _ _ _ ∧ _
       refine ⟨⟨result.1.release result.2, hNextStore,
         Or.inl ⟨fuel - 1, IEEE64.mul 0x3FE0000000000000 dt, hNextFrame, hNextSame, hNextReserved⟩⟩, ?_⟩
+      dsimp only
       rw [hNextFrame.measure, hFrame.measure]
       exact retryFuel_decreases fuel hFuel
   · obtain ⟨fuel, dt, result, hFrame, hResult, hReserved, hCapacity, hSeparated⟩ := hDone

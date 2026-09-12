@@ -13,3 +13,11 @@ After applying `continuingProgram_spec`, use `Frame.internal_getElem?_of_get` or
 Supply the dependent premises of `continuingProgram_spec` by name when its continuation mentions the loaded frame.  In particular, name `hValues`, the three local getters, `hIndexValue`, `hContinue`, `hItem`, `hInput`, and `hIndex`, then leave `hNext` as the sole residual goal.  Positional tactic bullets can shift when Lean infers `hItem` or a getter from the target, producing diagnostics against later premises rather than the intended one.
 
 `FixedArrayTraversalInput.program_spec` covers the older constant-index loader used by unrolled search nodes, and `FixedArrayEqNode` composes that theorem with equality branches.  The dynamic theorems assume the emitted one-word stride and forward address formula, so a reverse traversal or wider source slot needs a distinct checked program.  Keep the fold, map, filter, or search invariant in its semantic entry and use this entry only for the guard, load, and item-local transition.
+
+`CheckedArrayGet.checkedGetCore_spec` covers the separate emitted
+bounds check that loads the array header, compares the staged index,
+and either loads a word or traps.  An in-range index and a represented
+`Array UInt64` establish the successful branch.  The theorem accepts
+arbitrary pointer and index locals and an operand-stack tail, preserves
+the store, and pushes the selected word.  The checked binary64 dot
+product uses it for its seed and per-iteration operand loads.

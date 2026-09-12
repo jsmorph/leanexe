@@ -12998,3 +12998,299 @@ Checkpoint intent: publish ControlAdvanceStep, AdvanceLoopShape,
 AdvanceScan, AdvanceTrial, AdvanceFrame, AdvanceGuard, AdvanceContinue,
 and these four records.  Outer-loop composition and the full solver
 proof gate remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+eleven-path time-loop region checkpoint as
+84a2a1b696f4f2e17047e5db978b6db724a62920, parent
+f6a7ba592d53ef9642e32968e90bf1ba242df4bf, tree
+bdcb4becddef723f9768bfb7fcb82cdb4af9b79d.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Added the outer-loop invariant.  Its current-grid relation distinguishes
+the borrowed initial grid from a tracked result separated from every
+original live grid.  The reservation count allows the first accepted
+result while preserving the caller's input, then restores a reservation
+whenever a later tracked grid is replaced.  Added composition of the
+persistent store relation, distinct roots for separated buffers, and
+the replacement reservation lemma.
+
+AdvanceInvariant and AdvanceResources passed all 3,537 jobs in 3.4 and
+1.5 seconds with standard-only axioms.  Added current-grid replacement
+preservation: the successful trial retains all original grids, the
+tracked old result is released when present, and the new result keeps
+its represented values and separation from every original live grid.
+
+AdvanceReplace passed all 3,538 jobs in 1.6 seconds with standard-only
+axioms.  Added the outer iteration composition, including terminal
+assignment, successful scan and retry, conditional old-grid release,
+persistent ownership, reservation restoration, and strict fuel decrease.
+This iteration draft awaits its focused check.
+
+The first AdvanceIteration check failed at two premises: the reservation
+count needed a Boolean case split, and a frame getter did not reduce
+through the local frame definition.  The draft and diagnostics remain.
+The user asked about compiler results and LTG use.  This resumed proof
+work had used existing ProofKit and earlier compiler ownership reports,
+but had omitted LTG retrieval and the required review after proof runs.
+
+Reviewed the compiler, annotation, artifact-proving, and LTG references.
+Searched the loops and proof-construction indexes for counter, frame,
+direct-call, and loop support.  Read counter-transition,
+local-frame-projection, guarded-back-edge, and annotated-fold-frame-accessors.
+The counter entry supplies the exact nonzero UInt64 decrement fact used
+by both controllers.  Replaced the local arithmetic derivation with
+that shared theorem.  The scalar guarded-body and fold-frame interfaces
+require descriptors that the complete solver does not have.
+
+Compiled Control.solve under the standard local runner with a five-minute
+timeout into the fresh tmp/euler-riemann-annotations-aG92Bc directory.
+The command exited zero.  Its 21,386-byte WASM equals the preserved artifact
+byte for byte, with SHA-256
+45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f.
+The sidecar has 177 direct calls, one array fold, and three while loops.
+The scan and controller descriptors are null.  ScalarDescriptor rejects
+calls and binary64 operations.  The ownership report identifies the
+tracked-grid release in retry and advance, agreeing with the current
+borrowed-versus-owned grid invariant.
+
+The first full annotation match failed on function-5.direct-call-1.
+The consumer assumed a two-space indentation increment, while verifier
+emit prints nested instructions with a one-space increment.  It also
+expected typed parenthesized UInt64 constants.  Updated instruction-list
+selection to read the child indentation and normalized the two decimal
+constant spellings.  All 181 regions then matched the unchanged model.
+Added successful alternate-indentation cases and rejected wrong-argument
+cases to the existing annotation test.  The existing generator supplies
+only the scan region and tail equalities for this artifact.  Repeated
+fuel/completion guards across retry, advance, and growCells are the next
+shared proof boundary to extract and connect to checked annotations.
+
+The annotation and cache tests passed.  FuelGuard.program_spec first
+reduced to four frame-equality obligations.  The retrieved Frame.ext
+theorem supplies the equality after restoring an empty operand stack.
+The revised generic theorem passed in 2.8 seconds with standard-only
+axioms.  Removed the resulting unreachable fallback tactic.  The
+counter-transition substitution passed in 6.7 seconds and its decrease
+theorem uses propext and Quot.sound.
+
+Added a fuel/completion-guard matcher under the existing while annotation.
+It checks the entire seven-instruction prefix, including both branches
+and the i32 result type.  Generated region and tail equalities connect
+the shared theorem to the decoded loop.  Tests accept the intended
+shape and omit the guard recipe for changed comparison, branch value,+or result type.  Added the support module to the proof-kit inventory
+and a provisional fuel-completion-guard LTG entry.
+
+Source-driven registrations can now request annotations.  The existing
+Talos artifact command compiles the sidecar, matches every region,
+validates recipes, and generates AnnotationMatches.lean.  The proof
+check compares that cache alongside Program.lean.  Enabled the option
+for euler_riemann.  Preparation passed, preserving the existing WASM,
+WAT, and Program.lean, and matched guards at fuel local zero and done
+locals eleven, ten, and eight in functions 74, 78, and 88.
+
+Replaced four retry/advance guard derivations with applications of the
+generated equalities and FuelGuard.program_spec.  The focused check
+passed all 3,588 jobs.  AdvanceGuard took 1.8 seconds.  Public execution
+audits still use only the standard axioms.  This establishes reuse in
+two controller layouts and a checked structural match for initialization.
+The complete artifact and independent package gates remain open, so
+this is component evidence rather than an accepted full-solver run.
+
+The build also exposed unnecessary dependencies: Annotation imported
+the entire interpreter including examples, and every generated annotation
+module imported pair-result allocation support.  Annotation now imports
+WASM syntax.  Generation now requests pair-result support only when that
+annotation kind occurs.  These import edits require a fresh generated
+cache and another focused check.  No numerical source or WASM instruction
+changed.  A documentation edit initially failed on a missing line context
+and applied no files.  The corrected bounded edit succeeded.
+
+The previous guard-test record has a stray plus before "or result type".
+The tested mutations change the comparison, branch value, or result type.
+LTG rebuild first rejected an unsorted features list.  Sorted features,
+consumers, and related entries, then rebuilt the indexes and declaration
+check.  Catalog and forest checks accepted seven categories and 29
+entries.  The annotation and cache tests passed, as did all 106 maintained
+documentation checks.  Regenerated the annotation cache after reducing
+imports.  Preparation passed with unchanged numerical bytes and model.
+
+The focused LTG and Riemann check passed all 3,554 jobs after import
+reduction.  LTGCheck took 1.6 seconds, Annotation 281 milliseconds,
+AnnotationMatches 1.5 seconds, RetryGuard 1.9 seconds, and AdvanceGuard
+1.7 seconds.  Reviewed the generated equalities, changed guard proofs,
+axiom reports, and catalog metadata.  The checks establish successful
+retrieval and component reuse.  They supply no controlled proof-generation
+speed measurement.
+
+Compiled Clob.matchFuel as a separate program for transfer testing.
+The new binary digest is
+b6de0fb97ad7f6f3438d1d4886cf2cb2136334fbd50e1fc8c6689119dd05fc06,
+while the retained artifact digest is
+971deb775adf62fb4db34ffe353053b8660b4460a13c870341eba84626410e8a.
+The annotation match rejected function-8.while-loop-0 against the older
+model.  Preserved both artifacts and the failed comparison.  The retained
+LoopControl proof has the same fuel/completion guard with done local 24.
+Its zero-fuel theorem requires no completion getter.  Added that
+short-circuit case to FuelGuard and replaced its three guard derivations.
+The focused transfer check and corrected AdvanceIteration are running.
+
+That joint check reached its three-minute limit while rebuilding the
+retained order-book allocator dependencies.  BookAllocFit completed in
+123 seconds.  The requested guard and iteration targets had not produced
+diagnostics.  Split the three order-book guard declarations and their
+instruction definition into LoopGuard.lean, importing the frozen program
+and shared guard support.  LoopControl imports that module and retains
+the unchanged result-epilogue declarations.
+
+The isolated guard module passed in one second.  Added a checked region
+equality for the retained func14 block at index 26, loop prefix [0,7).
+The region equality and all three execution audits use standard axioms.
+The shared zero-fuel theorem passed and captures the skipped completion
+read.  The transfer supplies a third local layout and a separate retained
+artifact.  The annotation mismatch remains a recorded failed comparison.
+
+AdvanceIteration's next check exposed a frame mismatch: branch
+simplification replaced scan status by zero, while the trial theorem
+still received a frame containing the unreduced scan status.  The
+successful branch now names its scan frame with status zero and the
+computed alpha.  The full iteration then passed in 5.1 seconds, including
+ownership replacement, restored reservations, and strict fuel decrease.
+Removed three unused simplification arguments.  The enclosing loop and
+function composition, initializer, output, numerical success, and full
+artifact proof remain open.  Reviewed these results against the earlier
+frame and compact-loop LTG entries before continuing composition.
+
+Read the compact-loop-suffix-boundary entry and the pinned wp_block_cons
+and wp_loop_cons declarations.  RetryLoop repeats stack trimming and
+continuation dispatch that the outer loop also needs.  Added an unchecked
+BlockLoop draft that takes an invariant, completed-state predicate,
+measure, and proved iteration.  It moves the shared empty-stack block/loop
+composition into one theorem and uses the retrieved Frame.ext result.
+It remains separate from the pending guard checkpoint until checked.
+
+The five-minute order-book integration build timed out after rebuilding
+PartialBookAllocBump, BookErasePrefix, PartialBookAllocPrepare, Model,
+PartialBookAlloc, BookReplaceStore, BookReplaceCopy, and PartialBookAllocCopy.
+It had not reached LoopControl.  Isolated PartialTradeUpdate as the next
+dependency boundary.  The joint three-minute diagnostic also checked the
+new BlockLoop draft.  Its back-edge branch required explicit unfolding of
+stepPost in the final simplification.  Added that unfolding.  The failed
+draft's axiom report included sorryAx from the unsolved goal and supplies
+no accepted theorem.  AdvanceLoop is drafted as a use of the shared rule.
+
+The three-minute dependency build completed BookReplaceFinish,
+PartialBookUpdate, PartialBookPrepare, TradeAllocSearch, and
+TradeAppendCopy before timing out.  Split the Riemann targets from that
+dependency rebuild.  BlockLoop then passed in 3.6 seconds with standard
+axioms, and LTGCheck passed in 1.8 seconds.  AdvanceLoop exposed separate
+match definitions for the same iteration postcondition.  Both Riemann
+iteration predicates now instantiate BlockLoop.stepPost, and RetryLoop
+uses the shared composition theorem.  ExecutionAdvance is drafted with
+explicit source-success and fuel premises.  It does not discharge source
+success.  The ordinary LTG, knowledge, annotation, and cache tests pass.
+
+The shared iteration predicate leaves a beta redex around a measure
+that ignores the store.  Explicit beta reduction before the two measure
+rewrites in each iteration proof resolved that application failure.
+RetryIteration, RetryLoop, and ExecutionRetry passed in 3.1, 1.5, and
+2.0 seconds.  AdvanceIteration and AdvanceLoop passed in 3.5 and
+1.4 seconds.  Their audits use standard axioms.  ExecutionAdvance's
+epilogue needed the optional local-read equalities retained in context,
+as ExecutionRetry already does.  Added those five facts for the next check.
+
+The epilogue simplifier then reduced the existential Boolean tracking
+flag to two alternatives and rewrote the returned time to endTime.
+Constructing the resulting alternative from the tracked flag and using
+the proved time equality closed that goal.  ExecutionAdvance passed
+in 3.5 seconds with propext, Classical.choice, and Quot.sound.  Reviewed
+its source-success premise, initial reservation count, returned pointer
+pair, terminal time, final grid ownership, and preservation of original
+live grids.  Numerical success remains an explicit unfinished theorem.
+
+Added BlockLoop to the proof-kit inventory and the retrieved
+compact-loop-suffix-boundary entry.  Both checked Euler loop uses and
+the beta-reduction application failure are recorded there.  LTG rebuild,
+catalog, and forest checks pass with seven categories and 29 entries.
+Fresh artifact preparation passed in tmp/leanexe-talos-PQ3nDr and included
+the zero-fuel support in recipes.  Numerical source and model are
+unchanged.  Isolated TradeAllocFit with a three-minute limit to finish
+the order-book integration dependency check.
+
+TradeAllocFit passed at the isolated boundary.  The importing LoopControl
+and updated LTGCheck are checking under a four-minute limit.  The final
+annotation, cache, LTG, knowledge, and 106-document tests pass.  The
+generated Riemann WASM remains 21,386 bytes with SHA-256
+45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f.
+
+Review of the LTGCheck diff confirmed the catalog discrepancy already
+recorded on September 11: CheckedArrayGet had hand-added generated checks
+without catalog metadata.  Preserved that existing theorem and its
+F64DotCheckedBits uses by adding it to the traversal entry and proof-kit
+inventory.  Regeneration will now retain those declaration checks from
+their metadata.  No existing theorem or worked example is removed.
+
+The order-book integration build passed all 3,420 jobs.  Remaining
+dependency builds included TradeAllocBump (63 seconds), TradeAllocAppend
+(14 seconds), PartialTradeUpdate (15 seconds), and LoopControl
+(3.7 seconds).  LTGCheck took 1.7 seconds.  Rebuilt the catalog after
+adding CheckedArrayGet metadata and started its final focused check.
+The reviewed checkpoint includes the annotation consumer and case-driver
+support, FuelGuard and BlockLoop, generated guard matches, Euler guard
+and loop reuse, the complete conditional advance execution theorem,
+order-book guard reuse, LTG metadata and inventories, tests, and their
+documentation.  The numerical source, Program cache, and WASM are
+unchanged.  All paper submission files remain outside this checkpoint.
+
+The final focused check passed all 3,565 jobs.  LTGCheck took 2.8 seconds,
+retained CheckedArrayGet, and included both new shared modules.  The
+advance execution audit remained limited to propext, Classical.choice,
+and Quot.sound.  The catalog, forest, annotation, cache, and documentation
+tests pass.  The reviewed diff has no whitespace errors, and no new
+proof source contains an admission, axiom declaration, or native decision
+procedure.  Publication will stage the following bounded paths:
+
+```text
+devnotes.md
+docs/annotations.md
+docs/verifying.md
+journal.md
+ltg/categories/arrays/tools.jsonl
+ltg/categories/compiler-motifs/tools.jsonl
+ltg/categories/loops/tools.jsonl
+ltg/categories/memory/tools.jsonl
+ltg/categories/proof-construction/tools.jsonl
+ltg/entries/compact-loop-suffix-boundary/README.md
+ltg/entries/compact-loop-suffix-boundary/entry.json
+ltg/entries/fixed-array-traversal-input/README.md
+ltg/entries/fixed-array-traversal-input/entry.json
+ltg/entries/fuel-completion-guard/README.md
+ltg/entries/fuel-completion-guard/entry.json
+plans/euler-riemann-complete.md
+proofs/talos/README.md
+proofs/talos/cases.json
+proofs/talos/lean/Project/ClobMatchFuel/LoopControl.lean
+proofs/talos/lean/Project/ClobMatchFuel/LoopGuard.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceGuard.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceInvariant.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceIteration.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceLoop.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceReplace.lean
+proofs/talos/lean/Project/EulerRiemann/AdvanceResources.lean
+proofs/talos/lean/Project/EulerRiemann/AnnotationMatches.lean
+proofs/talos/lean/Project/EulerRiemann/ExecutionAdvance.lean
+proofs/talos/lean/Project/EulerRiemann/RetryFrame.lean
+proofs/talos/lean/Project/EulerRiemann/RetryGuard.lean
+proofs/talos/lean/Project/EulerRiemann/RetryIteration.lean
+proofs/talos/lean/Project/EulerRiemann/RetryLoop.lean
+proofs/talos/lean/Project/ProofKit/Annotation.lean
+proofs/talos/lean/Project/ProofKit/BlockLoop.lean
+proofs/talos/lean/Project/ProofKit/FuelGuard.lean
+proofs/talos/lean/Project/ProofKit/LTGCheck.lean
+proofs/talos/lean/Project/ProofKit/README.md
+test/leanexegen.js
+test/talos_cache.js
+tools/leanexegen-annotations.js
+tools/leanexegen-lib.js
+tools/talos-lib.js
+```
