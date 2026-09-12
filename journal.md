@@ -13797,3 +13797,57 @@ open.  This checkpoint stages only ArrayField, the seven initializer map
 modules, LTG metadata/indexes/guidance, the artifact import inventory,
 and the notes, journal, plan, and theorem inventory.  The existing paper
 outputs remain unstaged.
+
+Checkpoint b7def01ee89e9d5cc02ec6afa0f3d8705e413609 is published
+and fetched with parent c06f54f5f7247da222eba49ea80df4d19bc1db19
+and tree d6b173f292beb9a238b425797febd66da2d95274.  Local and
+fetched commit, parent, message, and tree match.  Index and tracked
+worktree content equal the fetched tree.  The initializer's emitted
+map allocation uses capacity/result locals 54/59.  Append uses 59/64,
+and both extraction branches use 60/65.  Their parameter count is five,
+while the existing generic allocator-window theorem assumes one
+parameter, an empty free list, and enough existing pages.  The current
+sweep allocator handles reuse and growth but fixes its scratch slots.
+Those premises cannot be assumed for initialization.
+
+Added a shared capacity-arithmetic draft using the exact compiler formula
+and a no-overflow bound on the rounded byte count.  It generalizes the
+sweep's width-seven, 640,000-cell arithmetic to arbitrary word width and
+length, including the initializer's larger temporary arrays.  The proof
+uses UInt64-to-Nat arithmetic and checked division by eight.
+
+The shared capacity arithmetic passed in 14 seconds with propext and
+Quot.sound.  All four initializer capacity sites match the existing
+localProgram theorem.  The combined execution and 1,048,576-cell byte
+bound passed in 13 seconds after adding explicit reduction of the
+stride-seven word.  The LTG allocation query supplied the existing
+capacity, allocator-window, and result-frame support.  Added a generic
+bump-prefix draft parameterized by its need, top, and page locals so
+the initializer can reuse the checked heap arithmetic without assuming
+the sweep's fixed frame layout.
+
+The generic bump prefix passed in 3.2 seconds after adding its explicit
+Frame import.  The installation draft needed a separate final record
+projection step so its preserved-local getter rewrote before the frame
+definition unfolded.  Installation then passed in 3.3 seconds.  The
+complete generic bump branch passed in 2.1 seconds, composing existing
+memory growth, heap arithmetic, result-frame, and header-store support.
+All four emitted initializer bump sites and their execution theorem
+passed in 3.6 seconds.  Every public audit uses standard axioms.
+
+The fixed-array-capacity LTG entry now includes local-valued lengths and
+the checked general byte-count theorem.  Added provisional
+fixed-array-bump-growth guidance and checked declarations.  The artifact
+import inventory includes the new modules and their existing header and
+memory-growth support.  Free-list search, the initializer's resource
+invariant, source success, and complete exact-byte closure remain open.
+
+LTGCheck passed in 5.3 seconds.  The 36-entry catalog and knowledge
+forest checks pass, as do their tests and the proof-generator tests.
+The latter preserved tmp/leanexegen-test-xiCowy.  The documentation
+check accepts 113 maintained Markdown files.  The bounded checkpoint
+contains the four shared capacity/bump modules, two initializer consumers,
+LTG entries/indexes/declaration checks, artifact import inventory,
+and the journal, notes, plan, and theorem inventory.  It preserves the
+unchanged numerical source, compiler output, previous data, and unrelated
+paper outputs.

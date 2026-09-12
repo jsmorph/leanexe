@@ -329,6 +329,14 @@ local outside the compiler's scratch and counter slots.  Shared
 field-access, frame, counter, and loop theorems discharge those regions
 at the default heartbeat limit.  Growth traversal and initialization
 allocation remain open.
+The [initialization capacities](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationCapacity.lean)
+match all four emitted prefixes and prove the exact byte count through
+1,048,576 temporary cells.  The
+[bump branches](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationBump.lean)
+match the three local layouts and compose shared address, memory-growth,
+heap-top, and header-store theorems.  Their 32-bit and runtime-cap bounds
+remain explicit.  Free-list search and the complete initialization
+resource invariant remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
