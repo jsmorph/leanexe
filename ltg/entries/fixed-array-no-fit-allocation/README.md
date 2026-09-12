@@ -14,6 +14,14 @@ decrease.  Shared field-read and pointer-advance theorems discharge each
 iteration, including memory bounds.  The search exits with current and
 result equal to zero and preserves every surrounding local.
 
+`FixedArraySearch.frame_get_before` identifies every parameter or
+saved-local getter before the scratch window with the unchanged prefix
+frame.  The initializer heap-allocation theorem uses it to return
+explicit getter preservation for all three emitted layouts.  The
+shared projection checked in 40 seconds and the consumer in 50 seconds,
+with standard axioms.  The first projection draft left an equivalent
+expanded list-length bound, which the corrected proof closes with omega.
+
 `noneRegion_spec` accepts an explicit equality from the emitted loop
 body to the shared search body.  It transports that equality with an
 arbitrary module before a consumer supplies its concrete module.
@@ -47,3 +55,11 @@ These build durations include imports and system I/O.  A subsequent
 and a 23.49-percent 60-second system full-I/O-stall average.  The
 measurements do not isolate elaboration cost or establish a performance
 improvement.
+
+The Riemann map-data consumer composes pointer installation, the length
+store, counter initialization, and the checked map loop.  Its bounded
+write range then composes with existing heap-allocation bounds and
+source-owner preservation to establish both live-grid owners.  The
+map-data proof checked in 63 seconds and ownership composition in 41
+seconds with standard axioms.  The complete initializer and independent
+artifact verification remain pending.

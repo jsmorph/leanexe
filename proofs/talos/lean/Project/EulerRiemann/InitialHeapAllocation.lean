@@ -1,5 +1,6 @@
 import Project.EulerRiemann.InitialAllocationExecute
 import Project.EulerRiemann.HeapState
+import Project.ProofKit.FixedArraySearchProjection
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit Project.Runtime
@@ -26,11 +27,15 @@ theorem initial_allocation_heap_spec (site : InitialAllocationSite)
     (hPages : store.mem.pages ≤ 65536)
     (hCap : FixedArrayBump.requiredPages heap.top need ≤ store.memoryCap module 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ previous : UInt64,
+    (hNext : ∀ previousAfter : UInt64,
       (heap.allocate need).At (heap.allocateStore store need) →
       Project.Clob.FreshFixedArrayAt (heap.allocateStore store need) (heap.top + 48) need 7 →
+      (∀ index : Nat, index < site.capacityLocal →
+        (FixedArraySearch.frame params saved tail need previousAfter 0 (heap.top + 48 + need)
+          ((heap.top + 48 + need - 1) / 65536 + 1) (heap.top + 48)).get index =
+        (FixedArraySearch.frame params saved tail need previous current capacity next result).get index) →
       wp module rest Q (heap.allocateStore store need)
-        (FixedArraySearch.frame params saved tail need previous 0 (heap.top + 48 + need)
+        (FixedArraySearch.frame params saved tail need previousAfter 0 (heap.top + 48 + need)
           ((heap.top + 48 + need - 1) / 65536 + 1) (heap.top + 48)) env) :
     wp module (site.allocationProgram ++ rest) Q store
       (FixedArraySearch.frame params saved tail need previous current capacity next result) env := by
@@ -54,8 +59,19 @@ theorem initial_allocation_heap_spec (site : InitialAllocationSite)
   · exact hFit32
   · exact hPages
   · exact hCap
-  · intro previous
-    simpa only [initial_allocateStore_eq heap store need hNone] using hNext previous hNewHeap hFresh
+  · intro previousAfter
+    have hPreserved (index : Nat) (hIndex : index < site.capacityLocal) :
+        (FixedArraySearch.frame params saved tail need previousAfter 0 (heap.top + 48 + need)
+          ((heap.top + 48 + need - 1) / 65536 + 1) (heap.top + 48)).get index =
+        (FixedArraySearch.frame params saved tail need previous current capacity next result).get index := by
+      have hPrefix : index < params.length + saved.length := by omega
+      exact (FixedArraySearch.frame_get_before params saved tail need previousAfter 0
+        (heap.top + 48 + need) ((heap.top + 48 + need - 1) / 65536 + 1) (heap.top + 48)
+        index hPrefix).trans
+        (FixedArraySearch.frame_get_before params saved tail need previous current capacity next result
+          index hPrefix).symm
+    simpa only [initial_allocateStore_eq heap store need hNone] using
+      hNext previousAfter hNewHeap hFresh hPreserved
 
 #print axioms initial_allocateStore_eq
 #print axioms initial_allocateHeap_eq
