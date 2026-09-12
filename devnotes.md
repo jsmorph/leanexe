@@ -10147,3 +10147,10 @@ that invariant, preserves the byte limit, and proves that releasing its
 result restores the original reservation count.  The focused check
 passed all 3,502 jobs in 1.3 seconds with standard-only axioms.  The
 initializer's byte bound and full control composition remain open.
+
+RetryTrial now composes spacing, the reserved timestep, and acceptance
+over the exact generated region.  RetryBranches proves accepted-result
+assignment and rejected-trial release, rounded halving, owner tracking,
+parameter replacement, and fuel decrement.  The focused branch check
+passed all 3,509 jobs in 3.1 seconds with standard-only axioms.  The
+complete retry-loop invariant and termination remain open.

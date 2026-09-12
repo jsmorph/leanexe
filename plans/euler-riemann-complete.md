@@ -256,6 +256,14 @@ the ten small-natural exponent intervals, rounded binary64 operations,
 both minimum branches, full store preservation, and caller operands
 retained below nested calls.  Successful retry and final-time completion
 still require the controller and numerical progress proofs.
+[The retry trial](../proofs/talos/lean/Project/EulerRiemann/RetryTrial.lean)
+composes spacing, the reserved timestep, and acceptance while preserving
+the resulting heap and live-input facts for its continuation.
+[The retry branches](../proofs/talos/lean/Project/EulerRiemann/RetryBranches.lean)
+prove accepted-result assignment and rejected-trial release, rounded
+halving, owner tracking, parameter replacement, and fuel decrement.
+These region proofs leave the complete loop invariant and termination
+for composition.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
