@@ -22,6 +22,7 @@ import Project.ProofKit.FixedArrayFilterLt
 import Project.ProofKit.FixedArrayFindIdxEq
 import Project.ProofKit.FixedArrayFold
 import Project.ProofKit.FixedArrayFoldBody
+import Project.ProofKit.FixedArrayFrame
 import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayMapAdd
 import Project.ProofKit.FixedArrayPairResult
@@ -162,6 +163,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFold.forwardSetupFrame
 #check Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec
 #check Project.ProofKit.FixedArrayFold.resultFrame
+#check Project.ProofKit.FixedArrayFold.resultFrame_get_ne
 #check Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne
 #check Project.ProofKit.FixedArrayFold.resultFrame_get_result
 #check Project.ProofKit.FixedArrayFold.resultFrame_locals_length

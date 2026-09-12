@@ -13965,3 +13965,145 @@ The staged whitespace check found a trailing blank line in the new
 search-shape module.  Removed that line and two adjacent empty lines.
 The final ten-file count is 549 lines, and the staged whitespace check
 passes.  The edit changes no Lean declaration or proof term.
+
+Checkpoint 2ae3f6d4bbe1b16ad85d47da6c0fe2f8726c8cfa is published
+and fetched with parent 52e50f17061e84eed9cc247ac88a0c0678236a4b
+and tree e52f83fd777e84b430db223f2cf26744be58c44f.  Commit,
+parent, message, tree, index, and tracked worktree content match the
+fetched branch.  LTGCheck's completed build reported 102 seconds.
+
+Added InitialHeapAllocation to relate the shared no-fit store result
+to the existing Heap.allocateStore transformation.  Its execution
+draft composes the checked initializer allocation with Heap.allocate_at
+and allocated_fresh, returning the represented heap and fresh metadata
+needed by the following map or copy.  It preserves the existing heap
+API and numerical program.
+
+Added InitialGrowthBounds for the arithmetic needed by the forthcoming
+growth invariant.  It uses the emitted allocation costs, including the
+map buffers that remain allocated: 48 metadata bytes plus 8 length
+bytes plus 56 bytes per cell for both the map and concatenation.  The
+draft bounds power-of-two counts through round 20, the shifted temporary
+indices, both allocations per growth step, the remaining reservation,
+and the final extraction.  The starting reservation bound is 212,002,896
+bytes after the singleton, for at most 640,000 requested cells.  This is
+a pending arithmetic lemma, not yet a complete program memory bound.
+
+InitialHeapAllocation passed in 29 seconds, and InitialGrowthBounds
+passed in 38 seconds.  Every public audit uses standard axioms.  The
+remaining-byte arithmetic includes both growth allocations and the final
+extraction, but execution must still maintain its reservation premise.
+The checked heap adapter reuses existing allocation preservation and
+fresh-header results.
+
+The LTG category search for resultProgram_spec and lengthStoreLocal_spec
+retrieved fixed-array-fold-structure and fixed-array-result.  Added an
+initializer installation draft for the four emitted root-transfer and
+length-store sites.  It composes those existing declarations and the
+existing result-frame getters, avoiding another local-copy derivation.
+
+InitialArrayInstall passed in 92 seconds with standard axioms.  Added
+a shared result-frame getter equality that preserves parameter reads
+as well as unchanged internal-local reads.  The existing conditional
+getter theorem requires an internal-local premise, while the map setup
+also needs parameter 1.  InitialMapReady uses that equality and the
+checked counter-frame accessors.  The InitialMapData draft composes
+root installation, the length store, counter initialization, and the
+complete map loop, including source preservation and the combined
+write range from before the header store.
+
+The shared getter equality passed in 93 seconds with standard axioms
+and two unused simp arguments.  Removed those arguments.  The combined
+three-minute build then timed out before the map-ready consumer reported
+a result.  Split the ready-frame definition and getter proofs into
+InitialMapReadyFrame, which imports only shared frame/copy support.
+The remaining InitialMapReady module proves the loop-frame invariant
+from those checked projections.
+
+The cleaned shared frame getter passed in 50 seconds, and the isolated
+map-ready frame/getter module passed in 63 seconds with standard axioms.
+The full map-data composition is checking.  Added HeapGridFinish to
+combine existing allocation bounds, fresh metadata, free-list separation,
+and a completed grid write range.  This draft returns Heap.At and
+Heap.Owns for the completed allocated grid without the sweep resource
+helper's 640,000-cell restriction, which excludes initialization's larger
+temporary arrays.  It uses the caller's requested-capacity and memory
+bounds and leaves the existing sweep helper unchanged.
+
+InitialMapReady passed in 54 seconds with standard axioms.  The combined
+InitialMapData build reached its three-minute timeout without a diagnostic
+from that module.  Split its emitted-program equality into
+InitialMapDataShape before another execution-proof attempt.  The previous
+draft and timeout remain recorded.  Started the independent HeapGridFinish
+check through the standard local runner with a two-minute limit.
+
+HeapGridFinish reached that limit after rebuilding SweepResources in
+88 seconds with standard axioms.  It produced no diagnostic for the new
+theorem.  Its next check will first isolate the existing OwnedGrid and
+HeapGrid dependency boundary.  InitialMapDataShape is checking separately.
+Added InitialExtractData to compose the shared result-local assignment
+and length store with the checked extraction loop.  This draft preserves
+the source and combines the header and payload write ranges.
+
+Read the frozen func88 instruction lists through the compiler-annotation
+parser.  The append installation occupies indices 119 through 124,
+followed by the two copy loops at 125 through 130.  The extraction
+installation occupies 61 through 66, followed by its copy at 67 through
+69.  These match the current shape declarations.  The shared getter
+equality also preserves the extraction source and count locals.
+
+The isolated map-data shape reached its two-minute limit without a
+diagnostic.  Reduced its imports from the complete map-loop execution
+proof to InitialMapLoad, which defines the emitted loop.  The execution
+consumer now imports the loop theorem directly.  Read-only host metrics
+showed 2,490,744 KiB available memory, 60 KiB free swap, and 60-second
+memory/full and I/O/full pressure averages of 2.98 and 18.80 percent.
+No resource settings or other processes changed.  Added the append-data
+draft using the same installation and composed write-range pattern.
+
+The reduced-import map shape reached its three-minute limit without a
+diagnostic.  Its setup records 3,465 transitive imports.  Split the proof
+into the eight-instruction prefix and a List.take_add_one composition
+using the already checked initial_map_region equality, avoiding a fresh
+direct comparison of the nested loop.  The first edit command failed
+before changing files because its journal context was incomplete.  The
+corrected edit uses the verified journal tail.  A focused runner command
+will check this revised proof with Lean's documented profiler enabled.
+
+The rebuilt 37-entry catalog, LTG tests, knowledge-package tests, and
+proof-generator tests pass.  The latter preserves
+tmp/leanexegen-test-m2dnEr.  Updated the concise notes and solver plan
+with the checked heap adapter, installation, frame, and arithmetic
+results.  The map, append, extraction, and completed-grid ownership
+composition drafts remain pending checks.
+
+The focused profile measured 172 seconds importing dependencies and
+then reached the three-minute limit without a theorem diagnostic.
+This identifies import time as the dominant measured cost of that run.
+The earlier short limits cannot distinguish the new proof from startup
+cost under current conditions.  Isolated the eight-instruction prefix
+in InitialMapDataPrefix before retrying its consumer.  Subsequent focused
+checks use six-minute timeouts while retaining the standard local CPU,
+memory, swap, priority, and single-process limits.  The LTG declaration
+check is running with that timeout.  The 114-file documentation check
+passes.  The checked source proofs and numerical artifacts are unchanged.
+
+Reviewed the six checked new modules for the next checkpoint:
+InitialHeapAllocation, InitialGrowthBounds, InitialArrayInstall,
+InitialMapReadyFrame, InitialMapReady, and FixedArrayFrame.  The explicit
+staged set also includes the updated LTG entry, four category indexes,
+LTGCheck, artifact import inventory, theorem and proof-kit documentation,
+solver plan, plan.md, devnotes.md, and journal.md.  The unfinished
+MapDataPrefix, MapDataShape, MapData, AppendData, ExtractData, and
+HeapGridFinish drafts remain unstaged.  The checkpoint awaits the
+running LTG declaration check before publication.  Numerical source,
+frozen WASM, earlier data and figures, and unrelated paper outputs remain
+outside this mutation.
+
+LTGCheck passed all 3,401 jobs, reporting 154 seconds for its rebuilt
+module.  It resolves the new shared getter declaration in the 37-entry
+catalog.  The reviewed checkpoint contains 20 files and six new Lean
+modules totaling 258 lines.  Its staged whitespace check passes.
+Started the isolated map-data prefix check with the six-minute limit.
+The execution and ownership composition drafts remain outside the
+checkpoint while checking continues.
