@@ -13377,3 +13377,76 @@ plans/euler-riemann-complete.md, proofs/talos/README.md, and
 proofs/talos/lean/Project/EulerRiemann/ExecutionInitialScalars.lean,
 proofs/talos/lean/Project/EulerRiemann/ExecutionInitialStates.lean,
 proofs/talos/lean/Project/EulerRiemann/ExecutionInitialWeighted.lean.
+
+Published 104d37ff0815f0b39f04f7a9c505f01202826880, parent
+daf31e113af01a426220e0725a0d7e84f048819d, tree
+dd5b695424bbbacb8248c57023a8d422ba6912e3, with headline
+"Prove Riemann initialization arithmetic".  The non-forced SSH push
+and fetch succeeded.  Commit, parent, tree, message, index, and tracked
+worktree comparisons passed.  Unrelated paper files remain preserved.
+
+Read emitNatMul in LeanExe/Wasm/Binary.lean and its scalar-descriptor
+exclusion.  The initial-cell coordinate calculation repeats this checked
+natural multiplication for 4*n and 5*coordinate.  No existing proof-kit
+module covers its complete guard and result sequence.  Added a shared
+CheckedNatMul draft for arbitrary staged operand locals and stack tails.
+Its premise bounds the natural product below 2^64, and its arithmetic
+lemma discharges the compiler's maximum-word division test using Lean's
+Nat.le_div_iff_mul_le.  This draft is not in LTG or the proof-kit
+inventory until its checks and concrete uses pass.
+
+The combined CheckedNatMul draft reached its two-minute limit without
+a diagnostic.  Split the arithmetic guard theorem into
+CheckedNatMulArithmetic and retained the WP draft separately.  The
+next diagnostic checks only the arithmetic dependency.  The unchecked
+WP proof's repeated broad simplification will be replaced by separate
+zero and nonzero branch proofs before it runs again.
+
+The isolated arithmetic theorem passed in 8.4 seconds with propext
+and Quot.sound.  The finite branch proof then reported an application
+failure at the typed conditional.  Removing the earlier Frame import
+also removed TalosCompat's checked control-type normalization rules.
+Added the direct TalosCompat import required by the emitted typed iff
+instructions.  This is the same checked normalization used by FuelGuard.
+
+The zero branch passed.  A focused trace of the nonzero branch showed
+that opcode simplification had unfolded Locals.get into its parameter/
+local lookup, leaving the combined getter hypotheses unable to rewrite
+that form.  The proof now normalizes copies of both getter hypotheses
+with Locals.get before executing the nested branch.  Removed the trace
+and the unused stack-replacement getter lemmas.
+
+CheckedNatMul's zero and general execution theorems passed in
+2.1 seconds with standard axioms.  Added a concrete initial-cell use:
+the checked region equality identifies func87 instructions [5,9),
+and initial_quadruple_spec composes the preceding staging and following
+assignment for every n ≤ 800.  Its continuation retains the original
+operand tail beneath the pending minimum's literal five.  This concrete
+prefix is the next check before adding the shared module to LTG.
+
+The prefix region equality checked.  Composition then exposed an
+indexed parameter read where its premise supplied a combined getter.
+Added Frame.parameter_getElem_of_get alongside the existing internal
+local projections and used it for the staged grid size.  This preserves
+a generic frame instead of replacing it with a concrete parameter list.
+
+The initial-cell multiplication prefix passed in 16 seconds after
+Frame checked in 8.1 seconds.  Its region equality uses propext, and
+the composed execution theorem uses the three standard axioms.
+Added checked-natural-multiplication as provisional LTG support, including
+the timeout, import, and getter-normalization failures.  Added the
+parameter projection to the existing frame entry and included both
+shared multiplication modules in the artifact proof-kit inventory.
+
+The rebuilt catalog and forest accept 30 entries.  The LTG, knowledge,
+and leanexegen tests passed, including package filtering, archived
+support, and learning protocol cases.  The documentation check accepts
+107 maintained documents.  The three-minute LTGCheck build completed
+after rebuilding the dependencies of Frame, including the allocator,
+filter, and traversal support.  LTGCheck itself took 1.7 seconds.
+This closes the shared multiplication checkpoint's integration gates.
+The reviewed checkpoint includes its two shared modules, frame projection,
+concrete Riemann prefix, LTG metadata/indexes/checks, proof-kit inventory,
+solver plan, proof inventory, notes, and journal.  The numerical source
+and frozen artifact remain unchanged.  New NatSub and CheckedDivMod
+drafts belong to the following checkpoint and will remain unstaged.
