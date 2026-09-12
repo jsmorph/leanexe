@@ -11611,3 +11611,73 @@ checked source safety theorem, the serializer evidence-path correction,
 and the corresponding documentation and journal.  Preserve all prior
 generated artifacts and unrelated paper state.  The complete solver and
 aggregate proof gate remain unfinished.
+
+The 105-file documentation check passed.  Published
+3befbfb9b3ef79fd753fdf12b9a1084aca9c1448, parent
+75b2dbef4037f1b40634a0ad50ec80641f017717, tree
+8fcc4f53d730fbc94253345ae9ff892b7818a099.  Non-forced SSH publication
+and fetch passed, followed by commit, parent, tree, index, and tracked
+worktree equality checks.  Unrelated paper and generated evidence remain.
+
+Started the map-sharing correction with a callback that returns two runtime
+counters after allocating and releasing one temporary array.  Mapping one
+input cell should record one free and three allocations: the input array,
+output array, and callback temporary.  Repeated callback evaluation changes
+the second counter.  Added the fixture to the focused and core tests before
+changing map lowering.
+
+The map fixture built in 5.1 seconds and failed with counters [1, 4]
+instead of [1, 3], retaining tmp/array-map-sharing-e6AIVA.  Added per-cell
+local bindings to the array-map IR.  Multi-slot results use the existing
+internal-value materializer, then store the result's local slots.  The
+emitter executes those bindings once per input cell, with the applicable
+release-aware expression and binding emitters.  Updated call-index shifting,
+scratch bounds, liveness, release scanning, ownership diagnostics, and the
+scalar map annotation pattern for the additional IR field.  Scalar map
+bodies retain their previous representation.  The change is pending build
+and tests.
+
+The map IR and backend passed their 58-job build.  Added inline-release
+and empty-map cases, rebuilt the examples in 5.3 seconds, and started the
+28-case focused test.  Also made the Riemann source's neighbor indices,
+neighbor states, and complete cell input explicit let bindings.  The
+compiler deliberately leaves potentially trapping aggregate call arguments
+lazy, which had repeated cellInputs and neighborIndex calls.  These source
+bindings specify evaluation before the consuming call and share each
+value.  The existing neighbor-bound proofs establish valid reads for the
+solver grid.  The numerical expressions are definitionally unchanged.
+Source proofs and word comparisons will be rerun for this edit.
+
+All 28 focused cases passed.  The changed traversal and its dependent
+control, initial-thermodynamic, and safety proofs passed a 3,443-job build
+with standard-only axiom audits.  All 62 grid/control comparisons then
+passed, retaining tmp/euler-riemann-grid-gpb3JM.  Started the broader core
+test.  Saved the new control WAT beside that artifact.  A read-only call
+count script first had a quoting error, then reused obsolete function
+indices.  The source bindings changed dependency order, so the new
+ownership report is required before comparing named helper counts.
+Updated the compiler and language references with map evaluation semantics.
+
+The core test passed 805 accepted, 48 rejected, and 14 trapped cases,
+retaining tmp/core-correctness-2YLFDy.  The report command preceding context
+recovery had completed, but its session result was unavailable.  No Lean
+process remained.  Repeated the bounded diagnostic with an explicit fresh
+output path, tmp/euler-riemann-grid-gpb3JM/control.ownership.txt, through
+tools/leanrun --timeout 3m and the proof workspace's lake env.  It exited
+zero.  This was a report retrieval repeat, with no known target timeout.
+
+The old and new reports establish each artifact's function numbering.
+WAT call counts changed from seven to one for sweep to updateCell, twelve
+to one for updateCell to cellInputs, sixteen to two for cellInputs to
+neighborIndex, and seven to one for growCells to initialCell.  These
+observations confirm shared evaluation in the emitted code.  They do
+not establish the complete execution or memory theorem.
+
+tools/check-wat.sh passed all ten WAT/binary round trips, retaining
+tmp/wat-check-4L3P41.  Updated the current plan and concise notes with
+the map-sharing result.  Checkpoint intent: publish the reviewed map IR,
+materialization, emitter and analysis changes, three counter fixtures,
+Riemann source bindings, and their documentation and test evidence.
+Preserve all prior generated evidence and unrelated paper state.  The
+successful-completion, complete memory, exact-WASM, and aggregate proof
+gates remain open.

@@ -40,14 +40,19 @@ def neighborIndex (n index : Nat) (axis forward : Bool) : Nat :=
     if coordinate = 0 then index else index - stride
 
 def cellInputs (n : Nat) (axis : Bool) (grid : Array Cell) (cell : Cell) : Inputs :=
-  let left := orient axis grid[neighborIndex n cell.index axis false]!.state
+  let leftIndex := neighborIndex n cell.index axis false
+  let leftState := grid[leftIndex]!.state
+  let left := orient axis leftState
   let center := orient axis cell.state
-  let right := orient axis grid[neighborIndex n cell.index axis true]!.state
+  let rightIndex := neighborIndex n cell.index axis true
+  let rightState := grid[rightIndex]!.state
+  let right := orient axis rightState
   ⟨left, center, right⟩
 
 def updateCell (n : Nat) (axis : Bool) (ratio : UInt64)
     (grid : Array Cell) (cell : Cell) : Cell :=
-  let out := evaluate ratio (cellInputs n axis grid cell)
+  let input := cellInputs n axis grid cell
+  let out := evaluate ratio input
   let next := orient axis ⟨out.density, out.momentum, out.transverse, out.energy⟩
   ⟨cell.index, next, out.pressure, out.status⟩
 

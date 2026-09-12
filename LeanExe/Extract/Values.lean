@@ -767,8 +767,9 @@ mutual
     | .arrayExtractSlots _ _ array start stop =>
         addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
           (exprUsedSlots stop)
-    | .arrayMapSlots sourceWidth _ _ _ array itemStart bodyValues =>
-        let bodyLive := removeLiveSlots (exprListUsedSlots bodyValues)
+    | .arrayMapSlots sourceWidth _ _ _ array itemStart bodyValues bodyLets =>
+        let bodyLive := removeLiveSlots
+          (pruneLocalLetsWithLive bodyLets (exprListUsedSlots bodyValues)).snd
           (slotsFrom itemStart sourceWidth)
         addLiveSlots (exprUsedSlots array) bodyLive
     | .arrayFoldMultiSlot sourceWidth resultWidth _reverse array start stop initValues accStart
@@ -2790,9 +2791,10 @@ mutual
         addLiveSlots
           (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
           (exprReleasedSlots stop)
-    | .arrayMapSlots _ _ childMask ownedMask array _ bodyValues =>
+    | .arrayMapSlots _ _ childMask ownedMask array _ bodyValues bodyLets =>
         addLiveSlots
-          (addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues))
+          (addLiveSlots (exprReleasedSlots array)
+            (addLiveSlots (exprListReleasedSlots bodyValues) (localLetsReleasedSlots bodyLets)))
           (transferredOwnerSlotsFromValues childMask ownedMask bodyValues)
     | .arrayFoldMultiSlot _ _ _reverse array start stop initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
