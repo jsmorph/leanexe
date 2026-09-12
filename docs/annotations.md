@@ -62,7 +62,7 @@ The current compiler emits fifteen region kinds.  The parameter object differs b
 | `leanexe.array.filter-lt.v1` | A complete bounded fixed-array wrapper that retains elements below a constant threshold. |
 | `leanexe.loop.fold.v1` | A recognized general loop-fold emission with accumulator, staging, completion, release, and result locals. |
 | `leanexe.array.fold.v1` | A fixed-array fold with traversal bounds, direction, source width, accumulator layout, scalar descriptor, and result placement. |
-| `leanexe.loop.while.v1` | A source while loop whose condition and body reify into a supported scalar descriptor. |
+| `leanexe.loop.while.v1` | A source while loop, with a scalar descriptor when its condition and body reify. |
 | `leanexe.loop.scalar-post-test.v1` | A post-test scalar loop produced from a multi-slot fold or counter-transfer shape. |
 | `leanexe.array.length-dispatch.v1` | A fixed-size or bounded-length public input check and its valid and invalid branches. |
 | `leanexe.array.find-idx-eq.v1` | A one-word forward `Array.findIdx?` scan that compares each element with a literal `UInt64` key and encodes the first match as index plus one. |
@@ -86,6 +86,13 @@ The encoded-index scanner recognizes the descriptor's exact six-top-level-instru
 The proof consumer evaluates a descriptor over a compact `UInt64` state and generates named condition and body equations.  Neutral ProofKit theorems connect those equations to Talos locals and weakest-precondition execution.  The application proof supplies the invariant, measure, representation facts, and terminal mathematics.
 
 ## Recipe generation
+
+While regions with the guard `fuel != 0 && done == 0` receive checked
+guard and tail equalities even when the body has no scalar descriptor.
+`FuelGuard.program_spec` consumes the two local getters and either the
+exit or body continuation.  The matcher checks all guard instructions,
+short-circuit branches, result types, and the exit depth.  The Riemann
+retry, time-advance, and initializer loops share this structure.
 
 `proof-recipes.json` is a strict generated plan over the validated regions.  Each recipe names its region kind, exact match theorem, compatible ProofKit theorem, required imports, generated semantic facts, applicable LTG entries, and the premises left to the artifact proof.  Composition records connect compatible recipes when a checked theorem spans several regions or a region plus a recognized suffix.
 

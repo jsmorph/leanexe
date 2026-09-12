@@ -290,8 +290,22 @@ cover active/completed entry, end-time lookup, and terminal assignment.
 [Grid replacement](../proofs/talos/lean/Project/EulerRiemann/AdvanceContinue.lean)
 preserves a borrowed initial grid or releases a tracked current grid,
 then advances rounded time, replaces parameters and tracking, and
-decrements fuel.  The outer-loop ownership invariant and termination
-composition remain open.  All region audits use standard axioms.
+decrements fuel.  The [outer-loop invariant](../proofs/talos/lean/Project/EulerRiemann/AdvanceInvariant.lean)
+tracks borrowed or newly allocated grids, live-grid separation, source
+agreement, and reservations for subsequent trials.  The iteration
+preserves this invariant and decreases a natural measure.  The
+[complete advance function](../proofs/talos/lean/Project/EulerRiemann/ExecutionAdvance.lean)
+composes entry, terminating loop, and the four returned words under
+explicit source-success and sufficient-fuel premises.  Both retry and
+advance now use the shared `BlockLoop.program_spec` composition theorem.
+All public audits use standard axioms.
+Compiler annotation generation now runs through the case's artifact
+command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
+and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
+replace the four retry/advance guard derivations.  Generated equalities
+also match the initializer guard.  Review each remaining proof attempt
+against its compiler evidence and retrieved support, and record reusable
+results and failed applications in the journal.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

@@ -1,4 +1,5 @@
 import Project.ClobMatchFuel.PartialTradeUpdate
+import Project.ClobMatchFuel.LoopGuard
 
 /-!
 # Match-loop control
@@ -11,23 +12,6 @@ result and places the three public results on the value stack.
 namespace Project.ClobMatchFuel.LoopControl
 
 open Wasm Project.ClobMatchFuel
-
-def loopGuardProg : Wasm.Program :=
-  [
-  .localGet 0,
-  .constI64 0,
-  .eqI64,
-  .eqz,
-  .iff 0 1 [
-    .localGet 24,
-    .constI64 0,
-    .eqI64
-  ] [
-    .const 0
-  ] [] [.i32],
-  .eqz,
-  .br_if 1
-  ]
 
 def resultEpilogueProg : Wasm.Program :=
   [
@@ -63,90 +47,6 @@ def CompletedResultAt (base : Locals) (book trades remaining : UInt64) : Prop :=
   base.locals[14]? = some (.i64 remaining) ∧
   base.locals[15]? = some (.i64 1) ∧
   base.params.length = 9 ∧ base.locals.length = 76 ∧ base.values = []
-
-set_option Elab.async false in
-theorem loopGuard_done_spec
-    (env : HostEnv Unit) (st : Store Unit) (base : Locals) (fuel : UInt64)
-    (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
-    (hValues : base.values = [])
-    (hFuel : base.get 0 = some (.i64 fuel))
-    (hDone : base.get 24 = some (.i64 1))
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hBreak : Q (.Break 1 st base)) :
-    wp «module» (loopGuardProg ++ rest) Q st base env := by
-  simp only [Locals.get] at hFuel hDone
-  have hBase : { base with values := [] } = base := by
-    cases base
-    simp_all
-  unfold loopGuardProg
-  simp only [List.cons_append, List.nil_append]
-  wp_run
-  rw [hFuel]
-  wp_run
-  refine wp_iff_cons rfl ?_
-  by_cases hFuelZero : fuel = 0
-  · subst fuel
-    rw [if_neg (by simp)]
-    norm_num
-    simpa [wp_simp, hValues, hBase] using hBreak
-  · rw [if_pos (by simp [hFuelZero])]
-    norm_num
-    rw [hDone]
-    norm_num
-    simpa [wp_simp, hValues, hBase] using hBreak
-
-set_option Elab.async false in
-theorem loopGuard_zero_fuel_spec
-    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
-    (hValues : base.values = [])
-    (hFuel : base.get 0 = some (.i64 0))
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hBreak : Q (.Break 1 st base)) :
-    wp «module» (loopGuardProg ++ rest) Q st base env := by
-  simp only [Locals.get] at hFuel
-  have hBase : { base with values := [] } = base := by
-    cases base
-    simp_all
-  unfold loopGuardProg
-  simp only [List.cons_append, List.nil_append]
-  wp_run
-  rw [hFuel]
-  wp_run
-  refine wp_iff_cons rfl ?_
-  rw [if_neg (by simp)]
-  norm_num
-  simpa [wp_simp, hValues, hBase] using hBreak
-
-set_option Elab.async false in
-theorem loopGuard_running_spec
-    (env : HostEnv Unit) (st : Store Unit) (base : Locals) (fuel : UInt64)
-    (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
-    (hValues : base.values = [])
-    (hFuel : base.get 0 = some (.i64 fuel))
-    (hFuelNonzero : fuel ≠ 0)
-    (hDone : base.get 24 = some (.i64 0))
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hRest : wp «module» rest Q st base env) :
-    wp «module» (loopGuardProg ++ rest) Q st base env := by
-  simp only [Locals.get] at hFuel hDone
-  have hBase : { base with values := [] } = base := by
-    cases base
-    simp_all
-  unfold loopGuardProg
-  simp only [List.cons_append, List.nil_append]
-  wp_run
-  rw [hFuel]
-  wp_run
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp [hFuelNonzero])]
-  norm_num
-  rw [hDone]
-  norm_num
-  simpa [wp_simp, hValues, hBase] using hRest
 
 set_option Elab.async false in
 theorem resultEpilogue_completed_spec

@@ -1,4 +1,5 @@
 import Project.EulerRiemann.RetryBranches
+import Project.ProofKit.ScalarTransitionU64
 
 namespace Project.EulerRiemann.Execution
 open Wasm
@@ -67,15 +68,8 @@ theorem RetryFrameAt.measure {frame : Locals} {fuel : UInt64} {n : Nat}
 
 theorem retryFuel_decreases (fuel : UInt64) (hFuel : fuel ≠ 0) :
     (fuel - 1).toNat + 1 < fuel.toNat + 1 := by
-  have hPositive : 0 < fuel.toNat := by
-    by_contra h
-    have hZero : fuel = 0 := UInt64.toNat.inj (by change fuel.toNat = 0; omega)
-    exact hFuel hZero
-  have hOne : (1 : UInt64).toNat = 1 := rfl
-  have hAtLeastOne : 1 ≤ fuel.toNat := by omega
-  rw [UInt64.toNat_sub_of_le _ _
-    (by simpa only [UInt64.le_iff_toNat_le, hOne] using hAtLeastOne), hOne]
-  omega
+  exact Nat.add_lt_add_right
+    (Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt hFuel) 1
 
 #print axioms RetryFrameAt.guard
 #print axioms RetryFrameAt.trial

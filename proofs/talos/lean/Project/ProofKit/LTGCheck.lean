@@ -1,5 +1,6 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
+import Project.ProofKit.BlockLoop
 import Project.ProofKit.CheckedArrayGet
 import Project.ProofKit.Control
 import Project.ProofKit.EncodedIndexDecoder
@@ -18,6 +19,7 @@ import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
 import Project.ProofKit.Frame
+import Project.ProofKit.FuelGuard
 import Project.ProofKit.GuardedBackEdge
 import Project.ProofKit.Memory
 import Project.ProofKit.ScalarTransition
@@ -31,6 +33,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ArrayFold.foldPrefix
 #check Project.ProofKit.ArrayFold.foldPrefix_size
 #check Project.ProofKit.ArrayFold.foldPrefix_succ
+#check Project.ProofKit.BlockLoop.program_spec
+#check Project.ProofKit.BlockLoop.stepPost
 #check Project.ProofKit.CheckedArrayGet.checkedGetCore
 #check Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
 #check Project.ProofKit.EncodedIndexDecoder.program
@@ -134,6 +138,9 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.Frame.withValues_locals
 #check Project.ProofKit.Frame.withValues_params
 #check Project.ProofKit.Frame.withValues_values
+#check Project.ProofKit.FuelGuard.program
+#check Project.ProofKit.FuelGuard.program_spec
+#check Project.ProofKit.FuelGuard.zeroFuel_spec
 #check Project.ProofKit.Memory.read64_write64_disjoint
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fuel-completion-guard",
+  "title": "Fuel and completion loop guard",
+  "summary": "Executes a checked short-circuit fuel and completion guard, preserving the frame and store and exposing either Break 1 or an arbitrary body continuation.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["compiler-derived-evidence", "completion", "counter", "fuel", "loop-exit", "partial-descriptor", "short-circuit"],
+  "annotationKinds": ["leanexe.loop.while.v1"],
+  "modules": ["Project.ProofKit.FuelGuard"],
+  "declarations": ["Project.ProofKit.FuelGuard.program", "Project.ProofKit.FuelGuard.program_spec", "Project.ProofKit.FuelGuard.zeroFuel_spec"],
+  "premises": ["Generated equality between the exact guard region and FuelGuard.program", "An empty operand stack", "Combined-local getters for UInt64 fuel and completion words", "The exit or body continuation selected by those words"],
+  "result": "Zero fuel or a nonzero completion word produces Break 1.  Otherwise the remaining body executes with the original store and frame.",
+  "consumers": ["clob-match-fuel", "euler-riemann-advance", "euler-riemann-retry"],
+  "relatedEntries": ["compact-loop-suffix-boundary", "counter-transition", "local-frame-projection"],
+  "exclusion": null
+}

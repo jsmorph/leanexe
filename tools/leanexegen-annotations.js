@@ -993,7 +993,10 @@ function resolveInstructionSelection(body, listPath) {
       start = parent + 1;
       end = delimiters[0];
     }
-    level += 2;
+    const childInstructions = lines.slice(start, end)
+      .filter((line) => /^\s+\./.test(line));
+    level = childInstructions.length === 0 ? level + 1 :
+      Math.min(...childInstructions.map(indentation));
   }
   return { lines, start, end, level };
 }
@@ -1052,8 +1055,10 @@ function matchDirectCallRegion(program, function_, region) {
 }
 
 function normalizeInstructions(instructions) {
-  return instructions.map((instruction) =>
-    instruction.endsWith(",") ? instruction.slice(0, -1) : instruction);
+  return instructions.map((instruction) => {
+    const trimmed = instruction.endsWith(",") ? instruction.slice(0, -1) : instruction;
+    return trimmed.replace(/^\.constI64 ([0-9]+)$/, ".constI64 ($1 : UInt64)");
+  });
 }
 
 function matchFixedArrayConstantCapacity(body, listPath) {
@@ -2000,10 +2005,11 @@ function matchWhileLoopRegion(program, function_, region) {
   if (block.length !== 1 || !block[0].startsWith(".loop ")) {
     fail(`${region.id}: decoded while-loop block does not contain one loop`);
   }
-  const loop = normalizeInstructions(resolveInstructionList(body, [
+  const loopPath = [
     ...blockPath,
     { instructionIndex: 0, field: "loop" },
-  ]));
+  ];
+  const loop = normalizeInstructions(resolveInstructionList(body, loopPath));
   const exitIndex = loop.indexOf(".br_if 1");
   if (exitIndex < 1 || loop[exitIndex - 1] !== ".eqz" || loop.at(-1) !== ".br 0") {
     fail(`${region.id}: decoded while-loop guard or back edge does not match`);
@@ -2014,7 +2020,45 @@ function matchWhileLoopRegion(program, function_, region) {
     regionKind: region.kind,
     parameters: region.parameters,
     entryEligible: scalarEntryState(function_, region, program) !== null,
+    fuelGuard: matchFuelGuard(body, loopPath, loop, exitIndex),
   };
+}
+
+function matchFuelGuard(body, loopPath, loop, exitIndex) {
+  if (exitIndex !== 6) return null;
+  const fuel = loop[0].match(/^\.localGet ([0-9]+)$/);
+  if (fuel === null || loop[4] !== ".iff 0 1 [") return null;
+  const conditionPath = [...loopPath, { instructionIndex: 4, field: "then" }];
+  const condition = normalizeInstructions(resolveInstructionList(body, conditionPath));
+  const done = condition[0]?.match(/^\.localGet ([0-9]+)$/);
+  if (done === undefined || done === null) return null;
+  const expected = [
+    `.localGet ${fuel[1]}`, ".constI64 (0 : UInt64)", ".eqI64", ".eqz",
+    ".iff 0 1 [", `.localGet ${done[1]}`, ".constI64 (0 : UInt64)", ".eqI64",
+    "] [", ".const 0", "] [] [.i32]", ".eqz", ".br_if 1",
+  ];
+  const selected = resolveInstructionIntervalSource(body, loopPath, 0, 7);
+  const found = normalizeInstructions(selected.trim().split("\n").map((line) => line.trim()));
+  if (JSON.stringify(found) !== JSON.stringify(expected)) return null;
+  return { fuelLocal: Number(fuel[1]), doneLocal: Number(done[1]), loopPath };
+}
+
+function fuelGuardSupport(match, annotationNamespace) {
+  if (!match.fuelGuard) return [];
+  const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+  return [{
+    declaration: `${annotationNamespace}.${name}_guard_eq`,
+    purpose: "identify the checked fuel and completion guard",
+  }, {
+    declaration: `${annotationNamespace}.${name}_guard_tail_eq`,
+    purpose: "split the loop into its checked guard and remaining body",
+  }, {
+    declaration: "Project.ProofKit.FuelGuard.program_spec",
+    purpose: "execute the guard from fuel and completion getters with an arbitrary body continuation",
+  }, {
+    declaration: "Project.ProofKit.FuelGuard.zeroFuel_spec",
+    purpose: "exit on zero fuel without reading the short-circuited completion local",
+  }];
 }
 
 function matchScalarPostTestLoopRegion(program, function_, region) {
@@ -2127,6 +2171,7 @@ function loopRecipe(
         program: exactRecipeProgram(match, annotationNamespace),
       },
       supporting: [
+        ...fuelGuardSupport(match, annotationNamespace),
         ...(match.counterTransferIdentityEligible ? [{
           declaration:
             `${annotationNamespace}.${name}_terminates_with_counter_transfer_identity`,
@@ -2213,6 +2258,7 @@ function loopRecipe(
       } : {}),
     },
     supporting: [
+      ...fuelGuardSupport(match, annotationNamespace),
       ...(arrayFold ? [{
         declaration: `${annotationNamespace}.${name}_eq`,
         purpose: "rewrite the selected decoded interval to its named exact program",
@@ -4761,8 +4807,30 @@ theorem ${name}_tail_eq :
 
 function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
+  let needsFuelGuard = false;
   for (const function_ of document.functions) {
     for (const region of function_.regions) {
+      if (program !== null && region.kind === "leanexe.loop.while.v1") {
+        const guard = matchWhileLoopRegion(program, function_, region).fuelGuard;
+        if (guard !== null) {
+          needsFuelGuard = true;
+          const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+          const path = leanAnnotationPath(guard.loopPath);
+          const resolved = `(Project.ProofKit.Annotation.resolve ` +
+            `${job.namespace}.func${function_.wasmIndex} ${path}).getD []`;
+          declarations.push(`def ${name}_guard_program : Wasm.Program :=
+  Project.ProofKit.FuelGuard.program ${guard.fuelLocal} ${guard.doneLocal}
+
+theorem ${name}_guard_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${path} 0 7 = some ${name}_guard_program := by
+  rfl
+
+theorem ${name}_guard_tail_eq :
+    ${resolved} = ${name}_guard_program ++ (${resolved}).drop 7 := by
+  rfl`);
+        }
+      }
       if (region.kind === "leanexe.array.length-dispatch.v1") {
         const match = program === null
           ? null : matchFixedArrayLengthDispatchRegion(program, function_, region);
@@ -5115,7 +5183,10 @@ theorem ${composition.name}_eq :
     module: `${job.namespace}.AnnotationMatches`,
     source: `import ${job.programModule}
 import Project.ProofKit.Annotation
-import Project.ProofKit.FixedArrayPairResult
+${document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.pair-result.v1"))
+    ? "import Project.ProofKit.FixedArrayPairResult\n" : ""}
+${needsFuelGuard ? "import Project.ProofKit.FuelGuard\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.find-idx-eq.v1"))
     ? "import Project.ProofKit.FixedArrayFindIdxEq\n" : ""}

@@ -399,6 +399,7 @@
     },
     {
       "name": "euler_riemann",
+      "annotations": true,
       "module": "Project.EulerRiemann.Control",
       "entry": "Project.EulerRiemann.Control.solve",
       "sourceWorkspace": "proof",

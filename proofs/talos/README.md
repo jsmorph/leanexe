@@ -183,7 +183,16 @@ The outer time-loop regions now have execution proofs for scan, CFL
 proposal, checked retry-fuel increment, retry, terminal assignment,
 and replacement of the current grid.  Replacement covers both the
 borrowed initial grid and release of a tracked grid.  Frame preservation
-and active/completed guards support the remaining outer-loop composition.
+and active/completed guards support the checked outer-loop invariant.
+The complete advance function now composes the terminating loop and
+returned values, preserving original live grids, tracking the final
+grid's ownership, and restoring reservations for later allocations.
+It requires source success and a sufficient fuel count.  Retry and
+advance share `ProofKit.BlockLoop.program_spec`, while generated
+annotation equalities identify their shared fuel/completion guards.
+LTG records both shared proof uses.  Source success, initialization,
+output execution, full memory initialization, and exact-byte closure
+remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

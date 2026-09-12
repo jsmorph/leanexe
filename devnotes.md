@@ -10184,3 +10184,76 @@ release, followed by time advancement, parameter/tracker replacement,
 and fuel decrement.  Its focused check passed all 3,535 jobs in
 4.0 seconds with standard-only axioms.  Outer-loop composition and the
 remaining complete-solver obligations are open.
+
+## 2026-09-12: Riemann compiler evidence and LTG
+
+The resumed controller work omitted LTG retrieval and the required review
+after proof runs.  The review now uses the compiler sidecar, ownership
+report, exact model, and the core LTG indexes.  The unchanged solver
+binary is 21,386 bytes with SHA-256
+`45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f`.
+
+The sidecar exposed a consumer bug: instruction selection assumed
+two-space nesting, while the verifier prints this model with one-space
+nesting.  The matcher now reads child indentation and accepts both
+decimal UInt64 literal spellings.  All 181 Riemann regions match.
+Tests preserve rejection of changed operands and changed guard semantics.
+
+`FuelGuard.program_spec` factors the repeated fuel/completion guard.
+Generated region and tail equalities identify it in retry, advance,
+and initialization.  Four checked controller guard proofs now use the
+shared theorem.  `counter-transition` replaces the local decrement
+derivation, and `Frame.ext` closes guard-frame equality.  The new
+`fuel-completion-guard` LTG entry records component reuse with provisional
+status.  The catalog and forest checks accept all 29 entries.
+
+The Riemann registration requests annotations through the existing Talos
+artifact command.  It produces the sidecar, recipes, and tracked
+`AnnotationMatches.lean`, and the check path compares the generated
+annotation cache.  The annotation module's syntax-only import and
+conditional pair-result import avoid unrelated proof dependencies.
+The annotation/cache tests and 106-document check pass.  Complete source
+success, full exact-WASM execution, and both production runs remain open.
+
+The retained order-book matcher provides a separate-artifact use of the
+same guard at completion local 24.  Its guard module proves the exact
+retained instruction-region equality and running, completed, and
+zero-fuel execution.  The zero-fuel case supplied an additional shared
+theorem that requires no completion-local read.  All four audits use
+standard axioms.  Current order-book compiler output differs from its
+retained binary, and the attempted new-annotation comparison failed.
+
+The first transfer check timed out while rebuilding allocator proofs.
+The guard declarations now occupy a separate module with their required
+imports.  Its focused check passed in one second.  The importing
+LoopControl module still needs its dependency rebuild to finish.
+The Riemann outer-iteration proof passed in 5.1 seconds after the
+reservation-count case split and successful scan-frame normalization.
+
+The shared `BlockLoop.program_spec` now composes both Riemann loops.
+It takes their proved iteration, invariant, completed-state predicate,
+and decreasing natural measure, and handles branch depth and stack
+trimming.  Both iteration predicates instantiate its shared postcondition.
+Retry's full execution theorem rechecked after this substitution.
+The new advance invariant carries source agreement, current ownership,
+separation from original live grids, and the reservations restored after
+replacement.  `advance_exact_of_success` passed in 3.5 seconds and
+returns the represented source grid and final time with those resource
+facts.  It assumes source success and sufficient fuel.  All public
+audits use standard axioms.  Initialization, output, the initial memory
+bound, source success, and exact-byte closure remain open.
+
+The compact-loop LTG entry now includes the checked composition and
+both uses.  Its record preserves the beta-reduction application failure
+and the corrected proof boundary.  The forest still has 29 entries.
+Fresh artifact preparation passed in `tmp/leanexe-talos-PQ3nDr` and
+regenerated recipes with the zero-fuel theorem.  The numerical program
+and its generated model remain unchanged.
+
+The order-book integration check completed after isolating its allocator
+dependencies.  LoopControl passed in 3.7 seconds.  LTGCheck passed in
+1.7 seconds before the final catalog repair.  The traversal entry now
+retains the existing CheckedArrayGet theorem and its checked dot-product
+uses, correcting the hand-added generated checks that had no catalog
+metadata.  The proof-kit inventory exposes that existing support to
+future artifact-proof tasks.
