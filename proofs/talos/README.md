@@ -168,13 +168,17 @@ The retry trial region now composes spacing, the reserved timestep, and
 acceptance for arbitrary scratch-local contents.  Separate branch proofs
 cover accepted-result assignment and rejected-result release, rounded
 halving, owner tracking, parameter replacement, and fuel decrement.
-The complete retry-loop invariant and termination remain open.
 Checked retry-frame lemmas now preserve the parameters, tracker, result
 fields, completion flag, and frame size through each region.  The
 active and completed guards and validity-call prefix have execution
 proofs.  Fuel unfolding, strict counter decrease, and live-grid
-preservation through a trial and its release support the pending loop
-composition.
+preservation through a trial and its release support the loop invariant.
+The complete generated retry function now has an execution theorem under
+an explicit source-success premise.  It composes entry, terminating
+iteration, completed exit, and all four returned words.  The result
+preserves live grids and runtime limits and consumes one heap reservation.
+The final solver proof must establish source success and final-time
+completion before either production calculation.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

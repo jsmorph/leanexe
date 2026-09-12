@@ -262,8 +262,7 @@ the resulting heap and live-input facts for its continuation.
 [The retry branches](../proofs/talos/lean/Project/EulerRiemann/RetryBranches.lean)
 prove accepted-result assignment and rejected-trial release, rounded
 halving, owner tracking, parameter replacement, and fuel decrement.
-These region proofs leave the complete loop invariant and termination
-for composition.
+These regions compose through the retry invariant and termination proof.
 [The retry frame](../proofs/talos/lean/Project/EulerRiemann/RetryFrame.lean)
 preserves the parameters, tracker, result fields, completion flag, and
 frame size through each region and proves strict fuel decrease.
@@ -271,9 +270,15 @@ frame size through each region and proves strict fuel decrease.
 covers active entry, completed exit, and the validity-call prefix.
 [Retry resources](../proofs/talos/lean/Project/EulerRiemann/RetryResources.lean)
 preserve every original live grid through a timestep and trial release.
-The combined invariant separates active and completed frames.  The
-forthcoming successful-loop theorem has an explicit source-success
-premise, which the final solver proof must discharge.
+The combined invariant separates active and completed frames.
+[The retry iteration](../proofs/talos/lean/Project/EulerRiemann/RetryIteration.lean)
+preserves that invariant and strictly decreases its measure at each
+back edge.  [The complete retry function](../proofs/talos/lean/Project/EulerRiemann/ExecutionRetry.lean)
+composes entry, terminating loop, completed exit, and four returned
+words.  It returns the source result's represented grid, preserves
+original live grids and runtime limits, and consumes one reservation.
+The theorem requires source retry success.  The final solver proof
+must discharge that premise and establish completion at time 0.8.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
