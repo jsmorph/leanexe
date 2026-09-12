@@ -10044,3 +10044,13 @@ decreasing measure.  The focused build passed all 3,446 jobs in 2.9
 seconds with standard-only axiom audits.  Allocator composition, the
 peak-memory bound, complete control, successful completion, and exact-byte
 closure remain open.
+
+The complete generated search/bump/counter sequence now composes its
+checked fragments.  Its postcondition identifies the selected allocation
+model and root while preserving the caller's preceding locals.  The
+shared capacity theorem now accepts a length read from a local, and the
+sweep specialization proves the requested byte count is exactly
+8 + 56 times the cell count through 640,000 cells.  The focused build
+passed all 3,449 jobs with standard-only axiom audits.  Full sweep setup,
+the peak-memory invariant, complete control, successful completion, and
+exact-byte closure remain open.
