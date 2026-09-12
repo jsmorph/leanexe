@@ -240,6 +240,14 @@ grid and resulting heap, preserves runtime limits, and preserves every
 live input grid with separation from the result.  The theorem retains
 explicit space and runtime-cap bounds for both possible allocations.
 The full solver's peak-memory invariant must discharge those premises.
+[The time guard](../proofs/talos/lean/Project/EulerRiemann/ExecutionTimeGuard.lean),
+[grid spacing](../proofs/talos/lean/Project/EulerRiemann/ExecutionSpacing.lean),
+and [CFL proposal](../proofs/talos/lean/Project/EulerRiemann/ExecutionProposal.lean)
+now have exact execution proofs.  They cover all short-circuit guards,
+the ten small-natural exponent intervals, rounded binary64 operations,
+both minimum branches, full store preservation, and caller operands
+retained below nested calls.  Successful retry and final-time completion
+still require the controller and numerical progress proofs.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
