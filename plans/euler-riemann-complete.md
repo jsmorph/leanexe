@@ -110,6 +110,11 @@ recurrence, preserve grid indices through time control, and show that
 status zero implies final time 0.8.  The decreasing remaining-time word
 measure proves that the outer-loop fuel cannot exhaust.  Successful
 completion remains open.
+[The source trace proof](../proofs/talos/lean/Project/EulerRiemann/ControlTrace.lean)
+connects every supported-size result to accepted functional Rusanov steps
+from the specified initial grid, with valid rounded time advancement at
+each step.  It includes the accepted prefix retained after a failure.
+The trace length is bounded by the increase in the raw time word.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

@@ -11681,3 +11681,35 @@ Riemann source bindings, and their documentation and test evidence.
 Preserve all prior generated evidence and unrelated paper state.  The
 successful-completion, complete memory, exact-WASM, and aggregate proof
 gates remain open.
+
+The 105-file documentation check passed.  Published
+db3f11da4994e9e8b558e4b3b4bc3c62cb689184, parent
+3befbfb9b3ef79fd753fdf12b9a1084aca9c1448, tree
+a918f74f2fdf18977cb254b4378520f756d1d5ce.  Non-forced SSH push and
+fetch passed.  The fetched commit, parent, tree, index, and tracked
+worktree match.  All prior evidence and unrelated paper state remain.
+
+Added ControlTrace as a proof-only description of accepted timestep
+sequences.  Each transition requires valid rounded time advancement and
+the existing functional Rusanov split-step result.  The draft source
+theorem connects every returned control result to such a trace from the
+specified initial grid, including the accepted prefix before a failure.
+The trace length is bounded by the increase in the raw time word.  This
+extends single-step correspondence without assuming successful completion.
+The first focused build is pending.
+
+The focused ControlTrace build failed in the final run wrapper.  The
+trace-length and general advance theorems checked with standard-only
+axiom audits.  The final simplification left an if True-and-True branch
+unreduced.  Replaced it with an explicit if_pos application using the
+supported-size hypothesis.  The failed wrapper's sorryAx audit came from
+the elaboration error and is not an accepted theorem.  The corrected
+module requires a fresh check.
+
+ControlTrace passed the corrected 3,438-job focused build.  The module
+completed in 2.8 seconds.  NumericalTrace.length_le, advance_trace, and
+run_trace report only propext, Classical.choice, and Quot.sound, or a
+subset.  The check reports an if_pos deprecation warning.  This proof-only
+addition changes no executable source or emitted artifact.  Updated the
+current plan and concise notes.  Checkpoint intent: publish ControlTrace
+and these records after whitespace, proof-source, and documentation checks.
