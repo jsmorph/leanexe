@@ -373,6 +373,12 @@ loading, capacity calculation, allocation, installation, and the map
 loop.  It derives the capacity and no-fit search premises from the grid
 bound and free-list invariant, and returns the updated heap and both
 grid owners.  Its execution audit uses standard axioms.
+The [append allocation composition](../proofs/talos/lean/Project/EulerRiemann/InitialAppendAllocate.lean)
+returns the updated heap and ownership of both inputs and their
+concatenation.  The [count prefix](../proofs/talos/lean/Project/EulerRiemann/InitialAppendCounts.lean)
+matches the existing scalar-statement descriptor and proves its word-level
+addition and multiplication results.  Pointer and length setup and the
+complete growth loop remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

@@ -10509,3 +10509,27 @@ closure remain open.
 
 The generated LTG declaration check passes all 3,404 jobs.  Catalog
 freshness and the 115-file documentation check also pass.
+
+## 2026-09-12: Append ownership and scalar counts
+
+Checkpoint 4ba6694d8767b76574f2bfc0f7e2ce3ebb8350b3 is published
+and verified against tree 3fba4312f991836ae1489927c4d8b7d501fc8439.
+InitialAppendOwned and InitialAppendAllocate now connect allocation,
+installation, and both copies to the updated heap and ownership of both
+inputs and their concatenation.  They checked in 79 and 47 seconds with
+standard axioms.  The pointer and length prefix and complete growth loop
+remain open.
+
+InitialAppendCounts uses the existing typed scalar descriptor theorem
+for the emitted total-length addition and two copy-count multiplications.
+Its exact equality, evaluator result, and execution checked in 65 seconds
+with standard axioms.  ScalarFrame adapts that existing theorem to the
+array proofs' Locals frames and checked in 64 seconds.  The four new
+modules contain 277 lines.  The provisional scalar-statement LTG entry
+indexes expression, statement, and local-preservation theorems previously
+documented in ProofKit but absent from the category indexes.  Catalog,
+package, generator, and 116-file documentation tests pass.  The generator
+fixture remains at tmp/leanexegen-test-PQ7eVc.  Whole-solver proof and
+production-run prerequisites remain open.
+
+The generated LTG declaration check passes all 3,405 jobs in 76 seconds.

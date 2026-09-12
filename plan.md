@@ -515,6 +515,9 @@ The complete emitted map region now includes its input and capacity
 prefixes and derives allocation size and no-fit search from the grid
 and free-list invariant.  Its shared header-load and frame-preparation
 lemmas are indexed in LTG.
+The append allocation and copy composition now returns all three grid
+owners.  Its count prefix uses the checked scalar-statement descriptor,
+which is also indexed in LTG.  Pointer and length setup remain open.
 
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.
