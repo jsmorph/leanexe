@@ -115,6 +115,14 @@ connects every supported-size result to accepted functional Rusanov steps
 from the specified initial grid, with valid rounded time advancement at
 each step.  It includes the accepted prefix retained after a failure.
 The trace length is bounded by the increase in the raw time word.
+[The generated execution model](../proofs/talos/lean/Project/EulerRiemann/Program.lean)
+now comes from the registered complete source entry.  The artifact driver
+loads its checked declarations from the proof workspace.  The generated
+21,386-byte module matches the artifact used by the passing small-grid
+tests.  All four runtime-definition checks pass.  The
+[thermodynamic execution proof](../proofs/talos/lean/Project/EulerRiemann/ExecutionSide.lean)
+transfers the existing fourteen-function theorem after checking every
+renamed definition.  Its axiom audit uses only the accepted standard axioms.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

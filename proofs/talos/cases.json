@@ -396,6 +396,19 @@
         "Project.Euler2DCellStep.Spec.cellCheckedBits_wat_safe"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_riemann",
+      "module": "Project.EulerRiemann.Control",
+      "entry": "Project.EulerRiemann.Control.solve",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerRiemann",
+      "specTarget": "Project.EulerRiemann.Spec",
+      "behaviorTheorems": [
+        "Project.EulerRiemann.Spec.solve_exact",
+        "Project.EulerRiemann.Spec.solve_success"
+      ],
+      "complete": false
     }
   ]
 }
