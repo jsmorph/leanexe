@@ -10034,3 +10034,13 @@ the CLOB execution proof.  Both rebuilt successfully.  The unlink and
 fresh-header proofs now use kernel-checked read/write facts, and all
 affected audits contain only standard logical axioms.  The complete
 search loop and allocator composition remain open.
+
+Both complete generated free-list search branches now pass.  The no-fit
+branch traverses every undersized node, preserves the store, and returns
+zero.  The fitting branch selects the first sufficient node, proves its
+predecessor write bounded, unlinks the node, writes its header, and returns
+the selected root.  Both loops use the represented suffix length as their
+decreasing measure.  The focused build passed all 3,446 jobs in 2.9
+seconds with standard-only axiom audits.  Allocator composition, the
+peak-memory bound, complete control, successful completion, and exact-byte
+closure remain open.

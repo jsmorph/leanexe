@@ -103,8 +103,12 @@ and state lemmas pass standard-axiom audits.  The selected-node reuse
 branch now has checked head/interior unlinking, header stores, and root
 assignment.  Search-fragment proofs cover bounded metadata reads and
 pointer advancement.  Shared unlink and fresh-header state proofs use
-kernel-checked read/write facts.  The complete search loop and allocator
-composition remain open.
+kernel-checked read/write facts.  Both complete search branches now prove
+termination and exact state updates for every represented free list.
+The no-fit branch preserves the store and returns a zero selected pointer.
+The fitting branch selects the first sufficient node, removes it from the
+free list, writes its header, and returns its root.  Allocator composition
+and the full solver obligations remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
