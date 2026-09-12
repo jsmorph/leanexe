@@ -240,6 +240,14 @@ grid and resulting heap, preserves runtime limits, and preserves every
 live input grid with separation from the result.  The theorem retains
 explicit space and runtime-cap bounds for both possible allocations.
 The full solver's peak-memory invariant must discharge those premises.
+[Heap reservations](../proofs/talos/lean/Project/EulerRiemann/HeapReserve.lean)
+count sufficiently large free buffers and bound the bytes needed for
+the requested allocations beyond those buffers.  Allocation consumes
+one reservation, and release restores one.
+[The reserved timestep](../proofs/talos/lean/Project/EulerRiemann/StepReserve.lean)
+derives both allocation bounds, returns one fewer reservation, and
+restores the initial reservation count when its result is released.
+The initializer's byte bound and full control composition remain open.
 [The time guard](../proofs/talos/lean/Project/EulerRiemann/ExecutionTimeGuard.lean),
 [grid spacing](../proofs/talos/lean/Project/EulerRiemann/ExecutionSpacing.lean),
 and [CFL proposal](../proofs/talos/lean/Project/EulerRiemann/ExecutionProposal.lean)

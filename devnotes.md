@@ -10138,3 +10138,12 @@ all supported sizes through ten exponent intervals with a scoped
 1.8 seconds with standard-only axioms.  Retry, time control,
 initialization, the full memory bound, successful completion, and
 exact-byte closure remain open.
+
+HeapReserve bounds the top plus the space required for allocations that
+the free list cannot supply.  Checked first-fit counts prove that
+allocation consumes one reservation and release restores one.
+StepReserve derives the complete timestep's two allocation bounds from
+that invariant, preserves the byte limit, and proves that releasing its
+result restores the original reservation count.  The focused check
+passed all 3,502 jobs in 1.3 seconds with standard-only axioms.  The
+initializer's byte bound and full control composition remain open.
