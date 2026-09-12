@@ -11847,3 +11847,64 @@ their proof outputs.  They change no compiler source, numerical source,
 or generated artifact.  Checkpoint intent: publish those four modules,
 the updated proof inventory and solver plan, and these records.  The
 full-solver registration remains incomplete.
+
+Published the reviewed nine-path numerical execution checkpoint as
+4ca2210e33a7a0e2989042e8b158cf84f551eac5, parent
+093f246ec9e6a3d16a3b362018773ebb531b71b0, tree
+c158ec99aa68434ce9fc259312c78d84711166f1.  Whitespace and 105-file
+documentation checks passed.  Non-forced SSH push, fetch, and exact
+commit/tree/index/tracked-worktree comparisons passed.
+
+Added the grid-memory representation: a cell-count header followed by
+seven words per cell.  The initial lemmas state bounded header/field
+reads, exact compiled offset arithmetic, and preservation when memory
+outside the grid changes or memory grows.  They reuse the shared
+UInt64 word-address and byte-frame lemmas.  This representation supplies
+array-loop premises and does not yet prove allocation or traversal.
+
+The memory module's first check proved all address and frame lemmas but
+failed to match the two literal UInt64 constants in the offset rewrite.
+Spelling their equivalent ofNat forms before rewriting resolved that
+boundary.  The module passed its 3,422-job focused build in 1.8 seconds,
+with propext and Quot.sound in the audited declarations.  Added generated
+field-load facts and the exact scan-loop extraction, local frame, source
+fold-prefix invariant, and decreasing measure for the next execution proof.
+
+The scan-loop extraction needed the explicit Option Instruction annotation
+already used by the earlier scan proof.  With that annotation, the shape,
+source-prefix recurrence, final prefix, and frame measure passed their
+3,427-job focused build.  The new loop proof first stopped before the
+callback because the symbolic load addresses retained wrap expressions.
+Retained trace diagnostics identified the exact forms.  Explicitly typed
+constant offsets, the shared UInt32 conversion equality, constant-power
+reduction, and negative out-of-bounds facts resolved all seven reads.
+
+The following check reached the loop invariant and measure.  General
+simplification exceeded recursion depth while expanding the source
+callback.  Replaced it with the fold-prefix recurrence and definitional
+frame equality, then stated the scalar measure comparison directly.
+ScanLoop passed all 3,428 jobs in 3.2 seconds with only the accepted
+standard axioms.  Added ExecutionScan to compose entry setup, that loop,
+and the final returned status/speed pair.  Its focused check is pending.
+
+ExecutionScan's entry proof needed list-append normalization after the
+generated head unfolded.  The following frame comparison needed the
+zero-prefix theorem rather than definitional reduction.  Restricting that
+rewrite to the accumulator preserved the scratch default.  The final
+continuation had already unfolded scanTail during unification, so its
+proof unfolds only func25.  The failed elaborations are retained in the
+tool diagnostics.  The final focused command, tools/leanrun --timeout 2m
+lake -d proofs/talos/lean --no-ansi build
+Project.EulerRiemann.ExecutionScan, passed all 3,429 jobs.  The module
+checked in 2.2 seconds, and scan_exact reports only propext,
+Classical.choice, and Quot.sound.
+
+Reviewed the four memory and scan modules, their proof outputs, the
+fold-prefix abstraction, and the unchanged generated program.  The scan
+proof covers arbitrary represented grids, including empty grids, with
+bounded reads and complete store preservation.  It introduces no
+compiler, numerical-source, or artifact changes.  Updated the proof
+inventory, status, solver plan, and concise notes.  Checkpoint intent:
+publish those four proof modules and four current records plus this
+append-only journal.  Allocation, directional traversal, control,
+successful completion, and exact-byte closure remain open.
