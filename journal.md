@@ -13294,3 +13294,86 @@ tools/leanexegen-annotations.js
 tools/leanexegen-lib.js
 tools/talos-lib.js
 ```
+
+Published daf31e113af01a426220e0725a0d7e84f048819d, parent
+84a2a1b696f4f2e17047e5db978b6db724a62920, tree
+ca09441007746a35379e978441a46d3f25e936a1, with headline
+"Use compiler evidence and LTG for Riemann loops".  The SSH push was
+non-forced.  Fetch verified the exact commit, sole parent, tree, and
+message.  Remote/local commit, index, and tracked worktree comparisons
+all passed.  Untracked paper submission files remain preserved.
+
+For initialization, inspected compiler annotations for functions 79–89
+and their emitted instructions.  The three scalar leaves (fifths,
+weightedWord, conservative) have no annotation regions.  Four quadrant
+constructors each have one direct-call region to conservative, and
+weighted has 22 direct-call regions.  The grow loop has its checked
+fuel/completion guard and a nested initialCell call.  Existing scalar
+post-test and traversal entries do not prove these binary64 leaf bodies.
+The ordinary opcode WP rules cover the straight-line arithmetic, while
+the call and array support will compose the annotated callers.  Added
+ExecutionInitialScalars with bounded fifth selection and arbitrary-word
+weighted/conservative execution statements for the first focused check.
+
+ExecutionInitialScalars passed in 21 seconds.  Fifth selection covers
+all six weights used by cell averaging.  WeightedWord and conservative
+conversion cover arbitrary input words and preserve the full store.
+All three audits use standard axioms.  Removed one unreachable final
+simplification.  The four quadrant wrapper drafts share a proof tactic
+that applies the checked conservative callee at the compiler's recorded
+call region and then executes its result assignments.  Existing
+stateValues supplies the four-word representation.
+
+The quadrant tactic's first check rejected syntax quotations for a
+field projection and simp identifiers.  Parenthesizing the quoted
+function and marking simp identifiers fixed those errors.  Its next
+check showed that quoted rfl patterns became hygienic hypothesis names
+instead of substitution patterns.  The tactic now names the two result
+equalities and explicitly substitutes the returned store and values.
+The weighted constructor draft composes its 22 annotated call sites
+through the scalar and quadrant theorems without expanding callee bodies.
+
+The four quadrant constructors passed after the quotation and
+substitution corrections, with standard-axiom audits.  Weighted's first
+check stopped at its second fifths call: the rfl-pattern substitution
+removed the initial-store name that later tactic alternatives referenced.
+Explicitly substituting the callee's returned store and values preserves
+that name and fixes the composition boundary.
+
+The weighted proof then reached its 200,000-heartbeat elaboration limit
+while trying callee alternatives.  Replaced the backtracking dispatch
+with the compiler sidecar's exact 22-call order and a common call tactic.
+The next check retains the same two-minute runtime and default heartbeat
+limits.  This tests whether compiler-derived call selection removes the
+unnecessary failed theorem applications before splitting the function.
+
+Guided selection still reached the default heartbeat limit at the
+third weighted component.  Split the final two components and result
+loads into weighted_tail_spec, following the retrieved compact-suffix
+guidance.  Its frame premises retain only the two weights, completed
+density, staged x-momentum, and frame dimensions.  The main theorem
+supplies those facts after the first 12 calls.  The timeout and heartbeat
+limits remain unchanged for the next check.
+
+The split weighted module passed in 12 seconds.  Both weighted_tail_spec
+and weighted_exact depend only on propext, Classical.choice, and
+Quot.sound.  Reviewed the compiler-recorded call order, the prefix/suffix
+boundary at instruction 95, the four retained frame facts, and all
+returned fields.  Added this checked use and both earlier heartbeat
+failures to the compact-suffix LTG entry.  This checkpoint will publish
+the three initialization execution modules, the LTG entry and generated
+indexes, the solver plan and proof inventory, devnotes, and this journal.
+The numerical source and generated program remain unchanged.
+
+The catalog and forest checks, their Node tests, the annotation protocol
+tests, and all 106 maintained-document checks pass.  The final diff
+has no whitespace errors, and all three new modules have no admissions,
+new axiom declarations, or native decision procedures.  Regeneration
+left category indexes and LTGCheck unchanged.  The exact staged paths
+are devnotes.md, journal.md,
+ltg/entries/compact-loop-suffix-boundary/README.md,
+ltg/entries/compact-loop-suffix-boundary/entry.json,
+plans/euler-riemann-complete.md, proofs/talos/README.md, and
+proofs/talos/lean/Project/EulerRiemann/ExecutionInitialScalars.lean,
+proofs/talos/lean/Project/EulerRiemann/ExecutionInitialStates.lean,
+proofs/talos/lean/Project/EulerRiemann/ExecutionInitialWeighted.lean.

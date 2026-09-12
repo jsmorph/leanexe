@@ -10257,3 +10257,25 @@ retains the existing CheckedArrayGet theorem and its checked dot-product
 uses, correcting the hand-added generated checks that had no catalog
 metadata.  The proof-kit inventory exposes that existing support to
 future artifact-proof tasks.
+
+## 2026-09-12: Riemann initialization helpers
+
+Checkpoint daf31e113af01a426220e0725a0d7e84f048819d is published and
+verified against tree ca09441007746a35379e978441a46d3f25e936a1.
+Initialization's fifth selector, weighted-word arithmetic, and
+conservative conversion pass exact execution proofs.  The four quadrant
+constructors compose the conservative callee and pass standard-axiom
+audits.  The weighted initializer's 22-call composition also passes,
+including all four returned conservative fields and store preservation.
+
+The compiler annotations supplied the callee order and region offsets.
+The scalar leaves have no descriptor annotations.  Ordinary opcode WP
+rules prove their bodies.  A backtracking call tactic reached the default
+heartbeat limit, and fixed call selection reached the same limit at the
+third component.  The retrieved compact-suffix guidance supplied the
+successful division: the tail keeps two weights, the completed density,
+the staged x-momentum, and frame dimensions.  The complete module then
+checked in 12 seconds with the same limits and standard axioms.  LTG
+records the failed applications and successful division.  Cell indexing,
+grow/extract traversal, initialization allocation, output execution,
+source success, and exact-byte closure remain open.
