@@ -144,7 +144,12 @@ ratio, and preserves the store.
 extends the destination prefix through all seven fields and preserves a
 disjoint source grid.  Its shared read/write round-trip theorem uses
 kernel-checked bit extensionality.  All audits contain only the accepted
-standard axioms.  Allocating traversal and allocator reuse remain open.
+standard axioms.
+[The sweep-loop proof](../proofs/talos/lean/Project/EulerRiemann/SweepLoop.lean)
+composes the callback and writes into a terminating traversal.  It proves
+source agreement for every indexed grid at supported sizes and preserves
+all store components outside the allocated destination bytes.  Allocator
+setup and reuse remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
