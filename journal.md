@@ -11397,3 +11397,121 @@ the eleven new Riemann source/proof modules, the four test files, the
 complete-solver plan, devnotes.md, and this append-only journal.  Preserve
 all paper intermediates and ignored test/build evidence.  The complete
 solver and aggregate proof gate remain unfinished in this checkpoint.
+
+The first staging attempt failed before mutation because the sandbox
+mounted .git read-only.  The approved retry staged the 26 reviewed paths.
+Committed 9653995ed084a204a255d0c0c5d424d9d4ff04a6, parent
+c155c3a10d363fbeb7aa5b033b505ba85eef8d5c, tree
+4bd4863c8057a5681f674b371e69f762b2a62519.  Non-forced SSH publication and
+fetch succeeded.  Remote commit, parent, tree, index, and tracked worktree
+identities match.  Paper intermediates and generated evidence remain.
+
+Started the next memory boundary: internal Nat-tail helpers previously
+created owner trackers only when a public ABI needed a wider internal
+array representation.  Applied the existing carried-owner bookkeeping
+to internal helpers as well.  Trackers begin at zero for borrowed input
+parameters, record new owned arrays, and release prior tracked roots
+when the next arguments do not retain them.  Added tests for zero and
+one iteration, five replacements, and alternating replacement/retention.
+Each test also reads the caller's original array after the helper returns.
+This change is pending compiler build and tests.
+
+The compiler build passed 62 jobs.  The focused test rejected the new
+diagnostic entry before emission because products have no public ABI.
+The language specification documents products as internal-only.  Changed
+the diagnostic result to a named four-field structure and retained
+tmp/internal-array-loop-RVOclm.  Added the final-array packing function
+and source layout theorems in Output and OutputModel.  Packing uses two
+maps and two concatenations, releasing the three intermediate flat
+arrays after their last reads.  It returns status, time, two dimensions,+and the density and pressure blocks.  These additions remain unchecked.
+
+The named-structure diagnostic passed all 19 focused ownership and
+array-call tests.  Output and OutputModel passed the 3,432-job focused
+build.  Their sequence, length, and 1,280,004-word upper-bound theorems
+use propext and Quot.sound.  The extended grid test passed its previous
+54 cases and rejected the output compiler target: the checker lacked
+direct map/concatenation freshness rules, so fields appeared to retain
+density.  The retained failure is tmp/euler-riemann-grid-7rsP9n.
+Added those fresh array operations to the existing direct-allocation
+classification, with a flat map/append/release/reallocation test and
+a nested-map rejection test.  The element child mask still determines
+whether a fresh array can retain earlier roots.  This correction remains
+under test.
+
+The compiler rebuild passed 62 jobs, followed by all 21 focused ownership
+and array-call tests.  Drafted Control, ControlRetry, and ControlTime.
+Control combines the existing wave-speed reduction and timestep proposal
+with whole-step retries that halve dt, then advances time after acceptance.
+Natural-number fuel bounds use the binary64 word measures already in the
+plan.  The output status records invalid size, rejected scan, failed time
+advance, retry exhaustion, or outer-loop exhaustion.  The drafted proofs
+connect accepted retries to the functional-grid step, preserve indexing,
+and require a reported success to end at the target time.  These are
+conditional and structural proof obligations.  Successful completion for
+the supported sizes remains a separate required theorem.  Full source
+checking, compiler acceptance, recursive-result ownership, and the complete
+exact-WASM proof remain open for the new control code.
+
+All 57 grid, split-step, and output tests passed, retaining
+tmp/euler-riemann-grid-Jxi4rI.  Control passed its first Lean build in
+1.8 seconds.  ControlRetry failed on an invalid split-tactic invocation
+that named both the hypothesis and goal.  Changed the implication to
+remain in the goal before splitting, and applied the same correction
+to the analogous run theorem.  Error-placeholder axiom output from that
+failed build is not proof acceptance evidence.
+
+ControlRetry and ControlTime passed the corrected focused build:
+tools/leanrun --timeout 3m lake -d proofs/talos/lean --no-ansi build
+Project.EulerRiemann.ControlTime.  The 3,437-job build completed with
+ControlRetry at 1.6 seconds and ControlTime at 1.4 seconds.  All printed
+axiom audits contain only the accepted standard logical axioms.  An unused
+simplifier argument warning remains in run_indexed.  These proofs establish
+conditional retry correspondence, indexing preservation, and success
+implying final time.  The required success theorem remains open.
+
+Started node test/core_correctness.js for the internal Nat-tail ownership
+and direct-array freshness changes.  Updated the compiler reference,
+language specification, complete-solver plan, and concise development notes
+to record the checked output/control scope and focused test results.
+After context recovery, reread AGENTS.md, the operating instructions,
+README, DEVELOPING, and the leanrunner skill.  The standard local runner
+remains selected, and no production simulation has started.
+
+The broader core test passed 799 accepted, 48 rejected, and 14 trapped
+cases, retaining tmp/core-correctness-MKHTFG.  git diff --check passed.
+Started the complete solve ownership report under a three-minute runner
+limit.  Added a source proof draft using the decreasing remaining-time
+word measure to exclude exhaustion of the outer-loop fuel.  The draft
+also enumerates the three possible retry statuses.  Numerical acceptance
+and successful completion remain separate obligations.
+
+The complete solve ownership report passed extraction of 97 functions.
+Sweep and step report fresh owner slot zero, while retry reports no fresh
+result owner.  Retry's explicit trial release is absent from its emitted
+IR.  Core.extractNatTailStepStmt drops an unused let binding before checking
+for Runtime.release, unlike the ordinary expression path.  It also keeps
+used lets as thunks, so preserving the release requires sharing the array
+binding that the preceding acceptance condition reads.  A small fixture
+will isolate this behavior before the compiler correction.
+
+ControlFuel's first check failed because decide received an unreduced
+structure projection containing free variables.  Replaced the two calls
+with simp.  The retry-status theorem and earlier control theorems passed
+in that build.  The error-placeholder axiom output is not acceptance
+evidence for the unfinished fuel proof.
+
+ControlFuel passed the corrected 3,438-job focused build.  The final module
+took 2.1 seconds.  advance_fuel_sufficient uses propext and Quot.sound,
+and run_fuel_sufficient additionally uses Classical.choice.  The initial
+outer-loop budget cannot exhaust because each accepted step strictly
+decreases the remaining-time word measure.  Scan rejection, invalid time
+advance, and retry exhaustion still require exclusion before a success
+claim.  The new source modules contain no sorry, admit, new axiom, or
+native_decide.
+
+Checkpoint intent: publish the reviewed compiler/example changes, four
+test/source-fixture changes, six new output/control source and proof
+modules, compiler and language documentation, complete-solver plan,
+development notes, and journal.  The dropped tail release and missing
+recursive-result freshness are recorded follow-up defects.  The complete
+solver proof and the aggregate compiler/proof gates remain unfinished.

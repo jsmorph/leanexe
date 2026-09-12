@@ -9881,3 +9881,21 @@ The 24 formal arithmetic comparisons, six byte-identity checks, and
 105-file documentation check also pass.
 The complete allocator, time-control, successful-completion, and exact-WASM
 proofs remain open.  Production execution has not started.
+
+Output packing and its exact layout, length, and maximum-size source
+theorems pass.  The grid test now passes 57 cases, including three output
+comparisons.  Time-control source proofs preserve indexing, connect
+accepted retries to the numerical recurrence, and make status zero imply
+time 0.8.  The remaining-time word measure excludes outer-loop fuel
+exhaustion.  The proofs use only the accepted standard axioms.  Successful
+completion and the complete exact-WASM theorem remain open.
+
+Internal Nat-tail loops now track fresh carried owners between iterations.
+The release checker also recognizes direct array maps and concatenations.
+All 21 focused ownership and array-call tests pass, including preservation
+of caller-owned inputs and rejection of releases through nested arrays.
+The broader compiler test passed 799 accepted, 48 rejected, and 14 trapped
+cases.  Full control extraction passes.  The ownership report identifies
+missing retry-result freshness evidence and a dropped explicit release
+in the continuing retry branch.  These compiler issues and shared
+aggregate evaluation remain next.

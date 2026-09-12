@@ -61,11 +61,14 @@ function main() {
   const traversalWasm = path.resolve(output, "traversal.wasm");
   proofEnv([path.resolve(compiler), "compile", "--module", traversalModule,
     "--entry", traversalModule + ".sample", "--out", traversalWasm]);
-  for (const [n, advance, ...expected] of rows) {
+  const arrayWords = (wasm, entry, args) => {
     const text = run(["tools/leanrun", "--timeout", "30s", host.ensureHost(), "call",
-      traversalWasm, "sample", "array-u64", host.i64(n), host.i64(advance)]).trim();
+      wasm, entry, "array-u64", ...args.map(host.i64)]).trim();
     assert.match(text, /^\[(?:\d+(?:,\s*\d+)*)?\]$/);
-    const actual = text.slice(1, -1).split(",").filter(Boolean).map(BigInt);
+    return text.slice(1, -1).split(",").filter(Boolean).map(BigInt);
+  };
+  for (const [n, advance, ...expected] of rows) {
+    const actual = arrayWords(traversalWasm, "sample", [n, advance]);
     assert.deepEqual(actual, expected, `grid ${n}, advance ${advance}`);
     assert.equal(actual.length, 2 + 7 * Number(n * n));
     assert.equal(actual[0], 0n);
@@ -75,7 +78,19 @@ function main() {
     }
     checks++;
   }
-  console.log(`Passed ${checks} grid geometry, initialization, and split-step tests; retained ${output}`);
+  const packedWasm = path.resolve(output, "packed.wasm");
+  proofEnv([path.resolve(compiler), "compile", "--module", traversalModule,
+    "--entry", traversalModule + ".packedInitial", "--out", packedWasm]);
+  for (const [n, advance, ...reference] of rows) {
+    if (advance !== 0n) continue;
+    const count = Number(n * n);
+    const density = Array.from({ length: count }, (_, i) => reference[3 + 7 * i]);
+    const pressure = Array.from({ length: count }, (_, i) => reference[7 + 7 * i]);
+    assert.deepEqual(arrayWords(packedWasm, "packedInitial", [n]),
+      [reference[0], 0n, n, n, ...density, ...pressure]);
+    checks++;
+  }
+  console.log(`Passed ${checks} grid geometry, initialization, split-step, and output tests; retained ${output}`);
 }
 
 try { main(); } catch (error) { console.error(error.stack); process.exitCode = 1; }

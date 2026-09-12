@@ -6883,11 +6883,8 @@ def extractNatRecFunc
   let carriedStateEnd :=
     if needsInternalCarried then wasmParamCount + carriedTargets.length else wasmParamCount
   let carriedOwnerTargets :=
-    if needsInternalCarried then
-      enumerate (tyListReleaseOwnerSlotOffsetsAt 0 carriedParams) |>.map fun item =>
-        (item.snd, carriedStateEnd + item.fst)
-    else
-      []
+    enumerate (tyListReleaseOwnerSlotOffsetsAt 0 carriedParams) |>.map fun item =>
+      (item.snd, carriedStateEnd + item.fst)
   let carriedBindings :=
     if needsInternalCarried then
       (internalParamBindingsFrom wasmParamCount carriedParams).reverse
@@ -6932,7 +6929,7 @@ def extractNatRecFunc
     extractCtx := ctx,
     useAbi := useAbi,
     params := params,
-    materializeCarriedArgs := needsInternalCarried || carriesAggregate,
+    materializeCarriedArgs := needsInternalCarried || carriesAggregate || !carriedOwnerTargets.isEmpty,
     carriedTargets := carriedTargets,
     carriedOwnerTargets := carriedOwnerTargets,
     resultTy := resultTy,
