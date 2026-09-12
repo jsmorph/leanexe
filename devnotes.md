@@ -10400,3 +10400,29 @@ and complete exact-byte closure.
 The 36-entry LTG declaration, catalog, and forest checks pass, together
 with their tests, the proof-generator tests, and the documentation check
 for 113 maintained Markdown files.
+
+## 2026-09-12: Shared no-fit allocation
+
+Checkpoint 52e50f17061e84eed9cc247ac88a0c0678236a4b is published
+and verified against tree 8c9d1f30c577476a2ed951c0ba09e17cb55c8ec1.
+The generalized free-list search preserves arbitrary parameters, saved
+locals, and trailing locals around its six scratch slots.  It terminates
+when every represented free buffer is undersized and preserves the exact
+store.  The allocation composition adds initialization, conditional
+memory growth, exact header writes, and allocation counting.
+
+The shared search checked in 2.4 seconds and the allocation composition
+in 69 seconds.  All four emitted initializer regions match the shared
+program.  Their equality and execution checks took 58 and 56 seconds.
+Every public audit uses standard axioms.  The provisional LTG entry
+records the checked declarations, explicit premises, frame association,
+and failed result-frame rewrite.  Complete initialization traversal,
+its resource invariant, source success, output, and exact-byte closure
+remain open.
+
+The free-list capacity ordering also passes: the min(target, current
+count) invariant supplies each allocation request and survives release
+of the previous grid.  The standalone search consumer passes through a
+shared checked region adapter.  LTGCheck resolves all 37 entries.
+Catalog, forest, LTG, knowledge, proof-generator, and documentation
+checks pass.  The documentation inventory contains 114 maintained files.

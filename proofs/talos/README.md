@@ -224,8 +224,12 @@ execution theorems.  Shared capacity arithmetic proves the byte count
 under a no-overflow bound, and the initializer instantiates it through
 1,048,576 temporary cells.  The shared bump theorem supports configurable
 local slots, conditional memory growth, exact heap-top updates, and the
-six header stores.  It preserves every other store component.  Free-list
-search and the initializer's full resource invariant remain open.
+six header stores.  It preserves every other store component.  All four
+initializer allocation regions now compose a terminating no-fit search,
+conditional bump allocation, and allocation counting through shared
+ProofKit theorems.  Their represented-free-list, undersized-capacity,
+32-bit-fit, and runtime-memory-cap premises remain explicit.  The full
+initializer traversal and resource invariant remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
