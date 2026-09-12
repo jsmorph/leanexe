@@ -313,12 +313,14 @@ minimum branches preserve the parameters and non-scratch locals.
 The [complete cell initializer](../proofs/talos/lean/Project/EulerRiemann/ExecutionInitialCell.lean)
 composes both weights and the weighted-state and thermodynamic calls.
 It returns the source cell's seven words and preserves the full store.
-The [append prefix](../proofs/talos/lean/Project/EulerRiemann/InitialCopyPrefix.lean)
-matches the emitted region and applies the shared framed raw-cell copy
-theorem.  It copies the seven fields of each source cell, preserves the
-source grid and target header, and supplies store and outside-byte
-preservation for ownership composition.  Grow/extract traversal and
-initialization allocation remain open.
+The [append payload](../proofs/talos/lean/Project/EulerRiemann/InitialAppendCopy.lean)
+composes the shared prefix and offset-copy theorems against the emitted
+regions.  It reconstructs the concatenated width-seven grid and preserves
+both inputs.  [Extraction](../proofs/talos/lean/Project/EulerRiemann/InitialExtractCopy.lean)
+reconstructs the source prefix and matches both emitted copy sites.
+Both supply store and outside-byte preservation for ownership composition
+under allocated-target and written-length premises.  Map execution,
+growth traversal, and initialization allocation remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

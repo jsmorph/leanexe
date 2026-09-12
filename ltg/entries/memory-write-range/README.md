@@ -10,6 +10,10 @@ Use `write64` after proving that the eight-byte write lies inside the
 interval.  Compose consecutive writes with `trans`.  Use `mono` to
 enlarge two different intervals before composing them.  These proofs
 use the kernel-checked byte-preservation theorem and standard axioms.
+`read64` preserves any word whose complete eight-byte range lies outside
+the write interval.  The offset-copy invariant uses this consequence for
+source reads.  Riemann append composition also uses it to preserve the
+target header and the prefix already written by the first copy loop.
 
 The framed raw-array-copy theorems carry this relation through both
 loop invariants.  Their combined theorem enlarges the prefix and suffix
