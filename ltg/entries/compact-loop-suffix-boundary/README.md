@@ -26,3 +26,15 @@ beta redex after invariant decomposition.  `dsimp only` before a measure
 rewrite discharges that reduction.  Both loop checks pass with standard
 axioms.  Full Riemann artifact verification and a controlled fresh proof
 measurement remain open.
+
+The Riemann weighted initializer supplies a straight-line example with
+22 compiler-recorded calls and 102 internal locals.  Backtracking among
+callee theorems reached the default 200,000-heartbeat limit.  Selecting
+the exact compiler-recorded call order still reached that limit at the
+third component.  A separate suffix theorem then retained two weights,
+the completed density, the staged x-momentum, and the frame dimensions.
+Both declarations passed under the unchanged heartbeat and two-minute
+runtime limits.  The module checked in 12 seconds with standard axioms.
+The suffix accepts arbitrary remaining local values and a caller-supplied
+postcondition.  This records checked application of the method without
+claiming complete Riemann artifact verification.

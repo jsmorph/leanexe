@@ -299,6 +299,14 @@ composes entry, terminating loop, and the four returned words under
 explicit source-success and sufficient-fuel premises.  Both retry and
 advance now use the shared `BlockLoop.program_spec` composition theorem.
 All public audits use standard axioms.
+Initialization's [scalar helpers](../proofs/talos/lean/Project/EulerRiemann/ExecutionInitialScalars.lean)
+now have exact execution proofs for the six fifth weights and arbitrary
+weighted/conservative input words.  The four quadrant constructors and
+[weighted initializer](../proofs/talos/lean/Project/EulerRiemann/ExecutionInitialWeighted.lean)
+compose the recorded calls and preserve the full store.  A compact
+suffix theorem separates the weighted initializer's 22-call proof.
+Cell indexing, grow/extract traversal, and initialization allocation
+remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
