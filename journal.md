@@ -13450,3 +13450,81 @@ concrete Riemann prefix, LTG metadata/indexes/checks, proof-kit inventory,
 solver plan, proof inventory, notes, and journal.  The numerical source
 and frozen artifact remain unchanged.  New NatSub and CheckedDivMod
 drafts belong to the following checkpoint and will remain unstaged.
+
+CheckedDivMod passed in 2.7 seconds with standard axioms.  Its shared
+theorem covers both zero-safe unsigned division and remainder, following
+emitCheckedDivMod at Binary.lean:2309.  NatSub's first check failed
+before the conditional: opcode simplification unfolded the second local
+getter.  Replaced the combined getter rewrite with its already normalized
+copy, applying the same correction established by multiplication.
+
+That NatSub correction failed.  A focused trace showed a combined
+getter on a frame whose operand stack had changed, rather than an
+unfolded getter.  Applied the existing Frame.withValues_get theorem to
+recover the original frame's getter before rewriting.  Removed the
+trace.  The earlier diagnosis was incorrect.
+
+Checkpoint fbd0119abf9aac44d095af3dabc8fb560222eb5c is published on
+origin/talosfp-euler.  Its parent is
+104d37ff0815f0b39f04f7a9c505f01202826880 and its tree is
+002dd2f253977343781016ca3a9fafbb8261e3d7.  The non-forced SSH push
+and fetch passed.  Local and fetched commit/tree identities match,
+and the tracked worktree matches except for this subsequent journal
+entry.  The two new arithmetic modules remain outside that checkpoint.
+
+NatSub passed in two seconds after applying the existing frame theorem.
+The coordinate prefix then passed in 4.3 seconds, including exact
+region equalities for both remainder and division and a common
+execution theorem for index < 1048576 and n ≤ 800.  All audits use
+standard axioms.  The bound includes the initializer's temporary
+doubled arrays, rather than assuming every intermediate index is below
+n*n.  Factored the multiplication-by-four proof to accept any stack
+tail, retaining the checked leading-five prefix as a corollary.  The
+minimum's fallback branch recomputes the same arithmetic without that
+leading constant, so both paths can use the same composition.
+
+The factored multiplication proof passed in 15 seconds.  The difference
+composition initially normalized the UInt64 product before the bounded
+toNat rewrite, leaving unwanted modular expressions.  The restricted
+simp correction retained a folded output frame and also failed.
+Rewriting the two bounded conversions first and then unfolding only
+the named frames fixed both failures.  The common difference theorem
+passed in 18 seconds, with exact x/y region checks and standard axioms.
+The current minimum proof carries the untouched first 39 internal
+locals and parameters across the compiler's six scratch slots.  This
+allows its result continuation to abstract over both branches instead
+of retaining the duplicated arithmetic's complete update expression.
+
+The first minimum draft used the reserved parser keyword prefix as a
+structure field, and its restricted simplification left the constant
+UInt32 condition unresolved.  Renamed the field preservedLocals and
+used ordinary WP simplification after fixing the branch condition.
+The next check accepted the fallback branch and reported one frame
+predicate mismatch in the constant-five branch: the predicate's frame
+index retained the arithmetic result stack.  Generalized the scratch
+preservation lemma over the replacement stack and applied it to five.
+The next check tests that correction without changing the program.
+
+Added provisional LTG entries for natural-subtraction and
+zero-safe-division-remainder after their shared theorems and concrete
+coordinate/difference uses passed.  Each records its emitter shape,
+premises, checked consumer, and outstanding separate-artifact evidence.
+Added both modules to the checked artifact proof-kit inventory.  The
+catalog rebuild now contains 32 entries.
+
+The complete minimum theorem passed in 13 seconds with standard axioms.
+Both exact weight regions check.  Its arbitrary continuation receives
+the encoded minimum, unchanged parameters, unchanged local-list length,
+and unchanged first 39 internal locals.  The LTG and knowledge checks
+accept 32 entries, and both test suites plus leanexegen pass.  Updated
+the development notes, solver plan, and proof inventory to distinguish
+these checked expressions from the remaining full-cell composition.
+
+LTGCheck passed after rebuilding the 32-entry declaration inventory,
+and the documentation check accepted 109 maintained Markdown files.
+The next checkpoint includes the two shared arithmetic modules,
+coordinate/difference/minimum proofs, generalized multiplication
+composition, two LTG entries and generated indexes, proof-kit inventory,
+notes, plan, and theorem inventory.  The new InitialWeights composition
+draft remains unstaged for its focused check.  No numerical source,
+generated program, or frozen WASM bytes changed.

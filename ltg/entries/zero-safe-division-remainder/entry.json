@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "zero-safe-division-remainder",
+  "title": "Zero-safe unsigned division and remainder",
+  "summary": "Executes the compiler's zero-divisor branch and ordinary unsigned division or remainder for staged operands, preserving the store and stack tail.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["division", "remainder", "short-circuit", "stack-tail", "zero-divisor"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.CheckedDivMod"],
+  "declarations": ["Project.ProofKit.CheckedDivMod.program", "Project.ProofKit.CheckedDivMod.program_spec", "Project.ProofKit.CheckedDivMod.result"],
+  "premises": ["Exact equality with the emitted checked division or remainder region", "A Boolean selecting remainder or division", "Combined getters for both staged UInt64 operands", "An identified operand-stack tail", "A continuation for the selected UInt64 result"],
+  "result": "The program pushes left % right or left / right, implements their Lean zero-divisor values without a WASM arithmetic trap, and preserves the store and other frame fields.",
+  "consumers": ["euler-riemann-initial-coordinate"],
+  "relatedEntries": ["checked-natural-multiplication", "local-frame-projection", "natural-subtraction"],
+  "exclusion": null
+}
