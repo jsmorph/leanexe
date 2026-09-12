@@ -9931,3 +9931,10 @@ rejected, and 14 trapped cases.  All ten serializer round trips passed.
 Named WAT call counts confirm one update per mapped cell, one input
 construction per update, and two neighbor-index calculations per input.
 The complete memory, runtime, and exact-WASM proofs remain open.
+
+ControlTrace now proves that every supported-size result follows a
+sequence of accepted functional Rusanov steps from the specified initial
+grid.  Each step records valid rounded time advancement, and the trace
+length is bounded by the raw time-word increase.  The focused build
+passed with standard-only axiom audits.  Successful completion, the
+memory bound, and full generated-WASM execution remain open.
