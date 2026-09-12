@@ -12557,3 +12557,38 @@ and concise notes.  Checkpoint intent: publish ReleaseMemory,
 AllocationState, MemoryOwnership, SweepResources, the shared frame lemma,
 and these five records.  No compiler, source, or generated artifact
 changed.  The complete solver and both production runs remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+ten-path sweep-resource checkpoint as ae745bc1d04c5c88e76eeb847ad5dba641eed3e8,
+parent 602ae0fc4635933a5a1aeb8abac9745db2eed179, tree
+c4b8767af67e31145b30e1e2dbbaddf632cc2d08.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Added the represented free-list head after first-fit removal and the
+allocator's heap-top, free-head, other-global, and runtime-cap results.
+The heap arithmetic also places the allocated buffer and remaining free
+nodes below the resulting heap top.  These are the global-state premises
+for composing the next generated sweep call.
+
+The first global-state check required sharing the first-fit case split
+between the Store and heap-top definitions, and reversing disequalities
+to match List's optional-read/set lemma.  The remaining-head,
+runtime-cap, and heap-bound statements passed.  Added preservation of an
+owned source buffer's complete region through allocation and its fresh
+header through the subsequent sweep writes.
+
+AllocationGlobals passed with standard-only audits.  AllocationFrame's
+reuse proof needed rewriting by the selected first-fit equation before
+applying the byte-frame theorem.  Added that rewrite and removed an
+unused Store parameter from the arithmetic separation theorem.
+
+AllocationFrame passed all 3,461 jobs in 1.4 seconds.  AllocationGlobals
+passed in 1.7 seconds in the preceding check.  Every new theorem has a
+standard-only axiom audit.  Reviewed first-fit remaining-head cases,
+optional global reads after updates, runtime-cap preservation, heap-top
+arithmetic, source-region byte preservation, and fresh-header framing.
+Updated the proof catalog, inventory, solver plan, and concise notes.
+Checkpoint intent: publish AllocationGlobals, AllocationFrame, the shared
+remaining-head lemma, and these five records.  The generated program and
+production-run prerequisites are unchanged.
