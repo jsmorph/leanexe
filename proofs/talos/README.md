@@ -238,6 +238,13 @@ reservation by 212,002,896 bytes after the singleton.  The full traversal
 must maintain that reservation.  Shared result-frame getter preservation
 covers parameters as well as internal and invalid reads and is indexed
 by the fixed-array-fold-structure LTG entry.
+Map, append, and extraction now compose pointer installation, the length
+store, and their complete traversal or copy loops.  They preserve the
+source grids and return a combined header/payload write range.  The map
+ownership composition derives destination bounds and separation from
+the represented heap and returns ownership of both source and result.
+Its completed-grid helper covers the initializer's larger temporary
+arrays under the requested-capacity and address-bound premises.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

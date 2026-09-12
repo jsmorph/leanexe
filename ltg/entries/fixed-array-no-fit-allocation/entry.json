@@ -31,6 +31,7 @@
     "Project.ProofKit.FixedArrayAllocateNone",
     "Project.ProofKit.FixedArraySearchFrame",
     "Project.ProofKit.FixedArraySearchNone",
+    "Project.ProofKit.FixedArraySearchProjection",
     "Project.ProofKit.FixedArraySearchRead",
     "Project.ProofKit.FixedArraySearchRegion"
   ],
@@ -49,6 +50,7 @@
     "Project.ProofKit.FixedArraySearch.body",
     "Project.ProofKit.FixedArraySearch.frame",
     "Project.ProofKit.FixedArraySearch.frame_get",
+    "Project.ProofKit.FixedArraySearch.frame_get_before",
     "Project.ProofKit.FixedArraySearch.guardProgram",
     "Project.ProofKit.FixedArraySearch.guardProgram_spec",
     "Project.ProofKit.FixedArraySearch.noneProgram_spec",

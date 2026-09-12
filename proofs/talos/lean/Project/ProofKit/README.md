@@ -37,6 +37,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayBumpPrefix` | Checked heap-top and page arithmetic with named result frames. |
 | `Project.ProofKit.FixedArrayBumpInstall` | Heap-top and root assignment with preservation of the remaining locals and store fields. |
 | `Project.ProofKit.FixedArraySearchFrame` | Six allocator scratch slots with arbitrary parameters, saved locals, and trailing locals. |
+| `Project.ProofKit.FixedArraySearchProjection` | Preserves parameter and saved-local getters before the allocator scratch window. |
 | `Project.ProofKit.FixedArraySearchRead` | Bounded free-node capacity and next-pointer reads and search-pointer advancement. |
 | `Project.ProofKit.FixedArraySearchNone` | Terminating search of a represented free list whose capacities are all smaller than the request, preserving the exact store. |
 | `Project.ProofKit.FixedArraySearchRegion` | Application of the no-fit search theorem through an explicit equality with the emitted loop body. |

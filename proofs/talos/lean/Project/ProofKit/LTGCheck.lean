@@ -29,6 +29,7 @@ import Project.ProofKit.FixedArrayPairResult
 import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArraySearchNone
+import Project.ProofKit.FixedArraySearchProjection
 import Project.ProofKit.FixedArraySearchRead
 import Project.ProofKit.FixedArraySearchRegion
 import Project.ProofKit.FixedArraySingletonWrapper
@@ -195,6 +196,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArraySearch.body
 #check Project.ProofKit.FixedArraySearch.frame
 #check Project.ProofKit.FixedArraySearch.frame_get
+#check Project.ProofKit.FixedArraySearch.frame_get_before
 #check Project.ProofKit.FixedArraySearch.guardProgram
 #check Project.ProofKit.FixedArraySearch.guardProgram_spec
 #check Project.ProofKit.FixedArraySearch.noneProgram_spec

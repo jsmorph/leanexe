@@ -508,6 +508,9 @@ The allocation-to-heap adapter, root and length installation, map-ready
 frame, and remaining-allocation arithmetic also pass.  The arithmetic
 reserves 212,002,896 bytes after the singleton, including retained map
 buffers.  Execution must still establish and preserve that reservation.
+Map, append, and extraction now include pointer installation, the length
+store, and their complete data loops.  The map composition returns the
+updated heap and ownership of both grids under the allocation premises.
 
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.

@@ -327,8 +327,8 @@ Its result equals the source map.  It preserves the source grid,
 all store components outside the destination bytes, and every caller
 local outside the compiler's scratch and counter slots.  Shared
 field-access, frame, counter, and loop theorems discharge those regions
-at the default heartbeat limit.  Growth traversal and initialization
-allocation remain open.
+at the default heartbeat limit.  Complete growth traversal and its
+resource invariant remain open.
 The [initialization capacities](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationCapacity.lean)
 match all four emitted prefixes and prove the exact byte count through
 1,048,576 temporary cells.  The
@@ -356,6 +356,17 @@ and final extraction.  Its initial bound is 212,002,896 bytes after the
 singleton for at most 640,000 requested cells.  The complete execution
 proof must maintain this reservation.  The map-ready frame and getters
 also pass, using shared preservation of distinct parameter and local reads.
+The [map-data composition](../proofs/talos/lean/Project/EulerRiemann/InitialMapData.lean),
+[append composition](../proofs/talos/lean/Project/EulerRiemann/InitialAppendData.lean),
+and [extraction composition](../proofs/talos/lean/Project/EulerRiemann/InitialExtractData.lean)
+now include pointer installation, the length store, and the complete
+traversal or copy.  They preserve each source grid and bound the combined
+header and payload writes.  The
+[map ownership theorem](../proofs/talos/lean/Project/EulerRiemann/InitialMapOwned.lean)
+derives the allocated destination's bounds and separation from the
+existing heap model and returns ownership of both grids and the updated
+heap.  Its [completed-grid helper](../proofs/talos/lean/Project/EulerRiemann/HeapGridFinish.lean)
+applies to any width-seven grid that fits the requested allocation.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
