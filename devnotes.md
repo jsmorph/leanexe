@@ -10111,3 +10111,12 @@ length.  The theorem covers empty arrays.  The focused check passed all
 3,430 jobs in 1.5 seconds with standard-only axioms and default
 elaboration limits.  Two-sweep/release composition and the full solver
 obligations remain open.
+
+HeapState packages the six globals, represented free list, and heap
+ordering.  OwnedGrid and HeapGrid package bounded fresh grids and their
+separation from free nodes.  Their allocation, write, and release
+preservation proofs pass.  SweepOwned now returns this state from the
+complete sweep and preserves other live grids through its write frame.
+The focused check passed all 3,493 jobs in 1.4 seconds with standard-only
+axioms.  Two-sweep/release composition, retry, time control, initialization,
+peak memory, successful completion, and exact-byte closure remain open.
