@@ -292,9 +292,9 @@ mutual
     | .arrayExtractSlots width childMask array start stop =>
         .arrayExtractSlots width childMask (shiftExprCalls offset array) (shiftExprCalls offset start)
           (shiftExprCalls offset stop)
-    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
+    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
         .arrayMapSlots sourceWidth resultWidth childMask ownedMask (shiftExprCalls offset array) itemStart
-          (bodyValues.map (shiftExprCalls offset))
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
     | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
         .arrayFoldMultiSlot sourceWidth resultWidth reverse (shiftExprCalls offset array)
@@ -784,10 +784,11 @@ mutual
     | .arrayAppendSlots _ _ left right => 11 + max 6 (max (exprScratch left) (exprScratch right))
     | .arrayExtractSlots _ _ array start stop =>
         12 + max 6 (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
-    | .arrayMapSlots _ _ _ _ array _ bodyValues =>
+    | .arrayMapSlots _ _ _ _ array _ bodyValues bodyLets =>
         6 + max 6
           (max (exprScratch array)
-            (bodyValues.foldl (fun n value => max n (exprScratch value)) 0))
+            (max (bodyLets.foldl (fun n item => max n (localLetScratch item)) 0)
+              (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)))
     | .arrayFoldMultiSlot sourceWidth resultWidth _reverse array start stop initValues _ _ bodyValues
         bodyLets bodyDone _ _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
@@ -1372,10 +1373,13 @@ mutual
       localGet newLocal
 
   partial def emitArrayMapSlots
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (scratch sourceWidth resultWidth childMask ownedMask : Nat)
       (array : Expr)
       (itemStart : Nat)
-      (bodyValues : List Expr) : List Instr :=
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet) : List Instr :=
     let arrayLocal := scratch
     let lenLocal := scratch + 1
     let newLocal := scratch + 2
@@ -1392,14 +1396,15 @@ mutual
       | [] => []
       | (offset, value) :: rest =>
           arraySlotAddress resultWidth offset (localGet newLocal) (localGet loopLocal) ++
-            emitExpr childScratch value ++ i64Store ++ emitResultStores rest
-    emitExpr childScratch array ++ localSet arrayLocal ++
+            emitValue childScratch value ++ i64Store ++ emitResultStores rest
+    emitValue childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       rcAllocArrayObject childScratch resultWidth childMask (localGet lenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
       i64Const 0 ++ localSet loopLocal ++
       ([Instr.block [Instr.loop (localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ [Instr.brIf 1] ++
         emitSourceLoads (List.range sourceWidth) ++
+        bodyLets.flatMap (emitBinding childScratch) ++
         emitResultStores (enumerate bodyValues) ++
         emitRetainArraySlotsAtIndex resultWidth childMask ownedMask retainChildLocal retainRcLocal
           (localGet newLocal) (localGet loopLocal) ++
@@ -2632,8 +2637,9 @@ mutual
         emitArrayAppendSlots scratch width childMask left right
     | .arrayExtractSlots width childMask array start stop =>
         emitArrayExtractSlots scratch width childMask array start stop
-    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
-        emitArrayMapSlots scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues
+    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
+        emitArrayMapSlots emitExpr emitLocalLet scratch sourceWidth resultWidth childMask ownedMask
+          array itemStart bodyValues bodyLets
     | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
         emitArrayFoldMultiSlot 0 scratch sourceWidth resultWidth reverse array start stop initValues
@@ -2830,6 +2836,9 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .release ptr =>
       emitExprWithReleaseFallback releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
+  | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
+      emitArrayMapSlots (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex)
+        scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets
   | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
       emitArrayFoldMultiSlot releaseIndex scratch sourceWidth resultWidth reverse array start stop
@@ -3749,7 +3758,7 @@ def fixedArrayMapAdd?
       (.seq
         (.assign 2
           (.arrayMapSlots 1 1 0 0 (.local 0) 1
-            [(.u64Bin .add (.local 1) (.u64 addend))]))
+            [(.u64Bin .add (.local 1) (.u64 addend))] []))
         (.assign 4 (.local 2)))
       (.seq
         (.assign 3 (.arrayLiteralSlots 1 0 []))

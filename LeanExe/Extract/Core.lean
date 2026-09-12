@@ -4106,8 +4106,29 @@ mutual
                         let bodyResult ←
                           extractValueFrom ctx (.value itemValue :: locals)
                             (itemStart + sourceWidth) mapBody
-                        let bodySlots ← flattenArrayElementValue result bodyResult.fst ctx.freshResultOwnerOffsets
-                        let bodyOwnedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets resultChildMask bodySlots
+                        let (bodySlots, bodyLets, bodyEnd) ←
+                          if resultWidth == 1 then do
+                            let slots ← flattenArrayElementValue result bodyResult.fst
+                              ctx.freshResultOwnerOffsets
+                            pure (slots, [], bodyResult.snd)
+                          else do
+                            let width := internalSlots result
+                            let targets := slotsFrom bodyResult.snd width
+                            let lets ← materializeInternalValueLets result bodyResult.fst targets
+                              ctx.freshResultOwnerOffsets
+                            let value := valueFromInternalSlots result
+                              (fun offset => .local (bodyResult.snd + offset))
+                            let slots ← flattenArrayElementValue result value ctx.freshResultOwnerOffsets
+                            pure (slots, lets, bodyResult.snd + width)
+                        let bodySources := ownerSourcesAfterLocalLetsForAlloc
+                          ctx.freshResultOwnerOffsets [] bodyLets
+                        let bodyOwnedMask :=
+                          if bodyLets.isEmpty then
+                            ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets
+                              resultChildMask bodySlots
+                          else
+                            ownedChildMaskForSlotsWithOwnerSourcesForAlloc ctx.freshResultOwnerOffsets
+                              resultChildMask bodySources bodySlots
                         .ok
                           (.arrayMapSlots
                             sourceWidth
@@ -4116,8 +4137,9 @@ mutual
                             bodyOwnedMask
                             arrayResult.fst
                             itemStart
-                            bodySlots,
-                            bodyResult.snd)
+                            bodySlots
+                            bodyLets,
+                            bodyEnd)
                       | _, _ =>
                         .error s!"unsupported Array.map item types: {reprStr source}, {reprStr result}"
                     | _, _ => .error "unsupported Array.map item types"

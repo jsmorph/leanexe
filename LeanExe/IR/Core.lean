@@ -89,7 +89,7 @@ mutual
     | arrayAppendSlots (width childMask : Nat) (left right : Expr)
     | arrayExtractSlots (width childMask : Nat) (array start stop : Expr)
     | arrayMapSlots (sourceWidth resultWidth childMask ownedMask : Nat) (array : Expr) (itemStart : Nat)
-        (bodyValues : List Expr)
+        (bodyValues : List Expr) (bodyLets : List LocalLet)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (reverse : Bool)
         (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
@@ -265,7 +265,7 @@ mutual
     | .arrayPopSlots _ _ array => array.eval module_ store
     | .arrayAppendSlots _ _ left _ => left.eval module_ store
     | .arrayExtractSlots _ _ array _ _ => array.eval module_ store
-    | .arrayMapSlots _ _ _ _ array _ _ => array.eval module_ store
+    | .arrayMapSlots _ _ _ _ array _ _ _ => array.eval module_ store
     | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
         let len := (.arraySize array : Expr).eval module_ store
