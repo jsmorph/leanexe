@@ -203,7 +203,10 @@ have exact execution proofs for every grid size at most 800 and temporary
 initialization index below 1,048,576.  The common proof composes shared
 multiplication, division/remainder, and saturating subtraction, then
 proves both minimum branches and preserves the non-scratch locals.
-Complete cell composition and traversal remain open.
+The complete initial-cell execution theorem composes both weights,
+the weighted-state call, the thermodynamic call, and all seven returned
+words.  It preserves the full store.  Array construction, extraction,
+and initialization allocation remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

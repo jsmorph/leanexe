@@ -10303,3 +10303,11 @@ All audits use standard axioms.  Two provisional LTG entries expose the
 new shared theorems.  Catalog, forest, and proof-generator tests pass
 with 32 entries.  Complete cell composition, traversal, output, memory,
 source success, and exact-byte closure remain open.
+
+The complete initial-cell function now passes in 3.1 seconds with
+standard axioms.  Its 66-instruction weight prefix abstracts over both
+minimum branches, retains both weights, and feeds the checked weighted
+and thermodynamic callees.  The function returns all seven words equal
+to Traversal.initialCell for n ≤ 800 and index < 1,048,576 and preserves
+the full store.  Array growth, extraction, allocation, and their memory
+bound remain open.
