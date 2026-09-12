@@ -9965,3 +9965,11 @@ status accumulation, and maximum selection.  All four focused builds
 passed with standard-only axiom audits.  The remaining work includes
 array traversal, allocator reuse, time control, successful completion,
 and exact-byte closure before the two production calculations.
+
+The grid-memory representation and complete scan execution proof now pass.
+The proof bounds the header and seven fields of each cell, maintains the
+source fold-prefix invariant, proves loop termination, and returns the
+exact source status/speed pair while preserving the complete store.
+The four modules pass their focused checks and standard-axiom audits.
+Allocation, directional traversal, control, successful completion, and
+exact-byte closure remain open.

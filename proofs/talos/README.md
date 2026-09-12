@@ -82,7 +82,9 @@ The thirty-eighth registration, `euler_riemann`, compiles
 timestep control, retries, and output.  The four runtime definitions and
 all-input execution theorems for the thermodynamic side, scalar flux,
 scalar update, two-dimensional flux, cell update, and scan callback pass
-their focused checks and standard-axiom audits.  Successful completion,
+their focused checks and standard-axiom audits.  The complete scan function
+also has a terminating execution theorem for every represented grid,
+including bounded field reads and complete store preservation.  Successful completion,
 bounded memory, complete execution, and
 exact-byte closure remain open.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.

@@ -128,7 +128,13 @@ functions, the complete two-dimensional flux, and the cell update now
 have all-input execution theorems with exact result words and complete
 store preservation.  The source scan callback's execution theorem covers
 both directional side calls, status accumulation, and maximum selection.
-All focused builds and axiom audits pass.  The array loops remain open.
+All focused builds and axiom audits pass.
+[The complete scan proof](../proofs/talos/lean/Project/EulerRiemann/ExecutionScan.lean)
+now covers entry setup, every seven-field read, the callback, loop
+termination, and the returned status/speed pair.  It preserves the complete
+store and agrees with the source fold for every represented grid.
+The memory representation proves address bounds and preservation under
+changes outside the grid.  Allocating traversal and allocator reuse remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
