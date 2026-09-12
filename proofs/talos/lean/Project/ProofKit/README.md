@@ -32,6 +32,15 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayHeaderExec` | Bounded constant-word and local-word stores, composed into the six-word header instruction sequence with local-frame preservation. |
 | `Project.ProofKit.FreeListMemory` | First-fit predecessor membership and resulting head, free-list preservation under header-byte agreement and page growth, and preservation of bytes outside free-node regions during reuse. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant or local result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
+| `Project.ProofKit.FixedArrayCapacityArithmetic` | Exact normalized byte counts under a checked word-overflow bound. |
+| `Project.ProofKit.FixedArrayBump` | Conditional memory growth, heap-top and root assignment, and exact header initialization with configurable local slots. |
+| `Project.ProofKit.FixedArrayBumpPrefix` | Checked heap-top and page arithmetic with named result frames. |
+| `Project.ProofKit.FixedArrayBumpInstall` | Heap-top and root assignment with preservation of the remaining locals and store fields. |
+| `Project.ProofKit.FixedArraySearchFrame` | Six allocator scratch slots with arbitrary parameters, saved locals, and trailing locals. |
+| `Project.ProofKit.FixedArraySearchRead` | Bounded free-node capacity and next-pointer reads and search-pointer advancement. |
+| `Project.ProofKit.FixedArraySearchNone` | Terminating search of a represented free list whose capacities are all smaller than the request, preserving the exact store. |
+| `Project.ProofKit.FixedArraySearchRegion` | Application of the no-fit search theorem through an explicit equality with the emitted loop body. |
+| `Project.ProofKit.FixedArrayAllocateNone` | Search initialization, complete no-fit search, conditional bump allocation, and allocation counting. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
 | `Project.ProofKit.FixedArrayCopy` | Complete block-wrapped raw-cell prefix and shifted-suffix copy loops with symmetric region separation and a one-word erase adapter. |
