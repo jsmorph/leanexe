@@ -10174,3 +10174,13 @@ check passed all 3,522 jobs in 2.1 seconds with standard-only axioms.
 Removed an unreachable fallback tactic reported by the linter.  Time
 control, initialization, output execution, the full memory bound,
 source success, final-time completion, and exact-byte closure remain open.
+
+ControlAdvanceStep derives successful nonterminal scan/retry premises
+and bounded fuel encoding.  The generated outer-loop scan, proposal,
+checked increment, retry, guards, and terminal assignment now have
+execution proofs.  AdvanceFrame preserves parameter and result fields.
+AdvanceContinue proves both borrowed-grid preservation and tracked-grid
+release, followed by time advancement, parameter/tracker replacement,
+and fuel decrement.  Its focused check passed all 3,535 jobs in
+4.0 seconds with standard-only axioms.  Outer-loop composition and the
+remaining complete-solver obligations are open.

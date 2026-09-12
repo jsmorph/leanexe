@@ -179,6 +179,11 @@ iteration, completed exit, and all four returned words.  The result
 preserves live grids and runtime limits and consumes one heap reservation.
 The final solver proof must establish source success and final-time
 completion before either production calculation.
+The outer time-loop regions now have execution proofs for scan, CFL
+proposal, checked retry-fuel increment, retry, terminal assignment,
+and replacement of the current grid.  Replacement covers both the
+borrowed initial grid and release of a tracked grid.  Frame preservation
+and active/completed guards support the remaining outer-loop composition.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
