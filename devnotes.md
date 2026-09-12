@@ -10024,3 +10024,13 @@ disjoint grid bytes.  The focused build passed all 3,437 jobs in 2.7
 seconds with standard-only axiom audits.  Free-list search and reuse,
 complete allocator composition, and the full solver obligations remain
 open.
+
+The selected-node reuse branch now has a checked execution theorem for
+head and interior unlinking, metadata stores, and returned-pointer
+assignment.  The search capacity/next reads and pointer advancement also
+pass their exact-region execution checks.  BookAllocFitState now contains
+the existing reuse memory model and state lemmas, separating them from
+the CLOB execution proof.  Both rebuilt successfully.  The unlink and
+fresh-header proofs now use kernel-checked read/write facts, and all
+affected audits contain only standard logical axioms.  The complete
+search loop and allocator composition remain open.

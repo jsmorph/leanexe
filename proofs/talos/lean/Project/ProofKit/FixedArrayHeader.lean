@@ -33,6 +33,21 @@ theorem fresh (store : Store Unit) (base capacity stride : UInt64)
   simpa only [FreshFixedArrayAt, toUInt32_eq_ofNat, h48, h40, h32, h24, h16, h8]
     using reads store.mem base capacity stride
 
+theorem from_root (mem : Mem) (root capacity stride : UInt64)
+    (hRoot : 48 ≤ root.toNat) (hRoot32 : root.toNat ≤ 4294967296) :
+    fixedArrayHeaderMem mem (root - 48) capacity stride =
+      (((((mem.write64 (root - 48).toUInt32 5501223100278326855).write64
+        (root - 40).toUInt32 1).write64 (root - 32).toUInt32 capacity).write64
+        (root - 24).toUInt32 2).write64 (root - 16).toUInt32 stride).write64
+        (root - 8).toUInt32 0 := by
+  have hFit : (root - 48).toNat + 48 ≤ 4294967296 := by
+    rw [toNat_sub_of_le root 48 hRoot]
+    change root.toNat - 48 + 48 ≤ 4294967296
+    omega
+  obtain ⟨h40, h32, h24, h16, h8⟩ := headerOffsets (root - 48) hFit
+  simp only [UInt64.sub_add_cancel] at h40 h32 h24 h16 h8
+  simp only [fixedArrayHeaderMem, toUInt32_eq_ofNat, h40, h32, h24, h16, h8]
+
 theorem bytes_outside (mem : Mem) (base capacity stride : UInt64)
     (hFit32 : base.toNat + 48 ≤ 4294967296) (address : Nat)
     (hOutside : address < base.toNat ∨ base.toNat + 48 ≤ address) :
@@ -44,6 +59,7 @@ theorem bytes_outside (mem : Mem) (base capacity stride : UInt64)
 
 #print axioms reads
 #print axioms fresh
+#print axioms from_root
 #print axioms bytes_outside
 
 end Project.ProofKit.FixedArrayHeader

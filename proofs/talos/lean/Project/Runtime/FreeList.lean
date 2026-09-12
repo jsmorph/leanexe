@@ -1,4 +1,5 @@
 import Project.Runtime.Tree
+import Project.ProofKit.MemoryRoundtrip
 
 namespace Project.Runtime
 
@@ -497,7 +498,7 @@ private theorem FreeListAt.unlink_after {mem : Mem}
                     Nat.mod_eq_of_lt (by omega)]
                   norm_num [UInt64.toNat_ofNat] at *
                   omega
-              · exact Mem.read64_write64_same mem
+              · exact Project.ProofKit.Memory.read64_write64 mem
                   ((previous.root - 8).toUInt32) (freeHead tail)
               · intro node hmem
                 exact hsep node (List.mem_cons_of_mem selected hmem)
@@ -604,5 +605,9 @@ theorem FreeListAt.takeFirstFitFrom_node_disjoint {mem : Mem}
     takeFirstFitFrom_some_decompose hTake
   subst nodes
   simpa [hremaining] using hList.selected_disjoint_after
+
+#print axioms FreeListAt.frame_write64_disjoint
+#print axioms FreeListAt.unlink_takeFirstFitFrom
+#print axioms FreeListAt.takeFirstFitFrom_node_disjoint
 
 end Project.Runtime
