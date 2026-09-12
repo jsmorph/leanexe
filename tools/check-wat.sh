@@ -24,8 +24,7 @@ WASM_TOOLS="$wasm_tools" "$repo_root/tools/check-wasm-tools-version.sh"
 
 LEANRUN_TIMEOUT=10m "$leanrun" lake build lean-wasm
 
-out_dir="$repo_root/.lake/build/wat-check"
-mkdir -p "$out_dir"
+out_dir="$(mktemp -d "$repo_root/tmp/wat-check-XXXXXX")"
 
 cases=(
   "LeanExe.Examples.TalosGcd LeanExe.Examples.TalosGcd.gcd"
@@ -57,3 +56,4 @@ for case in "${cases[@]}"; do
   fi
   echo "wat matches binary: $name"
 done
+echo "Retained $out_dir"

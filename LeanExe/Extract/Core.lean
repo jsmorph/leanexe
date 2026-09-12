@@ -6261,6 +6261,7 @@ structure NatTailContext where
   resultTy : Ty
   resultTargets : List Nat
   doneSlot : Nat
+  ownedLocals : List Nat := []
 
 def releaseIfUnretainedStmt (released retained : List Nat) (slot : Nat) : IRStmt :=
   let nonzero : IRCond := .not (.eqU64 (.local slot) (.u64 0))
@@ -6530,7 +6531,7 @@ mutual
         | .error error => .error s!"while extracting Nat recursive arguments: {error}"
       let ownedLocals :=
         ownedHeapLocalsFromLocalLetsForAlloc
-          lower.extractCtx.freshResultOwnerOffsets [] argsResult.lets
+          lower.extractCtx.freshResultOwnerOffsets lower.ownedLocals argsResult.lets
       let releasedLocals := localLetsReleasedSlots argsResult.lets
       let nextOwners ← lower.carriedOwnerTargets.mapM fun item =>
         match argsResult.args[item.fst]? with
@@ -6786,7 +6787,19 @@ mutual
         if containsBVar recursorIndex value then
           .error "recursive call is not in tail position"
         else if !containsBVar 0 body then
-          extractNatTailStepStmt lower (.recursor :: locals) (recursorIndex + 1) nextLocal body
+          match runtimeReleaseArgs? value with
+          | some args =>
+              let releaseResult ← extractPrimitiveApplicationFrom
+                lower.extractCtx locals nextLocal ``LeanExe.Runtime.release args
+              let releaseSlot := releaseResult.snd
+              let nextLower := { lower with
+                ownedLocals := removeLiveSlots lower.ownedLocals (exprReleasedSlots releaseResult.fst) }
+              let bodyResult ← extractNatTailStepStmt nextLower
+                (.recursor :: locals) (recursorIndex + 1) (releaseSlot + 1) body
+              .ok { bodyResult with
+                stmt := .seq (.assign releaseSlot releaseResult.fst) bodyResult.stmt }
+          | none =>
+              extractNatTailStepStmt lower (.recursor :: locals) (recursorIndex + 1) nextLocal body
         else if isStringType type then
           extractNatTailStepStmt lower
             (.thunk locals value :: locals)
@@ -6797,11 +6810,21 @@ mutual
           match typeAtom? lower.extractCtx.env type with
           | some ty =>
               if supportedLocalType ty then
-                extractNatTailStepStmt lower
-                  (.thunk locals value :: locals)
-                  (recursorIndex + 1)
-                  nextLocal
-                  body
+                let valueResult ← extractValueFrom lower.extractCtx locals nextLocal value
+                let width := internalSlots ty
+                let targets := (List.range width).map fun offset => valueResult.snd + offset
+                let lets ← materializeInternalValueLets ty valueResult.fst targets
+                  lower.extractCtx.freshResultOwnerOffsets
+                let localValue :=
+                  valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
+                let nextLower := { lower with
+                  ownedLocals := ownedHeapLocalsAfterLocalLets
+                    lower.extractCtx.freshResultOwnerOffsets lower.ownedLocals lets }
+                let bodyResult ← extractNatTailStepStmt nextLower
+                  (.value localValue :: locals) (recursorIndex + 1)
+                  (valueResult.snd + width) body
+                .ok { bodyResult with
+                  stmt := seqWithPrefix (lets.map localLetStmtOptimized) bodyResult.stmt }
               else
                 .error s!"unsupported let-bound type in tail recursion: {type}"
           | none => .error s!"unsupported let-bound type in tail recursion: {type}"
