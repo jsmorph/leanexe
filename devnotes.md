@@ -10377,3 +10377,26 @@ The exact enclosing map-block equality and the 35-entry LTG declaration
 check pass.  Catalog, forest, proof-generator, and documentation tests
 pass, including all 112 maintained Markdown files.  Complete artifact
 verification remains a separate gate.
+
+## 2026-09-12: Initialization capacity and bump allocation
+
+Checkpoint b7def01ee89e9d5cc02ec6afa0f3d8705e413609 is published
+and verified against tree d6b173f292beb9a238b425797febd66da2d95274.
+All four initializer capacity prefixes and bump branches now match shared
+execution theorems.  The general capacity arithmetic proves the exact
+aligned byte count under a UInt64 no-overflow bound and covers the
+initializer's 1,048,576-cell temporary arrays.  The bump theorem composes
+address and page arithmetic, conditional memory growth, heap-top/root
+assignment, and the six header stores with configurable local slots.
+
+Capacity arithmetic checked in 14 seconds, the initializer capacity
+consumer in 13 seconds, the complete shared bump theorem in 2.1 seconds,
+and its four initializer matches in 3.6 seconds.  All public audits use
+standard axioms.  LTG exposes the capacity support and a provisional
+fixed-array-bump-growth entry.  Free-list search and the initializer's
+full resource invariant remain open, along with source success, output,
+and complete exact-byte closure.
+
+The 36-entry LTG declaration, catalog, and forest checks pass, together
+with their tests, the proof-generator tests, and the documentation check
+for 113 maintained Markdown files.

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-bump-growth",
+  "title": "Fixed-array bump allocation with growth",
+  "summary": "Executes a bump-allocation branch with configurable local slots, conditional memory growth, exact heap-top updates, and the six fixed-array header stores.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["allocator", "bump-allocation", "frame", "header", "local-window", "memory-growth", "memory-store"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.FixedArrayBump", "Project.ProofKit.FixedArrayBumpInstall", "Project.ProofKit.FixedArrayBumpPrefix"],
+  "declarations": ["Project.ProofKit.FixedArrayBump.allocated", "Project.ProofKit.FixedArrayBump.installProgram", "Project.ProofKit.FixedArrayBump.installProgram_spec", "Project.ProofKit.FixedArrayBump.prefixFrame", "Project.ProofKit.FixedArrayBump.prefixProgram", "Project.ProofKit.FixedArrayBump.prefixProgram_spec", "Project.ProofKit.FixedArrayBump.program", "Project.ProofKit.FixedArrayBump.program_spec", "Project.ProofKit.FixedArrayBump.requiredPages", "Project.ProofKit.FixedArrayBump.requiredPages_fit", "Project.ProofKit.FixedArrayBump.requiredPages_le", "Project.ProofKit.FixedArrayBump.requiredPages_word", "Project.ProofKit.FixedArrayBump.result"],
+  "premises": ["Exact equality with the emitted bump branch", "An empty operand stack and a getter for the requested byte count", "Ordered non-parameter need, top, page, and result locals, with a valid result local", "The heap-top global equals the supplied base", "Base plus 48 header bytes plus the requested capacity fits 32-bit memory", "The current page count is at most 65536 and the module uses 32-bit memory", "The required page count fits the store's runtime memory cap", "A continuation from the exact allocated store and result frame"],
+  "result": "The branch terminates, grows memory when required, installs the new heap top and array root, writes the exact header, and preserves all other store components. It places the computed top, page count, and root in the named result frame.",
+  "consumers": ["euler-riemann-initial-append", "euler-riemann-initial-extract", "euler-riemann-initial-map"],
+  "relatedEntries": ["fixed-array-allocation", "fixed-array-capacity", "local-frame-projection", "memory-write-range"],
+  "exclusion": null
+}
