@@ -13528,3 +13528,41 @@ composition, two LTG entries and generated indexes, proof-kit inventory,
 notes, plan, and theorem inventory.  The new InitialWeights composition
 draft remains unstaged for its focused check.  No numerical source,
 generated program, or frozen WASM bytes changed.
+
+The coordinate checkpoint 82f31df11a757e8706e3360da740b046395bd805
+is published and fetched.  Its parent is
+fbd0119abf9aac44d095af3dabc8fb560222eb5c and its tree is
+b328b1c1cc30552957f96a902f97137590138636.  Local and remote
+commit/tree identities and tracked worktree content agree.  The new
+InitialWeights draft was preserved outside the checkpoint.
+
+InitialWeights first stopped at Locals.set? because restricted
+simplification did not include its checked unfolding rule.  Ordinary
+WP simplification resolved the setter.  The composed 66-instruction
+prefix then checked in 11 seconds with standard axioms.  It returns
+both saved weights and preserves the caller's parameters.  Removed
+two reported unused simplification arguments.  Added the full cell
+draft by composing this prefix, weighted_exact, side_exact, and the
+seven returned cell words.
+
+The full initialCell_exact theorem passed in 3.1 seconds, and the
+edited weight prefix rechecked in 4.2 seconds.  The result covers all
+seven cell words, exact source agreement, and full store preservation
+for n ≤ 800 and index < 1048576.  Its audit contains propext,
+Classical.choice, and Quot.sound.  The compact-boundary LTG entry now
+records the checked prefix continuation and full-cell consumer.
+The next proof boundary is growCells and initialCells, including
+map, append, extraction, ownership, and allocation.  The generated
+initializer guard already matches FuelGuard.program 0 8.  The retained
+compiler annotations and ownership report will guide those regions.
+
+The updated LTG catalog/forest checks, both test suites, and
+109-document check pass.  No advertised declaration changed in this
+LTG update, so its preceding Lean inventory check remains applicable.
+The reviewed cell checkpoint contains InitialWeights, ExecutionInitialCell,
+the compact-boundary consumer record, development notes, journal, solver
+plan, and theorem inventory.  The compiler sidecar identifies the cell
+calls at [70,77) and [93,106), and the proof applies those two callees
+in that order.  The array initializer sidecar records a width-seven map,
+append, extraction, and the existing fuel/completion guard.  Its loop
+descriptor is null, so scalar-loop descriptor support cannot prove it.

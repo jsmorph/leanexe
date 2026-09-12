@@ -38,3 +38,13 @@ runtime limits.  The module checked in 12 seconds with standard axioms.
 The suffix accepts arbitrary remaining local values and a caller-supplied
 postcondition.  This records checked application of the method without
 claiming complete Riemann artifact verification.
+
+The initial-cell composition uses a checked prefix with an arbitrary
+result-frame continuation.  Each coordinate minimum preserves the
+parameters and first 39 internal locals while allowing six scratch
+locals to differ between branches.  The combined prefix exposes only
+the saved x/y weights, parameters, frame length, and empty stack.
+The full cell proof then composes the weighted-state and thermodynamic
+calls and seven returned words.  It checked in 3.1 seconds with standard
+axioms, without expanding both minimum branches inside the public proof.
+Array initialization and complete artifact verification remain open.
