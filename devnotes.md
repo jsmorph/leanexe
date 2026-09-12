@@ -9981,3 +9981,11 @@ sizes and valid cell indices with arbitrary field and ratio words,
 proves all eight neighbor reads bounded, and preserves the store.
 The focused build passed all 3,434 jobs with standard-only axiom audits.
 The allocating sweep loop and complete solver obligations remain open.
+
+The destination-prefix and seven-field write proofs now pass, including
+preservation of a disjoint input grid.  Their first axiom audit caught the
+upstream read/write lemma's compiled bv_decide assumption.  The new shared
+MemoryRoundtrip proof checks each bit through the kernel and has only
+standard logical axioms.  The revised prefix and cell-write audits pass.
+The focused build completed all 3,425 jobs.  The sweep loop, allocator,
+control, successful completion, and exact-byte closure remain open.
