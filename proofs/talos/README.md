@@ -198,8 +198,10 @@ weighted-word evaluation, and primitive-to-conservative conversion.
 The four quadrant constructors and the weighted initializer compose
 these calls while preserving the full store.  The weighted proof follows
 the compiler's 22-call sequence and uses a separate suffix theorem to
-stay within its original elaboration limit.  Cell indexing and complete
-initialization execution remain open.
+stay within its original elaboration limit.  The initial-cell multiplication
+prefix checks its exact emitted region and uses the shared natural-product
+guard theorem for every grid size at most 800.  Remaining coordinate
+arithmetic and traversal require execution proofs.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

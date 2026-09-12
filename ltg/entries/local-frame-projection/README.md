@@ -8,6 +8,8 @@ Use `Frame.internal_getElem?_of_get` when an invariant names a combined WASM ope
 
 Supply the recorded parameter-count equality, the internal-index bound, and the invariant getter.  The combined operand must equal `parameterCount + localIndex`, so a one-parameter function maps operand seven to internal index six.  Keep the result as a named fact and include it only in the focused local-update or arithmetic simplification that needs the internal list.
 
+`Frame.parameter_getElem_of_get` handles an operand inside the parameter prefix.  It takes the parameter-index bound and combined getter and returns the indexed parameter value.  Riemann's checked multiplication prefix uses it when opcode simplification exposes parameter zero while the invariant supplies `frame.get 0`.
+
 This projection recurs in the loop proofs for Demos 2, 3, 5, and 9 and inside several checked allocator and result theorems.  It applies to every `Wasm.Value` kind and does not depend on arrays, a particular instruction region, or a fixed local count.  A parameter getter, an invalid local, or a fact after a local update requires the corresponding parameter theorem, bounds proof, or updated-frame getter.
 
 The Demo 11 journal records an exit-frame equality that passed through an invalid record literal, an unavailable extensionality theorem, and a later reflexivity proof after conversion.  Its checked fold-completion substitution now uses `Frame.ext`, while the operand-stack projections retain only focused ProofKit evidence.  The entry remains provisional pending another frame-equality consumer and direct artifact-proof use of the operand-stack projections.
