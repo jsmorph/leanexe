@@ -10559,3 +10559,59 @@ bounds, and exact-byte closure remain open.
 The simplified map input checked in 84 seconds, its frame preparation
 in 79 seconds, and the complete map region in 67 seconds.  All affected
 execution audits retain standard axioms.
+
+## 2026-09-12: Typed extraction conditionals
+
+Checkpoint 428839b011a003a1b3ee62ef8adb8a89fb21fd88 is published
+and verified against tree e81a53c31f528e26c6bd993e033c7ebb279f5791.
+ScalarConditional extends the shared scalar proof API to retain decoded
+conditional type metadata.  Its expression and assignment theorems use
+the existing descriptor evaluator and Talos control-type equality.
+They checked in 140 seconds with standard axioms after two failed
+assignment-adapter checks recorded in the journal.
+
+The extraction stop-index consumer checked in 137 seconds, including
+the equal-size case.  A combined stop/span target reached its six-minute
+limit without a consumer diagnostic.  Its exact source remains at
+tmp/initial-extract-select-timeout-20260912-204254.lean, and the two proofs
+now have separate modules.  Span and complete extraction input remain
+under check.  LTG indexes the adapter and records the checked stop
+consumer.  Catalog, package, proof-generator, and documentation tests
+pass.  The generator fixture remains at tmp/leanexegen-test-cqC85a.
+
+## 2026-09-12: Complete-proof strategy review
+
+The corrected extraction span checked in 132 seconds with standard
+axioms.  Complete extraction input and execution, the new search-window
+draft, and the updated LTG declaration inventory remain unchecked.
+
+The review identified an unresolved numerical premise in the current
+strategy.  [Retry execution](proofs/talos/lean/Project/EulerRiemann/ExecutionRetry.lean)
+and [time-loop execution](proofs/talos/lean/Project/EulerRiemann/ExecutionAdvance.lean)
+assume source success.  The source fuel theorem excludes status 5, while
+scan failure, invalid time advancement, and retry exhaustion remain
+possible under its conclusion.  The safety theorem preserves the last
+accepted grid on failure.
+
+Successful completion needs a preserved numerical invariant that ensures
+both directional scans and interface fluxes pass their guards, and that
+an accepted trial occurs while its timestep still advances rounded time.
+The current finite-value and positive-internal-energy invariant supplies
+neither quantitative floating-point bounds nor this progress result.
+Interface fluxes are computed before timestep multiplication.  Halving
+the timestep therefore leaves a failing first-sweep interface flux
+unchanged.  The reviewed proofs provide no complete argument discharging
+these obligations for the specified initial data through time 0.8.
+
+Compiler descriptors, checked region equalities, and LTG support remain
+inputs to execution proofs.  Recent scalar and no-fit allocation entries
+have checked consumers and provisional evidence status.  Complete
+initializer execution, a memory bound through output allocation, output
+execution, and independent exact-byte verification remain open.  Output
+arrays use width one, while the current Euler heap-store adapter writes
+width-seven metadata.
+
+The numerical completion argument must be resolved before further local
+execution proofs can justify a completion estimate.  This review changes
+no numerical source, artifact, proof requirement, execution host, or
+production-run order.
