@@ -335,8 +335,16 @@ match all four emitted prefixes and prove the exact byte count through
 [bump branches](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationBump.lean)
 match the three local layouts and compose shared address, memory-growth,
 heap-top, and header-store theorems.  Their 32-bit and runtime-cap bounds
-remain explicit.  Free-list search and the complete initialization
-resource invariant remain open.
+remain explicit.  The [complete allocation regions](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationExecute.lean)
+now compose shared initialization, terminating no-fit search, conditional
+bump allocation, header writes, and allocation counting.  The theorem
+preserves arbitrary surrounding locals and requires a represented free
+list whose buffers are smaller than the requested capacity.  Complete
+initialization traversal and its resource invariant remain open.
+The [capacity-ordering lemmas](../proofs/talos/lean/Project/EulerRiemann/InitialAllocationOrder.lean)
+show that the min(target, current count) invariant supplies all three
+allocation requests and survives release of the previous grid.  The
+full execution proof must establish and maintain that invariant.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

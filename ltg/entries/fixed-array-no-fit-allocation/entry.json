@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-no-fit-allocation",
+  "title": "Fixed-array allocation after an undersized free list",
+  "summary": "Proves terminating free-list search when every free buffer is undersized, then composes conditional memory growth, exact header writes, and allocation counting with arbitrary surrounding locals.",
+  "roles": [
+    "checked-proof-asset",
+    "guidance"
+  ],
+  "categories": [
+    "allocation",
+    "arrays",
+    "compiler-motifs",
+    "loops",
+    "memory",
+    "proof-construction"
+  ],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": [
+    "allocator",
+    "bump-allocation",
+    "frame",
+    "free-list",
+    "local-window",
+    "memory-growth",
+    "termination"
+  ],
+  "annotationKinds": [],
+  "modules": [
+    "Project.ProofKit.FixedArrayAllocateNone",
+    "Project.ProofKit.FixedArraySearchFrame",
+    "Project.ProofKit.FixedArraySearchNone",
+    "Project.ProofKit.FixedArraySearchRead",
+    "Project.ProofKit.FixedArraySearchRegion"
+  ],
+  "declarations": [
+    "Project.ProofKit.FixedArrayAllocateNone.allocated_count",
+    "Project.ProofKit.FixedArrayAllocateNone.bump_result",
+    "Project.ProofKit.FixedArrayAllocateNone.countProgram",
+    "Project.ProofKit.FixedArrayAllocateNone.countProgram_spec",
+    "Project.ProofKit.FixedArrayAllocateNone.counted",
+    "Project.ProofKit.FixedArrayAllocateNone.initializeProgram",
+    "Project.ProofKit.FixedArrayAllocateNone.initializeProgram_spec",
+    "Project.ProofKit.FixedArrayAllocateNone.program",
+    "Project.ProofKit.FixedArrayAllocateNone.program_spec",
+    "Project.ProofKit.FixedArraySearch.advanceProgram",
+    "Project.ProofKit.FixedArraySearch.advanceProgram_spec",
+    "Project.ProofKit.FixedArraySearch.body",
+    "Project.ProofKit.FixedArraySearch.frame",
+    "Project.ProofKit.FixedArraySearch.frame_get",
+    "Project.ProofKit.FixedArraySearch.guardProgram",
+    "Project.ProofKit.FixedArraySearch.guardProgram_spec",
+    "Project.ProofKit.FixedArraySearch.noneProgram_spec",
+    "Project.ProofKit.FixedArraySearch.noneRegion_spec",
+    "Project.ProofKit.FixedArraySearch.program",
+    "Project.ProofKit.FixedArraySearch.readProgram",
+    "Project.ProofKit.FixedArraySearch.readProgram_spec"
+  ],
+  "premises": [
+    "Exact equality with the emitted allocation region",
+    "A represented free list and takeFirstFit need nodes = none",
+    "Heap-top, free-list-head, and allocation-count globals",
+    "Six consecutive scratch locals beginning at params.length + saved.length, with arbitrary trailing locals",
+    "Base plus 48 header bytes plus capacity fits 32-bit memory",
+    "The current page count is at most 65536 and the module uses 32-bit memory",
+    "The required page count fits the runtime memory cap",
+    "A continuation from the exact resulting store and local frame"
+  ],
+  "result": "Search terminates without changing the store. Allocation grows memory when needed, writes the fresh fixed-array header and heap top, increments the count, and preserves all other store fields and surrounding locals.",
+  "consumers": [
+    "euler-riemann-initial-append",
+    "euler-riemann-initial-extract",
+    "euler-riemann-initial-map"
+  ],
+  "relatedEntries": [
+    "fixed-array-allocation",
+    "fixed-array-bump-growth",
+    "fixed-array-capacity",
+    "local-frame-projection"
+  ],
+  "exclusion": null
+}

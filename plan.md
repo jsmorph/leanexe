@@ -500,6 +500,11 @@ size, local execution in one process on one thread, and complete source
 and exact-WASM proofs.  The [complete solver plan](plans/euler-riemann-complete.md)
 records the numerical specification and outstanding proof obligations.
 
+The initializer's map, append-copy, extract-copy, capacity, and complete
+no-fit allocation regions now have checked execution proofs.  The
+remaining composition must maintain the heap and free-list invariant
+through doubling and final extraction.
+
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.
 - [ ] Run 800 by 800 and then render its final density and pressure figure.

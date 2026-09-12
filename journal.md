@@ -13851,3 +13851,117 @@ LTG entries/indexes/declaration checks, artifact import inventory,
 and the journal, notes, plan, and theorem inventory.  It preserves the
 unchanged numerical source, compiler output, previous data, and unrelated
 paper outputs.
+
+Checkpoint 52e50f17061e84eed9cc247ac88a0c0678236a4b is published
+and fetched with parent b7def01ee89e9d5cc02ec6afa0f3d8705e413609
+and tree 8c9d1f30c577476a2ed951c0ba09e17cb55c8ec1.  Commit,
+parent, message, tree, index, and tracked worktree content match the
+fetched branch.  The next search proof reuses the checked FreeListAt
+representation and takeFirstFit facts.  Added a six-slot search-frame
+draft that preserves arbitrary parameter, saved-local, and trailing-local
+lists, so the emitted initializer layouts can share search execution.
+
+The generic search frame passed in 2.8 seconds with standard axioms.
+Removed five unused simplification arguments.  Added the bounded
+capacity/next-field reads and pointer-advance fragments, retaining the
+existing allocator proof's kernel-checked address and memory facts while
+allowing arbitrary saved and trailing locals.
+
+The cleaned search frame passed in 2.1 seconds and the field-read/advance
+module in 1.9 seconds with standard axioms.  Added the complete no-fit
+search draft.  Its invariant retains the exact store, a visited/remaining
+free-list decomposition, the checked remaining list, and the six-slot
+frame.  It uses the existing scanRemaining suffix theorem for strict
+termination.  Its explicit takeFirstFit-none premise must be proved by
+the initializer's resource invariant before allocation composition.
+
+The shared no-fit search passed in 2.4 seconds after right-associating
+the saved prefix, six scratch locals, and trailing locals.  Its public
+audit uses standard axioms.  The initializer consumer first failed to
+infer the instruction type in its fit-branch selector.  Adding that
+type fixed elaboration, but the combined consumer reached the two-minute
+timeout without a target diagnostic.  Split its exact-region equalities
+into InitialAllocationSearchShape before another check.  The LTG CLI
+rejects a query subcommand.  The documented category-file search found
+the existing allocation and bump-growth entries.  The earlier allocator
+window requires an empty free list, one parameter, and existing memory,
+so the new composition retains the generalized search and growth support.
+
+The isolated search-region equalities passed in 46 seconds.  Added
+FixedArrayAllocateNone to compose initialization, terminating no-fit
+search, the guarded bump branch, and the allocation counter for arbitrary
+surrounding locals.  Added InitialAllocationOrder to express the free-list
+size invariant with min(target, current count), which supplies both
+growth allocation requests and the final extraction request.  These
+drafts retain their explicit memory and represented-list premises.
+
+The first allocation composition failed after 75 seconds because WP
+normalization right-associated the local indices before the bump-result
+rewrite.  Normalizing the three index additions and reducing the empty
+branch continuation fixed that boundary.  The complete shared allocation
+then passed in 69 seconds with standard axioms.  The earlier combined
+two-target command exhausted its two-minute limit after reporting the
+allocation error, before a search-consumer result.  The search consumer
+now transports the checked region equality through an explicit congrArg
+instead of rewriting the full WP goal.
+
+InitialAllocationShape passed in 58 seconds and InitialAllocationExecute
+in 56 seconds under a three-minute serialized runner command.  The
+four emitted allocation sites match the shared initialization, search,
+bump, and count sequence.  The common consumer's audit uses standard
+axioms.  Added the provisional fixed-array-no-fit-allocation entry and
+its four shared modules to the artifact import inventory.  The first
+catalog rebuild rejected an unsorted consumer list before generation.
+Sorted that list and updated the theorem inventory, plan, and notes.
+
+InitialAllocationOrder passed in 70 seconds with standard axioms.
+The free-list invariant supplies map, append, and extract capacity
+inequalities and survives release of the previous grid.  The combined
+three-minute command then timed out on the standalone search consumer.
+The complete allocation consumer already passed, but the smaller search
+consumer still needs its checked result.  Added FixedArraySearchRegion
+to discharge body-equality transport with an arbitrary module before
+instantiating the complete Riemann module.
+
+The corrected LTG rebuild and catalog check accept 37 entries.  The
+knowledge forest accepts one package and 37 entries.  LTG, knowledge,
+and proof-generator tests pass.  The generator tests preserve
+tmp/leanexegen-test-Ei1oUO.  The documentation check accepts 114
+maintained Markdown files.
+
+FixedArraySearchRegion passed in 100 seconds with standard axioms.
+The standalone consumer now applies this checked adapter directly.
+The local runner still enforces the standard one-thread, 100-percent
+CPU, 4G-high/6G-max/1G-swap limits.  Read-only host diagnostics reported
+3,426,608 KiB available memory, nearly exhausted system swap, and
+memory/full and I/O/full 60-second pressure averages of 5.89 and
+23.49 percent.  Build wall times therefore include resource contention
+and do not isolate elaboration cost.  No host configuration or other
+process was changed.  Added the checked region adapter to the same
+provisional LTG entry and artifact import inventory.
+
+The standalone initializer search consumer passed in 58 seconds with
+standard axioms.  LTGCheck completed all 3,400 jobs and resolved the
+37-entry catalog, including the region adapter.  The final LTG and
+proof-generator tests pass and preserve tmp/leanexegen-test-8Fpv8u.
+The catalog, knowledge forest, and 114-file documentation checks pass.
+The ten new Lean modules contain 552 lines.  Their structure separates
+the general six-slot frame, field reads, terminating search, allocation
+composition, and emitted-region consumers.  The concrete allocation
+consumer uses the shared theorem through a checked program equality.
+The no-fit property and memory bounds remain premises, with separate
+capacity-ordering lemmas ready for the complete growth invariant.
+
+The reviewed checkpoint stages those ten Lean files, the new LTG entry
+and its six category indexes, LTGCheck, the artifact import inventory,
+the proof-kit and theorem documentation, the solver plan, plan.md,
+devnotes.md, and journal.md.  It preserves numerical source and emitted
+WASM bytes, all previous data and figures, and unrelated paper outputs.
+Independent package verification and complete source success remain
+open gates.  The next proof uses the existing Heap.At, Heap.Owns, and
+reservation theorems to compose initializer allocation and traversal.
+
+The staged whitespace check found a trailing blank line in the new
+search-shape module.  Removed that line and two adjacent empty lines.
+The final ten-file count is 549 lines, and the staged whitespace check
+passes.  The edit changes no Lean declaration or proof term.
