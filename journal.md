@@ -11958,3 +11958,54 @@ proof inventory, status, and concise notes.  Checkpoint intent: publish
 the three checked execution modules and five current records.  The
 allocating traversal, allocator reuse, complete control, successful
 completion, and exact-byte closure remain open.
+
+Published the eight-path sweep-callback checkpoint as
+06b085a353d377658b553d7715f731312703661b, parent
+79e8a5e8733d4ca546fb4ea79bffd4e857eb0cfa, tree
+fc1c02c3e2bba4dc8b1b83b7011f7f4e502b8a9c.  Documentation and whitespace
+checks passed, followed by non-forced SSH push, fetch, and exact
+commit/tree/index/tracked-worktree comparisons.  Added the grid-write
+prefix invariant and one-field progress/frame lemmas for the allocating
+sweep loop.  The representation permits unwritten destination words
+while proving every completed prefix word equal to the source result.
+It reuses the shared address and disjoint read/write lemmas.
+
+The write module's first elaboration failed on an offside expression in
+the record update.  Parenthesizing that expression resolved the resulting
+type errors, and the module built in 1.7 seconds.  Its axiom audit rejected
+the prefix-progress proof: the imported Mem.read64_write64_same theorem
+depends on Mem.read64_write64_same._native.bv_decide.ax_1_10.  The other
+audited write lemmas use only propext and Quot.sound.  Inspected the pinned
+CodeLib RustStd/Frame proof and Lean's BVDecide documentation.  That tactic
+adds its compiled checker result as an axiom.  Added a separate shared
+memory round-trip proof using bit extensionality and kernel-checked
+simplification, and changed the prefix proof to use it.  Its focused
+check is next.  The extra assumption is not accepted for this solver.
+
+The replacement MemoryRoundtrip theorem passed on its first check in
+7.1 seconds, with only propext, Classical.choice, and Quot.sound.  It
+unfolds the byte write/read definitions, uses UInt64 bit-vector equality,
+and checks the 64 bit positions by simplification.  It invokes no SAT
+solver or compiled decision result.  Added the seven-field cell-write
+composition and input-grid preservation lemmas.  The next focused build
+will recheck the prefix theorem through the replacement round-trip proof
+and check that cell-write composition.
+
+The revised prefix theorem now reports only the accepted standard axioms.
+The cell-write proof needed a definitional change from the seven field
+lookups to writeCell before its final size arithmetic.  Its input-frame
+proof first had an offside tactic argument, then repeated backward
+application reached the 200,000-heartbeat bound.  Replaced that search
+with seven explicit forward applications of the checked field-frame
+lemma.  The focused MemoryWriteCell build passed all 3,425 jobs in the
+standard two-minute runner envelope, with module time 6.6 seconds.
+PrefixAt.write_cell uses propext, Classical.choice, and Quot.sound.
+GridAt.writeCell_disjoint uses propext and Quot.sound.
+
+Reviewed the shared bit proof, the byte-address progress and frame
+lemmas, the cell-write composition, and all three module audits.  Updated
+the proof-kit catalog, solver plan, proof inventory, status, and concise
+notes.  Checkpoint intent: publish the three checked memory modules and
+six current records.  The generated program is unchanged.  The complete
+solver and production calculations remain behind the outstanding loop,
+allocator, control, successful-completion, and exact-byte proof gates.
