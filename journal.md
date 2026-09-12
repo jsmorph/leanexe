@@ -14887,3 +14887,182 @@ Checkpoint intent: stage only devnotes.md and journal.md and publish the
 proof-strategy assessment with the preceding uncommitted check records.
 Keep every pending implementation and LTG change outside this checkpoint.
 The starting commit is 428839b011a003a1b3ee62ef8adb8a89fb21fd88.
+
+Published and fetched 423d944f60aceb30056e9d76b3c389818906fe84,
+"Record the unresolved Riemann completion proof", parent
+428839b011a003a1b3ee62ef8adb8a89fb21fd88, tree
+8b588c21a1fb9f7fbed189acd8fedda96991d49b.  Remote identity, index,
+and both checkpoint files matched.  Pending implementation and LTG
+changes remained outside that two-file checkpoint.
+
+The user approved the six-gate strategy: a complete final theorem,
+quantitative numerical completion, compiler-described array operations,
+whole-call-chain ownership and memory, independent exact-byte checking,
+then 192/plot/800/plot.  Numerical completion is the first implementation
+gate.  Its source-success and floating-point margins must be discharged
+before resuming the remaining initializer instruction proofs.
+
+The design review consulted Guermond et al., arXiv:1710.00417,
+https://arxiv.org/pdf/1710.00417, for convex invariant-domain arguments.
+The author-hosted PDF fetch timed out and the attempted arXiv HTML path
+returned 404.  The PDF and Lanyon article were readable.  The paper's
+positivity and entropy statements do not supply the frozen solver's
+rounded-time guarantee.  A read-only Node calculation over the existing
+192-grid cells.csv found both signs of neighbor differences for density,
+energy, and pressure in both directions.  Velocity_x has x differences
+from -0.55157 to +0.06339, and velocity_y has y differences from -0.55350
+to +0.06258.  These existing-data diagnostics reject using coordinatewise
+monotonicity as an assumed invariant.  They are not formal evidence for
+the complete solver, whose time scheduling differs.
+
+Reread the installed leanrunner skill and the repository runner.  The
+current work remains local with the repository's pinned 4.34.0-rc2
+toolchain, one Lean thread, and standard 4G/6G/1G/100% limits.  A guessed
+CodeLib source path failed.  rg --files -uu located its source under the
+proof workspace's .lake/packages/CodeLib/codelib tree.  Reviewed the
+available roundoff theorem statements and existing scaled Euler bounds.
+
+Added RealRusanov as an unchecked numerical proof module.  It expresses
+the exact-real two-dimensional flux with the existing pressure and
+internalEnergy definitions.  The intended results are the complete
+three-state convex decomposition, internal-energy concavity in weighted
+states, and an exact quadratic margin identity for each split state.
+The quantitative split theorem exposes the pressure-loss inequality
+that the rounded wave-speed proof must discharge.  This edit changes
+no numerical source or artifact and preserves all prior drafts.
+
+The first RealRusanov build completed successfully.  Lake reported 31
+seconds for the target, with replayed dependency warnings and local
+tactic-style warnings.  All six requested theorem audits contain only
+propext, Classical.choice, and Quot.sound.  The replayed dependency
+arithmetic_examples audit contains its own native_decide axiom, but none
+of the new theorem audits includes it.  Reviewed the accepted proofs
+against their stated scope: these are exact-real identities and
+conditional bounds, with no binary64 or full-run success conclusion.
+
+Removed the diagnosed redundant tactic sequencing and extended the same
+module with the sound-speed pressure identity, the split-density factor
+bound, and the intended six-sevenths internal-energy lower bound.  The
+extension remains unchecked.  It uses the existing Guard definitions and
+Mathlib arithmetic.  Compiler annotations and instruction-level LTG
+lemmas do not establish this numerical invariant.  Their remaining
+execution obligations stay recorded separately.
+
+The sound-speed extension failed after 32 seconds at the monotonicity of
+squaring a nonnegative bound.  The general nonlinear tactic did not
+derive that implication.  Replaced it with Mathlib's sq_le_sq₀ applied
+to the absolute-value bound.  The wave-factor and pressure identity
+audited with standard axioms in the failed run.  The failed split theorem
+reported sorryAx from elaboration recovery and is not accepted evidence.
+
+The corrected RealRusanov check passed in 33 seconds.  All nine requested
+audits contain only the accepted standard axioms, and the target has no
+remaining local warnings.  Added the unchecked RealStep composition:
+split positivity, the full update's center-coefficient bounds, and the
+half-center density/internal-energy bounds under the two CFL conditions.
+The sharp coefficient remains available for a later quantitative
+argument.  Repeating the half-center estimate alone cannot supply the
+full floating-point run invariant.
+
+Reviewed F64Admissibility, F64Normalize, F64InternalEnergy, and both
+binary64 ordering modules.  The existing residual error is at most
+5 epsilon after normalization, while the guard requires a residual
+strictly above 8 epsilon.  Added unchecked shared converses for positive
+finite classification and positive-word ordering, followed by a guard
+acceptance theorem requiring exact normalized margin above 13 epsilon.
+The guard theorem retains the finite input and normalizability premises.
+It reuses the checked normalization and residual-error results without
+changing the numerical guard or the trusted arithmetic model.
+
+RealStep failed after 37 seconds at its two final strict-positivity
+projections.  The positivity tactic did not extract the center-state
+conjunction.  Replaced both tactic calls with div_pos applied to the
+explicit conjunction fields.  The split and weighted update lower-bound
+audits were standard-only.  The final failed theorem remains unaccepted.
+
+The guard build stopped in F64OrderComplete after 30 seconds.  Its three
+diagnostics concerned proving a negative numerator nonpositive,
+transporting word nonzeroness to Nat, and applying a generic linear-order
+lemma to UInt64's separate order instance.  Replaced these with explicit
+neg_nonpos, toNat injectivity, and natural-number order transport.  The
+guard module did not run, and no failed audit is counted as evidence.
+The first edit command failed its journal-context check and changed no
+files.  Reread the exact tail and both target files before correcting it.
+
+F64OrderComplete passed in 31 seconds with all three audits standard-only.
+F64AdmissibilityComplete then failed in 38 seconds.  Its exact threshold
+constant exceeded Mathlib's default exponentiation threshold, and its
+last simplification attempted a rewrite through an unreduced local top
+binding.  Added the existing normalization proof's exponentiation
+threshold locally to the constant theorem and supplied the accepted
+predicate and word comparison together through Bool.and_eq_true_iff.
+No recursion or heartbeat limit was increased.
+
+Updated the root work queue and complete-solver plan with the approved
+six gates and numerical priority.  Lookups for a package manifest, an
+old tool path, and a guessed numerical LTG entry found no files.  The
+exact tool inventory identifies tools/check-docs.js.  Content searches
+of the current LTG entries found no F64, IEEE64, floating-point, or
+numerical entry.  Shared numerical lemmas remain repository ProofKit
+support, with no claimed automatic LTG retrieval measurement.
+
+F64AdmissibilityComplete passed in 33 seconds with both audits containing
+only the accepted standard axioms.  The corrected RealStep check is
+running next.  Examining normalizability identified a possible failure
+of closure under a cell update: a tiny transverse component can shrink
+below the normalization exponent range while density, main momentum,+and energy remain ordinary finite values.  Added an unchecked fixed-word
+diagnostic with density 1, main momentum 1.25, energy 2, and one neighboring
+transverse component 2^-1019.  It asks Lean to check input-side acceptance
+and rejection at ratios 1/8 and 2^-40, without native evaluation or a
+production calculation.  This is a proposed general-state counterexample,
+not evidence that the specified Riemann run reaches these values.
+
+The corrected RealStep check passed in 95 seconds with all three audits
+standard-only.  Added the accepted numerical results and their remaining
+premises to devnotes.md and the complete-solver plan.  The preceding
+diagnostic entry has a typographical join: "main momentum,+and energy"
+means "main momentum, and energy".  The numerical meaning is unchanged.
+
+GuardRangeBoundary passed in 88 seconds.  Its four fixed-word theorem
+audits contain propext and Quot.sound.  Both input states are accepted,
+while the full cell calculation rejects ratios 1/8 and 2^-40.  Extended
+the diagnostic to identify the precise branch: accepted interfaces and
+CFL, unchanged density/main momentum/energy, a positive updated transverse
+word outside normalization range, and physical admissibility of that
+rejected candidate.  The extension remains unchecked.  No conclusion
+about reachability from the specified initial grid follows from this
+constructed state.  The documentation and whitespace checks passed
+before this extension.
+
+The extended GuardRangeBoundary check passed in 56 seconds.  Its six
+fixed-word audits use propext and Quot.sound, and its decoded-real
+admissibility theorem adds Classical.choice.  The checked trace confirms
+accepted interfaces, equal wave speeds, accepted CFL, unchanged density,
+main momentum, and energy, and a positive transverse update outside the
+normalization range.  The rejected candidate remains Euler-admissible.
+The separate smaller-ratio theorem establishes rejection at 2^-40.  It
+does not establish rejection for every retry or reachability from the
+requested initial grid.  Added this precise scope to the development
+notes and current plan.  No guard revision has been made.
+
+Reviewed the five numerical modules, their final axiom audits, the
+source guard and update definitions, the documentation changes, and the
+journal together.  Existing Guard, F64 normalization, residual error,
+and ordering results supplied the reusable proof content.  These checks
+provide no complete artifact theorem, automatic LTG retrieval measurement,
+or unconditional Riemann completion result.  The new source files contain
+no sorry, admit, axiom declarations, native_decide, or bv_decide.  Preserve
+the numerical counterexample as checked evidence when considering any
+later guard or invariant change.
+
+Checkpoint intent: stage only devnotes.md, journal.md, plan.md,
+plans/euler-riemann-complete.md, RealRusanov.lean, RealStep.lean,
+GuardRangeBoundary.lean, F64OrderComplete.lean, and
+F64AdmissibilityComplete.lean at their reviewed project paths.  Preserve
+all pending initializer, scalar-conditional, LTG, compiler-driver, paper,
+artifact, and data state outside this checkpoint.  The starting commit
+is 423d944f60aceb30056e9d76b3c389818906fe84.
+
+Final git diff --check passed, and tools/check-docs.js checked all 116
+maintained Markdown files.  The index was empty before the explicit
+nine-path staging operation.  All Lean jobs have completed.
