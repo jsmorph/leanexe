@@ -10006,3 +10006,12 @@ that sequence to the generated sweep allocator and preserves every
 represented grid.  The focused build passed all 3,428 jobs with
 standard-only axiom audits.  Header construction, free-list reuse, and
 the complete memory bound remain open.
+
+The allocation-header proofs now establish all six metadata values,
+bounded execution of their stores, preservation of the local frame and
+disjoint grid bytes, and exact equality with the generated bump and reuse
+header regions.  Single-word execution lemmas avoid expanding all six
+stores during simplification.  The focused AllocationHeader build passed
+all 3,436 jobs with standard-only axiom audits.  Allocator setup, free-list
+search and reuse, the peak-memory bound, control, successful completion,
+and exact-byte closure remain open.

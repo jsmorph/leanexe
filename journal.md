@@ -12118,3 +12118,59 @@ Correction to the preceding growth entry: its reference to an initial
 existed.  The MemoryGrowth tool result reported 3,344 jobs.  The first
 correction edit matched an earlier paragraph.  Relocated that new
 correction to the end before staging, preserving the published prefix.
+
+Published the eight-path allocator-growth checkpoint as
+56548241b9a330cab4918bae33e7b90a7322d941, parent
+80b17deee72eef64bcfaad0665252cb70803fb67, tree
+3bf9413fc967a02160665aa64a4e1a40dd8e2e68.  The 105-document and whitespace
+checks passed.  Non-forced SSH push and fetch succeeded.  The fetched
+commit, parent, tree, index, and tracked worktree match.
+
+Resumed after reading the repository instructions, operating requirements,
+README, development guide, and installed leanrunner skill.  The current
+ARM Linux runner and pinned local tools remain in use.  Added shared
+fixed-array header proofs over the existing memory transformation,
+using MemoryRoundtrip for equal-address reads and the checked byte-frame
+lemma for disjoint writes.  This avoids the upstream read/write theorem's
+compiled-checker axiom.  The first focused check will cover all six
+header words, their root-relative addresses, and bytes outside the header.
+
+The first FixedArrayHeader check reached the default 200,000-heartbeat
+limit while attempting the equal-address theorem before removing later
+writes.  The outside-byte theorem passed.  Reordered the read proof to
+remove disjoint writes first, avoiding definitional comparison of the
+nested memory transformations against an unequal-address read.
+
+The revised header reads passed in 1.7 seconds with standard-only axioms.
+Lean reported their address-range premise unused, so removed that premise
+from the raw read theorem.  Root-relative interpretation and byte framing
+retain their required range premises.  The first execution draft tried
+to simplify all six stores together and reached the recursion limit.
+Divided it into single constant-word and local-word store theorems, each
+restoring the original local frame, followed by six explicit compositions.
+
+Both single-store theorems passed.  The first composition attempt supplied
+its bounds argument before Lean inferred the updated store, causing the
+elaborator to select the initial store.  Letting the execution conclusion
+determine that store before proving its bound resolved the mismatch.
+FixedArrayHeaderExec then passed all 3,351 jobs in 2.2 seconds, with only
+propext, Classical.choice, and Quot.sound in every execution audit.
+Added exact generated header-region matches for bump allocation and
+free-list reuse, the sweep bump-header execution theorem, and preservation
+of a grid disjoint from the metadata writes.
+
+The focused command tools/leanrun --timeout 2m lake -d proofs/talos/lean
+--no-ansi build Project.EulerRiemann.AllocationHeader passed all 3,436
+jobs.  The final module took 1.5 seconds.  Its four exact instruction
+shape equalities use propext.  The execution theorem uses propext,
+Classical.choice, and Quot.sound.  The grid-frame theorem uses propext
+and Quot.sound.  Reviewed all three new modules, including address
+normalization, six per-word bounds, frame restoration, root-relative
+metadata reads, and both orderings of disjoint grid and header regions.
+
+Updated the shared catalog, proof inventory, solver plan, and concise
+notes.  Checkpoint intent: publish the three checked header modules and
+these five development records.  Allocation setup, free-list search and
+reuse, the peak-memory bound, complete controller execution, successful
+completion, and exact-byte closure remain open.  No compiler, source,
+generated artifact, or production-run change belongs to this checkpoint.

@@ -94,7 +94,10 @@ agreement, and preservation outside its allocated destination.  Allocator
 setup, successful completion, bounded memory, complete execution, and
 exact-byte closure remain open.  The allocator's conditional memory-growth
 region now has a checked execution proof within the runtime cap and
-preserves existing grids.  The [complete solver plan](../../plans/euler-riemann-complete.md)
+preserves existing grids.  The six-word allocation header has checked
+bounded-store execution, metadata reads, and preservation of disjoint
+grids.  Exact region equalities cover the bump and reuse header sequences.
+The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
 ## Workflow Tools
