@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-field-access",
+  "title": "Fixed-width array field loads and stores",
+  "summary": "Executes a compiler-emitted field address, load, or store for arbitrary element width and field index, preserving caller locals and the operand-stack tail.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["array", "field", "frame", "load64", "map", "operand-stack", "source-width", "store64"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.ArrayField"],
+  "declarations": ["Project.ProofKit.ArrayField.addressProgram", "Project.ProofKit.ArrayField.address_spec", "Project.ProofKit.ArrayField.field_word", "Project.ProofKit.ArrayField.loadProgram", "Project.ProofKit.ArrayField.load_spec", "Project.ProofKit.ArrayField.storeProgram", "Project.ProofKit.ArrayField.store_spec"],
+  "premises": ["Exact equality with the emitted field-access region", "Combined getters for the pointer and encoded element index", "For a load or store, the wrapped address plus eight lies inside current memory", "For a load, the memory word equals the specified value", "For a store, the value local contains the specified word", "An operand-stack tail and a continuation consuming the exact result"],
+  "result": "Address calculation preserves the store and pushes the wrapped word address. A load pushes the specified word and preserves the store. A store writes exactly that word, preserves all other store fields and caller locals, and restores the operand-stack tail.",
+  "consumers": ["euler-riemann-initial-map"],
+  "relatedEntries": ["array-memory-framing", "compact-loop-suffix-boundary", "local-frame-projection", "memory-write-range", "offset-array-copy"],
+  "exclusion": null
+}
