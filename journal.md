@@ -12218,3 +12218,77 @@ plan, proof inventory, and concise notes.  Checkpoint intent: publish
 AllocationBump and these four records.  Free-list search and reuse,
 complete allocator composition, the peak-memory bound, controller
 execution, successful completion, and exact-byte closure remain open.
+
+Published the five-path bump-allocation checkpoint as
+19c0001a4301c01dfd08158580bc97f8ce7b5a8d, parent
+fe8f7d98b1f83a2608bbac232a44a20507e1a1a6, tree
+490fff782bf7c25da7d106cd98e56e64598bd7d3.  The 105-document and whitespace
+checks passed.  Non-forced SSH push and fetch succeeded.  The fetched
+commit, parent, message, tree, index, and tracked worktree match.
+
+Inspected the existing free-list model, unlink proof, and fixed-array
+reuse definitions.  One read command included an incorrect guessed path
+for AllocatorFrame and failed for that path.  The named BookAllocFit and
+Runtime.FreeList reads succeeded.  The shared unlink proof used the
+upstream compiled-checker read/write lemma once.  Replaced that dependency
+with MemoryRoundtrip's kernel-checked theorem and added explicit audits
+of unlinking, disjoint writes, and the selected-node separation theorem.
+
+Runtime.FreeList passed all 3,348 jobs in 3.0 seconds.  The unlink theorem
+now depends only on propext, Classical.choice, and Quot.sound.  Disjoint
+write framing and selected-node separation use propext and Quot.sound.
+Added the header transformation's root-relative form, then reused the
+existing fixedArrayAllocFitStore and FreeChoice definitions for the
+sweep's reuse branch.  The next check covers the exact branch split,
+unlinking either the head or an interior node, and the reuse-memory model.
+
+The root-relative header theorem passed in 2.3 seconds with propext and
+Quot.sound.  The reuse build then reached its two-minute runner limit
+while rebuilding the existing BookAllocFit execution proof, after
+BookAllocSearch completed.  It exited 124 without a theorem diagnostic.
+Divided BookAllocFit before retrying: its existing memory definitions and
+state lemmas now live in BookAllocFitState, and its execution proof
+imports that module.  The execution-proof suffix is byte-identical.
+The new Euler proof imports only the state module.  Replaced the moved
+fresh-header proof's compiled read/write dependency with the checked
+root-relative header and fresh-header lemmas.
+
+BookAllocFitState passed all 3,353 jobs in 2.2 seconds.  All three state
+theorems have standard-only axiom audits.  The first resumed Euler check
+found an indentation error in a record update and a bounds fact needing
+the simplifier's UInt32 subtraction form.  Corrected those two issues.
+The unlink fragment and model identity then passed all 3,442 jobs in
+1.0 second.  Added the complete selected-node reuse branch by composing
+unlinking, the six-word header program, and returned-pointer assignment.
+
+The selected-node reuse branch passed all 3,442 jobs in 2.1 seconds with
+standard-only execution audits.  Started a five-minute focused check of
+BookAllocFit after the module split and completed state-module check.
+While that serialized Lean job runs, added the search loop's bounded
+capacity/next reads and predecessor/current-pointer advancement as
+separate exact instruction fragments.  These fragments await their own
+focused check after the CLOB job finishes.
+
+The split BookAllocFit execution module passed all 3,359 jobs.  Its
+execution proof took 123 seconds under the five-minute standard runner
+envelope.  AllocationSearchRead then passed all 3,443 jobs in 2.7 seconds,
+including both exact region equalities and both execution theorems.
+Created the fresh diagnostic
+tmp/riemann-allocation-audit-20260912-0456.lean and checked it with
+tools/leanrun --timeout 2m lake -d proofs/talos/lean env lean, passing its
+absolute path as an ordinary argument.  The CLOB search execution and
+fresh-header theorems, Euler reuse execution, and both search-fragment
+theorems all depend only on propext, Classical.choice, and Quot.sound.
+
+Reviewed the bounded module split, preserved execution-proof suffix,
+unchanged reuse definitions, root-relative memory equality, both unlink
+branches, metadata writes, pointer result, search reads, and pointer
+advancement.  Updated the shared catalog, proof inventory, solver plan,
+and concise notes.  Checkpoint intent: publish the six proof-module
+changes and these five records.  The complete free-list search loop,
+allocator composition, peak-memory bound, controller execution,
+successful completion, and exact-byte closure remain open.
+
+The staged whitespace check found one added blank line at the end of
+BookAllocFitState.  Removed that blank line before publication.  The
+105-document check passed.
