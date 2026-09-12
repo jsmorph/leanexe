@@ -33,8 +33,17 @@ theorem WritesRange.write64 (store : Store α) (address : UInt32) (value : UInt6
     WritesRange store { store with mem := store.mem.write64 address value } start stop :=
   ⟨rfl, Mem.write64_pages .., fun _ hOutside => write64_bytes_outside _ _ _ (by omega)⟩
 
+theorem WritesRange.read64 {initial final : Store α} {start stop : Nat}
+    (h : WritesRange initial final start stop) (address : UInt32)
+    (hOutside : address.toNat + 8 ≤ start ∨ stop ≤ address.toNat) :
+    final.mem.read64 address = initial.mem.read64 address := by
+  apply read64_congr
+  intro byte hByte
+  exact h.2.2 (address.toNat + byte) (by omega)
+
 #print axioms WritesRange.trans
 #print axioms WritesRange.mono
 #print axioms WritesRange.write64
+#print axioms WritesRange.read64
 
 end Project.ProofKit.Memory

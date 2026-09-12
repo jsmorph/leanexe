@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "offset-array-copy",
+  "title": "Array copy with source and destination offsets",
+  "summary": "Executes raw-word copy loops with optional local-valued source and destination offsets, preserving all store fields and bytes outside the copied interval.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["append", "array", "copy-loop", "extract", "frame", "offset", "raw-cell-copy", "source-width"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.CopyAddress", "Project.ProofKit.OffsetArrayCopy"],
+  "declarations": ["Project.ProofKit.CopyAddress.OffsetAt", "Project.ProofKit.CopyAddress.offset_word", "Project.ProofKit.CopyAddress.program", "Project.ProofKit.CopyAddress.program_spec", "Project.ProofKit.OffsetArrayCopy.body", "Project.ProofKit.OffsetArrayCopy.program", "Project.ProofKit.OffsetArrayCopy.program_spec"],
+  "premises": ["Exact equality with the emitted copy region", "An empty operand stack and getters for source, target, count, and any offset locals", "A valid counter local distinct from every read local", "Source-offset plus count and destination-offset plus count lie inside their respective word ranges", "Complete source and destination arrays fit current memory and the 32-bit address range", "Complete source and destination regions are disjoint", "A continuation consuming copied-word equality, WritesRange, and the final counter frame"],
+  "result": "The loop terminates after count writes and copies source[offset+i] to destination[offset+i], with independently chosen offsets. It preserves the complete store outside the destination write interval.",
+  "consumers": ["euler-riemann-initial-append-copy", "euler-riemann-initial-extract-copy"],
+  "relatedEntries": ["fixed-array-erase-copy", "local-frame-projection", "memory-write-range"],
+  "exclusion": null
+}
