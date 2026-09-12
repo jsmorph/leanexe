@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "natural-subtraction",
+  "title": "Saturating natural subtraction",
+  "summary": "Executes the emitted comparison and subtraction branches for staged natural operands, returning the encoded truncated difference while preserving the store and stack tail.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["natural", "saturation", "stack-tail", "subtraction"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.NatSub"],
+  "declarations": ["Project.ProofKit.NatSub.program", "Project.ProofKit.NatSub.program_spec"],
+  "premises": ["Exact equality with the emitted natural subtraction region", "Combined getters for both staged UInt64 operands", "An identified operand-stack tail", "A continuation for the encoded natural difference"],
+  "result": "The program pushes UInt64.ofNat (left.toNat - right.toNat) and preserves the store, parameters, internal locals, and prior operand-stack tail.",
+  "consumers": ["euler-riemann-initial-difference"],
+  "relatedEntries": ["checked-natural-multiplication", "local-frame-projection"],
+  "exclusion": null
+}

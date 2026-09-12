@@ -305,10 +305,13 @@ weighted/conservative input words.  The four quadrant constructors and
 [weighted initializer](../proofs/talos/lean/Project/EulerRiemann/ExecutionInitialWeighted.lean)
 compose the recorded calls and preserve the full store.  A compact
 suffix theorem separates the weighted initializer's 22-call proof.
-The [coordinate multiplication prefix](../proofs/talos/lean/Project/EulerRiemann/InitialCoordinateMul.lean)
-checks its emitted region and uses shared checked-natural multiplication
-for every grid size at most 800.  Remaining coordinate arithmetic,
-grow/extract traversal, and initialization allocation remain open.
+The [coordinate weights](../proofs/talos/lean/Project/EulerRiemann/InitialWeight.lean)
+check both emitted regions and compose shared checked multiplication,
+division/remainder, and saturating subtraction for every grid size at
+most 800 and temporary initialization index below 1,048,576.  Both
+minimum branches preserve the parameters and non-scratch locals.
+Complete cell composition, grow/extract traversal, and initialization
+allocation remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
