@@ -115,8 +115,12 @@ state proofs establish sufficient capacity, bounded payload addresses,
 fresh metadata, and bounded page counts.  They also preserve a source
 grid separated from the free nodes and new heap allocation, prove that
 the destination is disjoint, and preserve free-list representation during
-memory growth.  Full sweep setup, the peak-memory invariant, and the full
-solver obligations remain open.
+memory growth.  The complete sweep function now composes entry, capacity
+calculation, allocation, pointer and length installation, traversal, and
+the returned owner/root pair.  Its theorem proves source agreement,
+input-grid preservation, and writes confined to the destination payload,
+under explicit free-list separation and allocation-space premises.  The
+peak-memory invariant and the full solver obligations remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
