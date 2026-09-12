@@ -12592,3 +12592,46 @@ Updated the proof catalog, inventory, solver plan, and concise notes.
 Checkpoint intent: publish AllocationGlobals, AllocationFrame, the shared
 remaining-head lemma, and these five records.  The generated program and
 production-run prerequisites are unchanged.
+
+The 105-document and staged whitespace checks passed.  Published the
+eight-path allocator-state checkpoint as 7efb5181ef51d30eeb77dea8ae3e7f8e19644ed5,
+parent ae745bc1d04c5c88e76eeb847ad5dba641eed3e8, tree
+3ef4471a49bdc58f437ad26f381d6298761f3bd4.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Inspected generated functions 72 through 74.  The acceptance scan reads
+each seven-word cell and exits at the first nonzero status.  The step
+uses that result to select the second directional sweep, while retry
+uses it to accept or release the trial.  Added its exact loop boundary,
+local frame, accepted-prefix invariant, and source all/false lemmas.
+
+The first shape check found that boolWord belongs to ExecutionNeighbor,
+so the frame now imports that checked definition.  Added the generated
+loop proof with bounded reads of all seven cell fields, an all-zero
+visited prefix, immediate rejection on a nonzero status, and decreasing
+remaining length for continued traversal.
+
+AcceptedLoopShape and AcceptedLoop passed all 3,429 jobs, with module
+times 1.4 and 3.1 seconds and standard-only audits.  The loop uses the
+default elaboration limits.  Added the function theorem composing the
+two bounded length reads, min-length setup, loop, and returned Boolean
+word while preserving the complete store.
+
+The full-function check found two excess trailing scratch locals in the
+handwritten frame.  The loop theorem had correctly preserved that longer
+frame, but it did not match the generated entry.  Reduced the frame to
+the generated 22 locals and rechecked the loop and function together.
+
+The corrected loop passed.  The function proof then reached its three
+return instructions, already unfolded during entry reduction.  Replaced
+the redundant second unfolding with direct simplification of that tail.
+
+ExecutionAccepted passed all 3,430 jobs in 1.5 seconds with standard-only
+axioms and default elaboration limits.  Reviewed the generated loop
+boundary, exact local count, both length reads, all seven field reads,
+early rejection, accepted-prefix extension, terminal predicate, decreasing
+measure, returned word, and store preservation.  Updated the proof
+inventory, solver plan, and concise notes.  Checkpoint intent: publish
+AcceptedLoopShape, AcceptedLoop, ExecutionAccepted, and these four records.
+The next composition joins both sweeps and the intermediate release.

@@ -10103,3 +10103,11 @@ standard-only axioms.  The shared first-fit head theorem follows the
 represented predecessor and remaining-node decomposition.  Composition
 of complete control, persistent ownership, peak memory, successful
 completion, and exact-byte closure remains open.
+
+The complete generated acceptance scan now returns exactly the source
+array's all-zero-status predicate and preserves the full store.  Its
+loop proves bounded cell reads, early rejection, and decreasing remaining
+length.  The theorem covers empty arrays.  The focused check passed all
+3,430 jobs in 1.5 seconds with standard-only axioms and default
+elaboration limits.  Two-sweep/release composition and the full solver
+obligations remain open.
