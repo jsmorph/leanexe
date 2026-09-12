@@ -129,6 +129,12 @@ under explicit free-list separation and allocation-space premises.  The
 peak-memory invariant and the full solver obligations remain open.  The
 Riemann fixed-array release specialization now gives an exact resulting
 store and proves preservation of its page count and memory limits.
+Release preserves bytes outside its header and inserts the buffer into
+the represented free list.  Allocation preserves the remaining free
+nodes and proves their separation from the selected buffer.  The sweep
+resource theorem carries these facts through length installation and
+payload writes, preserving fresh metadata, strict capacity bounds, and
+the free-list representation.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

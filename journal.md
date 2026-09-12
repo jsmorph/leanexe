@@ -12502,3 +12502,58 @@ runtime description, proof inventory, solver plan, and concise notes.
 Checkpoint intent: publish the shared runtime proof, Riemann release
 specialization, and these four records.  Free-list and owned-grid state
 composition across allocation, sweep writes, and release remains open.
+
+The 105-document and staged whitespace checks passed.  Published the
+six-path release checkpoint as 602ae0fc4635933a5a1aeb8abac9745db2eed179,
+parent 983d07dc163debee70eef63f3ec5aa4b21cdfb2a, tree
+a13fe1efe0efb924314581bf8f0174cc61dbbdac.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Added release byte framing and the represented free-list insertion.
+The prior CLOB insertion proof uses the upstream compiled read/write
+axiom at its equal-address reads, so the new proof composes the existing
+disjoint-list frame lemma with kernel-checked round trips.  The source
+payload and other grids outside the released header retain their bytes.
+
+ReleaseMemory's first check failed at five natural-number address goals:
+omega retained the UInt64 numeral projections as variables.  Added
+definitional equalities for the 8-, 32-, and 40-byte offsets before
+rechecking.  The failed draft introduced no accepted theorem.
+
+ReleaseMemory passed all 3,435 jobs in 4.9 seconds, with standard-only
+audits.  Added a shared free-list frame theorem that needs preservation
+only of represented headers and allows page growth.  AllocationState
+uses it for the bump branch, reuses the checked first-fit state theorem,
+and records remaining-node membership, strict address bounds, and
+separation of the allocated buffer from the remaining free nodes.
+
+The shared frame check found one excess constructor-pattern binder:
+the induction keeps memory fixed.  Removed that binder.  Added the
+length-store write frame and consequences of WritesGrid for fresh
+metadata, disjoint grids, represented free lists, globals, and runtime
+memory caps.  These use the existing byte-frame proofs without expanding
+the complete sweep's nested memory stores.
+
+The shared frame theorem passed.  AllocationState and MemoryOwnership
+then each reached one definitional equality: the reused Store's memory
+projection and memoryCap after a memory-only change.  Added explicit
+reduction at those two applications.  All other new statements passed
+their standard-only audits during that check.
+
+AllocationState and MemoryOwnership passed all 3,460 jobs with
+standard-only audits.  Added the sweep resource composition: allocation,
+length installation, and the existing loop write frame preserve the
+fresh destination header and remaining free list.  Its result retains
+strict address/capacity bounds and buffer separation needed for release
+and the next allocation.
+
+SweepResources passed all 3,461 jobs in 1.3 seconds with standard-only
+axioms.  Reviewed the release writes and free-list insertion, header-only
+frame, allocation cases and strict bounds, length and loop write-frame
+composition, fresh metadata preservation, and free-node separation.
+Updated the shared proof catalog, proof inventory, complete solver plan,
+and concise notes.  Checkpoint intent: publish ReleaseMemory,
+AllocationState, MemoryOwnership, SweepResources, the shared frame lemma,
+and these five records.  No compiler, source, or generated artifact
+changed.  The complete solver and both production runs remain open.

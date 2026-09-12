@@ -10083,3 +10083,14 @@ statement.  The Riemann specialization gives an exact resulting Store
 and explicit page-count and memory-cap equalities.  The shared theorem,
 specialization, and existing CLOB allocation caller pass focused builds.
 Both release theorem audits contain only standard logical axioms.
+
+Release now preserves all bytes outside its header and inserts the freed
+buffer into the represented free list.  AllocationState identifies and
+preserves the remaining nodes, establishes strict address bounds, and
+proves their separation from the selected buffer.  MemoryOwnership
+transfers fresh headers, free lists, grids, globals, and memory caps
+through the existing sweep write frame.  SweepResources composes these
+facts through length installation and traversal.  Its focused check
+passed all 3,461 jobs in 1.3 seconds with standard-only axioms.  Persistent
+ownership, allocator globals, peak memory, complete control, successful
+completion, and exact-byte closure remain open.
