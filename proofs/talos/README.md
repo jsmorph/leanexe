@@ -169,6 +169,12 @@ acceptance for arbitrary scratch-local contents.  Separate branch proofs
 cover accepted-result assignment and rejected-result release, rounded
 halving, owner tracking, parameter replacement, and fuel decrement.
 The complete retry-loop invariant and termination remain open.
+Checked retry-frame lemmas now preserve the parameters, tracker, result
+fields, completion flag, and frame size through each region.  The
+active and completed guards and validity-call prefix have execution
+proofs.  Fuel unfolding, strict counter decrease, and live-grid
+preservation through a trial and its release support the pending loop
+composition.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

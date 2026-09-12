@@ -12844,3 +12844,50 @@ decisions, and fuel replacement.  Updated the proof inventory, solver
 plan, and concise notes.  Checkpoint intent: publish RetryLoopShape,
 RetryTrial, RetryBranches, and these four records.  Complete retry-loop
 composition and termination remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path retry-region checkpoint as 17714716882cc2fd0488d3ccfc84dd8f8430de71,
+parent 8087b25da4ad8ecdd4bf79070f146f08b3e4bfb2, tree
+71c60dea0b682d71a249b10b1e8799ed0553c17e.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Added a retry frame relation that fixes the six parameters, tracker,
+result fields, completion flag, and frame size while leaving scratch
+contents unrestricted.  Its preservation lemmas cover the time guard,
+trial, accepted assignment, and rejection continuation.  The loop
+measure counts remaining fuel plus the pending completion check.
+
+The frame-preservation lemmas passed their first check.  Corrected the
+measure's optional-value pattern type and made the zero-word and
+positive-fuel conversions explicit.  RetryFrame passed all 3,510 jobs
+in 2.3 seconds with standard-only axioms.  Added execution proofs for
+the validity-call prefix and the active and completed loop guards.
+
+The guard check reduced to Boolean-word unfolding and frame equality.
+Rewriting the empty stack backward had also rewritten empty parameter-list
+tails.  Destructured the frame and substituted its known parameters and
+empty stack instead.  RetryGuard passed all 3,511 jobs in 2.0 seconds
+with standard-only axioms.  Added the combined active/completed invariant,
+persistent store and live-grid state, exact loop decomposition, and
+source-fuel unfolding facts.
+
+The next loop theorem takes source retry success as an explicit
+intermediate premise.  That premise excludes failure-result allocation
+paths for the successful execution theorem.  The final solver theorem
+must discharge source success, including completion at time 0.8, before
+either production run is authorized by the proof gate.
+
+The exact loop decomposition and source-fuel lemmas passed their first
+check.  Renamed the store relation's heap proof field to avoid shadowing
+its heap parameter.  Added preservation of all original live grids
+through a timestep and through release of a separated trial buffer.
+
+RetryInvariant and RetryResources passed all 3,519 jobs, with the final
+module taking 1.3 seconds and standard-only axioms.  Reviewed the frame
+projection proofs, active and completed guards, fuel subtraction without
+wraparound, invariant state, and preservation of every original live
+grid through trial execution and release.  Updated the inventory, solver
+plan, and concise notes.  Checkpoint intent: publish RetryFrame,
+RetryGuard, RetryInvariant, RetryResources, and these four records.
+The complete successful-loop execution proof remains open.

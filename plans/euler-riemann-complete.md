@@ -264,6 +264,16 @@ prove accepted-result assignment and rejected-trial release, rounded
 halving, owner tracking, parameter replacement, and fuel decrement.
 These region proofs leave the complete loop invariant and termination
 for composition.
+[The retry frame](../proofs/talos/lean/Project/EulerRiemann/RetryFrame.lean)
+preserves the parameters, tracker, result fields, completion flag, and
+frame size through each region and proves strict fuel decrease.
+[Guard execution](../proofs/talos/lean/Project/EulerRiemann/RetryGuard.lean)
+covers active entry, completed exit, and the validity-call prefix.
+[Retry resources](../proofs/talos/lean/Project/EulerRiemann/RetryResources.lean)
+preserve every original live grid through a timestep and trial release.
+The combined invariant separates active and completed frames.  The
+forthcoming successful-loop theorem has an explicit source-success
+premise, which the final solver proof must discharge.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
