@@ -163,8 +163,9 @@ module has checked all-input execution theorems for the numerical side,
 flux, cell update, and scan callback.  The complete scan loop and function
 now have checked termination, bounded reads, source agreement, and store
 preservation.  Checked neighbor arithmetic and state loads now connect
-the complete per-cell sweep callback to the source computation.  Checked
-destination writes extend the output prefix and preserve the input grid.
-Successful completion,
-bounded memory, full execution, and exact-byte closure remain open.
+the complete per-cell sweep callback to the source computation.  The
+generated sweep loop now has checked termination, source agreement,
+bounded reads and writes, and preservation outside its allocated
+destination.  Allocator setup, successful completion, bounded memory,
+full execution, and exact-byte closure remain open.
 The new 192-grid and 800-grid calculations await those proofs.

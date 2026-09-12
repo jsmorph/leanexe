@@ -88,8 +88,10 @@ including bounded field reads and complete store preservation.  Checked
 neighbor arithmetic, bounded neighbor-state loads, and momentum orientation
 now compose into the complete per-cell sweep callback.  Destination-write
 lemmas establish the growing output prefix and preservation of the input
-grid, using a kernel-checked read/write round-trip theorem.  Successful completion,
-bounded memory, complete execution, and
+grid, using a kernel-checked read/write round-trip theorem.  The generated
+sweep loop now has checked termination, bounded reads and writes, source
+agreement, and preservation outside its allocated destination.  Allocator
+setup, successful completion, bounded memory, complete execution, and
 exact-byte closure remain open.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
