@@ -12946,3 +12946,55 @@ Checkpoint intent: publish RetryIteration, RetryLoop, ExecutionRetry,
 and these four records.  Complete source success, outer control,
 initialization, output execution, peak memory, and exact-byte closure
 remain open.  The final proof gate still precedes both production runs.
+
+The final focused build and 105-document check passed.  Staged whitespace
+checks passed.  Published the seven-path retry-function checkpoint as
+f6a7ba592d53ef9642e32968e90bf1ba242df4bf, parent
+6760955915523484bd940fb7d86afabecb50d0b1, tree
+eed593e36cd583e8e7a9aabfc95e59183e819248.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Started the outer time-loop proof with source decomposition lemmas.
+Successful nonterminal control requires a successful scan and retry.
+Successful retry requires a valid initial timestep.  Its positive finite
+word bound establishes that the generated checked fuel increment fits
+UInt64.  These lemmas retain the complete source-success premise for
+later discharge.
+
+ControlAdvanceStep passed all 3,438 jobs in 1.5 seconds with standard-only
+axioms.  Added exact outer-loop, scan-body, and trial-body extractions,
+their frame transformers, and the scan region's execution composition.
+No source or generated instruction changed.
+
+AdvanceLoopShape and AdvanceScan passed all 3,531 jobs, with their
+modules taking 3.5 and 1.5 seconds.  All audits use only the accepted
+standard axioms.  Added the successful trial region, composing the CFL
+proposal, checked fuel increment, complete retry call, and result
+placement while retaining heap and live-grid facts for the continuation.
+
+The first trial-region check stopped at the overflow branch.  A targeted
+goal trace identified its normalized non-strict comparison.  Added that
+form of the proved bound and removed the trace.  AdvanceTrial passed all
+3,532 jobs in 2.7 seconds with standard-only axioms.  Added frame
+preservation through time lookup, scan, trial, terminal assignment, and
+replacement, together with the active/completed guards and terminal
+assignment execution proofs.
+
+AdvanceFrame passed its first check.  The time-lookup proof needed the
+known parameter/local lengths in its final frame simplification and
+removal of an already-completed list reduction.  AdvanceGuard passed
+in 2.7 seconds.  AdvanceContinue passed its first check in 4.0 seconds,
+completing all 3,535 jobs.  The continuation covers the borrowed initial
+grid and the refcount-one release of a tracked current grid before
+parameter and tracker replacement.  All public audits use only the
+accepted standard axioms.
+
+Reviewed exact region indices, scratch-local ordering, fuel-overflow
+comparison, source-success premises, zero and nonzero tracker cases,
+release arguments, returned store, and frame preservation.  Updated
+the proof inventory, complete-solver plan, and concise notes.
+Checkpoint intent: publish ControlAdvanceStep, AdvanceLoopShape,
+AdvanceScan, AdvanceTrial, AdvanceFrame, AdvanceGuard, AdvanceContinue,
+and these four records.  Outer-loop composition and the full solver
+proof gate remain open.

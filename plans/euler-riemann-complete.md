@@ -279,6 +279,19 @@ words.  It returns the source result's represented grid, preserves
 original live grids and runtime limits, and consumes one reservation.
 The theorem requires source retry success.  The final solver proof
 must discharge that premise and establish completion at time 0.8.
+[The outer-loop source decomposition](../proofs/talos/lean/Project/EulerRiemann/ControlAdvanceStep.lean)
+derives successful scan/retry premises and bounded retry-fuel encoding
+from a successful nonterminal source advance.
+[The scan and trial regions](../proofs/talos/lean/Project/EulerRiemann/AdvanceTrial.lean)
+compose the generated reduction, proposal, checked increment, retry,
+and result placement.
+[Frame preservation and guards](../proofs/talos/lean/Project/EulerRiemann/AdvanceGuard.lean)
+cover active/completed entry, end-time lookup, and terminal assignment.
+[Grid replacement](../proofs/talos/lean/Project/EulerRiemann/AdvanceContinue.lean)
+preserves a borrowed initial grid or releases a tracked current grid,
+then advances rounded time, replaces parameters and tracking, and
+decrements fuel.  The outer-loop ownership invariant and termination
+composition remain open.  All region audits use standard axioms.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
