@@ -123,6 +123,12 @@ tests.  All four runtime-definition checks pass.  The
 [thermodynamic execution proof](../proofs/talos/lean/Project/EulerRiemann/ExecutionSide.lean)
 transfers the existing fourteen-function theorem after checking every
 renamed definition.  Its axiom audit uses only the accepted standard axioms.
+The scalar flux and conservative-update regions, their forwarding
+functions, the complete two-dimensional flux, and the cell update now
+have all-input execution theorems with exact result words and complete
+store preservation.  The source scan callback's execution theorem covers
+both directional side calls, status accumulation, and maximum selection.
+All focused builds and axiom audits pass.  The array loops remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
