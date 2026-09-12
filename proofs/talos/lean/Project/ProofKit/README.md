@@ -18,6 +18,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.EncodedIndexDecoder` | The compiler's zero-or-index-plus-one decoder with exact scratch and destination-local frame semantics. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
+| `Project.ProofKit.FixedArrayHeader` | Kernel-checked reads of all six allocation metadata words, root-relative header interpretation, and preservation of bytes outside the header. |
+| `Project.ProofKit.FixedArrayHeaderExec` | Bounded constant-word and local-word stores, composed into the six-word header instruction sequence with local-frame preservation. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
