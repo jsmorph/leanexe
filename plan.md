@@ -504,6 +504,10 @@ The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
 remaining composition must maintain the heap and free-list invariant
 through doubling and final extraction.
+The allocation-to-heap adapter, root and length installation, map-ready
+frame, and remaining-allocation arithmetic also pass.  The arithmetic
+reserves 212,002,896 bytes after the singleton, including retained map
+buffers.  Execution must still establish and preserve that reservation.
 
 - [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.

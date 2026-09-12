@@ -345,6 +345,17 @@ The [capacity-ordering lemmas](../proofs/talos/lean/Project/EulerRiemann/Initial
 show that the min(target, current count) invariant supplies all three
 allocation requests and survives release of the previous grid.  The
 full execution proof must establish and maintain that invariant.
+The [heap allocation adapter](../proofs/talos/lean/Project/EulerRiemann/InitialHeapAllocation.lean)
+returns the represented updated heap and fresh array metadata.
+The [root installation](../proofs/talos/lean/Project/EulerRiemann/InitialArrayInstall.lean)
+matches all four pointer-transfer and length-store sites through shared
+result-placement and store theorems.  The
+[growth reservation arithmetic](../proofs/talos/lean/Project/EulerRiemann/InitialGrowthBounds.lean)
+counts both allocations in each doubling, including retained map buffers,
+and final extraction.  Its initial bound is 212,002,896 bytes after the
+singleton for at most 640,000 requested cells.  The complete execution
+proof must maintain this reservation.  The map-ready frame and getters
+also pass, using shared preservation of distinct parameter and local reads.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

@@ -48,6 +48,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayFindIdxEq` | The compiler's one-word, literal-key first-match scan with zero-or-index-plus-one result encoding and continuation-generic none and some exits. |
 | `Project.ProofKit.FixedArrayFold` | Forward full-array fold setup, accumulator result placement, and complete singleton-result suffix semantics selected by exact subregion equalities. |
+| `Project.ProofKit.FixedArrayFrame` | Equality of every distinct parameter, local, or invalid getter before and after result-local assignment. |
 | `Project.ProofKit.FixedArrayFoldBody` | Composition of the continuing traversal guard and indexed load with a compiler-described scalar body, condition, continuation, and guarded back edge. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |

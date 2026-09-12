@@ -10,6 +10,14 @@ Use `FixedArrayFold.resultProgram_spec` when the same recipe supplies `<region>_
 
 Use `resultFrame_get_result` to read the written result local and `resultFrame_get_of_ne` to preserve any distinct valid nonparameter local.  The generated continuing-frame parameter, local-length, and getter theorems discharge their frame premises without reducing the scalar state.  The `annotated-fold-frame-accessors` entry gives the restricted simplification form and the checked Demo 9 substitution evidence.
 
+`FixedArrayFrame` supplies `resultFrame_get_ne`, an equality for every
+distinct read index after writing a non-parameter result local.  It
+covers parameters, internal locals, and invalid reads without requiring
+a supplied read value or read-index bound.  Riemann's map preparation
+uses it to preserve parameter 1 while installing the allocated root in
+local 50.  The cleaned theorem checked in 50 seconds with standard
+axioms, and the consuming frame/getter module checked in 63 seconds.
+
 Use `resultFrame_params`, `resultFrame_locals_length`, and `resultFrame_values` when a generated completion adapter leaves frame-shape premises after result placement.  Rewrite those projections before applying generated completion-frame declarations.  This sequence preserves the named result frame and avoids unrestricted simplification of its local update.
 
 Use `FixedArrayFold.singletonResultProgram_spec` when the recipe also supplies `<region>_singleton_result_eq`.  The theorem composes accumulator placement, the standard singleton payload store, and final root transfer, then reaches `singletonResultPost` with the returned root and represented singleton value.  Its local indices and frame facts remain parameters, so the checked program applies across fold operations and wrapper layouts that emit the same suffix.

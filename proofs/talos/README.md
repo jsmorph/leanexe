@@ -230,6 +230,14 @@ conditional bump allocation, and allocation counting through shared
 ProofKit theorems.  Their represented-free-list, undersized-capacity,
 32-bit-fit, and runtime-memory-cap premises remain explicit.  The full
 initializer traversal and resource invariant remain open.
+The initializer's allocation theorem now returns `Heap.At` and fresh
+array metadata through the existing heap model.  All four root-transfer
+and length-store sites compose shared result-placement and memory-store
+theorems.  Separate arithmetic bounds the remaining initializer allocation
+reservation by 212,002,896 bytes after the singleton.  The full traversal
+must maintain that reservation.  Shared result-frame getter preservation
+covers parameters as well as internal and invalid reads and is indexed
+by the fixed-array-fold-structure LTG entry.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
