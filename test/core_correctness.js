@@ -403,6 +403,9 @@ const accepted = [
   { name: "tailArrayReleaseStats", args: [0n], expected: 0n },
   { name: "tailArrayReleaseStats", args: [3n], expected: 30303n },
   { name: "freshTailArrayRelease", args: [], expected: 101n },
+  { name: "arrayMapHelperShared", args: [], expected: [1n, 3n] },
+  { name: "arrayMapInlineShared", args: [], expected: [1n, 3n] },
+  { name: "arrayMapEmptyShared", args: [], expected: 2n },
   {
     name: "flatArrayCallAppend", args: [], expected: [null],
     memoryArrays: [{ resultIndex: 0, values: [3n, 11n, 21n] }],

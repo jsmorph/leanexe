@@ -162,10 +162,12 @@ mutual
           scanExpr (childPath path "start") start,
           scanExpr (childPath path "stop") stop
         ]
-    | .arrayMapSlots _ _ _ _ array _ bodyValues =>
-        Scan.append
-          (scanExpr (childPath path "array") array)
-          (scanExprListFrom (childPath path "bodyValue") 0 bodyValues)
+    | .arrayMapSlots _ _ _ _ array _ bodyValues bodyLets =>
+        Scan.many [
+          scanExpr (childPath path "array") array,
+          scanLocalLetsFrom (childPath path "bodyLet") 0 bodyLets,
+          scanExprListFrom (childPath path "bodyValue") 0 bodyValues
+        ]
     | .arrayFoldMultiSlot _ resultWidth _reverse array start stop initValues accStart _ bodyValues
         bodyLets bodyDone releaseOffsets resultSlot =>
         Scan.many [

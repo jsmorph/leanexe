@@ -194,6 +194,20 @@ function checkFreshTailResult() {
   run(["lake", "env", "lean", "test/fresh_owner_summary.lean"]);
 }
 
+function checkArrayMapSharing() {
+  const output = fs.mkdtempSync(path.join("tmp", "array-map-sharing-"));
+  for (const [name, expected] of [
+    ["arrayMapHelperShared", [1n, 3n]],
+    ["arrayMapInlineShared", [1n, 3n]],
+    ["arrayMapEmptyShared", [2n]],
+  ]) {
+    const binary = path.join(output, name + ".wasm");
+    run([leanExe, "compile", "--module", correctnessModule,
+      "--entry", `${correctnessModule}.${name}`, "--out", binary]);
+    assert.deepEqual(callI64Slots(binary, name, expected.length, []), expected);
+  }
+}
+
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
@@ -205,7 +219,8 @@ function main() {
   checkInternalArrayLoop();
   checkTailRelease();
   checkFreshTailResult();
-  process.stdout.write("checked 25 ownership report and array-call cases\n");
+  checkArrayMapSharing();
+  process.stdout.write("checked 28 ownership report and array-call cases\n");
 }
 
 try {

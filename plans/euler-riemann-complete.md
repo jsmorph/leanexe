@@ -134,12 +134,14 @@ Internal Nat-tail helpers now use the existing per-iteration owner
 tracking.  Tests cover replacement, retention, and preservation of the
 caller's initial array.  The explicit-release checker recognizes direct
 maps and concatenations while preserving rejection of retained nested
-roots.  All 25 focused ownership and array-call tests pass.  Nat-tail lets
+roots.  All 28 focused ownership and array-call tests pass.  Nat-tail lets
 now share their materialized value, preserve explicit releases, and pass
 ownership facts to continuations.  Fresh-result analysis accounts for
-zero-initialized locals and computes loop facts to a fixed point.  Shared
-evaluation of multi-field map results and the complete memory and runtime
-bounds remain open.
+zero-initialized locals and computes loop facts to a fixed point.  Map
+callbacks materialize multi-field results once per element.  Explicit
+source bindings share neighbor indices, neighbor states, and cell inputs.
+The emitted sweep calls its update helper once per cell.  The complete
+memory and runtime bounds remain open.
 
 The compiler-wide execution gate has a stale release-input record, and
 the aggregate proof build timed out after matching all 37 generated

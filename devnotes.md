@@ -9919,3 +9919,15 @@ control safety proof preserves cell bounds and Euler admissibility for
 all supported sizes, including failure results.  Its audits use only
 the accepted standard axioms.  The successful-completion, complete memory,
 and exact-WASM proofs remain open.
+
+The multi-field array-map fixture exposed duplicate callback evaluation.
+Map IR now carries per-cell local bindings, and the backend evaluates the
+callback once before storing its fields.  The helper-call, inline-release,
+and empty-map cases pass, bringing the focused ownership test to 28 cases.
+Explicit source bindings also share neighbor indices, neighbor states,
+and the complete cell input.  The source proofs and all 62 grid/control
+tests pass after those changes.  The core test passed 805 accepted, 48
+rejected, and 14 trapped cases.  All ten serializer round trips passed.
+Named WAT call counts confirm one update per mapped cell, one input
+construction per update, and two neighbor-index calculations per input.
+The complete memory, runtime, and exact-WASM proofs remain open.

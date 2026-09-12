@@ -5755,6 +5755,31 @@ def freshTailArrayRelease : UInt64 :=
   let freed := LeanExe.Runtime.release values
   freed * 100 + LeanExe.Runtime.allocCount
 
+structure ArrayMapCounters where
+  freed : UInt64
+  allocated : UInt64
+  deriving Inhabited
+
+def countedArrayMapCell (word : UInt64) : ArrayMapCounters :=
+  let temporary : Array UInt64 := #[word]
+  let freed := LeanExe.Runtime.release temporary
+  ⟨freed, LeanExe.Runtime.allocCount⟩
+
+def arrayMapHelperShared : ArrayMapCounters :=
+  let values := (#[7] : Array UInt64).map (fun word => countedArrayMapCell word)
+  values[0]!
+
+def arrayMapInlineShared : ArrayMapCounters :=
+  let values := (#[7] : Array UInt64).map fun word =>
+    let temporary : Array UInt64 := #[word]
+    let freed := LeanExe.Runtime.release temporary
+    ArrayMapCounters.mk freed LeanExe.Runtime.allocCount
+  values[0]!
+
+def arrayMapEmptyShared : UInt64 :=
+  let values := (#[] : Array UInt64).map (fun word => countedArrayMapCell word)
+  values.size.toUInt64 + LeanExe.Runtime.allocCount
+
 def flatArrayCopyRuntimeRelease : UInt64 :=
   let original : Array UInt64 := #[10, 20]
   let copied := flatArrayCopy original
