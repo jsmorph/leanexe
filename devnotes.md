@@ -10163,3 +10163,14 @@ preserves all original live grids through a timestep and trial release.
 The focused resource check passed all 3,519 jobs in 1.3 seconds with
 standard-only axioms.  Successful-loop composition remains open, and
 its source-success premise must be discharged by the final solver proof.
+
+RetryIteration now proves invariant preservation and strict measure
+decrease for every retry back edge.  RetryLoop composes the terminating
+loop, including stack trimming.  ExecutionRetry proves the complete
+generated function under an explicit source-success premise, with
+exact returned words, represented result, preserved live grids and
+runtime limits, and one consumed reservation.  The focused function
+check passed all 3,522 jobs in 2.1 seconds with standard-only axioms.
+Removed an unreachable fallback tactic reported by the linter.  Time
+control, initialization, output execution, the full memory bound,
+source success, final-time completion, and exact-byte closure remain open.

@@ -12891,3 +12891,58 @@ grid through trial execution and release.  Updated the inventory, solver
 plan, and concise notes.  Checkpoint intent: publish RetryFrame,
 RetryGuard, RetryInvariant, RetryResources, and these four records.
 The complete successful-loop execution proof remains open.
+
+The 105-document and staged whitespace checks passed.  Published the
+eight-path retry-state checkpoint as 6760955915523484bd940fb7d86afabecb50d0b1,
+parent 17714716882cc2fd0488d3ccfc84dd8f8430de71, tree
+218c44ab5aa04b1571a9b1891c276810d1015ac0.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Added the complete retry-iteration composition.  Active frames use
+source-success unfolding to establish nonzero fuel and a valid time
+advance, then execute the trial and its selected branch.  Completed
+frames exit.  The postcondition requires invariant preservation and a
+strict measure decrease at each back edge, or the completed result at
+the exit.  This draft now awaits its focused Lean check.
+
+The iteration check failed at the transition from the validity prefix
+to the trial because the guard frame remained opaque.  Added a local
+iteration reduction tactic for the four proved frame transformers.
+Resumed in the same local checkout with the installed 4.34.0-rc2
+toolchain and standard resource-limited runner.  No numerical run has
+started.
+
+The next iteration checks identified explicit frame-parameter and
+empty-stack substitutions, three let-bound continuation arguments,
+the invariant's final frame argument, and Boolean-conditional
+normalization in the result frame.  Corrected each diagnostic without
+changing the source or generated instructions.  RetryIteration passed
+all 3,520 jobs, with the module taking 3.5 seconds.  Its public theorem
+uses only propext, Classical.choice, and Quot.sound.
+
+Added the loop composition using Talos's well-founded loop rule.  The
+iteration theorem supplies either a smaller invariant state or the
+completed result.  Explicit empty-stack facts account for the loop and
+block stack trimming.  The loop keeps source success as a premise for
+the later complete source-success proof to discharge.
+
+The loop's first check required record equality after clearing an
+already empty stack.  Added that equality at both continuation cases.
+RetryLoop passed all 3,521 jobs in 1.0 seconds with a standard-only
+public axiom audit.  Added the complete function-74 composition,
+including the zero-initialized entry frame, completed-loop exit, four
+returned words, represented result, heap reservations, and preservation
+of every original live grid.
+
+The complete-function check reduced its returned-word equality to two
+reflexive equalities.  Supplied those witnesses.  ExecutionRetry passed
+all 3,522 jobs in 2.1 seconds with only the accepted standard axioms.
+Removed the entry proof's unused fallback tactic.  Reviewed the exact
+entry and exit instructions, both loop continuations, source-success
+premise, result ordering, reservation count, and persistent ownership.
+Updated the proof inventory, complete-solver plan, and concise notes.
+Checkpoint intent: publish RetryIteration, RetryLoop, ExecutionRetry,
+and these four records.  Complete source success, outer control,
+initialization, output execution, peak memory, and exact-byte closure
+remain open.  The final proof gate still precedes both production runs.
