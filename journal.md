@@ -12174,3 +12174,47 @@ these five development records.  Allocation setup, free-list search and
 reuse, the peak-memory bound, complete controller execution, successful
 completion, and exact-byte closure remain open.  No compiler, source,
 generated artifact, or production-run change belongs to this checkpoint.
+
+Published the eight-path allocation-header checkpoint as
+fe8f7d98b1f83a2608bbac232a44a20507e1a1a6, parent
+56548241b9a330cab4918bae33e7b90a7322d941, tree
+dca0caa4d029fd1fe39f8c21aa0389f791ec5591.  The 105-document and whitespace
+checks passed.  Non-forced SSH push and fetch succeeded.  The fetched
+commit, parent, message, tree, index, and tracked worktree match.
+
+Continued with the sweep allocator's complete bump branch.  Named its
+six-word scratch region after an arbitrary preserved local prefix.
+Split the generated branch into heap-address preparation, the checked
+conditional-growth sequence, root and heap-top installation, and the
+checked header sequence.  The initial focused proof checks the exact
+decomposition and the two previously unchecked scalar fragments.
+
+The first draft used Lean's reserved token prefix as a variable name.
+Renamed that variable to saved.  The next checks exposed two simplifier
+boundaries: optional global reads had become indexed reads, and wp_run's
+restricted simplifier had left list lengths and constant arithmetic
+unevaluated.  Added the indexed global fact and used the ordinary
+simplifier with wp_simp for these short scalar fragments.  Removed the
+temporary goal diagnostic.  Both fragments and their shape decomposition
+passed all 3,437 jobs in 2.1 seconds with standard-only axiom audits.
+
+Added the requested-page bound, its raw-word identity, and proof that
+conditional growth provides enough bytes for the allocation.  Composed
+the four checked fragments into a theorem for the complete generated
+bump branch, preserving the arbitrary saved locals and recording the
+exact heap top, returned pointer, metadata, and resulting page count.
+
+The composed bump execution theorem passed in 2.6 seconds.  Added exact
+resulting page and global identities, fresh-header interpretation,
+outside-header byte preservation, and preservation of a disjoint grid.
+The final focused AllocationBump build passed all 3,437 jobs in 2.7
+seconds.  All execution and fresh-header audits list only propext,
+Classical.choice, and Quot.sound.  Its other state and arithmetic lemmas
+use propext and Quot.sound.  No proof limits were raised.
+
+Reviewed the generated decomposition, scalar frames, page-count ceiling,
+growth-cap premise, and every composed state update.  Updated the solver
+plan, proof inventory, and concise notes.  Checkpoint intent: publish
+AllocationBump and these four records.  Free-list search and reuse,
+complete allocator composition, the peak-memory bound, controller
+execution, successful completion, and exact-byte closure remain open.

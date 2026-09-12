@@ -157,9 +157,13 @@ grid representations.
 [The allocation-header proof](../proofs/talos/lean/Project/EulerRiemann/AllocationHeader.lean)
 matches both generated header regions and proves the bump header's
 bounded stores, metadata values, and preservation of disjoint grids.
-Its shared proofs use only the accepted standard axioms.  Allocator
-setup, free-list search and reuse, and the complete peak-memory bound
-remain open.
+Its shared proofs use only the accepted standard axioms.
+[The bump-allocation proof](../proofs/talos/lean/Project/EulerRiemann/AllocationBump.lean)
+composes heap-address preparation, conditional growth, heap-top and root
+assignment, and metadata stores into the complete generated bump branch.
+It proves exact page and global updates and preserves disjoint grids.
+Free-list search and reuse, complete allocator composition, and the
+complete peak-memory bound remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

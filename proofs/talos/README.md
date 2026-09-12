@@ -97,6 +97,10 @@ region now has a checked execution proof within the runtime cap and
 preserves existing grids.  The six-word allocation header has checked
 bounded-store execution, metadata reads, and preservation of disjoint
 grids.  Exact region equalities cover the bump and reuse header sequences.
+The complete bump branch now composes address arithmetic, conditional
+growth, heap-top and root assignment, and metadata stores.  Its execution
+and state lemmas pass standard-axiom audits.  Free-list search and reuse
+remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
