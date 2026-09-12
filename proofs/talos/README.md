@@ -149,6 +149,10 @@ source and fresh destination ownership, mutual separation, bounded pages,
 and the unchanged runtime cap.  Its write frame also preserves other
 live grids needed by retry.  Heap-state transformations separately prove
 allocation and release preserve the six globals and represented free list.
+The complete timestep now composes the first sweep, acceptance scan,
+conditional second sweep, and intermediate release.  It returns the
+source step's grid, preserves live input grids, and records the resulting
+heap and runtime limits under explicit bounds for both allocations.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

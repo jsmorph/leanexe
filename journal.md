@@ -12695,3 +12695,39 @@ Updated the proof inventory, solver plan, and concise notes.  Checkpoint
 intent: publish HeapState, OwnedGrid, HeapGrid, SweepOwned, the accepted
 loop's final blank-line correction, and these four records.  The next
 execution boundary is the two-sweep step with its intermediate release.
+
+The 105-document and staged whitespace checks passed.  Published the
+nine-path heap-ownership checkpoint as 954913372578e74d124ff062ab465f50dc624bc7,
+parent 0c8dd93e6ec095be8d2cef3b57d27993d6a233bf, tree
+6d9b9dbf290c65b98ff7a9a39ccba73031b68e0e.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Added the owned-buffer release execution wrapper and the step's pure
+allocation-state selection.  The false acceptance branch returns the
+first sweep.  The true branch allocates the second sweep and releases
+the first buffer.  The forthcoming execution theorem will preserve all
+live input grids needed by the caller.
+
+ReleaseOwned and StepState passed all 3,498 jobs.  Added the complete
+step execution composition under explicit space and runtime-cap premises
+for both allocations.  Its postcondition records the resulting heap and
+grid, page/cap preservation, and preservation and separation of every
+live input grid.  Both acceptance branches and the intermediate release
+are part of the generated function proof.
+
+The first complete-step check composed both sweeps, acceptance, and
+release.  Three final goals remained: normalizing the first updated heap
+top in a bound, removing already-discharged page/cap facts from the
+false-branch result, and reducing the true branch's named allocation
+states.  Added those local reductions without changing the theorem or
+its allocation premises.
+
+ExecutionStep passed all 3,499 jobs in 2.7 seconds with standard-only
+axioms and default elaboration limits.  Reviewed both acceptance
+branches, generated call argument order, each heap transition, the
+second-sweep preservation of earlier live grids, intermediate release,
+free-counter read, returned grid, and source agreement.  The explicit
+space/cap premises remain for the full memory invariant.  Updated the
+proof inventory, solver plan, and concise notes.  Checkpoint intent:
+publish ReleaseOwned, StepState, ExecutionStep, and these four records.
