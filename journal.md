@@ -14539,3 +14539,176 @@ The failed ScalarFrame import check took 42 seconds.  The two failed
 count-evaluator checks took 59 and 81 seconds.  The journal's recorded
 failures, successful audits, and compiler-region evidence remain part
 of this checkpoint's review record.
+
+Published 27a683cf527f3d9484ccfc59cf83c39232af6e8a,
+"Compose append allocation and scalar counts", with parent
+4ba6694d8767b76574f2bfc0f7e2ce3ebb8350b3 and tree
+8b9e0ed9fc8e6d68787d4ff93c72213aa38cf00b.  The reviewed 17-file
+checkpoint contains 507 insertions and four deletions.  The ordinary
+SSH push advanced origin/talosfp-euler without force.  Fetch confirmed
+the exact commit, sole parent, title, tree, index, and tracked worktree
+contents.  The newly drafted HeapGridBounds and unrelated paper outputs
+remain untracked and preserved.
+
+Map and append currently repeat the conversion from owned allocation
+regions to payload bounds and disjointness.  Extraction needs the same
+facts.  Added HeapGridBounds with two shared width-seven grid lemmas
+using the existing allocator bounds, selected capacity, and owned-region
+separation theorems.  Its focused standard local check is running before
+the consumer proofs are simplified.
+
+Added InitialExtractOwned as the third consumer of the shared allocation
+grid bounds.  Its draft composes the already checked extract-data region
+with source preservation and completed-grid ownership.  It derives the
+extracted length from size ≤ grid.size and returns ownership of both the
+source and prefix result with the exact copy-counter frame.
+
+Added InitialAppendPointers for emitted instructions 54 through 65.
+The draft uses the same checked scalar-statement semantics for six
+pointer/parameter transfers.  Its evaluator proof uses the concrete
+five-parameter local layout and the existing optional-getter projection
+instead of enumerating the 61 internal locals.  It preserves the store
+and returns the named frame required by the two following header loads.
+
+HeapGridBounds passed in 123 seconds with propext and Quot.sound.  Lean
+identified an unused Heap.At premise on payload separation, so removed
+that premise.  Replaced the repeated map and append bound/disjointness
+derivations with calls to the two shared theorems and adjusted the new
+extraction consumer.  The public map and append statement types remain
+the same.  Their affected execution chains will be checked serially.
+
+Added the pointer prefix's two destination-getter facts for its following
+header loads.  The proof uses the same shared assignment projection as
+the map input.  The next composition will connect these transfers,
+two checked length loads, and the accepted scalar count region.
+
+Added InitialAppendInput for the 32 instructions preceding append capacity
+calculation.  The draft composes the six transfers, two shared header
+loads, and scalar count theorem.  Retrieval from the existing GridAt
+API found lengthRead and lengthBound, which supply both load premises
+directly.  This also identifies a repeated address-bound derivation in
+InitialMapInput to simplify after its active execution-chain check ends.
+
+The simplified map chain passed: HeapGridBounds in 57 seconds,
+InitialMapOwned in 51 seconds, InitialMapAllocate in 44 seconds, and
+InitialMapExecute in 64 seconds.  All audits retain standard axioms.
+The shared helper removes separate bounds and separation derivations
+from both map and append without changing their public theorem types.
+Started the append pointer/setup target, which will check its two new
+modules against the existing scalar and header-load semantics.
+
+Replaced InitialMapInput's repeated wrapped-pointer length-bound
+derivation with GridAt.lengthRead and GridAt.lengthBound, already used
+by the new append setup.  This bounded edit removes five proof lines.
+Its focused check remains pending while the independent append setup
+target runs.
+
+Added InitialAppendPrepareFrame to connect the setup result to the
+allocator's 59-through-64 scratch window.  Its draft uses the shared
+prefix-assignment and capacity-replacement equalities, with the eleven
+setup assignments recorded in the saved-local list.  The five getters
+needed by allocation and copying follow from the existing result-frame
+projection.  This module remains pending behind the setup execution check.
+
+InitialAppendPointers checked its descriptor equality and destination
+getters but failed the evaluator because simplification converted the
+first optional read to an indexed read.  Replaced the four supplied
+optional-read facts with the existing parameter_getElem_of_get and
+internal_getElem_of_get projections.  This supplies the exact indexed
+equalities expected by the evaluator's reduced state.  The failed
+execution declaration remains unaccepted.
+
+Added InitialAppendExecute as the full append-region composition draft.
+It splits the emitted branch at instructions 54, 86, 104, and 119, then
+uses the checked copy continuation at 131.  The draft derives no-fit
+search and byte capacity from the combined size and free-list invariant,
+and normalizes wrapping word counts to the corresponding encoded natural
+counts.  It returns the updated heap and all three grid owners.  Its
+new setup and frame dependencies must pass before this theorem is checked.
+
+InitialAppendPointers passed in 45 seconds after the indexed-getter
+correction, and InitialAppendInput passed in 62 seconds.  Both execution
+audits use standard axioms.  The setup theorem now covers all 32 emitted
+instructions before capacity calculation and preserves the complete
+store.  Started the canonical-frame preparation check before the full
+append composition and remaining affected ownership consumers.
+
+Recorded the checked append setup as a second header-load consumer and
+the six-transfer prefix as a second scalar-statement consumer.  The LTG
+guidance now records reuse of GridAt's header API and the distinction
+between optional and indexed getter premises after evaluator reduction.
+No new annotation kind or independent artifact result is claimed.
+
+InitialAppendPrepareFrame passed in 91 seconds with standard axioms.
+Its input getters and saved-list equality use propext and Quot.sound.
+The capacity-frame equality uses the shared checked capacity replacement.
+Started InitialAppendExecute, which also checks the simplified append
+ownership and allocation dependencies before the complete composition.
+
+The simplified InitialAppendOwned passed in 92 seconds and its allocation
+wrapper passed in 85 seconds, both with standard axioms.  The complete
+append check then failed in 52 seconds because its length getter retained
+the folded InitialAllocationSite.append.lengthLocal selector.  Added that
+selector and the named input frame to the restricted simplification.
+The failed declaration's sorryAx audit is a consequence of the failed
+elaboration and is not an accepted proof.  The corrected target will be
+checked before extraction ownership and the simplified map input.
+
+Added InitialExtractAllocate as the extraction allocation/data composition
+draft.  It uses the shared no-fit allocation theorem at scratch start 60,
+then the bounded extraction ownership theorem, preserving the source owner
+and returning the exact prefix result and copy-counter frame.  Both new
+extraction modules await their serial check.
+
+The emitted extraction prefix contains two value-producing conditional
+instructions with result-type metadata.  ScalarTransition's canonical
+program omits those metadata lists, while TalosCompat proves that their
+values do not affect execution.  Checked the existing definitions before
+choosing a proof adapter.  The exact decoded program remains unchanged.
+
+InitialAppendExecute passed in 78 seconds after the selector reduction.
+Its exact decomposition uses propext and its complete execution theorem
+uses propext, Classical.choice, and Quot.sound.  Started the standard
+local InitialExtractAllocate check, which first checks InitialExtractOwned.
+Updated the plans, theorem inventory, concise notes, and provisional
+no-fit LTG guidance to record the complete append region and shared bounds.
+
+InitialExtractOwned passed in 58 seconds and InitialExtractAllocate in
+85 seconds.  Both public execution audits contain only propext,
+Classical.choice, and Quot.sound.  The seven new modules contain 472 lines.
+Catalog, knowledge-package, catalog-freshness, and 116-file documentation
+tests pass.  Started InitialMapExecute to check the simplified header API
+consumer and its dependent complete map composition before publication.
+
+Added ScalarConditional as an unchecked shared adapter draft for the
+two typed extraction conditionals.  It retains the decoded parameter
+and result-type lists, applies TalosCompat's existing metadata equality
+at the conditional WP boundary, and reuses ScalarTransition's checked
+condition, branch, and assignment theorems.  It introduces no change to
+the compiler, artifact, descriptor evaluator, or existing canonical
+program.  This draft remains outside the current append checkpoint.
+
+Added InitialExtractLoad as the next unchecked input-preparation draft.
+It matches the first ten emitted instructions to three scalar assignments
+and the shared header-load program.  Its evaluator uses the checked
+parameter-to-indexed-read projections from the append proof.  Its
+destination getters support the following clamped-prefix calculations.
+This draft also remains outside the current checkpoint.
+
+The simplified InitialMapInput passed in 84 seconds, its dependent
+InitialMapPrepareFrame in 79 seconds, and InitialMapExecute in 67 seconds.
+All affected public audits retain standard axioms.  Reviewed the accepted
+proofs, supplied LTG guidance, indexed declarations, compiler-region
+equalities, and failed-check diagnostics together.  Category retrieval
+finds the scalar, header-load, and no-fit entries.  This checkpoint changes
+consumer records and guidance without changing the checked LTG declaration
+inventory.  The current 116-file documentation check passes.
+
+Checkpoint intent: publish HeapGridBounds, InitialAppendExecute,
+InitialAppendInput, InitialAppendPointers, InitialAppendPrepareFrame,
+InitialExtractAllocate, InitialExtractOwned, the simplified InitialMapInput,
+InitialMapOwned, and InitialAppendOwned, the three reviewed LTG entries'
+guidance and header-load consumer metadata, devnotes.md, journal.md,
+plan.md, both Euler plans, and the Talos README.  Preserve the unchecked
+ScalarConditional and InitialExtractLoad drafts outside this checkpoint,
+along with unrelated paper outputs, existing builds, artifacts, and data.

@@ -21,3 +21,10 @@ costs.  The first shared proof retained a wrapped-address addition by
 zero.  `UInt32.add_zero` closes that address equality before applying the
 memory-read premise.  The entry remains provisional pending complete
 initializer and independent artifact verification.
+
+The append setup supplies a second checked consumer.  It composes its
+six pointer/parameter transfers, two header loads, and three scalar
+count assignments into the exact 32-instruction prefix.  The complete
+setup checked in 62 seconds with standard axioms.  Existing
+`GridAt.lengthRead` and `GridAt.lengthBound` provide its header premises
+directly, so each consumer can reuse the represented-grid API.

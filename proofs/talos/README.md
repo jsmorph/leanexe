@@ -252,7 +252,14 @@ header-load and allocation-frame preparation lemmas are available in LTG.
 The append allocation and copy composition now returns ownership of both
 inputs and the concatenated result.  Its count arithmetic matches the
 existing scalar-statement descriptor theorem, now indexed in LTG with
-a Locals-frame adapter.  The complete append prefix remains open.
+a Locals-frame adapter.  The complete append region includes its pointer
+transfers, both header loads, count arithmetic, and capacity calculation.
+It derives the allocation premises from the combined size and free-list
+invariant.  Shared heap-grid lemmas supply payload bounds and separation
+for both map and append ownership proofs.
+Extraction allocation and data composition also preserve the source owner
+and establish ownership of the extracted prefix.  Its input preparation
+and the outer initialization loop remain open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

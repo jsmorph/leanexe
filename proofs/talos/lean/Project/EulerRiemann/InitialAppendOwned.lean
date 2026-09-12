@@ -1,5 +1,6 @@
 import Project.EulerRiemann.InitialAppendData
 import Project.EulerRiemann.HeapGridFinish
+import Project.EulerRiemann.HeapGridBounds
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit Project.Runtime FixedArrayFold FixedArrayCopy
@@ -35,31 +36,13 @@ theorem initial_append_owned_spec (env : HostEnv Unit) (initial : Store Unit) (h
   let target := allocatedRoot heap.top need heap.nodes
   have hFit : takeFirstFitFrom 0 need heap.nodes = none →
       heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun hNone => Nat.le_of_lt (hBump hNone)
-  have hBounds := allocated_bounds initial heap.top need heap.nodes hHeap.freeList hFit
-  have hCapacity := allocated_capacity need heap.nodes
-  have hTarget32 : target.toNat + 8 * (7 * (left.size + right.size) + 1) ≤ 4294967296 := by
-    change 48 ≤ target.toNat ∧ target.toNat + _ ≤ 4294967296 ∧ _ at hBounds
-    omega
-  have hTargetFit : target.toNat + 8 * (7 * (left.size + right.size) + 1) ≤
-      (heap.allocateStore initial need).mem.pages * 65536 := by
-    change 48 ≤ target.toNat ∧ _ ∧ target.toNat + _ ≤
-      (heap.allocateStore initial need).mem.pages * 65536 at hBounds
-    omega
-  have hSeparate (node : FreeNode) (grid : Array Traversal.Cell)
-      (hOwner : heap.Owns initial node grid) :
-      node.root.toNat + 8 * (7 * grid.size + 1) ≤ target.toNat ∨
-        target.toNat + 8 * (7 * (left.size + right.size) + 1) ≤ node.root.toNat := by
-    have hDisjoint := allocated_region_disjoint heap.top need node heap.nodes
-      hOwner.buffer.rootBound hOwner.separated hOwner.below hFit
-    have hSourceCapacity := hOwner.buffer.capacity
-    simp only [allocatedNode, regionsDisjoint, FreeNode.region] at hDisjoint
-    dsimp only [target]
-    omega
+  have hBounds := heap.allocate_grid_bounds initial need (left.size + right.size) hHeap hNeed hFit
   apply initial_append_data_spec env _ frame source.root upper.root target left right
     hParams hLocals hValues hCounter hSource hUpper hTarget hLength hLeftCount hRightCount
     (hLeftOwner.allocated need hHeap hFit).buffer.values
-    (hRightOwner.allocated need hHeap hFit).buffer.values hTarget32 hTargetFit
-    (hSeparate source left hLeftOwner) (hSeparate upper right hRightOwner) Q rest
+    (hRightOwner.allocated need hHeap hFit).buffer.values hBounds.1 hBounds.2
+    (hLeftOwner.allocate_grid_disjoint need (left.size + right.size) hNeed hFit)
+    (hRightOwner.allocate_grid_disjoint need (left.size + right.size) hNeed hFit) Q rest
   intro final hWrites _ _ hResult
   have hFinished := heap.finishGrid initial final need (left ++ right) hHeap
     (by simpa only [Array.size_append] using hNeed) hBump

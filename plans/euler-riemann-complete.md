@@ -377,8 +377,15 @@ The [append allocation composition](../proofs/talos/lean/Project/EulerRiemann/In
 returns the updated heap and ownership of both inputs and their
 concatenation.  The [count prefix](../proofs/talos/lean/Project/EulerRiemann/InitialAppendCounts.lean)
 matches the existing scalar-statement descriptor and proves its word-level
-addition and multiplication results.  Pointer and length setup and the
-complete growth loop remain open.
+addition and multiplication results.  The
+[complete append region](../proofs/talos/lean/Project/EulerRiemann/InitialAppendExecute.lean)
+now includes pointer setup, both header loads, capacity calculation,
+allocation, and copying.  It derives allocation size and no-fit search
+from the combined grid size and free-list invariant, returning all three
+owners.  The complete growth loop remains open.
+The [extraction allocation composition](../proofs/talos/lean/Project/EulerRiemann/InitialExtractAllocate.lean)
+preserves the source owner and returns the extracted prefix's owner and
+bounded write range.  Extraction input preparation remains open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)
