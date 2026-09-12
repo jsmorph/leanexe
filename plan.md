@@ -500,6 +500,14 @@ size, local execution in one process on one thread, and complete source
 and exact-WASM proofs.  The [complete solver plan](plans/euler-riemann-complete.md)
 records the numerical specification and outstanding proof obligations.
 
+The approved order is numerical completion, compiler-described array
+operations, whole-call-chain ownership and memory, complete source and
+exact-byte composition, and the two calculations.  Numerical completion
+must first discharge scan acceptance, accepted retry, and rounded-time
+progress through time 0.8 for every supported size.  The existing retry
+and advance execution theorems retain source-success premises.  Further
+initializer instruction proofs wait for this numerical argument.
+
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
 remaining composition must maintain the heap and free-list invariant

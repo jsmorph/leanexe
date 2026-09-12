@@ -10615,3 +10615,58 @@ The numerical completion argument must be resolved before further local
 execution proofs can justify a completion estimate.  This review changes
 no numerical source, artifact, proof requirement, execution host, or
 production-run order.
+
+## 2026-09-12: Numerical completion bounds
+
+Checkpoint 423d944f60aceb30056e9d76b3c389818906fe84 is published
+with tree 8b588c21a1fb9f7fbed189acd8fedda96991d49b.  The user
+approved the six-gate strategy recorded in the complete-solver plan.
+Numerical completion now precedes further initializer compositions.
+
+[Rusanov decomposition](proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
+proves the exact-real three-state decomposition, internal-energy
+concavity, the split-state quadratic margin identity, and the
+six-sevenths internal-energy factor under the physical sound-speed
+bound.  The final check took 33 seconds.
+[Complete cell positivity](proofs/talos/lean/Project/EulerRiemann/RealStep.lean)
+composes these results under both CFL bounds, retaining the sharp center
+coefficient and deriving positive density and internal energy.  It
+checked in 95 seconds.  All requested audits contain only propext,
+Classical.choice, and Quot.sound.
+
+[Binary64 ordering converses](proofs/talos/lean/Project/ProofKit/F64OrderComplete.lean)
+derive positive-word classification and ordering from decoded finite
+values.  They checked in 31 seconds.
+[Energy-guard acceptance](proofs/talos/lean/Project/ProofKit/F64AdmissibilityComplete.lean)
+uses the existing normalized residual error bound of 5 epsilon to prove
+acceptance above an exact normalized margin of 13 epsilon, where epsilon
+is 2^-52.  Input classification and normalizability remain explicit
+premises.  The guard check took 33 seconds, and all five shared theorem
+audits contain only standard axioms.
+
+These numerical proofs use the existing Guard, normalization, residual
+error, and ordering results.  They establish local bounds.  They leave
+the invariant over reachable rounded grids, all-intermediate finiteness,
+accepted retry, and final-time progress open.  The accepted compiler
+descriptors and LTG execution support retain their separate role in the
+full execution proof.  No numerical source, frozen artifact, or
+production dataset changed.
+
+[Normalization-range counterexample](proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
+now checks in Lean.  The three states have density 1, main momentum 1.25,
+and energy 2.  Only the right neighbor has transverse momentum 2^-1019.
+Both distinct states and both interfaces pass their guards.  At ratio
+1/8, the CFL condition passes and density, main momentum, and energy
+remain unchanged.  The positive updated transverse component falls
+outside the normalization range.  The candidate remains Euler-admissible
+but fails the state guard.  Ratio 2^-40 also produces a rejected cell.
+The complete diagnostic checked in 56 seconds, with standard-only audits.
+
+This counterexample rules out acceptance closure from accepted inputs
+and CFL alone.  It does not prove that the specified Riemann recurrence
+reaches the constructed state or that every retry fails.  Successful
+completion still requires a source-specific reachability argument or a
+reviewed change to the guard.  A possible guard revision would retain
+the conserved values and account for tiny momentum terms through proved
+normalization error bounds.  That revision has not been implemented or
+approved, and it would require new exact-byte proof inputs.
