@@ -167,8 +167,15 @@ covers head and interior unlinking, metadata stores, and returned-pointer
 assignment.  The reused memory model and free-list state lemmas now have
 standard-only audits in a separate shared module.
 [The search-fragment proofs](../proofs/talos/lean/Project/EulerRiemann/AllocationSearchRead.lean)
-cover bounded capacity/next reads and pointer advancement.  The complete
-search loop, allocator composition, and peak-memory bound remain open.
+cover bounded capacity/next reads and pointer advancement.
+[The no-fit search proof](../proofs/talos/lean/Project/EulerRiemann/AllocationSearchNone.lean)
+proves termination after all undersized nodes, store preservation, and a
+zero selected pointer.
+[The fitting search proof](../proofs/talos/lean/Project/EulerRiemann/AllocationSearchFit.lean)
+proves termination, first-fit selection, bounded predecessor writes,
+unlinking, metadata construction, and the returned root.  Both execution
+audits contain only the accepted standard logical axioms.  Allocator
+composition and the peak-memory bound remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
