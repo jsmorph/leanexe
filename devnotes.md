@@ -10279,3 +10279,15 @@ checked in 12 seconds with the same limits and standard axioms.  LTG
 records the failed applications and successful division.  Cell indexing,
 grow/extract traversal, initialization allocation, output execution,
 source success, and exact-byte closure remain open.
+
+The initial-cell coordinate prefix now checks its exact emitted
+multiplication region and composes staging, checked multiplication by
+four, and result assignment.  The shared `CheckedNatMul` theorem handles
+arbitrary staged operands and a stack tail under the compiler's natural
+product bound.  Its zero branch skips the unused left operand and
+division.  Both branches preserve the store.  The shared theorem checked
+in 2.1 seconds, and the concrete prefix checked in 16 seconds, with
+standard axioms.  LTG's provisional multiplication entry records those
+uses and the failed draft.  The frame entry now includes parameter
+projection.  The catalog accepts 30 entries.  Remaining coordinate
+arithmetic and initialization traversal still require execution proofs.

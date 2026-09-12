@@ -2,6 +2,8 @@ import Project.ProofKit.Allocation
 import Project.ProofKit.Array
 import Project.ProofKit.BlockLoop
 import Project.ProofKit.CheckedArrayGet
+import Project.ProofKit.CheckedNatMul
+import Project.ProofKit.CheckedNatMulArithmetic
 import Project.ProofKit.Control
 import Project.ProofKit.EncodedIndexDecoder
 import Project.ProofKit.FixedArrayAllocator
@@ -37,6 +39,10 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.BlockLoop.stepPost
 #check Project.ProofKit.CheckedArrayGet.checkedGetCore
 #check Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
+#check Project.ProofKit.CheckedNatMul.guard_of_fits
+#check Project.ProofKit.CheckedNatMul.program
+#check Project.ProofKit.CheckedNatMul.program_spec
+#check Project.ProofKit.CheckedNatMul.zero_spec
 #check Project.ProofKit.EncodedIndexDecoder.program
 #check Project.ProofKit.EncodedIndexDecoder.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame
@@ -134,6 +140,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.Frame.ext
 #check Project.ProofKit.Frame.internal_getElem?_of_get
 #check Project.ProofKit.Frame.internal_getElem_of_get
+#check Project.ProofKit.Frame.parameter_getElem_of_get
 #check Project.ProofKit.Frame.withValues_get
 #check Project.ProofKit.Frame.withValues_locals
 #check Project.ProofKit.Frame.withValues_params

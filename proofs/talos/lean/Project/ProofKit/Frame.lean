@@ -30,6 +30,14 @@ theorem withValues_values (frame : Locals) (values : List Value) :
 theorem withValues_get (frame : Locals) (values : List Value) (index : Nat) :
     ({ frame with values := values } : Locals).get index = frame.get index := rfl
 
+theorem parameter_getElem_of_get (frame : Locals) (index : Nat) (value : Value)
+    (hIndex : index < frame.params.length) (hGet : frame.get index = some value) :
+    frame.params[index]'hIndex = value := by
+  have h : frame.params[index]? = some value := by
+    simpa [Locals.get, hIndex] using hGet
+  rw [List.getElem?_eq_getElem hIndex] at h
+  exact Option.some.inj h
+
 theorem internal_getElem?_of_get
     (frame : Locals) (parameterCount localIndex : Nat) (value : Value)
     (hParams : frame.params.length = parameterCount)

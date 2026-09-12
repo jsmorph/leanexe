@@ -13,6 +13,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FuelGuard` | Short-circuit fuel and completion guards with exact store and frame preservation and arbitrary exit or body continuations. |
 | `Project.ProofKit.BlockLoop` | Empty-stack block/loop composition from a proved iteration, a decreasing natural measure, a completed-state predicate, and an arbitrary suffix continuation. |
 | `Project.ProofKit.CheckedArrayGet` | Bounds-checked `Array UInt64` loads for arbitrary staged pointer and index locals, preserving the store and an operand-stack tail. |
+| `Project.ProofKit.CheckedNatMul` | Checked natural multiplication from staged operands, including the zero branch, overflow exclusion, and preservation of an arbitrary operand-stack tail. |
+| `Project.ProofKit.CheckedNatMulArithmetic` | The natural-product bound that discharges the emitted maximum-word division guard. |
 | `Project.ProofKit.F64Bounds` | Raw binary64 sign-clearing guards, including the proof that an accepted half-unit encoding is finite with modeled real magnitude at most one half. |
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
