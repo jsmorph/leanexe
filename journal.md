@@ -12292,3 +12292,48 @@ successful completion, and exact-byte closure remain open.
 The staged whitespace check found one added blank line at the end of
 BookAllocFitState.  Removed that blank line before publication.  The
 105-document check passed.
+
+Published the eleven-path allocator-reuse checkpoint as
+ff4aa16650782c405c3cdc3c484e49d7eab5312e, parent
+19c0001a4301c01dfd08158580bc97f8ce7b5a8d, tree
+fdce60ba6cf929316be6ccfb22646cb57412867a.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Continued with the complete search loop.  Added its exact decomposition
+and the continuing-path guard proof, then a no-fit loop invariant over
+visited and remaining free nodes.  The measure uses the checked
+scanRemaining suffix lemma.  This branch must preserve the store and
+return a zero selected pointer after visiting every undersized node.
+
+After context recovery, reread the repository instructions, operating
+requirements, README, and leanrunner skill.  The continuing guard now
+passes with standard-only axioms.  The first no-fit loop check found that
+destructing the store equality substituted the original-store binder.
+Changed the three fragment applications to use the surviving store name.
+
+The next check reached the strict measure inequality and required
+unfolding the nonempty free-list head before rewriting the suffix count.
+With that correction, AllocationSearchNone passed all 3,445 jobs in
+2.4 seconds.  Its execution theorem uses only the three accepted logical
+axioms.  Added a fitting-search draft with separate searching and selected
+states, a predecessor-write bounds lemma, and composition of the checked
+read, advance, and selected-node reuse fragments.
+
+The fitting-search draft exposed three local normalization obligations:
+the UInt64 literal eight in the predecessor bound, the empty operand
+stack in the continuing frame, and the list-length expressions in the
+strict measure comparison.  Corrected those expressions without changing
+the invariant or execution model.  The final AllocationSearchFit check
+passed all 3,446 jobs in 2.9 seconds.  The predecessor bound uses propext
+and Quot.sound.  Both complete search execution theorems use only
+propext, Classical.choice, and Quot.sound.
+
+Reviewed the exact generated decomposition, both exit guards, the
+read/advance composition, first-fit decomposition, predecessor bounds,
+selected reuse-body application, store preservation before selection,
+and strict measures in both loops.  Updated the proof inventory, complete
+solver plan, and concise notes.  Checkpoint intent: publish the three new
+search proof modules and these four records.  No source, compiler,
+generated artifact, or numerical-run files changed.  The complete solver
+proof and production runs remain pending.
