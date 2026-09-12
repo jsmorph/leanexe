@@ -202,6 +202,17 @@ gives the exact store after a refcount-one grid is freed.  The strengthened
 shared runtime theorem preserves all components outside memory and
 globals, including runtime memory limits.  Its existing public theorem
 retains the same statement through projection.
+[Release memory preservation](../proofs/talos/lean/Project/EulerRiemann/ReleaseMemory.lean)
+proves bytes outside the freed header unchanged and inserts the buffer
+into the represented free list using kernel-checked read/write facts.
+[Allocation state](../proofs/talos/lean/Project/EulerRiemann/AllocationState.lean)
+identifies the remaining nodes, preserves their representation, and
+proves strict address bounds and separation from the selected buffer.
+[Sweep resources](../proofs/talos/lean/Project/EulerRiemann/SweepResources.lean)
+composes allocation, length installation, and the loop write frame to
+preserve fresh destination metadata, full-capacity bounds, and the free
+list.  The solver's persistent ownership, allocator globals, and peak
+memory bound still require composition across successive calls.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
