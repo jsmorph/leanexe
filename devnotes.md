@@ -10426,3 +10426,30 @@ of the previous grid.  The standalone search consumer passes through a
 shared checked region adapter.  LTGCheck resolves all 37 entries.
 Catalog, forest, LTG, knowledge, proof-generator, and documentation
 checks pass.  The documentation inventory contains 114 maintained files.
+
+## 2026-09-12: Initializer heap and frame composition
+
+Checkpoint 2ae3f6d4bbe1b16ad85d47da6c0fe2f8726c8cfa is published
+and verified against tree e52f83fd777e84b430db223f2cf26744be58c44f.
+The allocation adapter now returns Heap.At and fresh metadata from the
+shared no-fit allocation theorem.  All four root-transfer and length-store
+sites compose existing shared results.  The growth arithmetic bounds
+temporary indices through 1,048,576 and the remaining allocation reserve
+by 212,002,896 bytes after the singleton, including retained map buffers.
+Execution must still maintain those arithmetic premises.
+
+The heap adapter checked in 29 seconds, growth arithmetic in 38 seconds,
+and root/length installation in 92 seconds.  The shared result-frame
+getter equality preserves parameters, internal locals, and invalid reads.
+Its cleaned check took 50 seconds.  Map-ready getters and the loop-frame
+invariant checked in 63 and 54 seconds.  All audits use standard axioms.
+LTG exposes the new shared equality through fixed-array-fold-structure.
+Catalog, package, and proof-generator tests pass, preserving
+tmp/leanexegen-test-m2dnEr.  Full initialization traversal, source success,
+output, memory bounds, and exact-byte closure remain open.
+
+LTGCheck passes all 3,401 jobs and resolves the new getter declaration.
+The 114-file documentation check also passes.  A focused Lean profile
+measured 172 seconds loading imports, so subsequent focused checks use
+six-minute timeouts with the same CPU and memory limits.  The profile
+and unfinished composition drafts remain recorded in the journal.
