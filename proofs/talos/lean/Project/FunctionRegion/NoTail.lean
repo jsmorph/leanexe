@@ -22,6 +22,45 @@ macro "no_return_call_atomic" : tactic => `(tactic|
   (simp only [execOne.eq_def]
    repeat' (first | split | simp_all [HasNoReturnCall])))
 
+private theorem noReturnCall_divUI64 (fuel : Nat) (m : Module) (env : HostEnv α)
+    (st : Store α) (s : Locals) :
+    HasNoReturnCall (execOne fuel m st s .divUI64 env) := by
+  cases fuel <;> no_return_call_atomic
+
+private theorem noReturnCall_remUI64 (fuel : Nat) (m : Module) (env : HostEnv α)
+    (st : Store α) (s : Locals) :
+    HasNoReturnCall (execOne fuel m st s .remUI64 env) := by
+  cases fuel <;> no_return_call_atomic
+
+private theorem noReturnCall_f64Div (fuel : Nat) (m : Module) (env : HostEnv α)
+    (st : Store α) (s : Locals) :
+    HasNoReturnCall (execOne fuel m st s .f64Div env) := by
+  cases fuel <;> no_return_call_atomic
+
+private theorem noReturnCall_f64Sqrt (fuel : Nat) (m : Module) (env : HostEnv α)
+    (st : Store α) (s : Locals) :
+    HasNoReturnCall (execOne fuel m st s .f64Sqrt env) := by
+  cases fuel <;> no_return_call_atomic
+
+private theorem noReturnCall_exec (fuel : Nat) (m : Module) (env : HostEnv α)
+    (hOne : ∀ st s inst, PortableInstruction domain inst →
+      HasNoReturnCall (execOne fuel m st s inst env)) :
+    ∀ st s program, PortableProgram domain program →
+      HasNoReturnCall (exec fuel m st s program env) := by
+  intro st s program hPortable
+  induction program generalizing st s with
+  | nil => simp [HasNoReturnCall, exec]
+  | cons inst rest restIH =>
+      cases hPortable with
+      | cons _ _ hInst hRest =>
+          simp only [exec]
+          cases hResult : execOne fuel m st s inst env <;>
+            simp_all only [HasNoReturnCall]
+          case ReturnCall =>
+            have hNoReturn := hOne st s inst hInst
+            rw [hResult] at hNoReturn
+            exact hNoReturn
+
 private theorem noReturnCall_aux : ∀ fuel,
     (∀ (m : Module) (env : HostEnv α) st s inst,
       PortableInstruction domain inst →
@@ -32,13 +71,12 @@ private theorem noReturnCall_aux : ∀ fuel,
   intro fuel
   induction fuel with
   | zero =>
-      constructor
-      · intro m env st s inst hPortable
-        cases hPortable <;> no_return_call_atomic
-      · intro m env st s program hPortable
-        cases program with
-        | nil => simp [HasNoReturnCall, exec]
-        | cons inst rest => simp [HasNoReturnCall, exec, execOne.eq_def]
+      have noOne : ∀ (m : Module) (env : HostEnv α) st s inst,
+          PortableInstruction domain inst →
+          HasNoReturnCall (execOne 0 m st s inst env) := by
+        intro m env st s inst _
+        simp only [execOne.eq_def, HasNoReturnCall]
+      exact ⟨noOne, fun m env => noReturnCall_exec 0 m env (noOne m env)⟩
   | succ fuel ih =>
       obtain ⟨ihOne, ihExec⟩ := ih
       have noOne : ∀ (m : Module) (env : HostEnv α) st s inst,
@@ -57,13 +95,16 @@ private theorem noReturnCall_aux : ∀ fuel,
         | addI64 => no_return_call_atomic
         | subI64 => no_return_call_atomic
         | mulI64 => no_return_call_atomic
-        | divUI64 => no_return_call_atomic
+        | divUI64 => exact noReturnCall_divUI64 _ _ _ _ _
+        | remUI64 => exact noReturnCall_remUI64 _ _ _ _ _
         | andI64 => no_return_call_atomic
         | f64ReinterpretI64 => no_return_call_atomic
         | i64ReinterpretF64 => no_return_call_atomic
         | f64Add => no_return_call_atomic
         | f64Sub => no_return_call_atomic
         | f64Mul => no_return_call_atomic
+        | f64Div => exact noReturnCall_f64Div _ _ _ _ _
+        | f64Sqrt => exact noReturnCall_f64Sqrt _ _ _ _ _
         | eqI64 => no_return_call_atomic
         | neI64 => no_return_call_atomic
         | eqz => no_return_call_atomic
@@ -141,20 +182,7 @@ private theorem noReturnCall_aux : ∀ fuel,
             simp only [execOne.eq_def]
             cases hResult : run fuel m id st s.values env <;>
               simp [HasNoReturnCall]
-      refine ⟨noOne, ?_⟩
-      intro m env st s program hPortable
-      induction program generalizing st s with
-      | nil => simp [HasNoReturnCall, exec]
-      | cons inst rest restIH =>
-          cases hPortable with
-          | cons _ _ hInst hRest =>
-              simp only [exec]
-              cases hResult : execOne (fuel + 1) m st s inst env <;>
-                simp_all only [HasNoReturnCall]
-              case ReturnCall =>
-                have hNoReturn := noOne m env st s inst hInst
-                rw [hResult] at hNoReturn
-                exact hNoReturn
+      exact ⟨noOne, fun m env => noReturnCall_exec (fuel + 1) m env (noOne m env)⟩
 
 theorem portableProgram_noReturnCall
     (hPortable : PortableProgram domain program) :
