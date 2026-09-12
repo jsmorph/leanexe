@@ -14712,3 +14712,178 @@ guidance and header-load consumer metadata, devnotes.md, journal.md,
 plan.md, both Euler plans, and the Talos README.  Preserve the unchecked
 ScalarConditional and InitialExtractLoad drafts outside this checkpoint,
 along with unrelated paper outputs, existing builds, artifacts, and data.
+
+Published 428839b011a003a1b3ee62ef8adb8a89fb21fd88,
+"Prove complete append and extraction ownership", with parent
+27a683cf527f3d9484ccfc59cf83c39232af6e8a and tree
+e81a53c31f528e26c6bd993e033c7ebb279f5791.  The reviewed 20-file
+checkpoint contains 740 insertions and 55 deletions.  The ordinary SSH
+push advanced origin/talosfp-euler without force.  Fetch verified the
+exact commit, sole parent, title, tree, index, and tracked worktree.
+The two unchecked drafts and unrelated paper outputs remain preserved.
+Started the standard local ScalarConditional check.
+
+Added InitialExtractSelect for the emitted minimum and zero-start span
+calculations, including size-equals-length and zero-length branches.
+Its draft uses the typed conditional adapter and the shared scalar state
+setter.  Added InitialExtractCounts for the two following multiplications,
+using the same descriptor execution and indexed-getter lemmas as append.
+Both remain unchecked until their serial targets run.
+
+ScalarConditional's expression theorem passed its standard-axiom audit,
+but the 128-second module check failed in the assignment adapter.
+Restricted simplification left the Option bind and an empty-list append
+unreduced.  Used the same evaluator simplification as the existing
+statement theorem and added List.nil_append at the continuation boundary.
+Also replaced two deprecated conditional rewrite names.  The assignment
+adapter remains unaccepted until the corrected target passes.
+
+Added InitialExtractInput to compose the 28-instruction extraction prefix.
+Its draft derives the encoded size comparison from size ≤ grid.size and
+the represented grid's existing UInt64 size bound.  It composes loading,
+clamped stop, zero-start span, and word counts while preserving the store.
+The public getters expose the four inputs used by allocation and copying.
+
+The second ScalarConditional check failed in 100 seconds at the remaining
+assignment continuation.  localSet_spec inferred its suffix as the raw
+List.append [] rest spelling, which the restricted List.nil_append
+rewrite did not match.  Supplied the intended rest argument explicitly
+to the existing theorem, keeping the continuation's program unchanged.
+The Option-bind correction passed.  The expression theorem again audited
+with standard axioms.  No extraction consumer ran after this dependency
+failure.
+
+Added InitialExtractPrepareFrame as the canonical-frame preparation draft
+at scratch start 60.  It records the eight input assignments in the
+saved-local prefix and uses the existing shared prefix-assignment and
+capacity-replacement equalities.  Its dependent input modules remain
+under development.
+
+Added InitialExtractExecute as the complete 70-instruction extraction
+draft.  It matches both emitted extraction sites, derives capacity and
+no-fit allocation from the target-size invariant, and composes the input,
+capacity, allocation, and copy proofs.  Its continuation receives both
+owners, the updated heap, the bounded write range, and the exact final
+frame.  Its new input dependencies must pass before this theorem runs.
+
+ScalarConditional passed in 140 seconds.  Both execution audits contain
+only propext, Classical.choice, and Quot.sound.  The exact extraction
+conditional consumer is now checking.  Added the shared module to the
+proof-generator import/source inventory and extended the provisional
+scalar-statement LTG entry with its typed-conditional program and two
+execution theorems.  The guidance records both failed applications and
+the explicit-continuation correction.  No automatic annotation selection
+or independent artifact promotion is claimed.
+
+Catalog, knowledge-package, proof-generator, catalog-freshness, and
+116-file documentation tests pass after the shared adapter inventory
+change.  The generator fixture remains at tmp/leanexegen-test-cqC85a.
+
+The combined InitialExtractSelect target reached its six-minute runner
+limit with status 124 and no consumer theorem diagnostic, after the
+shared adapter passed.  Preserved its exact 89-line source at
+tmp/initial-extract-select-timeout-20260912-204254.lean and checked equality
+before splitting it into InitialExtractStop and InitialExtractSpan.
+InitialExtractSelect now imports those two modules.  The next focused
+target checks only the stop-index calculation, with the accepted adapter
+already built.  The unchanged combined target is not being retried.
+
+Reviewed the map-to-append local-frame boundary.  InitialMapFrameAt
+preserves append's six allocator locals, while the no-fit theorem expects
+a canonical saved/window/tail list.  Added an unchecked shared
+FixedArraySearchWindow.frame_eq_of_gets draft that reconstructs that exact
+frame from the six getters and a local-list bound.  This uses existing
+list slicing and frame extensionality, and remains separate from the
+current extraction checks and checkpoint.
+
+InitialExtractStop passed in 137 seconds after the module split.
+Its exact region equality uses propext, evaluator uses propext and
+Quot.sound, and execution uses the three standard axioms.  The equal-size
+branch is included.  The next focused target checks InitialExtractSpan
+before the input composition.
+
+Recorded the accepted extraction stop consumer in the scalar-statement
+LTG entry and concise development notes.  The guidance preserves the
+combined target's timeout and successful smaller-module result.  The
+typed conditional adapter's exact metadata form now has an accepted
+emitted-region consumer.
+
+InitialExtractSpan failed in 178 seconds in the zero-length arithmetic
+branch.  After converting unsigned comparison to natural comparison,
+omega retained UInt64.toNat 0 as an unconstrained term.  Changed that
+premise to its definitionally equal natural-zero comparison before the
+arithmetic step.  The exact region equality passed.  The evaluator and
+execution declarations remain unaccepted until the corrected check.
+
+Reviewed the compiler's Expr.ofIR_emitWithRelease and Stmt.ofIR_emit
+certificates and the annotation generator's scalar-loop equality path.
+Those certificates connect successful IR reification to descriptor
+emission, while the artifact-side generated equality independently checks
+the decoded region.  The new adapter retains metadata on one outer
+conditional and uses canonical descriptor programs for its condition and
+branches.  Added that exact scope to the LTG guidance.  Nested decoded
+metadata still requires a matching region theorem, and no recursive
+metadata normalization or new automatic recipe is claimed.
+
+The corrected InitialExtractSpan check completed with exit status zero
+in 132 seconds.  Its exact region equality audits with propext, its
+evaluator with propext and Quot.sound, and its execution theorem with
+propext, Classical.choice, and Quot.sound.  This records the completed
+standard-runner job from before the user's request to reassess the work.
+No further Lean target started during the review.
+
+After the user's criticism, reread AGENTS.md, README.md, the Euler
+operating requirements, the complete-solver plan, and the artifact-proof
+documentation.  Reviewed source control, retry, fuel, safety, trace,
+thermodynamic guards, interface fluxes, cell updates, initialization
+growth bounds, heap reservations, complete retry/advance theorem
+statements, and output layout.  Reviewed the pending tracked diff and
+the extraction conditional sources.  A lookup guessed the no-fit LTG
+directory name incorrectly and failed with no such file.  Retrieved the
+exact path with rg --files and read the entry.  No build or numeric run
+was used as evidence in this read-only assessment.
+
+The proof strategy still lacks an unconditional numerical progress
+argument.  retry_exact_of_success and advance_exact_of_success require
+source status zero.  run_fuel_sufficient excludes status 5 without
+excluding scan failure, invalid advancement, or retry exhaustion.
+run_safe retains the previous accepted grid on those failure branches.
+StateBounds records finiteness and strict positive density, energy, and
+internal energy.  It gives no quantitative bounds ensuring all rounded
+thermodynamic and flux intermediates pass their guards.  In the first
+sweep, fluxCheckedBits depends on the input states and not the trial
+timestep.  Repeated halving therefore cannot repair a rejected flux on
+that unchanged input.  Progress also requires an accepted trial before
+rounded time addition stops increasing.  No reviewed theorem supplies
+a preserved invariant with these properties through the requested time.
+
+The compiler/LTG review confirms existing semantic reuse: checked scalar
+descriptors, region equalities, complete block-loop composition, capacity,
+allocation, copy, and frame theorems.  Scalar-statement and no-fit
+allocation entries remain provisional and have no annotationKinds.
+Their checked consumers establish local applicability.  The complete
+Riemann artifact still lacks independent verification.  The new typed
+conditional helper retains only its outer conditional's metadata, as
+already recorded, and the updated LTGCheck remains unchecked.
+
+Initialization growth arithmetic and timestep reservation theorems
+provide resource bounds under explicit invariants.  Complete initializer
+execution must establish those invariants from module entry.  Final
+output adds width-one arrays and concatenations, while the Euler
+allocateStore adapter uses width-seven header metadata.  Its output
+extension therefore requires the correct array representation.  Complete
+output, entry composition, and exact-byte verification remain open.
+
+The recent sequence of local instruction proofs did not resolve the
+numerical premise controlling successful completion.  Recorded this
+assessment and the completed span check in devnotes.md and journal.md
+after inspecting status.  These are the only edits in this review.
+Preserved all pending proof, LTG, generator, paper, build, artifact, and
+data files.  No alternative algorithm, weaker theorem, remote execution,
+new dependency, or production calculation has been selected.
+
+Reviewed both documentation additions and git diff --check, which passed.
+Checkpoint intent: stage only devnotes.md and journal.md and publish the
+proof-strategy assessment with the preceding uncommitted check records.
+Keep every pending implementation and LTG change outside this checkpoint.
+The starting commit is 428839b011a003a1b3ee62ef8adb8a89fb21fd88.
