@@ -61,6 +61,29 @@ not evidence that the requested runs satisfy them.
 
 ## Work order
 
+The user approved the following gates on 2026-09-12.  The numerical
+completion argument takes priority over the remaining local execution
+compositions.
+
+| Gate | Required result |
+|------|-----------------|
+| Final theorem | For every runtime size from 2 through 800, the exact generated WASM export terminates from its specified entry state, stays within the complete memory bound, and returns status zero, the binary64 encoding of time 0.8, both dimensions, and the specified density and pressure words. |
+| Numerical completion | Derive the Rusanov convex decomposition, quantitative floating-point bounds, a preserved invariant ensuring guard acceptance, an accepted retry before rounded time stalls, and final-remainder handling.  Conclude source success without assuming successful intermediate steps. |
+| Compiler-described operations | Check complete emitted map, append, and extract descriptions against decoded regions.  Compose through shared ProofKit results and record checked consumers in LTG.  The current output function has no annotation regions. |
+| Ownership and memory | Compose initialization, retained buffers, retry, replacement, and width-one output allocations with the existing width-seven cell arrays.  Establish a complete bound of at most 512 MiB, including metadata and free storage. |
+| Complete execution | Close the source and exact-byte theorems over the full entry-to-output call chain.  Independently check the exact artifact and audit the final theorems for the three permitted standard axioms. |
+| Calculations and figures | Run 192, save and plot its density and pressure, then run 800, save and plot its density and pressure. |
+
+The second gate requires quantitative margins.  Exact-real positivity
+alone does not establish that every rounded thermodynamic intermediate
+is finite or that the normalized energy guard accepts.  First-sweep
+interface fluxes are independent of the trial timestep, so retry halving
+cannot repair their rejection.  A repeated half-center lower bound also
+does not supply usable full-run floating-point margins.  These
+obligations remain explicit until a preserved invariant discharges them.
+
+The implementation inventory remains:
+
 - [x] Prove the ordered index array, clamped-neighbor bounds and coordinate correspondence, and interface-fraction bounds.
 - [x] Prove the four conservative states and admissibility of all 36 rounded cell-average combinations.
 - [x] Test the generated grid-helper WASM, including the complete 800-grid index array.
@@ -82,6 +105,26 @@ The user selected local execution.  A change to remote or parallel
 execution requires discussion.  The complete proof remains unfinished.
 
 ## Current checkpoint
+
+The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
+and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)
+are checked.  They derive the convex decomposition, split-state margin,
+sound-speed bound, and positive density and internal energy under the
+two CFL conditions.  The
+[energy-guard acceptance theorem](../proofs/talos/lean/Project/ProofKit/F64AdmissibilityComplete.lean)
+is also checked: finite, normalizable inputs with exact normalized margin
+above 13 times 2^-52 pass the guard.  All audits use only the accepted
+standard axioms.  Preserving these quantitative conditions over the
+specified rounded run remains open.
+
+The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
+shows accepted input states and interfaces with an accepted CFL value
+whose physically admissible update fails the normalization range check.
+It also checks rejection at a smaller timestep ratio.  This establishes
+a limitation of the general acceptance argument.  Reachability from
+the specified Riemann initial grid and behavior of the complete retry
+sequence remain unresolved.  Any change to the numerical guard requires
+review and renewed exact-byte proof inputs.
 
 [Grid source](../LeanExe/Examples/EulerRiemann/Grid.lean) accepts sizes from
 2 through 800.  Its tail-recursive array construction passes the source
