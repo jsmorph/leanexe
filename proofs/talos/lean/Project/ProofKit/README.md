@@ -20,6 +20,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayHeader` | Kernel-checked reads of all six allocation metadata words, root-relative header interpretation, and preservation of bytes outside the header. |
 | `Project.ProofKit.FixedArrayHeaderExec` | Bounded constant-word and local-word stores, composed into the six-word header instruction sequence with local-frame preservation. |
+| `Project.ProofKit.FreeListMemory` | First-fit predecessor membership, free-list preservation during byte-identical memory growth, and preservation of bytes outside free-node regions during reuse. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant or local result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |

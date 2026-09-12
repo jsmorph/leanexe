@@ -12376,3 +12376,47 @@ shared proof catalog, inventory, complete solver plan, and concise notes.
 Checkpoint intent: publish AllocationExecute, AllocationCapacity, the
 shared FixedArrayCapacity addition, and these five records.  Full sweep
 setup and the complete solver proof remain open.
+
+The 105-document and staged whitespace checks passed.  Published the
+eight-path allocator checkpoint as f0e772fa02968a2072cfc34472e0a931844e45fe,
+parent c7c1d0a14becf88ca1174a0a76438071ea28aeb4, tree
+5b1b574da09b71b27c7f9f1d6e7d856256b2e377.  Non-forced SSH push and fetch
+succeeded.  The fetched commit, parent, message, tree, index, and tracked
+worktree match.
+
+Continued with the allocated block's state properties: capacity covers
+the request, the root and payload fit linear memory, metadata has the
+fresh-array representation, and page count remains within the 32-bit
+limit.  The sweep specialization connects those bounds to all seven
+cell words and the length word through 640,000 cells.  These are local
+allocation properties.  The complete solver's peak-memory invariant is
+still open.
+
+The first allocation-bounds check expanded nested metadata stores while
+simplifying the page count and reached the default recursion limit.
+Introduced a page-preservation equality proved by reducing only the
+unlink choice.  Corrected the fresh-header theorem application to its
+existing implicit state arguments.  AllocationBounds then passed all
+3,450 jobs in 2.2 seconds, including all standard-only axiom audits.
+
+Added FreeListMemory with predecessor membership, preservation under
+byte-identical page growth, and byte preservation outside the free-node
+regions during unlinking and header construction.  AllocationPreserve
+uses those lemmas to preserve the source grid, prove source/destination
+separation, and preserve the free-list representation during growth.
+
+FreeListMemory and AllocationPreserve passed all 3,452 jobs, with module
+times of 1.0 and 1.8 seconds.  All new preservation audits contain only
+propext and Quot.sound.  Replaced the search proof's repeated predecessor
+decomposition with the new shared predecessor-membership theorem and
+started the focused dependent check.
+
+The dependent check passed all 3,452 jobs after the predecessor-lemma
+substitution.  Every affected axiom audit remains standard-only.  Reviewed
+the reused and bumped payload bounds, monotone and bounded page counts,
+fresh metadata, outside-region byte preservation, source-grid framing,
+destination separation, and free-list growth proof.  Updated the shared
+catalog, proof inventory, complete plan, and concise notes.  Checkpoint
+intent: publish the three new state/preservation modules, the search
+proof's shared-lemma substitution, and these five records.  Full sweep
+setup and the full solver proof remain open.
