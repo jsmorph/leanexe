@@ -173,6 +173,27 @@ function checkInternalArrayLoop() {
   ]) assert.deepEqual(callI64Slots(binary, name, 4, [fuel, skip]), expected);
 }
 
+function checkTailRelease() {
+  const name = "tailArrayReleaseStats";
+  const output = fs.mkdtempSync(path.join("tmp", "tail-array-release-"));
+  const binary = path.join(output, "release.wasm");
+  run([leanExe, "compile", "--module", correctnessModule,
+    "--entry", `${correctnessModule}.${name}`, "--out", binary]);
+  for (const [fuel, expected] of [[0n, 0n], [3n, 30303n]]) {
+    assert.deepEqual(callI64Slots(binary, name, 1, [fuel]), [expected]);
+  }
+}
+
+function checkFreshTailResult() {
+  const name = "freshTailArrayRelease";
+  const output = fs.mkdtempSync(path.join("tmp", "fresh-tail-array-"));
+  const binary = path.join(output, "release.wasm");
+  run([leanExe, "compile", "--module", correctnessModule,
+    "--entry", `${correctnessModule}.${name}`, "--out", binary]);
+  assert.deepEqual(callI64Slots(binary, name, 1, []), [101n]);
+  run(["lake", "env", "lean", "test/fresh_owner_summary.lean"]);
+}
+
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
@@ -182,7 +203,9 @@ function main() {
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
   checkFreshArrayRelease();
   checkInternalArrayLoop();
-  process.stdout.write("checked 21 ownership report and array-call cases\n");
+  checkTailRelease();
+  checkFreshTailResult();
+  process.stdout.write("checked 25 ownership report and array-call cases\n");
 }
 
 try {

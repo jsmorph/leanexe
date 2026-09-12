@@ -5732,6 +5732,29 @@ def internalArrayLoopStats (fuel : Nat) (skip : Bool) : ArrayLoopStats :=
   let released := LeanExe.Runtime.releaseCount
   ⟨result[0]!, original[0]!, freed, released⟩
 
+def discardArrayFuel : Nat → UInt64 → UInt64
+  | 0, value =>
+      value + LeanExe.Runtime.freeCount * 100 + LeanExe.Runtime.allocCount * 10000
+  | fuel + 1, value =>
+      let values : Array UInt64 := #[value]
+      if values.isEmpty then 999999
+      else
+        let _ := LeanExe.Runtime.release values
+        discardArrayFuel fuel (value + 1)
+
+def tailArrayReleaseStats (fuel : Nat) : UInt64 := discardArrayFuel fuel 0
+
+def freshTailArrayFuel : Nat → UInt64 → Array UInt64
+  | 0, _ => #[]
+  | fuel + 1, value =>
+      if value == 0 then #[7]
+      else freshTailArrayFuel fuel (value - 1)
+
+def freshTailArrayRelease : UInt64 :=
+  let values := freshTailArrayFuel 3 1
+  let freed := LeanExe.Runtime.release values
+  freed * 100 + LeanExe.Runtime.allocCount
+
 def flatArrayCopyRuntimeRelease : UInt64 :=
   let original : Array UInt64 := #[10, 20]
   let copied := flatArrayCopy original

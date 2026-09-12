@@ -400,6 +400,9 @@ const accepted = [
   { name: "internalArrayLoopStats", args: [1n, 0n], expected: [11n, 10n, 0n, 0n] },
   { name: "internalArrayLoopStats", args: [5n, 0n], expected: [15n, 10n, 4n, 4n] },
   { name: "internalArrayLoopStats", args: [5n, 1n], expected: [12n, 10n, 1n, 1n] },
+  { name: "tailArrayReleaseStats", args: [0n], expected: 0n },
+  { name: "tailArrayReleaseStats", args: [3n], expected: 30303n },
+  { name: "freshTailArrayRelease", args: [], expected: 101n },
   {
     name: "flatArrayCallAppend", args: [], expected: [null],
     memoryArrays: [{ resultIndex: 0, values: [3n, 11n, 21n] }],

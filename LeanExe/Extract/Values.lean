@@ -2975,6 +2975,7 @@ mutual
       (summaries : Array (List Nat))
       (ownedLocals : List Nat) :
       IRExpr → Bool
+    | .u64 value => value == 0
     | .local slot => ownedLocals.contains slot
     | .letE slot value body =>
         let valueOwned := exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals value
@@ -3142,7 +3143,13 @@ mutual
           second
     | .while cond body =>
         let bodyStart := removeLiveSlots ownedLocals (condReleasedSlots cond)
-        intersectLiveSlots bodyStart (stmtFreshOwnedLocalsAfter summaries bodyStart body)
+        let rec refine : Nat → List Nat → List Nat
+          | 0, current => current
+          | fuel + 1, current =>
+              let next := intersectLiveSlots current
+                (stmtFreshOwnedLocalsAfter summaries current body)
+              if next == current then current else refine fuel next
+        refine (bodyStart.length + 1) bodyStart
 end
 
 def freshResultOwnerOffsetsForFunc
@@ -3156,7 +3163,9 @@ def freshResultOwnerOffsetsForFunc
     match functionSignature? ctx func.sourceName with
     | none => []
     | some sig =>
-        let ownedAfterBody := stmtFreshOwnedLocalsAfter summaries [] func.body
+        let initial :=
+          (List.range (func.locals - func.params)).map (fun offset => func.params + offset)
+        let ownedAfterBody := stmtFreshOwnedLocalsAfter summaries initial func.body
         (tyReleaseOwnerSlotOffsets sig.result).filter fun offset =>
           match func.results[offset]? with
           | some expr => exprReturnsFreshOwnedHeapObjectFrom summaries ownedAfterBody expr
