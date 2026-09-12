@@ -120,6 +120,12 @@ uint64_array_pair
 
 ## Fixed-array bump allocation
 
+`FixedArrayHeader.from_root` identifies the six root-relative metadata
+stores with `fixedArrayHeaderMem` at the header base.  It allows the same
+header execution and read theorems to cover new and reused allocations.
+The header, unlink, and reuse-state proofs use `MemoryRoundtrip` for the
+equal-address read/write step and have standard-only axiom audits.
+
 Import `Project.ProofKit.Allocation` when the reachable program contains LeanExe's fixed-array allocator.  The current `RuntimeReady` precondition fixes an empty free list and supplies enough existing memory, so `bumpFacts` packages the arithmetic for the bump and no-growth path.  Its fields cover the 48-byte header root, the post-allocation top, unsigned-overflow exclusion, the page comparison, and all five header subtraction addresses.
 
 ```lean

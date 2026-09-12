@@ -162,8 +162,13 @@ Its shared proofs use only the accepted standard axioms.
 composes heap-address preparation, conditional growth, heap-top and root
 assignment, and metadata stores into the complete generated bump branch.
 It proves exact page and global updates and preserves disjoint grids.
-Free-list search and reuse, complete allocator composition, and the
-complete peak-memory bound remain open.
+[The selected-node reuse proof](../proofs/talos/lean/Project/EulerRiemann/AllocationReuse.lean)
+covers head and interior unlinking, metadata stores, and returned-pointer
+assignment.  The reused memory model and free-list state lemmas now have
+standard-only audits in a separate shared module.
+[The search-fragment proofs](../proofs/talos/lean/Project/EulerRiemann/AllocationSearchRead.lean)
+cover bounded capacity/next reads and pointer advancement.  The complete
+search loop, allocator composition, and peak-memory bound remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
