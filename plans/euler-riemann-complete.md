@@ -211,8 +211,15 @@ proves strict address bounds and separation from the selected buffer.
 [Sweep resources](../proofs/talos/lean/Project/EulerRiemann/SweepResources.lean)
 composes allocation, length installation, and the loop write frame to
 preserve fresh destination metadata, full-capacity bounds, and the free
-list.  The solver's persistent ownership, allocator globals, and peak
-memory bound still require composition across successive calls.
+list.
+[Allocator globals](../proofs/talos/lean/Project/EulerRiemann/AllocationGlobals.lean)
+identify the heap top and free-list head, preserve other globals and
+runtime memory caps, and place allocated and remaining free buffers
+below the resulting top.
+[Owned-source preservation](../proofs/talos/lean/Project/EulerRiemann/AllocationFrame.lean)
+retains the source's complete region through allocation and its fresh
+header through subsequent sweep writes.  The solver's persistent
+ownership and peak memory bound still require composition across calls.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.

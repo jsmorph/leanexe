@@ -88,4 +88,30 @@ theorem frame_headers {mem mem' : Mem} {nodes : List FreeNode}
 #print axioms fit_bytes
 #print axioms frame_headers
 
+theorem remaining_head {mem : Mem} {nodes : List FreeNode} {need : UInt64} {choice : FreeChoice}
+    (hList : FreeListAt mem nodes) (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    freeHead choice.remaining = if choice.previous = 0 then choice.next else freeHead nodes := by
+  obtain ⟨skipped, tail, hNodes, hPrevious, hNext, hRemaining, _⟩ :=
+    takeFirstFitFrom_some_decompose hTake
+  by_cases hEmpty : skipped = []
+  · simp only [hEmpty, previousRoot] at hPrevious
+    simp [hRemaining, hEmpty, hPrevious, hNext]
+  · let predecessor := skipped.getLast hEmpty
+    have hSplit : skipped.dropLast ++ [predecessor] = skipped :=
+      List.dropLast_append_getLast hEmpty
+    have hRoot : choice.previous = predecessor.root := by
+      rw [hPrevious, ← hSplit, previousRoot_append_singleton]
+    have hMember : predecessor ∈ nodes := by
+      rw [hNodes, ← hSplit]
+      simp
+    have hNonzero : choice.previous ≠ 0 := by
+      rw [hRoot]
+      exact hList.roots_ne_zero predecessor hMember
+    rw [ite_eq_right hNonzero, hRemaining, hNodes]
+    cases skipped with
+    | nil => exact False.elim (hEmpty rfl)
+    | cons first rest => rfl
+
+#print axioms remaining_head
+
 end Project.ProofKit.FreeListMemory

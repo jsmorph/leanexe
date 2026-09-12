@@ -10094,3 +10094,12 @@ facts through length installation and traversal.  Its focused check
 passed all 3,461 jobs in 1.3 seconds with standard-only axioms.  Persistent
 ownership, allocator globals, peak memory, complete control, successful
 completion, and exact-byte closure remain open.
+
+The allocator now has checked heap-top, free-list-head, other-global,
+runtime-cap, and heap-order results.  AllocationFrame preserves a
+disjoint owned source's complete region through allocation and its fresh
+header through sweep writes.  Both modules pass focused builds with
+standard-only axioms.  The shared first-fit head theorem follows the
+represented predecessor and remaining-node decomposition.  Composition
+of complete control, persistent ownership, peak memory, successful
+completion, and exact-byte closure remains open.
