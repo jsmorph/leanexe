@@ -9938,3 +9938,19 @@ grid.  Each step records valid rounded time advancement, and the trace
 length is bounded by the raw time-word increase.  The focused build
 passed with standard-only axiom audits.  Successful completion, the
 memory bound, and full generated-WASM execution remain open.
+
+The incomplete `euler_riemann` registration now generates the complete
+21,386-byte solver from the proof workspace.  Its SHA-256 is
+`45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f`,
+matching the latest passing small-grid tests.  Source-workspace selection
+and the existing cache checks pass.  The default compiler-workspace path
+passes the focused `gcd` artifact/proof gate.
+
+The generated thermodynamic helper now has an all-input execution theorem
+with exact output and store preservation.  It uses FunctionRegion to
+check and rename all fourteen existing helper definitions.  The shared
+proof now includes division, square root, and unsigned remainder.  Dividing
+its no-tail-call induction kept the original proof-step limit.  The
+execution theorem and all four runtime-definition checks pass.  Axiom
+audits report only the accepted standard axioms.  The full solver remains
+incomplete, with 38 registered models and 37 completed cases.

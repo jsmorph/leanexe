@@ -3,9 +3,11 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const assert = require("node:assert/strict");
 const {
   installProgramCache,
   normalizeExpandedProgram,
+  sourceWorkspace,
 } = require("../tools/talos-lib");
 const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
@@ -42,6 +44,15 @@ def «module» : Wasm.Module := {}
 
 end Project.Example
 `;
+
+const repository = path.resolve(__dirname, "..");
+assert.equal(sourceWorkspace({}), repository);
+assert.equal(sourceWorkspace({ sourceWorkspace: "compiler" }), repository);
+assert.equal(sourceWorkspace({ sourceWorkspace: "proof" }), path.join(repository, "proofs", "talos", "lean"));
+for (const value of [null, "", "../outside", "unknown", 1]) {
+  assert.throws(() => sourceWorkspace({ name: "example", sourceWorkspace: value }),
+    /sourceWorkspace must be compiler or proof/);
+}
 
 try {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -97,4 +108,4 @@ try {
   fs.rmSync(root, { recursive: true, force: true });
 }
 
-process.stdout.write("checked Talos cache comparison, refresh, and WAT-guard normalization\n");
+process.stdout.write("checked Talos source workspaces, cache comparison, refresh, and WAT-guard normalization\n");

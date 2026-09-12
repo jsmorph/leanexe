@@ -71,6 +71,12 @@ function snakeToPascal(name) {
     .join("");
 }
 
+function sourceWorkspace(item) {
+  if (item.sourceWorkspace === undefined || item.sourceWorkspace === "compiler") return repoRoot;
+  if (item.sourceWorkspace === "proof") return proofRoot;
+  throw new Error(`${item.name}: sourceWorkspace must be compiler or proof`);
+}
+
 function loadRegistry() {
   let registry;
   try {
@@ -106,6 +112,7 @@ function loadRegistry() {
         "specTarget",
         "behaviorTheorems",
         "complete",
+        ...(Object.hasOwn(item, "sourceWorkspace") ? ["sourceWorkspace"] : []),
       ],
       description,
     );
@@ -133,6 +140,7 @@ function loadRegistry() {
     if (typeof item.complete !== "boolean") {
       throw new Error(`${description}.complete must be a boolean`);
     }
+    sourceWorkspace(item);
     if (!Array.isArray(item.behaviorTheorems) || item.behaviorTheorems.length === 0 ||
         item.behaviorTheorems.some((theorem) =>
           typeof theorem !== "string" ||
@@ -314,7 +322,9 @@ function normalizeExpandedProgram(program, caseName) {
 }
 
 function buildCompilerInputs(cases) {
-  const modules = [...new Set(cases.map((item) => item.module))];
+  const modules = [...new Set(cases
+    .filter((item) => sourceWorkspace(item) === repoRoot)
+    .map((item) => item.module))];
   runLimited(
     "Lean source and compiler build",
     "10m",
@@ -322,6 +332,18 @@ function buildCompilerInputs(cases) {
     ["--no-ansi", "build", "lean-wasm", ...modules],
     repoRoot,
   );
+  const proofModules = [...new Set(cases
+    .filter((item) => sourceWorkspace(item) === proofRoot)
+    .map((item) => item.module))];
+  if (proofModules.length > 0) {
+    runLimited(
+      "proof-workspace source build",
+      "10m",
+      "lake",
+      ["--no-ansi", "build", ...proofModules],
+      proofRoot,
+    );
+  }
   try {
     fs.accessSync(leanWasm, fs.constants.X_OK);
   } catch (error) {
@@ -387,12 +409,14 @@ function prepareCase(item, wasmTools, programMode) {
     const wat = path.join(stageRoot, "program.wat");
     fs.mkdirSync(stageRoot, { recursive: true });
 
+    const sourceRoot = sourceWorkspace(item);
+    const compileArgs = ["compile", "--module", item.module, "--entry", item.entry, "--out", wasm];
     runLimited(
       `${item.name} compiler run`,
       "10m",
-      leanWasm,
-      ["compile", "--module", item.module, "--entry", item.entry, "--out", wasm],
-      repoRoot,
+      sourceRoot === repoRoot ? leanWasm : "lake",
+      sourceRoot === repoRoot ? compileArgs : ["env", leanWasm, ...compileArgs],
+      sourceRoot,
     );
     run(
       `${item.name} WAT rendering`,
@@ -528,6 +552,7 @@ function formatError(error) {
 }
 
 module.exports = {
+  sourceWorkspace,
   checkAggregateImports,
   checkAllProofs,
   checkCase,

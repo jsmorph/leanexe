@@ -27,6 +27,7 @@ import Project.EulerGridScan.Program
 import Project.EulerGridStep.Program
 import Project.EulerRusanov.Program
 import Project.EulerRusanovStep.Program
+import Project.EulerRiemann.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -231,5 +232,10 @@ example : eraseTypeIdx Project.Euler2DCellStep.func36Def = eraseTypeIdx allocFun
 example : eraseTypeIdx Project.Euler2DCellStep.func37Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Euler2DCellStep.func38Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Euler2DCellStep.func39Def = eraseTypeIdx (releaseFuncDef 39) := rfl
+
+example : eraseTypeIdx Project.EulerRiemann.func97Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func98Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func99Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func100Def = eraseTypeIdx (releaseFuncDef 100) := rfl
 
 end Project.Runtime

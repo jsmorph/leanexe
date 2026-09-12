@@ -57,12 +57,15 @@ mutual
     | subI64 : PortableInstruction domain .subI64
     | mulI64 : PortableInstruction domain .mulI64
     | divUI64 : PortableInstruction domain .divUI64
+    | remUI64 : PortableInstruction domain .remUI64
     | andI64 : PortableInstruction domain .andI64
     | f64ReinterpretI64 : PortableInstruction domain .f64ReinterpretI64
     | i64ReinterpretF64 : PortableInstruction domain .i64ReinterpretF64
     | f64Add : PortableInstruction domain .f64Add
     | f64Sub : PortableInstruction domain .f64Sub
     | f64Mul : PortableInstruction domain .f64Mul
+    | f64Div : PortableInstruction domain .f64Div
+    | f64Sqrt : PortableInstruction domain .f64Sqrt
     | eqI64 : PortableInstruction domain .eqI64
     | neI64 : PortableInstruction domain .neI64
     | eqz : PortableInstruction domain .eqz
@@ -118,12 +121,15 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.subI64
     | apply PortableInstruction.mulI64
     | apply PortableInstruction.divUI64
+    | apply PortableInstruction.remUI64
     | apply PortableInstruction.andI64
     | apply PortableInstruction.f64ReinterpretI64
     | apply PortableInstruction.i64ReinterpretF64
     | apply PortableInstruction.f64Add
     | apply PortableInstruction.f64Sub
     | apply PortableInstruction.f64Mul
+    | apply PortableInstruction.f64Div
+    | apply PortableInstruction.f64Sqrt
     | apply PortableInstruction.eqI64
     | apply PortableInstruction.neI64
     | apply PortableInstruction.eqz

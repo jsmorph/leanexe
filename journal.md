@@ -11713,3 +11713,86 @@ subset.  The check reports an if_pos deprecation warning.  This proof-only
 addition changes no executable source or emitted artifact.  Updated the
 current plan and concise notes.  Checkpoint intent: publish ControlTrace
 and these records after whitespace, proof-source, and documentation checks.
+
+Whitespace, proof-source, and 105-file documentation checks passed.
+Published 404521c56ccb0529b94416eb09aafec561da65b9, parent
+db3f11da4994e9e8b558e4b3b4bc3c62cb689184, tree
+50c6e7461064a51b0ed0a00c0f32ce6884a35e79.  Non-forced SSH push,
+fetch, and exact commit/tree/index/tracked-worktree comparisons passed.
+
+Registered the complete source entry as the incomplete euler_riemann
+case.  The intended solve_exact and solve_success theorem names record
+the pending execution and successful-completion obligations.  The source
+lives in the proof workspace because it uses the approved formal IEEE64
+definitions.  The artifact driver previously built and loaded every
+source from the compiler workspace.  Added an optional sourceWorkspace
+selection between those two existing workspaces.  Compilation uses the
+selected workspace's checked declarations, and all builds remain serial
+through tools/leanrun.  Added workspace-selection checks to the existing
+cache test.  No generated module or completed-case import exists yet.
+
+The first node test/talos_cache.js invocation stopped at mkdtemp with
+ENOSPC, before its checks.  The home filesystem reported zero available
+bytes, with 16 percent inode use.  Read-only storage inspection found
+about 15 GiB in this checkout's build, dependency, and retained test
+files.  The user stopped the obsolete-output investigation.  No saved
+state was removed.  After the user instructed continuation, the home
+filesystem reported 5.6 GiB available.  The repeated cache test passed
+workspace selection, content comparison, refresh, and guard normalization.
+
+tools/talos-artifact.js prepare euler_riemann passed, using fresh staging
+tmp/leanexe-talos-VPJag2.  It rebuilt the pinned verifier, built the source
+in the proof workspace, compiled the source, and generated Program.lean.
+The artifact is 21,386 bytes with SHA-256
+45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f,
+matching the complete solver used by the latest passing grid tests.
+Program.lean contains 11,764 lines and 218,402 bytes.  Added the four
+runtime-definition checks at indices 97 through 100.
+
+The first fourteen thermodynamic functions match the existing proved
+Euler2DConservative functions with function and type indices increased
+by two.  Added ExecutionSide to check this equality and apply the shared
+FunctionRegion execution theorem.  Extended that theorem's portable
+instruction cases with f64.div and f64.sqrt, whose execution uses the
+same store and operands after call-index renaming.  The shared extension,
+runtime checks, and application proof await their focused builds.
+
+The first ExecutionSide build stopped in FunctionRegion.NoTail at the
+default 200,000-heartbeat limit.  Syntax and Step passed.  The no-tail-call
+proof expanded every instruction case at fuel zero even though the
+interpreter returns OutOfFuel there for every instruction.  Replaced
+that enumeration with the common zero-fuel equation and separated program
+composition into noReturnCall_exec.  The proof-step limit is unchanged.
+The divided proof requires another focused check.
+
+The divided NoTail proof passed at the original heartbeat limit, followed
+by FunctionRegion.Exec.  ExecutionSide then identified unsigned remainder
+as another instruction needed by the normalized thermodynamic guard.
+Added its atomic case to the same shared proof.  Also made the constant
+sideDomain proof explicit, since instance synthesis did not unfold that
+predicate for decide.  All fourteen generated-function equalities passed
+before these remaining goals.  The application theorem remains unchecked.
+
+Adding unsigned remainder pushed the same induction past its heartbeat
+limit.  Separated integer division, remainder, floating-point division,
+and square root into four private atomic lemmas.  The main induction
+now applies those checked lemmas.  The next check targets NoTail alone
+before the application proof.
+
+The isolated NoTail build passed in 6.0 seconds at the original heartbeat
+limit.  ExecutionSide then passed the 3,393-job focused build, with its
+module taking 6.3 seconds.  sideShift and side_exact report only propext,
+Classical.choice, and Quot.sound.  Runtime.Checks passed all 3,380 jobs,
+including the new four exact runtime-definition equalities.  The default
+compiler-workspace path passed tools/talos-proof.js check gcd, including
+regeneration, cache comparison, and its 3,345-job proof build.
+
+The first documentation edit named the wrong Workflow heading and failed
+before changing files.  Corrected it to Workflow Tools.  Updated the
+maintained inventory to 38 registered/generated cases and 37 completed
+specifications, with the full Riemann solver explicitly incomplete.
+The exact-artifact inventory remains 33.  The executable source and
+generated bytes are unchanged by the helper proof.  Checkpoint intent:
+publish the source-workspace driver, incomplete registration, generated
+model, runtime checks, portable-instruction extension, checked
+thermodynamic execution theorem, and current documentation/records.
