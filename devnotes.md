@@ -10484,3 +10484,28 @@ LTGCheck passes all 3,402 jobs.  Catalog, package, proof-generator, and
 documentation tests pass.  The proof-generator test preserves
 tmp/leanexegen-test-p5NAdv.  The eight new data, ownership, and projection
 modules contain 377 lines.
+
+## 2026-09-12: Complete initializer map region
+
+Checkpoint 1aed3fbbaaa4f98a903342128dd713cd89e757f4 is published
+and verified against tree 201cc824773865cd21418ccf020785e17521f595.
+InitialMapExecute now proves the complete emitted map region from the
+source pointer in parameter 4 through the terminating map loop.  It
+derives capacity and no-fit search from the bounded grid and free-list
+invariant, and returns the updated heap, source and result ownership,
+bounded writes, and the final map frame.  The composition checked in
+41 seconds with standard axioms.  The six new modules contain 376 lines.
+
+The shared length-header load checked in 49 seconds, its concrete input
+consumer in 43 seconds, and allocation plus map data in 55 seconds.
+Shared canonical-frame preparation checked in 32 seconds, and its
+initializer consumer in 34 seconds.  The journal preserves the failed
+applications and corrections.  LTG contains 38 entries, including the
+provisional header-load entry and extended no-fit allocation guidance.
+Catalog, package, and proof-generator tests pass, with the generator
+fixture preserved at tmp/leanexegen-test-AjOqq0.  Full initialization,
+successful final-time completion, output, memory bounds, and exact-byte
+closure remain open.
+
+The generated LTG declaration check passes all 3,404 jobs.  Catalog
+freshness and the 115-file documentation check also pass.

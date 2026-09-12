@@ -14247,3 +14247,177 @@ allocation theorem's preserved getters to compose no-fit allocation,
 the complete map data operation, and both grid owners.  Its frame records
 the allocator result before map counter initialization.  The draft is
 checking separately and remains outside the checkpoint until accepted.
+
+Published and fetched checkpoint
+1aed3fbbaaa4f98a903342128dd713cd89e757f4 with parent
+77a7ec1207825bbad2feb49016d23e8431ab686d and tree
+201cc824773865cd21418ccf020785e17521f595.  The 25-file
+checkpoint has 620 inserted and 12 removed lines.  Commit, parent,
+message, tree, index, and tracked worktree content match the fetched
+branch.  InitialMapAllocate remains the only proof draft outside that
+checkpoint, and its local check is still running.
+
+InitialMapAllocate failed after 213 seconds at its result-pointer getter.
+The shared getter equality used the expanded search frame, while the
+goal retained initialMapAllocationFrame.  Added the local frame and
+named frame definition to that equality's restricted simplification.
+The failure produced no accepted theorem.  All other statements and
+premises remain unchanged.
+
+Inspected the preceding map prefix through the compiler-annotation
+parser: source local 4 is copied to local 48, and its length is loaded
+into locals 10 and 49 in two six-instruction sequences.  LTG searches
+for length-load declarations found only broader fold setup and input
+operations.  A bounded shared length-header load is the next required
+prefix operation after the allocation/map composition.
+
+Added FixedArrayLengthRead as a shared draft for the exact four-instruction
+pointer/get, wrap, load, and local-store sequence.  It uses the existing
+result frame and exact read/bounds premises, preserves the full store,
+and returns to an arbitrary continuation.  The draft follows the
+interpreter's checked load and local-store rules and the existing
+length-store proof's wrapped-address normalization.  It adds no runtime
+code or dependency.
+
+InitialMapAllocate passed in 55 seconds with standard axioms after the
+explicit frame-definition rewrite.  It composes the exact allocation
+program with the map-data program and returns the updated heap, both
+grid owners, bounded writes, and final map frame.  The preserved getters
+from the shared projection supply the source, offset, count, and grid
+parameter without new local-read derivations.  Started the shared
+length-header load check for the preceding emitted prefix.
+
+FixedArrayLengthRead reported a read-equality mismatch because the
+load rule retained pointer.toUInt32 + 0.  Added the UInt32-specific
+zero-addition theorem to the restricted address simplification before
+applying the exact read hypothesis.  The failed draft remains recorded
+and supplied no accepted theorem.
+
+Added InitialMapInput as the concrete prefix consumer.  Its draft
+matches the first 12 emitted growth instructions and composes two
+existing pointer transfers with two shared header loads.  The input
+grid supplies the exact length and memory bound.  The named result
+frame preserves every getter outside locals 10, 48, and 49, together
+with the complete store.
+
+FixedArrayLengthRead passed in 49 seconds with standard axioms after
+the UInt32 zero-addition rewrite.  Started the concrete InitialMapInput
+consumer.  Its shape equality, frame projections, and execution compose
+the two emitted source-pointer transfers and length loads with the
+existing result-frame getter support.
+
+InitialMapInput's shape and unchanged-getter audits passed, but its
+execution draft failed because rw does not unfold a local let-bound
+frame abbreviation.  Replaced those two local-definition rewrites with
+dsimp only, leaving the checked getter equalities unchanged.  The failed
+execution declaration remains unaccepted.  A read of func88's exact
+outer instruction list also confirms that its return follows the
+optional fallback extraction directly, with no final release outside
+the loop.  The initialization reservation continues to count all
+allocated map and append buffers.
+
+InitialMapInput passed in 43 seconds with standard axioms after replacing
+the two local-definition rewrites.  Its earlier failed attempt also took
+43 seconds.  The checked prefix preserves the full store and every
+getter outside the source, offset, and count locals.
+
+Added FixedArraySearchPrepare to connect the checked input/capacity
+frames to the canonical six-slot allocation frame.  Its draft uses
+List.set_append_left for writes before the scratch window and proves
+that capacity preparation replaces its first word.  These are frame
+equalities for arbitrary surrounding locals and all allocation layouts.
+
+FixedArraySearchPrepare failed in 43 seconds because elaborating
+Frame.ext with both frames unspecified and immediate rfl arguments
+identified its two frame metavariables before applying the goal.  Changed
+the proof to apply Frame.ext first and prove its three field equalities
+separately.  This preserves the shared frame statement and uses the
+existing list update theorem.  No failed declaration was accepted.
+
+FixedArraySearchPrepare passed in 32 seconds.  The prefix-update theorem
+uses propext and Quot.sound, and capacity replacement uses the three
+standard axioms.  Added InitialMapPrepareFrame to connect the exact input
+prefix and capacity result to that canonical allocation frame.  The
+draft records the three changed getters and preserves arbitrary values
+in the six scratch words before capacity preparation.
+
+InitialMapPrepareFrame checked both canonical-frame equalities but
+failed its getter conjunction: the default simplifier expanded Locals.get
+before using the shared assignment lemmas.  Restricted that proof to
+the named frame rules and closed arithmetic.  The exact frame equalities
+retain their standard-axiom audits.  The failed module remains unaccepted.
+
+Added InitialMapExecute as the full 54-instruction map-region composition.
+The draft uses the emitted prefix lengths, the checked capacity formula,
+and InitialFreeBelow to derive the no-fit allocation premise.  It starts
+from the source pointer in parameter 4 and returns both grid owners,
+updated heap, bounded writes, and the exact map frame.  The input,
+capacity, allocation, and payload proofs share arbitrary continuation
+parameters.  The initial-growth loop and completion theorem remain open.
+
+The restricted getter simplification removed all intervening writes,
+then left the three same-local reads.  It did not discharge their
+valid-index premises automatically.  The revised proof applies
+resultFrame_get_result explicitly to those three reads and proves the
+index bounds from the five parameters and 61 internal locals.
+
+LTG retrieval reviewed fixed-array-length-dispatch and
+fixed-array-traversal-input.  Their checked programs cover dispatch and
+payload loading, whereas the initializer prefix requires the separate
+four-instruction header load.  Added the provisional fixed-array-length-read
+entry with the checked InitialMapInput consumer and extended the no-fit
+allocation entry with the two checked frame-preparation equalities.
+Added both shared modules to the proof-generator import inventory and
+ProofKit table.  No dedicated annotation or independent package result
+is claimed for either addition.
+
+InitialMapPrepareFrame passed in 34 seconds with standard axioms.  The
+explicit same-local assignment theorem discharged the three residual
+getter goals.  InitialMapExecute is now checking its consumer composition.
+Recorded the checked frame consumer in the no-fit LTG entry and corrected
+the declaration-list comma before rebuilding the catalog.
+
+The catalog rebuilt to 38 entries.  InitialMapExecute accepted the exact
+54-instruction decomposition and its prepared getter and capacity facts,
+then failed to rewrite the folded input frame and map capacity-local
+projection.  Added a restricted definition reduction at that composition
+boundary and reassociated the continuation for the checked allocation
+and map-data theorem.  The failed execution theorem supplied no evidence.
+
+The next map composition attempt exposed the distinction between the
+free-list selector and its predecessor-recording variant.  Applied the
+existing takeFirstFitFrom_project theorem and Option.map_eq_none_iff to
+transfer the no-fit result.  No search semantics or theorem premise was
+changed.  A read-only emitted-region inspection initially used the wrong
+JavaScript path key; the documented instructionIndex key retrieved growth
+instructions 54 through 85, including pointer transfers, both length
+loads, the combined length, and the two seven-word copy counts.
+
+LTG, knowledge-package, and proof-generator tests pass after the inventory
+changes.  The proof-generator test preserves tmp/leanexegen-test-AjOqq0.
+
+InitialMapExecute passed in 41 seconds with standard axioms.  The
+100-line module joins the checked 12-instruction input prefix,
+18-instruction capacity prefix, 15-instruction allocation region, and
+nine-instruction installation/map wrapper.  It uses the existing
+selector projection to derive the predecessor-recording no-fit premise.
+The six new modules total 376 lines.  Reviewed the accepted proof with
+the shared declarations, exact-region equality, journal, and failures.
+Started the generated LTGCheck target under the standard local six-minute
+runner limit.  Updated the development notes, plans, and Talos proof
+overview with the completed map region and remaining whole-solver gates.
+
+LTGCheck passes all 3,404 jobs.  Catalog freshness and the 115-file
+documentation check pass.  The two failed prepared-frame attempts took
+36 seconds each.  The first two failed full-map compositions took 45
+and 46 seconds.  Successful checks retain only standard axioms.
+
+Checkpoint intent: publish the six reviewed new Lean modules
+InitialMapAllocate, InitialMapExecute, InitialMapInput,
+InitialMapPrepareFrame, FixedArrayLengthRead, and FixedArraySearchPrepare.
+Include the new length-read LTG entry, the extended no-fit entry, six
+generated category indexes, LTGCheck, the ProofKit table and generator
+inventory, devnotes.md, journal.md, plan.md, both Euler plans, and the
+Talos README.  Preserve every unrelated paper output and prior build,
+test fixture, numerical dataset, and artifact.  The complete solver
+theorem and requested production runs remain outstanding.

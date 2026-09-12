@@ -63,3 +63,16 @@ source-owner preservation to establish both live-grid owners.  The
 map-data proof checked in 63 seconds and ownership composition in 41
 seconds with standard axioms.  The complete initializer and independent
 artifact verification remain pending.
+
+`FixedArraySearch.resultFrame_before` rewrites an assignment before the
+scratch window as an update of the saved-local list.
+`capacityFrame_need` replaces the first scratch word with the prepared
+capacity.  Both equalities preserve arbitrary surrounding locals and
+the other five scratch words.  They checked in 32 seconds with standard
+axioms.  Apply `Frame.ext` to the goal before supplying its field
+equalities: elaborating two unspecified frames with immediate `rfl`
+arguments identified them prematurely in the first failed draft.
+The initializer map's input and capacity frame equalities use both
+declarations and checked in 34 seconds.  Its getter conjunction uses
+the shared assignment theorem explicitly after removing intervening
+writes, because simplification left the valid-index premises open.

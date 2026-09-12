@@ -31,6 +31,7 @@
     "Project.ProofKit.FixedArrayAllocateNone",
     "Project.ProofKit.FixedArraySearchFrame",
     "Project.ProofKit.FixedArraySearchNone",
+    "Project.ProofKit.FixedArraySearchPrepare",
     "Project.ProofKit.FixedArraySearchProjection",
     "Project.ProofKit.FixedArraySearchRead",
     "Project.ProofKit.FixedArraySearchRegion"
@@ -48,6 +49,7 @@
     "Project.ProofKit.FixedArraySearch.advanceProgram",
     "Project.ProofKit.FixedArraySearch.advanceProgram_spec",
     "Project.ProofKit.FixedArraySearch.body",
+    "Project.ProofKit.FixedArraySearch.capacityFrame_need",
     "Project.ProofKit.FixedArraySearch.frame",
     "Project.ProofKit.FixedArraySearch.frame_get",
     "Project.ProofKit.FixedArraySearch.frame_get_before",
@@ -57,7 +59,8 @@
     "Project.ProofKit.FixedArraySearch.noneRegion_spec",
     "Project.ProofKit.FixedArraySearch.program",
     "Project.ProofKit.FixedArraySearch.readProgram",
-    "Project.ProofKit.FixedArraySearch.readProgram_spec"
+    "Project.ProofKit.FixedArraySearch.readProgram_spec",
+    "Project.ProofKit.FixedArraySearch.resultFrame_before"
   ],
   "premises": [
     "Exact equality with the emitted allocation region",

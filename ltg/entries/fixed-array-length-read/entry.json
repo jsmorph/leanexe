@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-length-read",
+  "title": "Fixed-array length-header load",
+  "summary": "Executes a pointer-local load of an array length into a valid internal local, preserving the complete store and an arbitrary continuation.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["array", "frame", "length-header", "local-window", "memory"],
+  "annotationKinds": [],
+  "modules": ["Project.ProofKit.FixedArrayLengthRead"],
+  "declarations": ["Project.ProofKit.FixedArrayLengthRead.program", "Project.ProofKit.FixedArrayLengthRead.program_spec"],
+  "premises": ["Equality with the emitted four-instruction header-load region", "An empty operand stack and a getter for the pointer local", "The exact memory read at the wrapped 32-bit pointer", "Eight available bytes at that wrapped address", "A valid internal destination local", "A continuation from the result-local assignment frame"],
+  "result": "The exact header word reaches the destination local while the complete store and other getters remain unchanged.",
+  "consumers": ["euler-riemann-initial-map"],
+  "relatedEntries": ["array-field-access", "fixed-array-fold-structure", "fixed-array-length-dispatch", "fixed-array-traversal-input"],
+  "exclusion": null
+}
