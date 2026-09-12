@@ -25,6 +25,7 @@ import Project.ProofKit.Frame
 import Project.ProofKit.FuelGuard
 import Project.ProofKit.GuardedBackEdge
 import Project.ProofKit.Memory
+import Project.ProofKit.MemoryFrame
 import Project.ProofKit.NatSub
 import Project.ProofKit.ScalarTransition
 import Project.ProofKit.ScalarTransitionU64
@@ -86,10 +87,13 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayCopy.counterFrame_values
 #check Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec
 #check Project.ProofKit.FixedArrayCopy.prefixProgram
+#check Project.ProofKit.FixedArrayCopy.prefixProgram_framed_spec
 #check Project.ProofKit.FixedArrayCopy.prefixProgram_spec
 #check Project.ProofKit.FixedArrayCopy.program
+#check Project.ProofKit.FixedArrayCopy.program_framed_spec
 #check Project.ProofKit.FixedArrayCopy.program_spec
 #check Project.ProofKit.FixedArrayCopy.suffixProgram
+#check Project.ProofKit.FixedArrayCopy.suffixProgram_framed_spec
 #check Project.ProofKit.FixedArrayCopy.suffixProgram_spec
 #check Project.ProofKit.FixedArrayFilterLt.heapReserveBytes
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram
@@ -153,6 +157,11 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FuelGuard.program
 #check Project.ProofKit.FuelGuard.program_spec
 #check Project.ProofKit.FuelGuard.zeroFuel_spec
+#check Project.ProofKit.Memory.WritesRange
+#check Project.ProofKit.Memory.WritesRange.mono
+#check Project.ProofKit.Memory.WritesRange.refl
+#check Project.ProofKit.Memory.WritesRange.trans
+#check Project.ProofKit.Memory.WritesRange.write64
 #check Project.ProofKit.Memory.read64_write64_disjoint
 #check Project.ProofKit.NatSub.program
 #check Project.ProofKit.NatSub.program_spec

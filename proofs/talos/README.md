@@ -206,7 +206,10 @@ proves both minimum branches and preserves the non-scratch locals.
 The complete initial-cell execution theorem composes both weights,
 the weighted-state call, the thermodynamic call, and all seven returned
 words.  It preserves the full store.  Array construction, extraction,
-and initialization allocation remain open.
+and initialization allocation remain open.  The exact append-prefix
+copy region now applies shared framed copy support at width seven.
+It preserves the source grid and target header and provides the store
+and outside-byte facts required by allocator and ownership composition.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

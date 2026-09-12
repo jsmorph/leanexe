@@ -1,4 +1,6 @@
 import Project.ProofKit.Array
+import Project.ProofKit.MemoryRoundtrip
+import Project.ProofKit.MemoryFrame
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 
@@ -281,7 +283,7 @@ private theorem writeCell_pages (store : Store Unit) (ptr : UInt64)
 private theorem cellRead_writeCell_same (store : Store Unit) (ptr : UInt64)
     (cell : Nat) (value : UInt64) :
     cellRead (writeCell store ptr cell value) ptr cell = value := by
-  exact Mem.read64_write64_same ..
+  exact Project.ProofKit.Memory.read64_write64 ..
 
 private theorem cellRead_writeCell_ne {store : Store Unit} {ptr : UInt64}
     {cells readCellIndex writeCellIndex : Nat} {value : UInt64}
@@ -390,8 +392,10 @@ private def prefixInvariant (initial : Store Unit) (frame : Locals)
         initial.mem.read64 targetPtr.toUInt32 ∧
       (∀ cell : Nat, cell < sourceCells →
         cellRead current sourcePtr cell = cellRead initial sourcePtr cell) ∧
-      ∀ cell : Nat, cell < counter →
-        cellRead current targetPtr cell = cellRead initial sourcePtr cell
+      (∀ cell : Nat, cell < counter →
+        cellRead current targetPtr cell = cellRead initial sourcePtr cell) ∧
+      Project.ProofKit.Memory.WritesRange initial current
+        (targetPtr.toNat + 8) (targetPtr.toNat + 8 * (prefixCells + 1))
 
 private def prefixMeasure (counterLocal prefixCells : Nat)
     (_ : Store Unit) (frame : Locals) : Nat :=
@@ -411,7 +415,7 @@ private theorem prefixMeasure_counterFrame (frame : Locals)
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 1048576 in
 set_option Elab.async false in
-theorem prefixProgram_spec
+theorem prefixProgram_framed_spec
     (sourceLocal targetLocal prefixLocal counterLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (sourcePtr targetPtr : UInt64)
@@ -449,6 +453,8 @@ theorem prefixProgram_spec
         cellRead final sourcePtr cell = cellRead initial sourcePtr cell) →
       (∀ cell : Nat, cell < prefixCells →
         cellRead final targetPtr cell = cellRead initial sourcePtr cell) →
+      Project.ProofKit.Memory.WritesRange initial final
+        (targetPtr.toNat + 8) (targetPtr.toNat + 8 * (prefixCells + 1)) →
       wp module_ rest Q final
         (counterFrame frame counterLocal prefixCells hCounter) env) :
     wp module_
@@ -466,9 +472,10 @@ theorem prefixProgram_spec
     (Inv := prefixInvariant initial frame counterLocal hCounter sourcePtr
       targetPtr sourceCells prefixCells)
     (μ := prefixMeasure counterLocal prefixCells)
-  · exact ⟨0, Nat.zero_le _, rfl, rfl, rfl, (fun _ _ => rfl), by omega⟩
+  · exact ⟨0, Nat.zero_le _, rfl, rfl, rfl, (fun _ _ => rfl), (by omega),
+      Project.ProofKit.Memory.WritesRange.refl ..⟩
   · rintro current currentFrame
-      ⟨counter, hCounterLe, rfl, hPages, hHeader, hSource, hPrefix⟩
+      ⟨counter, hCounterLe, rfl, hPages, hHeader, hSource, hPrefix, hWrites⟩
     have hCounter64 : counter < UInt64.size := lt_of_le_of_lt hCounterLe hPrefix64
     have hCounterNat : (UInt64.ofNat counter).toNat = counter :=
       UInt64.toNat_ofNat_of_lt' hCounter64
@@ -498,7 +505,7 @@ theorem prefixProgram_spec
       rw [if_pos hGuard]
       subst counter
       simp
-      convert hDone current hPages hHeader hSource hPrefix using 1
+      convert hDone current hPages hHeader hSource hPrefix hWrites using 1
       exact ofParts_eq _
         (counterFrame_values frame counterLocal prefixCells hCounter)
     · have hCounterLt : counter < prefixCells := by omega
@@ -542,7 +549,7 @@ theorem prefixProgram_spec
         List.take_zero, List.drop_zero, List.nil_append]
       refine ⟨?_, ?_⟩
       · unfold prefixInvariant
-        refine ⟨counter + 1, by omega, rfl, ?_, ?_, ?_, ?_⟩
+        refine ⟨counter + 1, by omega, rfl, ?_, ?_, ?_, ?_, ?_⟩
         · exact writeCell_pages current targetPtr counter
             (cellRead initial sourcePtr counter) |>.trans hPages
         · exact (headerRead_writeCell hTargetFit32 hTargetCell).trans hHeader
@@ -555,11 +562,68 @@ theorem prefixProgram_spec
             exact cellRead_writeCell_same ..
           · exact (cellRead_writeCell_ne hTargetFit32 (by omega) hTargetCell
               hEq).trans (hPrefix cell (by omega))
+        · apply hWrites.trans
+          apply Project.ProofKit.Memory.WritesRange.write64
+          · rw [cellAddress_toNat hTargetFit32 hTargetCell]
+            omega
+          · rw [cellAddress_toNat hTargetFit32 hTargetCell]
+            omega
       · rw [ofParts_eq _ (counterFrame_values frame counterLocal (counter + 1)
             hCounter), prefixMeasure_counterFrame, prefixMeasure_counterFrame,
           UInt64.toNat_ofNat_of_lt' (by omega : counter + 1 < UInt64.size),
           hCounterNat]
         omega
+
+theorem prefixProgram_spec
+    (sourceLocal targetLocal prefixLocal counterLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
+    (frame : Locals) (sourcePtr targetPtr : UInt64)
+    (sourceCells targetCells prefixCells : Nat)
+    (hCounter : frame.validIndex counterLocal)
+    (hCounterSource : sourceLocal ≠ counterLocal)
+    (hCounterTarget : targetLocal ≠ counterLocal)
+    (hCounterPrefix : prefixLocal ≠ counterLocal)
+    (hValues : frame.values = [])
+    (hSourceLocal : frame.get sourceLocal = some (.i64 sourcePtr))
+    (hTargetLocal : frame.get targetLocal = some (.i64 targetPtr))
+    (hPrefixLocal : frame.get prefixLocal =
+      some (.i64 (UInt64.ofNat prefixCells)))
+    (hPrefixSource : prefixCells ≤ sourceCells)
+    (hPrefixTarget : prefixCells ≤ targetCells)
+    (hSourceFit32 :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ 4294967296)
+    (hTargetFit32 :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ 4294967296)
+    (hSourceFitMemory :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hTargetFitMemory :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hDisjoint :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ targetPtr.toNat ∨
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ sourcePtr.toNat)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ final : Store Unit,
+      final.mem.pages = initial.mem.pages →
+      final.mem.read64 targetPtr.toUInt32 =
+        initial.mem.read64 targetPtr.toUInt32 →
+      (∀ cell : Nat, cell < sourceCells →
+        cellRead final sourcePtr cell = cellRead initial sourcePtr cell) →
+      (∀ cell : Nat, cell < prefixCells →
+        cellRead final targetPtr cell = cellRead initial sourcePtr cell) →
+      wp module_ rest Q final
+        (counterFrame frame counterLocal prefixCells hCounter) env) :
+    wp module_
+      (prefixProgram sourceLocal targetLocal prefixLocal counterLocal ++ rest)
+      Q initial frame env := by
+  apply prefixProgram_framed_spec sourceLocal targetLocal prefixLocal counterLocal
+    module_ env initial frame sourcePtr targetPtr sourceCells targetCells prefixCells
+    hCounter hCounterSource hCounterTarget hCounterPrefix hValues hSourceLocal
+    hTargetLocal hPrefixLocal hPrefixSource hPrefixTarget hSourceFit32 hTargetFit32
+    hSourceFitMemory hTargetFitMemory hDisjoint Q rest
+  intro final hPages hHeader hSource hPrefix _
+  exact hDone final hPages hHeader hSource hPrefix
 
 private def suffixInvariant (initial : Store Unit) (frame : Locals)
     (counterLocal : Nat) (hCounter : frame.validIndex counterLocal)
@@ -575,9 +639,12 @@ private def suffixInvariant (initial : Store Unit) (frame : Locals)
         cellRead current sourcePtr cell = cellRead initial sourcePtr cell) ∧
       (∀ cell : Nat, cell < prefixCells →
         cellRead current targetPtr cell = cellRead initial targetPtr cell) ∧
-      ∀ cell : Nat, cell < counter →
+      (∀ cell : Nat, cell < counter →
         cellRead current targetPtr (prefixCells + cell) =
-          cellRead initial sourcePtr (prefixCells + skipCells + cell)
+          cellRead initial sourcePtr (prefixCells + skipCells + cell)) ∧
+      Project.ProofKit.Memory.WritesRange initial current
+        (targetPtr.toNat + 8 * (prefixCells + 1))
+        (targetPtr.toNat + 8 * (prefixCells + suffixCells + 1))
 
 private def suffixMeasure (counterLocal suffixCells : Nat)
     (_ : Store Unit) (frame : Locals) : Nat :=
@@ -597,7 +664,7 @@ private theorem suffixMeasure_counterFrame (frame : Locals)
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 1048576 in
 set_option Elab.async false in
-theorem suffixProgram_spec
+theorem suffixProgram_framed_spec
     (skipCells sourceLocal targetLocal prefixLocal suffixLocal
       counterLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
@@ -642,6 +709,9 @@ theorem suffixProgram_spec
       (∀ cell : Nat, cell < suffixCells →
         cellRead final targetPtr (prefixCells + cell) =
           cellRead initial sourcePtr (prefixCells + skipCells + cell)) →
+      Project.ProofKit.Memory.WritesRange initial final
+        (targetPtr.toNat + 8 * (prefixCells + 1))
+        (targetPtr.toNat + 8 * (prefixCells + suffixCells + 1)) →
       wp module_ rest Q final
         (counterFrame frame counterLocal suffixCells hCounter) env) :
     wp module_
@@ -661,10 +731,10 @@ theorem suffixProgram_spec
       targetPtr sourceCells prefixCells skipCells suffixCells)
     (μ := suffixMeasure counterLocal suffixCells)
   · exact ⟨0, Nat.zero_le _, rfl, rfl, rfl, (fun _ _ => rfl),
-      (fun _ _ => rfl), by omega⟩
+      (fun _ _ => rfl), (by omega), Project.ProofKit.Memory.WritesRange.refl ..⟩
   · rintro current currentFrame
       ⟨counter, hCounterLe, rfl, hPages, hHeader, hSource, hPrefix,
-        hSuffix⟩
+        hSuffix, hWrites⟩
     have hCounter64 : counter < UInt64.size :=
       lt_of_le_of_lt hCounterLe hSuffix64
     have hCounterNat : (UInt64.ofNat counter).toNat = counter :=
@@ -700,7 +770,7 @@ theorem suffixProgram_spec
       rw [if_pos hGuard]
       subst counter
       simp
-      convert hDone current hPages hHeader hSource hPrefix hSuffix using 1
+      convert hDone current hPages hHeader hSource hPrefix hSuffix hWrites using 1
       exact ofParts_eq _
         (counterFrame_values frame counterLocal suffixCells hCounter)
     · have hCounterLt : counter < suffixCells := by omega
@@ -766,7 +836,7 @@ theorem suffixProgram_spec
         List.take_zero, List.drop_zero, List.nil_append]
       refine ⟨?_, ?_⟩
       · unfold suffixInvariant
-        refine ⟨counter + 1, by omega, rfl, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨counter + 1, by omega, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · exact writeCell_pages current targetPtr (prefixCells + counter)
             (cellRead initial sourcePtr
               (prefixCells + skipCells + counter)) |>.trans hPages
@@ -783,15 +853,214 @@ theorem suffixProgram_spec
             exact cellRead_writeCell_same ..
           · exact (cellRead_writeCell_ne hTargetFit32 (by omega) hTargetCell
               (by omega)).trans (hSuffix cell (by omega))
+        · apply hWrites.trans
+          apply Project.ProofKit.Memory.WritesRange.write64
+          · rw [cellAddress_toNat hTargetFit32 hTargetCell]
+            omega
+          · rw [cellAddress_toNat hTargetFit32 hTargetCell]
+            omega
       · rw [ofParts_eq _ (counterFrame_values frame counterLocal (counter + 1)
             hCounter), suffixMeasure_counterFrame, suffixMeasure_counterFrame,
           UInt64.toNat_ofNat_of_lt' (by omega : counter + 1 < UInt64.size),
           hCounterNat]
         omega
 
+theorem suffixProgram_spec
+    (skipCells sourceLocal targetLocal prefixLocal suffixLocal
+      counterLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
+    (frame : Locals) (sourcePtr targetPtr : UInt64)
+    (sourceCells targetCells prefixCells suffixCells : Nat)
+    (hCounter : frame.validIndex counterLocal)
+    (hCounterSource : sourceLocal ≠ counterLocal)
+    (hCounterTarget : targetLocal ≠ counterLocal)
+    (hCounterPrefix : prefixLocal ≠ counterLocal)
+    (hCounterSuffix : suffixLocal ≠ counterLocal)
+    (hValues : frame.values = [])
+    (hSourceLocal : frame.get sourceLocal = some (.i64 sourcePtr))
+    (hTargetLocal : frame.get targetLocal = some (.i64 targetPtr))
+    (hPrefixLocal : frame.get prefixLocal =
+      some (.i64 (UInt64.ofNat prefixCells)))
+    (hSuffixLocal : frame.get suffixLocal =
+      some (.i64 (UInt64.ofNat suffixCells)))
+    (hSourceRange : prefixCells + skipCells + suffixCells ≤ sourceCells)
+    (hTargetRange : prefixCells + suffixCells ≤ targetCells)
+    (hSourceFit32 :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ 4294967296)
+    (hTargetFit32 :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ 4294967296)
+    (hSourceFitMemory :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hTargetFitMemory :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hDisjoint :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ targetPtr.toNat ∨
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ sourcePtr.toNat)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ final : Store Unit,
+      final.mem.pages = initial.mem.pages →
+      final.mem.read64 targetPtr.toUInt32 =
+        initial.mem.read64 targetPtr.toUInt32 →
+      (∀ cell : Nat, cell < sourceCells →
+        cellRead final sourcePtr cell = cellRead initial sourcePtr cell) →
+      (∀ cell : Nat, cell < prefixCells →
+        cellRead final targetPtr cell = cellRead initial targetPtr cell) →
+      (∀ cell : Nat, cell < suffixCells →
+        cellRead final targetPtr (prefixCells + cell) =
+          cellRead initial sourcePtr (prefixCells + skipCells + cell)) →
+      wp module_ rest Q final
+        (counterFrame frame counterLocal suffixCells hCounter) env) :
+    wp module_
+      (suffixProgram skipCells sourceLocal targetLocal prefixLocal suffixLocal
+        counterLocal ++ rest)
+      Q initial frame env := by
+  apply suffixProgram_framed_spec skipCells sourceLocal targetLocal prefixLocal suffixLocal
+    counterLocal module_ env initial frame sourcePtr targetPtr sourceCells targetCells
+    prefixCells suffixCells hCounter hCounterSource hCounterTarget hCounterPrefix
+    hCounterSuffix hValues hSourceLocal hTargetLocal hPrefixLocal hSuffixLocal
+    hSourceRange hTargetRange hSourceFit32 hTargetFit32 hSourceFitMemory hTargetFitMemory
+    hDisjoint Q rest
+  intro final hPages hHeader hSource hPrefix hSuffix _
+  exact hDone final hPages hHeader hSource hPrefix hSuffix
+
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 1048576 in
 set_option Elab.async false in
+theorem program_framed_spec
+    (skipCells sourceLocal targetLocal prefixLocal suffixLocal
+      counterLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
+    (frame : Locals) (sourcePtr targetPtr : UInt64)
+    (sourceCells targetCells prefixCells suffixCells : Nat)
+    (hCounter : frame.validIndex counterLocal)
+    (hCounterSource : sourceLocal ≠ counterLocal)
+    (hCounterTarget : targetLocal ≠ counterLocal)
+    (hCounterPrefix : prefixLocal ≠ counterLocal)
+    (hCounterSuffix : suffixLocal ≠ counterLocal)
+    (hValues : frame.values = [])
+    (hSourceLocal : frame.get sourceLocal = some (.i64 sourcePtr))
+    (hTargetLocal : frame.get targetLocal = some (.i64 targetPtr))
+    (hPrefixLocal : frame.get prefixLocal =
+      some (.i64 (UInt64.ofNat prefixCells)))
+    (hSuffixLocal : frame.get suffixLocal =
+      some (.i64 (UInt64.ofNat suffixCells)))
+    (hSourceRange : prefixCells + skipCells + suffixCells ≤ sourceCells)
+    (hTargetRange : prefixCells + suffixCells ≤ targetCells)
+    (hSourceFit32 :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ 4294967296)
+    (hTargetFit32 :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ 4294967296)
+    (hSourceFitMemory :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hTargetFitMemory :
+      targetPtr.toNat + 8 * (targetCells + 1) ≤
+        initial.mem.pages * 65536)
+    (hDisjoint :
+      sourcePtr.toNat + 8 * (sourceCells + 1) ≤ targetPtr.toNat ∨
+      targetPtr.toNat + 8 * (targetCells + 1) ≤ sourcePtr.toNat)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ final : Store Unit,
+      final.mem.pages = initial.mem.pages →
+      final.mem.read64 targetPtr.toUInt32 =
+        initial.mem.read64 targetPtr.toUInt32 →
+      (∀ cell : Nat, cell < sourceCells →
+        cellRead final sourcePtr cell = cellRead initial sourcePtr cell) →
+      (∀ cell : Nat, cell < prefixCells →
+        cellRead final targetPtr cell = cellRead initial sourcePtr cell) →
+      (∀ cell : Nat, cell < suffixCells →
+        cellRead final targetPtr (prefixCells + cell) =
+          cellRead initial sourcePtr (prefixCells + skipCells + cell)) →
+      Project.ProofKit.Memory.WritesRange initial final
+        (targetPtr.toNat + 8) (targetPtr.toNat + 8 * (prefixCells + suffixCells + 1)) →
+      wp module_ rest Q final
+        (counterFrame frame counterLocal suffixCells hCounter) env) :
+    wp module_
+      (program skipCells sourceLocal targetLocal prefixLocal suffixLocal
+        counterLocal ++ rest)
+      Q initial frame env := by
+  rw [program, List.append_assoc]
+  refine prefixProgram_framed_spec
+    (sourceLocal := sourceLocal) (targetLocal := targetLocal)
+    (prefixLocal := prefixLocal) (counterLocal := counterLocal)
+    (module_ := module_) (env := env) (initial := initial) (frame := frame)
+    (sourcePtr := sourcePtr) (targetPtr := targetPtr)
+    (sourceCells := sourceCells) (targetCells := targetCells)
+    (prefixCells := prefixCells) (hCounter := hCounter)
+    (hCounterSource := hCounterSource) (hCounterTarget := hCounterTarget)
+    (hCounterPrefix := hCounterPrefix) (hValues := hValues)
+    (hSourceLocal := hSourceLocal) (hTargetLocal := hTargetLocal)
+    (hPrefixLocal := hPrefixLocal) (hPrefixSource := by omega)
+    (hPrefixTarget := by omega) (hSourceFit32 := hSourceFit32)
+    (hTargetFit32 := hTargetFit32)
+    (hSourceFitMemory := hSourceFitMemory)
+    (hTargetFitMemory := hTargetFitMemory) (hDisjoint := hDisjoint)
+    (Q := Q)
+    (rest := suffixProgram skipCells sourceLocal targetLocal prefixLocal
+      suffixLocal counterLocal ++ rest) ?_
+  intro middle hMiddlePages hMiddleHeader hMiddleSource hMiddlePrefix hMiddleWrites
+  have hMiddleCounter :
+      (counterFrame frame counterLocal prefixCells hCounter).validIndex
+        counterLocal :=
+    (counterFrame_validIndex frame counterLocal prefixCells counterLocal
+      hCounter).2 hCounter
+  refine suffixProgram_framed_spec
+    (skipCells := skipCells) (sourceLocal := sourceLocal)
+    (targetLocal := targetLocal) (prefixLocal := prefixLocal)
+    (suffixLocal := suffixLocal) (counterLocal := counterLocal)
+    (module_ := module_) (env := env) (initial := middle)
+    (frame := counterFrame frame counterLocal prefixCells hCounter)
+    (sourcePtr := sourcePtr) (targetPtr := targetPtr)
+    (sourceCells := sourceCells) (targetCells := targetCells)
+    (prefixCells := prefixCells) (suffixCells := suffixCells)
+    (hCounter := hMiddleCounter) (hCounterSource := hCounterSource)
+    (hCounterTarget := hCounterTarget) (hCounterPrefix := hCounterPrefix)
+    (hCounterSuffix := hCounterSuffix)
+    (hValues := counterFrame_values frame counterLocal prefixCells hCounter)
+    (hSourceLocal := (counterFrame_get_ne frame counterLocal prefixCells
+      sourceLocal hCounter hCounterSource).trans hSourceLocal)
+    (hTargetLocal := (counterFrame_get_ne frame counterLocal prefixCells
+      targetLocal hCounter hCounterTarget).trans hTargetLocal)
+    (hPrefixLocal := (counterFrame_get_ne frame counterLocal prefixCells
+      prefixLocal hCounter hCounterPrefix).trans hPrefixLocal)
+    (hSuffixLocal := (counterFrame_get_ne frame counterLocal prefixCells
+      suffixLocal hCounter hCounterSuffix).trans hSuffixLocal)
+    (hSourceRange := hSourceRange) (hTargetRange := hTargetRange)
+    (hSourceFit32 := hSourceFit32) (hTargetFit32 := hTargetFit32)
+    (hSourceFitMemory := by rw [hMiddlePages]; exact hSourceFitMemory)
+    (hTargetFitMemory := by rw [hMiddlePages]; exact hTargetFitMemory)
+    (hDisjoint := hDisjoint) (Q := Q) (rest := rest) ?_
+  intro final hFinalPages hFinalHeader hFinalSource hFinalPrefix hFinalSuffix hFinalWrites
+  have hPages : final.mem.pages = initial.mem.pages :=
+    hFinalPages.trans hMiddlePages
+  have hHeader : final.mem.read64 targetPtr.toUInt32 =
+      initial.mem.read64 targetPtr.toUInt32 :=
+    hFinalHeader.trans hMiddleHeader
+  have hSource : ∀ cell : Nat, cell < sourceCells →
+      cellRead final sourcePtr cell = cellRead initial sourcePtr cell := by
+    intro cell hCell
+    exact (hFinalSource cell hCell).trans (hMiddleSource cell hCell)
+  have hPrefix : ∀ cell : Nat, cell < prefixCells →
+      cellRead final targetPtr cell = cellRead initial sourcePtr cell := by
+    intro cell hCell
+    exact (hFinalPrefix cell hCell).trans (hMiddlePrefix cell hCell)
+  have hSuffix : ∀ cell : Nat, cell < suffixCells →
+      cellRead final targetPtr (prefixCells + cell) =
+        cellRead initial sourcePtr (prefixCells + skipCells + cell) := by
+    intro cell hCell
+    exact (hFinalSuffix cell hCell).trans
+      (hMiddleSource (prefixCells + skipCells + cell) (by omega))
+  have hWrites : Project.ProofKit.Memory.WritesRange initial final
+      (targetPtr.toNat + 8) (targetPtr.toNat + 8 * (prefixCells + suffixCells + 1)) :=
+    (hMiddleWrites.mono (by omega) (by omega)).trans
+      (hFinalWrites.mono (by omega) (by omega))
+  have hResult := hDone final hPages hHeader hSource hPrefix hSuffix hWrites
+  rw [counterFrame_counterFrame frame counterLocal prefixCells suffixCells
+    hCounter hMiddleCounter]
+  exact hResult
+
 theorem program_spec
     (skipCells sourceLocal targetLocal prefixLocal suffixLocal
       counterLocal : Nat)
@@ -843,81 +1112,14 @@ theorem program_spec
       (program skipCells sourceLocal targetLocal prefixLocal suffixLocal
         counterLocal ++ rest)
       Q initial frame env := by
-  rw [program, List.append_assoc]
-  refine prefixProgram_spec
-    (sourceLocal := sourceLocal) (targetLocal := targetLocal)
-    (prefixLocal := prefixLocal) (counterLocal := counterLocal)
-    (module_ := module_) (env := env) (initial := initial) (frame := frame)
-    (sourcePtr := sourcePtr) (targetPtr := targetPtr)
-    (sourceCells := sourceCells) (targetCells := targetCells)
-    (prefixCells := prefixCells) (hCounter := hCounter)
-    (hCounterSource := hCounterSource) (hCounterTarget := hCounterTarget)
-    (hCounterPrefix := hCounterPrefix) (hValues := hValues)
-    (hSourceLocal := hSourceLocal) (hTargetLocal := hTargetLocal)
-    (hPrefixLocal := hPrefixLocal) (hPrefixSource := by omega)
-    (hPrefixTarget := by omega) (hSourceFit32 := hSourceFit32)
-    (hTargetFit32 := hTargetFit32)
-    (hSourceFitMemory := hSourceFitMemory)
-    (hTargetFitMemory := hTargetFitMemory) (hDisjoint := hDisjoint)
-    (Q := Q)
-    (rest := suffixProgram skipCells sourceLocal targetLocal prefixLocal
-      suffixLocal counterLocal ++ rest) ?_
-  intro middle hMiddlePages hMiddleHeader hMiddleSource hMiddlePrefix
-  have hMiddleCounter :
-      (counterFrame frame counterLocal prefixCells hCounter).validIndex
-        counterLocal :=
-    (counterFrame_validIndex frame counterLocal prefixCells counterLocal
-      hCounter).2 hCounter
-  refine suffixProgram_spec
-    (skipCells := skipCells) (sourceLocal := sourceLocal)
-    (targetLocal := targetLocal) (prefixLocal := prefixLocal)
-    (suffixLocal := suffixLocal) (counterLocal := counterLocal)
-    (module_ := module_) (env := env) (initial := middle)
-    (frame := counterFrame frame counterLocal prefixCells hCounter)
-    (sourcePtr := sourcePtr) (targetPtr := targetPtr)
-    (sourceCells := sourceCells) (targetCells := targetCells)
-    (prefixCells := prefixCells) (suffixCells := suffixCells)
-    (hCounter := hMiddleCounter) (hCounterSource := hCounterSource)
-    (hCounterTarget := hCounterTarget) (hCounterPrefix := hCounterPrefix)
-    (hCounterSuffix := hCounterSuffix)
-    (hValues := counterFrame_values frame counterLocal prefixCells hCounter)
-    (hSourceLocal := (counterFrame_get_ne frame counterLocal prefixCells
-      sourceLocal hCounter hCounterSource).trans hSourceLocal)
-    (hTargetLocal := (counterFrame_get_ne frame counterLocal prefixCells
-      targetLocal hCounter hCounterTarget).trans hTargetLocal)
-    (hPrefixLocal := (counterFrame_get_ne frame counterLocal prefixCells
-      prefixLocal hCounter hCounterPrefix).trans hPrefixLocal)
-    (hSuffixLocal := (counterFrame_get_ne frame counterLocal prefixCells
-      suffixLocal hCounter hCounterSuffix).trans hSuffixLocal)
-    (hSourceRange := hSourceRange) (hTargetRange := hTargetRange)
-    (hSourceFit32 := hSourceFit32) (hTargetFit32 := hTargetFit32)
-    (hSourceFitMemory := by rw [hMiddlePages]; exact hSourceFitMemory)
-    (hTargetFitMemory := by rw [hMiddlePages]; exact hTargetFitMemory)
-    (hDisjoint := hDisjoint) (Q := Q) (rest := rest) ?_
-  intro final hFinalPages hFinalHeader hFinalSource hFinalPrefix hFinalSuffix
-  have hPages : final.mem.pages = initial.mem.pages :=
-    hFinalPages.trans hMiddlePages
-  have hHeader : final.mem.read64 targetPtr.toUInt32 =
-      initial.mem.read64 targetPtr.toUInt32 :=
-    hFinalHeader.trans hMiddleHeader
-  have hSource : ∀ cell : Nat, cell < sourceCells →
-      cellRead final sourcePtr cell = cellRead initial sourcePtr cell := by
-    intro cell hCell
-    exact (hFinalSource cell hCell).trans (hMiddleSource cell hCell)
-  have hPrefix : ∀ cell : Nat, cell < prefixCells →
-      cellRead final targetPtr cell = cellRead initial sourcePtr cell := by
-    intro cell hCell
-    exact (hFinalPrefix cell hCell).trans (hMiddlePrefix cell hCell)
-  have hSuffix : ∀ cell : Nat, cell < suffixCells →
-      cellRead final targetPtr (prefixCells + cell) =
-        cellRead initial sourcePtr (prefixCells + skipCells + cell) := by
-    intro cell hCell
-    exact (hFinalSuffix cell hCell).trans
-      (hMiddleSource (prefixCells + skipCells + cell) (by omega))
-  have hResult := hDone final hPages hHeader hSource hPrefix hSuffix
-  rw [counterFrame_counterFrame frame counterLocal prefixCells suffixCells
-    hCounter hMiddleCounter]
-  exact hResult
+  apply program_framed_spec skipCells sourceLocal targetLocal prefixLocal suffixLocal
+    counterLocal module_ env initial frame sourcePtr targetPtr sourceCells targetCells
+    prefixCells suffixCells hCounter hCounterSource hCounterTarget hCounterPrefix
+    hCounterSuffix hValues hSourceLocal hTargetLocal hPrefixLocal hSuffixLocal
+    hSourceRange hTargetRange hSourceFit32 hTargetFit32 hSourceFitMemory hTargetFitMemory
+    hDisjoint Q rest
+  intro final hPages hHeader hSource hPrefix hSuffix _
+  exact hDone final hPages hHeader hSource hPrefix hSuffix
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 1048576 in
@@ -991,5 +1193,13 @@ theorem eraseIdxProgram_spec
     have hSourceIndex : erase + 1 + (cell - erase) = cell + 1 := by omega
     simpa [cellRead, cellAddress, UInt64Array.wordAddress, hTargetIndex,
       hSourceIndex, Nat.add_assoc] using hSuffix (cell - erase) hOffset
+
+#print axioms prefixProgram_spec
+#print axioms prefixProgram_framed_spec
+#print axioms suffixProgram_spec
+#print axioms suffixProgram_framed_spec
+#print axioms program_spec
+#print axioms program_framed_spec
+#print axioms eraseIdxProgram_spec
 
 end Project.ProofKit.FixedArrayCopy
