@@ -249,6 +249,10 @@ The complete emitted map region now composes input loading, capacity,
 allocation, and mapped-data construction.  It derives capacity and
 no-fit search from the bounded grid and free-list invariant.  Shared
 header-load and allocation-frame preparation lemmas are available in LTG.
+The append allocation and copy composition now returns ownership of both
+inputs and the concatenated result.  Its count arithmetic matches the
+existing scalar-statement descriptor theorem, now indexed in LTG with
+a Locals-frame adapter.  The complete append prefix remains open.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

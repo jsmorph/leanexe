@@ -14421,3 +14421,121 @@ inventory, devnotes.md, journal.md, plan.md, both Euler plans, and the
 Talos README.  Preserve every unrelated paper output and prior build,
 test fixture, numerical dataset, and artifact.  The complete solver
 theorem and requested production runs remain outstanding.
+
+Published 4ba6694d8767b76574f2bfc0f7e2ce3ebb8350b3,
+"Prove the complete initializer map region", with parent
+1aed3fbbaaa4f98a903342128dd713cd89e757f4 and tree
+3fba4312f991836ae1489927c4d8b7d501fc8439.  The explicit reviewed
+25-file checkpoint contains 675 insertions and seven deletions.  The
+ordinary SSH push advanced origin/talosfp-euler without force.  Fetch
+then confirmed the exact commit, sole parent, title, tree, index, and
+tracked worktree contents.  Unrelated paper outputs remain untouched.
+Continuing with the append allocation and ownership composition.
+
+Added InitialAppendOwned to compose the checked installation and two-copy
+region with the existing allocation bounds, completed-grid ownership,
+and source-owner preservation theorems.  Its draft derives both source
+separations from their owned allocation regions and returns three owners
+for the two inputs and concatenated result.  It uses the same width-seven
+heap model as the emitted initializer and preserves the existing suffix.
+
+Added InitialAppendAllocate to connect the shared no-fit allocator to
+that owned append region.  Its 59-through-64 scratch window leaves one
+trailing local, compared with the map's six trailing locals.  The draft
+uses the shared preserved-getter result for both pointers, total length,
+and both copy counts, then returns the exact completed counter frame.
+
+InitialAppendOwned passed in 79 seconds with standard axioms.  The
+three-owner postcondition follows from the shared completed-grid helper
+and preservation of each existing owner through allocation and bounded
+writes.  Started the append allocator consumer under the same standard
+local six-minute runner envelope.
+
+InitialAppendAllocate passed in 47 seconds with standard axioms.  Its
+shifted scratch window and single trailing local use the same checked
+allocator and preserved-getter theorem as the map composition.
+
+LTG searches for assignments and statement execution found loop entries,
+but no indexed Stmt.program_spec or Expr.program_spec.  The ProofKit
+README documents both existing checked scalar-descriptor theorems.
+The emitted append count prefix consists of three assignments using
+addition and multiplication, which this descriptor already supports.
+Added ScalarFrame to connect its State evaluator to the existing Locals
+and resultFrame API, preserving arbitrary local value types.  The next
+consumer will prove the exact descriptor equality and count transition
+without adding a new arithmetic instruction semantics.
+
+Added InitialAppendCounts as a scalar-descriptor consumer for emitted
+instructions 74 through 85.  It records the three assignments, proves
+their evaluator result with the shared frame setters and preserved
+getters, then applies Stmt.program_frame_spec to the exact descriptor
+program.  The word-level theorem retains WASM wrapping arithmetic.  The
+initializer's natural-count bounds will justify its later size use.
+
+ScalarFrame checked its shared setter but failed because the imported
+fold and scalar modules do not import the separate Frame.ext theorem.
+Added the explicit Frame import.  The statement adapter remains
+unaccepted until its next check, and the failed diagnostic is preserved.
+
+ScalarFrame passed in 64 seconds after adding its explicit Frame import.
+The setter uses propext, and the statement adapter uses standard axioms.
+Added the provisional scalar-statement LTG entry to index the existing
+expression, statement, and preservation theorems with the checked frame
+adapter.  Added ScalarFrame to the generator's explicit import inventory
+and the ProofKit table.  InitialAppendCounts is still checking, so its
+draft supplies no accepted execution claim yet.
+
+The decoded func88 declaration confirms five i64 parameters and 61 i64
+locals.  A bounded search found no existing general local-type preservation
+theorem in the project or Talos interpreter.  The existing map-frame
+theorem preserves the later append scratch getters directly.  The
+composition can use those checked getters without assuming a type theorem
+from the declaration alone.
+
+InitialAppendCounts accepted the exact descriptor equality but failed
+its evaluator proof.  Rewriting State getters to Locals getters exposed
+the raw conditional getter before the supplied word equality applied.
+Provided the same checked getter facts at the State type before reducing
+the evaluator.  Also made the intermediate Option bind explicit between
+the second and third assignment.  The failed execution declaration
+remains unaccepted.
+
+The revised count proof checked the first two assignments and sequence
+composition.  Its last assignment reached two definitionally equal final
+frame spellings that simpa did not identify.  Changed that target to the
+explicit final resultFrame before applying the same checked setter.
+The catalog, knowledge, and generator tests pass at 39 entries.  The
+generator fixture is preserved at tmp/leanexegen-test-PQ7eVc, and the
+116-file documentation check passes.
+
+InitialAppendCounts passed in 65 seconds.  The exact descriptor equality
+uses propext, the evaluator result uses propext and Quot.sound, and the
+execution theorem uses standard axioms.  Reviewed the accepted 81-line
+consumer against emitted instructions 74 through 85, the existing scalar
+semantics, its new frame adapter, and both failed attempts.  Added the
+consumer result and getter-normalization lesson to the provisional LTG
+entry.  Started the generated LTG declaration check.
+
+Line-count correction: InitialAppendCounts contains 80 lines.  Together
+with InitialAppendOwned, InitialAppendAllocate, and ScalarFrame, the four
+new modules contain 277 lines.  Updated the development notes, plans, and
+Talos overview to identify the append allocation/data and scalar-count
+results while retaining the open pointer/length setup and whole-solver
+proof boundaries.
+
+LTGCheck passed all 3,405 jobs in 76 seconds.  Catalog freshness and
+the updated 116-file documentation check pass.  Reviewed the four new
+proofs, scalar-statement entry, two generated category indexes, checked
+declaration inventory, import inventory, and synchronized notes.
+
+Checkpoint intent: publish InitialAppendOwned, InitialAppendAllocate,
+InitialAppendCounts, and ScalarFrame with the scalar-statement LTG
+entry, its generated indexes and LTGCheck, the ProofKit table and
+generator inventory, devnotes.md, journal.md, plan.md, both Euler plans,
+and the Talos README.  Preserve unrelated paper outputs, all existing
+builds and artifacts, and the earlier numerical data and figures.
+
+The failed ScalarFrame import check took 42 seconds.  The two failed
+count-evaluator checks took 59 and 81 seconds.  The journal's recorded
+failures, successful audits, and compiler-region evidence remain part
+of this checkpoint's review record.
