@@ -12731,3 +12731,47 @@ free-counter read, returned grid, and source agreement.  The explicit
 space/cap premises remain for the full memory invariant.  Updated the
 proof inventory, solver plan, and concise notes.  Checkpoint intent:
 publish ReleaseOwned, StepState, ExecutionStep, and these four records.
+
+The 105-document and staged whitespace checks passed.  Published the
+seven-path timestep checkpoint as ddb3ac5004e23eb47039ae8984f35cfa75b45bca,
+parent 954913372578e74d124ff062ab465f50dc624bc7, tree
+b107a8fb76e63c81afce56fd1ec31cb6adec7d37.  Non-forced SSH push and fetch
+succeeded.  Commit, parent, message, tree, index, and tracked worktree
+match the fetched branch.
+
+Inspected the generated time helpers and source controller.  Retry calls
+the valid-advance guard and grid spacing before the proved step.  Added
+execution theorems for the end-time constant, shifted positive-word
+predicate, and complete valid-advance guard, including its short-circuit
+branches and rounded time addition.
+
+The first two guard checks exposed frame reduction, the f64Add wrapper,
+and a call with an existing operand below the zero-argument call.  Used
+the checked CallRemainder.append_args theorem, reduced the frame, and
+split the final-time comparison.  ExecutionTimeGuard passed all 3,428
+jobs in 2.4 seconds with standard-only axioms.  Added the small-natural
+conversion proof over the ten exponent intervals, preserving the exact
+generated overflow guards and bit operations.
+
+The ten-case conversion proof reached its final intervals before the
+default 200,000-heartbeat limit, reporting the exact simplification
+location after 7.3 seconds.  Scoped a 400,000-heartbeat limit to that
+theorem.  Added spacing composition using the existing call-remainder
+theorem to preserve the binary64 numerator across integer conversion.
+
+ExecutionSpacing passed all 3,429 jobs in 12 seconds.  Both public
+theorems use only propext, Classical.choice, and Quot.sound.  Added the
+CFL proposal composition, including both unsigned-minimum branches and
+the generated repeated spacing calculation in the selected CFL branch.
+
+The first proposal check reduced execution to two minimum identities.
+The attempted generic lattice lemmas used a different order instance
+from UInt64's core Min implementation.  Unfolding Min.min resolved both
+branches directly from their unsigned comparisons.  ExecutionProposal
+passed all 3,430 jobs in 1.8 seconds with standard-only axioms.  Removed
+two unused simplification arguments.  Reviewed the three new modules,
+including call operand order, short-circuit branches, bounded conversion
+cases, exact rounding association, and store preservation.  Updated the
+proof inventory, solver plan, and concise notes.  Checkpoint intent:
+publish ExecutionTimeGuard, ExecutionSpacing, ExecutionProposal, and
+these four records.  The full solver and production runs remain gated.
