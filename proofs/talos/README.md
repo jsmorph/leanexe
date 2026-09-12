@@ -135,6 +135,11 @@ nodes and proves their separation from the selected buffer.  The sweep
 resource theorem carries these facts through length installation and
 payload writes, preserving fresh metadata, strict capacity bounds, and
 the free-list representation.
+Allocator-state theorems now identify the heap top and free-list head,
+preserve other globals and runtime memory caps, and place all remaining
+buffers below the resulting top.  A disjoint owned source retains its
+complete region through allocation and its fresh header through sweep
+writes.
 The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
