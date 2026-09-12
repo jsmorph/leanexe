@@ -319,8 +319,16 @@ regions.  It reconstructs the concatenated width-seven grid and preserves
 both inputs.  [Extraction](../proofs/talos/lean/Project/EulerRiemann/InitialExtractCopy.lean)
 reconstructs the source prefix and matches both emitted copy sites.
 Both supply store and outside-byte preservation for ownership composition
-under allocated-target and written-length premises.  Map execution,
-growth traversal, and initialization allocation remain open.
+under allocated-target and written-length premises.  The
+[initialization map](../proofs/talos/lean/Project/EulerRiemann/InitialMapLoop.lean)
+now proves terminating execution of every field load, checked index
+addition, initial-cell call, field store, and counter transition.
+Its result equals the source map.  It preserves the source grid,
+all store components outside the destination bytes, and every caller
+local outside the compiler's scratch and counter slots.  Shared
+field-access, frame, counter, and loop theorems discharge those regions
+at the default heartbeat limit.  Growth traversal and initialization
+allocation remain open.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

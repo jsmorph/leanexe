@@ -1,5 +1,6 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
+import Project.ProofKit.ArrayField
 import Project.ProofKit.BlockLoop
 import Project.ProofKit.CheckedArrayGet
 import Project.ProofKit.CheckedDivMod
@@ -37,6 +38,13 @@ import Project.ProofKit.ScalarTransitionU64
 #check Nat.gcd_rec
 #check Nat.mod_lt
 #check Project.ProofKit.Allocation.bumpFacts
+#check Project.ProofKit.ArrayField.addressProgram
+#check Project.ProofKit.ArrayField.address_spec
+#check Project.ProofKit.ArrayField.field_word
+#check Project.ProofKit.ArrayField.loadProgram
+#check Project.ProofKit.ArrayField.load_spec
+#check Project.ProofKit.ArrayField.storeProgram
+#check Project.ProofKit.ArrayField.store_spec
 #check Project.ProofKit.ArrayFold.foldPrefix
 #check Project.ProofKit.ArrayFold.foldPrefix_size
 #check Project.ProofKit.ArrayFold.foldPrefix_succ
