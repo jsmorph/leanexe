@@ -7,6 +7,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Annotation` | Structured instruction-path resolution and exact half-open regions over a decoded Talos program. |
 | `Project.ProofKit.Memory` | Fixed-width subtraction normalization, word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
 | `Project.ProofKit.MemoryRoundtrip` | A 64-bit read-after-write theorem checked by bit extensionality, with only the standard logical axioms. |
+| `Project.ProofKit.MemoryGrowth` | Checked page-delta arithmetic and execution of the allocator's memory-growth sequence within the runtime cap. |
+| `Project.ProofKit.MemoryEnsure` | Checked conditional growth to the larger of the current and requested page counts, preserving memory bytes and the local frame. |
 | `Project.ProofKit.Frame` | Local-frame extensionality, operand-stack replacement projections, and conversion from combined `Locals.get` facts to internal-local optional and indexed getters. |
 | `Project.ProofKit.F64Bounds` | Raw binary64 sign-clearing guards, including the proof that an accepted half-unit encoding is finite with modeled real magnitude at most one half. |
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |

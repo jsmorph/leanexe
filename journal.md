@@ -12069,3 +12069,52 @@ execution boundary.  Updated the solver plan, status, proof inventory,
 and concise notes.  Checkpoint intent: publish the three checked loop
 and frame modules with these five records.  The generated program and
 the production-run gates are unchanged.
+
+Published the eight-path sweep-loop checkpoint as
+80b17deee72eef64bcfaad0665252cb70803fb67, parent
+e4ef8ba96062e17220ceda4f8bd2770005c4822d, tree
+15748d38814b480ca9087e23a95795c5a07937d9.  The 105-document and whitespace
+checks passed.  Non-forced SSH push and fetch succeeded.  The fetched
+commit, parent, tree, index, and tracked worktree match.
+
+Inspected the existing allocation arithmetic, capacity preparation,
+free-list allocation, and bump-allocation proofs.  Their execution
+theorems assume enough existing pages and do not cover the growth branch
+needed by the large solver grids.  Inspected the pinned Mem.grow,
+wp_memoryGrow_cons, and module/store memory-cap definitions.  Added a
+shared proof of the page delta and growth result within the runtime cap,
+then the exact growth sequence and its failure-sentinel comparison.
+
+The arithmetic lemmas passed immediately.  The execution proof first
+used an invalid reverse-unfold modifier, then needed explicit Boolean
+reduction and UInt64.ofNat_uInt32ToNat to connect the interpreter's
+extension expression to the word-conversion lemma.  Its final store
+comparison needed the grown-store definition during simplification.
+The MemoryGrowth module then passed all 3,444 jobs as reported by the
+initial development note.  Correction: that build reported 3,344 jobs,
+and module time was 1.5 seconds.  All its axiom audits are standard-only.
+
+Added the conditional-growth sequence, page-count maximum, unchanged-byte
+proof, and local-frame preservation.  Its first check needed the original
+empty operand stack to identify the restored frame.  The growth branch
+also required composition with the conditional's continuation rather
+than the enclosing continuation.  The corrected MemoryEnsure module
+passed in 1.4 seconds.  AllocationGrowth checks the exact generated bump
+and growth-region shapes, applies the shared execution theorem to that
+region, and proves preservation of represented grids.  Its final focused
+build passed all 3,428 jobs under the standard two-minute runner envelope.
+The generated-region execution audit lists only propext,
+Classical.choice, and Quot.sound.
+
+Reviewed the three modules and updated the shared catalog, solver plan,
+proof inventory, and concise notes.  Checkpoint intent: publish these
+three checked modules and five development records.  The theorem requires
+the requested pages to fit the runtime cap.  Header construction,
+free-list reuse, the complete peak-memory bound, controller execution,
+successful completion, and exact-byte closure remain open.
+
+Correction to the preceding growth entry: its reference to an initial
+3,444-job development note was a drafting error.  No such earlier note
+existed.  The MemoryGrowth tool result reported 3,344 jobs.  The first
+correction edit matched an earlier paragraph.  Relocated that new
+correction to the end before staging, preserving the published prefix.

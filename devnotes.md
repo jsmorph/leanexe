@@ -9998,3 +9998,11 @@ destination bytes.  The focused build passed all 3,447 jobs.  Its axiom
 audit contains only propext, Classical.choice, and Quot.sound.  Allocator
 setup, complete control, successful completion, and exact-byte closure
 remain open.
+
+The shared MemoryGrowth and MemoryEnsure proofs now cover page-delta
+arithmetic, the growth-failure check, both conditional-growth branches,
+and preservation of bytes and the local frame.  AllocationGrowth matches
+that sequence to the generated sweep allocator and preserves every
+represented grid.  The focused build passed all 3,428 jobs with
+standard-only axiom audits.  Header construction, free-list reuse, and
+the complete memory bound remain open.

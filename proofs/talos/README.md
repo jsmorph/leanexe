@@ -92,7 +92,9 @@ grid, using a kernel-checked read/write round-trip theorem.  The generated
 sweep loop now has checked termination, bounded reads and writes, source
 agreement, and preservation outside its allocated destination.  Allocator
 setup, successful completion, bounded memory, complete execution, and
-exact-byte closure remain open.  The [complete solver plan](../../plans/euler-riemann-complete.md)
+exact-byte closure remain open.  The allocator's conditional memory-growth
+region now has a checked execution proof within the runtime cap and
+preserves existing grids.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 
 ## Workflow Tools

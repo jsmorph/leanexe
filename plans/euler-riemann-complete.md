@@ -150,6 +150,11 @@ composes the callback and writes into a terminating traversal.  It proves
 source agreement for every indexed grid at supported sizes and preserves
 all store components outside the allocated destination bytes.  Allocator
 setup and reuse remain open.
+[The allocator-growth proof](../proofs/talos/lean/Project/EulerRiemann/AllocationGrowth.lean)
+matches the generated growth region and covers both the growth and
+no-growth branches within the runtime memory cap.  It preserves existing
+grid representations.  Allocation headers, free-list reuse, and the
+complete peak-memory bound remain open.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
