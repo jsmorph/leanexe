@@ -10291,3 +10291,15 @@ standard axioms.  LTG's provisional multiplication entry records those
 uses and the failed draft.  The frame entry now includes parameter
 projection.  The catalog accepts 30 entries.  Remaining coordinate
 arithmetic and initialization traversal still require execution proofs.
+
+The coordinate and weight arithmetic now passes exact execution checks
+for both axes and every temporary initialization index below 1,048,576.
+Shared zero-safe division/remainder and saturating subtraction theorems
+compose with checked multiplication.  The common difference checked in
+18 seconds, and the minimum checked in 13 seconds.  The minimum theorem
+preserves parameters and all internal locals before the six scratch
+slots, so subsequent composition can abstract over either branch.
+All audits use standard axioms.  Two provisional LTG entries expose the
+new shared theorems.  Catalog, forest, and proof-generator tests pass
+with 32 entries.  Complete cell composition, traversal, output, memory,
+source success, and exact-byte closure remain open.
