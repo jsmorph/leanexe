@@ -9989,3 +9989,12 @@ MemoryRoundtrip proof checks each bit through the kernel and has only
 standard logical axioms.  The revised prefix and cell-write audits pass.
 The focused build completed all 3,425 jobs.  The sweep loop, allocator,
 control, successful completion, and exact-byte closure remain open.
+
+The generated sweep loop now has a terminating execution proof for every
+indexed grid at supported sizes, assuming the disjoint destination has
+been allocated.  It proves source agreement, bounded reads and writes,
+and preservation of the input grid and every store component outside the
+destination bytes.  The focused build passed all 3,447 jobs.  Its axiom
+audit contains only propext, Classical.choice, and Quot.sound.  Allocator
+setup, complete control, successful completion, and exact-byte closure
+remain open.

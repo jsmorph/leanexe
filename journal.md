@@ -12009,3 +12009,63 @@ notes.  Checkpoint intent: publish the three checked memory modules and
 six current records.  The generated program is unchanged.  The complete
 solver and production calculations remain behind the outstanding loop,
 allocator, control, successful-completion, and exact-byte proof gates.
+
+Published the nine-path memory checkpoint as
+e4ef8ba96062e17220ceda4f8bd2770005c4822d, parent
+06b085a353d377658b553d7715f731312703661b, tree
+5ad3091b3919f41fd908134d24e5f4ccee3cb83a.  All 105 maintained documents
+and whitespace checks passed.  Non-forced SSH push and fetch succeeded,
+and the remote commit, parent, tree, index, and tracked worktree match.
+
+Added the generated sweep-loop shape, local-frame representation, prefix
+invariant, and decreasing measure.  Added a memory-frame relation that
+preserves every store component except destination bytes.  Direct
+definitional equality through seven nested memory writes reached the
+200,000-heartbeat bound.  Replaced it with one-field framing and seven
+forward transitivity applications.  MemoryFrame then passed in 1.5
+seconds with standard-only axiom audits.  The loop-shape equality passes.
+Its measure proof exposed a missing length premise for the eight saved
+allocator locals.  Added that premise before the next focused check.
+
+The sweep shape and measure passed with the allocator-local length
+premise.  The first loop check stopped before the numerical callback
+because the local list's appended allocator suffix had not normalized.
+Adding List.cons_append and List.nil_append resolved that boundary.
+The callback then checked.  Whole-tail simplification reached the
+recursion bound while comparing bounds across nested memory updates.
+Diagnostics reported repeated Nat recursion and multiplication equality
+checks.  Restricting the supplied rewrite facts and reducing constant
+powers did not resolve it.
+
+Divided the write sequence at each store instruction.  An attempted
+wp_run theorem exclusion did not stop its custom rewrite set at stores,
+so the write-only tactic now lists the required arithmetic and local
+instructions explicitly.  The first argument-bearing tactic draft used
+the wrong syntax category and was corrected to accept a simp lemma.
+A diagnostic pretty-printer option was absent from the pinned Lean.
+Inspected its source and used pp.deepTerms.threshold for the subsequent
+diagnostic.  Generic cell-word read facts also left dependent array
+lookups in the local frame.  Replaced them with typed scalar read facts.
+All diagnostic code has been removed from the accepted proof.
+
+Keeping each completed write as Memory.writeField, through seven named
+store terms, resolved the repeated elaboration failure.  The shared
+writeField_pages lemma then discharges each later store's bounds without
+expanding the preceding byte updates.  A bounded text edit omitted two
+constructor lines.  The next check reported that syntax error, and the
+lines were restored.  The remaining measure goal needed the saved-local
+length premise during simplification rather than definitional equality.
+After that correction, the focused command
+tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build
+Project.EulerRiemann.SweepLoop passed all 3,447 jobs.  The final module
+took 3.9 seconds.  Its execution theorem depends only on propext,
+Classical.choice, and Quot.sound.
+
+Reviewed the loop shape, arbitrary scratch frame, source and destination
+representations, seven bounded reads, one checked callback, seven bounded
+writes, strict counter decrease, and completed-prefix exit.  The theorem
+requires an allocated disjoint destination.  The allocator is the next
+execution boundary.  Updated the solver plan, status, proof inventory,
+and concise notes.  Checkpoint intent: publish the three checked loop
+and frame modules with these five records.  The generated program and
+the production-run gates are unchanged.
