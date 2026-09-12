@@ -10154,3 +10154,12 @@ assignment and rejected-trial release, rounded halving, owner tracking,
 parameter replacement, and fuel decrement.  The focused branch check
 passed all 3,509 jobs in 3.1 seconds with standard-only axioms.  The
 complete retry-loop invariant and termination remain open.
+
+RetryFrame proves preservation of the parameter and result fields,
+tracker, completion flag, and frame size.  RetryGuard proves the active
+and completed guards and validity-call prefix.  RetryInvariant packages
+active/completed state and source-fuel unfolding.  RetryResources
+preserves all original live grids through a timestep and trial release.
+The focused resource check passed all 3,519 jobs in 1.3 seconds with
+standard-only axioms.  Successful-loop composition remains open, and
+its source-success premise must be discharged by the final solver proof.
