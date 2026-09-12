@@ -36,6 +36,8 @@ Ownership summaries record which result slots contain fresh roots, which argumen
 
 The compiler inserts releases for supported fresh nonrecursive temporaries and replaced loop or fold accumulators.  An explicit `LeanExe.Runtime.release` must appear as the complete value of a `let` binding and must consume a direct fresh allocation, a helper result whose summary marks the root fresh, or a statically owner-zero array.  `ReleaseCheck` rejects parameter roots, unresolved aliases, copied aliases, later use, repeated release, branch-dependent ownership, unsupported fields, and heap-bearing escapes before IR emission.
 
+Internal and public Nat-tail loops track owned roots acquired during iteration.  The initial carried arguments remain borrowed.  Each replacement stages its next value, releases a tracked root only when no next argument retains it, and records any fresh replacement root.  Direct array maps and concatenations count as fresh allocations in the explicit-release checker.  Their element child masks determine whether they retain earlier heap roots.
+
 ## WebAssembly backend
 
 `LeanExe.Wasm.Instr` is the structured instruction language shared by binary emission, WAT rendering, and annotation analysis.  The backend lowers each IR function to a `List Instr`, adds allocator and reference-counting runtime functions, assembles the required sections, and serializes the module as WASM bytes.  `compile-wat` prints the same instruction trees, and `tools/check-wat.sh` checks that `wasm-tools parse` reconstructs the direct binary byte for byte.

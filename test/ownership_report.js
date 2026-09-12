@@ -135,6 +135,11 @@ function checkFreshArrayRelease() {
   const binary = path.join(output, "copy.wasm");
   run([leanExe, "compile", "--module", correctnessModule, "--entry", entry, "--out", binary]);
   assert.deepEqual(callI64Slots(binary, name, 1, []), [202n]);
+  const directName = "directFlatCopyRuntimeRelease";
+  const direct = path.join(output, "direct.wasm");
+  run([leanExe, "compile", "--module", correctnessModule,
+    "--entry", `${correctnessModule}.${directName}`, "--out", direct]);
+  assert.deepEqual(callI64Slots(direct, directName, 1, []), [75n]);
   for (const [helper, expected] of [
     ["flatArrayCallAppend", [3, 11, 21]],
     ["flatArrayConstantAppend", [7, 11, 13]],
@@ -147,10 +152,25 @@ function checkFreshArrayRelease() {
   for (const [rejected, binding] of [
     ["rejectReleaseFlatArrayAlias", "alias"],
     ["rejectReleaseFreshNestedArray", "held"],
+    ["rejectReleaseDirectNestedMap", "heldMap"],
   ]) {
     assert.throws(() => ownershipReport(correctnessModule, `${correctnessModule}.${rejected}`),
       new RegExp(`reason: copied into heap-bearing binding ${binding}`));
   }
+}
+
+function checkInternalArrayLoop() {
+  const name = "internalArrayLoopStats";
+  const entry = `${correctnessModule}.${name}`;
+  const output = fs.mkdtempSync(path.join("tmp", "internal-array-loop-"));
+  const binary = path.join(output, "loop.wasm");
+  run([leanExe, "compile", "--module", correctnessModule, "--entry", entry, "--out", binary]);
+  for (const [fuel, skip, expected] of [
+    [0n, 0n, [10n, 10n, 0n, 0n]],
+    [1n, 0n, [11n, 10n, 0n, 0n]],
+    [5n, 0n, [15n, 10n, 4n, 4n]],
+    [5n, 1n, [12n, 10n, 1n, 1n]],
+  ]) assert.deepEqual(callI64Slots(binary, name, 4, [fuel, skip]), expected);
 }
 
 function main() {
@@ -161,7 +181,8 @@ function main() {
   checkHeapBearingArrayFoldAccumulators();
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
   checkFreshArrayRelease();
-  process.stdout.write("checked 15 ownership report and array-call cases\n");
+  checkInternalArrayLoop();
+  process.stdout.write("checked 21 ownership report and array-call cases\n");
 }
 
 try {

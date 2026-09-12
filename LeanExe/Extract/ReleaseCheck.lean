@@ -80,7 +80,12 @@ def directFreshReleaseExpr? (ctx : Context) (type value : Expr) : Bool :=
   else
     match appFnArgs value.consumeMData with
     | (.const name _, _) =>
-        name == ``Array.replicate ||
+        let freshArrayOperation :=
+          match typeAtom? ctx.env type with
+          | some (.array _) =>
+              [``Array.map, ``Array.append, ``HAppend.hAppend].contains name
+          | _ => false
+        freshArrayOperation || name == ``Array.replicate ||
           name == ``List.toArray ||
           name == ``Array.mk ||
           match ctx.env.find? name with

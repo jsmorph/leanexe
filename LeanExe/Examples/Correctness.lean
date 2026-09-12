@@ -5713,12 +5713,40 @@ def flatArrayCallAppend : Array UInt64 :=
 def flatArrayConstantAppend : Array UInt64 :=
   flatArrayConstant ++ #[13]
 
+def replaceArrayFuel : Nat → Bool → Array UInt64 → Array UInt64
+  | 0, _, values => values
+  | fuel + 1, skip, values =>
+      if skip && fuel % 2 == 0 then replaceArrayFuel fuel skip values
+      else replaceArrayFuel fuel skip (flatArrayCopy values)
+
+structure ArrayLoopStats where
+  value : UInt64
+  original : UInt64
+  freed : UInt64
+  released : UInt64
+
+def internalArrayLoopStats (fuel : Nat) (skip : Bool) : ArrayLoopStats :=
+  let original : Array UInt64 := #[10, 20]
+  let result := replaceArrayFuel fuel skip original
+  let freed := LeanExe.Runtime.freeCount
+  let released := LeanExe.Runtime.releaseCount
+  ⟨result[0]!, original[0]!, freed, released⟩
+
 def flatArrayCopyRuntimeRelease : UInt64 :=
   let original : Array UInt64 := #[10, 20]
   let copied := flatArrayCopy original
   let freed := LeanExe.Runtime.release original
   let replacement : Array UInt64 := #[30, 40]
   copied[0]! + copied[1]! + replacement[0]! + replacement[1]! + freed * 100
+
+def directFlatCopyRuntimeRelease : UInt64 :=
+  let original : Array UInt64 := #[10, 20]
+  let mapped := original.map (fun value => value + 1)
+  let joined := mapped ++ #[3]
+  let _ := LeanExe.Runtime.release original
+  let _ := LeanExe.Runtime.release mapped
+  let replacement : Array UInt64 := #[40]
+  joined[0]! + joined[1]! + joined[2]! + replacement[0]!
 
 def flatArrayAlias (values : Array UInt64) : Array UInt64 := values
 
@@ -5735,6 +5763,12 @@ def rejectReleaseFreshNestedArray : UInt64 :=
   let held := freshNestedArray original
   let freed := LeanExe.Runtime.release original
   freed + held[0]![0]!
+
+def rejectReleaseDirectNestedMap : UInt64 :=
+  let original : Array UInt64 := #[10, 20]
+  let heldMap := (#[original]).map (fun values => values)
+  let freed := LeanExe.Runtime.release original
+  freed + heldMap[0]![0]!
 
 def rejectReleaseTwice : UInt64 :=
   let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
