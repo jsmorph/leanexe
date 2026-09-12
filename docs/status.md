@@ -160,6 +160,8 @@ initialization, traversal, timestep control, and output into the Lean
 program.  Source proofs cover the initial grid, accepted numerical trace,
 state safety, output layout, and outer-loop fuel bound.  Its generated
 module has checked all-input execution theorems for the numerical side,
-flux, cell update, and scan callback.  Successful completion,
+flux, cell update, and scan callback.  The complete scan loop and function
+now have checked termination, bounded reads, source agreement, and store
+preservation.  Successful completion,
 bounded memory, full execution, and exact-byte closure remain open.
 The new 192-grid and 800-grid calculations await those proofs.
