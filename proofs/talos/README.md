@@ -80,8 +80,10 @@ The thirty-eighth registration, `euler_riemann`, compiles
 `Project.EulerRiemann.Control.solve` from the proof workspace.  Its
 21,386-byte generated module includes initialization, grid traversal,
 timestep control, retries, and output.  The four runtime definitions and
-the thermodynamic helper's exact execution theorem pass their focused
-checks.  Successful completion, bounded memory, complete execution, and
+all-input execution theorems for the thermodynamic side, scalar flux,
+scalar update, two-dimensional flux, cell update, and scan callback pass
+their focused checks and standard-axiom audits.  Successful completion,
+bounded memory, complete execution, and
 exact-byte closure remain open.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the source proofs and production-run prerequisites.
 

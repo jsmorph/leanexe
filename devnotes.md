@@ -9954,3 +9954,14 @@ its no-tail-call induction kept the original proof-step limit.  The
 execution theorem and all four runtime-definition checks pass.  Axiom
 audits report only the accepted standard axioms.  The full solver remains
 incomplete, with 38 registered models and 37 completed cases.
+
+The complete generated module now has checked all-input execution
+theorems for the scalar flux and update regions, both forwarding helpers,
+the two-dimensional flux, and the cell update.  Each returns the exact
+existing numerical-model words and preserves the complete store.  The
+scan callback also agrees with its source computation for every
+accumulator and cell.  Its proof includes both directional side calls,
+status accumulation, and maximum selection.  All four focused builds
+passed with standard-only axiom audits.  The remaining work includes
+array traversal, allocator reuse, time control, successful completion,
+and exact-byte closure before the two production calculations.
