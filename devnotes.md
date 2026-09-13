@@ -11246,3 +11246,21 @@ removing a conjunct already discharged by the execution tactic.  Both
 failures and corrections remain in the journal.  The outer time-loop
 page bound, full run and output composition, and complete exact-byte
 verification remain open.  Neither production grid has run.
+
+## 2026-09-13: Complete run and time-advance page bound
+
+Complete time advancement now preserves the supplied physical page
+limit through every return, including failed scans and retries.
+The complete function-97 theorem composes endTime, initialCells, and
+advance.  It returns the specified Control.run grid, time, and status
+for every supported size, with ownership, held-array preservation,
+result capacity, reservation, and the physical page bound.
+
+The combined initializer and three-grid reservation is at most
+319,523,176 bytes above the entry heap top.  Nine modules pass with
+fifteen standard-only axiom reports and no own-module warnings.  The
+run proof required normalization of its entry inequality, final
+supported-size conjunction, and an already-discharged page conjunct.
+Current compiler call locations and checked program equalities identify
+the three calls.  Output packing, complete entry memory composition,
+and independent exact-byte verification remain open.

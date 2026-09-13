@@ -521,8 +521,10 @@ The complete flux, cell update, speed scan, neighbor and memory-input
 selection, update callback, time guard, and cell initializer also check
 against the regenerated module.  Sweep allocation, buffer release,
 acceptance, complete timestep execution, spacing, and CFL proposal
-also pass.  Full run, output, and the complete entry memory
-bound remain open.
+also pass.  Complete run execution now composes
+initialization and advancement, retaining exact result words,
+ownership, capacity, reservation, and a supplied physical page bound.
+Output and the complete entry memory bound remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
@@ -560,7 +562,10 @@ The complete outer time-advance function also passes without assuming
 source success.  It covers failed scans and failed retries, preserves
 the last accepted grid, and accounts for the empty failed-retry result.
 Its caller must establish the heap, reservation, and sufficient-fuel
-premises.  The source run already supplies sufficient fuel.
+premises.  Complete run execution now supplies the initialization and
+fuel premises.  Its combined initializer and three-grid reservation
+is at most 319,523,176 bytes above the entry heap top.  The strengthened
+outer-loop theorem preserves the supplied physical page bound.
 
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and

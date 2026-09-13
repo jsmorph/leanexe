@@ -16,12 +16,14 @@ macro "advance_total_peel" : tactic => `(tactic|
       simp [*, -UInt64.not_le])
 
 theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
-    (n : Nat) (startTime : UInt64) (expected : Control.Result) (spare limit : Nat)
+    (n : Nat) (startTime : UInt64) (expected : Control.Result) (spare limit pageLimit : Nat)
     (store : Store Unit) (heap : Heap) (frame : Locals) (fuel time : UInt64)
     (source : FreeNode) (grid : Array Traversal.Cell) (tracked : Bool)
     (hn : 2 ≤ n ∧ n ≤ 800) (hLimit : limit < 4294967296)
     (hCap : limit ≤ initial.memoryCap module 0 * 65536)
     (hStore : RetryStoreAt initial initialHeap store heap)
+    (hPages : store.mem.pages ≤ pageLimit) (hPageLimit : pageLimit ≤ 65536)
+    (hLimitPages : limit ≤ pageLimit * 65536)
     (hFrame : AdvanceFrameAt frame fuel n time source.root (if tracked then source.root else 0) 0 0 false)
     (hSame : Control.advance fuel.toNat n time grid = expected)
     (hEnough : Time.endTime.toNat - time.toNat < fuel.toNat)
@@ -29,7 +31,7 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
     (hReserve : heap.Reserved (gridCapacity n) (spare + if tracked then 2 else 3) limit)
     (hTime : time ≠ Time.endTime) (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final resultFrame,
-      advanceTotalInvariant initial initialHeap n startTime expected spare limit final resultFrame →
+      advanceTotalInvariant initial initialHeap n startTime expected spare limit pageLimit final resultFrame →
       advanceMeasure resultFrame < advanceMeasure frame → wp module rest Q final resultFrame env) :
     wp module (advanceWorkBody ++ rest) Q store (advanceTimeFrame frame) env := by
   have hFuel : fuel ≠ 0 := by intro h; simp [h] at hEnough
@@ -58,10 +60,10 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
     rw [advance_trial_shape]
     refine advance_total_trial_spec env store heap (advanceScanFrame (advanceTimeFrame frame) source.root
       { status := 0, alpha := (Traversal.scan grid).alpha })
-      fuel source grid n time (Traversal.scan grid).alpha callSpare limit hScanned.params hScanned.locals
+      fuel source grid n time (Traversal.scan grid).alpha callSpare limit pageLimit hScanned.params hScanned.locals
       hScanned.values (by simp [advanceScanFrame, advanceTimeFrame, frame, hLocals])
-      hn hCurrent.indexed hStore.heapState hCurrent.owner hStore.pages hTrialReserve hLimit hCurrentCap _ _ ?_
-    intro dt trial final finalHeap result hTrialStore hTrialOwner hTrialReserved hTrialCapacity hSeparated
+      hn hCurrent.indexed hStore.heapState hCurrent.owner hPages hPageLimit hTrialReserve hLimit hCurrentCap hLimitPages _ _ ?_
+    intro dt trial final finalHeap result hTrialStore hTrialPages hTrialOwner hTrialReserved hTrialCapacity hSeparated
     have hTrialFrame := hScanned.trial (Traversal.scan grid).alpha dt trial.dt result.root trial.status
     by_cases hTrialSuccess : trial.status = 0
     · have hNextSame : Control.advance (fuel - 1).toNat n (IEEE64.add time trial.dt) trial.grid = expected := by
@@ -76,6 +78,9 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
         cases tracked <;> simpa [gridCapacity, hCurrent.indexed.1, callSpare, Nat.add_assoc] using hTrialReserved
       have hReplacement := hCurrent.replace hStore hTrialStore result trial.grid (IEEE64.add time trial.dt)
         spare limit hNextIndexed hTrialOwner hNextCapacity hSeparated hNextReserved
+      have hReplacementPages :
+          (if tracked then finalHeap.releaseStore final source else final).mem.pages ≤ pageLimit := by
+        cases tracked <;> simpa [Heap.releaseStore, releasedStore_pages] using hTrialPages
       have hSource : source.root ≠ 0 := by
         intro hZero
         have hRoot := hCurrent.owner.buffer.rootBound
@@ -95,7 +100,7 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
       simp only [advanceContinuedFrame, advanceTrialFrame, advanceScanFrame, advanceTimeFrame,
         hTrialSuccess] at hNextFrame
       apply hNext
-      · exact ⟨_, hReplacement.1, Or.inl ⟨fuel - 1, IEEE64.add time trial.dt, result, trial.grid, true,
+      · exact ⟨_, hReplacement.1, hReplacementPages, Or.inl ⟨fuel - 1, IEEE64.add time trial.dt, result, trial.grid, true,
           hNextFrame, hNextSame, hNextEnough, hReplacement.2.1, hReplacement.2.2⟩⟩
       · rw [hNextFrame.measure, hFrame.measure]
         exact retryFuel_decreases fuel hFuel
@@ -114,7 +119,7 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
       advance_total_peel
       simp only [advanceReturnedFrame, advanceTrialFrame, advanceScanFrame, advanceTimeFrame] at hReturned
       apply hNext
-      · refine ⟨finalHeap, hStore.trans hTrialStore, Or.inr ⟨source, tracked, ?_, ?_, ?_⟩⟩
+      · refine ⟨finalHeap, hStore.trans hTrialStore, hTrialPages, Or.inr ⟨source, tracked, ?_, ?_, ?_⟩⟩
         · simpa only [hExpected] using hReturned
         · simpa only [hExpected] using hFinalCurrent
         · simpa only [gridCapacity, hCurrent.indexed.1] using hReserved
@@ -133,7 +138,7 @@ theorem advance_total_work_spec (env : HostEnv Unit) (initial : Store Unit) (ini
     advance_total_peel
     simp only [advanceReturnedFrame, advanceScanFrame, advanceTimeFrame] at hReturned
     apply hNext
-    · refine ⟨heap, hStore, Or.inr ⟨source, tracked, ?_, ?_, hReserved⟩⟩
+    · refine ⟨heap, hStore, hPages, Or.inr ⟨source, tracked, ?_, ?_, hReserved⟩⟩
       · simpa only [hExpected] using hReturned
       · simpa only [hExpected] using hCurrent
     · rw [hReturned.measure, hFrame.measure]
