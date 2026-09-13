@@ -11343,3 +11343,18 @@ store/frame arguments and parameter-length normalization.
 Map/append preparation and result assignments, full packer composition,
 complete entry memory, and exact-byte closure remain open.  Both
 production runs still await those proofs.
+
+## 2026-09-13: Complete output map regions
+
+Both 52-instruction maps now compose input preparation, capacity,
+allocation, projection-loop execution, and result assignment.  Their
+postconditions retain the specified density/pressure words, input-grid
+ownership, the updated heap, precise payload writes, typed scratch,
+and preserved caller reads.  Three modules pass with twelve standard-only
+axiom reports and no own-module warnings.  The shared capacity theorem
+also establishes exact byte counts through the largest final output.
+
+The proof uses checked region equality and existing LTG length-read,
+capacity, scratch-window, field, and allocator results.  Append
+preparation and result assignment, release composition, the complete
+packer and entry memory bound, and exact-byte closure remain open.

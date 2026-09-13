@@ -835,7 +835,8 @@ heap validity, and input-grid ownership.  One-word array release also
 checks.  Both concatenations compose allocation, installation, and copying
 into an owned result while preserving both inputs.  The complete header
 region now includes capacity, allocation, represented words, ownership,
-and caller-local preservation.  Map/append capacity preparation,
-result transfer, and full output composition remain open.
+and caller-local preservation.  Both complete map regions now include
+input/length preparation, capacity, and result transfer.  Append
+preparation, append result transfer, and full output composition remain open.
 Output, complete entry memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.

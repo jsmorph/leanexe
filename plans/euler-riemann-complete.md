@@ -169,8 +169,10 @@ The generic represented-array concatenation theorem extends the
 offset-array-copy LTG entry.  The complete 95-instruction header region
 now includes capacity computation, allocation, and the owned
 [status, time, n, n] array, with preserved caller locals and typed
-allocator scratch.  Map/append capacity preparation, result transfer,
-and the full packer remain open.
+allocator scratch.  Both complete 52-instruction map regions include
+input/length preparation, capacity, allocation, the projection loop,
+and result transfer, with owned results and preserved caller reads.
+Append preparation, append result transfer, and the full packer remain open.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

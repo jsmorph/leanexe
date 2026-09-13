@@ -17479,3 +17479,50 @@ The header checkpoint passes whitespace, the 116-file documentation
 check, and the placeholder/new-axiom/native-decision scan.  Reviewed the
 five proof modules, their accepted traces, and the five development
 records.  Staging exactly those ten paths for publication.
+
+### 2026-09-13: complete output maps
+
+Published the header checkpoint as 90ad42568ad6168df9ef0d2d04cb188153a7d048,
+with parent 98dfbfb4ef0b15c7c3778d9a2ad1afbe0f57e829 and tree
+9f91da8cf9e1b1ffd4fa1e32215461fbfc55bada.  Non-forced push and fetch
+passed.  HEAD, FETCH_HEAD, origin/talosfp-euler, the complete index,
+and all ten checkpoint paths agree.
+
+Added the shared 24-instruction preparation region for density and
+pressure maps: input pointer, checked grid-length read, and exact
+capacity computation.  Getter and scratch-range lemmas expose the
+prepared frame to the allocator.  The capacity lemma also covers the
+largest final concatenation, 1,280,004 words.
+
+The first map-preparation check accepted its instruction and frame
+proofs.  Its capacity arithmetic required expanding UInt64.size before
+the natural-number bound.  Added that normalization after the diagnostic
+at 2.3 seconds.
+
+OutputMapPrepare passed after the UInt64.size normalization.  Added the
+two emitted result assignments for each map, together with their final
+pointer reads, preservation of other locals, and scratch-range framing.
+
+OutputMapReturn passed on its first build.  Added the complete
+52-instruction map theorem for both projections.  It connects the
+prepared caller frame to the existing allocator/loop proof, executes
+both result assignments, and retains heap and input ownership, exact
+output words, typed scratch, and preserved caller reads.
+
+The first complete-map check identified an incorrect ownership-field
+name after 1.6 seconds.  Changed the grid representation projection to
+OwnedGridAt.values.  The remaining frame and continuation proof checked
+in that attempt, subject to correcting this argument.
+
+OutputMapExecute passed after the field-name correction.  Reviewed all
+three map-composition modules and twelve standard-only axiom reports,
+with no own-module warnings.  The complete regions preserve the caller
+reads needed by the second map and both concatenations.  Existing LTG
+length-read, capacity, scratch-window, field, allocator, and result-frame
+lemmas supplied the composition.  Synchronized the five development
+records.  No numerical source, artifact, runner, or LTG catalog changed.
+
+The complete-map checkpoint passes whitespace, all 116 maintained
+Markdown files, and the placeholder/new-axiom/native-decision scan.
+Reviewed the three proof files and five development records.  Staging
+exactly those eight paths for publication.
