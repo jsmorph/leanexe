@@ -1,4 +1,4 @@
-import Project.Euler2DCellStep.Sweep
+import Project.Euler2DCellStep.SweepModel
 
 namespace Project.EulerRiemann.Initial
 open Project.Euler2DCellStep.Sweep

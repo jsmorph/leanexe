@@ -10,7 +10,13 @@ theorem initialCell_sides (n index : Nat) : SidesAccepted (initialCell n index) 
   have hs := Initial.weighted_sides
     ⟨min 5 (4 * n - 5 * (index % n)), by omega⟩
     ⟨min 5 (4 * n - 5 * (index / n)), by omega⟩
-  simpa only [SidesAccepted, initialCell, Initial.sideStatuses, Prod.mk.injEq] using hs
+  simp only [Initial.sideStatuses, Prod.mk.injEq] at hs
+  change (Numerics.sideCheckedBits _ _ _ _).status = 0 ∧
+    (Numerics.sideCheckedBits _ _ _ _).status = 0
+  dsimp only [initialCell]
+  rw [Numerics.side_eq_of_old_accepted _ _ _ _ hs.1,
+    Numerics.side_eq_of_old_accepted _ _ _ _ hs.2]
+  exact hs
 
 theorem initialCell_status (n index : Nat) : (initialCell n index).status = 0 :=
   (initialCell_sides n index).1
