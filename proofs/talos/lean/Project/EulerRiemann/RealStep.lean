@@ -41,6 +41,33 @@ theorem update_lower_of_splits (ratio aLeft aRight : ℝ) (left center right : V
     have hr := mul_nonneg hc hSplitRight.2.le
     linarith
 
+theorem update_positive_of_splits (ratio aLeft aRight : ℝ) (left center right : Vec4)
+    (hRatio : 0 ≤ ratio) (hLeft : 0 < aLeft) (hRight : 0 < aRight)
+    (hCflLeft : ratio * aLeft ≤ 1 / 2) (hCflRight : ratio * aRight ≤ 1 / 2)
+    (hCenter : 0 < center 0 ∧ 0 < internalEnergy center)
+    (hSplitLeft : 0 < splitState left (1 / aLeft) 0 ∧
+      0 < internalEnergy (splitState left (1 / aLeft)))
+    (hSplitRight : 0 < splitState right (-1 / aRight) 0 ∧
+      0 < internalEnergy (splitState right (-1 / aRight))) :
+    center 0 / 2 ≤ update ratio aLeft aRight left center right 0 ∧
+      internalEnergy center / 2 ≤
+        internalEnergy (update ratio aLeft aRight left center right) ∧
+      0 < update ratio aLeft aRight left center right 0 ∧
+      0 < internalEnergy (update ratio aLeft aRight left center right) := by
+  obtain ⟨hrho, he⟩ := update_lower_of_splits ratio aLeft aRight left center right
+    hRatio hLeft hRight hCflLeft hCflRight hCenter hSplitLeft hSplitRight
+  have ha := (coefficients ratio aLeft aRight hRatio hLeft hRight hCflLeft hCflRight).1
+  have hrhoLower : center 0 / 2 ≤ update ratio aLeft aRight left center right 0 := by
+    have h := mul_le_mul_of_nonneg_right ha hCenter.1.le
+    linarith only [hrho, h]
+  have heLower : internalEnergy center / 2 ≤
+      internalEnergy (update ratio aLeft aRight left center right) := by
+    have h := mul_le_mul_of_nonneg_right ha hCenter.2.le
+    linarith only [he, h]
+  exact ⟨hrhoLower, heLower,
+    lt_of_lt_of_le (div_pos hCenter.1 (by norm_num)) hrhoLower,
+    lt_of_lt_of_le (div_pos hCenter.2 (by norm_num)) heLower⟩
+
 theorem update_positive (ratio aLeft aRight cLeft cRight : ℝ)
     (left center right : Vec4)
     (hRatio : 0 ≤ ratio) (hLeft : 0 < aLeft) (hRight : 0 < aRight)
@@ -67,19 +94,11 @@ theorem update_positive (ratio aLeft aRight cLeft cRight : ℝ)
   have hr := split_positive right (-1 / aRight) cRight hRightState.1 hRightState.2
     hcRight hSoundRight (by
       simpa only [neg_div, abs_neg] using hWave _ _ _ hRight hWaveRight)
-  obtain ⟨hrho, he⟩ := update_lower_of_splits ratio aLeft aRight left center right
+  exact update_positive_of_splits ratio aLeft aRight left center right
     hRatio hLeft hRight hCflLeft hCflRight hCenterState hl hr
-  have ha := (coefficients ratio aLeft aRight hRatio hLeft hRight hCflLeft hCflRight).1
-  have hrhoLower : center 0 / 2 ≤ update ratio aLeft aRight left center right 0 := by
-    nlinarith [mul_le_mul_of_nonneg_right ha hCenterState.1.le]
-  have heLower : internalEnergy center / 2 ≤
-      internalEnergy (update ratio aLeft aRight left center right) := by
-    nlinarith [mul_le_mul_of_nonneg_right ha hCenterState.2.le]
-  exact ⟨hrhoLower, heLower,
-    lt_of_lt_of_le (div_pos hCenterState.1 (by norm_num)) hrhoLower,
-    lt_of_lt_of_le (div_pos hCenterState.2 (by norm_num)) heLower⟩
 
 #print axioms split_positive
 #print axioms update_lower_of_splits
+#print axioms update_positive_of_splits
 #print axioms update_positive
 end Project.EulerRiemann.RealRusanov

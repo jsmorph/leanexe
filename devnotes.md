@@ -10842,3 +10842,29 @@ rounded endpoint-speed selection.  Those domains also permit arbitrarily
 small positive density, so they do not supply the quantitative margins
 required by the executable guard.  A full-run preservation and progress
 argument remains open.
+
+## 2026-09-13: Computed wave-speed adequacy
+
+[Pressure comparison](proofs/talos/lean/Project/EulerRiemann/NumericsPressureReference.lean)
+relates computed pressure to exact internal energy under StateBounds.
+[Sound-speed comparison](proofs/talos/lean/Project/EulerRiemann/NumericsSoundReference.lean)
+bounds computed sound speed between two thirds and twice exact sound
+speed.  The cell margin bounds velocity-rounding error by one
+sixteenth of exact sound speed.  Composing these bounds with the
+final addition proves the returned side speed is at least absolute
+exact velocity plus half exact sound speed.
+
+[Interface speed adequacy](proofs/talos/lean/Project/EulerRiemann/NumericsFluxWave.lean)
+transfers both side bounds through the positive raw-word maximum.
+The shared [maximum theorem](proofs/talos/lean/Project/ProofKit/F64Maximum.lean)
+identifies its exact real value.  Both checks passed in 1.4 and
+1.2 seconds, respectively.  All requested audits contain only
+the permitted standard axioms.
+
+[The corresponding real cell proof](proofs/talos/lean/Project/EulerRiemann/RealStepHalfSound.lean)
+uses a three-sevenths split internal-energy bound and shares the
+existing convex-combination argument.  Its check passed in 1.4
+seconds.  Rounded CFL transfer, physical-flux error composition,
+rounded cell acceptance, the full-run invariant, successful completion,
+and complete exact-byte execution remain open.  No numerical source,
+compiler, WASM bytes, or LTG catalog changed in this checkpoint.
