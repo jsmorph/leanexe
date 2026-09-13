@@ -31,6 +31,7 @@ import Project.EulerGridStep.ArtifactBytes
 import Project.Euler2DConservative.ArtifactBytes
 import Project.Euler2DDynamicFlux.ArtifactBytes
 import Project.Euler2DCellStep.ArtifactBytes
+import Project.EulerRiemann.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -66,6 +67,7 @@ private def artifactBytes : String → Option ByteArray
   | "euler2_d_conservative" => some Project.Euler2DConservative.Artifact.artifactBytes
   | "euler2_d_dynamic_flux" => some Project.Euler2DDynamicFlux.Artifact.artifactBytes
   | "euler2_d_cell_step" => some Project.Euler2DCellStep.Artifact.artifactBytes
+  | "euler_riemann" => some Project.EulerRiemann.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do

@@ -11407,3 +11407,20 @@ trace, and safety theorems supply the composition.  The focused source
 regeneration gate passed against the unchanged 21,767-byte artifact.
 Independent exact-byte closure remains open.  No production calculation
 has started.
+
+## 2026-09-13: Exact-byte proof preparation
+
+The frozen 21,767-byte complete solver now has a prepared artifact
+package and kernel-mode certificate templates.  The byte constructor,
+raw cache, function 0 decoding, and function 99's final instruction
+suffix pass.  Whole decoding and the largest function exceeded their
+bounded checks.  Instruction-sequence composition is in progress.
+Validation, translation equality, and independent verification remain
+unchecked.  The registration remains incomplete.
+
+The migration driver now offers a kernel mode while preserving its
+default output.  Its transactional-write and decoder-build tests pass.
+A decoder-based offset utility supplies proof boundaries.  The new
+complete-solver data script preserves every returned word and checks
+status, time, dimensions, and field values before writing plotting data.
+Its output-decoding tests pass.  Neither production run has started.

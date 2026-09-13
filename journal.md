@@ -17760,3 +17760,131 @@ baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
 The registration remains incomplete pending independent exact-byte
 closure.  Whitespace and prohibited-proof scans passed for the three
 new modules.  No production calculation ran.
+
+The documentation check passed for all 116 maintained Markdown files.
+Published the solver-entry checkpoint with a non-forced push and fetched
+it for commit, parent, tree, complete-index, and checkpoint-path equality.
+All checks passed.  The next work uses artifact-migrate's existing
+preparation API for the one Euler binary.  Its seven new proof modules
+will use kernel-checked decision proofs in place of native decision
+certificates.  The binary and manifest receive a new immutable package
+directory.  Registry and CheckFile changes wait for the formal checks.
+
+The preparation API invoked from node -e was rejected before Lean ran:
+the sandbox could not connect to the systemd user bus.  No artifact
+files were written.  Added a --kernel option to the existing repository
+artifact-migrate command so this preparation uses its reusable command
+boundary and retains the runner's cgroup enforcement.  The option changes
+generated decision tactics to decide +kernel.  It preserves the default
+mode, decoder, validator, and theorem statements.  The standard command
+also adds the package to the registry and embedded-byte checker during
+preparation, superseding the delayed-registration intent above.
+
+The reusable artifact-migrate command passed with --kernel.  It created
+the seven Euler artifact proof modules and exact frozen binary/manifest,
+and added only the Euler entry to the registry and CheckFile.  The
+existing artifact migration tests passed, including immutable-file
+identity and decoder-build failure handling.  The first ArtifactBytes
+check is still running under its six-minute limit.  Inspection of pinned
+Init.Prelude shows that List.toByteArray constructs the array by repeated
+ByteArray.push calls.  A direct array constructor will avoid that
+construction cost in kernel evaluation if this check reaches its limit.
+
+The preceding solver-entry publication has commit
+2b58d65ae191691697e921ab6470a07c6db935da, parent
+0a834ce5b933286ebfefafac07242baf6c041dda, and tree
+4ba4b4d7c134bfe27f383dfee0024e2eb7d4795f.  Those are the fetched,
+index-matched identities checked before artifact preparation.
+
+Prepared the generator's kernel mode to emit the byte array through
+ByteArray.mk and Array.mk, with a reflexive size proof.  This removes
+the repeated-push construction identified in Init.Prelude while retaining
+every literal byte and the same external file comparison.  The active
+ArtifactBytes target remains unchanged until its result arrives.
+
+ArtifactBytes reached its six-minute limit with status 124 and no theorem
+diagnostic.  Preserved that generated source before regenerating its
+direct-constructor representation.  The unchanged target will not be
+retried.  No source program, WASM byte, or resource limit changes.
+
+Preserved the first byte module at
+tmp/euler-artifact-bytes-push-e9Mdfp/ArtifactBytes.lean.  Regeneration
+changed its construction to direct ByteArray/Array constructors.
+ArtifactBytes then passed under the same six-minute limit.  The next
+target checks that the independent decoder accepts the embedded bytes.
+
+While the decoder check runs, added tools/euler-riemann-complete.js to
+save the authorized production results.  It calls the frozen complete
+solve export once through the standard runner and existing Wasmtime
+host, retains stdout/stderr and every UInt64 word, requires zero status
+and exact time/dimensions, and writes density/pressure CSV for the existing
+plotter.  It performs no numerical evolution.  The script has not run a
+simulation and remains pending until the complete artifact proof passes.
+
+The result decoder passed exact round-trip checks for words above 2^53
+and at UInt64's maximum, plus rejection of malformed, negative,
+out-of-range, and wrong-length output.  The script's syntax check passed.
+The artifact-migration tests passed again after direct-constructor
+generation changed.  No numerical execution was involved in these tests.
+
+ArtifactDecoded reached its six-minute limit with status 124 and no
+theorem diagnostic.  The byte constructor has passed, so the next
+division follows the binary structure: six sections and 108 function
+bodies.  Read-only binary inspection found the code section at byte
+1289, its payload at 1293, and its end at 21767.  Function 99 is the
+largest body, 2784 bytes.  Building the independent raw cache first,
+then checking bounded decoder steps, will replace the unchanged
+whole-decoder attempt.
+
+The raw-cache definition reached the default recursion-depth limit after
+1.9 seconds.  The first function-boundary target repeated that dependency
+failure before reaching its theorem.  Scoped maxRecDepth 32768 to the
+kernel-mode raw cache, and added the same option to its generator.  The
+first bounded decoder theorem checks function 0 between offsets 1294
+and 1313 against its independently generated raw code value.
+
+The raw cache passed with its scoped recursion depth.  Function 0's
+reflexive decoding proof then reached maxRecDepth 32768 after 2.3 seconds
+while reducing the large byte literal.  Raised only that theorem's
+recursion-depth allowance to 131072.  Its three-minute timeout and all
+standard runner limits remain unchanged.
+
+The deeper reflexive check reached 200,000 elaborator heartbeats after
+5.2 seconds.  Pinned Lean's Cbv array simprocs recognize Array.mk/list
+literals and generate reflexive certificates for indexed reads.  Changed
+the bounded function-0 proof to cbv to use that checked evaluator, while
+retaining the same statement and runner limits.
+
+Function 0's cbv proof passed.  Its axiom report contains only propext.
+It checks the parser result, raw function body, and exact final cursor.
+Added the same bounded theorem for function 99, the 2784-byte largest
+body, before generating the remaining function proofs.  Whole decoding,
+validation, translation equality, and independent package verification
+remain open.
+
+Function 99 reached cbv's default 100,000-step limit after 3.1 seconds.
+The pinned evaluator declares that limit in Lean.Meta.Tactic.Cbv.Main.
+Raised only this theorem's cbv.maxSteps to 1,000,000, retaining the
+three-minute timeout and standard runner limits.
+
+Function 99 reached that three-minute timeout with status 124 and no
+further diagnostic.  Added a bounded CodeOffsets utility that uses the
+existing decoder to identify top-level instruction-sequence positions
+and fuel values.  Its output is proof-generation metadata.  Subsequent
+kernel-checked parser equalities must establish every proposed boundary.
+The next proof division checks short sequence suffixes and composes them.
+
+CodeOffsets passed and identified 363 top-level instructions in function
+99.  The final 14-instruction suffix, starting at byte 20791 with fuel
+2432, passed in ArtifactCode99Tail with only propext.  The next target
+starts at instruction 333 and registers the checked suffix as a cbv
+rewrite.  It tests composition before generating the remaining pieces.
+
+Preparing a recovery checkpoint for the artifact templates, frozen
+binary, kernel generator, checked byte/cache/function-0/final-suffix
+pieces, decoder offset utility, and production-data script.  The full
+decoder and function-99 attempts remain preserved as incomplete source.
+No artifact closure is claimed.  The migration tests, JavaScript syntax
+check, whitespace check, and 116-document link check pass.  The active
+instruction-333 target will be recorded in a later checkpoint after its
+result.  Paper submission state remains outside the staged paths.
