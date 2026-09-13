@@ -11459,3 +11459,20 @@ The normative offset utility reports every function range and top-level
 instruction boundary.  Both modes pass for all 108 functions.  The
 remaining function certificates, module decoding, validation, translation,
 and independent package gate are open.  Production execution still waits.
+
+## 2026-09-13: Complete function-body decoding certificates
+
+Seven modules prove 97 function bodies, and nine modules prove the
+remaining nested bodies beyond the earlier functions 0 and 99.  Each
+new body theorem uses only propext.  The nested offset utility records
+the normative decoder's cursor, fuel, terminator, and cached-tree path.
+Function 95's dependency audit confirms reuse through five nested levels.
+
+Shared lemmas compose vector items, length prefixes, bounded payloads,
+module sections, and the binary header.  Their checks report only the
+accepted standard axioms.  LTG records the nested method and checked
+examples.  The complete code section, including all 108 functions and
+its vector and byte-count prefixes, passed with only propext.  Other
+sections, full decoding, validation, translation, and independent
+verification remain open.
+Neither production run has started.

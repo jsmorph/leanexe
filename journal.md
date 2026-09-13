@@ -18039,3 +18039,66 @@ byte-lookup certificates.  CodeOffsets --all-offsets passed and returned
 all 108 function headers and instruction boundaries without truncation.
 Preparing the checked composition checkpoint with the generator's size
 observation, code99 theorem, offset utility, LTG guidance, and records.
+
+Published 766dcb3d5efdb3a706cac129ef7fe15785d5b5ec, parent
+fab3e4a676987c806fbfcaf069d05c4b81614673, tree
+8835c71f57eaf43f73a586cf27d0d8dbbbeb44cf.  Non-forced push and
+fetch passed.  Head, fetched head, remote tracking ref, complete index,
+and all eight checkpoint paths matched.  Generator tests, documentation,
+and LTG checks passed before publication.
+
+Generated per-function certificates from the normative offsets, grouping
+at most 1500 input bytes per module and using sequence suffixes for
+large straight-line bodies.  The first metadata-to-source invocation
+failed before mutation because of a JavaScript string-method typo.
+After correction, functions 1–19 passed with only propext and no warnings.
+The next group is checking.  Nine functions have structured instructions
+larger than 400 bytes.  Added recursive normative sequence metadata and
+a child-body selector to prepare internal boundaries for those proofs.
+
+The next four groups passed, bringing the grouped function total to 87.
+Every group reports only propext and no own-module warnings.  The
+recursive metadata calculation passed, but the tool truncated its
+console output.  Added a fresh-output argument and retained the complete
+metadata in tmp/euler-nested-offsets-20260913.csv.  The utility refuses
+to overwrite an existing output.  Generic vector-item, vector-length,
+and bounded-parser composition lemmas passed with only propext.
+
+The nested certificate generator selected 38 sequence boundaries in
+nine functions.  Function 95 passed all eighteen sequence certificates
+and its complete code-parser theorem with only propext and no warnings.
+The generated code-vector composition and three other section modules
+are prepared but unchecked.  Their first source-generation invocation
+failed before mutation because of a JavaScript loop syntax error.
+The corrected invocation succeeded.  No production calculation has run.
+
+All seven grouped modules passed, covering 97 functions.  The function-95
+dependency audit confirms its root sequence, a five-level nested suffix,
+and the universal byte-lookup theorem.  Functions 22, 54, 65, and 77
+then passed their complete nested-body proofs with only propext and no
+warnings.  The four other nested bodies remain under test.
+
+Added explicit section-loop and module-header composition lemmas.  The
+first check left Except.pure result unreduced.  Adding Except.pure to
+the simplifier resolved it.  Both lemmas pass with propext,
+Classical.choice, and Quot.sound.  The complete module composition is
+prepared for the function-vector and five other section certificates.
+
+Functions 81, 85, 96, and 97 passed with only propext and no warnings.
+The new 106 complete body theorems, together with the earlier functions
+0 and 99, cover all 108 functions.  The code-vector assembly is checking
+and refreshes the earlier function-0 dependency as needed.  The decoder
+wrappers now derive success and raw-cache equality from the prepared
+composed decoding theorem.  They remain unchecked until the complete
+module proof passes.  The older closed raw-cache Boolean comparison
+was an unchecked generated template and is no longer needed for that
+direct equality proof.  Documentation and LTG checks pass.
+
+The complete code-vector and sized code-section theorem passed with
+only propext and no warnings.  The refreshed function-0 dependency also
+passed.  A combined trace review confirms 106 new complete body audits
+across sixteen modules, all propext-only and without warnings.  Preparing
+a checkpoint of those bodies, the complete code-section theorem, shared
+composition support, nested metadata utility, LTG guidance, and records.
+The type section is checking.  The other section and complete decoder
+drafts, including the edited wrappers, remain outside this checkpoint.
