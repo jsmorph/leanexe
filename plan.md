@@ -519,8 +519,11 @@ execution proofs remain open.
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and
 multiplication lemmas cover the solver's larger arithmetic values,
-including multiplication underflow.  Division, square root, and the
-preserved reachable-grid invariant remain the next numerical obligations.
+including multiplication underflow.  Division and square-root bounds
+also pass.  Their composition now proves finite thermodynamic
+intermediates and an internal-energy error bound, with Boolean guard
+acceptance under an explicit margin premise.  Pressure, wave speed,
+flux acceptance, and the preserved reachable-grid invariant remain open.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The

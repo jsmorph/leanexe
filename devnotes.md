@@ -10746,5 +10746,33 @@ Multiplication allows exact product magnitude below 2^1022 and accounts
 for underflow.  The final checks took 1.6, 1.3, 1.8, and 2.4 seconds,
 respectively.  All requested audits contain only standard axioms.
 These reusable proofs preserve the existing formal IEEE64 operations.
-Division, square root, and preservation of the numerical bounds through
-the complete rounded recurrence remain open.
+Preservation of the numerical bounds through the complete rounded
+recurrence remains open.
+
+## 2026-09-12: Thermodynamic arithmetic bounds
+
+[Rational rounding](proofs/talos/lean/Project/ProofKit/F64RationalBounds.lean)
+and [division](proofs/talos/lean/Project/ProofKit/F64DivBounds.lean)
+now retain relative and subnormal error terms for exact quotient
+magnitudes below 2^1022.  [Square-root rounding](proofs/talos/lean/Project/ProofKit/F64SqrtRounding.lean)
+and [its operation theorem](proofs/talos/lean/Project/ProofKit/F64SqrtBounds.lean)
+prove relative error at most 2^-53 for every positive finite input.
+Their final checks took 1.5, 2.4, 1.2, and 1.1 seconds.
+
+[Arithmetic bound adapters](proofs/talos/lean/Project/ProofKit/F64ArithmeticBounds.lean)
+and [half-sum propagation](proofs/talos/lean/Project/ProofKit/RealHalfSumError.lean)
+support the solver's [transport](proofs/talos/lean/Project/EulerRiemann/NumericsTransport.lean)
+and [internal-energy](proofs/talos/lean/Project/EulerRiemann/NumericsInternal.lean)
+proofs.  For finite inputs, density at least 1/M, component magnitudes
+at most M, and 1 ≤ M ≤ 2^100, the latter proves every intermediate finite
+and internal-energy error at most 12 times 2^-52 M cubed.
+[Intermediate guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsInternalGuard.lean)
+follows when exact internal energy exceeds that error budget.
+
+The five final checks took 1.2, 1.1, 1.8, 1.7, and 1.1 seconds.
+All requested audits contain only standard axioms.  The first combined
+internal-energy draft exhausted 200,000 heartbeats.  Separating the real
+propagation lemma and restricting arithmetic tactics to relevant
+inequalities resolved it within the unchanged limits.  Pressure,
+wave-speed, and flux acceptance, preservation through the rounded grid
+recurrence, source success, and complete artifact execution remain open.
