@@ -16582,3 +16582,43 @@ assoc_list cache mismatch.  No unchanged failing aggregate was rerun.
 
 The final reviewed list contains eleven files: six proof files and five
 development records.  This corrects the preceding checkpoint count.
+
+Published and verified 7f115da77d8ac3d19a17a6a844678f3bc2e130d8,
+parent 7baf9706e320801dad0dc238aac1ca2f53c35165, tree
+e76ffe07d0ed71059d038839d16d917fef7665c6.  The fetched metadata,
+complete index, and eleven checkpoint worktree paths match.
+Documentation and whitespace checks passed.
+
+The pending scalar/LTG checkpoint passed tools/ltg check,
+tools/knowledge check, node test/ltg.js, node test/knowledge.js,
+and node test/leanexegen.js.  The leanexegen fixture remains at
+tmp/leanexegen-test-Hqy4sf.  The standard-runner command
+tools/leanrun --timeout 20m node test/knowledge.js --lean then failed
+with "declaration audit produced 5 axiom reports; expected 1" after
+its dependent-package promotion succeeded.
+
+The test's single declaration imports Project.TalosCompat, whose four
+axiom reports Lake replays in dependency logs.  The audit counted the
+complete build output.  The existing artifact-proof driver instead runs
+the audit source with lake env lean.  Applied that same approach to
+leanexegen's artifact-declaration and promoted-catalog audits after their
+ordinary module builds.  The exact report-count requirement and axiom
+policy are unchanged.  The corrected knowledge test remains to be run.
+
+The corrected Lean-backed knowledge test passed both dependent-package
+and ordinary package promotion.  Project.ProofKit.LTGCheck and
+Project.EulerRiemann.InitialExtractExecute passed their focused
+standard-runner checks.  Read the successful traces for ScalarConditional
+and all eight extraction modules.  Their public audits contain only the
+three permitted standard axioms.  The two-import extraction selection
+module declares no theorem.  The leanexegen Node test passed again after
+the audit-driver change, retaining its fixture at
+tmp/leanexegen-test-2TqwQJ.
+
+Preparing the shared conditional, eight extraction modules, LTG metadata,
+proof-package allowlist, audit-driver correction, and development records
+as one checkpoint.  The two remaining map function-index edits,
+unused FixedArraySearchWindow draft, and report files remain outside it.
+Complete initialization, output execution, the physical memory bound,
+and exact-byte package closure remain open.  Production execution has
+not started.

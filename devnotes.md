@@ -11103,3 +11103,21 @@ checked memory read.  Subsequent focused checks passed through the standard
 repository runner, one invocation at a time.  The journal records the
 workstation reboot and the incomplete diagnosis.  The physical WASM page
 bound remains an explicit part of the unfinished 512 MiB proof.
+
+## 2026-09-13: Complete extraction region and conditional support
+
+InitialExtractExecute composes input preparation, capacity calculation,
+allocation, and copying.  The input proof uses ScalarConditional for the
+decoded stop and span conditionals, retaining their explicit control-type
+metadata.  The LTG catalog and proof-package allowlist expose that shared
+support.  The complete extraction region and LTG declaration import check
+pass.  All extraction and shared-helper audits use only the three permitted
+standard axioms.  Complete initializer-loop composition remains open.
+
+The required knowledge test found that Lake replayed four imported
+compatibility-module axiom reports alongside the requested report.
+LeanExeGen now builds each audit module and then invokes its source through
+lake env lean, matching the existing artifact-proof driver.  Both artifact
+and knowledge audits retain their exact report count and axiom policy.
+The Lean-backed knowledge test passes after this change.  LTG and forest
+checks, their Node tests, and leanexegen protocol/package tests also pass.
