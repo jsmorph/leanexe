@@ -16264,3 +16264,47 @@ initializer proof files plus devnotes.md, journal.md, plan.md, and
 plans/euler-riemann-complete.md.  No numerical source or generated
 artifact changed.  Preserved the existing unrelated LTG, ProofKit,
 tool, report, and extraction drafts.
+
+Published and fetched fba8520162682f321582a929f8bd2d98ec34a480,
+"Check revised Riemann flux and traversal execution", parent
+ee54ed51b22f34a2e614d6de3296fec89f0c42b0, tree
+4402f15eaadfdc217db3bc9fe4d63bac04922476.  The fetched metadata,
+local and remote tips, complete index, and all 23 checkpoint worktree
+files match.  Documentation and whitespace checks passed.
+
+The first sweep check passed allocation, sweep, acceptance, spacing,
+and proposal execution.  Release stopped because its theorem adapter
+still supplied type index 100 while the regenerated function has
+type index 107.  Updated that checked identity argument.  The next
+StepReserve build passed: release 32 seconds, memory preservation 14,
+owned release 1.5, owned sweep 1.7, complete timestep 2.0, and timestep
+reservation 1.6.  The full sweep took 2.3 seconds in the first build.
+The current proofs cover both accepted and rejected sweep results,
+first-fit reuse, bump allocation, and explicit release.  Public audits
+remain standard-only.  These local reservation theorems retain their
+entry premises.  The complete 512-MiB entry bound remains open.
+
+Updated the remaining retry, advance, and initializer region indices,
+including compiler-generated guard equality names and the initializer
+callback's direct call to function 94.  ExecutionAdvance is checking
+the existing successful-control compositions before extending their
+failure branches.  Inspection of function 81 confirms that invalid
+time and exhausted retry each allocate an empty width-seven result
+array.  Those allocation paths require the same free-list ownership
+proof and explicit accounting as successful results.
+
+ExecutionAdvance passed against the regenerated module.  Its existing
+successful-retry and successful-advance premises remain explicit.
+The retry entry took 2.1 seconds and the advance entry 2.0.  Their
+loop, frame, call, release, reservation, and compiler-described guard
+dependencies passed with standard-only audits.  RetryBranches retains
+an unused-tactic warning.  The next focused six-minute standard
+runner build checks InitialMapExecute, InitialAppendExecute, and
+InitialExtractExecute against the revised initializer references.
+
+Preparing a checkpoint of the nineteen checked sweep and allocation
+updates, eleven checked retry and advance updates, and the four
+development records.  The four initializer region updates and the
+pre-existing extraction drafts remain outside this checkpoint while
+their focused build runs.  The full failure-path and entry-to-output
+proofs remain open.  No production calculation has started.

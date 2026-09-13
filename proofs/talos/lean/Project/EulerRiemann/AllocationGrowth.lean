@@ -6,11 +6,11 @@ namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit.MemoryGrowth
 
 def sweepBump : Wasm.Program :=
-  match (func70[34]? : Option Wasm.Instruction) with
+  match (func77[34]? : Option Wasm.Instruction) with
   | some (.iff _ _ body _ _ _) => body
   | _ => []
 
-theorem sweep_bump_shape : func70[34]? = some (.iff 0 0 sweepBump []) := rfl
+theorem sweep_bump_shape : func77[34]? = some (.iff 0 0 sweepBump []) := rfl
 
 theorem sweep_growth_shape : (sweepBump.drop 17).take 5 = ensureProgram 51 := rfl
 

@@ -14,7 +14,8 @@ macro "sweep_peel" : tactic => `(tactic|
         ← Project.ProofKit.Memory.toUInt32_eq_ofNat, UInt32.add_zero, UInt32.toNat_zero,
         Nat.add_zero, List.getElem?_cons_zero, List.getElem?_cons_succ,
         reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reducePow, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       conv => arg 2; simp [*, -UInt64.ofNat_mul, -UInt64.ofNat_add, -UInt64.not_le])
 
 macro "sweep_write_peel" h:Lean.Parser.Tactic.simpLemma : tactic => `(tactic|
@@ -59,7 +60,7 @@ theorem sweep_loop_spec (env : HostEnv Unit) (initial : Store Unit)
     subst frame
     have hi64 : i < UInt64.size := by omega
     have hiNat := UInt64.toNat_ofNat_of_lt' hi64
-    unfold sweepLoop func70
+    unfold sweepLoop func77
     dsimp only
     by_cases hlt : i < grid.size
     · have hEncoded : ¬ UInt64.ofNat grid.size ≤ UInt64.ofNat i := by

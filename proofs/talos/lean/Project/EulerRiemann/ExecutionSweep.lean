@@ -5,11 +5,11 @@ import Project.EulerRiemann.SweepLoop
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ProofKit.FixedArrayCapacity Project.ProofKit.FixedArrayResult
 
-theorem sweep_shape : func70 = func70.take 6 ++ (func70.drop 6).take 18 ++
-    (func70.drop 24).take 15 ++ (func70.drop 39).take 8 ++
-    [.block 0 0 [.loop 0 0 sweepLoop]] ++ func70.drop 48 := rfl
+theorem sweep_shape : func77 = func77.take 6 ++ (func77.drop 6).take 18 ++
+    (func77.drop 24).take 15 ++ (func77.drop 39).take 8 ++
+    [.block 0 0 [.loop 0 0 sweepLoop]] ++ func77.drop 48 := rfl
 
-theorem sweep_tail_shape : func70.drop 48 =
+theorem sweep_tail_shape : func77.drop 48 =
     [.localGet 43, .localSet 38, .localGet 38, .localSet 39,
       .localGet 38, .localSet 40, .localGet 39, .localGet 40] := rfl
 
@@ -31,7 +31,7 @@ theorem sweep_exact (env : HostEnv Unit) (initial : Store Unit)
     let root := allocatedRoot base need nodes
     let allocated := countedStore (allocatedStore initial base need nodes) count
     let prepared := writeLength allocated root (UInt64.ofNat grid.size)
-    TerminatesWith env Project.EulerRiemann.«module» 70 initial
+    TerminatesWith env Project.EulerRiemann.«module» 77 initial
       [.i64 source, .i64 owner, .i64 ratio, .i64 (boolWord axis), .i64 (UInt64.ofNat n)]
       (fun final values => values = [.i64 root, .i64 root] ∧
         Memory.GridAt final source grid ∧
@@ -76,9 +76,9 @@ theorem sweep_exact (env : HostEnv Unit) (initial : Store Unit)
   have hLengthBound : root.toUInt32.toNat + 8 ≤ allocated.mem.pages * 65536 := by
     rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt (by omega)]
     omega
-  refine TerminatesWith.of_wp_entry_for (f := func70Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func70 _ initial
-    (func70Def.toLocals (sweepParameters n axis ratio owner source)) env
+  refine TerminatesWith.of_wp_entry_for (f := func77Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func77 _ initial
+    (func77Def.toLocals (sweepParameters n axis ratio owner source)) env
   rw [sweep_shape]
   simp only [List.append_assoc]
   apply sweep_entry_spec env initial n axis ratio owner source grid hGrid
@@ -94,7 +94,7 @@ theorem sweep_exact (env : HostEnv Unit) (initial : Store Unit)
     hPreparedGrid hDisjoint 0 (Nat.zero_le _) hPrefix {} _ (by rfl)
   intro final scratch hSource hOutput hWrites
   rw [sweep_tail_shape]
-  simp [wp_simp, sweepFrame, func70Def, Function.numParams]
+  simp [wp_simp, sweepFrame, func77Def, Function.numParams]
   exact ⟨hSource, hOutput, hWrites⟩
 
 #print axioms sweep_shape

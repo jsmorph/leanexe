@@ -11,7 +11,7 @@ theorem advance_scan_spec (env : HostEnv Unit) (store : Store Unit) (frame : Loc
     (hNext : wp Project.EulerRiemann.«module» rest Q store
       (advanceScanFrame frame source (Traversal.scan grid)) env) :
     wp Project.EulerRiemann.«module» (advanceWorkBody.take 13 ++ rest) Q store frame env := by
-  unfold advanceWorkBody advanceLoop func78
+  unfold advanceWorkBody advanceLoop func85
   dsimp only
   wp_run [List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
     List.getElem?_cons_zero, List.getElem?_cons_succ, reduceIte,

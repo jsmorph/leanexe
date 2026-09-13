@@ -15,7 +15,7 @@ theorem advance_exact_of_success (env : HostEnv Unit) (initial : Store Unit) (he
     (hFuel : Time.endTime.toNat - time.toNat < fuel.toNat)
     (hSuccess : (Control.advance fuel.toNat n time grid).status = 0) :
     let expected := Control.advance fuel.toNat n time grid
-    TerminatesWith env Project.EulerRiemann.«module» 78 initial
+    TerminatesWith env Project.EulerRiemann.«module» 85 initial
       [.i64 source.root, .i64 source.root, .i64 time, .i64 (UInt64.ofNat n), .i64 fuel]
       (fun final values => ∃ finalHeap result tracked,
         values = [.i64 result.root, .i64 result.root, .i64 expected.time, .i64 0] ∧
@@ -23,7 +23,7 @@ theorem advance_exact_of_success (env : HostEnv Unit) (initial : Store Unit) (he
         AdvanceCurrent initial heap n time expected.time final finalHeap result expected.grid tracked ∧
         finalHeap.Reserved (gridCapacity n) (spare + 2) limit) := by
   let expected := Control.advance fuel.toNat n time grid
-  let entry := func78Def.toLocals [.i64 fuel, .i64 (UInt64.ofNat n), .i64 time,
+  let entry := func85Def.toLocals [.i64 fuel, .i64 (UInt64.ofNat n), .i64 time,
     .i64 source.root, .i64 source.root]
   have hStart : AdvanceFrameAt entry fuel n time source.root 0 0 0 false := by
     constructor <;> rfl
@@ -32,15 +32,15 @@ theorem advance_exact_of_success (env : HostEnv Unit) (initial : Store Unit) (he
   have hInv : advanceInvariant initial heap n time expected spare limit initial entry :=
     ⟨heap, ⟨hHeap, hPages, rfl, fun _ _ h => h⟩,
       Or.inl ⟨fuel, time, source, grid, false, hStart, rfl, hFuel, hCurrent, hReserve⟩⟩
-  refine TerminatesWith.of_wp_entry_for (f := func78Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func78 _ initial entry env
+  refine TerminatesWith.of_wp_entry_for (f := func85Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func85 _ initial entry env
   rw [advance_loop_shape, List.append_assoc]
-  have hEntryShape : func78.take 4 = [.constI64 0, .localSet 5, .constI64 0, .localSet 10] := rfl
+  have hEntryShape : func85.take 4 = [.constI64 0, .localSet 5, .constI64 0, .localSet 10] := rfl
   rw [hEntryShape]
-  wp_run [entry, func78Def, List.set, List.cons_append, List.nil_append,
+  wp_run [entry, func85Def, List.set, List.cons_append, List.nil_append,
     List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
-  change wp _ ([.block 0 0 [.loop 0 0 advanceLoop]] ++ func78.drop 5) _ initial entry env
+  change wp _ ([.block 0 0 [.loop 0 0 advanceLoop]] ++ func85.drop 5) _ initial entry env
   apply advance_loop_spec env initial heap n time expected spare limit initial entry
     hn hSuccess hLimit hCap hInv
   intro final finalHeap resultFrame hStore hDone
@@ -58,7 +58,7 @@ theorem advance_exact_of_success (env : HostEnv Unit) (initial : Store Unit) (he
   obtain ⟨hTimeBound, hTimeRead⟩ := List.getElem_of_getElem? hFrame.outputTime
   obtain ⟨hOwnerBound, hOwnerRead⟩ := List.getElem_of_getElem? hFrame.outputOwner
   obtain ⟨hPointerBound, hPointerRead⟩ := List.getElem_of_getElem? hFrame.outputPointer
-  unfold func78
+  unfold func85
   dsimp only
   retry_guard_peel
   refine ⟨finalHeap, result, ⟨rfl, hTime.symm⟩, hStore, hTime, ?_, hReserved⟩

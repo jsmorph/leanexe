@@ -16,9 +16,10 @@ def stepAllocation (heap : Heap) (need : UInt64) (accepted : Bool) : Heap × Fre
 macro "step_peel" : tactic => `(tactic|
   repeat
     first
-    | wp_run [func73Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+    | wp_run [func80Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
         boolWord, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.ofNat_mul, -UInt64.ofNat_add, -UInt64.not_le])
 
 end Project.EulerRiemann.Execution

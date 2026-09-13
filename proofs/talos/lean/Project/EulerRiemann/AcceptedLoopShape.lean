@@ -8,12 +8,12 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def acceptedLoop : Wasm.Program :=
-  match (func72[21]? : Option Wasm.Instruction) with
+  match (func79[21]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem accepted_shape :
-    func72 = func72.take 21 ++ [.block 0 0 [.loop 0 0 acceptedLoop]] ++ func72.drop 22 := rfl
+    func79 = func79.take 21 ++ [.block 0 0 [.loop 0 0 acceptedLoop]] ++ func79.drop 22 := rfl
 
 def acceptedFrame (owner pointer : UInt64) (count index : Nat)
     (accepted : Bool) (cell : Traversal.Cell) : Locals :=

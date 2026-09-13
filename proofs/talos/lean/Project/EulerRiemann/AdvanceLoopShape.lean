@@ -6,7 +6,7 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def advanceLoop : Wasm.Program :=
-  match (func78[4]? : Option Wasm.Instruction) with
+  match (func85[4]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
@@ -30,8 +30,8 @@ def advanceFinishBody : Wasm.Program :=
   | some (.iff _ _ body _ _ _) => body
   | _ => []
 
-theorem advance_loop_shape : func78 =
-    func78.take 4 ++ [.block 0 0 [.loop 0 0 advanceLoop]] ++ func78.drop 5 := rfl
+theorem advance_loop_shape : func85 =
+    func85.take 4 ++ [.block 0 0 [.loop 0 0 advanceLoop]] ++ func85.drop 5 := rfl
 
 theorem advance_work_shape : advanceWorkBody = advanceWorkBody.take 13 ++
     [.localGet 16, .constI64 0, .eqI64,

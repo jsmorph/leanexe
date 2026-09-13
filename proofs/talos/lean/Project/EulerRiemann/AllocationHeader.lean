@@ -7,7 +7,7 @@ open Wasm Project.Clob Project.ProofKit.FixedArrayHeader
 theorem sweep_header_shape : sweepBump.drop 28 = program 52 47 7 := rfl
 
 def sweepSearch : Wasm.Program :=
-  match (func70[30]? : Option Wasm.Instruction) with
+  match (func77[30]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
@@ -17,7 +17,7 @@ def sweepFit : Wasm.Program :=
   | _ => []
 
 theorem sweep_search_shape :
-    func70[30]? = some (.block 0 0 [.loop 0 0 sweepSearch]) := rfl
+    func77[30]? = some (.block 0 0 [.loop 0 0 sweepSearch]) := rfl
 
 theorem sweep_fit_shape : sweepSearch[23]? = some (.iff 0 0 sweepFit
     [.localGet 49, .localSet 48, .localGet 51, .localSet 49]) := rfl
