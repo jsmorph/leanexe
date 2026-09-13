@@ -45,3 +45,35 @@ setup.  For that evaluator proof, simplification converted bounded
 optional list reads to indexed reads.  The existing
 `Frame.parameter_getElem_of_get` and `internal_getElem_of_get` projections
 supplied the required equations without enumerating the local vector.
+
+`Expr.typedIteProgram_spec` retains the decoded conditional instruction's
+parameter and result-type lists.  It applies the existing Talos
+control-type equality after executing the descriptor's condition, then
+uses the checked descriptor theorem for the selected branch.
+`Stmt.typedIteAssignProgram_frame_spec` adds assignment and a Locals-frame
+continuation.  Both checked in the same 140-second module build with
+standard axioms.  The existing canonical descriptor programs remain
+available to consumers whose exact regions match them.
+The adapter retains metadata on its outer conditional.  Its condition
+and branch programs still use the canonical `Expr.program` form, so a
+consumer must check those nested regions as part of its exact equality.
+
+The first two module checks failed in 128 and 100 seconds at the assignment
+adapter.  Ordinary evaluator simplification reduced the Option bind.
+Passing `rest` explicitly to `localSet_spec` prevented inference of a raw
+`List.append [] rest` suffix that the restricted continuation rewrite
+left unchanged.  These durations include imports and system I/O.
+
+The extraction stop-index calculation is a checked consumer of the typed
+assignment theorem.  Its emitted five-instruction region selects the
+requested size when that size is at most the represented array length,
+including equality.  The focused module checked in 137 seconds with
+standard axioms.  A preceding combined stop/span target reached its
+six-minute limit without a consumer diagnostic after building the shared
+adapter.  The exact failed draft was retained, and the two calculations
+were split before the focused check.
+
+The span calculation and the complete extraction input now use the same
+adapter.  Their composition with capacity, allocation, and copying checks
+against the current Riemann artifact.  The LTG declaration import check,
+package and forest tests, and Lean-backed knowledge promotion test pass.
