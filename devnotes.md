@@ -11210,3 +11210,22 @@ allowlist.  Exact decoded-region equalities connect their use to the
 current artifact.  Allocation and both initializer calls still require
 composition before the complete caller theorem.  Output, complete
 memory composition, and independent exact-byte verification remain open.
+
+## 2026-09-13: Complete initialCells execution
+
+The complete function-96 theorem now proves termination and exact
+Traversal.initialCells output for runtime sizes two through eight
+hundred, under its entry heap, free-list, reservation, and page-cap
+premises.  It composes checked multiplication, initial-cell evaluation,
+singleton allocation and writes, growth, singleton release, and return.
+The result retains ownership, entry-array separation, and heap and page
+bounds.  Six modules pass with fifteen standard-only axiom reports.
+
+The first complete composition exceeded the heartbeat budget.  Separate
+guard and resource lemmas passed, but the remaining call composition
+still required explicit normalization of the caller's list appends.
+That correction allowed both calls and the release proof to check
+without raising limits.  Existing ProofKit branch-continuation,
+allocator, capacity, multiplication, and field-store results supply the
+composition.  Full run, output, the complete physical memory bound, and
+independent exact-byte verification remain open.
