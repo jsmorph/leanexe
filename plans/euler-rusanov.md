@@ -813,10 +813,12 @@ input frames.  Initializer heap, page-limit, held-owner, and source-prefix
 lemmas check.  The complete growth loop now preserves those properties
 and terminates on completion or fuel exhaustion.  The complete growCells
 function includes post-loop extraction and entry/return composition,
-with exact source-result equality.  Its singleton caller has checked
-pointer installation, length and field writes, and the represented
-one-cell grid.  Singleton allocation and call composition remain open.
+with exact source-result equality.  The complete initialCells caller
+now composes multiplication, initial-cell evaluation, singleton allocation
+and writes, growth, singleton release, and return.  It proves termination
+and exact source output for every supported size under its entry heap,
+free-list, reservation, and page-cap premises.
 Complete retry and time-advance execution cover every reachable status
 under their heap, reservation, and fuel premises.
-Full initialization, output, memory, and exact-byte proofs
+Full run, output, memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.
