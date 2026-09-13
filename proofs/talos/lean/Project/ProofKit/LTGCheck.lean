@@ -2,6 +2,7 @@ import Project.ProofKit.Allocation
 import Project.ProofKit.Array
 import Project.ProofKit.ArrayField
 import Project.ProofKit.ArrayFieldConstant
+import Project.ProofKit.ArrayPrefix
 import Project.ProofKit.BlockLoop
 import Project.ProofKit.CheckedArrayGet
 import Project.ProofKit.CheckedDivMod
@@ -276,11 +277,18 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec
 #check Project.ProofKit.ScalarTransition.postTestProgram_spec
 #check Project.ProofKit.UInt64Array.At.eraseIdx!_of_reads
+#check Project.ProofKit.UInt64Array.At.frame
 #check Project.ProofKit.UInt64Array.At.frameBefore
 #check Project.ProofKit.UInt64Array.At.generatedElement
 #check Project.ProofKit.UInt64Array.At.write64After
+#check Project.ProofKit.UInt64Array.At.writesRange
+#check Project.ProofKit.UInt64Array.PrefixAt.complete
+#check Project.ProofKit.UInt64Array.PrefixAt.elementBound
+#check Project.ProofKit.UInt64Array.PrefixAt.empty
+#check Project.ProofKit.UInt64Array.PrefixAt.write_next
 #check Project.ProofKit.UInt64Array.pair
 #check Project.ProofKit.UInt64Array.singleton
+#check Project.ProofKit.UInt64Array.writeElement_frame
 #check UInt64.toNat_mod
 #check Wasm.TerminatesWith.of_wp_entry_for
 #check Wasm.wp.conseq
