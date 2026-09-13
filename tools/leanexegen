@@ -1910,8 +1910,12 @@ function checkProofAfterArtifactTheorem(workspace, checks, wasm) {
     "lake", "-d", workspace, "env", "lean", "--run",
     path.join(workspace, moduleFile(checks.fileTarget)), wasm,
   ]);
-  const declaration = runLean(5, "declaration audit", "15m",
+  runLean(5, "declaration audit module", "15m",
     ["lake", "-d", workspace, "--no-ansi", "build", checks.declarationTarget]);
+  const declaration = runLean(5, "declaration audit", "15m", [
+    "lake", "-d", workspace, "env", "lean",
+    path.join(workspace, moduleFile(checks.declarationTarget)),
+  ]);
   auditAxioms(`${declaration.stdout}\n${declaration.stderr}`);
 }
 
@@ -3509,8 +3513,11 @@ function checkPromotedKnowledgeSources(forest, packageId) {
         "lake", "-d", workspace, "--no-ansi", "build", moduleName,
       ]);
     }
-    const catalogCheck = runLean(9, `promoted knowledge catalog ${packageId}`, "15m", [
+    runLean(9, `promoted knowledge catalog module ${packageId}`, "15m", [
       "lake", "-d", workspace, "--no-ansi", "build", checkModule,
+    ]);
+    const catalogCheck = runLean(9, `promoted knowledge catalog ${packageId}`, "15m", [
+      "lake", "-d", workspace, "env", "lean", path.join(workspace, moduleFile(checkModule)),
     ]);
     auditAxioms(`${catalogCheck.stdout}\n${catalogCheck.stderr}`, declarations.length,
       (message) => new Error(message));

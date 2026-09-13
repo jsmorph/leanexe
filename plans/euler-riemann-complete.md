@@ -544,7 +544,13 @@ from the combined grid size and free-list invariant, returning all three
 owners.  The complete growth loop remains open.
 The [extraction allocation composition](../proofs/talos/lean/Project/EulerRiemann/InitialExtractAllocate.lean)
 preserves the source owner and returns the extracted prefix's owner and
-bounded write range.  Extraction input preparation remains open.
+bounded write range.  The
+[complete extraction region](../proofs/talos/lean/Project/EulerRiemann/InitialExtractExecute.lean)
+now includes pointer preparation, header loading, bounded stop selection,
+span and copy counts, capacity calculation, allocation, and copying.
+Its two value-producing conditionals use the shared ScalarConditional
+theorems with their decoded control-type metadata.  The complete region
+preserves the source owner and returns the allocated prefix owner.
 Compiler annotation generation now runs through the case's artifact
 command.  The [shared fuel/completion guard](../proofs/talos/lean/Project/ProofKit/FuelGuard.lean)
 and [LTG entry](../ltg/entries/fuel-completion-guard/README.md)

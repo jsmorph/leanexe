@@ -802,7 +802,7 @@ been removed.  The [dev run record](euler-riemann-dev.md) records the
 cancellation.
 
 The [complete solver development](euler-riemann-complete.md) now has
-checked initializer map and append execution, including their input,
+checked initializer map, append, and extraction execution, including their input,
 capacity, allocation, and data regions.  The initializer's loop guard,
 length comparison, extraction return, and old-buffer release also check.
 Complete retry and time-advance execution cover every reachable status

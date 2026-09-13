@@ -525,9 +525,9 @@ also pass.  Full initialization, output, and the complete entry memory
 bound remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
-extraction return, and old-buffer release now have checked execution
-proofs against the current artifact.  Composition with map, append,
-and extraction allocation remains open.  The complete memory proof must
+extraction input and allocation, return, and old-buffer release now have
+checked execution proofs against the current artifact.  Composition of
+these regions into the growth loop remains open.  The complete memory proof must
 bound WASM pages as well as heap allocation addresses.
 
 The shared allocator now covers arbitrary free-list reuse and memory

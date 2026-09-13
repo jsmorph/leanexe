@@ -68,6 +68,8 @@ Leanexegen represents accumulated proof knowledge as files with checked identiti
 
 `promote` takes an experimental package and a selected forest, creates a new promoted package version, checks the resulting forest, and builds every package-local Lean module.  The same Lean check resolves every advertised declaration and prints its axioms, rejecting `sorryAx` or an unsupported axiom.  It copies every selected package into a self-contained snapshot directory and leaves both inputs unchanged, after which generation or reproof selects the new state through `--knowledge`.
 
+Declaration audits build their check module, then invoke Lean on that source through `lake env lean`.  This produces the requested axiom reports without Lake's replayed dependency reports.  The audit requires the exact expected report count and checks every reported axiom.
+
 The derived package may contain a checked lemma or tactic, prose guidance, or a worked proof example.  Checked Lean support becomes a theorem dependency when a later proof imports it, while guidance and examples influence proof construction without becoming premises of the artifact theorem.  Separate forest snapshots compose core, project, experimental, and run-derived packages without merging their contents.
 
 ```sh
