@@ -553,6 +553,9 @@ reservation also pass.  The complete retry function now covers every
 return status without assuming source success.  It establishes the
 branch premises, terminates the loop, and returns the specified status,
 timestep, and owned grid while preserving held grids and runtime limits.
+Its strengthened theorem now preserves a supplied physical page limit
+through both sweeps, accepted and rejected trials, invalid advancement,
+and retry exhaustion.  The byte reservation must fit that page limit.
 The complete outer time-advance function also passes without assuming
 source success.  It covers failed scans and failed retries, preserves
 the last accepted grid, and accounts for the empty failed-retry result.

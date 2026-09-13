@@ -820,5 +820,8 @@ and exact source output for every supported size under its entry heap,
 free-list, reservation, and page-cap premises.
 Complete retry and time-advance execution cover every reachable status
 under their heap, reservation, and fuel premises.
+Complete retry execution now also preserves a supplied physical page
+limit through all success and failure returns.  Extending that bound
+through outer advancement and output remains open.
 Full run, output, memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.

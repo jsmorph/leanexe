@@ -139,7 +139,11 @@ preservation, and the reduced memory reservation.  The shared allocator
 proof covers arbitrary free-list search and growth with configurable
 local windows and element strides.  The complete retry function now
 covers every return status without a source-success premise, preserving
-held-grid ownership and the allocation reservation.  Complete outer
+held-grid ownership and the allocation reservation.  Its strengthened
+theorem carries a supplied physical page bound through both sweeps,
+accepted and rejected trials, and both empty failure allocations.
+The caller must bound initial pages and fit its reservation within
+that page limit.  Complete outer
 time advancement also passes for every reachable return, under explicit
 heap, reservation, and sufficient-fuel premises.  Full run,
 output, and the entry memory bound remain open.  The remaining execution inventory below records results for

@@ -3,19 +3,20 @@ import Project.EulerRiemann.RetryTotalLoop
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ProofKit FixedArrayCapacity FixedArrayFold
 
-theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+theorem retry_pages_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (source : FreeNode) (grid : Array Traversal.Cell) (n : Nat) (fuel time dt : UInt64)
-    (spare limit : Nat) (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Traversal.Indexed n grid)
+    (spare limit pageLimit : Nat) (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Traversal.Indexed n grid)
     (hHeap : heap.At initial) (hOwner : heap.Owns initial source grid)
-    (hPages : initial.mem.pages ≤ 65536)
+    (hPages : initial.mem.pages ≤ pageLimit) (hPageLimit : pageLimit ≤ 65536)
     (hReserve : heap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 2) limit)
-    (hLimit : limit < 4294967296) (hCap : limit ≤ initial.memoryCap module 0 * 65536) :
+    (hLimit : limit < 4294967296) (hCap : limit ≤ initial.memoryCap module 0 * 65536)
+    (hLimitPages : limit ≤ pageLimit * 65536) :
     let expected := Control.retry fuel.toNat n time dt grid
     TerminatesWith env module 81 initial
       [.i64 source.root, .i64 source.root, .i64 dt, .i64 time, .i64 (UInt64.ofNat n), .i64 fuel]
       (fun final values => ∃ finalHeap result,
         values = [.i64 result.root, .i64 result.root, .i64 expected.dt, .i64 expected.status] ∧
-        RetryStoreAt initial heap final finalHeap ∧ finalHeap.Owns final result expected.grid ∧
+        RetryStoreAt initial heap final finalHeap ∧ final.mem.pages ≤ pageLimit ∧ finalHeap.Owns final result expected.grid ∧
         finalHeap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 1) limit ∧
         (expected.status = 0 → normalizedCapacity (UInt64.ofNat grid.size) 7 ≤ result.capacity) ∧
         ∀ (saved : FreeNode) (savedGrid : Array Traversal.Cell), heap.Owns initial saved savedGrid →
@@ -27,8 +28,8 @@ theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     constructor <;> rfl
   have hScratch : RetryScratch entry := rfl
   have hInv : retryTotalInvariant initial heap n time source.root
-      (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit initial entry :=
-    ⟨heap, ⟨hHeap, hPages, rfl, fun _ _ h => h⟩, Or.inl ⟨⟨fuel, dt, hStart, rfl, hReserve⟩, hScratch⟩⟩
+      (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit initial entry :=
+    ⟨heap, ⟨hHeap, hPages.trans hPageLimit, rfl, fun _ _ h => h⟩, hPages, Or.inl ⟨⟨fuel, dt, hStart, rfl, hReserve⟩, hScratch⟩⟩
   refine TerminatesWith.of_wp_entry_for (f := func81Def) rfl ?_ (by decide)
   change wp module func81 _ initial entry env
   rw [retry_loop_shape, List.append_assoc]
@@ -38,9 +39,9 @@ theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   change wp _ ([.block 0 0 [.loop 0 0 retryLoop]] ++ func81.drop 5) _ initial entry env
-  apply retry_total_loop_spec env initial heap source grid n time expected spare limit initial entry
-    hn hIndexed hOwner hLimit hCap hInv
-  intro final finalHeap resultFrame hStore hStopped
+  apply retry_total_loop_spec env initial heap source grid n time expected spare limit pageLimit initial entry
+    hn hIndexed hOwner hLimit hCap hPageLimit hLimitPages hInv
+  intro final finalHeap resultFrame hStore hFinalPages hStopped
   rcases hStopped with hDone | ⟨lastDt, hFrame, hSame, hReserved, hLastScratch⟩
   · obtain ⟨result, hFrame, hResult, hReserved, hCapacity, hSeparated⟩ := hDone
     have hParams := hFrame.params
@@ -78,6 +79,8 @@ theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       · simp only [bumpPages, show (8 : UInt64).toNat = 8 from rfl]
         omega
     have hResource := hStore.empty need spare limit hReserved hNeed hLimit
+    have hEmptyPages := finalHeap.emptyStore_pages_bound final need spare limit pageLimit
+      hFinalPages hReserved hNeed hLimitPages
     have hExpected : expected = { status := 4, dt := lastDt, grid := #[] } := by
       simpa only [Control.retry] using hSame.symm
     change Control.retry fuel.toNat n time dt grid = { status := 4, dt := lastDt, grid := #[] } at hExpected
@@ -97,7 +100,7 @@ theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       List.cons_append, List.nil_append, List.getElem?_append, List.getElem?_cons_zero,
       List.getElem?_cons_succ, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
     refine wp_iff_cons rfl ?_
-    simp only [ne_eq, not_false_eq_true, ite_true, List.take_zero, List.drop_zero, List.nil_append]
+    simp only [ne_eq, List.take_zero, List.drop_zero, List.nil_append]
     apply retry_failure_program_spec env final finalHeap params saved hParams hSaved
       4 lastDt 0 0 0 0 0 0 hDtRead hStore.heapState hBump hStore.pages _ []
     intro previous current capacity next
@@ -106,12 +109,35 @@ theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
       List.getElem?_append, List.getElem?_cons_zero, List.getElem?_cons_succ,
       reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff]
-    refine ⟨finalHeap.allocate 8, allocatedNode finalHeap.top 8 finalHeap.nodes, ?_, hResource.1,
+    refine ⟨finalHeap.allocate 8, allocatedNode finalHeap.top 8 finalHeap.nodes, ?_, hResource.1, hEmptyPages,
       ?_, hResource.2.2.1, ?_, hResource.2.2.2⟩
     · simp [hExpected, allocatedNode]
     · simpa only [hExpected] using hResource.2.1
     · simp [hExpected]
 
+theorem retry_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+    (source : FreeNode) (grid : Array Traversal.Cell) (n : Nat) (fuel time dt : UInt64)
+    (spare limit : Nat) (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Traversal.Indexed n grid)
+    (hHeap : heap.At initial) (hOwner : heap.Owns initial source grid)
+    (hPages : initial.mem.pages ≤ 65536)
+    (hReserve : heap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 2) limit)
+    (hLimit : limit < 4294967296) (hCap : limit ≤ initial.memoryCap module 0 * 65536) :
+    let expected := Control.retry fuel.toNat n time dt grid
+    TerminatesWith env module 81 initial
+      [.i64 source.root, .i64 source.root, .i64 dt, .i64 time, .i64 (UInt64.ofNat n), .i64 fuel]
+      (fun final values => ∃ finalHeap result,
+        values = [.i64 result.root, .i64 result.root, .i64 expected.dt, .i64 expected.status] ∧
+        RetryStoreAt initial heap final finalHeap ∧ finalHeap.Owns final result expected.grid ∧
+        finalHeap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 1) limit ∧
+        (expected.status = 0 → normalizedCapacity (UInt64.ofNat grid.size) 7 ≤ result.capacity) ∧
+        ∀ (saved : FreeNode) (savedGrid : Array Traversal.Cell), heap.Owns initial saved savedGrid →
+          regionsDisjoint saved.region result.region) := by
+  apply (retry_pages_exact env initial heap source grid n fuel time dt spare limit 65536
+    hn hIndexed hHeap hOwner hPages (Nat.le_refl _) hReserve hLimit hCap hLimit.le).mono
+  rintro final values ⟨finalHeap, result, hValues, hStore, _, hResult⟩
+  exact ⟨finalHeap, result, hValues, hStore, hResult⟩
+
+#print axioms retry_pages_exact
 #print axioms retry_exact
 
 end Project.EulerRiemann.Execution

@@ -1,6 +1,7 @@
 import Project.EulerRiemann.RetryResources
 import Project.EulerRiemann.HeapEmpty
 import Project.EulerRiemann.HeapReserveSmall
+import Project.EulerRiemann.AllocationPageBound
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ProofKit.FixedArrayResult
@@ -27,6 +28,18 @@ theorem RetryStoreAt.empty {initial current : Store Unit} {initialHeap heap : He
   have hReserve := hReserved.allocate_small (by omega) hNeed hLimit.le
   exact ⟨hState.1, hOwned.2.1, by simpa using hReserve, hState.2⟩
 
+theorem Heap.emptyStore_pages_bound (heap : Heap) (store : Store Unit)
+    (need : UInt64) (spare limit pageLimit : Nat)
+    (hPages : store.mem.pages ≤ pageLimit)
+    (hReserved : heap.Reserved need (spare + 2) limit) (hNeed : 8 ≤ need)
+    (hLimitPages : limit ≤ pageLimit * 65536) :
+    (heap.emptyStore store).mem.pages ≤ pageLimit := by
+  simp only [Heap.emptyStore, writeLength_pages]
+  apply heap.allocateStore_pages_bound store 8 pageLimit hPages
+  intro hNone
+  exact (hReserved.bump_small_bound (by omega) hNeed hNone).trans hLimitPages
+
 #print axioms RetryStoreAt.empty
+#print axioms Heap.emptyStore_pages_bound
 
 end Project.EulerRiemann.Execution
