@@ -20,33 +20,35 @@ def inputsValues (input : Inputs) : List Wasm.Value :=
 
 theorem orient_exact (env : HostEnv Unit) (initial : Store Unit)
     (axis : Bool) (state : State) :
-    TerminatesWith env Project.EulerRiemann.«module» 32 initial
+    TerminatesWith env Project.EulerRiemann.«module» 39 initial
       (stateValues state ++ [.i64 (boolWord axis)])
       (fun final values => final = initial ∧ values = stateValues (orient axis state)) := by
-  refine TerminatesWith.of_wp_entry_for (f := func32Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func32 _ initial
-    (func32Def.toLocals [.i64 (boolWord axis), .i64 state.density,
+  refine TerminatesWith.of_wp_entry_for (f := func39Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func39 _ initial
+    (func39Def.toLocals [.i64 (boolWord axis), .i64 state.density,
       .i64 state.mx, .i64 state.my, .i64 state.energy]) env
-  unfold func32
+  unfold func39
   cases axis
   all_goals
     repeat
       first
-      | wp_run [func32Def, boolWord, List.set, List.getElem?_cons_zero,
+      | wp_run [func39Def, boolWord, List.set, List.getElem?_cons_zero,
           List.getElem?_cons_succ, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
-      | refine wp_iff_cons rfl ?_
+      | (try simp only [Wasm.wp_iff_control_types])
+        refine wp_iff_cons rfl ?_
         conv => arg 2; simp [boolWord]
     simp [stateValues, orient]
 
 macro "inputs_peel" : tactic => `(tactic|
   repeat
     first
-    | wp_run [func33Def, stateValues, cellValues, inputsValues,
+    | wp_run [func40Def, stateValues, cellValues, inputsValues,
         Memory.cellWords, Array.getD, List.set,
         ← Project.ProofKit.Memory.toUInt32_eq_ofNat, UInt32.add_zero, UInt32.toNat_zero,
         Nat.add_zero, List.getElem?_cons_zero, List.getElem?_cons_succ,
         reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reducePow, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       conv => arg 2; simp [*, -UInt64.ofNat_mul, -UInt64.ofNat_add, -UInt64.not_le])
 
 theorem cellInputs_exact (env : HostEnv Unit) (initial : Store Unit)
@@ -54,7 +56,7 @@ theorem cellInputs_exact (env : HostEnv Unit) (initial : Store Unit)
     (grid : Array Traversal.Cell) (cell : Traversal.Cell)
     (hn : 2 ≤ n ∧ n ≤ 800) (hSize : grid.size = n * n)
     (hi : cell.index < n * n) (hGrid : Memory.GridAt initial pointer grid) :
-    TerminatesWith env Project.EulerRiemann.«module» 33 initial
+    TerminatesWith env Project.EulerRiemann.«module» 40 initial
       (cellValues cell ++ [.i64 pointer, .i64 owner,
         .i64 (boolWord axis), .i64 (UInt64.ofNat n)])
       (fun final values => final = initial ∧
@@ -102,13 +104,13 @@ theorem cellInputs_exact (env : HostEnv Unit) (initial : Store Unit)
       UInt64.ofNat (8 * (7 * i + 4 + 1)) := Memory.field_offset i 4
   have hBound4 (i : Nat) (h : i < grid.size) := Nat.not_lt.mpr (hGrid.fieldBound i 4 h (by decide))
   have hRead4 (i : Nat) (h : i < grid.size) := hGrid.fieldRead i 4 h (by decide)
-  refine TerminatesWith.of_wp_entry_for (f := func33Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func33 _ initial
-    (func33Def.toLocals [.i64 (UInt64.ofNat n), .i64 (boolWord axis),
+  refine TerminatesWith.of_wp_entry_for (f := func40Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func40 _ initial
+    (func40Def.toLocals [.i64 (UInt64.ofNat n), .i64 (boolWord axis),
       .i64 owner, .i64 pointer, .i64 (UInt64.ofNat cell.index),
       .i64 cell.state.density, .i64 cell.state.mx, .i64 cell.state.my,
       .i64 cell.state.energy, .i64 cell.pressure, .i64 cell.status]) env
-  unfold func33
+  unfold func40
   inputs_peel
   refine wp_call_tw (neighborIndex_exact env initial n cell.index axis false hn hi) ?_
   rintro final values ⟨hFinal, rfl⟩

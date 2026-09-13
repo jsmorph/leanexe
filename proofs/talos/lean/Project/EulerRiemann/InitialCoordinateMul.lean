@@ -6,7 +6,7 @@ import Project.ProofKit.Frame
 namespace Project.EulerRiemann.Execution
 open Wasm
 
-theorem initial_mul_region : Project.ProofKit.Annotation.region func87 [] 5 9 =
+theorem initial_mul_region : Project.ProofKit.Annotation.region func94 [] 5 9 =
     some (Project.ProofKit.CheckedNatMul.program 43 44) := rfl
 
 def quadrupleProgram : Wasm.Program :=
@@ -62,8 +62,8 @@ theorem initial_quadruple_spec (env : HostEnv Unit) (store : Store Unit) (frame 
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.EulerRiemann.«module» rest Q store
       (initialQuadrupleFrame frame n tail) env) :
-    wp Project.EulerRiemann.«module» (func87.take 10 ++ rest) Q store frame env := by
-  have hShape : func87.take 10 = .constI64 5 :: quadrupleProgram := rfl
+    wp Project.EulerRiemann.«module» (func94.take 10 ++ rest) Q store frame env := by
+  have hShape : func94.take 10 = .constI64 5 :: quadrupleProgram := rfl
   rw [hShape]
   simp only [List.cons_append, wp_simp, hValues]
   apply quadruple_spec env store { frame with values := .i64 5 :: tail }

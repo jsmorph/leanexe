@@ -22,10 +22,10 @@ def initialWeightProgram (remainder : Bool) : Wasm.Program :=
   [.constI64 5] ++ initialDifferenceProgram remainder ++
     [.leUI64, .iff 0 1 [.constI64 5] (initialDifferenceProgram remainder) [] [.i64]]
 
-theorem initial_x_weight_region : Annotation.region func87 [] 0 32 =
+theorem initial_x_weight_region : Annotation.region func94 [] 0 32 =
     some (initialWeightProgram true) := rfl
 
-theorem initial_y_weight_region : Annotation.region func87 [] 33 65 =
+theorem initial_y_weight_region : Annotation.region func94 [] 33 65 =
     some (initialWeightProgram false) := rfl
 
 theorem initial_weight_spec (remainder : Bool) (env : HostEnv Unit)
