@@ -2,6 +2,17 @@ import Mathlib.Tactic
 
 namespace Project.ProofKit.RealRusanovError
 
+theorem reference_flux (fluxL fluxR referenceL referenceR viscosity result errorLeft errorRight errorResult : ℝ)
+    (hl : |fluxL - referenceL| ≤ errorLeft) (hr : |fluxR - referenceR| ≤ errorRight)
+    (he : |result - ((fluxL + fluxR) / 2 - viscosity)| ≤ errorResult) :
+    |result - ((referenceL + referenceR) / 2 - viscosity)| ≤
+      errorResult + (errorLeft + errorRight) / 2 := by
+  obtain ⟨hll, hlr⟩ := abs_le.mp hl
+  obtain ⟨hrl, hrr⟩ := abs_le.mp hr
+  obtain ⟨hel, her⟩ := abs_le.mp he
+  apply abs_le.mpr
+  constructor <;> linarith only [hll, hlr, hrl, hrr, hel, her]
+
 theorem component (alpha fluxL fluxR stateL stateR sum mean jump viscosity halfViscosity result
     es em ej ev eh er : ℝ) (ha : 0 ≤ alpha)
     (hs : |sum - (fluxL + fluxR)| ≤ es) (hm : |mean - sum / 2| ≤ em)
@@ -22,5 +33,6 @@ theorem component (alpha fluxL fluxR stateL stateR sum mean jump viscosity halfV
   constructor <;> linarith only [hs'.1, hs'.2, hm'.1, hm'.2, hjlo, hjhi,
     hv'.1, hv'.2, hh'.1, hh'.2, hr'.1, hr'.2]
 
+#print axioms reference_flux
 #print axioms component
 end Project.ProofKit.RealRusanovError
