@@ -196,15 +196,48 @@ namespace Project.${item.leanModule}.Artifact
 def sha256 : String :=
   "${sha256}"
 
-def artifactBytes : ByteArray :=
-${kernel ? "  ⟨⟨[" : "  ["}
+${kernel ? "def artifactData : Array UInt8 :=\n  ⟨[" : "def artifactBytes : ByteArray :=\n  ["}
 ${formatBytes(bytes)}
-${kernel ? "  ]⟩⟩" : "  ].map UInt8.ofNat |>.toByteArray"}
+${kernel ? "  ]⟩\n\ndef artifactBytes : ByteArray :=\n  ⟨artifactData⟩\n\ntheorem artifactBytes_data : artifactBytes.data = artifactData := rfl" : "  ].map UInt8.ofNat |>.toByteArray"}
 
 theorem artifactBytes_size : artifactBytes.size = ${bytes.length} := by
   ${kernel ? "rfl" : "native_decide"}
 
 end Project.${item.leanModule}.Artifact`;
+}
+
+function byteLookupModule(item, bytes) {
+  const declarations = [];
+  function split(start, stop) {
+    const name = `bytes_${start}_${stop}`;
+    const size = stop - start;
+    if (size <= 256) {
+      declarations.push(`def ${name} : List UInt8 :=\n  [${Array.from(bytes.subarray(start, stop)).join(", ")}]\n\ntheorem ${name}_length : ${name}.length = ${size} := by rfl`);
+    } else {
+      const middle = start + Math.floor(size / 2);
+      const left = split(start, middle);
+      const right = split(middle, stop);
+      declarations.push(`@[cbv_opaque] def ${name} : List UInt8 :=\n  ${left} ++ ${right}\n\ntheorem ${name}_length : ${name}.length = ${size} := by\n  change (${left} ++ ${right}).length = ${size}\n  rw [List.length_append, ${left}_length, ${right}_length]\n\n@[cbv_eval] theorem ${name}_get (i : Nat) :\n    ${name}[i]? = if i < ${middle - start} then ${left}[i]? else ${right}[i - ${middle - start}]? := by\n  change (${left} ++ ${right})[i]? = _\n  rw [List.getElem?_append, ${left}_length]`);
+    }
+    return name;
+  }
+  const root = split(0, bytes.length);
+  return `import Project.${item.leanModule}.ArtifactBytes
+import Lean.Elab.Tactic.Cbv
+
+namespace Project.${item.leanModule}.Artifact.ByteLookup
+
+${declarations.join("\n\n")}
+
+set_option maxRecDepth 131072 in
+theorem data_eq : artifactData.toList = ${root} := by rfl
+
+@[cbv_eval] theorem data_get (i : Nat) : artifactData[i]? = ${root}[i]? := by
+  rw [← Array.getElem?_toList, data_eq]
+
+#print axioms data_get
+
+end Project.${item.leanModule}.Artifact.ByteLookup`;
 }
 
 function cacheModule(item, raw, kernel = false) {
@@ -433,6 +466,7 @@ function migrate(item, { kernel = false } = {}) {
   ];
   const packageRoot = path.join(artifactRoot, item.name, sha256);
   if (kernel) {
+    outputs.push(textOutput(path.join(moduleRoot, "ArtifactByteLookup.lean"), byteLookupModule(item, bytes)));
     for (const output of outputs) {
       output.bytes = Buffer.from(output.bytes.toString("utf8").replaceAll("native_decide", "decide +kernel"));
     }
@@ -534,5 +568,6 @@ module.exports = {
   applyOutputs,
   binaryOutput,
   buildDumpRaw,
+  byteLookupModule,
   textOutput,
 };

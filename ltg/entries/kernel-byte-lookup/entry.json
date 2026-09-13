@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "kernel-byte-lookup",
+  "title": "Checked lookup for embedded binary literals",
+  "summary": "Uses proved list-concatenation lookup equalities to reduce kernel checking cost in closed binary-decoder certificates.",
+  "roles": ["guidance", "worked-example"],
+  "categories": ["proof-construction", "worked-examples"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["binary-decoder", "byte-array", "cbv", "kernel-checking", "literal-lookup", "proof-sharing"],
+  "annotationKinds": [],
+  "modules": [],
+  "declarations": [],
+  "premises": ["An exact embedded byte array", "Closed decoder computations that exceed a bounded kernel check", "Kernel-checked equality between the lookup representation and every embedded byte"],
+  "result": "The decoder keeps its original definition while checked lookup rewrites reduce repeated traversal of large byte literals.",
+  "consumers": ["euler-riemann-binary-decoder"],
+  "relatedEntries": ["compact-loop-suffix-boundary"],
+  "exclusion": null,
+  "tactics": []
+}

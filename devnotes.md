@@ -11424,3 +11424,22 @@ A decoder-based offset utility supplies proof boundaries.  The new
 complete-solver data script preserves every returned word and checks
 status, time, dimensions, and field values before writing plotting data.
 Its output-decoding tests pass.  Neither production run has started.
+
+## 2026-09-13: Checked byte lookup and parser proof reuse
+
+Kernel-mode artifact generation now includes balanced byte-lookup
+certificates.  A reflexive full-content equality and universal index
+theorem connect the representation to the frozen bytes.  The lookup
+theorem and ten sequence proofs covering function 99 use only propext.
+The full function-body decoder theorem remains under test.
+
+A dependency audit exposed cumulative recomputation despite registered
+suffix equations.  The checked evaluator now gives the curried parser
+an explicit cursor parameter and selects closed sequence equations
+before its generic step equation.  The small consumer's dependency
+audit confirms use of the earlier suffix and lookup theorems.  The
+generic eta and step equations require no axioms.  LTG records the
+method and failed approaches as a provisional entry.  Forty entries
+in seven categories and 117 maintained documents pass their checks.
+Complete decoding, validation, translation, independent verification,
+and both production calculations remain open.

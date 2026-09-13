@@ -7,8 +7,8 @@ namespace Project.EulerRiemann.Artifact
 def sha256 : String :=
   "baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310"
 
-def artifactBytes : ByteArray :=
-  ⟨⟨[
+def artifactData : Array UInt8 :=
+  ⟨[
     0, 97, 115, 109, 1, 0, 0, 0, 1, 244, 7, 108, 96, 0, 1, 126, 96, 7, 126, 126,
     126, 126, 126, 126, 126, 4, 126, 126, 126, 126, 96, 1, 126, 1, 126, 96, 1, 126, 1, 126,
     96, 1, 126, 1, 126, 96, 4, 126, 126, 126, 126, 1, 126, 96, 1, 126, 1, 126, 96, 1,
@@ -1098,7 +1098,12 @@ def artifactBytes : ByteArray :=
     11, 32, 7, 66, 1, 124, 33, 7, 12, 0, 11, 11, 11, 35, 5, 66, 1, 124, 36, 5,
     32, 0, 66, 40, 125, 167, 66, 0, 55, 3, 0, 32, 0, 66, 8, 125, 167, 35, 1, 55,
     3, 0, 32, 0, 36, 1, 11
-  ]⟩⟩
+  ]⟩
+
+def artifactBytes : ByteArray :=
+  ⟨artifactData⟩
+
+theorem artifactBytes_data : artifactBytes.data = artifactData := rfl
 
 theorem artifactBytes_size : artifactBytes.size = 21767 := by
   rfl

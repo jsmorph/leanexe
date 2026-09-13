@@ -1,0 +1,46 @@
+# Checked lookup for embedded binary literals
+
+Closed parser proofs can exceed the kernel's computation limit when
+each byte read reduces an indexed lookup through a long list literal.
+Lean's checked `cbv` evaluator creates proof terms for those computations.
+Dividing a parser proof at function or instruction-sequence boundaries
+limits each certificate, but repeated literal lookup can still dominate
+checking.
+
+The kernel mode of the [artifact generator](../../../tools/artifact-migrate.js)
+emits a balanced list-concatenation representation with leaves of at most
+256 bytes.  A reflexive equality checks the complete list against the
+embedded array.  `List.getElem?_append` then proves each internal lookup
+step, and a universal theorem equates the original array lookup with the
+generated representation.  These equalities include out-of-range indices.
+
+During `cbv`, the byte-array and array constants remain opaque.  Checked
+data-projection and size equalities expose their required observations.
+Each internal list node also remains opaque, with a `cbv_eval` lookup
+theorem selecting its child.  The decoder definition, parser cursor,
+returned value, and byte contents remain the subjects of the proof.
+
+The Riemann artifact has 21,767 bytes.  A proof starting at instruction
+333 of its largest function failed at the kernel limit after 108 seconds.
+Keeping the byte-array constant shared still failed after 112 seconds.
+The same statement passed with the lookup equalities and its original
+heartbeat allowance.  The final 14-instruction suffix also passed, and
+its compiled proof module decreased from 8,857,744 to 4,678,256 bytes.
+All accepted lookup and suffix theorems used only `propext`.
+
+Suffix reuse requires a separate dependency check.  The first registered
+suffix equations were absent from the accepted proof's dependencies.
+`cbv` processed `instructionSequence fuel allowElse` before applying
+its cursor.  The [parser evaluation support](../../../proofs/talos/lean/Project/Artifact/Binary/Evaluate.lean)
+adds a definitionally equal form with an explicit cursor parameter and
+an `Except` result type.  Its eta equality preserves the original
+parser, and a proof-producing simproc tries closed sequence equations
+before the generic step equation.  The corrected consumer's dependency
+audit confirms use of the earlier suffix and byte-lookup theorems.
+
+The [checked lookup module](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactByteLookup.lean)
+and [suffix consumer](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99Part333.lean)
+record the application.  Complete Riemann artifact verification and a
+held-out measurement remain open.  This entry records a provisional
+proof-generation method and does not import the Riemann declarations
+into later proof tasks.
