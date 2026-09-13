@@ -38,8 +38,29 @@ theorem fittingCount_some (previous need : UInt64) (nodes : List FreeNode)
   simp [hNodes, hRemaining, fittingCount_append, fittingCount, hFit, Nat.add_comm,
     Nat.add_left_comm]
 
+theorem fittingCount_mono {small large : UInt64} (hSize : small ≤ large)
+    (nodes : List FreeNode) : fittingCount large nodes ≤ fittingCount small nodes := by
+  induction nodes with
+  | nil => rfl
+  | cons node rest ih =>
+    by_cases hLarge : large ≤ node.capacity
+    · have hSmall : small ≤ node.capacity := UInt64.le_trans hSize hLarge
+      simpa only [fittingCount, hLarge, hSmall, ite_true] using Nat.add_le_add_left ih 1
+    · simp only [fittingCount, hLarge, ite_false, Nat.zero_add]
+      split <;> omega
+
+theorem fittingCount_choice (previous request threshold : UInt64) (nodes : List FreeNode)
+    (choice : FreeChoice) (hTake : takeFirstFitFrom previous request nodes = some choice) :
+    fittingCount threshold choice.remaining + (if threshold ≤ choice.node.capacity then 1 else 0) =
+      fittingCount threshold nodes := by
+  obtain ⟨skipped, tail, hNodes, _, _, hRemaining, _⟩ := takeFirstFitFrom_some_decompose hTake
+  simp [hNodes, hRemaining, fittingCount_append, fittingCount, Nat.add_comm,
+    Nat.add_left_comm, Nat.add_assoc]
+
 #print axioms fittingCount_append
 #print axioms fittingCount_none
 #print axioms fittingCount_some
+#print axioms fittingCount_mono
+#print axioms fittingCount_choice
 
 end Project.ProofKit.FreeListCount
