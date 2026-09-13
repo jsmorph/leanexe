@@ -535,7 +535,9 @@ prefix, entry-held owners, and the remaining allocation budget, and
 terminates on completion or fuel exhaustion.  Complete growCells execution
 now includes post-loop extraction and function entry/return, with exact
 source-result equality and ownership preservation.  Its singleton caller
-remains open.  The complete memory proof
+now has checked pointer installation, length and field writes, and the
+resulting one-cell representation.  Allocation and call composition
+remain open.  The complete memory proof
 must bound WASM pages as well as heap allocation addresses.
 Map and append now accept arbitrary loop frames and return the required
 buffer getters.  Allocation and grid writes have a checked arbitrary

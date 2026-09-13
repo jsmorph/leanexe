@@ -16828,3 +16828,68 @@ Reviewed the two proof modules and five development-record changes.
 The documentation check passed for 116 maintained Markdown files, and
 the whitespace check passed.  Preparing these seven paths as the next
 checkpoint, preserving all unrelated report work.
+
+Published and verified 2d84a3cf067c8268dfb563cdb2a610d2d4b8575d,
+parent e53d484a8d56ad93469378c5375a834e67389da2, tree
+ac5e9b281dfba3f6a392398c45bc5846e1d77f2c.  The fetched metadata,
+complete index, and all seven checkpoint worktree paths match.
+
+The array-field-access LTG entry supplied the shared address arithmetic
+for function 96's constant-index singleton stores.  ArrayFieldConstant
+now proves one literal-index address or store for arbitrary width,
+field, local roles, and operand-stack tail.  ConstantFieldStores composes
+an arbitrary consecutive field sequence from consecutive value locals.
+Its first check required explicit list head and tail types before
+normalizing getter indices.  The revised induction passed and preserves
+page count through every write.
+
+InitialSingletonShape matches the current decoded multiplication,
+capacity, allocation, and seven-store regions to the shared programs.
+InitialSingletonStore uses the sequence theorem to produce exactly
+Memory.writeCell.  Its first check needed an explicit eight-word address
+bound.  InitialSingletonMemory combines the existing length-store and
+grid-prefix lemmas to establish the singleton representation and byte
+framing.  Its first check used decide on a bound containing the cell
+parameter.  Replacing that with simplification completed the theorem.
+
+InitialSingletonData now composes result-pointer installation, the
+length store, seven register assignments, and seven field writes from
+an arbitrary caller frame.  Four failed checks exposed my malformed
+multiline method chains and structure-field layout, plus a local-index
+normalization.  Parenthesis edits did not address the parser's treatment
+of a detached .set as an argument.  Explicit successive local bindings
+removed that syntax problem.  The fifth check passed without a remaining
+proof diagnostic.  Failed elaborations reported sorryAx from their
+recovery terms and were rejected.  The accepted six-module sources
+contain no placeholders, and all fourteen public axiom reports contain
+only propext, Classical.choice, and Quot.sound.  Their own traces contain
+no warnings.  Every target used one standard tools/leanrun invocation
+with a six-minute timeout.  No source program, exact artifact, runtime
+setting, or dataset changed.
+
+Extended the existing provisional array-field-access entry with both
+shared modules, the constant-index and consecutive-field features, and
+the checked singleton consumer.  Updated the ProofKit catalog and the
+canonical module/file allowlists.  The older map measurements remain
+historical evidence, with the current function indices stated separately.
+The new theorem supplies a reusable finite sequence proof rather than
+seven repeated execution derivations.  Complete artifact consumption,
+independent package verification, singleton allocation and caller
+composition, output, and complete memory composition remain open.
+
+The first LTG rebuild rejected the unsorted declaration list before
+writing derived files.  Sorting that list completed rebuild and check
+for seven categories and thirty-nine entries.  The knowledge forest
+check passed for one package and thirty-nine entries.  The LTG test
+passed, with a 2.934 ms search over ten thousand records.  Knowledge and
+leanexegen tests passed.  The latter retained its owned fixture at
+tmp/leanexegen-test-z9wohz.  The standard runner's twenty-minute knowledge
+Lean test passed both package promotions from its fresh
+tmp/knowledge-test-5n2wDk fixture.  The focused LTGCheck build passed
+through the standard six-minute runner.  The documentation check passed
+for 116 maintained Markdown files, and whitespace passed.
+
+Reviewed the six new proofs, LTG metadata and four generated category
+indexes, generated declaration check, ProofKit catalog and allowlists,
+and five development records.  Preparing these twenty explicit paths
+as one checkpoint.  The unrelated report files remain untouched.
