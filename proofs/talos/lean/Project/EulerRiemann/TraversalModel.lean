@@ -1,5 +1,4 @@
 import Project.EulerRiemann.TraversalSweep
-import Project.Euler2DCellStep.Runner
 
 namespace Project.EulerRiemann.Traversal
 open Project.Euler2DCellStep.Sweep
@@ -44,7 +43,7 @@ theorem sweep_getElem (n : Nat) (axis : Bool) (ratio : UInt64) (grid : Array Cel
 theorem sweep_asGrid (n : Nat) (axis : Bool) (ratio : UInt64) (grid : Array Cell)
     (h : Indexed n grid) :
     asGrid n (sweep n axis ratio grid) =
-      nextGrid axis (outputs ratio axis (asGrid n grid)) := by
+      nextGrid axis (Numerics.outputs ratio axis (asGrid n grid)) := by
   funext j i
   have hi : j.val * n + i.val < grid.size := by
     rw [h.1]
@@ -56,7 +55,7 @@ theorem sweep_asGrid (n : Nat) (axis : Bool) (ratio : UInt64) (grid : Array Cell
 theorem sweep_accepted_iff (n : Nat) (axis : Bool) (ratio : UInt64)
     (grid : Array Cell) (h : Indexed n grid) :
     accepted (sweep n axis ratio grid) = true ↔
-      Accepted (outputs ratio axis (asGrid n grid)) := by
+      Accepted (Numerics.outputs ratio axis (asGrid n grid)) := by
   simp only [accepted, Array.all_eq_true, beq_iff_eq]
   constructor
   · intro ha j i
@@ -66,7 +65,7 @@ theorem sweep_accepted_iff (n : Nat) (axis : Bool) (ratio : UInt64)
     have hs := ha (j.val * n + i.val) (by simpa [sweep] using hi)
     have he := cellInputs_eq n axis grid j i h
     simpa only [sweep, Array.getElem_map, updateCell,
-      ← getElem!_pos grid (j.val * n + i.val) hi, he, outputs] using hs
+      ← getElem!_pos grid (j.val * n + i.val) hi, he, Numerics.outputs] using hs
   · intro ha k hk
     have hk' : k < n * n := by simpa only [sweep_size, h.1] using hk
     have hn : 0 < n := by nlinarith
@@ -78,11 +77,11 @@ theorem sweep_accepted_iff (n : Nat) (axis : Bool) (ratio : UInt64)
     have he := cellInputs_eq n axis grid j i h
     rw [heq] at he
     simpa only [sweep, Array.getElem_map, updateCell,
-      ← getElem!_pos grid k hi, he, outputs] using ha j i
+      ← getElem!_pos grid k hi, he, Numerics.outputs] using ha j i
 
 theorem step_asGrid (n : Nat) (ratio : UInt64) (grid : Array Cell)
     (h : Indexed n grid) (ha : accepted (step n ratio grid) = true) :
-    Project.Euler2DCellStep.Runner.step ratio (asGrid n grid) =
+    Numerics.step ratio (asGrid n grid) =
       some (asGrid n (step n ratio grid)) := by
   have hx : accepted (sweep n false ratio grid) = true := by
     by_contra hx
@@ -93,7 +92,7 @@ theorem step_asGrid (n : Nat) (ratio : UInt64) (grid : Array Cell)
     simpa only [step, hx, ↓reduceIte] using ha
   have hys := (sweep_accepted_iff n true ratio _ hm).mp hy
   rw [sweep_asGrid n false ratio grid h] at hys
-  simp only [Project.Euler2DCellStep.Runner.step, hxs, hys, ↓reduceIte,
+  simp only [Numerics.step, hxs, hys, ↓reduceIte,
     step, hx, sweep_asGrid n true ratio _ hm, sweep_asGrid n false ratio grid h]
 
 #print axioms initialCells_indexed

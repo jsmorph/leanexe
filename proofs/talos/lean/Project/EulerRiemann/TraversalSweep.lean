@@ -38,7 +38,7 @@ theorem updateCell_safe (n : Nat) (axis : Bool) (ratio : UInt64)
     (grid : Array Cell) (cell : Cell)
     (h : (updateCell n axis ratio grid cell).status = 0) :
     StateSafe (updateCell n axis ratio grid cell).state := by
-  have hs := (evaluate_safe ratio (cellInputs n axis grid cell) h).1
+  have hs := Numerics.evaluate_state ratio (cellInputs n axis grid cell) h
   exact orient_safe axis _ ⟨hs.bounds, hs.admissible⟩
 
 theorem sweep_safe (n : Nat) (axis : Bool) (ratio : UInt64) (grid : Array Cell)

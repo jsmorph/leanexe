@@ -45,7 +45,7 @@ theorem retry_indexed (fuel n : Nat) (time dt : UInt64) (grid : Array Cell)
 
 theorem retry_asGrid (fuel n : Nat) (time dt : UInt64) (grid : Array Cell)
     (hg : Indexed n grid) (h : (retry fuel n time dt grid).status = 0) :
-    Project.Euler2DCellStep.Runner.step
+    Numerics.step
         (Wasm.IEEE64.div (retry fuel n time dt grid).dt (Time.spacing n)) (asGrid n grid) =
       some (asGrid n (retry fuel n time dt grid).grid) := by
   obtain ⟨_, ha, he⟩ := retry_success fuel n time dt grid h

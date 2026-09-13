@@ -233,9 +233,9 @@ example : eraseTypeIdx Project.Euler2DCellStep.func37Def = eraseTypeIdx resetFun
 example : eraseTypeIdx Project.Euler2DCellStep.func38Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Euler2DCellStep.func39Def = eraseTypeIdx (releaseFuncDef 39) := rfl
 
-example : eraseTypeIdx Project.EulerRiemann.func97Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.EulerRiemann.func98Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.EulerRiemann.func99Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.EulerRiemann.func100Def = eraseTypeIdx (releaseFuncDef 100) := rfl
+example : eraseTypeIdx Project.EulerRiemann.func104Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func105Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func106Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerRiemann.func107Def = eraseTypeIdx (releaseFuncDef 107) := rfl
 
 end Project.Runtime

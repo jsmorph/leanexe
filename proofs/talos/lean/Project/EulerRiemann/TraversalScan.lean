@@ -1,7 +1,7 @@
 import Project.EulerRiemann.Traversal
 
 namespace Project.EulerRiemann.Traversal
-open Project.Euler2DConservative.Model
+open Numerics (sideCheckedBits)
 
 theorem word_or_zero (a b : UInt64) : a ||| b = 0 ↔ a = 0 ∧ b = 0 := by
   simp only [UInt64.eq_iff_toBitVec_eq, UInt64.toBitVec_or, UInt64.toBitVec_ofNat,

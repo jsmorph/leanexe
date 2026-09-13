@@ -511,8 +511,10 @@ initializer instruction proofs wait for this numerical argument.
 The approved normalization extension now has checked soundness,
 quantitative acceptance, and old-acceptance preservation theorems.
 Both previously rejected boundary trials pass with unchanged conserved
-update words.  Source integration is being checked.  The global
-numerical invariant and compiler regeneration remain open.
+update words.  Source integration and compiler regeneration pass their
+checks.  The regenerated module has 21,767 bytes, and its annotation
+matches check in Lean.  The global numerical invariant and revised
+execution proofs remain open.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
