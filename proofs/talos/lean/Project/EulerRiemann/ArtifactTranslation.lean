@@ -1,5 +1,6 @@
 import Project.EulerRiemann.ArtifactValidation
 import Project.EulerRiemann.Program
+import Project.EulerRiemann.Spec
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -698,5 +699,26 @@ theorem artifact_module_eq_cache :
       CoreValid raw ∧
       validated.toTalos = executionCache := by
   exact artifact_correct_of (fun module_ => module_ = executionCache) rfl
+
+theorem artifact_solve_exact :
+    ∃ raw validated,
+      decode artifactBytes = .ok raw ∧
+      validate raw = .ok validated ∧
+      CoreValid raw ∧
+      Spec.ExactSpecFor validated.toTalos := by
+  exact artifact_correct_of Spec.ExactSpecFor Spec.solve_exact
+
+theorem artifact_solve_success :
+    ∃ raw validated,
+      decode artifactBytes = .ok raw ∧
+      validate raw = .ok validated ∧
+      CoreValid raw ∧
+      Spec.SafeSpecFor validated.toTalos := by
+  exact artifact_correct_of Spec.SafeSpecFor Spec.solve_success
+
+#print axioms translation_cache_eq
+#print axioms artifact_module_eq_cache
+#print axioms artifact_solve_exact
+#print axioms artifact_solve_success
 
 end Project.EulerRiemann.Artifact

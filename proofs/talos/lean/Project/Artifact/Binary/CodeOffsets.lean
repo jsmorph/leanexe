@@ -94,16 +94,50 @@ private def allOffsets (bytes : ByteArray) (nested : Bool := false) : Except Err
     cursor := next
   throw { offset := cursor.pos, kind := .malformed "code count exceeds input size" }
 
+private def vectorOffsets (id : UInt8) (parser : Parser α) (start : Cursor) :
+    Except Error (List String × Cursor) := do
+  let (_, finish) ← sized (vector parser) start
+  let (size, payload) ← Leb.u32 start
+  let (count, items) ← Leb.u32 { payload with limit := payload.pos + size.toNat }
+  let mut result := [s!"section,{id},{start.pos},{payload.pos},{items.pos},{count},{finish.pos}"]
+  let mut cursor := items
+  for index in [:count.toNat] do
+    let (_, next) ← parser cursor
+    result := s!"item,{id},{index},{cursor.pos},{next.pos}" :: result
+    cursor := next
+  return (result.reverse, finish)
+
+private def sectionOffsets (bytes : ByteArray) : Except Error (List String) := do
+  let mut cursor : Cursor := { bytes, pos := 8, limit := bytes.size }
+  let mut result := []
+  for _ in [:bytes.size] do
+    if cursor.pos == cursor.limit then return result
+    let (rawId, payload) ← Parser.readByte cursor
+    let (id, _) ← match sectionInfo rawId with
+      | .ok info => pure info
+      | .error kind => throw { offset := cursor.pos, kind }
+    let (lines, next) ← match id with
+      | .type => vectorOffsets rawId funcType payload
+      | .function => vectorOffsets rawId Leb.u32 payload
+      | .memory => vectorOffsets rawId memoryType payload
+      | .global => vectorOffsets rawId global payload
+      | .export => vectorOffsets rawId exportEntry payload
+      | .code => vectorOffsets rawId code payload
+    result := result ++ lines
+    cursor := next
+  throw { offset := cursor.pos, kind := .malformed "section count exceeds input size" }
+
 def main (args : List String) : IO UInt32 := do
   let (path, indexText, output) ← match args with
     | [path, indexText] => pure (path, indexText, none)
     | [path, indexText, output] => pure (path, indexText, some output)
-    | _ => throw (IO.userError "usage: CodeOffsets <program.wasm> <function-index | --codes | --all-offsets | --nested> [fresh-output]")
+    | _ => throw (IO.userError "usage: CodeOffsets <program.wasm> <function-index | --codes | --all-offsets | --nested | --sections> [fresh-output]")
   if let some output := output then
     if ← System.FilePath.pathExists output then
       throw (IO.userError s!"output already exists: {output}")
   let bytes ← IO.FS.readBinFile path
-  let result ← if indexText == "--codes" then pure (codeRanges bytes)
+  let result ← if indexText == "--sections" then pure (sectionOffsets bytes)
+    else if indexText == "--codes" then pure (codeRanges bytes)
     else if indexText == "--all-offsets" then pure (allOffsets bytes) else do
       if indexText == "--nested" then pure (allOffsets bytes true) else do
         let some index := indexText.toNat? | throw (IO.userError "invalid function index")

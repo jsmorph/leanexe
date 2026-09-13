@@ -11476,3 +11476,20 @@ its vector and byte-count prefixes, passed with only propext.  Other
 sections, full decoding, validation, translation, and independent
 verification remain open.
 Neither production run has started.
+
+## 2026-09-13: Complete binary decoding and validation
+
+The complete 21,767-byte Riemann artifact now decodes to Cache.raw by
+a kernel-checked theorem using only the three accepted logical axioms.
+All six sections and the binary header compose through shared parser
+lemmas.  Section metadata comes from the normative decoder.  Type-vector
+evaluation and concrete section composition each timed out before smaller
+certificates and generic composition passed.  The journal preserves those
+failures and the corrected wrapper check.
+
+Complete validation and Talos translation equality pass with only propext.
+The explicit artifact_solve_exact and artifact_solve_success theorems
+transfer the complete public specifications to the frozen bytes.  Their
+audits contain only propext, Classical.choice, and Quot.sound.
+Independent package verification is running.  Production execution waits
+for that gate.
