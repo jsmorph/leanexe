@@ -11085,3 +11085,21 @@ The work body, iteration, loop, and complete function passed in 4.5,
 2.6, 2.5, and 1.0 seconds.  All public audits use the permitted standard
 axioms.  Full initialization, output, entry memory, and independent
 exact-byte package verification remain open.  No production run started.
+
+## 2026-09-13: Initializer loop control
+
+The initializer now has checked frame, guard, length-comparison, extraction
+return, and growth-continuation proofs against function 95.  Its guard uses
+the compiler-generated equality and shared FuelGuard theorem.  The
+continuation uses the existing owned-buffer release theorem and preserves
+the borrowed first buffer.  Both extraction return paths install the
+represented result owner and pointer.  All public audits use the three
+permitted standard axioms.  Complete growth-loop composition remains open.
+
+The first frame check exposed an out-of-scope Boolean-word helper.  The
+predicate now states the completion word directly.  The selection proof
+needed explicit list-append and bounded-local simplification before its
+checked memory read.  Subsequent focused checks passed through the standard
+repository runner, one invocation at a time.  The journal records the
+workstation reboot and the incomplete diagnosis.  The physical WASM page
+bound remains an explicit part of the unfinished 512 MiB proof.

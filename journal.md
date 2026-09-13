@@ -16527,3 +16527,58 @@ Its iteration, loop, and complete-function checks took 19, 57, and
 21 seconds.  The final audit uses only the permitted standard axioms.
 Documentation and whitespace checks pass.  The checkpoint proof sources
 contain no sorry, admit, new axiom, native_decide, or bv_decide.
+
+Published and verified checkpoint 7baf9706e320801dad0dc238aac1ca2f53c35165,
+parent 4d7f320ee87f84f15cb939092e90bcdddf4f9a60, tree
+619c470254e4c8ad47755e1dfcf81f605e3bf1c5.  The fetched metadata,
+index, and fifteen checkpoint worktree paths matched.
+
+The user reported a workstation freeze requiring a reboot.  Lean builds
+were paused.  Every preceding Lean/Lake invocation used the repository
+runner in standard mode, with one runner invocation at a time.  Child
+process counts and peak memory were not recorded.  Post-reboot memory
+readings cannot establish the cause.  Read the runner and installed
+leanrunner documentation: the repository creates an individually limited
+scope without assigning it to leanrun.slice.  The unprivileged previous
+boot kernel query returned no accessible entries.  A subsequent command
+group including an escalated journal query was interrupted by the user.
+The user directed a return to the proof work.  No runner setting changed.
+
+Resumed initialization composition with the compiler's function-95 guard
+equality and the existing FuelGuard theorem.  InitialLoopFrame states the
+emitted loop decomposition and frame fields.  InitialGuard covers the fuel
+and completion guard and the array-length branch.  These new modules await
+their first Lean check.  The earlier map, append, and extraction proofs
+remain the dependencies for the complete initializer.
+
+The complete memory claim also requires an explicit bound on WASM pages.
+The existing reservation invariants bound heap allocation addresses, while
+the total control results currently retain only the general 65,536-page
+limit.  Composing entry allocation arithmetic alone does not establish the
+required 512 MiB physical-memory bound.  This remains an open proof boundary.
+
+The first InitialLoopFrame check failed in 15 seconds because boolWord
+was defined in an unimported neighbor-execution module.  Stated the
+completion word directly instead of adding that unrelated import.
+InitialLoopFrame then passed in 2.8 seconds.  InitialGuard's first two
+selection diagnostics required reducing the appended instruction list,
+then bounded local reads, before applying the memory-address equality.
+The corrected guard and selection passed.  InitialFinish and
+InitialContinue passed on their first checks.  The latter composes
+the existing release_owned theorem with the emitted accumulator transfer
+and fuel decrement.  The four successful trace files contain only
+propext, Classical.choice, and Quot.sound in their public audits.
+
+All checks used tools/leanrun --timeout 6m with the pinned Lake workspace
+proofs/talos/lean and standard resource limits.  Each invocation named one
+target and completed before the next began.  Later invocations used Lake's
+documented --quiet flag to suppress informational replays.  No numerical
+source, compiler output, or production dataset changed.  Preparing a
+ten-file checkpoint containing these four proof modules, the two required
+initializer function-index updates, and the four development records.
+The existing extraction, map, scalar/LTG, and report drafts remain outside
+this checkpoint.  Aggregate proof checking retains the previously recorded
+assoc_list cache mismatch.  No unchanged failing aggregate was rerun.
+
+The final reviewed list contains eleven files: six proof files and five
+development records.  This corrects the preceding checkpoint count.
