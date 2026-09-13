@@ -166,8 +166,11 @@ validity, and preserved input-grid ownership.  One-word array release
 also checks.  Both concatenations now compose allocation, installation,
 length storage, and copying with owned output and preserved input owners.
 The generic represented-array concatenation theorem extends the
-offset-array-copy LTG entry.  Capacity preparation, result transfer,
-header construction, and the full packer remain open.
+offset-array-copy LTG entry.  The complete 95-instruction header region
+now includes capacity computation, allocation, and the owned
+[status, time, n, n] array, with preserved caller locals and typed
+allocator scratch.  Map/append capacity preparation, result transfer,
+and the full packer remain open.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

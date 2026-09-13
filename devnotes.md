@@ -11328,3 +11328,18 @@ builds with eleven standard-only axiom reports and no own-module warnings.
 Capacity preparation, result assignments, header construction, complete
 packer execution, entry memory composition, and exact-byte closure remain
 open.  Neither authorized production run has started.
+
+## 2026-09-13: Complete output header region
+
+The 95-instruction header region now computes capacity, allocates through
+either allocator branch, installs its length, and writes the owned
+[status, time, n, n] array.  It accepts the caller's typed scratch range
+and preserves the locals needed by the final concatenation.  Five proof
+modules pass with twelve axiom reports restricted to the standard axioms
+and no own-module warnings.  Shared prefix, result-frame, allocator, and
+scratch-window theorems supply the proof.  Failed drafts required explicit
+store/frame arguments and parameter-length normalization.
+
+Map/append preparation and result assignments, full packer composition,
+complete entry memory, and exact-byte closure remain open.  Both
+production runs still await those proofs.

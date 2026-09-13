@@ -17403,3 +17403,79 @@ and the placeholder/new-axiom/native-decision scan passed.  Reviewed
 the six proof files, their accepted traces, LTG entry and generated
 indexes, support inventories, and five development records.  Staging
 the twenty reviewed paths for the owned-concatenation checkpoint.
+
+### 2026-09-13: output header construction
+
+Published the concatenation checkpoint as
+98dfbfb4ef0b15c7c3778d9a2ad1afbe0f57e829, with parent
+add0da4eee0574ef734b2719efbd82978509830c and tree
+0b2f5fff7a8f4c951a968596080d2e3de18ca516.  The non-forced push
+and fetch passed.  Commit metadata, complete index, and all twenty
+checkpoint paths match HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+Added the four-word header representation and exact length/payload
+write stores for status, time, n, and n.  The content proof uses the
+shared incremental prefix theorem four times.  Byte-range composition
+preserves the rest of memory, including the allocator header.
+
+The first header-memory check required simplifying the literal array's
+size before proving its four index bounds.  Replaced closed-decision
+calls on goals containing the header's free word parameters with
+ordinary simplification of outputHeaderWords.  The two write-frame
+theorems checked in that first 1.6-second attempt.
+
+OutputHeaderMemory passed after simplifying those bounds.  Added the
+emitted header-field sequence, composing the shared result-local
+assignment and constant-index store theorem four times.  The execution
+proof returns the exact write store and the final scratch-local value,
+using the already-checked function-99 region equality.
+
+The first header-store check needed explicit expansion of the named
+word-write and result frame at the single-store continuation.  Its first
+field also has no preceding page-preserving store to simplify.  Added
+the two expansions and made that page simplification optional before
+arithmetic.  The check produced these diagnostics after 1.2 seconds.
+
+OutputHeaderStore passed after those normalizations.  The header memory
+and store modules have six standard-only axiom reports and no own-module
+warnings.  Added the exact 62-instruction installation, length store,
+and payload region, then composed its represented data and write frame
+with Heap.finishWords to derive the owned header array.
+
+The first OutputHeaderData check inferred the pre-length store from the
+memory-bound argument before matching the store-execution goal.  The
+diagnostic arrived after 1.1 seconds.  Supplied the post-length store
+explicitly and transported its page bound with writeLength_pages.
+
+OutputHeaderData passed after the explicit store argument.  Added the
+allocator composition for the header's six scratch locals at indices
+51 through 56.  It preserves the parameter reads and returns the owned
+four-word header with the exact updated heap and result frame.
+
+OutputHeaderAllocate passed on its first build.  Added the complete
+95-instruction header region, including capacity computation.  The
+proof uses I64LocalRange.window and the shared capacity-frame theorem
+to accept the caller's frame, then returns the header pointer, typed
+scratch locals, and preserved reads below local 47.
+
+The first complete-header check produced two frame-inference diagnostics
+after 1.3 seconds.  Supplied the saved-frame arguments to the projection
+lemma and the allocated result frame to the continuation explicitly.
+
+The next 1.2-second check reached the final getter facts.  Normalized
+the parameter length through resultFrame before its two arithmetic
+side conditions, as required by the existing result-frame API.
+
+OutputHeaderExecute passed after the two parameter-length normalizations.
+Reviewed all five new header modules and their twelve axiom reports:
+only the permitted standard axioms occur, with no own-module warnings.
+The complete header region uses the existing LTG prefix, field-store,
+result-frame, allocator, and scratch-window abstractions.  No compiler,
+artifact, numerical source, runner, or LTG catalog changed.  Synchronized
+the five development records for this header checkpoint.  Full output
+composition, entry memory, and exact-byte closure remain open.
+
+The header checkpoint passes whitespace, the 116-file documentation
+check, and the placeholder/new-axiom/native-decision scan.  Reviewed the
+five proof modules, their accepted traces, and the five development
+records.  Staging exactly those ten paths for publication.
