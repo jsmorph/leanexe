@@ -11358,3 +11358,18 @@ The proof uses checked region equality and existing LTG length-read,
 capacity, scratch-window, field, and allocator results.  Append
 preparation and result assignment, release composition, the complete
 packer and entry memory bound, and exact-byte closure remain open.
+
+## 2026-09-13: Complete output concatenation regions
+
+Both 73-instruction concatenations now compose input preparation,
+capacity, allocation, copying, and result assignment.  They retain both
+input owners, the owned concatenated result, heap validity, exact writes,
+typed scratch, and preserved caller reads.  The three new consumer
+modules and shared ScalarFrame addition pass with twelve standard-only
+axiom reports and no own-module warnings.
+
+The new Expr.assign_frame_spec composes expression evaluation with an
+internal result assignment for arbitrary modules and locals.  Both
+output count regions use it, and the scalar-statement LTG entry records
+the checked consumer.  Release composition, full packer execution,
+entry memory, and exact-byte closure remain open.

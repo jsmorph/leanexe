@@ -27,8 +27,7 @@ and the two seven-word copy counts.  Its descriptor targets the emitted
 instructions 74 through 85.  The word operations retain WASM wrapping
 semantics.  Natural-array bounds remain obligations of the caller.
 The entry has no dedicated straight-statement compiler annotation and
-remains provisional pending complete initializer and independent artifact
-verification.
+remains provisional pending complete Euler independent artifact verification.
 
 The count consumer checked in 65 seconds.  Its descriptor equality uses
 propext, evaluator result uses propext and Quot.sound, and execution uses
@@ -77,3 +76,18 @@ The span calculation and the complete extraction input now use the same
 adapter.  Their composition with capacity, allocation, and copying checks
 against the current Riemann artifact.  The LTG declaration import check,
 package and forest tests, and Lean-backed knowledge promotion test pass.
+
+`Expr.assign_frame_spec` composes expression evaluation and one internal
+assignment into `FixedArrayFold.resultFrame`.  Its evaluation premise
+requires the expression to preserve the incoming scalar state.  It
+accepts arbitrary modules, scratch and destination indices, and
+continuations.  Ordinary simplification reduces the evaluator's Option
+bind before applying the existing setter theorem.
+
+The current Riemann output uses this theorem for the total length and
+both width-one copy counts in function 99.  The exact twelve-instruction
+count region composes with pointer/length preparation, capacity,
+allocation, copying, and result assignment into both complete
+73-instruction concatenation regions.  All consumer and adapter audits
+contain only standard axioms.  The entry remains provisional, with no
+independent complete Euler package or measured proving-time benefit.

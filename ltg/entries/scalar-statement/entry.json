@@ -10,10 +10,10 @@
   "features": ["assignment", "conditional", "control-types", "descriptor", "expression", "frame", "scalar-state", "sequence"],
   "annotationKinds": [],
   "modules": ["Project.ProofKit.ScalarConditional", "Project.ProofKit.ScalarFrame", "Project.ProofKit.ScalarTransition"],
-  "declarations": ["Project.ProofKit.ScalarTransition.Expr.eval_preserves_below", "Project.ProofKit.ScalarTransition.Expr.program_spec", "Project.ProofKit.ScalarTransition.Expr.typedIteProgram", "Project.ProofKit.ScalarTransition.Expr.typedIteProgram_spec", "Project.ProofKit.ScalarTransition.State.ofLocals_get", "Project.ProofKit.ScalarTransition.State.ofLocals_result_set", "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below", "Project.ProofKit.ScalarTransition.Stmt.program_frame_spec", "Project.ProofKit.ScalarTransition.Stmt.program_spec", "Project.ProofKit.ScalarTransition.Stmt.typedIteAssignProgram_frame_spec"],
+  "declarations": ["Project.ProofKit.ScalarTransition.Expr.assign_frame_spec", "Project.ProofKit.ScalarTransition.Expr.eval_preserves_below", "Project.ProofKit.ScalarTransition.Expr.program_spec", "Project.ProofKit.ScalarTransition.Expr.typedIteProgram", "Project.ProofKit.ScalarTransition.Expr.typedIteProgram_spec", "Project.ProofKit.ScalarTransition.State.ofLocals_get", "Project.ProofKit.ScalarTransition.State.ofLocals_result_set", "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below", "Project.ProofKit.ScalarTransition.Stmt.program_frame_spec", "Project.ProofKit.ScalarTransition.Stmt.program_spec", "Project.ProofKit.ScalarTransition.Stmt.typedIteAssignProgram_frame_spec"],
   "premises": ["An exact equality between the emitted region and the descriptor program", "A checked descriptor evaluation to the proposed resulting state", "The descriptor's scratch-local layout", "A continuation from the resulting state", "Empty initial and final operand stacks when using the Locals frame adapter"],
   "result": "The exact scalar region preserves the store and reaches its continuation with the evaluated state. The write set and scratch boundary determine preserved getters.",
-  "consumers": ["euler-riemann-initial-append", "euler-riemann-initial-extract"],
+  "consumers": ["euler-riemann-initial-append", "euler-riemann-initial-extract", "euler-riemann-output-append"],
   "relatedEntries": ["counter-transition", "fixed-array-fold-body", "local-frame-projection", "scalar-post-test-loop"],
   "exclusion": null
 }
