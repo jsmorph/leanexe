@@ -839,6 +839,8 @@ and caller-local preservation.  Both complete map regions now include
 input/length preparation, capacity, and result transfer.  Both complete
 concatenation regions now include preparation, capacity, and result
 transfer, using the new shared scalar-assignment theorem in LTG.
-Release composition and full output composition remain open.
-Output, complete entry memory, and exact-byte proofs
+Complete output composition now includes all three releases, both
+returned ABI pointers, exact Output.pack words, and the physical page
+bound.  Its allocation budget is at most 30,720,344 bytes.
+Complete entry memory and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.
