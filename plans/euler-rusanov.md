@@ -825,5 +825,8 @@ limit through all success and failure returns.  Complete outer
 advancement and run now preserve that bound.  Run composes initialization
 and advancement with exact source-result equality, ownership, and a
 combined reservation of at most 319,523,176 bytes above entry heap top.
+The output packer's capacity, allocation, field, and copy regions now
+match shared programs, and its one-word allocations have checked heap
+state and execution adapters.  Full output composition remains open.
 Output, complete entry memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.

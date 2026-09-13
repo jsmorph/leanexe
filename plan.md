@@ -526,6 +526,12 @@ initialization and advancement, retaining exact result words,
 ownership, capacity, reservation, and a supplied physical page bound.
 Output and the complete entry memory bound remain open.
 
+The output packer's capacities, allocations, field operations, and copy
+loops now match shared checked programs.  Arbitrary-stride allocation
+state and execution connect its one-word arrays to the existing heap
+model.  Completed density/pressure maps and full output composition
+remain open.
+
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
 checked execution proofs against the current artifact.  Both extraction
