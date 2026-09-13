@@ -532,8 +532,10 @@ arbitrary frame satisfying the control and scratch-register invariants.
 Map and append preserve those invariants across their allocation regions.
 The complete growth loop now preserves those invariants, the initial-cell
 prefix, entry-held owners, and the remaining allocation budget, and
-terminates on completion or fuel exhaustion.  Post-loop extraction and
-function entry/return composition remain open.  The complete memory proof
+terminates on completion or fuel exhaustion.  Complete growCells execution
+now includes post-loop extraction and function entry/return, with exact
+source-result equality and ownership preservation.  Its singleton caller
+remains open.  The complete memory proof
 must bound WASM pages as well as heap allocation addresses.
 Map and append now accept arbitrary loop frames and return the required
 buffer getters.  Allocation and grid writes have a checked arbitrary
