@@ -12,10 +12,10 @@ def sweepSaved (source : UInt64) (count : Nat) : List Wasm.Value :=
   List.replicate 36 (.i64 0) ++
     [.i64 source, .i64 (UInt64.ofNat count), .i64 0, .i64 0, .i64 0, .i64 0]
 
-theorem sweep_entry_shape : func70.take 6 =
+theorem sweep_entry_shape : func77.take 6 =
     [.localGet 4, .localSet 41, .localGet 41, .wrapI64, .load64 0, .localSet 42] := rfl
 
-theorem sweep_install_shape : (func70.drop 39).take 8 =
+theorem sweep_install_shape : (func77.drop 39).take 8 =
     [.localGet 52, .localSet 43] ++ lengthStoreLocalProgram 43 42 ++
       [.constI64 0, .localSet 44] := rfl
 
@@ -31,13 +31,13 @@ theorem sweep_entry_spec (env : HostEnv Unit) (store : Store Unit) (n : Nat) (ax
     (hNext : wp Project.EulerRiemann.«module» rest Q store
       (allocationFrame (sweepParameters n axis ratio owner source) (sweepSaved source grid.size)
         0 0 0 0 0 0) env) :
-    wp Project.EulerRiemann.«module» (func70.take 6 ++ rest) Q store
-      (func70Def.toLocals (sweepParameters n axis ratio owner source)) env := by
+    wp Project.EulerRiemann.«module» (func77.take 6 ++ rest) Q store
+      (func77Def.toLocals (sweepParameters n axis ratio owner source)) env := by
   rw [sweep_entry_shape]
   have hLength := hGrid.lengthRead
   have hBound := Nat.not_lt.mpr hGrid.lengthBound
   simp only [UInt64.toNat_toUInt32] at hBound
-  simpa [wp_simp, func70Def, Function.toLocals, Function.numParams, Function.numLocals,
+  simpa [wp_simp, func77Def, Function.toLocals, Function.numParams, Function.numLocals,
     ValueType.zero, sweepParameters, sweepSaved, allocationFrame, List.replicate,
     ← Project.ProofKit.Memory.toUInt32_eq_ofNat, hLength, hBound] using hNext
 
@@ -49,7 +49,7 @@ theorem sweep_install_spec (env : HostEnv Unit) (store : Store Unit) (n : Nat) (
       (sweepFrame n axis ratio owner source target count 0 {}
         [.i64 0, .i64 0, .i64 need, .i64 previous, .i64 current, .i64 capacity,
           .i64 next, .i64 target]) env) :
-    wp Project.EulerRiemann.«module» ((func70.drop 39).take 8 ++ rest) Q store
+    wp Project.EulerRiemann.«module» ((func77.drop 39).take 8 ++ rest) Q store
       (allocationFrame (sweepParameters n axis ratio owner source) (sweepSaved source count)
         need previous current capacity next target) env := by
   rw [sweep_install_shape]

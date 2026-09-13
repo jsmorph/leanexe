@@ -56,7 +56,7 @@ theorem retry_accept_spec (env : HostEnv Unit) (store : Store Unit) (frame : Loc
       (retryAcceptedFrame (retryTrialFrame frame n ratio source result true) dt result) env) :
     wp Project.EulerRiemann.«module» (retryAcceptBody ++ rest) Q store
       (retryTrialFrame frame n ratio source result true) env := by
-  unfold retryAcceptBody retryTrial retryLoop func74
+  unfold retryAcceptBody retryTrial retryLoop func81
   dsimp only
   wp_run [retryTrialFrame, List.cons_append, List.nil_append, List.length_set,
     List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ, reduceIte,
@@ -77,7 +77,7 @@ theorem retry_reject_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap
     wp Project.EulerRiemann.«module» (retryRejectBody ++ rest) Q store
       (retryTrialFrame frame n ratio source result.root false) env := by
   obtain ⟨hTrackerBound, hTrackerRead⟩ := List.getElem_of_getElem? hTracker
-  unfold retryRejectBody retryTrial retryLoop func74
+  unfold retryRejectBody retryTrial retryLoop func81
   dsimp only
   wp_run [retryTrialFrame, List.cons_append, List.nil_append, List.length_set,
     List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
@@ -93,7 +93,8 @@ theorem retry_reject_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap
     | wp_run [retryTrialFrame, List.cons_append, List.nil_append, List.length_set,
         List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ, f64Mul,
         reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le]
   simpa [retryRejectedFrame, retryTrialFrame, hParams, List.set] using hNext
 

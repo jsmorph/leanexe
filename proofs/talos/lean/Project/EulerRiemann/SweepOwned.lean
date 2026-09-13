@@ -15,7 +15,7 @@ theorem sweep_owned (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
         initial.memoryCap Project.EulerRiemann.«module» 0) :
     let need := normalizedCapacity (UInt64.ofNat grid.size) 7
     let node := allocatedNode heap.top need heap.nodes
-    TerminatesWith env Project.EulerRiemann.«module» 70 initial
+    TerminatesWith env Project.EulerRiemann.«module» 77 initial
       [.i64 source.root, .i64 source.root, .i64 ratio, .i64 (boolWord axis), .i64 (UInt64.ofNat n)]
       (fun final values => values = [.i64 node.root, .i64 node.root] ∧
         (heap.allocate need).At final ∧

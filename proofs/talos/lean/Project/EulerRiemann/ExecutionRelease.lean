@@ -20,14 +20,14 @@ theorem release_exact (env : HostEnv Unit) (initial : Store Unit)
     (hHead : initial.globals.globals[1]? = some (.i64 head))
     (hReleases : initial.globals.globals[4]? = some (.i64 releases))
     (hFrees : initial.globals.globals[5]? = some (.i64 frees)) :
-    TerminatesWith env Project.EulerRiemann.«module» 100 initial [.i64 root]
+    TerminatesWith env Project.EulerRiemann.«module» 107 initial [.i64 root]
       (fun final values => values = [] ∧ final = releasedStore initial root head releases frees) := by
   obtain ⟨hMagic, hRc, hCapacity, hKind, hStride, hMask⟩ := hHeader
   have hBounds := hGrid.1
   have hFits := hGrid.2.1
   have hCall := Project.Runtime.release_frees_fixed_array_zero_mask_full env
-    Project.EulerRiemann.«module» 100 initial root head releases frees grid.size 7
-    (typeIdx := some 100) rfl (by decide) (by omega) (by decide) hRoot (by omega) (by omega)
+    Project.EulerRiemann.«module» 107 initial root head releases frees grid.size 7
+    (typeIdx := some 107) rfl (by decide) (by omega) (by decide) hRoot (by omega) (by omega)
     hMagic hRc hKind hGrid.lengthRead hStride hMask hHead hReleases hFrees
   apply hCall.mono
   rintro final values ⟨hValues, hMem, hGlobals, hStore⟩

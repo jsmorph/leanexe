@@ -5,7 +5,7 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def retryLoop : Wasm.Program :=
-  match (func74[4]? : Option Wasm.Instruction) with
+  match (func81[4]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
@@ -14,8 +14,8 @@ def retryTrial : Wasm.Program :=
   | some (.iff _ _ body _ _ _) => body
   | _ => []
 
-theorem retry_loop_shape : func74 =
-    func74.take 4 ++ [.block 0 0 [.loop 0 0 retryLoop]] ++ func74.drop 5 := rfl
+theorem retry_loop_shape : func81 =
+    func81.take 4 ++ [.block 0 0 [.loop 0 0 retryLoop]] ++ func81.drop 5 := rfl
 
 theorem retry_trial_shape : retryLoop[22]? =
     some (.iff 0 0 retryTrial

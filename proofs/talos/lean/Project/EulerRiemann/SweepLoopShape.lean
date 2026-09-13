@@ -6,12 +6,12 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def sweepLoop : Wasm.Program :=
-  match (func70[47]? : Option Wasm.Instruction) with
+  match (func77[47]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem sweep_loop_shape :
-    func70[47]? = some (.block 0 0 [.loop 0 0 sweepLoop]) := rfl
+    func77[47]? = some (.block 0 0 [.loop 0 0 sweepLoop]) := rfl
 
 structure SweepScratch where
   cell : Traversal.Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩

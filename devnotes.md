@@ -11004,3 +11004,23 @@ neighbor tactic needed an explicit TalosCompat import and conditional
 normalization.  Sweep allocation, release, complete control failure
 paths, full initialization, output, and the complete memory bound
 remain the next execution obligations.
+
+## 2026-09-13: Revised array sweep and timestep execution
+
+The regenerated module now passes complete sweep allocation, loop,
+acceptance, release, timestep, spacing, and CFL-proposal execution
+checks.  The sweep proof preserves ownership and handles both first-fit
+reuse and bump allocation.  The timestep proof covers either first-sweep
+status and preserves the checked allocation reservation.  All public
+audits use the permitted standard axioms.  Release needed its current
+function-type identity, 107, as well as the current function index.
+
+The entry reservation, complete initializer, control failure returns,
+and output composition remain open.  Invalid-time and exhausted-retry
+returns allocate empty arrays.  Their memory and ownership must be
+included before the final source and exact-byte theorem can close.
+
+The existing retry and advance execution proofs now pass against the
+regenerated module, including compiler-described guard identities.
+They retain their source-success premises.  The remaining work adds
+all failure branches and completes initialization and output ownership.

@@ -39,7 +39,7 @@ theorem step_reserved (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hCap : limit ≤ initial.memoryCap Project.EulerRiemann.«module» 0 * 65536) :
     let need := normalizedCapacity (UInt64.ofNat grid.size) 7
     let result := stepAllocation heap need (Traversal.accepted (Traversal.sweep n false ratio grid))
-    TerminatesWith env Project.EulerRiemann.«module» 73 initial
+    TerminatesWith env Project.EulerRiemann.«module» 80 initial
       [.i64 source.root, .i64 source.root, .i64 ratio, .i64 (UInt64.ofNat n)]
       (fun final values => values = [.i64 result.2.root, .i64 result.2.root] ∧
         result.1.At final ∧ result.1.Owns final result.2 (Traversal.step n ratio grid) ∧

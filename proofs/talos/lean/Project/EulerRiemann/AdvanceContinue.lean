@@ -10,7 +10,8 @@ local macro "advance_continue_peel" : tactic => `(tactic|
     | wp_run [advanceTrialFrame, List.cons_append, List.nil_append, List.length_set,
         List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ, f64Add,
         reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem advance_continue_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
@@ -33,14 +34,14 @@ theorem advance_continue_spec (env : HostEnv Unit) (store : Store Unit) (heap : 
   | false =>
     simp only [Bool.false_eq_true, ite_false] at hTracker hNext
     obtain ⟨hTrackerBound, hTrackerRead⟩ := List.getElem_of_getElem? hTracker
-    unfold advanceContinueBody advanceTrialBody advanceWorkBody advanceLoop func78
+    unfold advanceContinueBody advanceTrialBody advanceWorkBody advanceLoop func85
     dsimp only
     advance_continue_peel
     simpa [advanceContinuedFrame, advanceTrialFrame, hParams, List.set] using hNext
   | true =>
     simp only [ite_true] at hTracker hNext
     obtain ⟨hTrackerBound, hTrackerRead⟩ := List.getElem_of_getElem? hTracker
-    unfold advanceContinueBody advanceTrialBody advanceWorkBody advanceLoop func78
+    unfold advanceContinueBody advanceTrialBody advanceWorkBody advanceLoop func85
     dsimp only
     advance_continue_peel
     refine wp_call_tw (release_owned env store heap source grid hHeap hOwner) ?_

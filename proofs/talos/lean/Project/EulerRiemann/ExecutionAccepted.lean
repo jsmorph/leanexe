@@ -6,18 +6,18 @@ open Wasm
 theorem accepted_exact (env : HostEnv Unit) (initial : Store Unit)
     (owner pointer : UInt64) (grid : Array Traversal.Cell)
     (hGrid : Memory.GridAt initial pointer grid) :
-    TerminatesWith env Project.EulerRiemann.«module» 72 initial
+    TerminatesWith env Project.EulerRiemann.«module» 79 initial
       [.i64 pointer, .i64 owner]
       (fun final values => final = initial ∧ values = [.i64 (boolWord (Traversal.accepted grid))]) := by
   have hLength := hGrid.lengthRead
   have hBound := Nat.not_lt.mpr hGrid.lengthBound
-  refine TerminatesWith.of_wp_entry_for (f := func72Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func72 _ initial
-    (func72Def.toLocals [.i64 owner, .i64 pointer]) env
+  refine TerminatesWith.of_wp_entry_for (f := func79Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func79 _ initial
+    (func79Def.toLocals [.i64 owner, .i64 pointer]) env
   rw [accepted_shape]
-  unfold func72
+  unfold func79
   dsimp only
-  wp_run [func72Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+  wp_run [func79Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
     List.cons_append, List.nil_append,
     ← Project.ProofKit.Memory.toUInt32_eq_ofNat, UInt32.add_zero, UInt32.toNat_zero,
     Nat.add_zero, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reducePow,

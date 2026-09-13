@@ -27,7 +27,7 @@ def allocationCount : Wasm.Program :=
 def countedStore (store : Store Unit) (count : UInt64) : Store Unit :=
   { store with globals := { globals := store.globals.globals.set 2 (.i64 (count + 1)) } }
 
-theorem sweep_allocation_shape : (func70.drop 24).take 15 =
+theorem sweep_allocation_shape : (func77.drop 24).take 15 =
     allocationInit ++ allocationCore ++ allocationCount := rfl
 
 theorem allocationInit_spec (env : HostEnv Unit) (store : Store Unit)
@@ -124,7 +124,7 @@ theorem allocation_spec (env : HostEnv Unit) (store : Store Unit)
         (countedStore (allocatedStore store base need nodes) count)
         (allocationFrame params saved need previous current capacity next
           (allocatedRoot base need nodes)) env) :
-    wp Project.EulerRiemann.«module» ((func70.drop 24).take 15 ++ rest) Q store
+    wp Project.EulerRiemann.«module» ((func77.drop 24).take 15 ++ rest) Q store
       (allocationFrame params saved need previous current capacity next result) env := by
   rw [sweep_allocation_shape]
   simp only [List.append_assoc]
