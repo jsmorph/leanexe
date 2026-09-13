@@ -10796,3 +10796,26 @@ composition lemmas separate input error from operation rounding.
 Complete side and interface flux acceptance, the preserved grid
 invariant, unconditional source success, and complete exact-byte
 execution remain open.  No production run has started.
+
+## 2026-09-12: Complete interface acceptance bounds
+
+[Side flux bounds](proofs/talos/lean/Project/EulerRiemann/NumericsFluxTerms.lean)
+and [complete side acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsSideBounds.lean)
+compose the thermodynamic calculations with finite momentum,
+transverse-momentum, enthalpy, and energy fluxes.  The proofs retain
+density at least 1/M, all conserved magnitudes at most M, internal
+energy at least 24 times 2^-52 M cubed, and state-guard acceptance.
+
+[Rusanov component error](proofs/talos/lean/Project/EulerRiemann/NumericsComponent.lean)
+includes all six rounded stages, proves status zero, and bounds error
+by 256 times 2^-52 M to the fifth power against the exact expression
+on its decoded inputs.  [Complete interface acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsFluxBounds.lean)
+combines both sides and all four components.  The StateBounds predicate
+collects its quantitative cell premises.  [Initial numerical bounds](proofs/talos/lean/Project/EulerRiemann/InitialNumericalBounds.lean)
+prove that every initialized cell satisfies those premises with M = 8,
+including exact internal energy at least 1/800.
+
+The component, interface, and initialization-transfer checks passed
+in 2.1, 1.7, and 2.4 seconds.  All audits contain only standard axioms.
+Preservation of StateBounds through the rounded cell update, successful
+final-time completion, and complete artifact execution remain open.

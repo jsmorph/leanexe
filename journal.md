@@ -15617,3 +15617,78 @@ Prepared a pressure-and-wave-speed checkpoint containing the ten new
 proof modules and four planning/journal documents.  All other tracked,
 untracked, and generated paths remain outside this checkpoint.
 The complete grid invariant and source-success theorem remain open.
+
+Published and fetched 9aba0fa1593d0cf01fb0b31fae813babf28241cc,
+"Prove rounded pressure and wave-speed bounds", parent
+fdc64233864d2e25e6a7f24675a7cd0bebac99ca, tree
+b7f85b19f6762372f7fa0a33350638082c43d644.  The fetched commit,
+parent, title, tree, index, and all fourteen checkpoint worktree files
+match.  Documentation and whitespace checks passed.  Added the pending
+NumericsFluxTerms proof for momentum flux, transverse flux, enthalpy,
+and energy flux, using the shared bounded arithmetic theorems.
+
+NumericsFluxTerms passed its first check in 1.6 seconds with a
+standard-only audit.  It proves all four final arithmetic results
+finite, bounds their magnitudes, and bounds each operation's error.
+Added the pending NumericsSideBounds composition.  It derives complete
+side acceptance from the explicit input density/magnitude bounds,
+internal-energy margin, and state-guard acceptance.  The global proof
+must still establish those premises at every reachable cell.
+
+The first NumericsSideBounds check proved its arithmetic premises but
+failed to simplify guards written with local abbreviations against the
+expanded source expressions.  Replaced Boolean simplification with the
+explicit conjunction proof and selected the three source branches with
+their checked guard propositions.  The failed run supplies no accepted
+side theorem.
+
+The second side check reached the last source branch.  Its speed
+abbreviation used ProofKit's absBits while the source calls the
+definition in Euler2DConservative.Model.  Inspected both definitions:
+each clears the same sign bit.  Changed the local proof abbreviation
+to name the source definition, retaining the checked shared value
+theorem by definitional equality.  No executable source changed.
+
+NumericsSideBounds passed in 1.4 seconds with a standard-only audit.
+Its complete side-acceptance result retains the quantitative input and
+state-guard premises.  Replaced the four deprecated if_pos names with
+their current pinned-toolchain names.  Added RealRusanovError to collect
+the six interface-operation error terms before composing their IEEE64
+bounds.  This separates real propagation from source branch selection.
+
+RealRusanovError passed its first check in 1.2 seconds, and the current
+side proof passed in 1.3 seconds without its earlier deprecation
+warnings.  NumericsComponent then passed its first check in 2.1
+seconds.  It proves status zero, a finite result, magnitude at most
+66 M to the fifth power, and error at most 256 epsilon M to the fifth
+power for the exactly associated Rusanov component under explicit
+state, flux, and speed bounds.  All audits contain only standard axioms.
+Added NumericsFluxBounds to collect the cell premises in StateBounds
+and compose both accepted sides with all four checked components.
+StateBounds is an explicit predicate.  Its preservation is still open.
+
+NumericsFluxBounds passed its first check in 1.7 seconds with a
+standard-only audit.  Under StateBounds for both inputs, the complete
+interface returns status zero, four finite flux words bounded by
+66 M to the fifth power, and a positive alpha bounded by 32 M squared.
+Added InitialNumericalBounds to derive StateBounds with M = 8 from
+the checked 36 initial states, including an internal-energy lower
+bound of 1/800.  This initialization transfer is pending its check.
+
+InitialNumericalBounds passed its first check in 2.4 seconds with two
+standard-only audits.  It reuses the existing initial-state integer
+certificates and the checked old-to-new guard extension.  No numerical
+trajectory was evaluated for this proof.  This checkpoint contains
+NumericsFluxTerms, NumericsSideBounds, RealRusanovError, NumericsComponent,
+NumericsFluxBounds, InitialNumericalBounds, and the four planning and
+journal documents.  No compiler or numerical source changed.
+
+Reviewed all six accepted modules with the failed branch-selection
+checks.  Their arithmetic proofs reuse the shared IEEE64 operation
+bounds, with real Rusanov error propagation isolated from Boolean
+source composition.  Source-aligned local abbreviations resolved the
+branch matcher without additional proof limits.  Compiler annotations
+and LTG catalog entries were not consumed by this mathematical proof
+boundary.  Exact regenerated-WASM execution remains a separate open
+gate.  The next numerical boundary is the rounded cell update and
+preservation of usable density and internal-energy margins.
