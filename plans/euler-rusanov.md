@@ -803,6 +803,9 @@ cancellation.
 
 The [complete solver development](euler-riemann-complete.md) now has
 checked initializer map and append execution, including their input,
-capacity, allocation, and data regions.
-Full initialization, time-control, output, memory, and exact-byte proofs
+capacity, allocation, and data regions.  The initializer's loop guard,
+length comparison, extraction return, and old-buffer release also check.
+Complete retry and time-advance execution cover every reachable status
+under their heap, reservation, and fuel premises.
+Full initialization, output, memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.

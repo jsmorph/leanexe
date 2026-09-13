@@ -552,6 +552,15 @@ replace the four retry/advance guard derivations.  Generated equalities
 also match the initializer guard.  Review each remaining proof attempt
 against its compiler evidence and retrieved support, and record reusable
 results and failed applications in the journal.
+The [initializer guard and length comparison](../proofs/talos/lean/Project/EulerRiemann/InitialGuard.lean)
+now check against function 95.  The
+[extraction return](../proofs/talos/lean/Project/EulerRiemann/InitialFinish.lean)
+covers both the completed-loop and exhausted-fuel result assignments.
+The [growth continuation](../proofs/talos/lean/Project/EulerRiemann/InitialContinue.lean)
+releases a tracked old buffer and installs the new owner before decrementing
+fuel.  All public audits use the permitted standard axioms.  The complete
+growth-loop composition remains open.  The 512 MiB proof must bound WASM
+pages as well as heap allocation addresses.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
