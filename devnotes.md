@@ -11194,3 +11194,19 @@ initialCell call, growCells call, and borrowed-singleton release composed.
 Its compiler annotations identify both calls.  The shared one-word
 singleton wrapper has a different layout, while the indexed no-fit
 allocation and checked multiplication lemmas apply.
+
+## 2026-09-13: Singleton data construction
+
+Function 96's pointer installation, length store, seven register
+assignments, and seven field stores now produce the exact represented
+singleton grid with memory framing.  Six modules pass with fourteen
+standard-only axiom reports and no own-module warnings.  Failed drafts
+required list-index and address-bound clarification, simplification of
+a parameterized singleton bound, and correction of multiline frame syntax.
+
+The shared constant-index and consecutive-field store theorems extend
+the existing provisional array-field-access LTG entry and ProofKit
+allowlist.  Exact decoded-region equalities connect their use to the
+current artifact.  Allocation and both initializer calls still require
+composition before the complete caller theorem.  Output, complete
+memory composition, and independent exact-byte verification remain open.
