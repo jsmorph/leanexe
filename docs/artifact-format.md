@@ -65,6 +65,8 @@ Manifest schema three records the package identity and validation profile, the i
 package with `decide +kernel` certificates.  Lean's kernel performs those
 closed computations.  The default generator uses `native_decide`.
 Both modes use the same decoder, validator, and artifact propositions.
+Kernel mode also generates checked byte-lookup equalities over balanced
+list concatenations for proof-generating evaluation with `cbv`.
 
 `verifierSourceSha256` covers seventeen named normative files: binary syntax, cursor, LEB parser, primitives, decoder, grammar, validity predicate, validator, translator, equality and evidence support, and their six proof modules.  The hash starts with `leanexe-verifier-source-v1` followed by a NUL byte, then consumes each repository-relative path in code-unit order, a NUL byte, its byte length, another NUL byte, and its raw contents.  Utilities, generated package certificates, tests, and cached modules remain outside this digest and enter the release identity or source revision through separate fields.
 
