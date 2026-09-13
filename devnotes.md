@@ -11295,3 +11295,21 @@ The array-memory-framing LTG entry now advertises incremental prefix
 construction and preservation over disjoint intervals with nondecreasing
 pages.  The entry remains provisional.  Allocation-to-loop composition,
 concatenation, releases, the header, and full packer execution remain open.
+
+## 2026-09-13: Owned output allocation and data regions
+
+Both output maps now compose allocator execution, target installation,
+length storage, counter initialization, and the completed loop.  Their
+results include an owned density or pressure array, the valid updated
+heap, preserved input-grid ownership, and a precise byte-range frame.
+The allocator proof covers free-block reuse and memory growth.  Seven
+modules pass with nineteen standard-only axiom reports and no own-module
+warnings.  The checked one-word array release uses the same shared
+runtime theorem as grid release, instantiated at stride one.
+
+Failed checks required the correct header frame, shared result-frame
+transfer, and consistent names in address arithmetic.  The journal
+corrects one prematurely recorded pass and retains the repeated
+dependency failure.  Map capacity preparation and result transfer,
+concatenations, header construction, complete packer execution, entry
+memory composition, and exact-byte closure remain open.

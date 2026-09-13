@@ -829,7 +829,9 @@ The output packer's capacity, allocation, field, and copy regions now
 match shared programs, and its one-word allocations have checked heap
 state and execution adapters.  Both projection loops now terminate with
 the specified density/pressure arrays and preserve the input grid,
-using shared array-prefix and field lemmas.  Full output composition
-remains open.
+using shared array-prefix and field lemmas.  Allocator execution and
+target installation now compose both loops with owned output arrays,
+heap validity, and input-grid ownership.  One-word array release also
+checks.  Full output composition remains open.
 Output, complete entry memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.
