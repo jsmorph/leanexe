@@ -11146,3 +11146,20 @@ started.
 The LTG and forest checks, their Node tests, leanexegen protocol/package
 tests, Lean-backed knowledge test, and updated LTG declaration check pass.
 The documentation and whitespace checks pass.
+
+## 2026-09-13: Initializer resource composition
+
+The map and append adapters now accept arbitrary loop frames and return
+the control fields, scratch types, and buffer getters required by their
+continuations.  Initializer resource composition preserves every
+entry-held grid and proves separation from the new allocation, reusing
+the existing retry store relation and owned-grid framing theorem.
+Source-prefix lemmas identify each cell and preserve the prescribed
+initial data under doubling and extraction.
+
+AllocationPageBound proves an arbitrary page limit across allocation and
+grid writes.  InitialHeapBounds supplies the initializer's exact byte
+count, no-fit search, heap-top increment, and free-list preservation.
+The six new modules pass with sixteen standard-only axiom reports.
+The growth-loop invariant still must compose these results, followed by
+entry/output execution and the complete 512 MiB and exact-byte proofs.

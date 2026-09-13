@@ -532,6 +532,10 @@ arbitrary frame satisfying the control and scratch-register invariants.
 Map and append preserve those invariants across their allocation regions.
 Composition of these regions into the growth loop remains open.  The complete memory proof must
 bound WASM pages as well as heap allocation addresses.
+Map and append now accept arbitrary loop frames and return the required
+buffer getters.  Allocation and grid writes have a checked arbitrary
+page-limit theorem.  Initializer capacities, heap updates, entry-held
+owners, and source-prefix preservation have checked composition lemmas.
 
 The shared allocator now covers arbitrary free-list reuse and memory
 growth for configurable local windows and element strides.  Both retry

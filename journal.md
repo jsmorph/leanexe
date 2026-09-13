@@ -16683,3 +16683,47 @@ standard runner.  The updated Project.ProofKit.LTGCheck target also passed.
 Documentation checking covered 116 maintained Markdown files, and the
 whitespace check passed.  Reviewed the six new proof modules and the exact
 twenty-four-file checkpoint.  The report drafts remain outside it.
+
+Published and verified 3d2a951a0ba2434f22a4a3392f27d6bc17366e1e,
+parent 22ca10dd6f93b61c6118e0e968d629d1f88b9de4, tree
+c6e4ccd8cf7bedbcdc7f3a062dafe11b0a5b8b73.  The fetched metadata,
+complete index, and twenty-four checkpoint worktree paths match.
+
+AllocationPageBound proves preservation of an arbitrary physical page
+limit across free-list reuse, bump allocation, allocation counting, and
+grid writes.  InitialHeapBounds specializes that result to initializer
+capacities and proves the exact requested byte count, no-fit search,
+heap-top increment, and unchanged free list.  Its first check reduced the
+search to none before applying an if-True rewrite, leaving a reflexive
+equality guard.  Applying the checked no-fit proposition directly fixed
+the rewrite.  Both modules pass.  These statements require the incoming
+page bound and the allocation end address to fit the requested page
+limit.  They do not yet establish the full solver's 512 MiB bound.
+
+InitialMapBranch and InitialAppendBranch now accept arbitrary frames with
+the loop's control and typed-scratch invariants.  They reconstruct the
+allocator windows through the newly checked shared lemmas and return the
+invariants and buffer getters needed by the continuation.  Both passed
+on their first checks.  The append theorem leaves the proved release and
+replacement sequence as its continuation premise.
+
+InitialResources reuses RetryStoreAt.after_step and Heap.Owns.swept to
+preserve every entry-held grid across initializer allocations and writes.
+It also proves separation from the new allocation and derives required
+pages from the byte bound.  This held-owner relation is needed by
+function 96: the decoded program calls function 95 and then releases its
+borrowed singleton through function 107.  The source-prefix module gives
+the exact cell at each index and preserves the prefix under doubling and
+extraction, reusing the checked TraversalInitial list argument.  Both
+modules passed on their first checks.
+
+All checks used the standard tools/leanrun --timeout 6m envelope with one
+named target and one active invocation.  The six successful traces have
+sixteen public axiom reports, all restricted to the permitted standard
+axioms.  Reviewed the six new files.  Preparing them with the five
+development records as an eleven-file checkpoint.  The next composition
+must combine map, append, and release while preserving source prefix,
+entry-held owners, the remaining allocation budget, and physical pages.
+Full growth-loop and entry/output execution, complete memory closure,
+and independent exact-byte verification remain open.  No production run
+has started.
