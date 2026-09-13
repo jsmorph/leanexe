@@ -526,8 +526,10 @@ acceptance under an explicit margin premise.  Pressure, sound speed,
 and the final wave-speed addition now have checked positivity, range,
 and error bounds.  Complete side and interface acceptance now follow
 from an explicit quantitative state predicate.  Every initial cell
-satisfies that predicate with M = 8.  Preservation through the rounded
-cell update and full reachable-grid invariant remain open.
+satisfies that predicate with M = 8.  The scalar conservative update
+has checked finiteness, acceptance, and timestep-dependent error bounds.
+Preservation of density and energy margins through the rounded update
+and the full reachable-grid invariant remain open.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The

@@ -161,8 +161,12 @@ follow from the quantitative StateBounds predicate.  Each Rusanov
 component includes all six rounded stages and has error at most
 256 times 2^-52 M to the fifth power against the exact expression on
 its decoded inputs.  Every initial cell satisfies StateBounds with
-M = 8 and exact internal energy at least 1/800.  Preservation through
-the rounded cell update and full recurrence remains open.
+M = 8 and exact internal energy at least 1/800.  The scalar conservative
+update now has checked acceptance and error at most epsilon M plus
+396 epsilon times its ratio times M to the fifth power, plus twice
+the half-subnormal unit, for positive ratio at most one.  Preservation
+of density and energy margins through the rounded update and full
+recurrence remains open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
