@@ -500,21 +500,24 @@ size, local execution in one process on one thread, and complete source
 and exact-WASM proofs.  The [complete solver plan](plans/euler-riemann-complete.md)
 records the numerical specification and outstanding proof obligations.
 
-The approved order is numerical completion, compiler-described array
-operations, whole-call-chain ownership and memory, complete source and
-exact-byte composition, and the two calculations.  Numerical completion
-must first discharge scan acceptance, accepted retry, and rounded-time
-progress through time 0.8 for every supported size.  The existing retry
-and advance execution theorems retain source-success premises.  Further
-initializer instruction proofs wait for this numerical argument.
+On 2026-09-13 the user approved complete exact-WASM behavior and memory
+bounds, including explicit failure returns, as the proof gate before
+production execution.  The work now connects the revised guard and
+compiler-described array operations, whole-call-chain ownership and
+memory, and complete source and exact-byte behavior.  The retry and
+advance execution proofs must cover every status.  Production runs
+must return status zero at time 0.8, in the order 192, plot 192, 800,
+plot 800.
 
 The approved normalization extension now has checked soundness,
 quantitative acceptance, and old-acceptance preservation theorems.
 Both previously rejected boundary trials pass with unchanged conserved
 update words.  Source integration and compiler regeneration pass their
 checks.  The regenerated module has 21,767 bytes, and its annotation
-matches check in Lean.  The global numerical invariant and revised
-execution proofs remain open.
+matches check in Lean.  Scalar component and update execution, all
+guard helpers, the complete state guard, and thermodynamic-side
+execution now check against those bytes, with 27 standard-only audits.
+The remaining array, control, and output execution proofs remain open.
 
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and
@@ -543,9 +546,8 @@ and successful final-time completion remain open.
 A checked three-cell example satisfies StateBounds 8 at every input
 and returns a successful candidate with density 15/128, below its
 1/8 lower bound.  The predicate is therefore not preserved for
-arbitrary neighboring states.  A proposal to revise the universal
-successful-completion gate is awaiting the user's decision.  The
-current gate and calculation order remain in force.
+arbitrary neighboring states.  Universal numerical success remains
+an open theorem under the revised proof requirement.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
@@ -569,6 +571,6 @@ free-list invariant.  Its pointer and count prefixes use the checked
 scalar-statement descriptor indexed in LTG.  Shared heap-grid bounds
 replace repeated payload-bound and separation derivations.
 
-- [ ] Complete the source and exact-WASM proofs, including successful final-time completion and memory bounds.
+- [ ] Complete the source and exact-WASM proofs for all success and failure returns, including the memory bounds.
 - [ ] Run 192 by 192 and then render its final density and pressure figure.
 - [ ] Run 800 by 800 and then render its final density and pressure figure.

@@ -10964,3 +10964,24 @@ successful-output correctness while admitting the program's explicit
 failure returns is awaiting the user's decision.  It would change the
 current universal-success gate.  No source, artifact, execution order,
 or production-run gate has changed.
+
+## 2026-09-13: Complete behavior proof requirement approved
+
+The user approved proving complete source and exact-byte WASM behavior,
+termination, and memory bounds including explicit failure returns before
+running.  Production data requires status zero at time 0.8.  The run and
+plot order remains 192 followed by 800.  The complete execution proof
+must therefore include scan failure, invalid time advance, exhausted
+retry, and all cleanup and output paths.
+
+The current compiler annotations place the component helper and wrapper
+at functions 45 and 46, and the scalar update helper and wrapper at 57
+and 58.  Their checked function-region transfers and exact wrapper
+execution passed in 7.1 seconds.  Two further closed-domain matches
+transfer twelve unchanged guard helpers.  The new momentum, complete
+state-guard, and thermodynamic-side execution proofs cover every raw
+input word and rejection branch, with exact results and store
+preservation.  Their focused checks took 3.4, 5.3, 8.4, and 33 seconds.
+All 27 public audits use only the three permitted standard axioms.
+The complete flux, cell, array, control, and output compositions still
+require checks against the regenerated module.
