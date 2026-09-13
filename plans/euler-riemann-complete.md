@@ -572,7 +572,10 @@ Control-field and scratch-register preservation now check through map,
 append, and growth continuation.  The complete growth-loop composition
 now checks with termination and preservation of the initial-cell prefix,
 entry-held owners, remaining allocation budget, and supplied page bound.
-Post-loop extraction and function entry/return composition remain open.
+The complete growCells function now includes post-loop extraction and
+entry/return composition, with exact source-result equality, entry-held
+owner preservation, and physical-page and heap-top bounds.  The
+singleton caller remains open.
 The 512 MiB proof must bound WASM pages as well as heap allocation addresses.
 Map and append adapters now reconstruct their scratch windows from an
 arbitrary loop frame and return the buffer getters for continuation.
