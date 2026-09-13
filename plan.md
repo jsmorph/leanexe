@@ -521,17 +521,19 @@ The complete flux, cell update, speed scan, neighbor and memory-input
 selection, update callback, time guard, and cell initializer also check
 against the regenerated module.  Sweep allocation, buffer release,
 acceptance, complete timestep execution, spacing, and CFL proposal
-also pass.  Full initialization, control failure returns, output, and
-the complete memory bound remain open.  The existing retry and advance
-proofs pass against the regenerated module with their source-success
-premises still explicit.
+also pass.  Full initialization, outer-control failure returns, output,
+and the complete memory bound remain open.  The existing advance proof
+passes with its source-success premise still explicit.
 
 The shared allocator now covers arbitrary free-list reuse and memory
 growth for configurable local windows and element strides.  Both retry
 failure sequences have exact execution proofs, including their empty
 array allocation.  Held-grid ownership and the reduced allocation
-reservation also pass.  The complete loop compositions must establish
-these branch premises and cover every return status.
+reservation also pass.  The complete retry function now covers every
+return status without assuming source success.  It establishes the
+branch premises, terminates the loop, and returns the specified status,
+timestep, and owned grid while preserving held grids and runtime limits.
+The total outer-control composition remains open.
 
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and

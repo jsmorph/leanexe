@@ -11046,3 +11046,21 @@ passed in 2.5 and 1.4 seconds.  No numerical source or artifact changed.
 The total retry and advance loops, complete initialization, output, and
 entry memory bound remain open.  The existing successful-control proofs
 retain their premises while the total compositions are developed.
+
+## 2026-09-13: Complete retry execution
+
+The complete retry function now terminates and returns the specified
+status, timestep, and represented grid for every retry outcome, without
+an expected-success premise.  Its invariant preserves allocator scratch
+locals until failure, handles both completed and exhausted-fuel loop
+exits, and preserves every entry owner and the runtime memory cap.
+Success supplies a full-capacity result.  Failure supplies an owned
+empty array.  Both consume at most one allocation reservation.
+
+The valid and invalid branch proofs accept arbitrary continuations,
+allowing the loop iteration to trim its operand stack through the shared
+block-loop theorem.  Branch, iteration, loop, and complete-function
+checks passed in 2.1, 1.8, 2.3, 1.4, and 2.3 seconds.  All public audits
+use only the permitted standard axioms.  The exact numerical artifact
+remains unchanged.  Total outer control, initialization, output, and
+the complete entry memory bound remain open.
