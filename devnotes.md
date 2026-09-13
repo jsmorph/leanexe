@@ -11264,3 +11264,19 @@ supported-size conjunction, and an already-discharged page conjunct.
 Current compiler call locations and checked program equalities identify
 the three calls.  Output packing, complete entry memory composition,
 and independent exact-byte verification remain open.
+
+## 2026-09-13: Output regions and allocation adapters
+
+The output packer's five capacities and allocations, both map bodies,
+both prefix/suffix copy pairs, and four header stores now match checked
+shared program definitions.  The generic allocator now has a heap-state
+adapter for arbitrary element stride, including the output's one-word
+arrays.  Its execution theorem returns the named allocated store and
+canonical allocator frame.  Three modules pass with twenty standard-only
+axiom reports and no own-module warnings.
+
+LTG field-access, prefix-copy, and offset-copy entries supplied the
+applicable theorems.  The compiler's whole-function map-add recognizer
+does not describe these field-projection maps.  Exact decoded-region
+equalities identify them.  Completed output-array contents, the full
+packer, entry memory composition, and exact-byte closure remain open.

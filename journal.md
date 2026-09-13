@@ -17098,3 +17098,62 @@ Whitespace and documentation checks passed, including all 116 maintained
 Markdown files.  The reviewed checkpoint contains six strengthened
 advance proof modules, three complete-run modules, and five development
 records.  Preserved all unrelated report and generated files.
+
+### 2026-09-13: output regions and arbitrary-width allocation state
+
+Published the complete-run checkpoint as
+b7b842faa252df92bb8c62e4e519e8e0d22c58e1, with parent
+2354fbb7af3f7a917fda25b816133c41e19ca748 and tree
+97f4c2e10c3b653c1cc7ea17b95c48e73c1f443c.  The non-forced push and
+fetch passed.  Commit metadata, complete index, and all fourteen
+checkpoint paths matched HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+Searched the LTG array index for map, copy, field, and stride.  Read the
+array-field-access, offset-array-copy, and fixed-array-erase-copy entries,
+their premises, and their checked modules.  Their field operations,
+literal stores, prefix copies, and offset copies fit the output packer.
+The whole-function wrapping-add map entry does not fit its seven-word
+input and one-word output.  The compiler's fixedArrayMapAdd? recognizer
+requires a bounded one-word wrapping-add wrapper.  emitArrayMapSlots
+emits all source fields, body bindings, result stores, and the counter
+loop for the general case.  Function 99 has no annotation regions for
+these maps.  Read its exact emitted instructions and identified both
+map regions, two concatenations, the four-word header, all five
+allocations, and three release calls.
+
+OutputShape matches the existing shared capacity, arbitrary-width
+allocator, field store, prefix-copy, and offset-copy programs to those
+regions.  Its first build rejected a missing FixedArrayCapacity import.
+The allocator, map-loop, copy-loop, and header-store equalities checked.
+Added the missing import before retrying.  ArrayAllocationMemory uses
+the existing generic allocator store and connects it to Heap.At for
+arbitrary element stride.  Its first check required applying the page
+equality before reducing the no-fit branch.  The remaining page,
+globals, byte-frame, freshness, and memory-cap results checked.
+Corrected that order without changing the model or proof limits.
+Both pending retries use the standard six-minute local runner envelope.
+
+Both retries passed.  ArrayAllocationExecute then checked the generic
+allocator execution adapter on its first build.  It applies the existing
+FixedArrayAllocate.program_spec at the supplied stride and returns the
+named heap store and canonical allocator frame.  Together the three
+modules have twenty standard-only axiom reports and no own-module
+warnings.  Eleven reports concern exact region equalities.  The other
+nine concern allocator state and execution.  These are prerequisites
+for output composition, and do not prove the completed output arrays.
+
+The compiler-emitted packer allocates density, pressure, their combined
+fields, a four-word header array, and the final array.  It releases both
+field arrays and then their concatenation.  The width-one allocator
+model now shares the same heap top, free-list, count, pages, and runtime
+cap behavior as the width-seven instance, while preserving its correct
+one-word stride header.  The next proof boundary is represented word
+prefixes and completed density/pressure maps, followed by concatenation
+and header composition.  Preparing the three proof files and five
+development records as the output-adapter checkpoint.
+
+Whitespace and documentation checks passed, including all 116 maintained
+Markdown files.  Reviewed all three accepted proofs and their axiom
+reports together with the failed attempts.  The placeholder, added-axiom,
+and native-decision scan found no matches.  Staging only the eight
+reviewed checkpoint paths and preserving the unrelated paper files.
