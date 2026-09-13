@@ -18102,3 +18102,95 @@ a checkpoint of those bodies, the complete code-section theorem, shared
 composition support, nested metadata utility, LTG guidance, and records.
 The type section is checking.  The other section and complete decoder
 drafts, including the edited wrappers, remain outside this checkpoint.
+
+The direct type-section check reached its two-minute timeout with status
+124 and no theorem diagnostic.  Added normative section-vector item
+offsets so the type-entry results can be checked separately and composed
+with the accepted vector and bounded-parser lemmas.  The unchanged
+whole-section evaluation will not be retried.
+
+Published b98cdced2af9ee8668ff47ab4c0f4cea0bb4cd43, parent
+766dcb3d5efdb3a706cac129ef7fe15785d5b5ec, tree
+8f5335738fbf45adccdfbb516caae7240c5b4d83, by non-forced push.
+Fetch confirmed head, remote tracking ref, and complete index equality.
+Twenty-one unchanged checkpoint paths matched the fetched worktree
+content.  Journal and CodeOffsets had the reviewed next-iteration edits
+before the fetch check, so those two worktree paths differed.  Future
+checkpoint verification must finish before editing its paths again.
+
+The section-offset utility passed for all six sections.  It records
+108 types, 108 function indices, one memory, six globals, eleven exports,
+and 108 code bodies.  Individual type-entry checks and vector composition
+passed, followed by the complete type-section theorem.  The function-index,
+memory, and global vectors and their complete section proofs also passed.
+All seven new vector and section audit reports use only propext and have
+no warnings.  Export entries are checking.  Their byte-slice operation
+uses Array.getInternal, whose implicitly reducible definition differs
+from the optional-index operation used by the checked byte-reader rules.
+
+Correction: the type, function-index, memory, and global work produced
+eight new vector and section audits, rather than seven.  The export
+entry/vector and section checks also passed with the standard logical
+axioms and no warnings.  Their byte-slice evaluation needed no new helper.
+
+The complete ArtifactDecode build reached its three-minute timeout with
+status 124 and no theorem diagnostic.  No ArtifactParsed trace was
+produced.  Preserved that draft in
+tmp/euler-artifact-parsed-monolithic-230402.lean.  Divided composition
+into ArtifactParsedStates, ArtifactParsedCode, ArtifactParsedSections,
+and ArtifactParsed.  Replaced broad simplification of each section parser
+with its explicit parser equations.  Checking the terminal state module
+first under the standard local runner limits, with a two-minute timeout.
+All six separate section proofs have passed.  The complete decoder,
+validator, translation, and independent artifact gate remain open.
+
+The state module first reported five structure-layout syntax errors.
+Aligning the updated fields fixed them.  Its terminal-loop theorem
+passed with standard axioms.  The isolated code transition then timed
+out after two minutes without a theorem diagnostic.  Added six generic
+parseSection composition lemmas.  They passed in less than one second
+with only the standard axioms and no warnings.  Using the code lemma
+and supplying the section-loop fuel explicitly made the code transition
+pass.  This check changed both the parser-result composition and fuel
+inference, so it does not isolate which caused the earlier timeout.
+Applying the same checked composition to the remaining five transitions.
+
+All five remaining transitions and the complete binary decoder passed.
+The public decodedRaw_isSome wrapper first left Except.toOption
+unreduced.  Explicit rewriting followed by reflexivity fixed it.
+ArtifactDecode then passed.  Trace review covers all thirteen section,
+composition, and wrapper modules.  Fifteen recorded theorem audits use
+only propext, Classical.choice, and Quot.sound, and no module has a
+warning.  The complete statement equates decoding of all 21,767 frozen
+bytes with Cache.raw.  It composes the earlier 108 body certificates.
+
+The isolated function-99 validator passed with only propext and no
+warnings.  Complete cache validation then passed within its two-minute
+runner limit using checked cbv.  Both the Boolean result and successful
+validation existence theorem use only propext, with no warnings.
+The generated translation proof is checking under a three-minute cap.
+It now includes explicit transfer of Spec.ExactSpecFor and Spec.SafeSpecFor
+to the decoded and validated bytes.  Translation and the independent
+artifact gate remain open.  Neither production simulation has started.
+
+Preparing a decoding and validation checkpoint with section metadata,
+six generic section composition lemmas, Euler section and wrapper proofs,
+LTG guidance, and updated plans and records.  A documentation edit failed
+its exact-context check before applying any changes.  The corrected edit
+uses the complete source line.  The translation experiment remains separate
+until its check passes.
+
+The complete translation check passed within its three-minute runner
+limit.  translation_cache_eq uses only propext.  artifact_module_eq_cache,
+artifact_solve_exact, and artifact_solve_success use only the three
+accepted logical axioms.  The new module has no warnings.  The latter
+two theorems start from the frozen bytes, successful decoding and
+validation, and CoreValid, then establish the complete public execution
+and successful-output specifications.  Their audited transitive
+dependencies include the termination and 512 MiB memory guarantees.
+
+Started the focused tools/artifact-proof.js check for the frozen
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310
+package and ArtifactTranslation.  It uses its existing serialized runner
+calls.  The independent gate remains running.  The checkpoint now includes
+the accepted translation and explicit byte-facing behavior theorems.

@@ -1,5 +1,4 @@
-import Project.EulerRiemann.ArtifactBytes
-import Project.Artifact.Binary.Decode
+import Project.EulerRiemann.ArtifactParsed
 
 set_option maxRecDepth 1048576
 
@@ -11,7 +10,9 @@ def decodedRaw? : Option RawModule :=
   (decode artifactBytes).toOption
 
 theorem decodedRaw_isSome : decodedRaw?.isSome = true := by
-  decide +kernel
+  unfold decodedRaw?
+  rw [decode_eq_cache_parts]
+  rfl
 
 def decodedRaw : RawModule :=
   decodedRaw?.getD default

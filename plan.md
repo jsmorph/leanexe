@@ -528,7 +528,10 @@ Complete output and solve-entry execution now pass.  The public
 specification proves exact represented results and a 512 MiB bound from
 the module's initial state for runtime sizes two through eight hundred.
 Zero status implies a checked numerical trace through time 0.8.
-Independent exact-byte closure remains open.
+Complete decoding of the frozen 21,767-byte artifact and validation now
+pass with only the accepted logical axioms.  Talos translation equality
+and both complete byte-facing behavior theorems also pass.  The independent
+artifact gate remains open.
 
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation

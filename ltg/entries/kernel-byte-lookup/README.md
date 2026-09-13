@@ -64,6 +64,21 @@ composes all 108 body results through `vectorLoop_eq_cons`, then checks
 the item-count and byte-count prefixes.  Its axiom audit reports only
 `propext`.
 
+The other vector sections use individual entry certificates and the same
+vector and bounded-parser lemmas.  The complete type-section evaluation
+timed out before this decomposition passed.  Generic
+[section-result lemmas](../../../proofs/talos/lean/Project/Artifact/Binary/SectionParts.lean)
+preserve an already checked payload result when updating a raw module.
+The [complete binary decoder](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactParsed.lean)
+then composes the six sections and header.  Its audit contains only the
+three accepted logical axioms.  Supplying section-loop fuel explicitly
+and replacing concrete simplification with the generic result lemma
+resolved a separate composition timeout.  That iteration changed both
+factors and does not distinguish their contributions.  Complete Riemann
+validation also passes with checked cbv and only propext.  Translation
+equality and explicit transfer of the complete behavioral specifications
+to the frozen bytes pass with the accepted logical axioms.
+
 The [checked lookup module](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactByteLookup.lean)
 and [suffix consumer](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99Part333.lean)
 record the application.  Complete Riemann artifact verification and a
