@@ -17157,3 +17157,86 @@ Markdown files.  Reviewed all three accepted proofs and their axiom
 reports together with the failed attempts.  The placeholder, added-axiom,
 and native-decision scan found no matches.  Staging only the eight
 reviewed checkpoint paths and preserving the unrelated paper files.
+
+### 2026-09-13: output word-array prefixes
+
+Published the output-adapter checkpoint as
+40ed20027886a8e4000694041e6cb1cea570d987, with parent
+b7b842faa252df92bb8c62e4e519e8e0d22c58e1 and tree
+6ecbbcd6b4cfa42c69858cfbda02454caec2404c.  The non-forced push
+and fetch passed.  HEAD, FETCH_HEAD, and origin/talosfp-euler resolve
+to the same commit.  The complete index and all eight checkpoint paths
+match the fetched tree.
+
+Read the array-memory-framing LTG entry and its checked representation
+lemmas.  At.frameBefore requires all changes above the represented
+array and unchanged pages.  Output allocation can reuse a disjoint
+earlier free block, so the needed representation lemma accepts equality
+on the array's byte interval and nondecreasing pages.  Added At.frame
+and a WritesRange corollary in ArrayPrefix, alongside empty, incremental,
+and completed UInt64-array prefixes.  The write proof reuses the checked
+roundtrip and disjoint-read lemmas.  This generic module will support the
+density and pressure loops without a second numerical implementation.
+
+ArrayPrefix passed on its first build, with seven standard-only axiom
+reports and no own-module warnings.  Added a common output-map loading
+proof for both compiler-assigned item ranges.  It reuses ArrayField.load_spec
+for all seven source words and identifies the selected density or pressure
+slot, while proving preservation of every other local.  Checking that
+module before composing the store and loop invariant.
+
+OutputMapLoad passed on its first build with four standard-only axiom
+reports and no own-module warnings.  The seven shared load applications
+check both emitted local ranges.  Added the map cursor invariant, which
+tracks those assigned slots and counter 39 while preserving every other
+local.  Its transition uses FixedArrayCopy.counterFrame and will serve
+both projection loops.
+
+The cursor module passed on its first build.  Added one loop theorem
+parameterized by the density/pressure choice.  It composes the exact
+emitted guard, seven loads, selected field store, and increment through
+BlockLoop.program_spec.  The invariant carries the completed output
+prefix, the input grid representation, the unchanged bytes outside the
+output array, and the preserved locals.  The decreasing measure is the
+remaining number of cells.
+
+The first loop check rejected the transition from the generic field
+address to the word-array write: Lean had retained 1 * i + 0 + 1.
+Added the two arithmetic rewrites before changing the store expression.
+The failure produced a theorem diagnostic after 3.9 seconds.  No timeout,
+resource adjustment, or artifact change occurred.
+
+The loop retry passed.  Reviewed all four new proof modules and their
+fifteen standard-only axiom reports.  No own-module warnings remain.
+Both emitted maps now have complete loop termination and content
+theorems.  Their allocation/setup and result transfer are still open.
+Extended the provisional array-memory-framing LTG entry with the checked
+prefix and interval-frame declarations.  Its guidance records the two
+current loop consumers and the absence of independent Euler package
+acceptance or timing comparisons.  Preserved the existing consumers
+and framing guidance.  Synchronizing the five development records and
+running the catalog, forest, generated-declaration, and tool tests before
+publishing this checkpoint.
+
+The catalog rebuild, catalog check, forest check, and LTG test rejected
+the new module because the core ProofKit module and source inventories
+did not include ArrayPrefix.  No generated catalog update completed.
+Added its exact module and source path to tools/leanexegen-lib.js, so
+artifact-proof tasks and their archived support can import the checked
+module.  This is the same explicit inventory used by the existing
+ProofKit modules.  Retrying the catalog rebuild before further gates.
+
+The next rebuild required the advertised declarations in lexical order.
+Sorted the new prefix names before retrying.  Both failures were catalog
+validation diagnostics, and neither started Lean.
+
+The catalog rebuild, catalog and forest checks, LTG tests, knowledge
+tests, leanexegen tests, and generated LTGCheck Lean target all passed.
+The 10,000-record retrieval test completed in 3.052 ms.  No package-local
+Lean source was added.  The core ArrayPrefix source is checked and
+included in the explicit artifact-proof support inventory.  Whitespace,
+all 116 maintained Markdown files, and the placeholder/new-axiom/native
+decision scan passed.  Reviewed the four proof modules, their accepted
+axiom reports, the catalog changes, generated indexes, support inventory,
+and five development records.  Staging exactly these seventeen paths
+for the output-projection checkpoint.  Production runs remain pending.

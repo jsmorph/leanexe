@@ -11280,3 +11280,18 @@ applicable theorems.  The compiler's whole-function map-add recognizer
 does not describe these field-projection maps.  Exact decoded-region
 equalities identify them.  Completed output-array contents, the full
 packer, entry memory composition, and exact-byte closure remain open.
+
+## 2026-09-13: Output projection loops
+
+The density and pressure loops now terminate with the specified word
+arrays while preserving the input grid and all bytes outside the output
+interval.  One theorem covers both compiler-emitted local ranges and
+selected fields.  It composes shared field operations and BlockLoop
+with a new generic UInt64-array prefix representation.  Four modules
+pass with fifteen standard-only axiom reports and no own-module warnings.
+The first loop check needed normalization of the width-one address.
+
+The array-memory-framing LTG entry now advertises incremental prefix
+construction and preservation over disjoint intervals with nondecreasing
+pages.  The entry remains provisional.  Allocation-to-loop composition,
+concatenation, releases, the header, and full packer execution remain open.

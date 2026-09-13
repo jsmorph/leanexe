@@ -529,8 +529,10 @@ Output and the complete entry memory bound remain open.
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation
 state and execution connect its one-word arrays to the existing heap
-model.  Completed density/pressure maps and full output composition
-remain open.
+model.  Both density/pressure loops now terminate with exact output
+words and preserve the input grid through shared prefix, field, and
+BlockLoop results.  Allocation-to-loop composition and full output
+packing remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
