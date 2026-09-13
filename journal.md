@@ -16727,3 +16727,62 @@ entry-held owners, the remaining allocation budget, and physical pages.
 Full growth-loop and entry/output execution, complete memory closure,
 and independent exact-byte verification remain open.  No production run
 has started.
+
+Published and verified dacef3f69fec2f1ad83c505bed639594ee137311,
+parent 3d2a951a0ba2434f22a4a3392f27d6bc17366e1e, tree
+05c6de2b157f1656947d8b3d976003921347f23d.  The fetched metadata,
+complete index, and eleven checkpoint worktree paths match.
+
+InitialGrowthAllocate now composes both allocations, map, and append
+while carrying entry-held ownership, physical pages, unchanged free
+nodes, and the remaining byte budget.  Its first check needed an
+explicit type for the locally named append capacity.  The corrected
+check passed.  InitialGrowthExecute adds the existing decoded release
+and replacement sequence, preserves the exact doubled initial prefix,
+and establishes the next free-list and scratch invariants.  Its first
+check needed reduction of the tracked-release Boolean before applying
+page preservation.  The corrected check passed.
+
+InitialExtractResources now carries the same resource relation and page
+bound through the complete extraction branch, returning the exact
+requested prefix, capacity, and output pointer.  A local capacity alias
+prevented the last no-fit rewrite on its first check.  Expanding that
+alias in the checked search equality fixed the application.  The module
+and the new InitialInvariant module pass.  Their four public axiom
+reports contain only propext, Classical.choice, and Quot.sound.
+
+The loop invariant distinguishes an active power-of-two prefix from a
+completed output, with rounds plus remaining fuel equal to twenty.
+InitialIteration applies the compiler-matched fuel guard and the decoded
+length comparison before the checked extraction or growth composition.
+Its first check found a consumed invariant hypothesis and unreduced
+zero-length block stack operations.  The revised proof retains the
+entry invariant and reduces those operations before using the returned
+frame.  This check is in progress.  All Lean invocations remain single
+named targets through tools/leanrun --timeout 6m in standard mode.
+No source, binary, runtime setting, or dataset changed.
+
+The iteration retry reduced both branch results to the required
+invariant.  Its remaining diagnostics concerned beta reduction of the
+two-argument measure before rewriting the returned frame's measure.
+Adding that reduction completed the proof.  InitialLoop then passed
+on its first check through the shared BlockLoop.program_spec theorem.
+The six new modules have six public axiom reports, all restricted to
+the permitted standard axioms, with no warnings in their own traces.
+
+The complete loop now preserves the power-of-two prefix, allocation
+reservation, entry-held owners, and physical page bound, and terminates
+on completion or fuel exhaustion.  The post-loop exhaustion extraction,
+function entry and return, singleton caller, output, complete memory
+composition, and independent exact-byte verification remain open.
+The previously recorded aggregate cache-mismatch blocker remains open.
+No unchanged aggregate rerun or production execution was attempted.
+Preparing the six checked modules and five development records as one
+checkpoint.  No compiler or LTG metadata changes were needed here:
+the proof composes the compiler-matched guard and the shared allocator,
+register-range, copy-loop, and block-loop results already in use.
+
+Reviewed all six proof files and the five development-record changes.
+The documentation check passed for 116 maintained Markdown files, and
+the whitespace check passed.  The eleven-file checkpoint excludes the
+unrelated report drafts and submission evidence.
