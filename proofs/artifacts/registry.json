@@ -198,6 +198,12 @@
       "sha256": "5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942",
       "manifest": "euler2_d_cell_step/5bf42c31171b77f5480a15f48e26117b7956b5718fcfe3fb6f0d2dd5b75ed942/manifest.json",
       "proofTarget": "Project.Euler2DCellStep.ArtifactTranslation"
+    },
+    {
+      "case": "euler_riemann",
+      "sha256": "baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310",
+      "manifest": "euler_riemann/baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310/manifest.json",
+      "proofTarget": "Project.EulerRiemann.ArtifactTranslation"
     }
   ]
 }
