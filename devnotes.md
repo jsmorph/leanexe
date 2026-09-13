@@ -11121,3 +11121,28 @@ lake env lean, matching the existing artifact-proof driver.  Both artifact
 and knowledge audits retain their exact report count and axiom policy.
 The Lean-backed knowledge test passes after this change.  LTG and forest
 checks, their Node tests, and leanexegen protocol/package tests also pass.
+
+## 2026-09-13: Initializer frame and extraction composition
+
+The initializer now preserves its control fields across each allocation
+region and its scratch-register types through map, append, and growth
+continuation.  The shared I64LocalRange and FixedArraySearchWindow lemmas
+recover a canonical allocator frame from an arbitrary typed register
+interval.  InitialExtractBranch uses them to compose allocation, copying,
+and return assignment for both initializer exits.  The source owner,
+extracted-prefix owner, write bounds, output pointer, and completion flag
+appear in its postcondition.  All six new modules pass standard-only
+axiom audits through sequential standard-runner checks.
+
+The existing no-fit allocator LTG entry and proof-package allowlist now
+include both shared modules.  The entry remains provisional.  Initial
+failed checks exposed frame inference, unreduced list lengths, overly
+broad getter simplification, and a let-bound continuation argument.
+The corrected proofs use explicit frame arguments and focused rewriting.
+Full growth-loop composition, entry/output execution, physical memory
+pages, and exact-byte closure remain open.  Production execution has not
+started.
+
+The LTG and forest checks, their Node tests, leanexegen protocol/package
+tests, Lean-backed knowledge test, and updated LTG declaration check pass.
+The documentation and whitespace checks pass.

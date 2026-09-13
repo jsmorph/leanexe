@@ -40,6 +40,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayBumpInstall` | Heap-top and root assignment with preservation of the remaining locals and store fields. |
 | `Project.ProofKit.FixedArraySearchFrame` | Six allocator scratch slots with arbitrary parameters, saved locals, and trailing locals. |
 | `Project.ProofKit.FixedArraySearchProjection` | Preserves parameter and saved-local getters before the allocator scratch window. |
+| `Project.ProofKit.FixedArraySearchWindow` | Reconstructs the canonical six-slot allocator frame from getter equalities. |
+| `Project.ProofKit.I64LocalRange` | Preserves `i64` register ranges across assignments and allocator scratch updates, and recovers a canonical allocator frame. |
 | `Project.ProofKit.FixedArraySearchPrepare` | Rewrites saved-local assignments and capacity preparation as canonical six-slot allocation frames. |
 | `Project.ProofKit.FixedArraySearchRead` | Bounded free-node capacity and next-pointer reads and search-pointer advancement. |
 | `Project.ProofKit.FixedArraySearchNone` | Terminating search of a represented free list whose capacities are all smaller than the request, preserving the exact store. |

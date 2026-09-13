@@ -16622,3 +16622,64 @@ unused FixedArraySearchWindow draft, and report files remain outside it.
 Complete initialization, output execution, the physical memory bound,
 and exact-byte package closure remain open.  Production execution has
 not started.
+
+Published and verified 22ca10dd6f93b61c6118e0e968d629d1f88b9de4,
+parent 7f115da77d8ac3d19a17a6a844678f3bc2e130d8, tree
+8c33f733bf556538f157a02a436872d43aab3db4.  The fetched metadata,
+complete index, and twenty-three checkpoint worktree paths match.
+
+InitialFramePreserve first failed because its unchanged parameter-length
+argument made Lean infer the old frame as the result frame.  Supplying the
+result frame explicitly corrected the application.  InitialAllocationFrame
+then established control preservation for map, append, and extraction.
+Its first check needed explicit list-length reduction and the correct
+orientation of unequal list indices.  Arithmetic discharge of the saved
+local updates replaced the repeated inequalities.  Both modules pass.
+
+Searched the LTG category indexes for allocator frames, scratch registers,
+and frame preservation.  Read fixed-array-no-fit-allocation and
+local-frame-projection.  Their canonical-frame and getter guidance applies,
+but neither supplied reconstruction from an arbitrary typed register
+interval.  Added I64LocalRange and used the existing FixedArraySearchWindow
+draft.  The draft's focused check failed on an unreduced six-element list
+length.  The correction reduces that length explicitly.  The new range
+proof first failed after broad simplification expanded the getter and
+reassociated a trailing list.  Focused getter equations and append
+simplification corrected both failures.  The shared modules now pass.
+
+InitialScratch composes those lemmas through map input, map allocation,
+the preserved map tail, append preparation/allocation, and continuation.
+The first check left the parameter-prefix branch of the final getter
+open.  Its explicit index bound closed that goal.  InitialExtractBranch
+then composed the complete extraction and return programs for both exits.
+Its first check lacked a named local-length premise, retained a folded
+canonical frame, and introduced a let-bound request as though it were the
+first continuation argument.  Naming the length, reducing the frame, and
+reducing the continuation let before introduction corrected the proof.
+The branch proof now checks and returns the source and result owners,
+bounded writes, and complete control-frame predicate.
+
+All these checks used tools/leanrun --timeout 6m lake -d proofs/talos/lean
+--no-ansi --quiet build with one named target per invocation.  No Lean
+invocation overlapped another.  Read every successful module's trace:
+only propext, Classical.choice, and Quot.sound occur in the twenty-four
+public axiom reports.  The two map function-index updates are dependencies
+of these current-artifact consumers and are included in this checkpoint.
+No source program, compiler output, runtime configuration, or dataset
+changed.  Complete growth-loop composition, entry and output execution,
+physical memory bounds, and exact-byte closure remain open.
+
+The no-fit allocator entry, ProofKit inventory, and proof-package allowlist
+now expose the two shared modules.  This is provisional support with a
+checked Euler consumer.  No independent package or held-out proof has
+tested the additions yet.  Preparing the proof files, LTG metadata,
+allowlist, and five development records as one reviewed checkpoint.
+
+The LTG rebuild and catalog/forest checks passed with seven categories and
+thirty-nine entries.  The LTG, knowledge, and leanexegen Node tests passed.
+The latter retained its fixture at tmp/leanexegen-test-NpU9Np.  The required
+Lean-backed knowledge test passed both package promotions through the
+standard runner.  The updated Project.ProofKit.LTGCheck target also passed.
+Documentation checking covered 116 maintained Markdown files, and the
+whitespace check passed.  Reviewed the six new proof modules and the exact
+twenty-four-file checkpoint.  The report drafts remain outside it.
