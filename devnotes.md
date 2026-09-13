@@ -10819,3 +10819,26 @@ The component, interface, and initialization-transfer checks passed
 in 2.1, 1.7, and 2.4 seconds.  All audits contain only standard axioms.
 Preservation of StateBounds through the rounded cell update, successful
 final-time completion, and complete artifact execution remain open.
+
+## 2026-09-12: Timestep-dependent update error
+
+[Binary64 affine update](proofs/talos/lean/Project/ProofKit/F64AffineUpdate.lean)
+proves finiteness of the subtraction, multiplication, and final
+subtraction under explicit range bounds.  Its error bound retains the
+timestep factor.  [The solver update](proofs/talos/lean/Project/EulerRiemann/NumericsUpdate.lean)
+then returns status zero for a positive ratio at most one, a state
+magnitude at most M, and input flux magnitudes at most 66 M to the
+fifth power.  Its error is at most epsilon M plus 396 epsilon times
+the ratio times M to the fifth power, plus twice the half-subnormal
+unit.  Here epsilon is 2^-52.  Both checks passed in 1.4 and 1.2
+seconds, with standard-only audits.
+
+[Guermond and Popov, section 2.5](https://people.tamu.edu/~guermond/PUBLICATIONS/guermond_popov_sinum_hyperbolic_systems_2016.pdf)
+identify positivity and a specific-entropy lower bound as an Euler
+invariant domain.  [Jiang and Liu, section 3.1](https://faculty.sites.iastate.edu/hliu/files/inline-files/JL_JCP_v373_2018.pdf)
+derive invariant-region flux conditions from bounds on Riemann fan
+speeds.  Applying those results here requires a proof for the solver's
+rounded endpoint-speed selection.  Those domains also permit arbitrarily
+small positive density, so they do not supply the quantitative margins
+required by the executable guard.  A full-run preservation and progress
+argument remains open.
