@@ -177,8 +177,15 @@ step retains at least 49/100 of center density and internal energy.
 Physical-flux and update rounding errors now compose across the four
 candidate components.  Every scalar update succeeds and stays finite
 with error at most epsilon M plus 1004 epsilon times the ratio times
-M to the fifth power, plus twice the half-subnormal unit.  Quantitative
-acceptance of the candidate cell's final guard remains open.
+M to the fifth power, plus twice the half-subnormal unit.  The reference
+step also retains its exact center weight w.  Candidate density is at
+least w times center density minus the component error delta.  Its
+energy margin is at least w squared times center margin minus
+8 B delta + 4 delta squared, where B bounds the reference components.
+The final candidate guard accepts when these lower bounds exceed zero
+and its normalized energy budget, under explicit normalization
+conditions.  Preservation of these sufficient conditions through the
+reachable grid and full timestep sequence remains open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value

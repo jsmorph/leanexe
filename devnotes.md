@@ -10917,3 +10917,23 @@ reference-flux error budgets.  Component-indexed bounds avoid four
 copies of the interface and update derivations.  Candidate-cell guard
 acceptance, full-run quantitative preservation and progress, complete
 memory and artifact proofs, and both calculations remain open.
+
+## 2026-09-13: Candidate density and energy margin
+
+[The reference-step theorem](proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
+now retains the center weight w = 1 - ratio (alphaL + alphaR) / 2.
+[The candidate bounds](proofs/talos/lean/Project/EulerRiemann/NumericsCandidateBounds.lean)
+give density at least w times center density minus delta, and energy
+margin at least w squared times center margin minus 8 B delta +
+4 delta squared.  Here B = M + 134 ratio M to the fifth power and
+delta = epsilon M + 1004 epsilon ratio M to the fifth power +
+2 eta, with epsilon = 2^-52 and eta = 2^-1075.
+
+[Candidate guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsCandidateGuard.lean)
+follows when these lower bounds exceed zero and the normalized guard
+budget, and the explicit normalization conditions hold.  The six
+changed proof modules passed focused checks in 1.1 to 1.3 seconds,
+with standard-only public audits.  The numerical program and WASM
+bytes are unchanged.  Preservation of these sufficient conditions
+over the complete simulation, accepted retry before time stalls,
+the complete memory and artifact proofs, and both runs remain open.
