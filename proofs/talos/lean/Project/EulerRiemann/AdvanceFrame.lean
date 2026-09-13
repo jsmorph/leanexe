@@ -57,8 +57,8 @@ theorem AdvanceFrameAt.scan {frame : Locals} {fuel : UInt64} {n : Nat}
 theorem AdvanceFrameAt.trial {frame : Locals} {fuel : UInt64} {n : Nat}
     {time source tracker outputTime outputRoot : UInt64} {done : Bool}
     (h : AdvanceFrameAt frame fuel n time source tracker outputTime outputRoot done)
-    (alpha dt trialDt result : UInt64) :
-    AdvanceFrameAt (advanceTrialFrame frame n time source alpha dt trialDt result)
+    (alpha dt trialDt result : UInt64) (status : UInt64 := 0) :
+    AdvanceFrameAt (advanceTrialFrame frame n time source alpha dt trialDt result status)
       fuel n time source tracker outputTime outputRoot done := by
   cases h
   constructor <;> simp_all [advanceTrialFrame]
