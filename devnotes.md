@@ -10727,3 +10727,24 @@ The aggregate gate stops at the association-list demo: current
 compilation omits the duplicate recursive lookup retained in its
 tracked model.  Its frozen package and tracked proof files remain
 unchanged.  This aggregate mismatch remains unresolved.
+
+## 2026-09-12: Initial bounds and arithmetic range
+
+[Initial quantitative bounds](proofs/talos/lean/Project/EulerRiemann/InitialQuantitative.lean)
+check all 36 rounded conservative averages and transfer the results to
+every initialized grid: density at least 1/8, energy at least 1/4,
+component magnitudes at most 4, and energy margin at least 1/100.
+The final check took 18 seconds with three standard-only audits.
+
+[Finite packing](proofs/talos/lean/Project/ProofKit/F64Packing.lean),
+[addition and subtraction](proofs/talos/lean/Project/ProofKit/F64AddBounds.lean),
+[dyadic rounding](proofs/talos/lean/Project/ProofKit/F64DyadicBounds.lean), and
+[multiplication](proofs/talos/lean/Project/ProofKit/F64MulBounds.lean)
+extend the pinned CodeLib arithmetic bounds beyond unit-size operands.
+Addition and subtraction allow exact result magnitude below 2^1023.
+Multiplication allows exact product magnitude below 2^1022 and accounts
+for underflow.  The final checks took 1.6, 1.3, 1.8, and 2.4 seconds,
+respectively.  All requested audits contain only standard axioms.
+These reusable proofs preserve the existing formal IEEE64 operations.
+Division, square root, and preservation of the numerical bounds through
+the complete rounded recurrence remain open.

@@ -516,6 +516,12 @@ checks.  The regenerated module has 21,767 bytes, and its annotation
 matches check in Lean.  The global numerical invariant and revised
 execution proofs remain open.
 
+Every initial cell now has checked density, energy, component, and
+energy-margin bounds.  Shared packing, addition, subtraction, and
+multiplication lemmas cover the solver's larger arithmetic values,
+including multiplication underflow.  Division, square root, and the
+preserved reachable-grid invariant remain the next numerical obligations.
+
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
 remaining composition must maintain the heap and free-list invariant

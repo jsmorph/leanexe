@@ -15327,3 +15327,77 @@ directories.  The first WAT-print attempt found no wasm-tools on PATH.
 Using the driver's installed /home/somebody/.cargo/bin/wasm-tools
 completed the comparison.  This aggregate mismatch remains recorded
 and has not been reported as a passing gate or refreshed implicitly.
+
+Published and fetched a5cbe95bc2cb0e56313bc372b508cff871871f41,
+"Integrate the proved guard into Riemann source", parent
+fb686934c37c1c61cb1fff4ceea2cc8a2fa8b748, tree
+a2e576bcf143807b9deaaf8e92da28a104c0470f.  The remote commit,
+parent, title, tree, index, and all 22 checkpoint worktree files match.
+Earlier pending work remains preserved outside the checkpoint.
+
+Added the pending InitialQuantitative proof.  It expresses integer
+certificates for the 36 rounded conservative averages and converts
+them to real bounds: density at least 1/8, energy at least 1/4,
+component magnitudes at most 4, and Euler energy margin at least 1/100.
+These are proposed initial bounds.  The checker must establish them,
+and their preservation through the rounded recurrence remains open.
+
+The first InitialQuantitative check accepted the integer bounds for all
+36 averages, with a standard-only audit.  Its conversion proof failed
+to rewrite a product of a quotient before applying the division-order
+lemma, and field_simp had already closed a later goal before ring.
+Added the quotient reassociation and removed that redundant tactic.
+The downstream initial-grid theorem remains unaccepted until rechecking.
+
+InitialQuantitative passed in 18 seconds after the conversion correction.
+Its three requested audits contain only standard axioms.  The next
+arithmetic boundary is explicit in the pinned CodeLib source: its
+real addition and multiplication error lemmas bound operand magnitudes
+by one, while the initialized Euler energy exceeds one.  Added
+F64Packing to extend the checked finite packing range from scaled
+magnitudes below 2^1076 to those below 2^2097, retaining the existing
+unrestricted roundedMagnitude relative-error theorem.
+
+The first packing check accepted the rounding-parameter and finite
+packing theorems with standard-only audits.  The signed corollary's
+simp call repeatedly replaced z by its own natural absolute value.
+Replaced that call with a single proved subtraction equality and
+removed two reported unused simp arguments before rechecking.
+
+F64Packing passed in 1.6 seconds with three standard-only audits.
+Added F64AddBounds using that packing theorem and the existing exact
+scaled-integer addition model.  Its scaled and real addition theorems
+passed their audits on the first check.  They allow arbitrary finite
+operands when the exact sum has magnitude below 2^1023, with relative
+error at most 2^-53.  The subtraction adapter left a real negation/division
+identity after simp.  Added ring to close that identity before rechecking.
+
+F64AddBounds passed in 1.3 seconds with three standard-only audits.
+F64DyadicBounds then passed in 1.6 seconds with two standard-only audits.
+The dyadic theorem covers magnitudes below 2^3170 at scale 1074 and
+retains the existing relative-or-half-subnormal error bound.  It reuses
+CodeLib's small-range theorem and the checked packing extension for the
+larger range.  Three supporting integer identities make CodeLib's
+private shift reasoning available as reusable ProofKit lemmas.  One
+unused simp argument was reported and will be removed.  These are
+arithmetic lemmas, with no claim yet about a complete Euler trajectory.
+
+The next bounded edit adds F64MulBounds, translating the dyadic theorem
+through CodeLib's finite multiplication identity into a real error bound
+for arbitrary finite operands with exact product magnitude below 2^1022.
+All checks continue through the standard local tools/leanrun limits.
+
+F64MulBounds passed its first check in 2.4 seconds.  Its three requested
+audits contain only propext, Classical.choice, and Quot.sound.  The same
+run rechecked the simplified F64DyadicBounds in 1.8 seconds.  Reviewed
+the accepted proofs and their logs together: multiplication reuses the
+CodeLib exact finite-operation identity and the shared larger-range
+dyadic theorem.  No compiler annotations apply at this numerical proof
+boundary, and no LTG retrieval or promotion experiment occurred.
+
+The next checkpoint includes InitialQuantitative, F64Packing,
+F64AddBounds, F64DyadicBounds, F64MulBounds, devnotes.md, plan.md,
+plans/euler-riemann-complete.md, and this append-only journal.  It records
+checked initial and arithmetic bounds.  The complete source-success,
+new-artifact execution, and memory gates remain open.  Earlier pending
+LTG, initializer, tool, and paper files remain outside this checkpoint.
