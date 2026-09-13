@@ -171,8 +171,10 @@ checked bounds against exact internal energy.  The returned interface
 alpha bounds each exact velocity magnitude plus half its exact sound
 speed.  The real Rusanov split-state proof accepts this coefficient,
 and both cell positivity variants share their convex-combination
-argument.  Rounded CFL transfer and composition of the physical-flux
-rounding errors remain open.
+argument.  The rounded CFL comparison now bounds each exact product
+by 51/100.  For a positive ratio at most one, the combined reference
+step retains at least 49/100 of center density and internal energy.
+Composition of physical-flux and update rounding errors remains open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value

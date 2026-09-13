@@ -529,9 +529,10 @@ from an explicit quantitative state predicate.  Every initial cell
 satisfies that predicate with M = 8.  The scalar conservative update
 has checked finiteness, acceptance, and timestep-dependent error bounds.
 Computed interface speeds now bound both exact velocities plus half
-their exact sound speeds.  The real split-state and cell positivity
-proofs accept that coefficient.  Rounded CFL transfer and physical-flux
-error composition remain open.
+their exact sound speeds.  The accepted rounded CFL comparison now
+supplies exact reference-step positivity with density and internal
+energy at least 49/100 of their center values, for a positive ratio
+at most one.  Physical-flux error composition remains open.
 Preservation of density and energy margins through the rounded update
 and the full reachable-grid invariant remain open.
 
