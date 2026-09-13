@@ -15692,3 +15692,45 @@ and LTG catalog entries were not consumed by this mathematical proof
 boundary.  Exact regenerated-WASM execution remains a separate open
 gate.  The next numerical boundary is the rounded cell update and
 preservation of usable density and internal-energy margins.
+
+Published and fetched 0f11762043b7f1b7f3789445896cc90d747f4807,
+"Prove bounded Riemann interface acceptance", parent
+9aba0fa1593d0cf01fb0b31fae813babf28241cc, tree
+e9e88c0360c70a1fd0bf02c8b901120b1d91f17a.  The fetched commit,
+parent, title, tree, index, and all ten checkpoint worktree files match.
+Documentation and whitespace checks passed.  Added RealAffineError as
+the real propagation boundary for the rounded conservative update.
+The update bound must retain its timestep factor so retry analysis can
+distinguish flux error from rounding of the final state subtraction.
+
+RealAffineError passed in 4.2 seconds with a standard-only audit.
+Added F64AffineUpdate to retain separate state-rounding, timestep-scaled
+flux-rounding, and subnormal terms.  Its first check rejected the
+addition-order adapter on the product error.  Replaced it with an
+explicit two-sided addition inequality.  The remaining proof obligations
+passed in that draft, but the failed declaration is not accepted.
+
+F64AffineUpdate passed in 1.4 seconds with a standard-only audit.
+For nonnegative ratio at most one, state magnitude bounded by S,
+flux difference bounded by D, and S + D at most 2^1000, it proves
+every arithmetic stage finite and error at most epsilon S plus
+3 epsilon ratio D plus twice the half-subnormal unit.  NumericsUpdate
+passed its first check in 1.2 seconds.  It selects both checked source
+branches and instantiates D = 132 M^5 to obtain a finite, status-zero
+conservative component update.  Its audit contains only standard axioms.
+
+Revisited primary invariant-region results while reviewing the remaining
+global obligation: Guermond and Popov (2016), section 2.5, and Jiang and
+Liu (2018), section 3.1, at the URLs recorded in devnotes.md.  Their
+positivity/entropy domains do not bound density away from zero.  Their
+wave-speed premises also require correspondence to this solver's
+rounded endpoint-speed selection.  No theorem from those papers was
+assumed as a Lean premise.  These results do not close the current
+quantitative preservation or successful-completion obligations.
+
+Prepared the three-module update-error checkpoint with devnotes.md,
+plan.md, plans/euler-riemann-complete.md, and this journal.  The shared
+affine lemma retains timestep dependence instead of using a fixed
+coarse flux budget.  No numerical source, compiler, WASM bytes, or
+LTG catalog changed.  All production calculations remain behind the
+complete source and exact-byte proof gates.
