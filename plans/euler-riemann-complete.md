@@ -191,7 +191,10 @@ and at most 512 MiB of linear memory.  Its success theorem connects a
 zero output status to the specified numerical trace through time 0.8
 and retains admissibility of the final cells.  The combined allocation
 budget is at most 350,243,520 bytes above the initial heap pointer 4096.
-Independent exact-byte closure remains open before production execution.
+Complete decoding of the frozen 21,767-byte artifact and validation now
+pass with only the accepted logical axioms.  Talos translation equality
+and both complete byte-facing behavior theorems also pass.  The independent
+artifact gate remains open before production execution.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

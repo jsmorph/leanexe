@@ -1,18 +1,10 @@
 import Project.EulerRiemann.ArtifactDecoded
-import Project.EulerRiemann.ArtifactCache
-import Project.Artifact.Binary.Equality
 
 namespace Project.EulerRiemann.Artifact
 
 open Wasm.Binary
 
-def decodedRawMatchesCache : Bool :=
-  Equality.rawModuleEqual 16384 decodedRaw Cache.raw
-
-theorem decodedRaw_cache_test : decodedRawMatchesCache = true := by
-  decide +kernel
-
 theorem decodedRaw_eq_cache : decodedRaw = Cache.raw := by
-  exact Equality.rawModuleEqual_sound decodedRaw_cache_test
+  exact Except.ok.inj (decode_eq_decodedRaw.symm.trans decode_eq_cache_parts)
 
 end Project.EulerRiemann.Artifact

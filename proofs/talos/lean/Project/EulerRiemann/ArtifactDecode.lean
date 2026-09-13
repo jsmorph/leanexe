@@ -8,4 +8,6 @@ open Wasm.Binary
 theorem decode_eq_cache : decode artifactBytes = .ok Cache.raw := by
   rw [decode_eq_decodedRaw, decodedRaw_eq_cache]
 
+#print axioms decode_eq_cache
+
 end Project.EulerRiemann.Artifact

@@ -845,5 +845,8 @@ bound.  Its allocation budget is at most 30,720,344 bytes.
 The complete solve entry and public specification now establish exact
 output and a 512 MiB bound from the module's initial state for runtime
 sizes two through eight hundred.  Zero status implies a checked numerical
-trace through time 0.8.  Independent exact-byte proof remains a
-prerequisite for the authorized 192-grid and 800-grid runs.
+trace through time 0.8.  Complete decoding of the frozen 21,767-byte
+artifact and validation now pass with only the accepted logical axioms.
+Talos translation equality and both complete byte-facing behavior
+theorems also pass.  The independent artifact gate remains a prerequisite
+for the authorized 192-grid and 800-grid runs.
