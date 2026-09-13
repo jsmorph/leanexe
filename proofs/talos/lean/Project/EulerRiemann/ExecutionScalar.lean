@@ -13,7 +13,7 @@ def componentDomain (index : Nat) : Prop :=
   index = 0 ∨ index = 1 ∨ index = 2 ∨ index = 8 ∨ index = 9
 
 def componentRename (index : Nat) : Nat :=
-  if index < 3 then index + 34 else index + 29
+  if index < 3 then index + 41 else index + 36
 
 theorem componentShift :
     Shift Project.EulerDynamicFlux.«module» Project.EulerRiemann.«module»
@@ -27,7 +27,7 @@ theorem componentShift :
 
 theorem component_core_exact (env : HostEnv Unit) (initial : Store Unit)
     (alpha fluxL fluxR stateL stateR : UInt64) :
-    TerminatesWith env Project.EulerRiemann.«module» 38 initial
+    TerminatesWith env Project.EulerRiemann.«module» 45 initial
       [.i64 stateR, .i64 stateL, .i64 fluxR, .i64 fluxL, .i64 alpha]
       (fun final values => final = initial ∧
         values = Project.EulerDynamicFlux.Execution.componentValues alpha fluxL fluxR stateL stateR) :=
@@ -37,20 +37,20 @@ theorem component_core_exact (env : HostEnv Unit) (initial : Store Unit)
 
 theorem component_exact (env : HostEnv Unit) (initial : Store Unit)
     (alpha fluxL fluxR stateL stateR : UInt64) :
-    TerminatesWith env Project.EulerRiemann.«module» 39 initial
+    TerminatesWith env Project.EulerRiemann.«module» 46 initial
       [.i64 stateR, .i64 stateL, .i64 fluxR, .i64 fluxL, .i64 alpha]
       (fun final values => final = initial ∧
         values = Project.EulerDynamicFlux.Execution.componentValues alpha fluxL fluxR stateL stateR) := by
-  refine TerminatesWith.of_wp_entry_for (f := func39Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func39 _ initial
-    (func39Def.toLocals [.i64 alpha, .i64 fluxL, .i64 fluxR, .i64 stateL, .i64 stateR]) env
-  unfold func39
-  wp_run [func39Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+  refine TerminatesWith.of_wp_entry_for (f := func46Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func46 _ initial
+    (func46Def.toLocals [.i64 alpha, .i64 fluxL, .i64 fluxR, .i64 stateL, .i64 stateR]) env
+  unfold func46
+  wp_run [func46Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   refine wp_call_tw (component_core_exact env initial alpha fluxL fluxR stateL stateR) ?_
   rintro st values ⟨hst, rfl⟩
   subst st
-  wp_run [func39Def, Project.EulerDynamicFlux.Execution.componentValues, List.set,
+  wp_run [func46Def, Project.EulerDynamicFlux.Execution.componentValues, List.set,
     List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   simp
@@ -59,7 +59,7 @@ def updateDomain (index : Nat) : Prop :=
   index = 0 ∨ index = 1 ∨ index = 2 ∨ index = 8 ∨ index = 19
 
 def updateRename (index : Nat) : Nat :=
-  if index = 19 then 50 else componentRename index
+  if index = 19 then 57 else componentRename index
 
 theorem updateShift :
     Shift Project.EulerCellStep.«module» Project.EulerRiemann.«module»
@@ -73,7 +73,7 @@ theorem updateShift :
 
 theorem update_core_exact (env : HostEnv Unit) (initial : Store Unit)
     (ratio state fluxL fluxR : UInt64) :
-    TerminatesWith env Project.EulerRiemann.«module» 50 initial
+    TerminatesWith env Project.EulerRiemann.«module» 57 initial
       [.i64 fluxR, .i64 fluxL, .i64 state, .i64 ratio]
       (fun final values => final = initial ∧
         values = Project.EulerCellStep.Execution.updateValues ratio state fluxL fluxR) :=
@@ -83,20 +83,20 @@ theorem update_core_exact (env : HostEnv Unit) (initial : Store Unit)
 
 theorem update_exact (env : HostEnv Unit) (initial : Store Unit)
     (ratio state fluxL fluxR : UInt64) :
-    TerminatesWith env Project.EulerRiemann.«module» 51 initial
+    TerminatesWith env Project.EulerRiemann.«module» 58 initial
       [.i64 fluxR, .i64 fluxL, .i64 state, .i64 ratio]
       (fun final values => final = initial ∧
         values = Project.EulerCellStep.Execution.updateValues ratio state fluxL fluxR) := by
-  refine TerminatesWith.of_wp_entry_for (f := func51Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func51 _ initial
-    (func51Def.toLocals [.i64 ratio, .i64 state, .i64 fluxL, .i64 fluxR]) env
-  unfold func51
-  wp_run [func51Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+  refine TerminatesWith.of_wp_entry_for (f := func58Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func58 _ initial
+    (func58Def.toLocals [.i64 ratio, .i64 state, .i64 fluxL, .i64 fluxR]) env
+  unfold func58
+  wp_run [func58Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   refine wp_call_tw (update_core_exact env initial ratio state fluxL fluxR) ?_
   rintro st values ⟨hst, rfl⟩
   subst st
-  wp_run [func51Def, Project.EulerCellStep.Execution.updateValues, List.set,
+  wp_run [func58Def, Project.EulerCellStep.Execution.updateValues, List.set,
     List.getElem?_cons_zero, List.getElem?_cons_succ,
     reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub]
   simp
