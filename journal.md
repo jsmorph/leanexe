@@ -17599,3 +17599,93 @@ and the placeholder/new-axiom/native-decision scan passed.  Reviewed
 the three new proofs, shared adapter, accepted traces, LTG entry and
 generated indexes, and five development records.  Staging those
 fourteen paths for the complete-concatenation checkpoint.
+
+### 2026-09-13: output release and packer composition
+
+Published the complete-concatenation checkpoint as
+0dbf7058948898a78f8fd970008c820cad6ef71c, with parent
+0ebff3f6accbd48b787faecf1c3324b13f367fa8 and tree
+ceeb6ada72f29b22358869c0830c1e745e0b71be.  Non-forced push and
+fetch passed.  Commit metadata, complete index, and all fourteen
+checkpoint paths match HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+Added one release-region theorem for all three output releases.  It
+composes the checked one-word-array runtime release with the emitted
+free-counter read and local assignment, returning the valid updated
+heap and exact caller frame.
+
+OutputRelease passed on its first build.  Added an output allocation
+budget that tracks remaining bytes, 32-bit address safety, physical
+pages, and the runtime memory cap through allocation/writes and release.
+The arithmetic accounts for all five allocation headers and payloads:
+48 times the cell count plus 344 bytes, at most 30,720,344 bytes.
+Added the existing ownership-to-allocation disjointness adapter needed
+when the complete packer releases its intermediate arrays.
+
+OutputBudget passed on its first build.  Added the first 185 output
+instructions as one composition: both maps, the fields concatenation,
+and both map releases.  The proof carries the allocation budget and
+pairwise owner separation through the releases, returning the owned
+fields array, preserved parameters, and the remaining byte budget.
+
+The first fields-composition check introduced the continuation's named
+allocation lets as binders before the store/frame variables.  Reduced
+those lets before introducing each map/append continuation.  The
+diagnostic arrived after 1.5 seconds.
+
+OutputFields passed after reducing the continuation lets.  The first
+185 instructions now compose both maps and the fields concatenation
+with both intermediate releases and the remaining byte budget.  Added
+the final six result-transfer instructions, returning the same result
+pointer as both ABI result words.
+
+The return-region check accepted the execution theorem but reached the
+default reduction-depth limit while checking its exact drop-357 shape.
+Applied the same scoped maxRecDepth 2048 used for the concatenation
+shape.  The check reported the diagnostic after 1.1 seconds.
+
+OutputReturn passed with the scoped shape limit.  Added the remaining
+178 output instructions: header allocation/construction, final
+concatenation, fields release, and return.  The suffix accepts the
+owned fields array and remaining budget, preserves the result across
+release, and returns both ABI words with the owned complete output
+and bounded physical pages.
+
+OutputTail passed on its first build.  Added complete function-99
+execution by joining the checked fields prefix and final suffix.
+The theorem starts from the emitted five-parameter entry frame,
+connects every output word to Output.pack, returns both ABI pointers,
+and retains the owned result and physical-page bound.
+
+The first complete-output check needed explicit existential heap/node
+types and a controlled replicate-list simplification for the initial
+scratch frame.  Added those annotations and the bounded optional-read
+lemma.  The diagnostic arrived after 1.6 seconds; the source/output
+array identity checked in that attempt.
+
+The next complete-output check reached the function-return ABI equation.
+Reduced the declared two-result take and five-argument drop before
+applying the final operand-stack equality.  The diagnostic arrived
+after 1.2 seconds.
+
+ExecutionOutput passed after the ABI reduction.  Audited the traces for
+OutputRelease, OutputBudget, OutputFields, OutputReturn, OutputTail, and
+ExecutionOutput: all seventeen reports use only propext, Classical.choice,
+and Quot.sound, or no axioms.  None of these modules reports a warning.
+Every build used the standard local tools/leanrun limits and one named
+target.  Reviewed the accepted composition against the journal: checked
+region equalities and shared allocator/copy/frame/release results supply
+the execution proof.  The budget theorem bounds output allocation by
+30,720,344 bytes.  No compiler, WASM, source, LTG, or runner change was
+needed for this composition.  Complete solve entry, its 512 MiB bound,
+and independent exact-byte closure remain open.
+
+Preparing a checkpoint of those six proof modules and the five progress
+records: journal.md, devnotes.md, plan.md, plans/euler-rusanov.md, and
+plans/euler-riemann-complete.md.  Preserve all unrelated paper files.
+
+The checkpoint's whitespace check passed.  The prohibited-proof scan
+found no sorry, admit, axiom declaration, native_decide, or bv_decide in
+the six modules.  node tools/check-docs.js checked all 116 maintained
+Markdown files.  Reviewed the changed progress records and complete
+output proof, including the allocation budget and release framing.

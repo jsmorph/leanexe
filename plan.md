@@ -524,7 +524,8 @@ acceptance, complete timestep execution, spacing, and CFL proposal
 also pass.  Complete run execution now composes
 initialization and advancement, retaining exact result words,
 ownership, capacity, reservation, and a supplied physical page bound.
-Output and the complete entry memory bound remain open.
+Complete output execution now passes.  The complete entry memory bound
+and exact-byte closure remain open.
 
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation
@@ -543,8 +544,11 @@ map regions now include input/length preparation, capacity computation,
 and result transfer, with preserved caller reads and typed scratch.
 Both complete 73-instruction concatenation regions now include input
 preparation, exact capacity, and result transfer.  Their count assignments
-use the new shared scalar-assignment theorem recorded in LTG.  Release
-composition and full output packing remain open.
+use the new shared scalar-assignment theorem recorded in LTG.  Complete
+function-99 execution now composes these regions and all three releases,
+returns both ABI pointers to the specified Output.pack words, and
+preserves the physical page bound.  Its allocation budget is at most
+30,720,344 bytes for 640,000 cells.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
