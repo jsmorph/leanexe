@@ -16967,3 +16967,70 @@ Reviewed the six proof modules and five development records.  The
 documentation check passed for 116 maintained Markdown files, and
 whitespace passed.  Preparing these eleven explicit paths as the next
 checkpoint.  The unrelated report files remain untouched.
+
+### 2026-09-13: physical page bound through sweeps and retries
+
+Published the complete initializer checkpoint as
+ac18849ed461b612146b2938535f3de9413dadb5, with parent
+823680d8d4d66fe745a70e7dfac69e0935461492 and tree
+800050049782e3a2443dab998ac3eb44e1c3e13a.  The fetched branch, commit
+headline, parent, tree, complete index, and all eleven checkpoint paths
+matched.  That receipt belongs to the preceding initializer work.
+
+SweepPageBound derives a supplied physical page bound from the existing
+sweep execution theorem and its exact WritesGrid result.  ExecutionStep
+now carries that bound through the first sweep, rejection, the second
+sweep, and release.  The original step_exact API follows by selecting
+65536 pages.  The first focused ExecutionStep build passed with three
+standard-only axiom reports and no own-module warnings.  The command was
+tools/leanrun --timeout 6m lake -d proofs/talos/lean --no-ansi --quiet
+build Project.EulerRiemann.ExecutionStep in standard local mode.
+
+StepReserve and RetryTrial now expose the same supplied page limit while
+retaining their earlier APIs as corollaries.  The existing reservation
+lemma supplies each allocator's byte bound.  The focused RetryTrial
+build passed on its first check with the same runner settings.  Next,
+carry this bound in the total retry invariant, including empty failure
+results, and then through total advancement.  Source, compiler, exact
+WASM, runner limits, and production data remain unchanged.
+
+Correction to the preceding paragraph: the first RetryTrial build failed
+in the StepReserve compatibility corollary, which reached the default
+recursion-depth limit at its final omega application.  I wrote the pass
+claim before inspecting the returned build result.  The stronger
+step_pages_reserved theorem checked, but that does not make the target
+pass.  Replaced the unnecessary arithmetic tactic with hLimit.le and
+the reflexive page-limit proof.  Applied the same correction to the
+RetryTrial corollary before its first elaboration.  No proof limits
+were raised.
+
+The second focused RetryTrial build passed.  Added an empty-array page
+bound using the existing small-allocation reservation and shared page
+theorem.  The total retry invariant now carries current pages through
+accepted and rejected trials, invalid advancement, and fuel exhaustion.
+RetryTotalValid, RetryTotalInvalid, RetryTotalIteration, and RetryTotalLoop
+passed on their first checks.  The first complete-function check failed
+because retry_guard_peel had already discharged the page conjunct and
+the explicit return tuple supplied it again.  Removed that redundant
+tuple element and two now-unused simplification arguments.  The second
+ExecutionRetryTotal build passed.  Both complete-function commands used
+the same six-minute standard local runner envelope and one target.
+
+Reviewed all eleven changed proof modules and their accepted trace
+records together.  Nineteen axiom reports contain only the permitted
+standard axioms.  No own-module warnings remain.  Existing compiler-matched
+regions and shared BlockLoop, allocation-page, reservation, and release
+lemmas supply this composition.  No new compiler annotation or LTG entry
+is needed for parameter propagation through these existing proofs.
+The stronger complete retry theorem retains termination, exact result
+words, owned-grid correspondence, held-array separation, and reservation,
+and adds the supplied physical page bound.  The earlier API follows at
+65536 pages.  Preparing the eleven proof paths and five development
+records as a coherent checkpoint.  The outer time loop and output still
+need this bound, and the complete Euler registration remains unfinished.
+
+Whitespace and the documentation check passed for the reviewed paths,
+including all 116 maintained Markdown files.  A source scan found no
+proof placeholders, new axioms, or native decision procedures in the
+eleven proof files.  The checkpoint preserves all unrelated report
+files and every existing generated artifact.

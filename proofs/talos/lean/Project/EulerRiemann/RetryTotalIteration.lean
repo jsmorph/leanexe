@@ -6,17 +6,18 @@ open Wasm Project.Runtime Project.ProofKit FixedArrayCapacity
 
 theorem retry_total_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
     (source : FreeNode) (grid : Array Traversal.Cell) (n : Nat) (time : UInt64)
-    (expected : Control.Attempt) (spare limit : Nat) (store : Store Unit) (frame : Locals)
+    (expected : Control.Attempt) (spare limit pageLimit : Nat) (store : Store Unit) (frame : Locals)
     (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Traversal.Indexed n grid)
     (hOwner : initialHeap.Owns initial source grid) (hLimit : limit < 4294967296)
     (hCap : limit ≤ initial.memoryCap module 0 * 65536)
+    (hPageLimit : pageLimit ≤ 65536) (hLimitPages : limit ≤ pageLimit * 65536)
     (hInv : retryTotalInvariant initial initialHeap n time source.root
-      (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit store frame) :
+      (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit store frame) :
     wp module retryLoop
       (retryTotalIterationPost initial initialHeap n time source.root
-        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit (retryMeasure frame))
+        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit (retryMeasure frame))
       store frame env := by
-  obtain ⟨heap, hStore, hState⟩ := hInv
+  obtain ⟨heap, hStore, hPages, hState⟩ := hInv
   rcases hState with ⟨hActive, hScratch⟩ | hDone
   · obtain ⟨fuel, dt, hFrame, hSame, hReserved⟩ := hActive
     by_cases hFuel : fuel = 0
@@ -28,7 +29,7 @@ theorem retry_total_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (
       apply FuelGuard.program_spec 0 11 module env store frame 0 0 hFrame.values
         (by simp [Locals.get, hFrame.params])
         (by simpa [Locals.get, hFrame.params, hFrame.locals, boolWord] using hFrame.done)
-      exact ⟨heap, hStore, Or.inr ⟨dt, hFrame, hSame, hReserved, hScratch⟩⟩
+      exact ⟨heap, hStore, hPages, Or.inr ⟨dt, hFrame, hSame, hReserved, hScratch⟩⟩
     · have hParams := hFrame.params
       have hLocals := hFrame.locals
       have hValues := hFrame.values
@@ -47,7 +48,8 @@ theorem retry_total_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (
         dsimp only [frame]
         retry_total_peel
         refine retry_total_valid_spec env initial initialHeap source grid n fuel time dt expected
-          spare limit store heap frame hn hIndexed hOwner hLimit hCap hStore hFrame hScratch hSame
+          spare limit pageLimit store heap frame hn hIndexed hOwner hLimit hCap hStore hPages hPageLimit
+          hLimitPages hFrame hScratch hSame
           hReserved hFuel hValid _ [] ?_
         intro final resultFrame hFinal hDecrease
         have hEmpty : ({ resultFrame with values := [] } : Locals) = resultFrame :=
@@ -58,7 +60,7 @@ theorem retry_total_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (
         dsimp only [frame]
         retry_total_peel
         refine retry_total_invalid_spec env initial initialHeap n fuel time dt source.root grid expected
-          spare limit store heap frame hLimit hCap hStore hFrame hScratch hSame hReserved hFuel hValid _ [] ?_
+          spare limit pageLimit store heap frame hLimit hCap hStore hPages hLimitPages hFrame hScratch hSame hReserved hFuel hValid _ [] ?_
         intro final resultFrame hFinal hDecrease
         have hEmpty : ({ resultFrame with values := [] } : Locals) = resultFrame :=
           Frame.ext _ _ rfl rfl hFinal.values.symm
@@ -67,7 +69,7 @@ theorem retry_total_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (
   · obtain ⟨result, hFrame, hResult, hReserved, hCapacity, hSeparated⟩ := hDone
     rw [← List.take_append_drop 7 retryLoop]
     apply retry_returned_guard_spec env store frame expected.status expected.dt result.root hFrame
-    exact ⟨heap, hStore, Or.inl ⟨result, hFrame, hResult, hReserved, hCapacity, hSeparated⟩⟩
+    exact ⟨heap, hStore, hPages, Or.inl ⟨result, hFrame, hResult, hReserved, hCapacity, hSeparated⟩⟩
 
 #print axioms retry_total_iteration_spec
 
