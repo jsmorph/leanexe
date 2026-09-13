@@ -17526,3 +17526,76 @@ The complete-map checkpoint passes whitespace, all 116 maintained
 Markdown files, and the placeholder/new-axiom/native-decision scan.
 Reviewed the three proof files and five development records.  Staging
 exactly those eight paths for publication.
+
+### 2026-09-13: complete output concatenation preparation
+
+Published the complete-map checkpoint as
+0ebff3f6accbd48b787faecf1c3324b13f367fa8, with parent
+90ad42568ad6168df9ef0d2d04cb188153a7d048 and tree
+c1c4e01577d797ea52d4bcffb1f8cc3d860aaff8.  The non-forced push
+and fetch passed.  Commit metadata, complete index, and all eight
+checkpoint paths match HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+The remaining concatenation counts use three scalar assignments.
+The retrieved scalar-statement entry provides evaluator/frame adapters,
+but each assignment still repeats its setter-to-frame composition.
+Added a generic expression-assignment theorem for expressions whose
+checked evaluation preserves the frame.  It composes those existing
+adapters and retains arbitrary modules, local indices, and continuations.
+
+The first assignment-adapter check needed ordinary simplification of
+the evaluator's Option bind, as recorded by the existing LTG guidance.
+Replaced the restricted simp set after the 1.2-second diagnostic.
+
+The generic assignment adapter passed.  Added the exact twelve
+concatenation-count instructions as three consumers: the total length
+and both width-one copy counts.  Each applies the shared adapter to
+its expression evaluation, without a separate statement-state proof.
+
+The first count-region check rejected rewriting local let-bound frames
+as equality lemmas.  Used dsimp for those two local definitions before
+the getter rewrites.  The diagnostic arrived after 1.3 seconds.
+
+OutputAppendCounts passed after the local-definition correction.  Added
+the 42-instruction preparation theorem shared by both concatenations:
+two input pointers, both length loads, copy counts, and capacity.
+Its postcondition exposes the allocator inputs, typed scratch, and
+preserved reads below the preparation locals.
+
+The first preparation check needed the parameter length exposed through
+the local length frame before rewriting the total-count getter.  Used
+two explicit getter rewrites with normalized parameter bounds.  The
+diagnostic arrived after 4.0 seconds; the other preparation/frame
+theorems checked in that attempt.
+
+OutputAppendPrepare passed after normalizing the total-count getter.
+Added the complete 73-instruction concatenation theorem for both
+regions, including allocation, copying, and the two result assignments.
+It returns all three array owners, exact concatenated contents, the
+updated heap, typed scratch, and the preserved caller reads.
+
+The first complete-concatenation check reached Lean's reduction-depth
+limit while checking the exact region equality.  Set maxRecDepth to
+2048 for that equality alone.  Also normalized the second result
+assignment's parameter bound through the first result frame.  Both
+diagnostics arrived after 1.5 seconds.
+
+OutputAppendExecute passed after the scoped reduction-depth setting
+and parameter normalization.  Reviewed the three new concatenation
+modules and shared ScalarFrame addition, with twelve standard-only
+axiom reports and no own-module warnings.  Added the generic assignment
+adapter and both complete output consumers to the scalar-statement
+LTG entry.  Preserved its prior examples and provisional status.
+The generic module already appears in both artifact-proof support
+inventories, so no inventory addition is required.  Synchronized the
+five development records.  Full packer/release composition and entry
+memory still precede exact-byte closure and production execution.
+
+Catalog rebuild, catalog and forest checks, LTG tests, knowledge tests,
+leanexegen tests, and the generated LTGCheck Lean target passed.  The
+10,000-record retrieval test completed in 2.335 ms.  No package-local
+Lean source changed.  Whitespace, all 116 maintained Markdown files,
+and the placeholder/new-axiom/native-decision scan passed.  Reviewed
+the three new proofs, shared adapter, accepted traces, LTG entry and
+generated indexes, and five development records.  Staging those
+fourteen paths for the complete-concatenation checkpoint.

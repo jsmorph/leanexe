@@ -35,6 +35,20 @@ theorem Stmt.program_frame_spec (statement : Stmt) (scratch : Nat) (frame next :
   simpa only [hInitial, hFinal] using statement.program_spec scratch (State.ofLocals frame)
     (State.ofLocals next) [] module_ env store rest Q hEval (by simpa only [hFinal] using hNext)
 
+theorem Expr.assign_frame_spec (expression : Expr .u64) (scratch index : Nat)
+    (frame : Locals) (value : UInt64) (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
+    (hValues : frame.values = []) (hLower : frame.params.length ≤ index) (hValid : frame.validIndex index)
+    (hEval : expression.eval scratch (State.ofLocals frame) = some (value, State.ofLocals frame))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q store (resultFrame frame index value) env) :
+    wp module_ ((Stmt.assign index expression).program scratch ++ rest) Q store frame env := by
+  apply (Stmt.assign index expression).program_frame_spec scratch frame (resultFrame frame index value)
+    module_ env store hValues rfl
+  · simpa [Stmt.eval, hEval] using
+      State.ofLocals_result_set frame index value hLower hValid
+  · exact hNext
+
+#print axioms Expr.assign_frame_spec
 #print axioms State.ofLocals_result_set
 #print axioms Stmt.program_frame_spec
 

@@ -264,6 +264,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
+#check Project.ProofKit.ScalarTransition.Expr.assign_frame_spec
 #check Project.ProofKit.ScalarTransition.Expr.eval_preserves_below
 #check Project.ProofKit.ScalarTransition.Expr.program_spec
 #check Project.ProofKit.ScalarTransition.Expr.typedIteProgram
