@@ -526,6 +526,13 @@ the complete memory bound remain open.  The existing retry and advance
 proofs pass against the regenerated module with their source-success
 premises still explicit.
 
+The shared allocator now covers arbitrary free-list reuse and memory
+growth for configurable local windows and element strides.  Both retry
+failure sequences have exact execution proofs, including their empty
+array allocation.  Held-grid ownership and the reduced allocation
+reservation also pass.  The complete loop compositions must establish
+these branch premises and cover every return status.
+
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and
 multiplication lemmas cover the solver's larger arithmetic values,
