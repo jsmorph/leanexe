@@ -16786,3 +16786,45 @@ Reviewed all six proof files and the five development-record changes.
 The documentation check passed for 116 maintained Markdown files, and
 the whitespace check passed.  The eleven-file checkpoint excludes the
 unrelated report drafts and submission evidence.
+
+Published and verified e53d484a8d56ad93469378c5375a834e67389da2,
+parent dacef3f69fec2f1ad83c505bed639594ee137311, tree
+61b8cdbcf9da2658e81aac2291dbcfea68b11576.  The fetched metadata,
+complete index, and all eleven checkpoint worktree paths match.
+
+InitialExit now proves the decoded post-loop conditional.  An active
+exit has zero fuel, hence twenty growth rounds and 1,048,576 cells,
+which supplies the requested-prefix bound for every supported grid.
+A completed exit preserves the already returned owner.  The first
+check stopped at an optional local read while the supplied hypothesis
+described indexed access.  A focused trace identified that mismatch.
+Using InitialFrameAt.done directly and restoring the parameter-list
+equality completed the proof.  The diagnostic trace command is removed
+from the accepted source.
+
+ExecutionInitialGrow now proves complete function-95 termination and
+return behavior from a singleton initial prefix.  It composes entry
+initialization, the loop, both post-loop paths, and both result reads.
+Array equality with Traversal.growCells follows from their common
+checked initial-prefix formula.  The theorem preserves every entry-held
+owner and returns the exact result owner, capacity, heap-top bound,
+physical page bound, and separation.  Its first check needed the explicit
+UInt64-to-Nat reduction for the constant fuel twenty.  The corrected
+check passed.  Both modules checked through the standard six-minute
+runner, with four standard-only axiom reports and no own-module warnings.
+
+Reviewed function 96's emitted code and compiler annotations.  The
+annotations identify the initialCell call at [17,27) and growCells call
+at [170,178) inside its valid-input branch.  Its singleton allocation
+uses scratch start 31 and seven-word cells.  The existing LTG singleton
+wrapper has a fixed one-word layout and cannot supply this proof.
+The no-fit allocation and checked-natural-multiplication entries apply
+to this caller.  Its constant-index field stores need a general adapter
+for the existing field-address theorem.  Caller initialization, output,
+complete memory composition, and independent exact-byte closure remain
+open.  No production execution has started.
+
+Reviewed the two proof modules and five development-record changes.
+The documentation check passed for 116 maintained Markdown files, and
+the whitespace check passed.  Preparing these seven paths as the next
+checkpoint, preserving all unrelated report work.

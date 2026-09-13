@@ -11179,3 +11179,18 @@ explicit capacity aliases, Boolean and stack simplification, retention
 of the entry invariant, and beta reduction of the measure.  Post-loop
 extraction, initializer entry/return, singleton allocation, output,
 complete memory composition, and exact-byte closure remain open.
+
+## 2026-09-13: Complete growCells execution
+
+The complete function-95 theorem now relates emitted WASM execution to
+Traversal.growCells from a singleton prefix.  It includes entry setup,
+loop termination, both post-loop paths, and the returned owner and
+pointer.  The result retains the source-prefix, ownership, byte-budget,
+and physical-page guarantees.  Both new modules pass with four
+standard-only axiom reports.
+
+The function-96 caller still needs its seven-word singleton allocation,
+initialCell call, growCells call, and borrowed-singleton release composed.
+Its compiler annotations identify both calls.  The shared one-word
+singleton wrapper has a different layout, while the indexed no-fit
+allocation and checked multiplication lemmas apply.
