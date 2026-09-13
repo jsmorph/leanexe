@@ -575,7 +575,10 @@ entry-held owners, remaining allocation budget, and supplied page bound.
 The complete growCells function now includes post-loop extraction and
 entry/return composition, with exact source-result equality, entry-held
 owner preservation, and physical-page and heap-top bounds.  The
-singleton caller remains open.
+singleton caller now has checked pointer installation, length and field
+writes, and the resulting one-cell representation.  Shared constant-index
+and consecutive-field store theorems extend the array-field-access LTG
+entry.  Singleton allocation and call composition remain open.
 The 512 MiB proof must bound WASM pages as well as heap allocation addresses.
 Map and append adapters now reconstruct their scratch windows from an
 arbitrary loop frame and return the buffer getters for continuation.
