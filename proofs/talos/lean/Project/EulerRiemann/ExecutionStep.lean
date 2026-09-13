@@ -19,7 +19,7 @@ theorem step_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
         bumpPages afterFirst.top need ≤ initial.memoryCap Project.EulerRiemann.«module» 0) :
     let need := normalizedCapacity (UInt64.ofNat grid.size) 7
     let result := stepAllocation heap need (Traversal.accepted (Traversal.sweep n false ratio grid))
-    TerminatesWith env Project.EulerRiemann.«module» 73 initial
+    TerminatesWith env Project.EulerRiemann.«module» 80 initial
       [.i64 source.root, .i64 source.root, .i64 ratio, .i64 (UInt64.ofNat n)]
       (fun final values => values = [.i64 result.2.root, .i64 result.2.root] ∧
         result.1.At final ∧ result.1.Owns final result.2 (Traversal.step n ratio grid) ∧
@@ -48,10 +48,10 @@ theorem step_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     have := (hSecond hNone).1
     change afterFirst.top.toNat + 48 + (8 + grid.size * 56) < 4294967296 at this
     omega
-  refine TerminatesWith.of_wp_entry_for (f := func73Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func73 _ initial
-    (func73Def.toLocals [.i64 (UInt64.ofNat n), .i64 ratio, .i64 source.root, .i64 source.root]) env
-  unfold func73
+  refine TerminatesWith.of_wp_entry_for (f := func80Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func80 _ initial
+    (func80Def.toLocals [.i64 (UInt64.ofNat n), .i64 ratio, .i64 source.root, .i64 source.root]) env
+  unfold func80
   step_peel
   refine wp_call_tw (sweep_owned env initial heap source grid n false ratio hn hIndexed hHeap hOwner hPages hFirst) ?_
   rintro firstStore firstValues ⟨rfl, hHeap1, _, hOwner1, _, hPages1, hCap1, hWrites1⟩

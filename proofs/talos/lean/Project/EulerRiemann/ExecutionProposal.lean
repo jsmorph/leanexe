@@ -6,20 +6,21 @@ open Wasm
 macro "proposal_peel" : tactic => `(tactic|
   repeat
     first
-    | wp_run [func28Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+    | wp_run [func35Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
         f64Mul, f64Div, f64Sub, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem proposal_exact (env : HostEnv Unit) (initial : Store Unit)
     (n : Nat) (time alpha : UInt64) (hn : n ≤ 800) :
-    TerminatesWith env Project.EulerRiemann.«module» 28 initial
+    TerminatesWith env Project.EulerRiemann.«module» 35 initial
       [.i64 alpha, .i64 time, .i64 (UInt64.ofNat n)]
       (fun final values => final = initial ∧ values = [.i64 (Time.proposal n time alpha)]) := by
-  refine TerminatesWith.of_wp_entry_for (f := func28Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func28 _ initial
-    (func28Def.toLocals [.i64 (UInt64.ofNat n), .i64 time, .i64 alpha]) env
-  unfold func28
+  refine TerminatesWith.of_wp_entry_for (f := func35Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func35 _ initial
+    (func35Def.toLocals [.i64 (UInt64.ofNat n), .i64 time, .i64 alpha]) env
+  unfold func35
   proposal_peel
   refine wp_call_tw ((spacing_exact env initial n hn).append_args rfl rfl rfl
     [.f64 4600877379321698714]) ?_

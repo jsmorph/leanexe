@@ -10,7 +10,8 @@ macro "retry_guard_peel" : tactic => `(tactic|
     | wp_run [List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
         List.getElem?_cons_zero, List.getElem?_cons_succ, boolWord, reduceIte,
         Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem retry_validity_spec (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
@@ -23,7 +24,7 @@ theorem retry_validity_spec (env : HostEnv Unit) (store : Store Unit) (frame : L
   have hParams := h.params
   have hLocals := h.locals
   have hValues := h.values
-  unfold retryLoop func74
+  unfold retryLoop func81
   dsimp only
   retry_guard_peel
   refine wp_call_tw (validAdvance_exact env store time dt) ?_
@@ -38,7 +39,7 @@ theorem retry_active_guard_spec (env : HostEnv Unit) (store : Store Unit) (frame
     (hFuel : fuel ≠ 0) (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.EulerRiemann.«module» rest Q store frame env) :
     wp Project.EulerRiemann.«module» (retryLoop.take 7 ++ rest) Q store frame env := by
-  have hShape := AnnotationMatches.function_74_while_loop_0_guard_eq
+  have hShape := AnnotationMatches.function_81_while_loop_0_guard_eq
   change some (retryLoop.take 7) = some (Project.ProofKit.FuelGuard.program 0 11) at hShape
   rw [Option.some.inj hShape]
   apply Project.ProofKit.FuelGuard.program_spec 0 11 _ env store frame fuel 0 h.values
@@ -51,7 +52,7 @@ theorem retry_completed_guard_spec (env : HostEnv Unit) (store : Store Unit) (fr
     (h : RetryFrameAt frame fuel n time dt source outputDt outputRoot true)
     (Q : Assertion Unit) (rest : Wasm.Program) (hNext : Q (.Break 1 store frame)) :
     wp Project.EulerRiemann.«module» (retryLoop.take 7 ++ rest) Q store frame env := by
-  have hShape := AnnotationMatches.function_74_while_loop_0_guard_eq
+  have hShape := AnnotationMatches.function_81_while_loop_0_guard_eq
   change some (retryLoop.take 7) = some (Project.ProofKit.FuelGuard.program 0 11) at hShape
   rw [Option.some.inj hShape]
   apply Project.ProofKit.FuelGuard.program_spec 0 11 _ env store frame fuel 1 h.values

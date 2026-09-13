@@ -34,7 +34,7 @@ theorem retry_trial_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
           (retryTrialFrame frame n ratio source.root result.2.root
             (Traversal.accepted (Traversal.step n ratio grid))) env) :
     wp Project.EulerRiemann.«module» (retryTrial.take 35 ++ rest) Q initial frame env := by
-  unfold retryTrial retryLoop func74
+  unfold retryTrial retryLoop func81
   dsimp only
   retry_trial_peel
   refine wp_call_tw ((spacing_exact env initial n hn.2).append_args rfl rfl rfl [.f64 dt]) ?_

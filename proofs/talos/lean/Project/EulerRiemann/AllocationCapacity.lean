@@ -4,7 +4,7 @@ import Project.ProofKit.FixedArrayCapacity
 namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit.FixedArrayCapacity
 
-theorem sweep_capacity_shape : (func70.drop 6).take 18 = localProgram 42 7 47 := rfl
+theorem sweep_capacity_shape : (func77.drop 6).take 18 = localProgram 42 7 47 := rfl
 
 theorem sweep_capacity_spec (env : HostEnv Unit) (store : Store Unit)
     (params saved : List Wasm.Value) (hParams : params.length = 5)
@@ -13,7 +13,7 @@ theorem sweep_capacity_spec (env : HostEnv Unit) (store : Store Unit)
     (hNext : wp Project.EulerRiemann.«module» rest Q store
       (allocationFrame params saved (normalizedCapacity length 7) previous current capacity
         next result) env) :
-    wp Project.EulerRiemann.«module» ((func70.drop 6).take 18 ++ rest) Q store
+    wp Project.EulerRiemann.«module» ((func77.drop 6).take 18 ++ rest) Q store
       (allocationFrame params saved need previous current capacity next result) env := by
   rw [sweep_capacity_shape]
   refine localProgram_spec 42 length 7 47 _ env store _ ?_ rfl ?_ ?_ Q rest ?_

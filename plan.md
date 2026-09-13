@@ -519,8 +519,12 @@ guard helpers, the complete state guard, and thermodynamic-side
 execution now check against those bytes, with 27 standard-only audits.
 The complete flux, cell update, speed scan, neighbor and memory-input
 selection, update callback, time guard, and cell initializer also check
-against the regenerated module.  Full initialization, sweep and
-control composition, output, and the memory bound remain open.
+against the regenerated module.  Sweep allocation, buffer release,
+acceptance, complete timestep execution, spacing, and CFL proposal
+also pass.  Full initialization, control failure returns, output, and
+the complete memory bound remain open.  The existing retry and advance
+proofs pass against the regenerated module with their source-success
+premises still explicit.
 
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and

@@ -9,7 +9,8 @@ macro "advance_guard_peel" : tactic => `(tactic|
     | wp_run [List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
         List.getElem?_cons_zero, List.getElem?_cons_succ, boolWord, reduceIte,
         Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem advance_active_guard_spec (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
@@ -18,7 +19,7 @@ theorem advance_active_guard_spec (env : HostEnv Unit) (store : Store Unit) (fra
     (hFuel : fuel ≠ 0) (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.EulerRiemann.«module» rest Q store frame env) :
     wp Project.EulerRiemann.«module» (advanceLoop.take 7 ++ rest) Q store frame env := by
-  have hShape := AnnotationMatches.function_78_while_loop_0_guard_eq
+  have hShape := AnnotationMatches.function_85_while_loop_0_guard_eq
   change some (advanceLoop.take 7) = some (Project.ProofKit.FuelGuard.program 0 10) at hShape
   rw [Option.some.inj hShape]
   apply Project.ProofKit.FuelGuard.program_spec 0 10 _ env store frame fuel 0 h.values
@@ -31,7 +32,7 @@ theorem advance_completed_guard_spec (env : HostEnv Unit) (store : Store Unit) (
     (h : AdvanceFrameAt frame fuel n time source tracker outputTime outputRoot true)
     (Q : Assertion Unit) (rest : Wasm.Program) (hNext : Q (.Break 1 store frame)) :
     wp Project.EulerRiemann.«module» (advanceLoop.take 7 ++ rest) Q store frame env := by
-  have hShape := AnnotationMatches.function_78_while_loop_0_guard_eq
+  have hShape := AnnotationMatches.function_85_while_loop_0_guard_eq
   change some (advanceLoop.take 7) = some (Project.ProofKit.FuelGuard.program 0 10) at hShape
   rw [Option.some.inj hShape]
   apply Project.ProofKit.FuelGuard.program_spec 0 10 _ env store frame fuel 1 h.values
@@ -44,7 +45,7 @@ theorem advance_time_spec (env : HostEnv Unit) (store : Store Unit) (frame : Loc
     (hValues : frame.values = []) (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.EulerRiemann.«module» rest Q store (advanceTimeFrame frame) env) :
     wp Project.EulerRiemann.«module» ((advanceLoop.drop 7).take 2 ++ rest) Q store frame env := by
-  unfold advanceLoop func78
+  unfold advanceLoop func85
   dsimp only
   have hCall := endTime_exact env store
   rw [← hValues] at hCall
@@ -63,7 +64,7 @@ theorem advance_finish_spec (env : HostEnv Unit) (store : Store Unit) (frame : L
   have hParams := h.params
   have hLocals := h.locals
   have hValues := h.values
-  unfold advanceFinishBody advanceLoop func78
+  unfold advanceFinishBody advanceLoop func85
   dsimp only
   advance_guard_peel
   simpa [advanceFinishedFrame, hParams] using hNext

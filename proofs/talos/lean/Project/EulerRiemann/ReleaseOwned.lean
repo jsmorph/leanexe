@@ -6,7 +6,7 @@ open Wasm Project.Runtime
 theorem release_owned (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (node : FreeNode) (grid : Array Traversal.Cell)
     (hHeap : heap.At initial) (hOwner : heap.Owns initial node grid) :
-    TerminatesWith env Project.EulerRiemann.«module» 100 initial [.i64 node.root]
+    TerminatesWith env Project.EulerRiemann.«module» 107 initial [.i64 node.root]
       (fun final values => values = [] ∧ final = heap.releaseStore initial node ∧
         (heap.release node).At final) := by
   have hCall := release_exact env initial node.root node.capacity (freeHead heap.nodes)

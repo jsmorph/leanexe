@@ -9,7 +9,8 @@ macro "advance_trial_peel" : tactic => `(tactic|
     | wp_run [List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
         List.getElem?_cons_zero, List.getElem?_cons_succ, reduceIte,
         Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem advance_trial_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
@@ -49,7 +50,7 @@ theorem advance_trial_spec (env : HostEnv Unit) (initial : Store Unit) (heap : H
   dsimp only at hRetry
   simp only [hEncoding.1] at hRetry
   obtain ⟨hAlphaBound, hAlphaRead⟩ := List.getElem_of_getElem? hAlpha
-  unfold advanceTrialBody advanceWorkBody advanceLoop func78
+  unfold advanceTrialBody advanceWorkBody advanceLoop func85
   dsimp only
   advance_trial_peel
   refine wp_call_tw (proposal_exact env initial n time alpha hn.2) ?_
