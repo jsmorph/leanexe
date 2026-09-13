@@ -10776,3 +10776,23 @@ propagation lemma and restricting arithmetic tactics to relevant
 inequalities resolved it within the unchanged limits.  Pressure,
 wave-speed, and flux acceptance, preservation through the rounded grid
 recurrence, source success, and complete artifact execution remain open.
+
+## 2026-09-12: Pressure and wave-speed bounds
+
+[Positive arithmetic](proofs/talos/lean/Project/ProofKit/F64PositiveArithmetic.lean)
+and [sign-cleared values](proofs/talos/lean/Project/ProofKit/F64Absolute.lean)
+connect the rounded-operation error bounds to the executable Boolean
+guards.  The pressure proof includes the stored 0.4 coefficient error.
+[Sound-speed composition](proofs/talos/lean/Project/EulerRiemann/NumericsSound.lean)
+proves positive ratio, radicand, and sound-speed words, with relative
+error at most nine times 2^-52 against sqrt((7/5) pressure/density).
+The pressure in that reference is the decoded computed pressure.
+[Wave-speed addition](proofs/talos/lean/Project/EulerRiemann/NumericsSpeed.lean)
+proves positivity, a 32 M squared upper bound, and its rounding error.
+
+The sound and speed checks passed in 1.4 and 1.1 seconds.  All audits
+use only standard axioms.  Shared real and binary64 square-root
+composition lemmas separate input error from operation rounding.
+Complete side and interface flux acceptance, the preserved grid
+invariant, unconditional source success, and complete exact-byte
+execution remain open.  No production run has started.
