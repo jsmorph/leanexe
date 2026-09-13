@@ -17034,3 +17034,67 @@ including all 116 maintained Markdown files.  A source scan found no
 proof placeholders, new axioms, or native decision procedures in the
 eleven proof files.  The checkpoint preserves all unrelated report
 files and every existing generated artifact.
+
+### 2026-09-13: physical page bound through advancement and run
+
+Published the complete retry page-bound checkpoint as
+2354fbb7af3f7a917fda25b816133c41e19ca748, with parent
+ac18849ed461b612146b2938535f3de9413dadb5 and tree
+d7c7dfd4edeaf9ea3b4fe8c8ae173126da9518d8.  The non-forced push and
+fetch passed.  HEAD, FETCH_HEAD, and origin/talosfp-euler agree on the
+commit, parent, tree, and headline.  The complete index and all sixteen
+checkpoint paths match the fetched commit.
+
+The total advance invariant now carries the supplied physical page
+bound.  The trial theorem consumes retry_pages_exact.  Work, iteration,
+loop, and function composition preserve the bound through failed scans,
+failed retries, accepted replacement, and terminal return.  Release
+preserves physical pages.  The earlier advance_exact API follows at
+65536 pages.  The first focused ExecutionAdvanceTotal build passed with
+eight standard-only axiom reports across six changed modules and no
+own-module warnings.  The command used tools/leanrun --timeout 6m with
+the same standard local Lake envelope and one target.
+
+The next complete call is function 97, Control.run.  Its current compiler
+annotations identify the endTime, initialCells, and advance calls at
+body ranges 0..2, 18..22, and 26..36.  Read the emitted body and confirmed
+that it retains the initial grid after advancement.  RunResources now
+states the combined initializer and three-grid reservation rather than
+assuming the initializer frees its retained map buffers.  RunGuard
+checks the supported-size branch and the emitted 44-instruction body.
+ExecutionRun composes the three calls under that combined reservation.
+The focused build is pending.  The output packer remains open.
+
+RunResources and RunGuard passed on their first checks.  The first
+ExecutionRun check required a reflexive inequality in the initializer
+reservation, removal of the page fact already simplified to True by
+run_peel, and normalization of the supported-size conjunction in the
+source run definition.  The second focused build passed without raising
+proof limits.  Both builds used tools/leanrun --timeout 6m with the
+standard local Lake envelope and one target.  The complete theorem now
+returns the exact Control.run grid, time, and status, with ownership,
+held-array preservation, result capacity, remaining reservation, and
+the supplied physical page bound.
+
+The combined reservation is at most 319,523,176 bytes above the entry
+heap top when no extra full-grid spare is requested.  This includes all
+initializer allocations and three additional full-grid allocations.
+The proof still requires the entry heap and reservation premises.
+Output allocation and the complete entry memory theorem remain open.
+The supported run guard duplicates the initializer's checked range
+dispatch.  A shared range-dispatch theorem is a possible later
+abstraction, but no current proof-generation measurement establishes
+a benefit from promoting it.  Existing compiler call locations guided
+this composition, and exact program equalities check the selected
+regions.  No compiler or LTG mutation was needed.
+
+Reviewed the nine changed proof modules, their fifteen standard-only
+axiom reports, and the failed and accepted build records.  No own-module
+warnings remain.  Preparing those nine proof files and five development
+records as the complete-run checkpoint.  No production execution has
+started, and the exact artifact bytes remain unchanged.
+
+Whitespace and documentation checks passed, including all 116 maintained
+Markdown files.  The reviewed checkpoint contains six strengthened
+advance proof modules, three complete-run modules, and five development
+records.  Preserved all unrelated report and generated files.
