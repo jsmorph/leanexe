@@ -15401,3 +15401,115 @@ plans/euler-riemann-complete.md, and this append-only journal.  It records
 checked initial and arithmetic bounds.  The complete source-success,
 new-artifact execution, and memory gates remain open.  Earlier pending
 LTG, initializer, tool, and paper files remain outside this checkpoint.
+
+Published and fetched ef92cf75ea829db6928581d78735449f7db4e387,
+"Prove initial Euler bounds and wider arithmetic", parent
+a5cbe95bc2cb0e56313bc372b508cff871871f41, tree
+6dcd424e248e043ab30be51cdbbb771f99b93285.  Commit, parent, title,
+tree, index, and all nine checkpoint worktree files match the fetched
+remote.  Documentation checks passed for 116 maintained Markdown files,
+and the staged whitespace check passed.
+
+Added F64RationalBounds to retain the rational rounder's relative error
+scale for finite quotients below 2^1022, with the subnormal term kept
+explicit.  The proof reuses CodeLib's integer quotient-rounding bound,
+exact small packing, and the shared larger-range packing and shifted
+representability lemmas.  This is the next pending arithmetic proof.
+
+The first F64RationalBounds check failed because Finite was ambiguous
+inside the zero-case simplifier list.  Qualified that definition as
+CodeLib.IEEE64.Finite.  The failed declaration's sorryAx audit is excluded
+from accepted evidence.  No other proof diagnostic was reported.
+
+F64RationalBounds passed in 1.5 seconds with a standard-only audit.
+Added the pending F64DivBounds adapter: the exact finite division
+identity transfers the rational result to signed operands, then clears
+the real denominator to obtain a relative-plus-subnormal error bound.
+
+The first division-adapter check failed on a common-scale quotient
+identity and missing Nat annotations around the integer error budget.
+The latter caused downstream signed-case elaboration failures.  Added
+the library's nonzero common-divisor cancellation lemma and explicit
+budget types before rechecking.  This failed run is retained as a proof
+diagnostic, with no accepted division theorem yet.
+
+The second division check accepted the signed-integer theorem with
+standard axioms.  Positivity search in the real denominator hit the
+recursion limit.  Replaced that search with abs_pos and explicit
+nonzero factors already established in the proof, without raising the
+recursion limit.
+
+F64DivBounds passed in 2.4 seconds with both requested audits containing
+only standard axioms.  F64SqrtRounding then passed its first check in
+1.2 seconds with a standard-only audit.  The square-root proof uses the
+fact that a nonzero binary64 magnitude yields a scaled integer root at
+least 2^537.  Its rounding error therefore fits the relative 2^-53
+budget throughout the finite input range.  Added F64SqrtBounds to transfer
+that result to the existing IEEE64.sqrt operation and real values.
+
+The first square-root adapter check found that field_simp had already
+closed the scale identity before the following ring tactic.  Removed
+that redundant tactic.  The downstream theorem will be accepted only
+after the corrected module passes.
+
+F64SqrtBounds passed in 1.1 seconds with a standard-only audit.  It
+derives the magnitude range from finite encoding, so its real relative
+error theorem applies to every positive finite input.  Added the pending
+F64ArithmeticBounds adapters to express addition, subtraction,
+multiplication, and division errors in one epsilon-times-bound form.
+They will shorten the solver's kinetic-energy error propagation while
+retaining each operation's explicit overflow premise.
+
+F64ArithmeticBounds passed in 1.2 seconds with four standard-only audits.
+Added NumericsTransport to apply these bounds to the solver's ordered
+momentum/density division and momentum-times-velocity multiplication.
+Its proposed state premises are finite words, density at least 1/M,
+momentum magnitude at most M, and 1 ≤ M ≤ 2^100.  The target derives
+finite intermediates, velocity error at most epsilon M squared, and
+transport error at most three epsilon M cubed.  Preserving the state
+premises through every grid update remains a separate open obligation.
+
+NumericsTransport passed its first check in 1.8 seconds with a
+standard-only audit.  Added NumericsInternal to compose both transport
+components, their sum, multiplication by one half, and subtraction from
+total energy.  It targets finiteness of every intermediate and internal
+energy error at most twelve epsilon M cubed under the same state bounds.
+
+The first NumericsInternal check reached Lean's deterministic 200,000
+heartbeat limit at whnf.  Its declaration has no accepted audit.  Before
+retrying, separated the real half-sum error propagation into the reusable
+RealHalfSumError lemma.  The revised caller will restrict arithmetic
+tactics to their relevant inequalities, avoiding reduction of the
+unrelated finite-operation hypotheses.  The unchanged target will not
+be rerun, and no heartbeat or process limit is being increased.
+
+RealHalfSumError passed in 1.1 seconds with a standard-only audit.
+The revised NumericsInternal check returned local diagnostics instead
+of exhausting heartbeats.  Three magnitude estimates needed the positive
+M-cubed premise in their restricted arithmetic context.  The half-sum
+adapter also needed one_mul in its explicit simplification list.  Added
+those facts.  The final declaration remains unchecked until the next run.
+
+NumericsInternal passed in 1.7 seconds with a standard-only audit.
+The checked RealHalfSumError lemma and restricted arithmetic contexts
+resolved the elaboration boundary without increased limits.  Added
+NumericsInternalGuard to derive the exact Boolean intermediate checks
+from those finiteness and error results when exact internal energy
+exceeds the proved error budget.  This connects the numerical result
+to the first thermodynamic acceptance branch in sideCheckedBits.
+
+NumericsInternalGuard passed in 1.1 seconds with a standard-only audit.
+Reviewed the nine accepted new modules and their check results together.
+The shared arithmetic and real half-sum lemmas now have a solver use.
+The proofs concern unchanged formal IEEE64 operations, so no artifact
+regeneration or compiler-annotation change is required for this checkpoint.
+No LTG retrieval or promotion experiment occurred.  The global numerical
+invariant and complete exact-byte execution theorem remain open.
+
+The checkpoint's explicit paths are F64RationalBounds, F64DivBounds,
+F64SqrtRounding, F64SqrtBounds, F64ArithmeticBounds, RealHalfSumError,
+NumericsTransport, NumericsInternal, NumericsInternalGuard, devnotes.md,
+plan.md, plans/euler-riemann-complete.md, and this journal.  The completed
+checks all used tools/leanrun with a six-minute command limit and the
+standard local resource profile.  Earlier pending files remain preserved
+outside the checkpoint.  No production numerical run has started.
