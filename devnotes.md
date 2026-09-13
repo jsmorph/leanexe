@@ -10868,3 +10868,25 @@ seconds.  Rounded CFL transfer, physical-flux error composition,
 rounded cell acceptance, the full-run invariant, successful completion,
 and complete exact-byte execution remain open.  No numerical source,
 compiler, WASM bytes, or LTG catalog changed in this checkpoint.
+
+## 2026-09-13: Rounded CFL and reference-step positivity
+
+[The rounded product bound](proofs/talos/lean/Project/ProofKit/F64ProductBound.lean)
+proves an exact product at most 51/100 from an accepted positive
+rounded product at most 1/2, including underflow error.  Its check
+passed in 1.5 seconds.  [The CFL adapter](proofs/talos/lean/Project/EulerRiemann/NumericsCfl.lean)
+derives the product range and transfers the selected maximum to both
+interface contributions for a positive ratio at most one.
+
+[Reference-step positivity](proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
+now combines the computed interface speeds, accepted rounded CFL
+comparison, and exact physical fluxes.  Under the three StateBounds
+premises, reference density and internal energy retain at least
+49/100 of their center values.  [The real weight theorem](proofs/talos/lean/Project/EulerRiemann/RealCflStep.lean)
+keeps the center coefficient explicit.  These three checks each
+passed in 1.3 seconds, with standard-only audits.
+
+The rounded update still needs physical-flux error composition and
+quantitative guard acceptance.  Preservation over the reachable grid,
+successful final-time completion, complete memory and artifact proofs,
+and both production calculations remain open.
