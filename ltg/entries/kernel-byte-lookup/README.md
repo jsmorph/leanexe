@@ -47,6 +47,23 @@ sequence and byte-lookup certificates.  An array-size observation covers
 the implicitly reducible `ByteArray.size` projection while keeping the
 embedded array opaque to evaluation.
 
+Large structured instructions require internal sequence boundaries.
+The [offset utility](../../../proofs/talos/lean/Project/Artifact/Binary/CodeOffsets.lean)
+uses the normative decoder to record nested cursors, fuel, terminators,
+and paths into the cached instruction tree.  The
+[nested-function example](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode95.lean)
+checks eighteen sequence certificates and its complete code result.
+Its dependency audit confirms reuse across five nesting levels.
+[Parser composition lemmas](../../../proofs/talos/lean/Project/Artifact/Binary/CodeParts.lean)
+combine vector items, length prefixes, and bounded payloads.  The
+metadata selects proof statements, while the kernel checks their equality
+to the original decoder applications.
+
+The [complete code section](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCodeVector.lean)
+composes all 108 body results through `vectorLoop_eq_cons`, then checks
+the item-count and byte-count prefixes.  Its axiom audit reports only
+`propext`.
+
 The [checked lookup module](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactByteLookup.lean)
 and [suffix consumer](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99Part333.lean)
 record the application.  Complete Riemann artifact verification and a
