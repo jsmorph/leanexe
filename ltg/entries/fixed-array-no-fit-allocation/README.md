@@ -95,3 +95,18 @@ Extraction's ownership and allocation/data composition checked in 58 and
 separation lemmas, with scratch start 60 and no trailing local list.
 The source owner survives allocation and copying, and the continuation
 receives ownership of the extracted prefix and its bounded writes.
+
+`FixedArraySearch.frame_eq_of_gets` reconstructs the canonical frame from
+six getter equalities, an empty operand stack, and the internal-window
+bound.  `I64LocalRange.window` supplies those six words from a typed
+register interval.  Its assignment, counter, and search lemmas preserve
+that interval when scratch values change.  The range uses combined WASM
+indices, while `window` takes an internal-local offset.
+
+The initializer uses these results to transfer scratch typing from map to
+append, restore the complete scratch interval after copying, and recover
+the extraction allocator frame on both exit paths.  The composed
+extraction branch includes the result assignments and completion flag.
+All six new support and consumer modules pass with standard axioms.
+The complete growth loop and independent artifact verification remain
+open.  These additions retain the entry's provisional status.

@@ -5,7 +5,7 @@ namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit
 
 def initialMapLoop : Wasm.Program :=
-  (Annotation.resolve func88
+  (Annotation.resolve func95
     [{ instructionIndex := 4, field := .block },
      { instructionIndex := 0, field := .loop },
      { instructionIndex := 14, field := .elseBranch },

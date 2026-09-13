@@ -9,7 +9,7 @@ def initialMapCallProgram : Wasm.Program :=
     .localGet 10, .localSet 55, .localGet 54, .localGet 55, .addI64,
     .localTee 56, .localGet 54, .ltUI64,
     .iff 0 1 [.unreachable] [.localGet 56] [] [.i64],
-    .localSet 19, .localGet 18, .localGet 19, .call 87,
+    .localSet 19, .localGet 18, .localGet 19, .call 94,
     .localSet 26, .localSet 25, .localSet 24, .localSet 23,
     .localSet 22, .localSet 21, .localSet 20,
     .localGet 20, .localSet 27, .localGet 21, .localSet 28,

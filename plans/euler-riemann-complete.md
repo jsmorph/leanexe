@@ -565,7 +565,12 @@ covers both the completed-loop and exhausted-fuel result assignments.
 The [growth continuation](../proofs/talos/lean/Project/EulerRiemann/InitialContinue.lean)
 releases a tracked old buffer and installs the new owner before decrementing
 fuel.  All public audits use the permitted standard axioms.  The complete
-growth-loop composition remains open.  The 512 MiB proof must bound WASM
+extraction branch now composes allocation, copying, return assignment,
+and the completion flag for both exits.  Its arbitrary input frame uses
+the shared typed-register range and canonical allocator reconstruction.
+Control-field and scratch-register preservation now check through map,
+append, and growth continuation.  The complete growth-loop composition
+remains open.  The 512 MiB proof must bound WASM
 pages as well as heap allocation addresses.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
