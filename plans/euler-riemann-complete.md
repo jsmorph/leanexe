@@ -572,6 +572,14 @@ Control-field and scratch-register preservation now check through map,
 append, and growth continuation.  The complete growth-loop composition
 remains open.  The 512 MiB proof must bound WASM
 pages as well as heap allocation addresses.
+Map and append adapters now reconstruct their scratch windows from an
+arbitrary loop frame and return the buffer getters for continuation.
+The allocator preserves a supplied physical page bound across reuse,
+growth, and grid writes.  Initializer resource lemmas establish exact
+capacity, heap-top growth, free-list preservation, and entry-held owner
+preservation.  The source-prefix lemmas preserve the prescribed cells
+under doubling and extraction.  The growth-loop invariant must compose
+these results before the complete memory and execution claims follow.
 [Output](../proofs/talos/lean/Project/EulerRiemann/Output.lean) returns status,
 time, two dimensions, and contiguous density and pressure blocks.  Its
 layout and maximum length of 1,280,004 words have checked source proofs.
