@@ -15734,3 +15734,97 @@ affine lemma retains timestep dependence instead of using a fixed
 coarse flux budget.  No numerical source, compiler, WASM bytes, or
 LTG catalog changed.  All production calculations remain behind the
 complete source and exact-byte proof gates.
+
+Published and fetched 6bafdb4b0f01a5e8215e5ebe2b8c76ec0a9c7348,
+"Prove timestep-dependent update error bounds", parent
+0f11762043b7f1b7f3789445896cc90d747f4807, tree
+710149106cde8e7461f0dc44e12d0ab22fc7fb4d.  Commit, parent, title,
+tree, index, and all seven checkpoint worktree files match the fetched
+remote.  The next sound-speed adequacy proof compares computed pressure
+to exact internal energy.  Added NumericsPressureReference to derive
+that pressure error and a quantitative lower bound from the checked
+internal-energy error.  Its proof is pending the next check.
+
+NumericsPressureReference passed its first check in 7.3 seconds with
+a standard-only audit.  It proves pressure error at most 10 epsilon
+M cubed against (2/5) times exact internal energy, and pressure at
+least (99/500) times exact internal energy.  Added the pending
+NumericsSoundReference proof to turn this lower bound into a computed
+sound speed at least two thirds of the exact-real sound speed.
+
+NumericsSoundReference passed in 3.4 seconds with a standard-only
+audit.  Added a pressure upper bound of three quarters of exact
+internal energy and a sound-speed upper bound of twice exact sound
+speed.  These bounds control rounding in the final speed addition
+without assuming that the computed speed exceeds the exact sound
+speed.  Both extensions await the next focused check.
+
+The pressure and sound upper-bound extensions passed in 1.6 and
+1.9 seconds.  All three public audits contain only standard axioms.
+Added RealSoundMargin to derive epsilon M squared at most one
+sixteenth of exact sound speed from the internal-energy margin.
+Added NumericsSideValues to expose the successful source result's
+arithmetic expressions for subsequent numerical composition.  These
+two new modules await their focused checks.
+
+RealSoundMargin's first check found the cancellation lemma expects
+the common factor on the right.  Corrected that argument's product
+order.  The remaining obligations passed in the failed draft.
+
+RealSoundMargin passed in 2.8 seconds with a standard-only audit.
+Added NumericsSpeedReference to combine the velocity and sound
+bounds with rounding in the final addition.  Its target lower bound
+is absolute exact velocity plus half exact sound speed.  The real
+Rusanov positivity proof can use this weaker sound-speed coefficient.
+
+NumericsSideValues first split only the outer guard because local
+let-bindings enclosed the remaining branches.  Added explicit let
+reduction before branch splitting.  No numerical premise changed.
+
+NumericsSideValues passed in 1.4 seconds with propext and Quot.sound
+only.  Added NumericsSideWave to compose the checked internal-energy,
+pressure, sound, velocity, addition, and accepted-source-value lemmas.
+The new theorem retains every StateBounds premise and targets the
+speed field returned by sideCheckedBits.  Its check is pending.
+
+NumericsSpeedReference's first check needed the identity twice unit
+roundoff equals epsilon multiplied explicitly by the exact sound
+speed.  Added that equality before the linear combination.  The
+other obligations passed in the failed draft.
+
+NumericsSpeedReference and NumericsSideWave passed in 1.3 and
+1.2 seconds, respectively, with standard-only audits.  The latter
+proves that the successful side result's speed is at least absolute
+exact velocity plus half exact sound speed under StateBounds.
+Extracted RealStep.update_positive_of_splits so both wave-speed
+conditions can share the convex-combination argument.  Added
+RealStepHalfSound with a three-sevenths split internal-energy bound
+and the corresponding exact-real update positivity theorem.  These
+real-proof changes await their focused check.
+
+RealStep and RealStepHalfSound passed in 1.6 and 1.4 seconds.
+All seven audits contain only standard axioms.  Added the shared
+F64Maximum theorem connecting positive raw-word maximum selection to
+the real maximum, plus NumericsFluxWave to transfer both side bounds
+to the returned interface alpha.  Both new modules await checking.
+These exact-real cell results still assume the exact CFL inequalities.
+The rounded CFL guard also needs an error-aware transfer theorem.
+
+F64Maximum and NumericsFluxWave passed in 1.2 and 1.4 seconds,
+with four standard-only audits.  Reviewed all accepted declarations
+and failed diagnostics together.  Explicit scaling identities resolved
+the arithmetic failures.  Reducing source let-bindings before branch
+splitting resolved the source-value proof.  Shared maximum selection
+and split-state composition now have concrete consumers.  The new
+proofs use the formal IEEE64 definitions and decoded source results.
+They neither change nor establish complete execution of the generated
+WASM.  No compiler annotation or LTG retrieval experiment occurred
+in this checkpoint, and the pre-existing catalog edits remain separate.
+
+Prepared the ten-proof-module wave-speed adequacy checkpoint with
+devnotes.md, plan.md, plans/euler-riemann-complete.md, and this journal.
+All focused Lean checks ran locally through tools/leanrun with a
+six-minute timeout and the standard resource limits.  Numerical source
+and generated bytes remain unchanged.  Global preservation, final-time
+success, complete memory and artifact proofs, and both production
+calculations remain open.

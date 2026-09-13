@@ -166,7 +166,13 @@ update now has checked acceptance and error at most epsilon M plus
 396 epsilon times its ratio times M to the fifth power, plus twice
 the half-subnormal unit, for positive ratio at most one.  Preservation
 of density and energy margins through the rounded update and full
-recurrence remains open.
+recurrence remains open.  Computed pressure and sound speed now have
+checked bounds against exact internal energy.  The returned interface
+alpha bounds each exact velocity magnitude plus half its exact sound
+speed.  The real Rusanov split-state proof accepts this coefficient,
+and both cell positivity variants share their convex-combination
+argument.  Rounded CFL transfer and composition of the physical-flux
+rounding errors remain open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
