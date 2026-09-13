@@ -16385,3 +16385,61 @@ FreeListCount, six Riemann failure-allocation and memory modules, and
 the four development records.  Initializer reindexing and the pre-existing
 extraction, LTG, ProofKit, compiler-tool, and report drafts remain outside
 this checkpoint.  The numerical artifact and production gate are unchanged.
+
+Published and fetched b2620a22477f1cadc7b13fff76f7d70f110ec4f7,
+"Prove retry failure allocation and memory reservation", parent
+74774a2b14c566e28ad353d7ee95d86028d5a1a8, tree
+be60d7061cdb78937a7eb5d911079204c721d047.  The complete fetched
+metadata, index, and all 14 checkpoint worktree paths match.
+Documentation and whitespace checks passed before publication.
+
+Added RetryTotalFrame and RetryTotalInvariant.  The active retry path
+preserves the six zero-initialized allocator scratch locals until a
+failure allocates its result.  The returned-frame predicate records
+the status and supports both success and failure.  The stopped-loop
+predicate also covers exhausted fuel before its final allocation.
+These checks passed in 2.7 and 1.4 seconds with standard-only audits.
+
+The total valid-time branch now composes the existing trial, acceptance,
+release, and reservation proofs without an expected-success premise.
+Its first two drafts stopped when the instruction suffix used explicit
+List.append while the restricted tactic knew only append notation.
+Exposing the stopped tactic confirmed no simplifier progress.  Read the
+pinned Lean List definitions and Talos wp_run implementation.  Explicit
+append reduction passed the complete branch in 2.2 seconds.  The current
+cleanup uses Lean's append_eq theorem inside the local tactic instead
+of two extra reduction steps.
+
+The invalid-time branch derives empty-allocation bounds from the checked
+reservation and preserves the complete total-loop state.  Its first
+diagnostics required reducing UInt64.toNat of eight before page
+arithmetic and stating the scratch-frame identity with its named input.
+The next checks exposed the local-list length and returned-frame
+normalization boundaries.  Added the relevant append-length and frame
+equations.  The current focused six-minute build checks both branches.
+No numerical code, source recurrence, or artifact byte changed.
+
+The two branch proofs now take arbitrary continuations.  Their accepted
+checks took 2.1 and 1.8 seconds.  The first total-iteration check required
+an explicit empty-stack frame equality when the conditional's branch
+returned through the outer back edge.  That equality follows from the
+invariant's values field.  The revised iteration and loop checks passed
+in 2.3 and 1.4 seconds with standard-only audits.
+
+ExecutionRetryTotal now proves retry_exact without expected success.
+Its completed branch loads all four returned words.  Its exhausted-fuel
+branch allocates and returns the empty status-four result using the
+checked small-allocation reservation.  Initial diagnostics required
+named optional-read equalities, the explicit source-result equality,
+and qualification of the resultFrame helper hidden by a local name.
+The complete function passed in 2.3 seconds through the standard runner,
+with a standard-only audit and two unused-simp warnings.  No diagnostic
+was a timeout and no unchanged timed-out target was repeated.
+
+Preparing the seven total-retry modules and four development records as
+a checkpoint.  These proofs use compiler-matched fuel guards, checked
+instruction identities, shared block-loop composition, and the complete
+shared allocator.  The next boundary is total advance execution,
+including scan and trial failure, followed by initialization and output.
+The entry memory bound and independent exact-byte package gate remain
+open.  Production execution has not started.
