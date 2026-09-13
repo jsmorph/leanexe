@@ -10890,3 +10890,30 @@ The rounded update still needs physical-flux error composition and
 quantitative guard acceptance.  Preservation over the reachable grid,
 successful final-time completion, complete memory and artifact proofs,
 and both production calculations remain open.
+
+## 2026-09-13: Full physical-flux and update error
+
+[Physical-flux comparison](proofs/talos/lean/Project/EulerRiemann/NumericsFluxReference.lean)
+proves exact mass flux and bounds momentum, transverse-momentum,
+and energy-flux errors by 20 epsilon M cubed, 3 epsilon M cubed,
+and 48 epsilon M to the fifth power.  It includes pressure error
+against exact internal energy and its contribution to enthalpy.
+[Interface comparison](proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceReference.lean)
+then bounds every returned Rusanov component by 304 epsilon M to
+the fifth power against exact physical fluxes with computed alpha.
+Their first checks passed in 1.9 and 1.4 seconds, respectively.
+
+[The conservative-update comparison](proofs/talos/lean/Project/EulerRiemann/NumericsUpdateReference.lean)
+retains error at most epsilon M plus 1004 epsilon times the ratio
+times M to the fifth power, plus twice the half-subnormal unit.
+Here epsilon is 2^-52 and the half-subnormal unit is 2^-1075.
+[The four-component composition](proofs/talos/lean/Project/EulerRiemann/NumericsCellReference.lean)
+proves each scalar update succeeds, stays finite, and satisfies that
+error bound relative to the exact reference step.  These checks
+passed in 1.1 seconds each, with standard-only audits.
+
+The shared real product and Rusanov lemmas use separate factor and
+reference-flux error budgets.  Component-indexed bounds avoid four
+copies of the interface and update derivations.  Candidate-cell guard
+acceptance, full-run quantitative preservation and progress, complete
+memory and artifact proofs, and both calculations remain open.

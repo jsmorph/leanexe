@@ -174,7 +174,11 @@ and both cell positivity variants share their convex-combination
 argument.  The rounded CFL comparison now bounds each exact product
 by 51/100.  For a positive ratio at most one, the combined reference
 step retains at least 49/100 of center density and internal energy.
-Composition of physical-flux and update rounding errors remains open.
+Physical-flux and update rounding errors now compose across the four
+candidate components.  Every scalar update succeeds and stays finite
+with error at most epsilon M plus 1004 epsilon times the ratio times
+M to the fifth power, plus twice the half-subnormal unit.  Quantitative
+acceptance of the candidate cell's final guard remains open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
