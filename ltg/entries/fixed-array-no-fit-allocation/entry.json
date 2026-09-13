@@ -34,7 +34,9 @@
     "Project.ProofKit.FixedArraySearchPrepare",
     "Project.ProofKit.FixedArraySearchProjection",
     "Project.ProofKit.FixedArraySearchRead",
-    "Project.ProofKit.FixedArraySearchRegion"
+    "Project.ProofKit.FixedArraySearchRegion",
+    "Project.ProofKit.FixedArraySearchWindow",
+    "Project.ProofKit.I64LocalRange"
   ],
   "declarations": [
     "Project.ProofKit.FixedArrayAllocateNone.allocated_count",
@@ -51,6 +53,7 @@
     "Project.ProofKit.FixedArraySearch.body",
     "Project.ProofKit.FixedArraySearch.capacityFrame_need",
     "Project.ProofKit.FixedArraySearch.frame",
+    "Project.ProofKit.FixedArraySearch.frame_eq_of_gets",
     "Project.ProofKit.FixedArraySearch.frame_get",
     "Project.ProofKit.FixedArraySearch.frame_get_before",
     "Project.ProofKit.FixedArraySearch.guardProgram",
@@ -60,7 +63,13 @@
     "Project.ProofKit.FixedArraySearch.program",
     "Project.ProofKit.FixedArraySearch.readProgram",
     "Project.ProofKit.FixedArraySearch.readProgram_spec",
-    "Project.ProofKit.FixedArraySearch.resultFrame_before"
+    "Project.ProofKit.FixedArraySearch.resultFrame_before",
+    "Project.ProofKit.I64LocalRange",
+    "Project.ProofKit.I64LocalRange.counter",
+    "Project.ProofKit.I64LocalRange.of_preserved",
+    "Project.ProofKit.I64LocalRange.result",
+    "Project.ProofKit.I64LocalRange.search",
+    "Project.ProofKit.I64LocalRange.window"
   ],
   "premises": [
     "Exact equality with the emitted allocation region",

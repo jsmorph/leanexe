@@ -805,6 +805,9 @@ The [complete solver development](euler-riemann-complete.md) now has
 checked initializer map, append, and extraction execution, including their input,
 capacity, allocation, and data regions.  The initializer's loop guard,
 length comparison, extraction return, and old-buffer release also check.
+Both extraction branches now compose the allocation and return regions.
+Shared register-range lemmas support the checked control and scratch
+preservation through map, append, and growth continuation.
 Complete retry and time-advance execution cover every reachable status
 under their heap, reservation, and fuel premises.
 Full initialization, output, memory, and exact-byte proofs

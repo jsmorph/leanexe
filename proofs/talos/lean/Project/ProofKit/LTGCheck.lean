@@ -34,11 +34,13 @@ import Project.ProofKit.FixedArraySearchPrepare
 import Project.ProofKit.FixedArraySearchProjection
 import Project.ProofKit.FixedArraySearchRead
 import Project.ProofKit.FixedArraySearchRegion
+import Project.ProofKit.FixedArraySearchWindow
 import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
 import Project.ProofKit.Frame
 import Project.ProofKit.FuelGuard
 import Project.ProofKit.GuardedBackEdge
+import Project.ProofKit.I64LocalRange
 import Project.ProofKit.Memory
 import Project.ProofKit.MemoryFrame
 import Project.ProofKit.NatSub
@@ -202,6 +204,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArraySearch.body
 #check Project.ProofKit.FixedArraySearch.capacityFrame_need
 #check Project.ProofKit.FixedArraySearch.frame
+#check Project.ProofKit.FixedArraySearch.frame_eq_of_gets
 #check Project.ProofKit.FixedArraySearch.frame_get
 #check Project.ProofKit.FixedArraySearch.frame_get_before
 #check Project.ProofKit.FixedArraySearch.guardProgram
@@ -229,6 +232,12 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FuelGuard.program
 #check Project.ProofKit.FuelGuard.program_spec
 #check Project.ProofKit.FuelGuard.zeroFuel_spec
+#check Project.ProofKit.I64LocalRange
+#check Project.ProofKit.I64LocalRange.counter
+#check Project.ProofKit.I64LocalRange.of_preserved
+#check Project.ProofKit.I64LocalRange.result
+#check Project.ProofKit.I64LocalRange.search
+#check Project.ProofKit.I64LocalRange.window
 #check Project.ProofKit.Memory.WritesRange
 #check Project.ProofKit.Memory.WritesRange.mono
 #check Project.ProofKit.Memory.WritesRange.read64
