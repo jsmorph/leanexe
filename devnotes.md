@@ -11388,3 +11388,22 @@ theorems supply the execution steps.  The last diagnostics concerned
 entry scratch indexing and the two-result/five-argument ABI reduction.
 Complete solve-entry composition, its 512 MiB bound, and independent
 exact-byte closure remain open.  Both production runs await those proofs.
+
+## 2026-09-13: Complete solve entry and public specification
+
+The exported solve function now composes complete run and output
+execution from the module's initial state for every runtime size from
+two through eight hundred.  Its represented result equals Control.solve,
+with at most 8192 memory pages.  The combined allocation reservation is
+at most 350,243,520 bytes above the initial heap pointer 4096.  The public
+success theorem derives the numerical trace through time 0.8 from a zero
+output status and retains final-cell admissibility.
+
+Three modules pass with ten standard-only axiom reports and no own-module
+warnings.  Explicit entry-frame normalization removed repeated ABI
+reverse/take/drop reduction from caller-local updates, reducing the
+diagnostic check from 7.6 to 1.4 seconds.  Existing call, array, numerical
+trace, and safety theorems supply the composition.  The focused source
+regeneration gate passed against the unchanged 21,767-byte artifact.
+Independent exact-byte closure remains open.  No production calculation
+has started.

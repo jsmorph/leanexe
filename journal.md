@@ -17689,3 +17689,74 @@ found no sorry, admit, axiom declaration, native_decide, or bv_decide in
 the six modules.  node tools/check-docs.js checked all 116 maintained
 Markdown files.  Reviewed the changed progress records and complete
 output proof, including the allocation budget and release framing.
+
+Published the complete-output checkpoint as
+0a834ce5b933286ebfefafac07242baf6c041dda, parent
+0dbf7058948898a78f8fd970008c820cad6ef71c, tree
+c6f1e59e9286bd85b2eca4eb9955f20e6675ed0a.  The non-forced push and
+fetch passed.  HEAD, FETCH_HEAD, and origin/talosfp-euler identify the
+same commit, parent, tree, and headline.  The complete index and every
+checkpoint worktree path match the fetched tree.
+
+Added ExecutionSolve to compose functions 97 and 99 through the emitted
+function-103 call sequence.  Its reservation combines runBytes with the
+output allocation budget, at most 350,243,520 bytes above the entry heap
+pointer.  The proof carries the owned specified result and physical page
+bound through the one-pointer exported return.  This draft awaits Lean.
+
+ExecutionSolve reached Lean's default 200,000-heartbeat limit after
+7.8 seconds while reducing the complete theorem.  Its byte-budget
+theorem passed.  Enabled scoped elaboration diagnostics to identify
+the expensive reduction before changing the proof structure.
+
+The diagnostic build reached the same heartbeat limit after 7.9 seconds.
+Reduction counters identify 545,008 List.rec and 369,248 reverseAux
+reductions, with 82,821 List.set reductions, during the nested caller
+frame updates.  Added the standard set_cons_zero and set_cons_succ
+simplification lemmas to normalize each update while traversing the
+emitted straight-line instructions.  Removed the scoped diagnostic flag.
+
+The list-update lemmas alone still reached 200,000 heartbeats after
+7.6 seconds.  Normalized the entry frame explicitly before instruction
+simplification, as the accepted run and output proofs do, so their ABI
+reverse/take/drop expression does not remain inside every caller update.
+
+Explicit entry-frame normalization reduced the check to 1.4 seconds.
+The complete call sequence and resource composition checked up to the
+last conjunction, where wp_run had already simplified the known page
+bound to True.  Supplied that simplified final conjunct.  Added
+SolveInitial to discharge the empty free-list, 4096-byte heap start,
+six globals, initial sixteen pages, and runtime cap from Module.initialStore.
+Its solver theorem instantiates the complete budget at 8192 pages,
+or 512 MiB, for every runtime grid size two through eight hundred.
+
+ExecutionSolve and SolveInitial passed.  Their seven axiom reports use
+only the standard axioms, with no own-module warnings.  Added the public
+Spec target with module-parametric exact behavior and success predicates.
+The exact result exposes the represented output array and byte bound.
+The safety theorem adds admissibility of the retained cells and proves
+that a zero status word implies a checked numerical trace through the
+specified final time.  Explicit failure results remain covered by the
+unconditional execution theorem.  Exact-byte closure still awaits proof.
+
+Spec passed on its first build.  Its three axiom reports use only
+propext, Classical.choice, and Quot.sound, with no own-module warnings.
+Reviewed the ten reports across ExecutionSolve, SolveInitial, and Spec
+against their statements.  The public exact theorem starts from the
+module's initial store and exposes the owned output's represented words.
+The success theorem consumes the output's status word and composes the
+existing numerical-trace and cell-safety proofs.  Current compiler calls
+97 and 99 and the checked entry frame supply the execution connection.
+No compiler or LTG change was required.  The earlier list-update-only
+attempt failed, while explicit entry normalization removed the measured
+reduction cost.  Preparing these three modules and the five progress
+records as the next checkpoint, after the focused source-regeneration gate.
+
+tools/talos-proof.js check euler_riemann passed: it rebuilt the pinned
+verifier and source/compiler prerequisites, regenerated and matched the
+Program cache, then checked the public specification.  The artifact
+remains 21,767 bytes with SHA-256
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
+The registration remains incomplete pending independent exact-byte
+closure.  Whitespace and prohibited-proof scans passed for the three
+new modules.  No production calculation ran.
