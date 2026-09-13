@@ -163,7 +163,10 @@ and bytes outside the output interval.  Shared prefix construction and
 interval framing extend the array-memory-framing LTG entry.  Allocation
 now composes installation and both loops with owned output words, heap
 validity, and preserved input-grid ownership.  One-word array release
-also checks.  Map capacity preparation, result transfer, concatenations,
+also checks.  Both concatenations now compose allocation, installation,
+length storage, and copying with owned output and preserved input owners.
+The generic represented-array concatenation theorem extends the
+offset-array-copy LTG entry.  Capacity preparation, result transfer,
 header construction, and the full packer remain open.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
