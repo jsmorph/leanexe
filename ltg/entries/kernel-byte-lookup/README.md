@@ -38,6 +38,15 @@ parser, and a proof-producing simproc tries closed sequence equations
 before the generic step equation.  The corrected consumer's dependency
 audit confirms use of the earlier suffix and byte-lookup theorems.
 
+The complete largest-function check still timed out after its sequence
+proof passed.  `code_eq_of_parts` now composes the size-prefix result,
+local declarations, explicit-cursor sequence theorem, and bounds.  The
+[full function theorem](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99.lean)
+passed with only `propext`, and its dependency audit confirms the earlier
+sequence and byte-lookup certificates.  An array-size observation covers
+the implicitly reducible `ByteArray.size` projection while keeping the
+embedded array opaque to evaluation.
+
 The [checked lookup module](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactByteLookup.lean)
 and [suffix consumer](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99Part333.lean)
 record the application.  Complete Riemann artifact verification and a

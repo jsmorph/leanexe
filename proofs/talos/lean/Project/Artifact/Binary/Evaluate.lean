@@ -46,4 +46,23 @@ cbv_simproc cbv_eval reuseInstructionSequence (instructionSequenceAt _ _ _) := f
       if !result.isRfl then return result
   return .rfl
 
+theorem code_eq_of_parts
+    {start payload bodyStart bodyFinish : Cursor} {size : UInt32}
+    {locals : List LocalDecl} {body : List Instr}
+    (hsize : Leb.u32 start = .ok (size, payload))
+    (hremaining : size.toNat ≤ payload.remaining)
+    (hbytes : payload.pos + size.toNat ≤ payload.bytes.size)
+    (hlocals : vector localDecl { payload with limit := payload.pos + size.toNat } =
+      .ok (locals, bodyStart))
+    (hbody : instructionSequenceAt bodyStart.remaining false bodyStart =
+      .ok ((body, .end), bodyFinish))
+    (hfinish : bodyFinish.pos = payload.pos + size.toNat) :
+    code start = .ok (⟨locals, body⟩, { payload with pos := payload.pos + size.toNat }) := by
+  have hsequence : instructionSequence bodyStart.remaining false bodyStart =
+      .ok ((body, .end), bodyFinish) := hbody
+  simp [code, sized, Bind.bind, Pure.pure, Except.bind,
+    hsize, bounded, hremaining, hbytes, codeBody, hlocals, expression, hsequence, hfinish]
+
+#print axioms code_eq_of_parts
+
 end Wasm.Binary
