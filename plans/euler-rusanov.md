@@ -832,6 +832,8 @@ the specified density/pressure arrays and preserve the input grid,
 using shared array-prefix and field lemmas.  Allocator execution and
 target installation now compose both loops with owned output arrays,
 heap validity, and input-grid ownership.  One-word array release also
-checks.  Full output composition remains open.
+checks.  Both concatenations compose allocation, installation, and copying
+into an owned result while preserving both inputs.  Capacity preparation,
+result transfer, header construction, and full output composition remain open.
 Output, complete entry memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.
