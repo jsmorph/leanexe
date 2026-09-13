@@ -11,6 +11,16 @@ execution, cleanup, or another action prohibited here.
 
 ## Immediate non-negotiable summary
 
+### 2026-09-13: complete behavior proof authorized
+
+The user approved revising the proof requirement to include explicit
+failure returns.  Prove complete source and exact-byte WASM behavior,
+termination, and the complete memory bound before production execution.
+Status-zero results must implement the specified numerical recurrence
+through time 0.8.  Require that status and time before accepting either
+production dataset.  The calculation order remains 192, plot 192, 800,
+plot 800, with one local Wasmtime process and one thread.
+
 ### 2026-09-11: complete solver development authorized
 
 The current task is the [complete Riemann solver](euler-riemann-complete.md).

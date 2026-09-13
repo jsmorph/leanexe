@@ -53,34 +53,33 @@ Separate final
 density and pressure arrays require 9.8 MiB.  These figures count payloads
 only and do not establish the complete peak-memory bound.
 
-Prove successful completion at the requested final time, with all returned
-cells equal to the specified numerical recurrence.  A theorem conditional
-on successful intermediate steps leaves the success obligation open.
-The existing host's 10,000-step and 24-attempt limits are historical bounds,
-not evidence that the requested runs satisfy them.
+Prove terminating execution with all returned words equal to the specified
+numerical recurrence, including its explicit failure returns.  A successful
+result must contain time 0.8 and the prescribed density and pressure words.
+The complete theorem must cover failure branches and their memory use.
+Accept production data only when the proved executable returns status zero
+at time 0.8.
 
 ## Work order
 
-The user approved the following gates on 2026-09-12.  The numerical
-completion argument takes priority over the remaining local execution
-compositions.
+The user approved the revised gates on 2026-09-13.  They replace the
+earlier requirement to prove successful completion for every supported
+grid size before production execution.
 
 | Gate | Required result |
 |------|-----------------|
-| Final theorem | For every runtime size from 2 through 800, the exact generated WASM export terminates from its specified entry state, stays within the complete memory bound, and returns status zero, the binary64 encoding of time 0.8, both dimensions, and the specified density and pressure words. |
-| Numerical completion | Derive the Rusanov convex decomposition, quantitative floating-point bounds, a preserved invariant ensuring guard acceptance, an accepted retry before rounded time stalls, and final-remainder handling.  Conclude source success without assuming successful intermediate steps. |
+| Final theorem | For every runtime size from 2 through 800, the exact generated WASM export terminates from its specified entry state, stays within the complete memory bound, and returns the specified status, time, dimensions, and density and pressure words.  Status zero implies time 0.8 and a complete accepted numerical trace.  Every explicit failure return is covered. |
+| Numerical behavior | Connect initialization, accepted updates, timestep selection, retry, stopping, failure status, and output words to the specified recurrence.  Preserve the checked admissibility and floating-point results with their stated premises. |
 | Compiler-described operations | Check complete emitted map, append, and extract descriptions against decoded regions.  Compose through shared ProofKit results and record checked consumers in LTG.  The current output function has no annotation regions. |
 | Ownership and memory | Compose initialization, retained buffers, retry, replacement, and width-one output allocations with the existing width-seven cell arrays.  Establish a complete bound of at most 512 MiB, including metadata and free storage. |
 | Complete execution | Close the source and exact-byte theorems over the full entry-to-output call chain.  Independently check the exact artifact and audit the final theorems for the three permitted standard axioms. |
-| Calculations and figures | Run 192, save and plot its density and pressure, then run 800, save and plot its density and pressure. |
+| Calculations and figures | After the complete proof gates pass, run 192 and require status zero at time 0.8, then save and plot its density and pressure.  Repeat for 800. |
 
-The second gate requires quantitative margins.  Exact-real positivity
-alone does not establish that every rounded thermodynamic intermediate
-is finite or that the normalized energy guard accepts.  First-sweep
-interface fluxes are independent of the trial timestep, so retry halving
-cannot repair their rejection.  A repeated half-center lower bound also
-does not supply usable full-run floating-point margins.  These
-obligations remain explicit until a preserved invariant discharges them.
+Universal numerical success remains a separate open theorem.  Its
+quantitative obligations include scan acceptance, an accepted retry before
+rounded time stalls, and preservation of guard margins through the full
+run.  The revised production gate requires complete execution proofs and
+successful runtime results.
 
 The user approved extending the momentum normalization guard on
 2026-09-12.  The new guard retains exact normalization where defined and
@@ -105,7 +104,7 @@ The implementation inventory remains:
 - [x] Prove source-array initialization, accepted-sweep correspondence, and the wave-speed reduction.
 - [ ] Prove allocator reuse and the complete memory bound.
 - [ ] Implement and prove timestep selection, retry, and final-time control.
-- [ ] Prove source correctness and successful completion for the supported inputs.
+- [ ] Prove source correctness for every success and failure return.
 - [ ] Freeze the generated WASM and check its complete execution theorem and axiom audit.
 - [ ] Run 192 by 192 and save its final result.
 - [ ] Render and inspect the 192-grid density and pressure figure.
@@ -123,10 +122,13 @@ and cell updates.  Source initialization, sweep correspondence, accepted
 retry traces, safety, fuel sufficiency, and output layout pass their
 checks.  Compiler regeneration produced a 21,767-byte module with digest
 `baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310`.
-Its generated model and annotation matches check in Lean.  Execution
-proofs still refer to the previous guard and function indices.  The
-execution inventory below records results for the preserved 21,386-byte
-module and must be re-established for the regenerated bytes.
+Its generated model and annotation matches check in Lean.  Scalar
+component and update execution, all state-guard helpers, the complete
+state guard, and thermodynamic-side execution now check against the
+regenerated module.  Their 27 audits use only the permitted standard
+axioms.  The remaining execution inventory below records results for
+the preserved 21,386-byte module and must be re-established for the
+regenerated bytes.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)
@@ -196,12 +198,11 @@ are zero.  Longitudinal momenta are -1/8, zero, and 1/8.  At ratio
 standard-only audits.  This excludes the general fixed-predicate
 induction.  Reachable-state preservation remains a separate problem.
 
-On 2026-09-13 a revision to the universal-success gate was proposed
-for user review: prove complete exact-byte behavior, memory bounds,
-and numerical correctness including explicit failure returns before
-running, and accept data only from status-zero results at time 0.8.
-That proposal awaits a decision.  The current final theorem and work
-order remain unchanged until the user approves a revision.
+On 2026-09-13 the user approved complete exact-byte behavior, memory
+bounds, and numerical correctness including explicit failure returns
+as the proof gate before running.  Production data must come from
+status-zero results at time 0.8.  The final theorem and work order above
+record that revision.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
