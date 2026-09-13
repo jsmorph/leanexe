@@ -5,12 +5,12 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def scanLoop : Wasm.Program :=
-  match (func25[25]? : Option Wasm.Instruction) with
+  match (func32[25]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem scan_loop_shape :
-    func25[25]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
+    func32[25]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
 
 structure ScanScratch where
   cell : Traversal.Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩

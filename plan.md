@@ -517,7 +517,10 @@ checks.  The regenerated module has 21,767 bytes, and its annotation
 matches check in Lean.  Scalar component and update execution, all
 guard helpers, the complete state guard, and thermodynamic-side
 execution now check against those bytes, with 27 standard-only audits.
-The remaining array, control, and output execution proofs remain open.
+The complete flux, cell update, speed scan, neighbor and memory-input
+selection, update callback, time guard, and cell initializer also check
+against the regenerated module.  Full initialization, sweep and
+control composition, output, and the memory bound remain open.
 
 Every initial cell now has checked density, energy, component, and
 energy-margin bounds.  Shared packing, addition, subtraction, and

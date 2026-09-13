@@ -10985,3 +10985,22 @@ preservation.  Their focused checks took 3.4, 5.3, 8.4, and 33 seconds.
 All 27 public audits use only the three permitted standard axioms.
 The complete flux, cell, array, control, and output compositions still
 require checks against the regenerated module.
+
+## 2026-09-13: Revised flux and traversal execution
+
+The current 21,767-byte module now has checked exact execution for the
+complete interface flux, cell update, speed scan, neighbor selection,
+memory-input loading, update callback, time guard, and cell initializer.
+The initializer proof includes conservative quadrant conversion,
+weighted states, and coordinate arithmetic.  The flux and cell proofs
+cover all rejection branches.  The final focused build passed with
+standard-only public audits.  The tests retain unused-tactic warnings
+in three helper modules.
+
+Compiler-described indices guided the updates.  The proofs check the
+instruction identities and use the shared call, array-fold, checked
+arithmetic, memory, and typed-conditional results.  The earlier
+neighbor tactic needed an explicit TalosCompat import and conditional
+normalization.  Sweep allocation, release, complete control failure
+paths, full initialization, output, and the complete memory bound
+remain the next execution obligations.

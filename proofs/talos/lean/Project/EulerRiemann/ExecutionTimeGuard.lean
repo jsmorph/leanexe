@@ -18,25 +18,24 @@ theorem positiveBits_exact (env : HostEnv Unit) (initial : Store Unit) (word : U
     TerminatesWith env Project.EulerRiemann.«module» 2 initial [.i64 word]
       (fun final values => final = initial ∧
         values = [.i64 (boolWord (Project.Euler2DConservative.Model.positiveBits word))]) :=
-  Project.FunctionRegion.terminatesWith sideShift 0 (by norm_num [sideDomain])
-    (Project.Euler2DConservative.Execution.positiveBits_exact
-      Project.Euler2DConservative.Execution.concreteHelperLayout env initial word)
+  side_positive_exact env initial word
 
 macro "time_guard_peel" : tactic => `(tactic|
   repeat
     first
-    | wp_run [func29Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+    | wp_run [func36Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
         boolWord, f64Add, reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       simp [*, -UInt64.not_le])
 
 theorem validAdvance_exact (env : HostEnv Unit) (initial : Store Unit) (time dt : UInt64) :
-    TerminatesWith env Project.EulerRiemann.«module» 29 initial [.i64 dt, .i64 time]
+    TerminatesWith env Project.EulerRiemann.«module» 36 initial [.i64 dt, .i64 time]
       (fun final values => final = initial ∧ values = [.i64 (boolWord (Time.validAdvance time dt))]) := by
-  refine TerminatesWith.of_wp_entry_for (f := func29Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func29 _ initial
-    (func29Def.toLocals [.i64 time, .i64 dt]) env
-  unfold func29
+  refine TerminatesWith.of_wp_entry_for (f := func36Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func36 _ initial
+    (func36Def.toLocals [.i64 time, .i64 dt]) env
+  unfold func36
   time_guard_peel
   refine wp_call_tw (positiveBits_exact env initial dt) ?_
   rintro current values ⟨hCurrent, rfl⟩
