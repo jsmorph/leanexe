@@ -808,6 +808,9 @@ length comparison, extraction return, and old-buffer release also check.
 Both extraction branches now compose the allocation and return regions.
 Shared register-range lemmas support the checked control and scratch
 preservation through map, append, and growth continuation.
+The map and append adapters now return these invariants from arbitrary
+input frames.  Initializer heap, page-limit, held-owner, and source-prefix
+lemmas check.  Complete growth-loop composition remains open.
 Complete retry and time-advance execution cover every reachable status
 under their heap, reservation, and fuel premises.
 Full initialization, output, memory, and exact-byte proofs
