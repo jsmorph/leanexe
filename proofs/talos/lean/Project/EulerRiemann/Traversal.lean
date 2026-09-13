@@ -1,9 +1,9 @@
 import Project.EulerRiemann.InitialModel
+import Project.EulerRiemann.NumericsSweep
 import LeanExe.Runtime
 
 namespace Project.EulerRiemann.Traversal
 open Project.Euler2DCellStep.Sweep
-open Project.Euler2DConservative.Model (sideCheckedBits)
 
 structure Cell where
   index : Nat
@@ -16,7 +16,7 @@ def initialCell (n index : Nat) : Cell :=
   let x := min 5 (4 * n - 5 * (index % n))
   let y := min 5 (4 * n - 5 * (index / n))
   let q := Initial.weighted x y
-  let out := sideCheckedBits q.density q.mx q.my q.energy
+  let out := Numerics.sideCheckedBits q.density q.mx q.my q.energy
   ⟨index, q, out.pressure, out.status⟩
 
 def growCells : Nat → Nat → Nat → Array Cell → Array Cell
@@ -52,7 +52,7 @@ def cellInputs (n : Nat) (axis : Bool) (grid : Array Cell) (cell : Cell) : Input
 def updateCell (n : Nat) (axis : Bool) (ratio : UInt64)
     (grid : Array Cell) (cell : Cell) : Cell :=
   let input := cellInputs n axis grid cell
-  let out := evaluate ratio input
+  let out := Numerics.evaluate ratio input
   let next := orient axis ⟨out.density, out.momentum, out.transverse, out.energy⟩
   ⟨cell.index, next, out.pressure, out.status⟩
 
@@ -77,8 +77,8 @@ structure Scan where
 
 def scanCell (acc : Scan) (cell : Cell) : Scan :=
   let q := cell.state
-  let x := sideCheckedBits q.density q.mx q.my q.energy
-  let y := sideCheckedBits q.density q.my q.mx q.energy
+  let x := Numerics.sideCheckedBits q.density q.mx q.my q.energy
+  let y := Numerics.sideCheckedBits q.density q.my q.mx q.energy
   ⟨acc.status ||| x.status ||| y.status, max acc.alpha (max x.speed y.speed)⟩
 
 def scan (grid : Array Cell) : Scan := grid.foldl (fun acc cell => scanCell acc cell) ⟨0, 0⟩

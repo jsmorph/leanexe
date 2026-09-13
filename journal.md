@@ -15165,3 +15165,165 @@ Documentation checks passed for all 116 maintained Markdown files.
 The pending source integration, import split, range lemma, LTG work,
 and prior initializer and paper files remain outside this checkpoint.
 Its starting commit is c6069edae7e4303c3a5605c2fc97607c439b6e00.
+
+Published and fetched fb686934c37c1c61cb1fff4ceea2cc8a2fa8b748,
+"Prove the Euler momentum guard extension", parent
+c6069edae7e4303c3a5605c2fc97607c439b6e00, tree
+a877ec31ea401cf6e0378d07c671a6d14c5f418c.  Commit identity, parent,
+title, tree, index, and all nine checkpoint files matched the fetched
+branch.  The source integration and all earlier pending state remain.
+
+The separated SweepModel checked in 88 seconds and retained the original
+orientation theorem's standard-only audit.  Added two unchecked
+numerical proof modules for the remaining completion argument:
+F64AdmissibilityRange removes momentum-normalization premises when the
+common biased exponent is at least 1021, and RealPerturbation bounds
+the change in 2 rho E - mx squared - my squared from component errors.
+The latter's proposed bound is 8 M delta + 4 delta squared when the
+original components have magnitude at most M and each error is at most
+delta.  The grid invariant still must supply those bounds.
+
+The smaller source target also reached six minutes while rebuilding
+dependencies, without a theorem failure.  It completed SweepModel,
+InitialModel, NumericsSweep, and InitialStates in 88, 75, 115, and 45
+seconds.  The repeated NumericsSweep check used the separated import
+boundary, reducing that module's measured build from 154 to 115 seconds.
+No complete traversal result is claimed from either timed command.
+The next source boundary is InitialRows.  First check the two independent
+numerical margin modules, each against the existing checked imports.
+
+The first F64AdmissibilityRange check failed in 156 seconds.  The draft
+omitted the exponentBits namespace and named a nonexistent UInt64
+equality lemma.  Its subsequent recursion diagnostics depend on those
+unresolved identifiers.  Added the explicit exponentBits import and
+used UInt64.toNat_inj from the pinned Init/Data/UInt/Lemmas.lean source.
+Failed theorem audits are excluded from accepted evidence.  The same
+runner invocation is still checking RealPerturbation.
+
+That invocation reached six minutes before RealPerturbation returned a
+diagnostic.  A bounded process inspection at 5:41 showed its Lean child
+had used 15 CPU seconds over 2:51 elapsed, with about 790 MiB resident.
+This observation limits interpretation of the wall-time comparisons.
+No resource limits or existing processes were changed.  Extracted the
+general product-error lemma into RealProductError, with direct real
+arithmetic and ring-tactic imports, before retrying the smaller Euler
+margin proof.  The next command checks only the corrected guard-range
+module.
+
+Reviewed the Lanyon Euler article again and the abstract of Guermond,
+Nazarov, Popov, and Tomas, "Second-order invariant domain preserving
+approximation of the Euler equations using convex limiting"
+(https://arxiv.org/abs/1710.00417).  Its stated invariant properties are
+density and internal-energy positivity and a minimum principle for
+specific entropy.  Applying those results to this rounded Rusanov
+recurrence would require a separate correspondence and quantitative
+margin argument.  No result from that paper is a Lean proof premise.
+
+The corrected F64AdmissibilityRange module passed in 42 seconds.  Both
+requested audits contain only standard axioms.  The general acceptance
+corollary no longer assumes momentum normalizability when the common
+biased exponent is at least 1021.
+
+Preserved the previous WASM, WAT, sidecar, recipes, Program.lean, and
+AnnotationMatches.lean in tmp/euler-riemann-before-tinyguard-XhHZqf.
+The copied WASM retains digest
+45cb760153ba17d7780ccf0dcacdedbebe4b681404987df9b3b7ce72d9cf067f.
+The six-file copy totals about 713 KiB and leaves every original file
+intact.  The first attempt to append this record matched no context and
+changed no file.  Proceeding with the approved compiler regeneration
+through tools/talos-artifact.js prepare euler_riemann.
+
+Compiler regeneration passed.  The source build completed Traversal,
+Output, and Control in 179, 55, and 171 seconds.  The generated WASM is
+21,767 bytes with SHA-256
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
+Its sidecar identifies 104 source functions, followed by four runtime
+functions.  It contains 185 direct-call regions, one fold region, and
+three while regions.  Output.pack remains undescribed at function 99.
+The entry is function 103.  Existing execution proofs name the previous
+function indices and guard semantics and require revision.
+
+The isolated RealProductError check returned a theorem diagnostic in
+707 milliseconds: abs_add is unavailable in the pinned Mathlib.
+Replaced it with abs_add_le from Algebra/Order/Group/Unbundled/Abs.lean.
+Expressed the Euler subtraction bounds through the same triangle lemma
+and abs_neg before checking that module.  The failed theorem's sorryAx
+audit is excluded from accepted proof evidence.
+
+The next product check failed in 3.7 seconds because the imported
+add_le_add_right theorem adds its fixed argument on the left.
+Used add_le_add with le_rfl to specify both summands.  Applied the same
+correction to the pending Euler triangle proof.  RealProductError then
+passed in 1.5 seconds and RealPerturbation in 7.2 seconds.  All three
+requested perturbation audits contain only standard axioms.
+
+The WAT comparison initially stopped at a missing section delimiter:
+memory declarations precede function bodies in these printed modules.
+Using the module's final delimiter completed the read-only comparison.
+After mapping source names and type/call indices, 95 of the previous
+101 bodies match.  Three helper differences call the separately emitted
+F64Order helpers.  The guard differs as intended.  updateCell calls the
+renamed Numerics.evaluate, replacing Sweep.evaluate.  This textual
+comparison is inspection evidence, not an execution theorem.
+
+InitialRows passed in 3.0 seconds.  The traversal-model, scan, and old
+sweep check completed successfully, rebuilding Initial in 17 seconds,
+TraversalScan, TraversalInitial, TraversalSweep, and TraversalModel in
+1.6, 1.3, 1.2, and 1.3 seconds, and Euler2DCellStep.Sweep in 3.9 seconds.
+The checked sweep import separation preserves the old execution theorem.
+Their requested theorem audits use standard axioms only.
+
+The control/initial-thermodynamics check rebuilt InitialThermoRow and
+InitialThermo in 5.0 and 43 seconds.  OutputModel, ControlRetry,
+ControlTime, ControlFuel, ControlSafe, and ControlTrace passed, with
+standard-only audits.  TraversalInitialThermo failed because its rewrite
+did not unfold initialCell's state projection.  Added an explicit
+dsimp only [initialCell] before the old-accepted-side transfer.
+The corrected module passed in 1.1 seconds with standard-only audits.
+Program and AnnotationMatches passed in 11 and 1.4 seconds.
+
+Preparing the source-integration checkpoint with the separated grid
+model, revised traversal and control source proofs, generated model and
+annotation matches, checked range/perturbation lemmas, and four project
+records.  All prior initializer, LTG, tool, and paper changes remain
+outside the checkpoint.  Numerical completion, whole-program memory,
+and revised exact-byte execution are still open.  No production run
+or numerical host orchestration was used.
+
+The existing 62 geometry, initialization, split-step, output, and control
+tests passed for the revised source and WASM.  Complete numerical
+comparisons remain confined to sizes 2 and 3.  The test retained
+tmp/euler-riemann-grid-cmiuIl.  The documentation check passed for all
+116 maintained Markdown files, and git diff --check reported no issue.
+
+NumericsMargin passed in 1.8 seconds.  Its scaled-margin identity and
+guard-acceptance theorem connect the reference-state component-error
+bound to the executable thirteen-epsilon threshold.  Input finiteness,
+density/energy normalizability, the common exponent lower bound, and
+quantitative reference bounds remain explicit premises.  Both audits
+use standard axioms only.  The checker reports an unevaluated power
+above its default normalization threshold.  The accepted proof retains
+that power symbolically.
+
+Updated the four Riemann runtime-definition checks to the regenerated
+indices 104 through 107.  The single-case proof driver requires the
+unfinished Spec module, so it cannot yet establish that case's complete
+behavior theorem.  The aggregate gate checks the generated incomplete
+case and all completed specifications, including the runtime checks.
+
+Project.Runtime.Checks passed in 14 seconds, including the four revised
+Riemann equalities.  tools/talos-proof.js check --all then failed during
+association-list regeneration before the aggregate Lean build.  Its
+generated Program differs from the tracked cache.  A read-only WAT
+comparison with the frozen association-list binary identifies removal
+of the duplicate recursive lookup at index 3 and corresponding runtime
+relocation.  The current association-list digest is
+fc1488296d3bd287fc3e3738f7dfbcf409b40fe07a43235463ccc3d5739f3a09,
+while the preserved frozen package is
+6b356640062b5977acaf5459a6d3f8c3f1184c1a3e442b963c54e7a1d3a5a1de.
+No association-list source or tracked proof file changed.  The driver
+retains its generated WASM/WAT and removed only its own fresh staging
+directories.  The first WAT-print attempt found no wasm-tools on PATH.
+Using the driver's installed /home/somebody/.cargo/bin/wasm-tools
+completed the comparison.  This aggregate mismatch remains recorded
+and has not been reported as a passing gate or refreshed implicitly.

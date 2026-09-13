@@ -10690,7 +10690,40 @@ checked in 49 seconds: both rejected trials now pass and the returned
 conserved values equal the computed update words.  The tiny-term
 substitution affects only the guard's scratch calculation.
 
-Source traversal and control proofs are being updated to the extended
-numerical model.  Compiler regeneration, revised execution proofs, and
-the preserved invariant for successful final-time completion remain
-open.  Existing artifact bytes and production data remain preserved.
+Source traversal and control now use the extended numerical model.
+The initialization, scan, sweep correspondence, accepted retry trace,
+safety, fuel-sufficiency, and output-layout proofs pass.  Separating the
+grid definitions from the old cell execution specification reduces the
+source import closure.  The old sweep specification also passes after
+that separation.
+
+Compiler regeneration produced a 21,767-byte WASM module with digest
+`baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310`.
+The generated model and annotation matches pass Lean checks.  The
+sidecar contains 185 direct-call regions, one fold, and three while
+regions.  Output.pack still has no region description.  The previous
+six artifact files remain in `tmp/euler-riemann-before-tinyguard-XhHZqf`.
+Execution proofs require revision for the changed guard and indices.
+
+[Guard-range acceptance](proofs/talos/lean/Project/ProofKit/F64AdmissibilityRange.lean)
+removes the momentum-normalization premises when the common biased
+exponent is at least 1021.  [Product perturbation](proofs/talos/lean/Project/ProofKit/RealProductError.lean)
+and [Euler margin perturbation](proofs/talos/lean/Project/EulerRiemann/RealPerturbation.lean)
+bound the change in the energy margin by 8 M delta + 4 delta squared.
+The final checks passed in 42, 1.5, and 7.2 seconds.  Their audits use
+only the three permitted axioms.  Bounds over reachable rounded grids,
+successful final-time completion, and the complete WASM proof remain
+open.  No production run has started.
+
+[Perturbation-to-guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsMargin.lean)
+connects that component-error bound to the executable normalized-margin
+threshold.  It passed in 1.8 seconds with standard-only audits.  Its
+finiteness, normalization, and quantitative reference-state premises
+still require the reachable-grid invariant.  The existing 62 small
+source/WASM comparison tests pass after the guard integration.
+
+The runtime-definition checks pass with the new Riemann indices.
+The aggregate gate stops at the association-list demo: current
+compilation omits the duplicate recursive lookup retained in its
+tracked model.  Its frozen package and tracked proof files remain
+unchanged.  This aggregate mismatch remains unresolved.

@@ -9,7 +9,7 @@ inductive NumericalTrace (n : Nat) :
   | nil (time grid) : NumericalTrace n time grid [] time grid
   | cons {time grid dt next dts finalTime finalGrid}
       (advance : Time.validAdvance time dt = true)
-      (step : Project.Euler2DCellStep.Runner.step
+      (step : Numerics.step
         (Wasm.IEEE64.div dt (Time.spacing n)) grid = some next)
       (tail : NumericalTrace n (Wasm.IEEE64.add time dt) next dts finalTime finalGrid) :
       NumericalTrace n time grid (dt :: dts) finalTime finalGrid
