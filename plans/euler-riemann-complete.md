@@ -145,9 +145,14 @@ at most 4, and energy margin at least 1/100 for every initialized cell.
 The shared finite-packing, addition, subtraction, and multiplication
 proofs now cover exact sums below 2^1023 and exact products below 2^1022.
 The multiplication theorem retains a half-subnormal error term.
-Division and square root still need the corresponding range extension.
-These initial and arithmetic bounds do not yet establish preservation
-through the rounded recurrence.
+Division now covers exact quotient magnitudes below 2^1022, and square
+root has a relative error theorem for every positive finite input.
+The solver's velocity, transport, and internal-energy calculations have
+checked finiteness and error bounds for density at least 1/M, component
+magnitudes at most M, and 1 ≤ M ≤ 2^100.  Exact internal energy above
+12 times 2^-52 M cubed implies acceptance of its intermediate checks.
+Pressure, wave speed, flux acceptance, and preservation through the
+rounded recurrence remain open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
