@@ -14,10 +14,10 @@ def initialCoordinateProgram (remainder : Bool) : Wasm.Program :=
     .localGet 0, .localSet 46] ++
     CheckedDivMod.program remainder 45 46 ++ [.localSet 44]
 
-theorem initial_x_coordinate_region : Annotation.region func87 [] 10 21 =
+theorem initial_x_coordinate_region : Annotation.region func94 [] 10 21 =
     some (initialCoordinateProgram true) := rfl
 
-theorem initial_y_coordinate_region : Annotation.region func87 [] 43 54 =
+theorem initial_y_coordinate_region : Annotation.region func94 [] 43 54 =
     some (initialCoordinateProgram false) := rfl
 
 def initialCoordinateFrame (frame : Locals) (remainder : Bool) (n index : Nat)

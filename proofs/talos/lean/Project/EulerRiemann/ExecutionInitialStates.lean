@@ -17,24 +17,24 @@ local macro "initial_quadrant" fDef:ident "unfolding" f:ident : tactic => `(tact
    simp [stateValues, Initial.bottomLeft, Initial.bottomRight, Initial.topLeft, Initial.topRight]))
 
 theorem bottomLeft_exact (env : HostEnv Unit) (initial : Store Unit) :
-    TerminatesWith env Project.EulerRiemann.«module» 82 initial []
+    TerminatesWith env Project.EulerRiemann.«module» 89 initial []
       (fun final values => final = initial ∧ values = stateValues Initial.bottomLeft) := by
-  initial_quadrant func82Def unfolding func82
+  initial_quadrant func89Def unfolding func89
 
 theorem bottomRight_exact (env : HostEnv Unit) (initial : Store Unit) :
-    TerminatesWith env Project.EulerRiemann.«module» 83 initial []
+    TerminatesWith env Project.EulerRiemann.«module» 90 initial []
       (fun final values => final = initial ∧ values = stateValues Initial.bottomRight) := by
-  initial_quadrant func83Def unfolding func83
+  initial_quadrant func90Def unfolding func90
 
 theorem topLeft_exact (env : HostEnv Unit) (initial : Store Unit) :
-    TerminatesWith env Project.EulerRiemann.«module» 84 initial []
+    TerminatesWith env Project.EulerRiemann.«module» 91 initial []
       (fun final values => final = initial ∧ values = stateValues Initial.topLeft) := by
-  initial_quadrant func84Def unfolding func84
+  initial_quadrant func91Def unfolding func91
 
 theorem topRight_exact (env : HostEnv Unit) (initial : Store Unit) :
-    TerminatesWith env Project.EulerRiemann.«module» 85 initial []
+    TerminatesWith env Project.EulerRiemann.«module» 92 initial []
       (fun final values => final = initial ∧ values = stateValues Initial.topRight) := by
-  initial_quadrant func85Def unfolding func85
+  initial_quadrant func92Def unfolding func92
 
 #print axioms bottomLeft_exact
 #print axioms bottomRight_exact

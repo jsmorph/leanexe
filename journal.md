@@ -16199,3 +16199,68 @@ ExecutionGuardBase, ExecutionGuardMomentum, ExecutionGuard, plan.md,
 plans/euler-riemann-complete.md, plans/talosfp-euler-operations.md,
 devnotes.md, and this journal.  Reviewing these ten explicit paths
 before publication.  All unrelated work remains untouched.
+
+Published and fetched ee54ed51b22f34a2e614d6de3296fec89f0c42b0,
+"Prove revised Riemann guard execution", parent
+ce0c082a45ad6aa31643f4572166fb8653e0a0df, tree
+b0da9f31d978ba41c61b3f39459951f2a5f15d36.  The fetched metadata,
+local and remote tips, complete index, and all ten checkpoint
+worktree files match.  Documentation and whitespace checks passed.
+
+ExecutionFlux passed in 29 seconds with two standard-only audits.
+Its exact result names Numerics.fluxCheckedBits, and its side and
+component calls use current functions 22 and 46.  Removed one unused
+final simplifier argument.  The dependent check passed in 29 seconds
+without its own warnings.  ExecutionCell then passed in 53 seconds
+with three standard-only audits, including rejection, both wave-speed
+orders, all four updates, and the final side check.  Renamed its
+result encoder to cellStepValues to avoid colliding with the existing
+array-cell encoder.  Removed the two reported unused simplifier
+arguments.  The next dependency check covers those edits.
+
+Reindexed the scan, neighbor, input-loading, time-guard, and update
+callback proofs using the current compiler-described function map.
+Updated the scan and callback models to Numerics.sideCheckedBits and
+Numerics.evaluate.  The existing checked array-fold and memory lemmas
+remain their loop and load support.  A focused six-minute local
+runner build now checks ExecutionScan, ExecutionUpdateCell, and
+ExecutionTimeGuard, including the modified dependencies.
+
+The traversal check stopped at typed conditional instructions in
+the old neighbor tactic.  Added the existing wp_iff_control_types
+normalization used by the checked guard tactic.  The next check
+revealed that ExecutionNeighbor did not import TalosCompat, which
+owns that theorem.  Added the explicit import.  The cell dependency
+also exposed an error in my warning cleanup: its text replacement
+removed rejectedCell from the rejection macros as well as from the
+reported final lines.  Restored the necessary rejection simplification.
+No numerical code or theorem statement changed.
+
+Updated the initializer's scalar, quadrant, weighted-state, coordinate,
+weight, and complete-cell execution references to current functions
+86 through 94.  The current check includes ExecutionInitialCell after
+the corrected traversal dependencies.  No array-initializer or full
+entry theorem has been claimed from these scalar checks.
+
+The corrected cell proof passed in 54 seconds.  Updated the omitted
+InitialDifference region references to function 94.  Its check and
+the dependent weight proofs passed.  After typed conditionals could
+execute, the neighbor proof needed its original non-underflow fact
+inside the branch simplifier.  Restored that fact.  The next complete
+focused build passed ExecutionScan, ExecutionUpdateCell, and
+ExecutionInitialCell.  Neighbor selection took 8.1 seconds, input
+loads 8.5, update callback 5.6, time guard 2.8, initializer scalars
+9.3, quadrant states 2.5, weighted state 7.3, and complete cell
+initialization 3.4.  All public audits were standard-only.  The
+successful build reports unused simplifier or normalization warnings
+in ExecutionNeighbor, ExecutionInputs, and ExecutionInitialScalars.
+
+Reindexed nineteen sweep-allocation, release, acceptance, timestep,
+spacing, and proposal modules.  The current six-minute standard
+runner check targets StepReserve and ExecutionProposal.  These
+drafts stay outside the traversal checkpoint until their checks pass.
+The traversal checkpoint contains nineteen reviewed execution and
+initializer proof files plus devnotes.md, journal.md, plan.md, and
+plans/euler-riemann-complete.md.  No numerical source or generated
+artifact changed.  Preserved the existing unrelated LTG, ProofKit,
+tool, report, and extraction drafts.

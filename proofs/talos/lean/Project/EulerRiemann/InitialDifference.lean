@@ -8,10 +8,10 @@ def initialDifferenceProgram (remainder : Bool) : Wasm.Program :=
   quadrupleProgram ++ initialCoordinateProgram remainder ++
     CheckedNatMul.program 43 44 ++ [.localSet 42] ++ NatSub.program 41 42
 
-theorem initial_x_difference_region : Annotation.region func87 [] 1 30 =
+theorem initial_x_difference_region : Annotation.region func94 [] 1 30 =
     some (initialDifferenceProgram true) := rfl
 
-theorem initial_y_difference_region : Annotation.region func87 [] 34 63 =
+theorem initial_y_difference_region : Annotation.region func94 [] 34 63 =
     some (initialDifferenceProgram false) := rfl
 
 def initialDifferenceFrame (frame : Locals) (remainder : Bool) (n index : Nat)

@@ -2,6 +2,7 @@ import Project.EulerRiemann.Program
 import Project.EulerRiemann.Traversal
 import Project.EulerRiemann.Geometry
 import Project.ProofKit.Control
+import Project.TalosCompat
 
 namespace Project.EulerRiemann.Execution
 open Wasm
@@ -13,15 +14,16 @@ def boolWord (value : Bool) : UInt64 := if value then 1 else 0
 macro "neighbor_peel" : tactic => `(tactic|
   repeat
     first
-    | wp_run [func30Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
+    | wp_run [func37Def, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
         reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, *]
-    | refine wp_iff_cons rfl ?_
+    | (try simp only [Wasm.wp_iff_control_types])
+      refine wp_iff_cons rfl ?_
       conv => arg 2; simp [*, -UInt64.ofNat_mul, -UInt64.ofNat_add, -UInt64.not_le])
 
 theorem neighborIndex_exact (env : HostEnv Unit) (initial : Store Unit)
     (n index : Nat) (axis forward : Bool)
     (hn : 2 ≤ n ∧ n ≤ 800) (hi : index < n * n) :
-    TerminatesWith env Project.EulerRiemann.«module» 30 initial
+    TerminatesWith env Project.EulerRiemann.«module» 37 initial
       [.i64 (boolWord forward), .i64 (boolWord axis),
         .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat n)]
       (fun final values => final = initial ∧
@@ -96,12 +98,12 @@ theorem neighborIndex_exact (env : HostEnv Unit) (initial : Store Unit)
       have hmul := Nat.mul_le_mul_left n (show 1 ≤ index / n by omega)
       have hdiv := Nat.mul_div_le index n
       simpa only [Nat.mul_one] using le_trans hmul hdiv
-  refine TerminatesWith.of_wp_entry_for (f := func30Def) rfl ?_ (by decide)
-  change wp Project.EulerRiemann.«module» func30 _ initial
-    (func30Def.toLocals [.i64 (UInt64.ofNat n), .i64 (UInt64.ofNat index),
+  refine TerminatesWith.of_wp_entry_for (f := func37Def) rfl ?_ (by decide)
+  change wp Project.EulerRiemann.«module» func37 _ initial
+    (func37Def.toLocals [.i64 (UInt64.ofNat n), .i64 (UInt64.ofNat index),
       .i64 (boolWord axis), .i64 (boolWord forward)]) env
   have hOne : UInt64.ofNat 1 = 1 := rfl
-  unfold func30
+  unfold func37
   cases forward with
   | false =>
     by_cases hz : coordinate = 0

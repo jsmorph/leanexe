@@ -19,8 +19,8 @@ theorem initial_weights_spec (env : HostEnv Unit) (store : Store Unit) (frame : 
       resultFrame.locals[0]? = some (.i64 (UInt64.ofNat (initialWeight true n index))) →
       resultFrame.locals[1]? = some (.i64 (UInt64.ofNat (initialWeight false n index))) →
       wp Project.EulerRiemann.«module» rest Q store resultFrame env) :
-    wp Project.EulerRiemann.«module» (func87.take 66 ++ rest) Q store frame env := by
-  have hShape : func87.take 66 = initialWeightProgram true ++ [.localSet 2] ++
+    wp Project.EulerRiemann.«module» (func94.take 66 ++ rest) Q store frame env := by
+  have hShape : func94.take 66 = initialWeightProgram true ++ [.localSet 2] ++
       initialWeightProgram false ++ [.localSet 3] := rfl
   have hNRead := Frame.parameter_getElem_of_get frame 0
     (.i64 (UInt64.ofNat n)) (by omega) hN
