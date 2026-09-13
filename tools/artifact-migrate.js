@@ -235,6 +235,8 @@ theorem data_eq : artifactData.toList = ${root} := by rfl
 @[cbv_eval] theorem data_get (i : Nat) : artifactData[i]? = ${root}[i]? := by
   rw [← Array.getElem?_toList, data_eq]
 
+@[cbv_eval] theorem data_size : artifactData.size = ${bytes.length} := artifactBytes_size
+
 #print axioms data_get
 
 end Project.${item.leanModule}.Artifact.ByteLookup`;

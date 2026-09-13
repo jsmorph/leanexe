@@ -17998,3 +17998,44 @@ checked lookup generator, evaluator, ten sequence proofs, LTG entry,
 and records while leaving that pending function-body edit unstaged.
 The checkpoint does not claim complete artifact decoding or production
 execution.  All unrelated paper state remains untouched.
+
+Published fab3e4a676987c806fbfcaf069d05c4b81614673, parent
+29934a546674390a1ff2c6a4ff94526e82a84134, tree
+bb7c3082a20df9c63392b3ea2f627a970d55ee2b, by non-forced push.
+Fetch confirmed head, parent, tree, and headline.  The complete index
+and all twenty-one checkpoint paths matched the fetched commit.
+
+The full function-99 body check reached the six-minute aggregate
+timeout with status 124 after all sequence modules passed.  The
+normative ByteArray.size definition is implicitly reducible to its
+array's size, while artifactData remains opaque during evaluation.
+Added a checked artifactData.size equality to the generic lookup
+certificate, using the existing artifactBytes_size proof.  This supplies
+the missing observation for the decoder's bounded-parser guards.
+
+The array-size observation passed.  The complete code99 target still
+reached its three-minute timeout with status 124 and no theorem diagnostic.
+The checked sequence proofs therefore do not yet give an economical full
+code-parser proof.  Added a generic composition theorem that takes the
+size prefix, local declarations, sequence result, and bounds as explicit
+premises.  This will expose each remaining boundary independently and
+avoid another unchanged whole-parser evaluation.  The CodeOffsets utility
+also now has an unchecked --codes mode for all normative code ranges.
+
+The generic composition proof first exposed an unreduced Parser.pure
+application.  Adding Pure.pure to its simplifier and removing unused
+arguments resolved that goal.  The theorem code_eq_of_parts passed with
+only propext.  Function 99 then passed using that theorem, four small
+prefix/declaration/bounds checks, the checked instruction-zero suffix,
+and a reflexive final-position equality.  Its audit reports only propext
+and no warnings.  The complete build included renewed sequence checks
+after the shared evaluator changed.  CodeOffsets --codes passed and
+reported all 108 function ranges.  Added --all-offsets using the same
+normative decoder to prepare the remaining per-function certificates.
+
+The full code99 dependency audit passed: the theorem reaches the
+instruction-zero, instruction-333, instruction-349, and universal
+byte-lookup certificates.  CodeOffsets --all-offsets passed and returned
+all 108 function headers and instruction boundaries without truncation.
+Preparing the checked composition checkpoint with the generator's size
+observation, code99 theorem, offset utility, LTG guidance, and records.

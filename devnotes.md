@@ -11443,3 +11443,19 @@ method and failed approaches as a provisional entry.  Forty entries
 in seven categories and 117 maintained documents pass their checks.
 Complete decoding, validation, translation, independent verification,
 and both production calculations remain open.
+
+## 2026-09-13: Complete largest-function decoding
+
+The normative code parser now has a checked composition theorem for
+its size prefix, local declarations, instruction sequence, and bounds.
+Applying it to function 99 proves the complete byte range 18034–20820
+equals cached function 99.  The theorem uses only propext.  Its dependency
+audit confirms the checked sequence-zero and earlier suffix results and
+the universal byte-lookup theorem.  Whole-parser evaluation had timed
+out even after all sequence certificates passed.
+
+The lookup generator now supplies the embedded array's size equality.
+The normative offset utility reports every function range and top-level
+instruction boundary.  Both modes pass for all 108 functions.  The
+remaining function certificates, module decoding, validation, translation,
+and independent package gate are open.  Production execution still waits.
