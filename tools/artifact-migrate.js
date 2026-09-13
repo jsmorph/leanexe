@@ -186,7 +186,7 @@ function functionCount(item) {
   return indices.length;
 }
 
-function bytesModule(item, sha256, bytes) {
+function bytesModule(item, sha256, bytes, kernel = false) {
   return `import Project.Artifact.Binary.Translate
 
 set_option maxRecDepth 1048576
@@ -197,20 +197,20 @@ def sha256 : String :=
   "${sha256}"
 
 def artifactBytes : ByteArray :=
-  [
+${kernel ? "  ⟨⟨[" : "  ["}
 ${formatBytes(bytes)}
-  ].map UInt8.ofNat |>.toByteArray
+${kernel ? "  ]⟩⟩" : "  ].map UInt8.ofNat |>.toByteArray"}
 
 theorem artifactBytes_size : artifactBytes.size = ${bytes.length} := by
-  native_decide
+  ${kernel ? "rfl" : "native_decide"}
 
 end Project.${item.leanModule}.Artifact`;
 }
 
-function cacheModule(item, raw) {
+function cacheModule(item, raw, kernel = false) {
   return `import Project.Artifact.Binary.Syntax
 
-namespace Project.${item.leanModule}.Artifact.Cache
+${kernel ? "set_option maxRecDepth 32768\n\n" : ""}namespace Project.${item.leanModule}.Artifact.Cache
 
 def raw : Wasm.Binary.RawModule :=
 ${raw}
@@ -407,7 +407,7 @@ function manifest(item, sha256, byteLength) {
   };
 }
 
-function migrate(item) {
+function migrate(item, { kernel = false } = {}) {
   if (item.name === "gcd") return;
   const wasm = path.join(generatedRoot, item.name, "program.wasm");
   const bytes = fs.readFileSync(wasm);
@@ -420,8 +420,8 @@ function migrate(item) {
   }
   const moduleRoot = path.join(projectRoot, item.leanModule);
   const outputs = [
-    textOutput(path.join(moduleRoot, "ArtifactBytes.lean"), bytesModule(item, sha256, bytes)),
-    textOutput(path.join(moduleRoot, "ArtifactCache.lean"), cacheModule(item, raw)),
+    textOutput(path.join(moduleRoot, "ArtifactBytes.lean"), bytesModule(item, sha256, bytes, kernel)),
+    textOutput(path.join(moduleRoot, "ArtifactCache.lean"), cacheModule(item, raw, kernel)),
     textOutput(path.join(moduleRoot, "ArtifactDecoded.lean"), decodedModule(item)),
     textOutput(path.join(moduleRoot, "ArtifactRawCache.lean"), rawCacheModule(item)),
     textOutput(path.join(moduleRoot, "ArtifactDecode.lean"), decodeModule(item)),
@@ -432,6 +432,11 @@ function migrate(item) {
     ),
   ];
   const packageRoot = path.join(artifactRoot, item.name, sha256);
+  if (kernel) {
+    for (const output of outputs) {
+      output.bytes = Buffer.from(output.bytes.toString("utf8").replaceAll("native_decide", "decide +kernel"));
+    }
+  }
   const manifestValue = manifest(item, sha256, bytes.length);
   outputs.push(
     textOutput(path.join(packageRoot, "manifest.json"), JSON.stringify(manifestValue, null, 2)),
@@ -484,8 +489,9 @@ def main (args : List String) : IO UInt32 := do
 }
 
 function main() {
-  if (process.argv.length !== 4 || process.argv[2] !== "migrate") {
-    fail("usage: artifact-migrate.js migrate <case | --all>");
+  const kernel = process.argv.length === 5 && process.argv[4] === "--kernel";
+  if ((process.argv.length !== 4 && !kernel) || process.argv[2] !== "migrate") {
+    fail("usage: artifact-migrate.js migrate <case | --all> [--kernel]");
   }
   const cases = JSON.parse(fs.readFileSync(casesPath, "utf8")).cases;
   const selected = process.argv[3] === "--all"
@@ -499,7 +505,7 @@ function main() {
   const outputs = [];
   for (const item of selected) {
     console.log(`Migrating artifact: ${item.name}`);
-    const migrated = migrate(item);
+    const migrated = migrate(item, { kernel });
     entries.set(item.name, migrated.entry);
     outputs.push(...migrated.outputs);
   }

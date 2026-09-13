@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_riemann",
+  "sha256": "baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310",
+  "byteLength": 21767,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerRiemann.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerRiemann.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerRiemann.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerRiemann.Program",
+  "cachedProgramDefinition": "Project.EulerRiemann.module",
+  "specModule": "Project.EulerRiemann.Spec",
+  "proofTarget": "Project.EulerRiemann.ArtifactTranslation",
+  "identityTheorem": "Project.EulerRiemann.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerRiemann.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerRiemann.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerRiemann.Spec.solve_exact",
+    "Project.EulerRiemann.Spec.solve_success"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
