@@ -31,7 +31,7 @@ private theorem sound_properties (q : Vec4) (hr : 0 < q 0) (hi : 0 < internalEne
   simp only [pressure]
   ring
 
-theorem reference_step_positive (ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR : UInt64)
+theorem reference_step_weight (ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR : UInt64)
     (M : ℝ) (hM : 1 ≤ M) (hMmax : M ≤ (2 : ℝ)^100)
     (hr : positiveBits ratio = true) (br : value ratio ≤ 1)
     (hL : StateBounds M rhoL mxL myL energyL) (hC : StateBounds M rho mx my energy)
@@ -45,8 +45,9 @@ theorem reference_step_positive (ratio rhoL mxL myL energyL rho mx my energy rho
     let qC := decodedState rho mx my energy
     let qR := decodedState rhoR mxR myR energyR
     let result := update (value ratio) (value left.alpha) (value right.alpha) qL qC qR
-    (49 / 100) * qC 0 ≤ result 0 ∧
-      (49 / 100) * internalEnergy qC ≤ internalEnergy result ∧
+    let weight := 1 - value ratio * (value left.alpha + value right.alpha) / 2
+    49 / 100 ≤ weight ∧ weight * qC 0 ≤ result 0 ∧
+      weight * internalEnergy qC ≤ internalEnergy result ∧
       0 < result 0 ∧ 0 < internalEnergy result := by
   dsimp only
   intro hc hhalf
@@ -83,9 +84,39 @@ theorem reference_step_positive (ratio rhoL mxL myL energyL rho mx my energy rho
   have ht := split_half_sound_positive qR (-1 / value right.alpha) cR hRState.1 hRState.2
     hRSound.1 hRSound.2 (by
       simpa only [neg_div, abs_neg] using hWave _ _ _ hRight hRWave)
-  exact update_positive_weight (value ratio) (value left.alpha) (value right.alpha) (49 / 100)
-    qL qC qR hRatio.le hLeft hRight (by norm_num) (by linarith only [hCfl]) hCState hl ht
+  let weight := 1 - value ratio * (value left.alpha + value right.alpha) / 2
+  have hw : 49 / 100 ≤ weight := by dsimp only [weight]; linarith only [hCfl]
+  refine ⟨hw, ?_⟩
+  exact update_positive_weight (value ratio) (value left.alpha) (value right.alpha) weight
+    qL qC qR hRatio.le hLeft hRight (by linarith only [hw])
+    (by dsimp only [weight]; linarith only) hCState hl ht
+
+theorem reference_step_positive (ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR : UInt64)
+    (M : ℝ) (hM : 1 ≤ M) (hMmax : M ≤ (2 : ℝ)^100)
+    (hr : positiveBits ratio = true) (br : value ratio ≤ 1)
+    (hL : StateBounds M rhoL mxL myL energyL) (hC : StateBounds M rho mx my energy)
+    (hR : StateBounds M rhoR mxR myR energyR) :
+    let left := fluxCheckedBits rhoL mxL myL energyL rho mx my energy
+    let right := fluxCheckedBits rho mx my energy rhoR mxR myR energyR
+    let alpha := if left.alpha ≤ right.alpha then right.alpha else left.alpha
+    let courant := Wasm.IEEE64.mul ratio alpha
+    positiveBits courant = true → courant ≤ 0x3FE0000000000000 →
+    let qL := decodedState rhoL mxL myL energyL
+    let qC := decodedState rho mx my energy
+    let qR := decodedState rhoR mxR myR energyR
+    let result := update (value ratio) (value left.alpha) (value right.alpha) qL qC qR
+    (49 / 100) * qC 0 ≤ result 0 ∧
+      (49 / 100) * internalEnergy qC ≤ internalEnergy result ∧
+      0 < result 0 ∧ 0 < internalEnergy result := by
+  dsimp only
+  intro hc hhalf
+  obtain ⟨hw, hd, hi, hp⟩ := reference_step_weight ratio rhoL mxL myL energyL rho mx my energy
+    rhoR mxR myR energyR M hM hMmax hr br hL hC hR hc hhalf
+  have hs := bounded_state_positive rho mx my energy M hM hC
+  exact ⟨(mul_le_mul_of_nonneg_right hw hs.1.le).trans hd,
+    (mul_le_mul_of_nonneg_right hw hs.2.le).trans hi, hp⟩
 
 #print axioms bounded_state_positive
+#print axioms reference_step_weight
 #print axioms reference_step_positive
 end Project.EulerRiemann.Numerics
