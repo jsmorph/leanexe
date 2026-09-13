@@ -11024,3 +11024,25 @@ The existing retry and advance execution proofs now pass against the
 regenerated module, including compiler-described guard identities.
 They retain their source-success premises.  The remaining work adds
 all failure branches and completes initialization and output ownership.
+
+## 2026-09-13: Retry failure allocation and reservation
+
+The shared allocator now proves complete first-fit search, buffer reuse,
+bump allocation, memory growth, header installation, and allocation
+counting for an arbitrary module, local window, trailing locals, and
+element stride.  It generalizes the checked sweep proof and composes
+the existing shared capacity, search, header, and growth results.
+
+Both generated retry failure sequences now have exact execution proofs.
+They return status three or four, preserve the supplied timestep, and
+allocate and return an empty width-seven array.  The ownership proof
+preserves every held grid.  The reservation proof charges at most one
+grid allocation for the empty result, including possible reuse of a
+larger buffer.  All public audits use only the permitted standard axioms.
+The complete allocator needed three diagnostic corrections before its
+2.1-second accepted check.  The failure sequence and resource composition
+passed in 2.5 and 1.4 seconds.  No numerical source or artifact changed.
+
+The total retry and advance loops, complete initialization, output, and
+entry memory bound remain open.  The existing successful-control proofs
+retain their premises while the total compositions are developed.

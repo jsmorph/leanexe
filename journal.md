@@ -16308,3 +16308,80 @@ development records.  The four initializer region updates and the
 pre-existing extraction drafts remain outside this checkpoint while
 their focused build runs.  The full failure-path and entry-to-output
 proofs remain open.  No production calculation has started.
+
+Published and fetched 74774a2b14c566e28ad353d7ee95d86028d5a1a8,
+"Check revised Riemann control and heap execution", parent
+fba8520162682f321582a929f8bd2d98ec34a480, tree
+594b1535995e1d501649130fa83666408ef0eef8.  The fetched metadata,
+local and remote tips, complete index, and all 34 checkpoint worktree
+files match.  The staged whitespace check passed.
+
+The initializer build passed InitialMapExecute, InitialAppendExecute,
+and InitialExtractExecute against the current module.  Map data took
+39 seconds.  The complete map, append, and extraction region theorems
+took 2.3, 1.7, and 1.6 seconds.  The eight pre-existing extraction
+drafts now check with standard-only public audits.  This establishes
+those array operations under their stated heap and input premises.
+Complete initial growth and entry reservation remain open.
+
+Read the shared allocation, bump-growth, capacity, search-frame,
+search-read, and no-fit-search support, together with their LTG
+guidance.  The reusable no-fit theorem accepts arbitrary local
+windows and memory growth, while the older complete allocator
+requires an empty free list and existing memory.  The Riemann sweep
+already has a checked first-fit proof, fixed to one local window and
+width seven.  Generalizing that proof supports empty failure arrays
+and width-one output without assuming an empty free list.
+
+Added ProofKit.FixedArrayReuse by generalizing the checked unlink and
+header proof over the module, local window, trailing locals, and
+stride.  Its first standard-runner check passed in 2.7 seconds with
+four standard-only audits.  Added FixedArraySearchFit by generalizing
+the sweep's checked decreasing free-list search, using the shared
+read, advance, and reuse theorems.  Its focused six-minute check is
+running.  These additions preserve the generated numerical artifact.
+
+FixedArraySearchFit passed in 2.7 seconds with standard-only audits
+and one simplifier-style warning.  FixedArrayAllocate composes that
+search with the existing no-fit and growth proofs.  Its first draft
+stopped at the conditional that skips bump allocation after reuse.
+A restricted reduceIte attempt left the same condition.  The existing
+wp simplifier discharged it, revealing a final named-frame versus
+expanded-list equality.  Explicit frame and list simplification closed
+that equality.  The fourth draft passed in 2.1 seconds.  Every failed
+diagnostic remains in the session evidence.  No failed theorem is an
+accepted result.
+
+Added fittingCount_mono and fittingCount_choice to FreeListCount.
+They count large reusable buffers after a smaller request removes a
+node.  HeapReserveSmall uses these lemmas to prove that a request at
+most the reserved grid capacity consumes at most one reservation,
+whether search reuses a node or bump allocation grows memory.  The
+counting and reservation checks passed in 2.6 and 2.3 seconds with
+standard-only audits.  FreeListCount retains one unused-simp warning.
+
+HeapAllocateExecute connects the shared allocator's exact store and
+root to the existing Riemann heap model.  HeapEmpty proves that writing
+the empty array length preserves the free list and all previously
+owned grids, and establishes ownership of the new empty grid.  Both
+passed.  Read their successful Lake traces to inspect the complete
+standard-only audits after combined console output omitted them.
+
+RetryFailureShape checks exact instruction identities for status-three
+invalid-time and status-four exhausted-retry branches.  Its check took
+3.2 seconds.  RetryFailureExecute composes the status and timestep
+assignments, shared capacity normalization, complete allocator, length
+store, and result-pointer assignments.  It passed in 2.5 seconds with
+standard-only audits and one unused-simp warning.  RetryFailureResources
+proves the resulting heap, held-grid, memory-cap, and reduced-reservation
+invariants.  It passed in 1.4 seconds with a standard-only audit.  These
+proofs cover the complete failure return sequence under its entry
+premises.  The total retry loop still needs to establish those premises
+and combine all branches.  The next step replaces the successful-control
+premise in the loop composition.
+
+Preparing a checkpoint of the three new shared allocator modules,
+FreeListCount, six Riemann failure-allocation and memory modules, and
+the four development records.  Initializer reindexing and the pre-existing
+extraction, LTG, ProofKit, compiler-tool, and report drafts remain outside
+this checkpoint.  The numerical artifact and production gate are unchanged.
