@@ -16033,3 +16033,75 @@ checkpoint.  The shared reference-weight and real-margin results
 replace separate component and guard derivations.  The remaining
 global preservation argument requires bounds that do not deteriorate
 beyond binary64 guard margins over the complete timestep sequence.
+
+Published and fetched abbbee534e675ae2279fc7ab3097f785bbfb8f59,
+"Prove Riemann candidate margin and guard bounds", parent
+46a988d90bbe21fd83c278f401f145727fb73a68, tree
+cb8815b3531f9194407f3bd23e80228506b6937e.  The fetched commit,
+parent, title, tree, index, and all ten checkpoint worktree files
+match.  Documentation and whitespace checks passed.
+
+Reviewed Jiang and Wang, The invariant region for the equations of
+nonisentropic gas dynamics, ANZIAM Journal 58 (2017), 428–435,
+https://doi.org/10.1017/S144618111600033X.  Section 3 characterizes
+convex invariant-region boundaries for one-dimensional ideal-gas
+Euler and obtains an unbounded entropy region.  This does not prove
+anything about the finite Riemann trajectory here, and it supplies
+no compact state bound to substitute into the current proof.
+
+Added StateBoundsBoundary to test closure of the existing sufficient
+predicate with an exact three-cell binary64 example.  All densities
+are 1/8, energies are one, transverse momenta vanish, and longitudinal
+momenta are -1/8, zero, and 1/8.  The proposed ratio is 1/16.  The
+target theorem states that all inputs satisfy StateBounds 8, the
+current source cell update accepts, and its density is 15/128,
+which violates StateBounds 8.  This tests a proposed general
+induction, not reachability from the specified initial data.  Its
+focused Lean check is pending.  The earlier failed source reads used
+nonexistent separate Control and Numerics source paths.  The current
+proof models and the Grid source provide those declarations.
+
+The first StateBoundsBoundary check accepted the exact cell result
+and the output-density violation.  Input-bound elaboration required
+unfolding the finite-word proposition before kernel decision and
+expressing negative decoding as an integer cast.  The zero-value
+lemma also needed its scaled representation exposed.  Applied those
+local corrections without changing the example or resource limits.
+The complete diagnostic module awaits another check.
+
+The second check still rejected the zero and negative-value change
+steps and found Finite ambiguous with the root typeclass.  Used the
+explicit decoding simplification already checked in F64NormalizeTiny
+and qualified CodeLib.IEEE64.Finite.  The exact accepted update and
+output-bound violation passed again.  Read-only inspection of the
+earlier saved 192 final CSV also excludes a coordinatewise
+nonincreasing momentum or velocity invariant: adjacent increases
+reach approximately 0.064 in both directions.  That historical
+dataset is diagnostic evidence only.  No new simulation ran.
+
+The third diagnostic check reduced zero and finite-word obligations.
+Its simplifier left the negative word's UInt64-to-Nat conversion
+opaque.  Replaced that reduction with a kernel-checked equality for
+its scaled integer, followed by ordinary real arithmetic.  Removed
+an extra tactic after density reflexivity had already closed its
+goal.  The cell-result and output-violation theorems continued to pass.
+
+StateBoundsBoundary passed in 2.5 seconds, with standard-only audits
+for all three public theorems.  The fourth check used the same local
+standard runner and six-minute limit.  The negative-word scaled
+integer equality is checked by the kernel.  The result disproves
+preservation of StateBounds 8 under arbitrary accepted neighboring
+updates.  The example remains a checked diagnostic, with no claim of
+reachability from the prescribed Riemann initial data.
+
+Asked the user whether to revise the universal-success gate.  The
+proposal would retain complete exact-byte behavior, memory bounds,
+and numerical correctness including explicit failure returns before
+production execution, and accept data only at status zero and time
+0.8.  It changes the current requirement to prove successful
+completion for every supported grid size before either production
+run.  This decision is pending.  No source, artifact, execution order,
+or production gate has changed.  Preparing the checked diagnostic
+with devnotes.md, plan.md, plans/euler-riemann-complete.md, and this
+journal for an explicit-path checkpoint.  Corrected parentheses in
+the prose perturbation budget to match the already-checked theorem.

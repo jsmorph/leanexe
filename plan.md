@@ -540,6 +540,13 @@ guard acceptance follows under explicit quantitative and normalization
 conditions.  Preservation of those conditions over the reachable grid
 and successful final-time completion remain open.
 
+A checked three-cell example satisfies StateBounds 8 at every input
+and returns a successful candidate with density 15/128, below its
+1/8 lower bound.  The predicate is therefore not preserved for
+arbitrary neighboring states.  A proposal to revise the universal
+successful-completion gate is awaiting the user's decision.  The
+current gate and calculation order remain in force.
+
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
 remaining composition must maintain the heap and free-list invariant

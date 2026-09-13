@@ -181,11 +181,27 @@ M to the fifth power, plus twice the half-subnormal unit.  The reference
 step also retains its exact center weight w.  Candidate density is at
 least w times center density minus the component error delta.  Its
 energy margin is at least w squared times center margin minus
-8 B delta + 4 delta squared, where B bounds the reference components.
+(8 B delta + 4 delta squared), where B bounds the reference components.
 The final candidate guard accepts when these lower bounds exceed zero
 and its normalized energy budget, under explicit normalization
 conditions.  Preservation of these sufficient conditions through the
 reachable grid and full timestep sequence remains open.
+
+[The fixed-bound counterexample](../proofs/talos/lean/Project/EulerRiemann/StateBoundsBoundary.lean)
+proves that arbitrary neighboring StateBounds 8 inputs can produce a
+successful binary64 update whose density violates StateBounds 8.
+All input densities are 1/8, energies are one, and transverse momenta
+are zero.  Longitudinal momenta are -1/8, zero, and 1/8.  At ratio
+1/16 the candidate density is 15/128.  The complete check passed with
+standard-only audits.  This excludes the general fixed-predicate
+induction.  Reachable-state preservation remains a separate problem.
+
+On 2026-09-13 a revision to the universal-success gate was proposed
+for user review: prove complete exact-byte behavior, memory bounds,
+and numerical correctness including explicit failure returns before
+running, and accept data only from status-zero results at time 0.8.
+That proposal awaits a decision.  The current final theorem and work
+order remain unchanged until the user approves a revision.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
