@@ -538,8 +538,11 @@ also checks.  Both concatenations now compose allocation, destination
 installation, length storage, and copying with owned output and preserved
 input owners.  The complete 95-instruction header region now computes
 its capacity, allocates, and writes the owned [status, time, n, n] array,
-preserving the caller's required locals.  Map/append capacity preparation,
-result transfer, and full output packing remain open.
+preserving the caller's required locals.  Both complete 52-instruction
+map regions now include input/length preparation, capacity computation,
+and result transfer, with preserved caller reads and typed scratch.
+Append preparation, append result transfer, and full output packing
+remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
