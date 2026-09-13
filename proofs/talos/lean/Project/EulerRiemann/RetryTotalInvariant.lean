@@ -17,8 +17,8 @@ def RetryTotalDone (initial : Store Unit) (initialHeap : Heap) (need : UInt64)
 
 def retryTotalInvariant (initial : Store Unit) (initialHeap : Heap) (n : Nat)
     (time source need : UInt64) (grid : Array Traversal.Cell) (expected : Control.Attempt)
-    (spare limit : Nat) (store : Store Unit) (frame : Locals) : Prop :=
-  ∃ heap, RetryStoreAt initial initialHeap store heap ∧
+    (spare limit pageLimit : Nat) (store : Store Unit) (frame : Locals) : Prop :=
+  ∃ heap, RetryStoreAt initial initialHeap store heap ∧ store.mem.pages ≤ pageLimit ∧
     ((RetryActive n time source need grid expected spare limit heap frame ∧ RetryScratch frame) ∨
       RetryTotalDone initial initialHeap need expected spare limit store heap frame)
 
@@ -32,19 +32,19 @@ def RetryTotalStopped (initial : Store Unit) (initialHeap : Heap) (n : Nat)
 
 def retryTotalIterationPost (initial : Store Unit) (initialHeap : Heap) (n : Nat)
     (time source need : UInt64) (grid : Array Traversal.Cell) (expected : Control.Attempt)
-    (spare limit measure : Nat) : Assertion Unit :=
+    (spare limit pageLimit measure : Nat) : Assertion Unit :=
   Project.ProofKit.BlockLoop.stepPost
-    (retryTotalInvariant initial initialHeap n time source need grid expected spare limit)
-    (fun store frame => ∃ heap, RetryStoreAt initial initialHeap store heap ∧
+    (retryTotalInvariant initial initialHeap n time source need grid expected spare limit pageLimit)
+    (fun store frame => ∃ heap, RetryStoreAt initial initialHeap store heap ∧ store.mem.pages ≤ pageLimit ∧
       RetryTotalStopped initial initialHeap n time source need grid expected spare limit store heap frame)
     (fun _ frame => retryMeasure frame) measure
 
 theorem retryTotalInvariant.values {initial : Store Unit} {initialHeap : Heap} {n : Nat}
     {time source need : UInt64} {grid : Array Traversal.Cell} {expected : Control.Attempt}
-    {spare limit : Nat} {store : Store Unit} {frame : Locals}
-    (h : retryTotalInvariant initial initialHeap n time source need grid expected spare limit store frame) :
+    {spare limit pageLimit : Nat} {store : Store Unit} {frame : Locals}
+    (h : retryTotalInvariant initial initialHeap n time source need grid expected spare limit pageLimit store frame) :
     frame.values = [] := by
-  obtain ⟨heap, _, hActive | hDone⟩ := h
+  obtain ⟨heap, _, _, hActive | hDone⟩ := h
   · obtain ⟨⟨fuel, dt, hFrame, _⟩, _⟩ := hActive
     exact hFrame.values
   · obtain ⟨result, hFrame, _⟩ := hDone

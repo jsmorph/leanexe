@@ -15,12 +15,14 @@ macro "retry_total_peel" : tactic => `(tactic|
 
 theorem retry_total_valid_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
     (source : FreeNode) (grid : Array Traversal.Cell) (n : Nat) (fuel time dt : UInt64)
-    (expected : Control.Attempt) (spare limit : Nat) (store : Store Unit) (heap : Heap) (frame : Locals)
+    (expected : Control.Attempt) (spare limit pageLimit : Nat) (store : Store Unit) (heap : Heap) (frame : Locals)
     (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Traversal.Indexed n grid)
     (hOwner : initialHeap.Owns initial source grid)
     (hLimit : limit < 4294967296)
     (hCap : limit ≤ initial.memoryCap module 0 * 65536)
     (hStore : RetryStoreAt initial initialHeap store heap)
+    (hPages : store.mem.pages ≤ pageLimit) (hPageLimit : pageLimit ≤ 65536)
+    (hLimitPages : limit ≤ pageLimit * 65536)
     (hFrame : RetryFrameAt frame fuel n time dt source.root 0 0 false)
     (hScratch : RetryScratch frame) (hSame : Control.retry fuel.toNat n time dt grid = expected)
     (hReserved : heap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 2) limit)
@@ -28,7 +30,7 @@ theorem retry_total_valid_spec (env : HostEnv Unit) (initial : Store Unit) (init
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final resultFrame,
       retryTotalInvariant initial initialHeap n time source.root
-        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit final resultFrame →
+        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit final resultFrame →
       retryMeasure resultFrame < retryMeasure frame → wp module rest Q final resultFrame env) :
     wp module (retryTrial ++ rest) Q store (retryGuardFrame frame time dt true) env := by
   have hFuelNat := retryFuel_unfold fuel hFuel
@@ -46,12 +48,12 @@ theorem retry_total_valid_spec (env : HostEnv Unit) (initial : Store Unit) (init
   let frame : Locals := ⟨[.i64 fuel, .i64 (UInt64.ofNat n), .i64 time,
     .i64 dt, .i64 source.root, .i64 source.root], locals, []⟩
   rw [retry_branches_shape]
-  refine retry_trial_spec env store heap (retryGuardFrame frame time dt true) fuel source grid
-    n time dt spare limit (hFrame.guard true).params (hFrame.guard true).locals
-    (hFrame.guard true).values hn hIndexed hStore.heapState hCurrentOwner hStore.pages
-    hReserved hLimit hCurrentCap _ _ ?_
+  refine retry_trial_pages_spec env store heap (retryGuardFrame frame time dt true) fuel source grid
+    n time dt spare limit pageLimit (hFrame.guard true).params (hFrame.guard true).locals
+    (hFrame.guard true).values hn hIndexed hStore.heapState hCurrentOwner hPages hPageLimit
+    hReserved hLimit hCurrentCap hLimitPages _ _ ?_
   intro ratio need result final hFinalHeap hFinalOwner hFinalPages hFinalCap hFinalReserved hCapacity hHeld
-  have hPreserved := hStore.after_step hFinalHeap hFinalPages hFinalCap result.2 hHeld
+  have hPreserved := hStore.after_step hFinalHeap (hFinalPages.trans hPageLimit) hFinalCap result.2 hHeld
   have hNewStore := hPreserved.1
   have hSeparated := hPreserved.2
   simp only [hFuelNat, Control.retry, hValid, ite_true] at hSame
@@ -73,7 +75,7 @@ theorem retry_total_valid_spec (env : HostEnv Unit) (initial : Store Unit) (init
     have hDoneFrame := (hTrialFrame.accept result.2.root).returned
     simp only [retryAcceptedFrame, retryTrialFrame, retryGuardFrame, boolWord, reduceIte] at hDoneFrame
     apply hNext
-    · refine ⟨result.1, hNewStore, Or.inr ⟨result.2, ?_, ?_,
+    · refine ⟨result.1, hNewStore, hFinalPages, Or.inr ⟨result.2, ?_, ?_,
         hFinalReserved, fun _ => hCapacity, hSeparated⟩⟩
       · simpa only [hStatus, hDt] using hDoneFrame
       · simpa only [hGrid] using hFinalOwner
@@ -104,7 +106,7 @@ theorem retry_total_valid_spec (env : HostEnv Unit) (initial : Store Unit) (init
       Bool.false_eq_true, reduceIte] at hNextFrame hNextScratch
     apply hNext
     · exact ⟨result.1.release result.2, hNextStore,
-        Or.inl ⟨⟨fuel - 1, IEEE64.mul 0x3FE0000000000000 dt, hNextFrame, hNextSame, hNextReserved⟩,
+        by simpa only [Heap.releaseStore, releasedStore_pages] using hFinalPages, Or.inl ⟨⟨fuel - 1, IEEE64.mul 0x3FE0000000000000 dt, hNextFrame, hNextSame, hNextReserved⟩,
           hNextScratch⟩⟩
     · rw [hNextFrame.measure, hFrame.measure]
       exact retryFuel_decreases fuel hFuel

@@ -11229,3 +11229,20 @@ without raising limits.  Existing ProofKit branch-continuation,
 allocator, capacity, multiplication, and field-store results supply the
 composition.  Full run, output, the complete physical memory bound, and
 independent exact-byte verification remain open.
+
+## 2026-09-13: Physical page bounds through complete retry
+
+The sweep, timestep, and complete retry theorems now preserve a supplied
+physical page limit, provided initial pages and the byte reservation fit
+that limit.  The proof covers rejected sweeps, both successful sweep
+allocations, buffer release, invalid advancement, and exhausted retry
+fuel.  The original APIs follow as corollaries at 65536 pages.  Existing
+allocation-page and free-list reservation lemmas supply the bounds.
+
+All eleven changed proof modules pass with nineteen standard-only axiom
+reports and no own-module warnings.  A compatibility corollary required
+a direct inequality proof instead of omega.  The retry return required
+removing a conjunct already discharged by the execution tactic.  Both
+failures and corrections remain in the journal.  The outer time-loop
+page bound, full run and output composition, and complete exact-byte
+verification remain open.  Neither production grid has run.

@@ -5,9 +5,10 @@ open Wasm Project.Runtime Project.ProofKit FixedArrayCapacity FixedArrayFold
 
 theorem retry_total_invalid_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
     (n : Nat) (fuel time dt source : UInt64) (grid : Array Traversal.Cell)
-    (expected : Control.Attempt) (spare limit : Nat) (store : Store Unit) (heap : Heap) (frame : Locals)
+    (expected : Control.Attempt) (spare limit pageLimit : Nat) (store : Store Unit) (heap : Heap) (frame : Locals)
     (hLimit : limit < 4294967296) (hCap : limit ≤ initial.memoryCap module 0 * 65536)
     (hStore : RetryStoreAt initial initialHeap store heap)
+    (hPages : store.mem.pages ≤ pageLimit) (hLimitPages : limit ≤ pageLimit * 65536)
     (hFrame : RetryFrameAt frame fuel n time dt source 0 0 false)
     (hScratch : RetryScratch frame) (hSame : Control.retry fuel.toNat n time dt grid = expected)
     (hReserved : heap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 2) limit)
@@ -15,7 +16,7 @@ theorem retry_total_invalid_spec (env : HostEnv Unit) (initial : Store Unit) (in
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final resultFrame,
       retryTotalInvariant initial initialHeap n time source
-        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit final resultFrame →
+        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit final resultFrame →
       retryMeasure resultFrame < retryMeasure frame → wp module rest Q final resultFrame env) :
     wp module (retryFailureProgram 3 ++ [.constI64 1, .localSet 11] ++ rest) Q
       store (retryGuardFrame frame time dt false) env := by
@@ -37,6 +38,8 @@ theorem retry_total_invalid_spec (env : HostEnv Unit) (initial : Store Unit) (in
     · simp only [bumpPages, show (8 : UInt64).toNat = 8 from rfl]
       omega
   have hResource := hStore.empty need spare limit hReserved hNeed hLimit
+  have hFinalPages := heap.emptyStore_pages_bound store need spare limit pageLimit
+    hPages hReserved hNeed hLimitPages
   have hFuelNat := retryFuel_unfold fuel hFuel
   have hExpected : expected = { status := 3, dt, grid := #[] } := by
     simpa only [hFuelNat, Control.retry, hValid, Bool.false_eq_true, ite_false] using hSame.symm
@@ -69,7 +72,7 @@ theorem retry_total_invalid_spec (env : HostEnv Unit) (initial : Store Unit) (in
     reduceIte,
     Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff]
   apply hNext
-  · refine ⟨heap.allocate 8, hResource.1,
+  · refine ⟨heap.allocate 8, hResource.1, hFinalPages,
       Or.inr ⟨allocatedNode heap.top 8 heap.nodes, ?_, ?_, hResource.2.2.1, ?_, hResource.2.2.2⟩⟩
     · simpa only [hExpected, allocatedNode] using hReturned
     · simpa only [hExpected] using hResource.2.1
