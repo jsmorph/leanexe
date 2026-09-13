@@ -833,7 +833,9 @@ using shared array-prefix and field lemmas.  Allocator execution and
 target installation now compose both loops with owned output arrays,
 heap validity, and input-grid ownership.  One-word array release also
 checks.  Both concatenations compose allocation, installation, and copying
-into an owned result while preserving both inputs.  Capacity preparation,
-result transfer, header construction, and full output composition remain open.
+into an owned result while preserving both inputs.  The complete header
+region now includes capacity, allocation, represented words, ownership,
+and caller-local preservation.  Map/append capacity preparation,
+result transfer, and full output composition remain open.
 Output, complete entry memory, and exact-byte proofs
 remain prerequisites for the authorized 192-grid and 800-grid runs.
