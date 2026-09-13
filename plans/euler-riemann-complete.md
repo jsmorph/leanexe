@@ -160,9 +160,11 @@ checked programs.  Arbitrary-stride allocation state and execution
 support its one-word arrays.  Both projection loops now terminate with
 exact density/pressure words, preserving the input grid, other locals,
 and bytes outside the output interval.  Shared prefix construction and
-interval framing extend the array-memory-framing LTG entry.  Complete
-allocation-to-loop composition, concatenations, and the full packer
-remain open.
+interval framing extend the array-memory-framing LTG entry.  Allocation
+now composes installation and both loops with owned output words, heap
+validity, and preserved input-grid ownership.  One-word array release
+also checks.  Map capacity preparation, result transfer, concatenations,
+header construction, and the full packer remain open.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

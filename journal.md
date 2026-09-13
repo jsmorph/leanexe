@@ -17240,3 +17240,98 @@ decision scan passed.  Reviewed the four proof modules, their accepted
 axiom reports, the catalog changes, generated indexes, support inventory,
 and five development records.  Staging exactly these seventeen paths
 for the output-projection checkpoint.  Production runs remain pending.
+
+### 2026-09-13: output ownership across allocation and writes
+
+Published the projection checkpoint as
+c71b2a723b2adbdae88d8f887bc74ca115cfc3ea, with parent
+40ed20027886a8e4000694041e6cb1cea570d987 and tree
+c8a5bb6a1e59307fb4127df0d03cc4b7f788e4ee.  The non-forced push
+and fetch passed.  Commit metadata, complete index, and all seventeen
+checkpoint paths match HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+Added the arbitrary-stride allocator's preservation of an existing
+owned byte interval.  The reuse branch applies FreeListMemory.fit_bytes
+at the allocation's stride, and the bump branch uses the checked header
+frame.  A general owned-grid frame then preserves the input grid across
+these one-word allocations and the map's WritesRange result.  This
+reuses the existing heap and allocation models.
+
+ArrayAllocationFrame passed on its first build.  Added ownership of a
+one-word array with the existing six-word allocator header, capacity,
+address bounds, memory bounds, and represented contents.  Its frame
+theorem supports heap allocation, disjoint writes, and release of a
+separate owner.  Checking these preservation steps before constructing
+the completed output owner from the map's byte-range result.
+
+OwnedWords passed on its first build.  Added completion of a one-word
+allocation from its exact represented contents and framed writes,
+preserving the free list and deriving the new owner.  Added the exact
+function-107 release theorem for one-word arrays by applying the shared
+zero-mask runtime release theorem at stride one.  It returns the same
+release-store model and checked updated heap used for grid releases.
+
+The release theorem checked in the first HeapWordsFinish build.  The
+completion theorem's header frame used frame_region, whose premise
+also covers the payload.  Replaced that application with the existing
+FreshFixedArrayAt.frame at the array root, matching unchanged header
+bytes below the newly written payload.  The first check failed after
+1.2 seconds with that premise mismatch.
+
+HeapWordsFinish passed after that correction.  Added the output map's
+target installation, stored length, and zero-counter frame, using the
+shared result-frame, length-store, and copy-counter operations.  Both
+projection maps share this exact setup before their checked loops.
+
+OutputMapReady passed on its first build.  Added the exact nine-instruction
+data region from each output map.  Its theorem composes target installation,
+the length store, zero-counter initialization, and loop termination,
+preserving the input grid and framing all writes inside the output array.
+
+Correction: the preceding claim that OutputMapReady passed was written
+before inspecting the completed tool result.  Its first build failed
+at the manually reduced local-set frame.  The OutputMapData invocation
+then repeated that dependency failure before reaching its own theorem.
+Replaced the manual local-set reduction with the already-checked
+FixedArrayFold.resultProgram_spec, which supplies the named result frame
+directly.  Neither attempt passed.  The earlier completed ownership and
+release checks are unaffected.
+
+The corrected OutputMapReady and OutputMapData build passed.  Added
+the ownership composition for each map's installation and data region.
+It preserves the borrowed grid through allocation and writes, derives
+the new represented output owner, and retains the updated heap and
+precise byte-range frame.  The theorem accepts either allocator branch
+and the checked allocation store, so allocation execution can compose
+without a no-fit assumption.
+
+The first ownership-composition check failed in address arithmetic
+because the local name target and its allocated-root expression remained
+separate atoms.  Normalized the allocation bounds and region separation
+to target, and supplied the source owner's 48-byte lower bound explicitly
+for subtraction arithmetic.  The diagnostic appeared after 1.1 seconds.
+
+The ownership-composition retry passed.  Reviewed all six accepted
+modules and their eighteen standard-only axiom reports, with no
+own-module warnings.  Added the allocator execution composition for
+both map data regions.  It applies the generic stride-one allocation
+theorem and uses the allocator frame's preserved prefix to recover the
+source pointer and count, then produces the owned mapped array through
+the checked setup and loop.  Both allocator branches remain covered.
+
+OutputMapAllocate passed on its first build.  Reviewed the seven changed
+proof modules, nineteen standard-only axiom reports, accepted traces,
+and failed attempts.  No own-module warnings remain.  The shared
+resultProgram_spec removed the manual local-set derivation that failed
+at frame normalization.  Shared runtime release, free-list framing,
+field operations, and allocator execution cover the remaining accepted
+steps.  Preparing these seven proofs and five development records as
+the output-ownership checkpoint.  Map capacity preparation and return
+assignment, both concatenations, header construction, full packer,
+entry memory, and independent exact-byte verification remain open.
+
+Whitespace and documentation checks passed, including all 116 maintained
+Markdown files.  The seven proof files contain no placeholders, added
+axioms, or native-decision shortcuts.  The twelve-path checkpoint
+contains only the reviewed proof modules and five development records.
+Unrelated paper files and all generated and failed state remain preserved.
