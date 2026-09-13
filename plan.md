@@ -508,6 +508,12 @@ progress through time 0.8 for every supported size.  The existing retry
 and advance execution theorems retain source-success premises.  Further
 initializer instruction proofs wait for this numerical argument.
 
+The approved normalization extension now has checked soundness,
+quantitative acceptance, and old-acceptance preservation theorems.
+Both previously rejected boundary trials pass with unchanged conserved
+update words.  Source integration is being checked.  The global
+numerical invariant and compiler regeneration remain open.
+
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
 remaining composition must maintain the heap and free-list invariant

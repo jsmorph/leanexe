@@ -15066,3 +15066,102 @@ is 423d944f60aceb30056e9d76b3c389818906fe84.
 Final git diff --check passed, and tools/check-docs.js checked all 116
 maintained Markdown files.  The index was empty before the explicit
 nine-path staging operation.  All Lean jobs have completed.
+
+Published and fetched c6069edae7e4303c3a5605c2fc97607c439b6e00,
+"Prove Rusanov bounds and expose guard rejection", parent
+423d944f60aceb30056e9d76b3c389818906fe84, tree
+94dea0ceabf982a4537da98e93736b70f7d96e67.  The fetched identity,
+parent, title, tree, index, and nine checkpoint files matched.  All
+pending implementation and LTG state remained outside that checkpoint.
+
+The user instructed continuation, then approved the recommended guard
+extension.  Reread AGENTS.md, README.md, the leanrunner skill, the
+normalization and guard definitions, the new completeness proof, and the
+scaled arithmetic support.  Local runner limits and one Lean process
+continue to apply.
+
+Added the unchecked F64NormalizeTiny module.  It bounds a rescaled
+binary64 magnitude from its exponent gap, including subnormal inputs.
+The proposed momentum certificate retains exact existing normalization
+where defined and uses zero for a term whose rescaled magnitude has a
+proved small bound.  Only this certificate value changes.  The conserved
+momentum word remains the input to fluxes and time updates.  The squared
+term deficit is bounded by epsilon squared, allowing the residual proof
+to account for both momentum contributions under the existing threshold.
+The executable guard and frozen program are unchanged at this proof step.
+
+The first F64NormalizeTiny check failed in 51 seconds.  The exponent-gap
+and tiny-magnitude theorems audited with standard axioms.  The composition
+had a redundant tactic after field_simp, an inequality needing sub_self,
+a Boolean disjunction requiring an explicit projection, an over-specific
+zero-value reduction, and an ambiguous Finite name.  Corrected those
+five proof expressions and replaced deprecated conditional lemmas.  The
+failed composition audit is excluded from accepted evidence.
+
+Added an unchecked F64AdmissibilityTiny composition while the corrected
+normalization module checks.  The guard retains density and energy
+normalization and the eight-epsilon threshold.  Its residual bounds
+include the omitted momentum squares and aim to prove soundness,
+acceptance above a thirteen-epsilon exact margin, and preservation of
+every input accepted by the existing guard.  The old guard definitions
+remain available to the existing frozen artifact proofs.
+
+The corrected F64NormalizeTiny check passed in 63 seconds.  Its three
+requested axiom audits contain only propext, Classical.choice, and
+Quot.sound.  The first F64AdmissibilityTiny check failed in 40 seconds:
+arithmetic automation needed explicit unfolding of the residual, and
+the scaling statement parsed a repeated power as exponentiation of the
+exponent.  Added the explicit unfolding and parenthesized both squared
+scales.  The guard extension preservation theorem already checked with
+standard axioms.  Failed dependent audits are excluded from evidence.
+
+The second admissibility check finished in 41 seconds with standard-only
+audits for all five requested theorems, but a redundant final ring
+tactic kept the module from building.  Removed that tactic.  The first
+combined edit attempt matched no journal context and changed no files.
+
+The corrected admissibility module passed in 39 seconds.  All five
+requested audits contain only the accepted standard logical axioms.
+Added the solver-specific Numerics module: its three arithmetic bodies
+are copied without arithmetic changes from the existing side, interface,
+and cell definitions.  Their calls select the extended guard.  The old
+definitions and frozen artifacts remain intact.  Added unchecked
+composition proofs for state bounds, old-side result preservation,
+accepted side and cell safety, and repair of both rejected fixed trials.
+The repair statements retain the exact conserved update words.
+
+Numerics built in 84 seconds, NumericsSafety in 90 seconds, and
+GuardRangeRepair in 49 seconds.  All ten requested safety and repair
+audits use standard axioms only.  Both ratios, 1/8 and 2^-40, now pass.
+The larger trial returns the exact previously computed transverse word,
+with density, main momentum, and energy unchanged.  The general accepted
+cell theorem proves positive density and pressure with finite fields.
+
+Updated the source traversal, scan, and functional timestep recurrence
+to use Numerics.  Their geometry, update arithmetic, time controller,
+and array operations retain their previous definitions.  Source
+traversal and scan proofs are checking.  The initializer's thermodynamic
+proof now transfers the existing 36 checked states through the general
+old-side equality theorem.  The frozen WASM still describes the previous
+guard and requires compiler regeneration and revised execution proofs.
+
+The traversal/scan target reached its six-minute limit after building
+NumericsSweep in 154 seconds and Traversal in 151 seconds.  It produced
+no failing theorem diagnostic.  Their grid-model import brings in the
+old cell artifact specification and its execution proof closure.
+Separated the existing State, Grid, Inputs, recurrence, and physical
+safety definitions into SweepModel, retaining their names and bodies.
+The existing Sweep module imports that model and retains the execution
+theorems.  Riemann source modules now import the model directly.
+The next check uses the smaller TraversalInitial boundary.
+
+Prepared a nine-file checkpoint containing the two checked shared
+normalization/guard modules, Numerics, NumericsSafety, GuardRangeRepair,
+and journal.md, devnotes.md, plan.md, and the complete-solver plan.
+Reviewed the accepted proofs and audits together with the recorded
+failures.  The exact copied arithmetic bodies retain their operation
+association, and the repair theorem checks returned conserved words.
+Documentation checks passed for all 116 maintained Markdown files.
+The pending source integration, import split, range lemma, LTG work,
+and prior initializer and paper files remain outside this checkpoint.
+Its starting commit is c6069edae7e4303c3a5605c2fc97607c439b6e00.

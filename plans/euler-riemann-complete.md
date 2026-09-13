@@ -82,6 +82,17 @@ cannot repair their rejection.  A repeated half-center lower bound also
 does not supply usable full-run floating-point margins.  These
 obligations remain explicit until a preserved invariant discharges them.
 
+The user approved extending the momentum normalization guard on
+2026-09-12.  The new guard retains exact normalization where defined and
+bounds each omitted tiny normalized square by epsilon squared, with
+epsilon equal to 2^-52.  Its checked residual bounds prove soundness
+under the existing eight-epsilon threshold, acceptance above a
+thirteen-epsilon exact margin, and preservation of old accepted inputs.
+The checked repair accepts both trials from the normalization-range
+counterexample while retaining their conserved update words.  Source
+integration is under test.  The complete numerical invariant and new
+exact-byte proof inputs remain open.
+
 The implementation inventory remains:
 
 - [x] Prove the ordered index array, clamped-neighbor bounds and coordinate correspondence, and interface-fraction bounds.
