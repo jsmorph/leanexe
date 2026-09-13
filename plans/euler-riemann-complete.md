@@ -156,8 +156,13 @@ sound-speed proof bounds its error relative to the square root of
 (7/5) times the decoded pressure-density ratio by nine times 2^-52.
 Its pressure ratio, radicand, and square root pass their positive-word
 checks.  The final wave-speed addition also has checked positivity,
-range, and rounding error.  Complete side and interface flux acceptance
-and preservation through the rounded recurrence remain open.
+range, and rounding error.  Complete side and interface acceptance now
+follow from the quantitative StateBounds predicate.  Each Rusanov
+component includes all six rounded stages and has error at most
+256 times 2^-52 M to the fifth power against the exact expression on
+its decoded inputs.  Every initial cell satisfies StateBounds with
+M = 8 and exact internal energy at least 1/800.  Preservation through
+the rounded cell update and full recurrence remains open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
