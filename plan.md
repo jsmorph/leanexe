@@ -524,8 +524,11 @@ acceptance, complete timestep execution, spacing, and CFL proposal
 also pass.  Complete run execution now composes
 initialization and advancement, retaining exact result words,
 ownership, capacity, reservation, and a supplied physical page bound.
-Complete output execution now passes.  The complete entry memory bound
-and exact-byte closure remain open.
+Complete output and solve-entry execution now pass.  The public
+specification proves exact represented results and a 512 MiB bound from
+the module's initial state for runtime sizes two through eight hundred.
+Zero status implies a checked numerical trace through time 0.8.
+Independent exact-byte closure remains open.
 
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation

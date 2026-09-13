@@ -842,5 +842,8 @@ transfer, using the new shared scalar-assignment theorem in LTG.
 Complete output composition now includes all three releases, both
 returned ABI pointers, exact Output.pack words, and the physical page
 bound.  Its allocation budget is at most 30,720,344 bytes.
-Complete entry memory and exact-byte proofs
-remain prerequisites for the authorized 192-grid and 800-grid runs.
+The complete solve entry and public specification now establish exact
+output and a 512 MiB bound from the module's initial state for runtime
+sizes two through eight hundred.  Zero status implies a checked numerical
+trace through time 0.8.  Independent exact-byte proof remains a
+prerequisite for the authorized 192-grid and 800-grid runs.
