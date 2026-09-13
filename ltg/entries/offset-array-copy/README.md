@@ -18,7 +18,7 @@ preserves an arbitrary operand-stack tail.  Its offset-word identity
 uses UInt64 conversion algebra.  The wrap operation remains the exact
 32-bit WASM operation.  The enclosing loop supplies the address bounds.
 
-Riemann initialization matches the append suffix at
+The preserved earlier Riemann module matches the append suffix at
 `func88/block@4/loop@0/else@14:[128,131)` with destination offset local 53.
 The full append theorem composes the existing prefix and the offset
 suffix, reconstructs the concatenated width-seven grid, and preserves
@@ -34,3 +34,18 @@ public audits use standard axioms.  Draft corrections addressed explicit
 stack replacement, inaccessible counter support, and the frame trimmed
 at the loop back edge.  The entry remains provisional pending a complete
 artifact consumer and independent package verification.
+
+`UInt64Array.appendCopy_spec` composes `FixedArrayCopy.prefixProgram`
+with the offset copy program for two represented one-word arrays.  Its
+destination header must already contain the combined length.  It proves
+the complete concatenated representation, preserves both input arrays,
+frames the destination writes, and returns the final counter frame.
+The module and local indices are parameters.
+
+The current Riemann output packer uses this theorem for `func99[167,173)`
+and `func99[343,349)`: density plus pressure, then header plus fields.
+Checked region equalities identify both program pairs.  Their composed
+allocation and data theorems retain input ownership and produce an owned
+result.  These consumers remain parts of an incomplete artifact proof.
+They establish checked reuse, with no independent-package or timing
+comparison claimed.

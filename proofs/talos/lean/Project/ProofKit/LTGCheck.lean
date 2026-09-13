@@ -1,5 +1,6 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
+import Project.ProofKit.ArrayAppend
 import Project.ProofKit.ArrayField
 import Project.ProofKit.ArrayFieldConstant
 import Project.ProofKit.ArrayPrefix
@@ -286,6 +287,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.UInt64Array.PrefixAt.elementBound
 #check Project.ProofKit.UInt64Array.PrefixAt.empty
 #check Project.ProofKit.UInt64Array.PrefixAt.write_next
+#check Project.ProofKit.UInt64Array.appendCopy_spec
 #check Project.ProofKit.UInt64Array.pair
 #check Project.ProofKit.UInt64Array.singleton
 #check Project.ProofKit.UInt64Array.writeElement_frame

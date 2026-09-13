@@ -534,8 +534,10 @@ words and preserve the input grid through shared prefix, field, and
 BlockLoop results.  Both allocator branches now compose target
 installation and loop execution, deriving owned output words while
 preserving the input grid and heap validity.  One-word array release
-also checks.  Map capacity preparation, result transfer, concatenations,
-header construction, and full output packing remain open.
+also checks.  Both concatenations now compose allocation, destination
+installation, length storage, and copying with owned output and preserved
+input owners.  Capacity preparation, result transfer, header construction,
+and full output packing remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have

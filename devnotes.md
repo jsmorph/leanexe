@@ -11313,3 +11313,18 @@ corrects one prematurely recorded pass and retains the repeated
 dependency failure.  Map capacity preparation and result transfer,
 concatenations, header construction, complete packer execution, entry
 memory composition, and exact-byte closure remain open.
+
+## 2026-09-13: Owned output concatenation
+
+Both output concatenations now compose allocator execution, destination
+installation, length storage, and copying into an owned result while
+preserving both input owners and heap validity.  The shared
+UInt64Array.appendCopy_spec proves represented concatenation for arbitrary
+modules and local indices through the existing prefix and offset loops.
+The offset-array-copy LTG entry advertises it, and the artifact-proof
+support inventory includes its source.  Six modules pass on their first
+builds with eleven standard-only axiom reports and no own-module warnings.
+
+Capacity preparation, result assignments, header construction, complete
+packer execution, entry memory composition, and exact-byte closure remain
+open.  Neither authorized production run has started.

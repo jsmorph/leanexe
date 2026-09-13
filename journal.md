@@ -17335,3 +17335,71 @@ Markdown files.  The seven proof files contain no placeholders, added
 axioms, or native-decision shortcuts.  The twelve-path checkpoint
 contains only the reviewed proof modules and five development records.
 Unrelated paper files and all generated and failed state remain preserved.
+
+### 2026-09-13: represented word-array concatenation
+
+Published the output-ownership checkpoint as
+add0da4eee0574ef734b2719efbd82978509830c, with parent
+c71b2a723b2adbdae88d8f887bc74ca115cfc3ea and tree
+620839d76cee6b22105d1a95b1a57d2676e1d73e.  The non-forced push
+and fetch passed.  Commit metadata, complete index, and all twelve
+checkpoint paths match HEAD, FETCH_HEAD, and origin/talosfp-euler.
+
+Added a generic represented-array concatenation theorem over the shared
+prefix and offset copy programs.  It accepts arbitrary module and local
+indices, two represented word arrays, a sized destination, and disjoint
+source/destination intervals.  The result preserves both inputs and
+all bytes outside the destination, proves every concatenated word, and
+returns the shared counter frame.  The Euler packer's two copy pairs
+already match these programs.  Checking the generic theorem before
+adding its exact output-region consumer and LTG metadata.
+
+ArrayAppend passed on its first build.  Added the output packer's exact
+six-instruction copy regions at offsets 167 and 343.  Their execution
+theorem applies the generic concatenation result with source locals
+36/37, destination 43, counts 41/42, and counter 44.  This single
+composition covers density-plus-pressure and header-plus-fields.
+
+OutputAppendCopy passed on its first build.  Its region equality and
+execution theorem, together with ArrayAppend, have three standard-only
+axiom reports and no own-module warnings.  Added exact destination
+installation and length storage before both copy pairs.  The data theorem
+uses resultProgram_spec and lengthStoreLocal_spec, preserving both
+input representations through the length write before concatenation.
+
+OutputAppendData passed on its first build.  Added shared word-allocation
+bounds and preservation of an existing word array or grid through a
+separate allocation and its payload writes.  These facts supply the
+same ownership argument for both inputs of either concatenation and
+for unrelated arrays held by the complete packer.
+
+WordAllocationBounds passed on its first build.  Added the ownership
+composition for concatenation installation and copying.  It returns
+the new concatenated owner, preserves both original owners, and retains
+the updated heap and all byte-range evidence.  Both output concatenations
+use this theorem through their checked exact regions.
+
+OutputAppendOwned passed on its first build.  Added allocator execution
+before each concatenation's installation and copy region.  The theorem
+preserves the five saved input/count locals and composes both allocator
+branches into owned concatenated output, retaining both source owners
+and the exact final counter frame.
+
+OutputAppendAllocate passed on its first build.  Reviewed all six new
+proof modules and eleven standard-only axiom reports, with no own-module
+warnings or failed proof attempts in this concatenation checkpoint.
+The checked generic concatenation theorem composes the LTG prefix/offset
+operations once and serves both output regions.  Added it to the
+provisional offset-array-copy entry and the explicit artifact-proof
+support inventories.  The entry preserves prior examples and distinguishes
+their earlier function indices from the current output regions.  No
+independent Euler package result or timing benefit is claimed.
+
+Catalog rebuild, catalog and forest checks, LTG tests, knowledge tests,
+leanexegen tests, and the generated LTGCheck Lean target passed.  The
+10,000-record retrieval test completed in 2.821 ms.  No package-local
+Lean source changed.  Whitespace, all 116 maintained Markdown files,
+and the placeholder/new-axiom/native-decision scan passed.  Reviewed
+the six proof files, their accepted traces, LTG entry and generated
+indexes, support inventories, and five development records.  Staging
+the twenty reviewed paths for the owned-concatenation checkpoint.
