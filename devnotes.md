@@ -10924,8 +10924,8 @@ memory and artifact proofs, and both calculations remain open.
 now retains the center weight w = 1 - ratio (alphaL + alphaR) / 2.
 [The candidate bounds](proofs/talos/lean/Project/EulerRiemann/NumericsCandidateBounds.lean)
 give density at least w times center density minus delta, and energy
-margin at least w squared times center margin minus 8 B delta +
-4 delta squared.  Here B = M + 134 ratio M to the fifth power and
+margin at least w squared times center margin minus (8 B delta +
+4 delta squared).  Here B = M + 134 ratio M to the fifth power and
 delta = epsilon M + 1004 epsilon ratio M to the fifth power +
 2 eta, with epsilon = 2^-52 and eta = 2^-1075.
 
@@ -10937,3 +10937,30 @@ with standard-only public audits.  The numerical program and WASM
 bytes are unchanged.  Preservation of these sufficient conditions
 over the complete simulation, accepted retry before time stalls,
 the complete memory and artifact proofs, and both runs remain open.
+
+## 2026-09-13: Failure of fixed state-bound preservation
+
+[The checked three-cell example](proofs/talos/lean/Project/EulerRiemann/StateBoundsBoundary.lean)
+has density 1/8, energy one, zero transverse momentum, and longitudinal
+momenta -1/8, zero, and 1/8.  Every input satisfies StateBounds 8.
+At ratio 1/16, the current binary64 cell evaluator returns status zero
+and density 15/128.  Its output violates the same state predicate.
+The complete module passed in 2.5 seconds under the standard local
+runner, with three standard-only public audits.  This disproves
+unqualified preservation of StateBounds 8.  It does not establish
+reachability of the example from the prescribed initial grid.
+
+Jiang and Wang's [invariant-region analysis](https://doi.org/10.1017/S144618111600033X)
+derives an unbounded convex entropy region for one-dimensional
+ideal-gas Euler in Section 3.  It supplies no compact quantitative
+bound for this finite computation.  The saved earlier 192 result
+also contains positive adjacent momentum and velocity differences
+in each direction, excluding coordinatewise nonincrease as a
+candidate invariant for that dataset.
+
+The universal successful-completion theorem remains unproved.  A
+proposal to retain complete exact-byte behavior, memory, and
+successful-output correctness while admitting the program's explicit
+failure returns is awaiting the user's decision.  It would change the
+current universal-success gate.  No source, artifact, execution order,
+or production-run gate has changed.
