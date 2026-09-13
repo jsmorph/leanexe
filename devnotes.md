@@ -11163,3 +11163,19 @@ count, no-fit search, heap-top increment, and free-list preservation.
 The six new modules pass with sixteen standard-only axiom reports.
 The growth-loop invariant still must compose these results, followed by
 entry/output execution and the complete 512 MiB and exact-byte proofs.
+
+## 2026-09-13: Complete initializer loop
+
+The initializer loop now composes map, concatenation, old-buffer release,
+and prefix extraction.  It preserves the exact initial-cell prefix,
+entry-held owners, free-list bounds, remaining allocation budget, and
+a supplied physical page bound.  The checked loop measure decreases
+on growth and completion, with twenty rounds available from entry.
+The six new modules pass with six standard-only axiom reports.
+
+The proof uses the compiler-matched fuel guard and existing shared
+allocator, frame, copy, and block-loop lemmas.  Failed checks required
+explicit capacity aliases, Boolean and stack simplification, retention
+of the entry invariant, and beta reduction of the measure.  Post-loop
+extraction, initializer entry/return, singleton allocation, output,
+complete memory composition, and exact-byte closure remain open.

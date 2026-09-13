@@ -530,8 +530,11 @@ checked execution proofs against the current artifact.  Both extraction
 branches now compose allocation, copying, and result assignment from an
 arbitrary frame satisfying the control and scratch-register invariants.
 Map and append preserve those invariants across their allocation regions.
-Composition of these regions into the growth loop remains open.  The complete memory proof must
-bound WASM pages as well as heap allocation addresses.
+The complete growth loop now preserves those invariants, the initial-cell
+prefix, entry-held owners, and the remaining allocation budget, and
+terminates on completion or fuel exhaustion.  Post-loop extraction and
+function entry/return composition remain open.  The complete memory proof
+must bound WASM pages as well as heap allocation addresses.
 Map and append now accept arbitrary loop frames and return the required
 buffer getters.  Allocation and grid writes have a checked arbitrary
 page-limit theorem.  Initializer capacities, heap updates, entry-held
@@ -583,12 +586,13 @@ an open theorem under the revised proof requirement.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
-remaining composition must maintain the heap and free-list invariant
-through doubling and final extraction.
+complete loop maintains the heap and free-list invariant through
+doubling and its completed-prefix extraction branch.
 The allocation-to-heap adapter, root and length installation, map-ready
 frame, and remaining-allocation arithmetic also pass.  The arithmetic
 reserves 212,002,896 bytes after the singleton, including retained map
-buffers.  Execution must still establish and preserve that reservation.
+buffers.  Loop execution now preserves that reservation.  The singleton
+entry must still establish it.
 Map, append, and extraction now include pointer installation, the length
 store, and their complete data loops.  The map composition returns the
 updated heap and ownership of both grids under the allocation premises.
