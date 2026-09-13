@@ -151,8 +151,13 @@ The solver's velocity, transport, and internal-energy calculations have
 checked finiteness and error bounds for density at least 1/M, component
 magnitudes at most M, and 1 ≤ M ≤ 2^100.  Exact internal energy above
 12 times 2^-52 M cubed implies acceptance of its intermediate checks.
-Pressure, wave speed, flux acceptance, and preservation through the
-rounded recurrence remain open.
+The pressure proof includes the stored 0.4 coefficient error.  The
+sound-speed proof bounds its error relative to the square root of
+(7/5) times the decoded pressure-density ratio by nine times 2^-52.
+Its pressure ratio, radicand, and square root pass their positive-word
+checks.  The final wave-speed addition also has checked positivity,
+range, and rounding error.  Complete side and interface flux acceptance
+and preservation through the rounded recurrence remain open.
 
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value

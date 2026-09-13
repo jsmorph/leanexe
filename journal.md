@@ -15513,3 +15513,107 @@ plan.md, plans/euler-riemann-complete.md, and this journal.  The completed
 checks all used tools/leanrun with a six-minute command limit and the
 standard local resource profile.  Earlier pending files remain preserved
 outside the checkpoint.  No production numerical run has started.
+
+Published and fetched fdc64233864d2e25e6a7f24675a7cd0bebac99ca,
+"Prove rounded Euler thermodynamic bounds", parent
+ef92cf75ea829db6928581d78735449f7db4e387, tree
+fa7be3620c38bfd6f185f59496cb145a8bbfedc1.  Commit, parent, title,
+tree, index, and all thirteen checkpoint worktree files match the fetched
+remote.  Documentation and whitespace checks passed.  The next proof
+adds reusable positive-result bounds for multiplication, division, and
+square root before composing pressure and sound-speed acceptance.
+
+F64PositiveArithmetic passed its first check in 1.3 seconds with four
+standard-only audits.  It derives positive product and quotient ranges
+when the exact value is at least the minimum normal magnitude, and
+positive square-root bits for every positive finite input.  Added
+NumericsConstants to record the exact rounded 0.4 and 1.4 coefficients
+as real values with their signed epsilon residuals.
+
+NumericsConstants passed in 1.1 seconds with two standard-only audits.
+Added a normal-range relative-error corollary to F64PositiveArithmetic
+and a pressure calculation proof.  The pressure theorem includes the
+rounded coefficient error, multiplication error, positive result bits,
+and bounds relative to the computed internal energy.
+
+The expanded F64PositiveArithmetic passed in 1.4 seconds with five
+standard-only audits.  The first pressure check needed the known
+epsilon and internal-energy signs supplied explicitly to its final
+absolute-value simplification.  Added that nonnegativity proof before
+rechecking.  No pressure theorem from the failed run is accepted.
+
+NumericsPressure passed in 1.9 seconds with a standard-only audit.
+The next two modules bound pressure divided by density and its product
+with the stored sound-speed coefficient.  NumericsSoundRatio is checking.
+Added NumericsRadicand with positive-result, magnitude, and real-error
+statements for the subsequent multiplication.
+
+The first NumericsSoundRatio check found one redundant ring tactic after
+field_simp had closed the reciprocal-scale identity.  Removed it before
+rechecking.  Future single-monomial cancellation goals should use
+field_simp alone, adding a separate ring step only for a remaining goal.
+
+NumericsSoundRatio passed in 1.4 seconds, and NumericsRadicand passed
+its first check in 1.4 seconds.  Both audits contain only standard
+axioms.  Added a positive-input classification adapter and the pending
+RealSqrtError lemma for propagating a relative radicand error through
+real square root.  These support comparison of the complete computed
+sound speed with sqrt((7/5) pressure/density).
+
+RealSqrtError passed in 1.3 seconds with a standard-only audit.  Its
+SpecialFunctions.Sqrt import required unused smoothness dependencies.
+Inspected the pinned Mathlib source and narrowed the import to
+Analysis.Real.Sqrt, which defines the required square-root identities.
+Added F64SqrtComposition to combine input and operation rounding errors,
+and NumericsSound to compose the pressure ratio, rounded gamma product,
+and square root.  These additions are pending checks.  The earlier
+positive-input classification addition also remains pending.
+
+The combined sound check rejected the new positive-input adapter at
+the UInt64-to-Nat literal boundary.  Reused F64Order's existing explicit
+word-comparison conversion instead of relying on simplification to
+normalize both literal encodings.  The narrower RealSqrtError import
+passed.  No dependent sound theorem was accepted in this failed run.
+
+F64PositiveArithmetic passed in 1.5 seconds with all six requested
+audits restricted to standard axioms.  F64SqrtComposition passed in
+1.1 seconds with the same audit result.  NumericsSound's accumulated
+radicand error needed its exact reference expanded before linear
+arithmetic could combine the epsilon-scaled terms.  Replaced that
+nonlinear invocation with explicit reference expansion and linear
+arithmetic.  Added the pending F64Absolute adapters for finite
+sign-cleared words and their exact decoded absolute values.
+
+NumericsSound passed in 1.3 seconds.  It proves all three positive-word
+checks for ratio, radicand, and sound speed, a sound-speed upper bound
+of 14 M squared, and error at most 9 epsilon times the exact square
+root of (7/5) times the decoded pressure-density ratio.  F64Absolute
+passed in 1.0 seconds.  All three audits contain only standard axioms.
+Added a positive-addition result to F64PositiveArithmetic and the
+pending NumericsSpeed composition for the final abs(velocity) plus
+sound-speed calculation.  These do not assert preservation of their
+input bounds over the full grid recurrence.
+
+The positive-addition extension passed in 1.6 seconds with seven
+standard-only audits.  NumericsSpeed passed its first check in 1.1
+seconds, and dependent pressure and sound checks passed in 1.4 seconds
+each.  The final wave-speed word is positive and at most 32 M squared
+under the stated computed-velocity and sound-speed bounds.  Its error
+is at most unit roundoff times their exact positive sum.
+
+Reviewed the accepted proofs and failed checks together.  Shared
+operation bounds avoid repeating IEEE64 packing and rounding proofs.
+The remaining local errors were literal normalization and explicit
+real-expression expansion.  The source expressions and generated
+artifact are unchanged.  The LTG category query for floating-point,
+rounding, binary64, and square-root support found no relevant entry.
+The fuel-completion entry remains specific to control execution and
+was not used for these numerical results.  These checks therefore do
+not establish LTG retrieval effectiveness or compiler-annotation use.
+The new arithmetic lemmas are candidates for a later checked catalog
+entry with additional consumers.  No catalog state was overwritten.
+
+Prepared a pressure-and-wave-speed checkpoint containing the ten new
+proof modules and four planning/journal documents.  All other tracked,
+untracked, and generated paths remain outside this checkpoint.
+The complete grid invariant and source-success theorem remain open.
