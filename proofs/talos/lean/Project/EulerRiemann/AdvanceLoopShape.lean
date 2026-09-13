@@ -30,6 +30,16 @@ def advanceFinishBody : Wasm.Program :=
   | some (.iff _ _ body _ _ _) => body
   | _ => []
 
+def advanceScanFailureBody : Wasm.Program :=
+  match (advanceWorkBody[23]? : Option Wasm.Instruction) with
+  | some (.iff _ _ _ body _ _) => body
+  | _ => []
+
+def advanceTrialFailureBody : Wasm.Program :=
+  match (advanceTrialBody[64]? : Option Wasm.Instruction) with
+  | some (.iff _ _ _ body _ _) => body
+  | _ => []
+
 theorem advance_loop_shape : func85 =
     func85.take 4 ++ [.block 0 0 [.loop 0 0 advanceLoop]] ++ func85.drop 5 := rfl
 
@@ -37,17 +47,13 @@ theorem advance_work_shape : advanceWorkBody = advanceWorkBody.take 13 ++
     [.localGet 16, .constI64 0, .eqI64,
       .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64], .constI64 1, .eqI64,
       .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64], .constI64 0, .eqI64, .eqz,
-      .iff 0 0 advanceTrialBody
-        (match (advanceWorkBody[23]? : Option Wasm.Instruction) with
-          | some (.iff _ _ _ body _ _) => body | _ => [])] := rfl
+      .iff 0 0 advanceTrialBody advanceScanFailureBody] := rfl
 
 theorem advance_trial_shape : advanceTrialBody = advanceTrialBody.take 54 ++
     [.localGet 33, .constI64 0, .eqI64,
       .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64], .constI64 1, .eqI64,
       .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64], .constI64 0, .eqI64, .eqz,
-      .iff 0 0 advanceContinueBody
-        (match (advanceTrialBody[64]? : Option Wasm.Instruction) with
-          | some (.iff _ _ _ body _ _) => body | _ => [])] := rfl
+      .iff 0 0 advanceContinueBody advanceTrialFailureBody] := rfl
 
 def advanceTimeFrame (frame : Locals) : Locals :=
   { frame with locals := frame.locals.set 6 (.i64 Time.endTime), values := [] }
@@ -61,7 +67,8 @@ def advanceScanFrame (frame : Locals) (source : UInt64) (stats : Traversal.Scan)
   let locals := locals.set 12 (.i64 stats.alpha)
   { frame with locals, values := [] }
 
-def advanceTrialFrame (frame : Locals) (n : Nat) (time source alpha dt trialDt result : UInt64) : Locals :=
+def advanceTrialFrame (frame : Locals) (n : Nat) (time source alpha dt trialDt result : UInt64)
+    (status : UInt64 := 0) : Locals :=
   let locals := frame.locals.set 13 (.i64 (UInt64.ofNat n))
   let locals := locals.set 14 (.i64 time)
   let locals := locals.set 15 (.i64 alpha)
@@ -79,8 +86,8 @@ def advanceTrialFrame (frame : Locals) (n : Nat) (time source alpha dt trialDt r
   let locals := locals.set 27 (.i64 result)
   let locals := locals.set 26 (.i64 result)
   let locals := locals.set 25 (.i64 trialDt)
-  let locals := locals.set 24 (.i64 0)
-  let locals := locals.set 28 (.i64 0)
+  let locals := locals.set 24 (.i64 status)
+  let locals := locals.set 28 (.i64 status)
   let locals := locals.set 29 (.i64 trialDt)
   let locals := locals.set 30 (.i64 result)
   let locals := locals.set 31 (.i64 result)

@@ -16443,3 +16443,87 @@ shared allocator.  The next boundary is total advance execution,
 including scan and trial failure, followed by initialization and output.
 The entry memory bound and independent exact-byte package gate remain
 open.  Production execution has not started.
+
+Published and fetched 4d7f320ee87f84f15cb939092e90bcdddf4f9a60,
+"Prove complete Riemann retry execution", parent
+b2620a22477f1cadc7b13fff76f7d70f110ec4f7, tree
+68b84ca7c37e9f7795b683aaf7a240187ae5fae1.  The fetched metadata,
+index, and all eleven checkpoint worktree paths match.  Documentation
+and whitespace checks passed.
+
+The outer loop's checked addition encodes retry fuel as the proposal
+word plus one.  Its previous proof derived absence of overflow from
+retry success.  F64ResultBound now proves a shared unsigned-word bound
+for binary64 division, including NaN, infinity, zero, and rounded finite
+branches.  The first diagnostic required the explicit UInt64.ofNat
+lemma and reduction of the rounder's local bindings before splitting.
+The revised shared proof passed.  ProposalFuel applies the bound to
+the proposal's word minimum, independently of numerical success.
+Its first application required unfolding the proposal before inferring
+the minimum's arguments.  The current build checks this composition
+and the total proposal/retry call region.
+
+Generalized the existing trial frame with a status argument defaulting
+to zero, preserving successful-proof call sites.  AdvanceTotalFrame
+adds returned status fields, the compiler-matched completed guard, and
+the common assignment sequence for both failure branches.  The emitted
+failed-retry path retains its allocated empty result without releasing
+it.  The final reservation must account for that allocation once.
+
+The minimum proof needed the core UInt64 minimum definition rather than
+Mathlib's generic LinearOrder theorem.  Read the pinned UInt64 instances
+and reused the same Min.min reduction as the checked proposal execution
+proof.  ProposalFuel and AdvanceTotalTrial now pass.  Their successful
+traces confirm standard-only audits, including the shared division bound.
+
+AdvanceTotalFrame's first final-assignment check exposed a different
+ordering of local updates.  Stated its frame in emitted assignment order.
+The frame module passed in 2.6 seconds, and AdvanceTotalInvariant passed
+in 1.5 seconds.  The generalized earlier frame, continuation, ownership,
+and replacement modules also pass.  The new done invariant reserves one
+fewer allocation after a failed retry because its empty result remains
+allocated.  That branch terminates, so the loss occurs at most once.
+
+Read the fuel-completion-guard LTG entry again while composing the outer
+loop.  Its existing getter-based theorem and compiler equality cover the
+new status-bearing completed frame without any new guard implementation.
+The work-body proof initially reached the default heartbeat limit while
+unifying grid.size and n*n inside normalized allocation capacity.  Named
+the reservation consequence before rewriting the checked indexed-grid
+size equation.  This removes the definitional expansion boundary without
+raising limits.  Later diagnostics showed that failure-body equalities
+must be applied after selecting the conditional branch.  The current
+work-body and iteration check uses that ordering.  No WASM byte changed.
+
+The two independently elaborated inline match selectors did not rewrite
+against each other despite identical printed goals.  Named both failure
+bodies in AdvanceLoopShape, matching the existing positive-branch
+definitions.  The loop decomposition and assignment equalities now use
+those same definitions.  Both identities check by reflexivity against
+the generated program.  The work body passed in 4.5 seconds, and the
+complete iteration passed in 2.6 seconds, with standard-only audits.
+Earlier failed attempts and their diagnostics remain preserved.
+
+AdvanceTotalLoop composes the checked iteration through the shared
+BlockLoop theorem.  ExecutionAdvanceTotal composes entry assignments,
+the terminating loop, completed guard, and all four returned words.
+They passed in 2.5 and 1.0 seconds, with standard-only audits.  The
+public advance_exact theorem retains heap, ownership, reservation,
+runtime-cap, grid-size, and sufficient-fuel premises.  It requires
+no successful source result.  ControlFuel already supplies enough
+fuel for the public run.  Initialization and output must establish
+the remaining complete-entry premises and preserve the 512 MiB bound.
+
+Preparing a fifteen-file checkpoint: the shared floating-point bound,
+proposal encoding, two revised frame/shape modules, seven total-control
+modules, and the four development records.  The initializer, existing
+LTG and compiler-tool drafts, and report files remain outside this
+checkpoint.  The original successful-advance theorem is being checked
+after the shared frame and shape changes.  The numerical source and
+21,767-byte artifact remain unchanged.
+
+The original successful-advance theorem passed after the shared changes.
+Its iteration, loop, and complete-function checks took 19, 57, and
+21 seconds.  The final audit uses only the permitted standard axioms.
+Documentation and whitespace checks pass.  The checkpoint proof sources
+contain no sorry, admit, new axiom, native_decide, or bv_decide.

@@ -11064,3 +11064,24 @@ checks passed in 2.1, 1.8, 2.3, 1.4, and 2.3 seconds.  All public audits
 use only the permitted standard axioms.  The exact numerical artifact
 remains unchanged.  Total outer control, initialization, output, and
 the complete entry memory bound remain open.
+
+## 2026-09-13: Complete time-advance execution
+
+The complete outer time-advance function now terminates and returns the
+source result for every reachable status under its heap, reservation,
+and sufficient-fuel premises.  It covers scan failure, retry failure,
+accepted-grid replacement, and final-time return without an assumed
+successful result.  Failed retry retains the last accepted grid and
+its newly allocated empty array.  The final reservation charges that
+allocation once.  The source run already has a checked sufficient-fuel
+theorem.
+
+The shared binary64 result bound includes every division branch and
+proves that the proposal word leaves room for its checked fuel increment.
+The trial frame now records arbitrary status while preserving existing
+successful-proof calls.  Named failure-body definitions give the loop
+decomposition and assignment proof one shared instruction selection.
+The work body, iteration, loop, and complete function passed in 4.5,
+2.6, 2.5, and 1.0 seconds.  All public audits use the permitted standard
+axioms.  Full initialization, output, entry memory, and independent
+exact-byte package verification remain open.  No production run started.
