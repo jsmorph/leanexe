@@ -29,6 +29,30 @@ theorem exactResidual_above_threshold (rho mx my energy : UInt64)
   have hle := mul_le_mul_of_nonneg_right (le_of_not_gt h) hb.le
   nlinarith only [hs, hm', hle]
 
+theorem stateGuard_of_energyMargin (rho mx my energy : UInt64)
+    (hr : Finite rho) (hx : Finite mx) (hy : Finite my) (he : Finite energy)
+    (hRho : 0 < value rho) (ht : 1021 ≤ topExponent rho mx my energy)
+    (nr : normalizable rho (topExponent rho mx my energy) = true)
+    (ne : normalizable energy (topExponent rho mx my energy) = true)
+    (hm : guardMarginBudget rho mx my energy < energyMargin (decodedState rho mx my energy)) :
+    stateGuard rho mx my energy = true := by
+  have hBudget : 0 ≤ guardMarginBudget rho mx my energy := by
+    unfold guardMarginBudget arithmeticEpsilon
+    positivity
+  have hPositive := hBudget.trans_lt hm
+  change 0 < 2 * value rho * value energy - (value mx)^2 - (value my)^2 at hPositive
+  have hEnergy : 0 < value energy := by
+    by_contra hn
+    have hp := mul_nonpos_of_nonneg_of_nonpos hRho.le (le_of_not_gt hn)
+    nlinarith only [hp, hPositive, sq_nonneg (value mx), sq_nonneg (value my)]
+  apply Bool.or_eq_true_iff.mpr
+  right
+  exact Project.ProofKit.F64AdmissibilityTiny.checked_of_margin_and_top
+    rho mx my energy (positiveBits_of_finite_value_pos rho hr hRho)
+    ((finiteBits_iff mx).mpr hx) ((finiteBits_iff my).mpr hy)
+    (positiveBits_of_finite_value_pos energy he hEnergy) ht nr ne
+    (exactResidual_above_threshold rho mx my energy hRho hEnergy hm)
+
 theorem stateGuard_of_perturbation (rho mx my energy : UInt64)
     (reference : Vec4) (bound error : ℝ)
     (hr : Finite rho) (hx : Finite mx) (hy : Finite my) (he : Finite energy)
@@ -52,20 +76,9 @@ theorem stateGuard_of_perturbation (rho mx my energy : UInt64)
       bound error hq hError)).1
   have hMarginNext : guardMarginBudget rho mx my energy <
       energyMargin (decodedState rho mx my energy) := by linarith
-  have hPositive := hBudget.trans_lt hMarginNext
-  change 0 < 2 * value rho * value energy - (value mx)^2 - (value my)^2 at hPositive
-  have hEnergy : 0 < value energy := by
-    by_contra hn
-    have hp := mul_nonpos_of_nonneg_of_nonpos hRho.le (le_of_not_gt hn)
-    nlinarith only [hp, hPositive, sq_nonneg (value mx), sq_nonneg (value my)]
-  apply Bool.or_eq_true_iff.mpr
-  right
-  exact Project.ProofKit.F64AdmissibilityTiny.checked_of_margin_and_top
-    rho mx my energy (positiveBits_of_finite_value_pos rho hr hRho)
-    ((finiteBits_iff mx).mpr hx) ((finiteBits_iff my).mpr hy)
-    (positiveBits_of_finite_value_pos energy he hEnergy) ht nr ne
-    (exactResidual_above_threshold rho mx my energy hRho hEnergy hMarginNext)
+  exact stateGuard_of_energyMargin rho mx my energy hr hx hy he hRho ht nr ne hMarginNext
 
 #print axioms exactResidual_above_threshold
+#print axioms stateGuard_of_energyMargin
 #print axioms stateGuard_of_perturbation
 end Project.EulerRiemann.Numerics

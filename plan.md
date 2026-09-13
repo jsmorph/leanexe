@@ -534,9 +534,11 @@ supplies exact reference-step positivity with density and internal
 energy at least 49/100 of their center values, for a positive ratio
 at most one.  Physical-flux, interface, and conservative-update errors
 now compose across all four finite, status-zero candidate components.
-The final candidate-cell guard still requires quantitative acceptance.
-Preservation of density and energy margins through the rounded update
-and the full reachable-grid invariant remain open.
+The candidate density and energy margin now have checked lower bounds
+using the exact center weight and the component error budget.  Final
+guard acceptance follows under explicit quantitative and normalization
+conditions.  Preservation of those conditions over the reachable grid
+and successful final-time completion remain open.
 
 The initializer's map, append-copy, extract-copy, capacity, and complete
 no-fit allocation regions now have checked execution proofs.  The
