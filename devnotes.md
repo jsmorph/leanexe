@@ -10670,3 +10670,27 @@ reviewed change to the guard.  A possible guard revision would retain
 the conserved values and account for tiny momentum terms through proved
 normalization error bounds.  That revision has not been implemented or
 approved, and it would require new exact-byte proof inputs.
+
+## 2026-09-12: Approved guard extension
+
+The user approved extending the normalization guard to account for tiny
+momentum terms.  [Magnitude bounds](proofs/talos/lean/Project/ProofKit/F64NormalizeTiny.lean)
+prove that the omitted normalized square is at most epsilon squared.
+[The extended guard](proofs/talos/lean/Project/ProofKit/F64AdmissibilityTiny.lean)
+accounts for both omitted terms, retains the eight-epsilon threshold,
+proves accepted-state admissibility and acceptance above thirteen
+epsilon, and preserves every old accepted input.  Their final checks
+took 63 and 39 seconds, with standard-only axiom audits.
+
+[Solver numerics](proofs/talos/lean/Project/EulerRiemann/Numerics.lean)
+apply the guard to the existing side, interface, and cell arithmetic.
+[Safety and preservation](proofs/talos/lean/Project/EulerRiemann/NumericsSafety.lean)
+checked in 90 seconds.  [The boundary repair](proofs/talos/lean/Project/EulerRiemann/GuardRangeRepair.lean)
+checked in 49 seconds: both rejected trials now pass and the returned
+conserved values equal the computed update words.  The tiny-term
+substitution affects only the guard's scratch calculation.
+
+Source traversal and control proofs are being updated to the extended
+numerical model.  Compiler regeneration, revised execution proofs, and
+the preserved invariant for successful final-time completion remain
+open.  Existing artifact bytes and production data remain preserved.
