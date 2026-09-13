@@ -16893,3 +16893,77 @@ Reviewed the six new proofs, LTG metadata and four generated category
 indexes, generated declaration check, ProofKit catalog and allowlists,
 and five development records.  Preparing these twenty explicit paths
 as one checkpoint.  The unrelated report files remain untouched.
+
+Published and verified 823680d8d4d66fe745a70e7dfac69e0935461492,
+parent 2d84a3cf067c8268dfb563cdb2a610d2d4b8575d, tree
+d03d4456f77ed1e1f16b42f8a648ef1024d1c997.  The fetched metadata,
+complete index, and all twenty checkpoint worktree paths match.
+
+InitialSingletonAllocate now composes the exact no-fit allocator with
+the checked singleton writes.  Heap.allocate_grid_bounds supplies its
+memory bounds, and Heap.finishGrid establishes the returned heap and
+owned cell buffer.  Its first check required unfolding the named frame
+before getter rewriting and normalizing the singleton size and final
+store aliases.  The second check passed.
+
+InitialSingletonPrefix composes entry-local setup, checked natural
+multiplication, the proved initialCell call, and the shared constant
+capacity program.  The resulting canonical allocator frame retains the
+thirty saved locals and six scratch slots.  Its first check rejected
+decide on two frame bounds containing the runtime size.  Simplification
+proved both bounds, and the second check passed.  InitialSingletonBuild
+then composed the complete first 164 instructions on its first check.
+
+ExecutionInitialCells now proves complete function-96 termination for
+every runtime n from two through eight hundred, under the stated entry
+heap, free-list, byte-reservation, and page-cap premises.  It returns
+exactly Traversal.initialCells n in the owned result array, preserves
+all entry-held owners, and bounds final heap top and physical pages.
+The function preserves the borrowed singleton through growCells and
+releases it after obtaining the new result.  The returned result remains
+owned and separated from every entry-held array after that release.
+
+The first composition check exposed an Option projection in the decoded
+branch adapter, excessive reduction of the whole body equality, and
+literal UInt64 normalization.  The adapter now uses getD, and the body
+split uses List.take_append_drop plus an exact suffix equality.
+Two guard checks and a focused trace identified a conditional expression
+still wrapping the instruction list.  Normalizing only the program
+argument allowed execution of the second guard.  Three later checks
+reached the default 200,000-heartbeat limit: the original full composition,
+the composition after guard separation, and the composition after
+resource separation.  These stopped after 8.7, 7.4, and 7.5 seconds in
+their target builds.  No unchanged timed-out target was rerun.
+
+InitialCellsGuard now checks the entry and return continuation through
+FixedArrayEqNode.branchPost and wp.conseq.  Direct simplification of an
+unknown continuation failed on its first check.  Case analysis passed
+on the second check.  InitialSingletonResources separately checks
+ownership preservation, the remaining byte reservation, and the page
+bound.  That module passed on its first check.
+
+The call-boundary trace located the remaining heartbeat exhaustion at
+application of the growth-call theorem.  The staged frame still contained
+unnormalized list appends, forcing reduction during theorem application.
+Explicit list-append normalization removed that cost and allowed both
+calls and the release ownership proof to check.  The next diagnostic was
+the final source conditional: supplying the supported-size inequalities
+to simplification completed the theorem.  Removed every temporary trace
+from the accepted source.  All six new modules pass with fifteen
+standard-only axiom reports and no own-module warnings.  Every invocation
+used tools/leanrun --timeout 6m in standard mode, with one target and one
+thread.  No runner limits changed.
+
+The proof composes the previously compiler-matched multiplication,
+capacity, allocation, and field-store regions with both calls identified
+by the current annotations.  No compiler or LTG mutation was needed in
+this checkpoint.  The shared branch continuation and consequence theorem
+were already present in ProofKit, while the literal-field store entry
+supplies the singleton construction.  Full run and output composition,
+the complete 512 MiB physical memory bound, and independent exact-byte
+verification remain open.  Neither production grid has run.
+
+Reviewed the six proof modules and five development records.  The
+documentation check passed for 116 maintained Markdown files, and
+whitespace passed.  Preparing these eleven explicit paths as the next
+checkpoint.  The unrelated report files remain untouched.

@@ -521,7 +521,7 @@ The complete flux, cell update, speed scan, neighbor and memory-input
 selection, update callback, time guard, and cell initializer also check
 against the regenerated module.  Sweep allocation, buffer release,
 acceptance, complete timestep execution, spacing, and CFL proposal
-also pass.  Full initialization, output, and the complete entry memory
+also pass.  Full run, output, and the complete entry memory
 bound remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
@@ -534,10 +534,11 @@ The complete growth loop now preserves those invariants, the initial-cell
 prefix, entry-held owners, and the remaining allocation budget, and
 terminates on completion or fuel exhaustion.  Complete growCells execution
 now includes post-loop extraction and function entry/return, with exact
-source-result equality and ownership preservation.  Its singleton caller
-now has checked pointer installation, length and field writes, and the
-resulting one-cell representation.  Allocation and call composition
-remain open.  The complete memory proof
+source-result equality and ownership preservation.  Complete initialCells
+execution now composes multiplication, initial-cell evaluation, singleton
+allocation and writes, growth, singleton release, and return.  Its theorem
+covers every supported runtime size under the entry heap, free-list,
+reservation, and page-cap premises.  The complete memory proof
 must bound WASM pages as well as heap allocation addresses.
 Map and append now accept arbitrary loop frames and return the required
 buffer getters.  Allocation and grid writes have a checked arbitrary
@@ -595,8 +596,9 @@ doubling and its completed-prefix extraction branch.
 The allocation-to-heap adapter, root and length installation, map-ready
 frame, and remaining-allocation arithmetic also pass.  The arithmetic
 reserves 212,002,896 bytes after the singleton, including retained map
-buffers.  Loop execution now preserves that reservation.  The singleton
-entry must still establish it.
+buffers.  Loop execution preserves that reservation, and singleton
+construction accounts for its additional 112 bytes.  The run entry
+must establish the complete initial budget.
 Map, append, and extraction now include pointer installation, the length
 store, and their complete data loops.  The map composition returns the
 updated heap and ownership of both grids under the allocation premises.
