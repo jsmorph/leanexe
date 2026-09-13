@@ -11373,3 +11373,18 @@ internal result assignment for arbitrary modules and locals.  Both
 output count regions use it, and the scalar-statement LTG entry records
 the checked consumer.  Release composition, full packer execution,
 entry memory, and exact-byte closure remain open.
+
+## 2026-09-13: Complete output execution
+
+Function 99 now has a complete execution theorem for the emitted ABI.
+The proof composes both maps, both concatenations, the header, all three
+releases, and the returned pointers, with owned words equal to Output.pack.
+An explicit allocation budget preserves the physical page bound and
+reserves at most 30,720,344 bytes for 640,000 cells.
+
+Six modules pass with seventeen standard-only axiom reports and no
+own-module warnings.  Shared allocator, copy, scalar-frame, and release
+theorems supply the execution steps.  The last diagnostics concerned
+entry scratch indexing and the two-result/five-argument ABI reduction.
+Complete solve-entry composition, its 512 MiB bound, and independent
+exact-byte closure remain open.  Both production runs await those proofs.
