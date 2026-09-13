@@ -531,8 +531,11 @@ loops now match shared checked programs.  Arbitrary-stride allocation
 state and execution connect its one-word arrays to the existing heap
 model.  Both density/pressure loops now terminate with exact output
 words and preserve the input grid through shared prefix, field, and
-BlockLoop results.  Allocation-to-loop composition and full output
-packing remain open.
+BlockLoop results.  Both allocator branches now compose target
+installation and loop execution, deriving owned output words while
+preserving the input grid and heap validity.  One-word array release
+also checks.  Map capacity preparation, result transfer, concatenations,
+header construction, and full output packing remain open.
 
 The initializer's fuel/completion guard, array-length comparison,
 extraction input and allocation, return, and old-buffer release now have
