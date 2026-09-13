@@ -139,6 +139,16 @@ above 13 times 2^-52 pass the guard.  All audits use only the accepted
 standard axioms.  Preserving these quantitative conditions over the
 specified rounded run remains open.
 
+[Initial quantitative bounds](../proofs/talos/lean/Project/EulerRiemann/InitialQuantitative.lean)
+prove density at least 1/8, energy at least 1/4, component magnitudes
+at most 4, and energy margin at least 1/100 for every initialized cell.
+The shared finite-packing, addition, subtraction, and multiplication
+proofs now cover exact sums below 2^1023 and exact products below 2^1022.
+The multiplication theorem retains a half-subnormal error term.
+Division and square root still need the corresponding range extension.
+These initial and arithmetic bounds do not yet establish preservation
+through the rounded recurrence.
+
 The [normalization-range counterexample](../proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 shows accepted input states and interfaces with an accepted CFL value
 whose physically admissible update fails the normalization range check.
