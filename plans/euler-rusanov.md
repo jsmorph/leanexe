@@ -810,7 +810,9 @@ Shared register-range lemmas support the checked control and scratch
 preservation through map, append, and growth continuation.
 The map and append adapters now return these invariants from arbitrary
 input frames.  Initializer heap, page-limit, held-owner, and source-prefix
-lemmas check.  Complete growth-loop composition remains open.
+lemmas check.  The complete growth loop now preserves those properties
+and terminates on completion or fuel exhaustion.  Post-loop extraction
+and initializer entry/return composition remain open.
 Complete retry and time-advance execution cover every reachable status
 under their heap, reservation, and fuel premises.
 Full initialization, output, memory, and exact-byte proofs
