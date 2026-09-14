@@ -85,6 +85,8 @@ The user approved this arithmetic design for the executable changes.
 - [x] Close the mesh CFL helper over its exact binary bytes.
 - [x] Prove grid-fold execution with exact output, termination, store preservation, and both directional speed bounds.
 - [x] Close the grid-fold helper over its exact binary bytes.
+- [x] Combine the certified speed with physical side-flux arithmetic and prove source safety and residual bounds.
+- [ ] Compose both revised sides into the scalar interface flux and prove its generated execution and exact-byte behavior.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -135,6 +137,14 @@ passes.  Complete decoding, validation, exact output, and physical-speed
 bounds now hold for the 5,728-byte grid artifact, with standard-axiom audits
 and an accepted independent package check.  Timestep controller integration
 remains open.
+
+The separate revised side computation now returns the certified outward
+speed with positive pressure and finite physical-flux intermediates.
+Its source theorem bounds all four characteristic speeds and each physical
+flux error.  Both the preserved and revised computations use one shared
+arithmetic theorem with physical-state and finite-intermediate premises.
+The preserved side's exact-byte residual theorem still passes.  Compilation
+and execution proofs for the revised interface are next.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

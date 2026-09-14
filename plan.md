@@ -25,7 +25,10 @@ rounding errors.  Its strengthened source and byte theorems pass focused
 checks and the independent package check.  The generated grid fold now
 has terminating exact execution, store preservation, and both directional
 speed bounds.  Its complete exact-byte package and independent check also
-pass.  Complete revised-solver integration remains active.
+pass.  The revised side-flux source now combines certified speed with
+positive pressure, finite physical-flux intermediates, and the existing
+physical-flux error bounds.  Its source proofs pass.  Generated execution
+and complete revised-solver integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
