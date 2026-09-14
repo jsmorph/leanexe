@@ -383,6 +383,17 @@ verification passes with standard axioms.  All 59 body proofs and section
 composition targets passed on their first attempts.  Dependency inspection
 confirms use of the checked byte lookup and instruction-sequence suffixes.
 
+The [scalar face-step source specification](lean/Project/EulerRiemann/OutwardFaceStepSpec.lean)
+composes two revised fluxes with four conservative updates.  Acceptance
+proves physical output-state bounds, positive pressure, characteristic-speed
+bounds for all four face states, and exact-real Courant bounds.  The mesh
+test connects these bounds to exact unit-domain dt*n.  The
+[physical-reference theorem](lean/Project/EulerRiemann/OutwardFaceStepResidual.lean)
+derives the update certificate and both flux-error premises from acceptance.
+It uses the shared [conservative reference bound](lean/Project/ProofKit/F64ConservativeReference.lean).
+These source checks pass with standard axioms.  Generated execution and
+complete solver integration remain open.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.

@@ -904,4 +904,8 @@ after sharing the arithmetic proof.  The revised interface's generated
 execution, termination, store preservation, spectral safety, and
 physical-flux residual theorems now pass.  Its exact-byte package also
 passes complete decoding, validation, behavior transfer, and independent
-verification.  Complete solver integration remains open.
+verification.  The revised scalar face-step source now proves output-state
+admissibility, physical speed bounds for its four face states, exact-real
+Courant bounds, and componentwise physical-reference error bounds.  The
+mesh-ratio bridge gives the corresponding exact dt*n bound.  Generated
+face-step execution and complete solver integration remain open.

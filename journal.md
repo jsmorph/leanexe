@@ -20955,3 +20955,94 @@ diff, and append-only journal.  The explicit 36-path checkpoint is ready
 for non-forced publication as `Prove exact-byte outward Euler interface`.
 Aggregate CLOB and cold-release checks retain their documented deferred
 status.  No production calculation has started for the revised solver.
+
+### 2026-09-14: revised scalar advancement
+
+Published the exact-byte interface checkpoint as
+a410227e2828e1d24aa8558ee2f9c148801b8906, parent
+1b96c30f62a3cca48092d7b21f4a845860fb7cba, tree
+6c7da49ae9e7aa053c9410a463f9233382b532e4.  The 36-path commit
+contains 8,135 inserted and 18 removed lines.  Non-forced push and fetch
+verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent, tree, title,
+index, and tracked worktree.  Unrelated data and paper files remain intact.
+
+Added the scalar advancement source and an unchecked source specification
+under OutwardAdvance and OutwardAdvanceSpec.  Both paths were absent.
+The function consumes two checked flux records, retains the existing four
+conservative-update operations, tests an outward-rounded Courant product,
+and checks the result through the revised side computation.  It returns the
+existing CheckedCell representation.  This implements the approved outward
+arithmetic and post-update admissibility checks without selecting how grid
+traversal computes or stores its face states.  The proof reuses outward
+multiplication, positive-word order, and the accepted side-state theorem.
+Focused source verification follows.
+
+The first advancement-specification attempt failed in 5.0 seconds because
+two opened namespaces supplied positiveBits.  Its downstream unresolved
+terms and sorryAx audit output are failed-elaboration diagnostics, not
+accepted proof evidence.  The source module compiled.  Narrowed the order
+namespace opening to its four used theorem names, split the selected-speed
+conditional in both hypothesis and goal, and made the ordering theorem's
+Courant word explicit.  The corrected target retains the default heartbeat
+budget and the same source computation.
+
+The corrected advancement specification passed in 3.3 seconds, with
+standard axioms only.  It proves complete rejected-or-accepted behavior,
+physical output-state bounds, positive pressure, and the exact-real
+Courant enclosure.  Added the four-component advancement balance proof
+by reusing the accepted update certificates and residual theorem.  It
+passed first try in 1.2 seconds with standard axioms.  The 52-line proof
+adds no arithmetic assumptions or new rounding lemma.
+
+Added the face-step source and its unchecked specification on fresh paths.
+The source computes two certified interfaces from four supplied face
+states and advances the supplied center average.  Its proof will bound
+all four faces' characteristic speeds and their Courant numbers from
+accepted status.  Supplying face states keeps this scalar operation
+independent of their storage or reconstruction traversal.  The complete
+solver remains the eventual generated-execution and exact-byte boundary
+for this composition.
+
+The first face-step check rebuilt the preserved cell execution in 61
+seconds because the new source imported Sweep rather than SweepModel.
+The face-speed proof then reached the default 200,000-heartbeat elaboration
+limit at whnf.  Its membership proof also left the empty-list disjunction.
+The command failed, and its dependent audit output is invalid.  Corrected
+the source import to the module defining State.  Added a narrow accepted
+alpha projection lemma and generalized both computed flux records before
+composing their bounds.  This prevents reduction of the complete scalar
+flux computations during proof unification.  Corrected the list-membership
+simplification.  No resource limit or numerical source operation changed.
+
+The corrected face-step specification passed in 1.2 seconds, with standard
+axioms.  The added advancement alpha projection checked with its module in
+3.4 seconds.  Acceptance now bounds every supplied face's four physical
+characteristic speeds and gives each exact-real characteristic Courant
+number at most one half.  The narrowed source imports only SweepModel.
+
+The remaining scalar error composition needs a general conservative-update
+reference lemma: its certified update residual plus the timestep ratio
+times the two flux-reference errors.  Added that unchecked 35-line lemma
+under the fresh F64ConservativeReference path.  It uses the existing update
+certificate and triangle inequality, with explicit flux-error premises.
+The following Euler application will derive those premises from acceptance.
+
+The shared conservative-reference lemma passed first try in 1.2 seconds,
+with standard axioms.  The new face-step reference theorem also passed
+first try in 1.2 seconds.  It derives both flux-error bounds and the update
+certificate from accepted status, then applies the shared composition.
+Added the mesh-CFL bridge to connect accepted face-step Courant bounds to
+exact unit-domain dt*n using the accepted outward mesh-ratio theorem.
+The aggregate source module now imports both face-step proof modules.
+This checkpoint establishes source properties.  The complete revised
+solver's generated execution and exact-byte proof remain required.
+
+The final mesh-CFL specification passed in 1.3 seconds with standard
+axioms.  All 120 maintained Markdown checks, whitespace checks, and the
+44-case aggregate import inventory pass.  The seven new source/proof
+modules contain no sorry, admit, axiom declaration, or native decision
+shortcut.  Reviewed the source arithmetic, public theorem statements,
+new shared reference composition, documentation changes, and journal.
+The explicit 15-path checkpoint is ready as
+`Prove revised Euler face-step source`.  Generated execution remains open,
+and no production run is claimed for this source composition.

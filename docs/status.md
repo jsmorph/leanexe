@@ -165,6 +165,13 @@ translation, behavior transfer, and independent verification.  All public
 and manifest audits use standard axioms.  Complete revised-solver integration
 remains open.
 
+The revised scalar face-step source composes two certified interface fluxes
+and four conservative updates.  Its checked theorems establish output-state
+admissibility, physical speed bounds for all supplied faces, exact-real
+Courant bounds, and physical-reference error bounds.  The mesh-CFL bridge
+connects acceptance to exact unit-domain dt*n.  Generated execution and
+complete solver integration remain open.
+
 The [complete Riemann solver](../plans/euler-riemann-complete.md) now has
 kernel-checked exact-byte proofs of complete execution, termination,
 output, a 512 MiB memory bound, final-state safety, and the numerical
