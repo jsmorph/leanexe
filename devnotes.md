@@ -11963,3 +11963,21 @@ runtime identities, CFL composition, and registry imports pass.  All new
 public audits use standard axioms.  The maintained inventory contains
 43 complete source cases, 43 generated caches, and 38 exact-byte packages.
 Grid-fold exact-byte closure and revised-solver integration remain open.
+
+## 2026-09-14: Exact-byte outward grid scan
+
+The [grid binary theorems](proofs/talos/lean/Project/EulerOutwardGrid/ArtifactTranslation.lean)
+prove complete decoding, validation, terminating exact output, and full
+store preservation for digest
+d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c.
+Acceptance bounds every represented cell's physical characteristic speeds
+in both directions.  The independent package check passes, and all public
+and manifest audits use standard axioms.
+
+All fifteen decoder-part targets passed on their first attempts.  The
+50 function proofs took 7.1 to 17 seconds per group.  Complete validation
+took 5.8 seconds, and behavior transfer took 2.9 seconds.  Dependency
+inspection confirms reuse of the root, block, loop, suffix, and byte-lookup
+proofs.  This related Euler application supplies further reuse evidence.
+Held-out measurement remains open.  The inventory now contains 39 exact-byte
+packages.  Complete revised-solver integration remains open.

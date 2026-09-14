@@ -84,7 +84,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Close the interface maximum helper over its exact binary bytes.
 - [x] Close the mesh CFL helper over its exact binary bytes.
 - [x] Prove grid-fold execution with exact output, termination, store preservation, and both directional speed bounds.
-- [ ] Close the grid-fold helper over its exact binary bytes.
+- [x] Close the grid-fold helper over its exact binary bytes.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -131,8 +131,10 @@ grid fold now proves terminating exact output and complete store preservation
 for every represented grid.  Acceptance bounds every member's characteristic
 speeds in both directions.  The proof uses the compiler-generated fold-region
 equality and shared fold-prefix and memory-access lemmas.  Its source gate
-passes.  Grid-fold exact-byte closure and timestep controller integration
-remain open.
+passes.  Complete decoding, validation, exact output, and physical-speed
+bounds now hold for the 5,728-byte grid artifact, with standard-axiom audits
+and an accepted independent package check.  Timestep controller integration
+remains open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
