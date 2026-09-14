@@ -484,6 +484,21 @@
         "Project.EulerOutwardGrid.Spec.gridUpper_behavior"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_outward_flux",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardFlux",
+      "entry": "Project.EulerRiemann.OutwardNumerics.fluxCheckedBits",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardFlux",
+      "specTarget": "Project.EulerOutwardFlux.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardFlux.Spec.fluxCheckedBits_exact",
+        "Project.EulerOutwardFlux.Spec.fluxCheckedBits_behavior",
+        "Project.EulerOutwardFlux.Spec.fluxCheckedBits_residual"
+      ],
+      "complete": true
     }
   ]
 }

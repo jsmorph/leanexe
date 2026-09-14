@@ -12016,3 +12016,29 @@ Their acceptance guards remain separate.  Generated execution for the
 revised side/interface remains open, and the inventory remains 43 source
 cases and 39 exact-byte packages.  This checkpoint does not select a grid
 stencil or production limiter budget.
+
+## 2026-09-14: Revised interface execution
+
+The [interface specification](proofs/talos/lean/Project/EulerOutwardFlux/Spec.lean)
+now proves exact generated-WASM output, termination, store preservation,
+rejection-or-safe behavior, and physical-flux residual bounds.  Acceptance
+establishes four finite flux components and a positive finite speed bounding
+both states' four characteristic speeds.  The residual theorem derives its
+premises from acceptance.
+
+LeanExe emits 7,175 bytes with digest
+40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189.
+Its sidecar identifies 142 direct calls and 45 reachable scalar functions.
+Checked FunctionRegion transport reuses all 37 speed functions, the guard
+predicates, and the Rusanov component.  Scalar transport checked in 9.7
+seconds, the side in 27 seconds, the interface in 71 seconds, and the public
+specification in 1.5 seconds.  Source safety checked in 2.0 seconds and
+source residual composition in 1.3 seconds.  All audits use standard axioms.
+
+The source regeneration gate, runtime identities, and aggregate import
+inventory pass.  The first source proof required generalizing both side
+records before branch analysis.  The first public specification required
+a corrected namespace import.  The journal preserves both failures.
+The inventory now has 44 complete source cases and 44 generated caches,
+including 23 floating-point helper cases.  Exact-byte packages remain 39
+while the revised interface's binary proof is in progress.

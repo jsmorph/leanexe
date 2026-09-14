@@ -124,3 +124,4 @@ import Project.EulerReconstruction.Spec
 import Project.EulerOutwardMaximum.Spec
 import Project.EulerOutwardCfl.Spec
 import Project.EulerOutwardGrid.Spec
+import Project.EulerOutwardFlux.Spec

@@ -900,5 +900,7 @@ theorems pass focused checks and the independent package check.
 The revised side-flux source now combines the certified speed with
 positive pressure, finite intermediates, and physical-flux residual bounds.
 Its source checks pass, as does the preserved side's exact-byte theorem
-after sharing the arithmetic proof.  Revised interface execution and
+after sharing the arithmetic proof.  The revised interface's generated
+execution, termination, store preservation, spectral safety, and
+physical-flux residual theorems now pass.  Its exact-byte proof and
 complete solver integration remain open.

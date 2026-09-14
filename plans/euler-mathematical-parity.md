@@ -86,7 +86,9 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove grid-fold execution with exact output, termination, store preservation, and both directional speed bounds.
 - [x] Close the grid-fold helper over its exact binary bytes.
 - [x] Combine the certified speed with physical side-flux arithmetic and prove source safety and residual bounds.
-- [ ] Compose both revised sides into the scalar interface flux and prove its generated execution and exact-byte behavior.
+- [x] Compose both revised sides into the scalar interface flux and prove source safety and residual bounds.
+- [x] Prove the revised side/interface's generated execution, rejection behavior, store preservation, and numerical bounds.
+- [ ] Prove the revised interface's exact-byte behavior.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -143,8 +145,12 @@ speed with positive pressure and finite physical-flux intermediates.
 Its source theorem bounds all four characteristic speeds and each physical
 flux error.  Both the preserved and revised computations use one shared
 arithmetic theorem with physical-state and finite-intermediate premises.
-The preserved side's exact-byte residual theorem still passes.  Compilation
-and execution proofs for the revised interface are next.
+The preserved side's exact-byte residual theorem still passes.  The revised
+interface now has complete source and generated-WASM exact-output, safety,
+and residual proofs.  Function-region transport reuses the speed and
+Rusanov component code, while the new proofs follow both side calls and
+all four component calls.  The eight-input, six-result module has 7,175
+bytes and no reachable memory operations.  Its exact-byte proof is next.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
