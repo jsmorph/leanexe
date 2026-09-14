@@ -26,8 +26,11 @@ nonzero UInt64 decrement fact when the body consumes one unit of fuel.
 
 The Riemann retry and time-advance proofs use this guard at different
 local layouts.  Generated equality also matches its initializer loop.
-The complete Riemann artifact proof remains open.  This entry records
-component reuse and has provisional status.
+The complete Riemann exact-byte gate now passes.  The reconstruction
+compiler output also supplies checked guard and guard-tail equalities
+at fuel local zero and completion local twenty.  Its loop execution
+proof remains open.  This entry records component reuse and has
+provisional status.
 
 The retained order-book matcher uses the shared theorem for running,
 completed, and zero-fuel guards.  Its current compiler output differs

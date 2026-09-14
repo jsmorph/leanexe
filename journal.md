@@ -19494,3 +19494,104 @@ have passing focused checks and no sorry, admit, or axiom declarations.
 The documentation check passed all 120 maintained Markdown files, and the
 tracked whitespace check passed.  The staged check will include every new
 proof file before non-forced publication.
+
+Published 8d3803aa09a2f16c8b6df6fc05b32a9983bbc42c, parent
+0aa868da72bfc500ded20897bc30ca6bc82cb6bd, tree
+8283ecde6acd29caa2b3089fd08e3d6e4b9a5fc3, titled
+Prove positivity-limited Euler reconstruction.  Staged whitespace, SSH
+push, fetch, and exact identity checks passed.  HEAD, FETCH_HEAD, and
+origin agree.  The index and tracked worktree equal the published commit.
+
+Registered euler_reconstruction as incomplete for source-driven model
+generation.  The selected boundary has 13 scalar parameters and ten scalar
+results.  Its fuel parameter is represented by an input UInt64.  The existing
+LTG fuel-completion-guard entry matches the emitted loop prefix.  The
+direct-call and function-region transfer support cover its scalar callees.
+The next tool invocation owns only this case's generated WASM, WAT,
+annotations, recipes, Program, and AnnotationMatches outputs, plus its
+fresh internal staging and ordinary bounded build caches.
+
+The reconstruction artifact preparation passed.  It used fresh internal
+staging tmp/leanexe-talos-plgvGA and installed only the named new case
+outputs.  The generated AnnotationMatches module contains exact guard-region
+and guard-tail equalities for fuel local zero and completion local twenty.
+Added a nineteen-function guard transfer from the checked outward-speed
+module and exact execution statements for four-field subtraction, addition,
+scaling, zero-state construction, and constant-face construction.
+
+The first execution check accepted the generated model, annotation module,
+nineteen-function transfer, and scalar guard theorems.  The state-guard
+wrapper's written argument list omitted mx.  Added that missing stack
+argument.  The source and compiled binary were unchanged.
+
+The corrected guard module passed in 3.6 seconds with standard axioms.
+The first scalar check left local-array index arithmetic after wp_run.
+Added the existing guard_peel simplifier, which supplies natural-number
+index reductions and local-list access lemmas.  No emitted instructions
+or theorem statements changed.
+
+The arithmetic helpers use the existing side_fp_peel variant, which also
+reduces binary64 operations.  Added record-return call composition,
+the four-field finite predicate, admissibility delegation, and exact
+rejected-slope and rejected-face construction proofs.  Their stack lists
+follow the generated ten-word and five-word flattened result layouts.
+
+The second scalar check reduced every instruction and left the empty
+suffix of the consumed input stack.  Added stateValues expansion and list
+simplification at those five return boundaries.  This changes proof terms
+only.  The generated program and exact source statements remain unchanged.
+
+The five scalar proofs passed in 4.6 seconds with standard axiom audits.
+The record module accepted finite-state evaluation and both rejected
+records, but admissibility delegation left a Boolean-word normalization
+equality.  Added explicit cases on the delegated Boolean result and removed
+the unused simplifier arguments reported by Lean.
+
+The corrected record proofs passed in 3.5 seconds.  Raw-word minmod and
+four-field minmod execution passed in 4.9 seconds.  Both use the generated
+instructions.  The second absolute-value call reuses the checked
+direct-call-stack-tail theorem with the first absolute value as its retained
+operand.  All audited declarations use standard axioms.  Added the next
+two composition boundaries for finite-difference slope evaluation and the
+guarded candidate-face calculation, including each short-circuit rejection.
+
+Slope execution passed in 5 seconds and candidate execution in 10 seconds.
+The loop-shape module passed in 3.6 seconds.  Its guard decomposition uses
+the generated AnnotationMatches theorem, and its frame records the ten
+output words, completion flag, fixed center and delta, and changing fuel
+and factor.  The termination measure is zero after completion and fuel+1
+otherwise.  All audits use standard axioms.  The bounded-loop iteration
+and final wrapper proofs remain open.  The source registration stays
+incomplete.
+
+Added the new generated runtime import and four runtime-function equalities.
+Updated the queue, Euler plan, devnotes, and LTG evidence descriptions.
+The LTG notes now distinguish the completed exact-byte speed and original
+Riemann gates from the open reconstruction loop and byte proof.  No fresh
+proof-agent retrieval measurement accompanied these component checks.
+
+Runtime-function equality passed in 2 seconds.  The registry/import check
+reports forty registered cases and thirty-nine completed specifications.
+The documentation check passed all 120 maintained Markdown files.  The
+new proof sources contain no sorry, admit, or axiom declaration, and
+the tracked whitespace check passed.  A malformed JavaScript tool call
+for documentation edits was rejected before execution.  The corrected
+bounded edit updated the three named inventory documents.
+
+The intermediate publication includes the nine new reconstruction proof
+files, the incomplete registration, runtime equalities, three inventory
+documents, queue, Euler plan, two LTG notes, devnotes, and this journal.
+The generated Program and AnnotationMatches files remain unedited.
+All other local data, compiler diagnostics, and submission state remain
+preserved and excluded.  The next proof boundary is one iteration of
+the annotated halving loop.
+
+The delegated VQ graph task completed both 2400-by-1400 PNGs using all
+43 complete-ECDLP rows in its two existing CSVs.  The generator preserves
+recorded times, draws separate branch histories, and uses circle area
+proportional to qubits for Q*sqrt(T).  The latest value is
+1488*sqrt(257008864) = 23854866.048092.  Independent numerical and rendered
+checks passed, and the installed generator reproduced both PNGs byte for
+byte.  The parent reviewed both figures and the generator/documentation
+diff.  The agent changed only its five assigned VQ paths, including an
+append-only devnotes entry, and performed no Lean or Git mutation.
