@@ -216,6 +216,7 @@ stating preservation of a linear profile.  Define face states U +/- D/2.
 - [x] Define and prove the rounded reconstruction source, including branch selection, finite accepted intermediates, and rounding residuals.
 - [x] Prove the generated WASM helper and its complete source-model correspondence.
 - [x] Prove reconstruction decoding, validation, and behavior for the exact frozen bytes.
+- [x] Prove that rounded halving is nonincreasing and every returned factor is finite and in [0, 1/2], including exact-byte execution.
 
 The positivity check belongs at reconstructed faces before flux evaluation.
 Reducing the timestep alone leaves those face states unchanged.  The user
@@ -237,6 +238,13 @@ safety, and accuracy specifications pass the source regeneration gate.
 The exact-byte decoder, validator, execution transfer, and independent package
 check pass for digest 0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
 The production trial budget and stage integration remain open.
+
+The shared halving theorem proves finite, nonnegative, nonincreasing output
+for each factor step, including subnormal rounding and zero.  The source
+iteration proof and selected-candidate certificate imply a returned factor
+in [0, 1/2] for every input and budget.  The complete generated-WASM and
+exact-byte factor theorems pass, along with the strengthened independent
+package check.  These theorems retain the existing numerical computation.
 
 The checked counterexample has conserved states [1,0,0,1/8],
 [1,1,0,5/8], and [1,2,0,17/8].  Each has internal energy 1/8.

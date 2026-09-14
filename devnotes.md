@@ -11981,3 +11981,20 @@ inspection confirms reuse of the root, block, loop, suffix, and byte-lookup
 proofs.  This related Euler application supplies further reuse evidence.
 Held-out measurement remains open.  The inventory now contains 39 exact-byte
 packages.  Complete revised-solver integration remains open.
+
+## 2026-09-14: Reconstruction factor bounds
+
+The [factor proof](proofs/talos/lean/Project/EulerRiemann/ReconstructionFactor.lean)
+now bounds every returned factor in [0, 1/2].  Its shared halving lemma
+handles subnormal rounding and zero, preserves finiteness and sign, and
+proves nonincreasing magnitude.  The iteration proof uses the existing
+selected-candidate certificate.  Rejected and fallback outputs have factor
+zero.  The [exact-byte theorem](proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
+transfers the bound to the unchanged 5,619-byte reconstruction binary.
+
+The first shared proof failed on three ambiguous unfold targets and one
+normalized-expression mismatch.  The corrected proof passed in 1.1 seconds,
+the source iteration in 958 milliseconds, the public specification in
+1.2 seconds, and byte transfer in 2.7 seconds.  Source regeneration and
+the strengthened independent package check pass.  All nine manifest audits
+use standard axioms.  The source and artifact counts remain 43 and 39.

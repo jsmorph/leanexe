@@ -20540,3 +20540,71 @@ Final diff review caught a broad count replacement changing the historical
 Riemann registration ordinal.  Restored that ordinal before committing.
 All maintained Markdown checks and whitespace checks pass.  The reviewed
 checkpoint has 35 paths.  No prior binary or generated source model changed.
+
+### 2026-09-14: reconstruction factor bounds
+
+Published the grid byte checkpoint as
+85b9a71272f09bba2daf68dc443eb64469b050c8, parent
+c40b12935713b8528e94c1e7f98442915c56ff6a, tree
+8f719b4d6418d4e1eeac812f3176f6fd2b35eb9a.  The reviewed 35-path
+commit has 6,759 inserted and 18 removed lines.  Non-forced SSH push
+and fetch verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent,
+tree, and title.  The index and tracked worktree matched the commit.
+
+The existing reconstruction certificate identifies a returned factor as
+an iterated rounded half-product, but does not yet bound its decoded value
+or prove that iteration is nonincreasing.  Strengthening that theorem is
+independent of the pending solver-stencil choice.  Added an unchecked shared
+halving lemma for nonnegative finite words at most one half.  It reuses
+the existing dyadic finite/sign/error theorem.  An integer magnitude bound
+includes subnormal rounding and zero, so the proof does not assume exact
+division by two.  Source iteration and exact-byte reconstruction transfers
+will follow after this focused lemma passes.  The numerical source and its
+frozen binary remain unchanged.
+
+The first shared halving check failed in one second.  Three unfold commands
+resolved Finite ambiguously between the root predicate and IEEE64 predicate.
+The final real bound also normalized its power only in the hypothesis.
+Qualified those three unfold targets and normalized the matching goal.
+These diagnostics do not change the lemma's domain or arithmetic argument.
+
+The corrected shared halving proof passed in 1.1 seconds with standard
+axioms.  Removed one unused norm_num tactic reported by the linter.
+Added an unchecked source iteration theorem, decoded factor bound, and
+complete reconstruction-factor theorem.  The latter covers rejected
+outputs and the zero-slope fallback as well as accepted candidates.
+It reuses the existing selected-iteration certificate and proves a finite
+factor between zero and one half for every source input and trial budget.
+
+The source factor module passed in 958 milliseconds, with only standard
+axioms.  Its iteration theorem proves finiteness, sign preservation, and
+a nonincreasing magnitude.  Decoding gives a factor in [0, 1/2] for every
+reconstruction output.  Added the generated-WASM factor specification,
+explicit exact-byte transfer, and fourth behavior theorem to the source
+registry and existing frozen reconstruction manifest.  No binary or
+numerical source changes are involved.  The strengthened source and
+independent artifact gates will check these additions.
+
+The strengthened reconstruction specification passed in 1.2 seconds and
+its exact-byte transfer in 2.7 seconds, with standard axioms for all four
+public behaviors.  Existing scalar/loop dependencies rebuilt after the
+earlier shared function-region extension.  The source-regeneration gate
+then passed and reproduced the existing compiler model.  The independent
+package command is checking the four registered behaviors for the unchanged
+5,619-byte artifact.  Registry counts remain 43 source cases and 39 packages.
+
+The strengthened independent reconstruction package check completed with
+status zero.  All nine manifest declarations pass standard-axiom audits,
+including the fourth factor behavior.  Updated the root plan, detailed
+mathematical plan, Euler plan, proof inventory, and devnotes with the new
+bound and unchanged binary.  Registry import checks pass for all 43 cases.
+The next scalar integration task will combine the proved outward speed
+with physical side-flux arithmetic, independently of the grid storage
+decision.  Its accepted side outputs must retain the established physical
+flux residual bounds as well as the full characteristic-speed bound.
+
+All 120 maintained Markdown checks and whitespace checks pass.  Review
+removed a stale duplicated floating-point case count from the proof
+inventory's historical table discussion.  Its current count remains in
+the inventory paragraph.  The reviewed factor checkpoint contains twelve
+paths and preserves every numerical source, compiler model, and binary.
