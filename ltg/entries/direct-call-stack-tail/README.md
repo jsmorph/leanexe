@@ -23,6 +23,6 @@ Both shared declarations and the division execution theorem check with the
 standard logical axioms.  The complete speed source-driven and independent
 exact-byte gates pass.  The reconstruction minmod proof also uses the
 theorem, preserving the first absolute value across the second call.
-That generated-WASM component checks with standard axioms.  The complete reconstruction source-driven gate passes.  Its exact-byte
-proof remains open.  The entry remains
+That generated-WASM component checks with standard axioms.  The complete reconstruction source-driven and independent exact-byte
+gates pass.  The entry remains
 provisional, with measured proof-agent retrieval still open.

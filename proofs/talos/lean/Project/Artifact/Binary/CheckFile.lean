@@ -33,6 +33,7 @@ import Project.Euler2DDynamicFlux.ArtifactBytes
 import Project.Euler2DCellStep.ArtifactBytes
 import Project.EulerRiemann.ArtifactBytes
 import Project.EulerOutwardSpeed.ArtifactBytes
+import Project.EulerReconstruction.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -70,6 +71,7 @@ private def artifactBytes : String → Option ByteArray
   | "euler2_d_cell_step" => some Project.Euler2DCellStep.Artifact.artifactBytes
   | "euler_riemann" => some Project.EulerRiemann.Artifact.artifactBytes
   | "euler_outward_speed" => some Project.EulerOutwardSpeed.Artifact.artifactBytes
+  | "euler_reconstruction" => some Project.EulerReconstruction.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do
