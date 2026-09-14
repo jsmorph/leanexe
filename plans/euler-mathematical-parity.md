@@ -79,7 +79,8 @@ The user approved this arithmetic design for the executable changes.
 - [x] Implement adjacent-value operations and prove their exact spacing and ordering for both signs.
 - [x] Prove endpoint enclosure for the required operations, with explicit overflow and invalid-input returns.
 - [x] Prove the side-speed bound under conditions established by acceptance.
-- [ ] Prove that interface and grid maxima retain both directional bounds.
+- [x] Prove that interface and grid maxima retain both directional bounds at source level.
+- [ ] Prove maximum selection and the CFL helpers in generated WASM and the revised solver.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [x] Prove its exact-WASM execution, rejection behavior, and speed theorem.
@@ -103,8 +104,13 @@ cases.  The generated speed module now has complete terminating execution,
 exact rejection behavior, and a public real characteristic-speed bound.
 The focused source-driven and independent exact-byte gates pass.  The
 4,936-byte speed artifact has complete decoding, validation, translation,
-and explicit execution and physical-speed theorems.  Maximum selection
-and timestep controller integration remain open.
+and explicit execution and physical-speed theorems.  Accepted interface
+selection now bounds both states.  The grid fold bounds every cell in both
+directions, including finite rejection behavior and the empty-grid zero
+seed.  Its composition with the mesh test gives dt*n*abs(lambda_i) at most
+one half for every member cell.  The interface helper compiles to 5,260 bytes
+with 106 direct-call annotations.  Maximum/CFL execution proofs and
+timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

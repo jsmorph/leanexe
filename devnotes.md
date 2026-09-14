@@ -11690,3 +11690,20 @@ confirms root, suffix, nested-suffix, and byte-lookup reuse.  LTG records
 this related-artifact result while retaining the open held-out measurement.
 Maximum selection, limiter execution, conservation residuals, and complete
 solver integration remain open.  The earlier binary and datasets are preserved.
+
+## 2026-09-14: Directional maxima and cellwise CFL
+
+The [maximum source proofs](proofs/talos/lean/Project/EulerRiemann/OutwardMaximumGrid.lean)
+establish exact rejection behavior and finite upper bounds on every member
+cell's four characteristic speeds in both directions.  Interface selection
+bounds both states, and a shared nonnegative-word fold theorem handles the
+grid's zero seed.  The [CFL composition](proofs/talos/lean/Project/EulerRiemann/OutwardMaximumCfl.lean)
+gives dt*n*abs(lambda_i) at most one half after both checks accept.
+All focused checks and public axiom audits pass.
+
+The interface helper compiles to 5,260 bytes, SHA-256
+63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba,
+with 106 direct-call annotations.  Its entry calls the proved speed helper
+twice, then checked integer maximum selection.  The WAT agrees with these
+annotations.  Maximum/CFL execution proofs, reconstruction, and stagewise
+controller integration remain open.  No production calculation changed.
