@@ -11635,3 +11635,17 @@ LeanExe produced a 2,557-byte scalar diagnostic with SHA-256
 c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456.
 It has 31 direct-call annotations and no reachable memory operations.
 The exact-WASM proofs, speed maxima, and controller integration remain open.
+
+## 2026-09-14: Outward arithmetic execution
+
+The generated speed module has checked execution proofs for its five
+arithmetic operations, neighboring values, and finite endpoint checks.
+A checked function-index transfer reuses the nineteen existing guard
+functions.  All execution statements preserve the complete store and
+return exact source results.  Their axiom audits report standard axioms.
+
+The compiler's direct-call recipes identify call composition.  Division
+also retains a zero operand below one call argument.  The existing
+CallRemainder theorem proves preservation of that suffix.  Its use
+exposed missing stack-tail guidance in the direct-call recipe.  Complete
+speed composition and the independent exact-byte package remain open.

@@ -18991,3 +18991,104 @@ checks.  The old solver, its proofs, binary, data, and unrelated files
 remain preserved.  The remaining numerical work includes certified speed
 maxima, positivity-limited faces, and integration with the timestep
 controller, followed by complete exact-WASM proofs and new production runs.
+
+Published 387477168b9effaee2766cc65b7a4cd4608f0474, parent
+5aa5a9d2e5cf481b5797b6f039df8dcd7a290239, tree
+e7350fdeda4c2a36fdd7cae3fdcdfdaed965e5a1, titled
+Prove exact mesh CFL bounds with outward arithmetic.  The nine explicitly
+staged files passed whitespace checks, and the documentation check passed
+119 maintained Markdown files.  SSH push/fetch succeeded.  HEAD, FETCH_HEAD,
+and origin identify the same commit, parent, tree, and headline.  The index
+and tracked worktree equal HEAD.  All unrelated state remains.
+
+Registered euler_outward_speed as an incomplete artifact proof case to
+start exact generated execution.  Its source is the checked OutwardSpeed
+entry, and its fresh output namespace is Project.EulerOutwardSpeed.
+The expected public theorem names are declared in the registry, with
+complete false until their checks pass.  The existing Riemann case and
+all previous artifacts remain unchanged.  The repository preparation tool
+will generate the fresh model, exact-region annotation matches, and proof
+recipes.  It owns only its fresh staging directory and the newly named
+case outputs.  Existing function-region transfer can reuse the proved
+admissibility functions after checking their decoded definitions and calls.
+
+Repository preparation succeeded, using fresh staging directory
+tmp/leanexe-talos-amYTY6 and standard serialized runner calls.  The emitted
+speed bytes match the prior diagnostic hash.  The generated model and
+annotation module were installed in the fresh EulerOutwardSpeed directory.
+The direct-call recipes recommend wp_call_tw and, for a single-call
+wrapper, wp_entry_single_call.  Direct-call-only annotations produce no
+separate Lean region-equality declarations in AnnotationMatches.  Exact
+call matching is established when the execution theorem checks against
+the generated program.  Added a function-region transport proof for the
+nineteen existing guard functions, followed by four reused execution
+theorems.  The focused check is next.
+
+The guard transfer passed its first check in 3.5 seconds, after rebuilding
+the affected existing dependencies under the runner.  The nineteen
+functions match after the exact index shift.  Reused positive/finite/absolute
+and complete state-guard execution theorems preserve the store and return
+the exact source results.  All audits report standard axioms.
+
+Added execution proofs for nextUp, nextDown, and the rejected record.
+The first check accepted the rejected record but left typed conditional
+continuations in both adjacent-value proofs after wp_run.  Applied the
+existing guard_peel support, which invokes the proved control-type adapter
+and conditional rule before continuing instruction execution.  The new
+check is next.  This failure identifies a tactic stopping boundary rather
+than an arithmetic or compiler mismatch.
+
+The adjacent-value execution check passed in 3.9 seconds with standard
+axioms for both directions and the rejected record.  Added endpoint
+execution, composing the exact neighbor and finite-check calls identified
+by the compiler annotations.  Both nonfinite rejection paths preserve
+the complete store.  The focused endpoint check is next.
+
+Endpoint execution passed its first check in 2.9 seconds with standard
+axioms, including both finite checks and both rejection paths.  Added
+checked multiplication execution against function 25.  It uses the
+compiler-identified calls, the shared endpoint theorem, and the existing
+instruction tactics for the IEEE64 multiply and bit reinterpretations.
+Its focused check is next.
+
+The first multiplication check reached the final two-result continuation
+and left the named checkedValues list opaque.  Added that existing
+definition to the final simplification so both returned words reduce.
+
+Multiplication execution passed in 2.7 seconds after that correction.
+Addition passed its first check in 2.6 seconds.  The corresponding
+subtraction proof is checking.  These finite binary operations share the
+endpoint execution theorem and existing call/conditional tactics.  Added
+division with an explicit zero-denominator branch and square root with
+its exact unsigned sign check.  Their focused checks follow subtraction.
+
+Subtraction passed in 2.6 seconds.  The division check found a retained
+zero operand below the absolute-value call's argument.  The compiler
+emits it before the call for the subsequent comparison.  Reused
+TerminatesWith.append_args and guard_tail_call to preserve that exact
+operand suffix.  The existing CallRemainder theorem supplies this boundary.
+
+The second division check accepted the stack-tail theorem but failed after
+the automatic continuation reached the comparison before its case split.
+Moved that split before the call-continuation tactic so the existing
+conditional support receives the comparison hypothesis when needed.
+
+Division passed its third check in 3.2 seconds.  Square root passed its
+first check in 2.7 seconds.  Together with addition, subtraction, and
+multiplication, all five checked arithmetic operations now return the
+exact source status/value result in the generated module, with complete
+store preservation.  Every execution audit reports standard axioms.
+
+The compiler supplies the exact function/call layout and direct-call
+recipes.  The recipes identify wp_call_tw, but omit guidance for the
+retained comparison operand.  A catalog search found no entry for
+TerminatesWith.append_args or CallRemainder.  This is a concrete guidance
+gap for the next LTG change.  Existing guarded-call tactics and endpoint
+execution share the control work across the five numerical operations.
+No measured proof-agent retrieval or timing comparison ran.
+
+The checkpoint stages the new generated Program and AnnotationMatches,
+the eight execution-proof modules, case registration, proof inventory,
+devnotes, and journal after whitespace and documentation checks.  The
+case remains explicitly incomplete.  Complete speed execution and its
+exact-byte proof remain open, as do revised solver integration and data.
