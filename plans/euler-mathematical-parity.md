@@ -80,7 +80,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove endpoint enclosure for the required operations, with explicit overflow and invalid-input returns.
 - [x] Prove the side-speed bound under conditions established by acceptance.
 - [ ] Prove that interface and grid maxima retain both directional bounds.
-- [ ] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
+- [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [ ] Prove its exact-WASM execution, rejection behavior, and speed theorem.
 
@@ -95,7 +95,12 @@ rejection-or-accepted source theorem.  Acceptance establishes a finite positive
 bound on all four exact characteristic speeds, using the existing physical
 state guard without an extra quantitative headroom premise.  Its compiler
 diagnostic has 35 reachable scalar functions and 102 direct-call annotations.
-Exact-WASM execution composition, maximum selection, and CFL remain open.
+The checked ratio bounds both decoded dt/spacing and its returned ratio
+times alpha.  A downward spacing bound connects acceptance to exact
+unit-domain spacing and proves dt*n*alpha at most one half.  The ratio
+and mesh helpers have complete rejection behavior and checked boundary
+cases.  Exact-WASM execution composition, maximum selection, and timestep
+controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
