@@ -157,7 +157,8 @@ stating preservation of a linear profile.  Define face states U +/- D/2.
 - [x] Prove source-level admissibility of both returned faces and preservation of the unrestricted reconstruction when its checks pass.
 - [x] State source-level linear-profile preservation with the precise limiter-inactive and representability conditions required by execution.
 - [x] Define and prove the rounded reconstruction source, including branch selection, finite accepted intermediates, and rounding residuals.
-- [ ] Prove the generated WASM helper and its complete source-model correspondence.
+- [x] Prove the generated WASM helper and its complete source-model correspondence.
+- [ ] Prove reconstruction decoding, validation, and behavior for the exact frozen bytes.
 
 The positivity check belongs at reconstructed faces before flux evaluation.
 Reducing the timestep alone leaves those face states unchanged.  The user
@@ -173,8 +174,10 @@ the exact-real minmod slope, and bounds the face-average residual.  The
 linear-profile theorem states exact subtraction, scaling, and face-operation
 premises together with acceptance of the unrestricted candidate.  The
 counterexample rejects factors 1/2 and 1/4 and accepts 1/8.  LeanExe emits a
-5,619-byte diagnostic with a bounded loop and no reachable memory operations.
-Generated execution, the production trial budget, and stage integration remain open.
+5,619-byte registered artifact with a bounded loop and no reachable memory
+operations.  Complete generated execution, termination, exact-word output,
+safety, and accuracy specifications pass the source regeneration gate.
+Exact-byte closure, the production trial budget, and stage integration remain open.
 
 The checked counterexample has conserved states [1,0,0,1/8],
 [1,1,0,5/8], and [1,2,0,17/8].  Each has internal energy 1/8.

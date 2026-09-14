@@ -19595,3 +19595,103 @@ checks passed, and the installed generator reproduced both PNGs byte for
 byte.  The parent reviewed both figures and the generator/documentation
 diff.  The agent changed only its five assigned VQ paths, including an
 append-only devnotes entry, and performed no Lean or Git mutation.
+
+Published the scalar execution checkpoint as
+672aa9928282ec335b6071e5b8225d46a18df4e3, parent
+8d3803aa09a2f16c8b6df6fc05b32a9983bbc42c, tree
+8e2e2bc9a6a3657df3ac00953ef2804137165f96, titled
+Prove reconstruction scalar WASM execution.  The staged whitespace check,
+non-forced SSH push, fetch, and exact identity checks passed.  HEAD,
+FETCH_HEAD, and origin agree, and the index and tracked worktree match.
+
+Resumed the Euler proof after completing the graph request.  Added the
+halving-loop body proof with the existing frame invariant and decreasing
+fuel/completion measure.  It composes the checked candidate call, follows
+both emitted branches, and relates their output to the source recurrence.
+The shared counter-transition theorem supplies the rejected-trial decrease.
+The first focused body check will test these local-frame reductions.
+
+The first body check failed after 14 seconds because the open command
+listed the BlockLoop namespace as a declaration.  Corrected the open
+command.  The fuel-unfolding identity passed with propext and Quot.sound.
+The body theorem has no accepted check yet.
+
+The second body check reached a call-composition type mismatch after
+2.1 seconds.  The simplifier had not established the candidate call's
+argument stack.  Added a goal diagnostic at that boundary before changing
+the proof.  Added the enclosing guard and loop composition in a separate
+module, which remains unchecked until the body theorem passes.
+
+The diagnostic located the failure before the candidate call: annotation
+resolution left Option bind and getD expressions unreduced.  Added the
+standard Option simplification lemmas.  The body statement now names the
+source recurrence directly, so the instruction simplifier cannot rewrite
+the expected result or fuel through unrelated equality hypotheses.  The
+enclosing loop transfers its expected-result equality after that check.
+
+The Option theorem list did not reduce the overloaded monadic operations.
+The 1.8-second check still stopped before call composition.  The next
+diagnostic unfolds the concrete bind, pure, and getD operations at the
+resolved instruction-list boundary.
+
+The concrete monadic reductions succeeded.  The 5.3-second check executed
+the candidate call and both branches, checked the source recurrence, and
+established the resulting frame fields.  The remaining goal was the rejected
+branch's measure: simplification changed the completion getter from Option
+access to bounded list access.  Added the standard getter conversion to
+apply the preserved zero flag at that boundary and removed the diagnostic.
+
+The loop body passed in 5.5 seconds with standard axioms.  The enclosing
+loop check then failed because destructuring the store equality with rfl
+removed the initial-store name.  Replaced that pattern with an explicit
+substitution of the current store.  Added the post-loop return proof in
+its own module, covering an accepted candidate and constant-center fallback.
+
+The enclosing loop check exposed three local issues: the completion getter
+needed the same bounded-access conversion, the false-branch expected value
+needed Boolean normalization, and UInt64.one_ne_zero was an incorrect lemma
+name.  Used the existing getter hypothesis on both sides of simplification,
+normalized the Boolean, and supplied the closed inequality by decide.
+The complete limit-entry draft now composes initialization, the loop, and
+the post-loop output with the source recurrence.
+
+The next loop check accepted the getter and active-branch transfer but
+left the completed-guard conditional unreduced.  Replaced the partial
+simp list with the exact branch-selection theorem and its closed decide
+premise.  The final reconstruct wrapper draft now composes all three
+input checks, the slope, the bounded limiter, and rejection returns.
+
+The guard/loop composition passed in 1.3 seconds with standard axioms.
+The return proof accepted the fallback branch and left ten bounded-list
+getter equalities for an accepted candidate.  Its final simplification
+now uses all ten preserved getter hypotheses.  Added module-parametric
+exact, safety, and accuracy specifications for the eventual exact-byte
+transfer.  Accuracy includes the selected factor, componentwise face
+errors against exact-real minmod, and the face-average residual.
+
+The post-loop return passed in 2.5 seconds and the complete limit function
+in 1.5 seconds, with standard axioms.  The reconstruct wrapper then reached
+Lean's default 200,000-heartbeat limit in its final rejection simplification
+after 8.7 seconds.  This was a theorem-specific heartbeat diagnostic, with
+the earlier composition boundaries accepted.  Set a local 400,000-heartbeat
+budget on that theorem.  The runner retains the three-minute wall limit,
+single thread, 100-percent CPU quota, and existing memory limits.
+
+The reconstruct wrapper passed in 9.8 seconds, and its complete exact,
+safety, and accuracy specifications passed in 1.4 seconds.  All audits
+use standard axioms.  Removed an unused tactic reported in the limit
+entry.  Marked reconstruction complete in the source registry and added
+its aggregate specification import.  The next gate regenerates this
+case and compares its instruction model with the tracked compiler output.
+Exact-byte closure remains open.
+
+The source-driven reconstruction gate passed, rebuilding the complete
+specification in 1.3 seconds after regeneration.  Its three public axioms
+audits contain only propext, Classical.choice, and Quot.sound.  The exact
+5,619-byte compiler artifact and generated model remain unchanged.  Updated
+the current inventories to forty complete cases and nineteen floating-point
+cases, with thirty-five frozen packages.  The loop proof uses the emitted
+guard equality and shared FuelGuard/BlockLoop support.  Retained the direct-call
+LTG evidence and its unmeasured retrieval limitation.  This checkpoint stages
+only the six new reconstruction proof modules, registry/import edits, and
+these reviewed documentation and journal changes.  Binary closure follows.

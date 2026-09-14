@@ -28,9 +28,10 @@ The Riemann retry and time-advance proofs use this guard at different
 local layouts.  Generated equality also matches its initializer loop.
 The complete Riemann exact-byte gate now passes.  The reconstruction
 compiler output also supplies checked guard and guard-tail equalities
-at fuel local zero and completion local twenty.  Its loop execution
-proof remains open.  This entry records component reuse and has
-provisional status.
+at fuel local zero and completion local twenty.  Its complete loop and
+wrapper proofs pass the source-driven gate using this theorem.  This
+entry records checked reuse and retains provisional status pending
+measured proof-agent retrieval.
 
 The retained order-book matcher uses the shared theorem for running,
 completed, and zero-fuel guards.  Its current compiler output differs
