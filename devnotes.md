@@ -12060,3 +12060,24 @@ dependency audit confirms use of the root and nested instruction-sequence
 boundaries and balanced byte lookup.  This is related Euler reuse evidence.
 Held-out measurement remains open.  The inventory now contains 40 exact-byte
 packages.  Complete revised-solver integration remains open.
+
+## 2026-09-14: Revised scalar face-step source
+
+The [face-step source](proofs/talos/lean/Project/EulerRiemann/OutwardFaceStep.lean)
+computes two certified interface fluxes and advances the center average.
+Acceptance proves output-state admissibility, positive pressure, bounds on
+all four faces' characteristic speeds, exact-real Courant bounds, and
+four conservative-update certificates.  The physical-reference error bound
+combines each update residual with its two flux errors.  The mesh-CFL bridge
+gives the corresponding exact dt*n bound on the unit domain.
+
+The advancement proof first required resolving an ambiguous namespace import.
+The first face-speed proof reached its elaboration limit.  Generalizing both
+flux records and using a narrow alpha projection reduced the accepted check
+to 1.2 seconds.  The source import now names SweepModel, which defines State.
+Advancement safety checked in 3.3 seconds, update balance in 1.2 seconds,
+shared reference composition in 1.2 seconds, face-step reference error in
+1.2 seconds, and the final mesh-CFL specification in 1.3 seconds.  All
+audits use standard axioms.  The journal preserves the failed attempts.
+Generated execution and complete solver integration remain open.  This
+checkpoint makes no grid-storage or production-limiter-budget choice.

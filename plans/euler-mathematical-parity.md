@@ -89,6 +89,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Compose both revised sides into the scalar interface flux and prove source safety and residual bounds.
 - [x] Prove the revised side/interface's generated execution, rejection behavior, store preservation, and numerical bounds.
 - [x] Prove the revised interface's exact-byte behavior.
+- [x] Compose the revised interfaces with conservative advancement and prove source safety, physical-reference error bounds, and exact-real face CFL bounds.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -156,6 +157,17 @@ and residual theorems.  Independent verification and all standard-axiom
 audits pass.  The decoder proof reuses checked byte lookup and explicit
 instruction-sequence boundaries.  All body and section targets passed
 on their first attempts.
+
+The scalar face-step source now advances a center average using the two
+certified interfaces between four supplied face states.  Acceptance proves
+physical output-state bounds and positive pressure, bounds all four faces'
+characteristic speeds, and bounds each characteristic Courant number by
+one half.  The mesh-ratio theorem transfers the bound to exact dt*n on the
+unit domain.  The four-component update certificate and physical-reference
+error bound derive their premises from acceptance.  A shared conservative
+reference lemma adds the two flux errors to the update residual.  These
+source proofs pass with standard axioms.  Generated execution and complete
+solver integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
