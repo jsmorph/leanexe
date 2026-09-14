@@ -883,7 +883,9 @@ directional speed bounds.  Its complete exact-byte package and independent
 check pass.  Solver integration remains open.  The rounded
 common-factor reconstruction has complete source and exact-byte safety,
 accuracy, and termination proofs, together with a conditional source-level
-linear-profile theorem.  Its independent package check passes.  Accepted
+linear-profile theorem.  Rounded halving is nonincreasing, and every
+returned factor is finite and in [0, 1/2], including exact-byte execution.
+Its strengthened independent package check passes.  Accepted
 conservative updates, Rusanov component
 arithmetic, and physical side fluxes now have rounding bounds connected to
 the preserved solver bytes.  Complete interface and cell operations now

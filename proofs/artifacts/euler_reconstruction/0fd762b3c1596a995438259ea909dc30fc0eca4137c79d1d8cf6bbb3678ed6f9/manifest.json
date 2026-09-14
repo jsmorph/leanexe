@@ -20,7 +20,8 @@
   "behaviorTheorems": [
     "Project.EulerReconstruction.Spec.reconstruct_exact",
     "Project.EulerReconstruction.Spec.reconstruct_safe",
-    "Project.EulerReconstruction.Spec.reconstruct_accuracy"
+    "Project.EulerReconstruction.Spec.reconstruct_accuracy",
+    "Project.EulerReconstruction.Spec.reconstruct_factor"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

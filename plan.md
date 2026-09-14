@@ -8,7 +8,9 @@ maximum and mesh CFL helpers now have terminating execution and numerical
 behavior proofs.  Both exact-byte packages pass independent verification.
 The positivity-limited
 reconstruction now has source safety, rounding-error, and conditional
-linearity proofs.  Its complete generated-WASM execution,
+linearity proofs.  Rounded halving cannot increase its factor, and every
+returned factor lies in [0, 1/2], including rejection and fallback outputs.
+The factor bound also holds for the exact binary.  Its complete generated-WASM execution,
 termination, safety, and accuracy specifications pass source regeneration
 and independent exact-byte verification.  Accepted updates, Rusanov
 arithmetic, and physical side fluxes now have rounding bounds tied to
