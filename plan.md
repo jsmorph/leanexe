@@ -3,8 +3,9 @@
 The active Euler work is [mathematical parity with the Lanyon article](plans/euler-mathematical-parity.md), authorized on 2026-09-14.  It covers physical speed bounds, wave and flux identities, conservation with rounding residuals, reconstruction, and their complete exact-WASM proofs.
 
 The outward speed has exact-byte proofs.  Interface/grid maxima and the
-cellwise CFL inequality pass source checks.  Their execution proofs,
-positivity-limited reconstruction, conservation residuals, and complete
+cellwise CFL inequality pass source checks.  The positivity-limited
+reconstruction now has source safety, rounding-error, and conditional
+linearity proofs.  Generated execution, conservation residuals, and complete
 revised-solver integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,

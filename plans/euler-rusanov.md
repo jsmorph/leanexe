@@ -875,4 +875,7 @@ completed numerical claim must connect to the complete exact-WASM solver.
 The outward speed's exact-byte package passes.  Source proofs now extend
 its bound to both interface states and every grid cell in both directions,
 then compose it with the checked exact-spacing CFL inequality.  Maximum
-and CFL execution proofs, reconstruction, and solver integration remain open.
+and CFL execution proofs and solver integration remain open.  The rounded
+common-factor reconstruction now has source safety, residual, accuracy,
+and conditional linear-profile proofs.  Its generated execution proof
+is the next reconstruction boundary.
