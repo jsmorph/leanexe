@@ -469,6 +469,20 @@
         "Project.EulerOutwardCfl.Spec.gridRatioChecked_behavior"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_outward_grid",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardMaximum",
+      "entry": "Project.EulerRiemann.OutwardMaximum.gridUpper",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardGrid",
+      "specTarget": "Project.EulerOutwardGrid.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardGrid.Spec.gridUpper_exact",
+        "Project.EulerOutwardGrid.Spec.gridUpper_behavior"
+      ],
+      "complete": true
     }
   ]
 }

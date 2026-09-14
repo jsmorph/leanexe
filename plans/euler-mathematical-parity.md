@@ -83,7 +83,9 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove interface maximum selection and mesh CFL helpers in generated WASM.
 - [x] Close the interface maximum helper over its exact binary bytes.
 - [x] Close the mesh CFL helper over its exact binary bytes.
-- [ ] Prove grid-fold execution and compose maximum/CFL checks with the revised solver stages.
+- [x] Prove grid-fold execution with exact output, termination, store preservation, and both directional speed bounds.
+- [ ] Close the grid-fold helper over its exact binary bytes.
+- [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [x] Prove its exact-WASM execution, rejection behavior, and speed theorem.
@@ -124,8 +126,13 @@ specifications pass focused checks with standard axioms.  The maximum's
 exact-output, and physical-speed theorems.  Its independent package check
 passes with standard axioms.  The 2,557-byte CFL package also has complete
 decoding, validation, translation, exact-output, and numerical behavior
-proofs.  Its independent check passes with standard axioms.  Grid-fold
-execution and timestep controller integration remain open.
+proofs.  Its independent check passes with standard axioms.  The generated
+grid fold now proves terminating exact output and complete store preservation
+for every represented grid.  Acceptance bounds every member's characteristic
+speeds in both directions.  The proof uses the compiler-generated fold-region
+equality and shared fold-prefix and memory-access lemmas.  Its source gate
+passes.  Grid-fold exact-byte closure and timestep controller integration
+remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
