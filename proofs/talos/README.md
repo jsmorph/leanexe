@@ -179,9 +179,18 @@ also succeeds.  The [finite packing proof](lean/Project/ProofKit/F64PackingFinit
 and [local rounding bounds](lean/Project/ProofKit/F64RoundingScale.lean)
 now support [signed endpoint enclosure](lean/Project/ProofKit/F64Enclosure.lean)
 and [addition and subtraction](lean/Project/ProofKit/F64AddEnclosure.lean).
-These statements require finite rounded results.  Executable endpoint
-checks, multiplication, division, square root, and generated execution
-proofs remain open.
+These statements require finite rounded results.  The
+[multiplication](lean/Project/ProofKit/F64MulEnclosure.lean),
+[division](lean/Project/ProofKit/F64DivEnclosure.lean), and
+[square-root](lean/Project/ProofKit/F64SqrtEnclosure.lean) enclosures also pass.
+The [checked arithmetic](lean/Project/ProofKit/F64Outward.lean) has
+[behavior proofs](lean/Project/ProofKit/F64OutwardSpec.lean): each result is
+the rejected record or a status-zero finite directed bound with valid
+inputs.  Its [boundary certificates](lean/Project/ProofKit/F64OutwardBoundary.lean)
+check signed zeros, underflow, invalid arguments, and finite-range exits.
+The checked division helper compiles with direct-call annotations and no
+reachable allocation or memory operations.  Generated execution proofs
+and the corrected Euler speed helper remain open.
 
 ## Workflow Tools
 
