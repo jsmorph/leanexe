@@ -35,6 +35,7 @@ import Project.EulerRiemann.ArtifactBytes
 import Project.EulerOutwardSpeed.ArtifactBytes
 import Project.EulerReconstruction.ArtifactBytes
 import Project.EulerOutwardMaximum.ArtifactBytes
+import Project.EulerOutwardCfl.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -74,6 +75,7 @@ private def artifactBytes : String → Option ByteArray
   | "euler_outward_speed" => some Project.EulerOutwardSpeed.Artifact.artifactBytes
   | "euler_reconstruction" => some Project.EulerReconstruction.Artifact.artifactBytes
   | "euler_outward_maximum" => some Project.EulerOutwardMaximum.Artifact.artifactBytes
+  | "euler_outward_cfl" => some Project.EulerOutwardCfl.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do
