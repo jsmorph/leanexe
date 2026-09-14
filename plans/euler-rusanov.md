@@ -871,3 +871,8 @@ on 2026-09-14.  It covers characteristic-speed bounds, the Rusanov wave and
 flux identities, grid/time conservation with rounding residuals, and
 reconstruction properties with preserved physical admissibility.  Every
 completed numerical claim must connect to the complete exact-WASM solver.
+
+The outward speed's exact-byte package passes.  Source proofs now extend
+its bound to both interface states and every grid cell in both directions,
+then compose it with the checked exact-spacing CFL inequality.  Maximum
+and CFL execution proofs, reconstruction, and solver integration remain open.

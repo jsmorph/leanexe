@@ -19321,3 +19321,72 @@ The staged whitespace check found a trailing blank line in five new proof
 modules that the earlier tracked-file check had not included.  Removed
 those final blank lines and repeated the staged check.  Their declarations
 and proof terms are unchanged.
+
+Published ef36499f22a932d65b0279501f2a9970fae4cd48, parent
+df73e96275fc38583dc685ec04631577d4a5dede, tree
+9ff745388ef6778f334ac2ee82df5c662ae06cac, titled
+Prove exact-byte outward Euler speed.  SSH push and fetch passed.
+HEAD, FETCH_HEAD, and origin match.  The index and tracked worktree
+equal that commit.  The next focused proof extends positive-word maxima
+to include the zero seed used by the grid scan.
+
+The first nonnegative-maximum check reported an ambiguous Finite name,
+an unavailable equality-lemma spelling, and two tactic terms needing
+explicit expected inequalities.  Qualified the finite predicate, used
+the existing integer decision tactic for the zero case, and named the
+intermediate real inequalities.  No numerical operation changed.
+
+The next check needed explicit conversion of a UInt64 comparison to Nat
+and preservation of the list-head variable during equality substitution.
+Used the pinned standard library's UInt64.toNat.inj and le_iff_toNat_le,
+and changed the substitution to eliminate the queried item.  Added the
+new checked maximum-combination source, interface and directional-cell
+helpers, and grid fold, with preliminary acceptance and positivity proofs.
+
+The generic nonnegative maximum and fold bounds passed in 1.6 seconds,
+with accepted logical axioms.  The maximum-combination source passed in
+998 milliseconds.  The preliminary specification required unfolding the
+rejection record in the failed-status branch of the acceptance equivalence.
+Added that explicit unfolding before the next check.
+
+The checked combination specification passed in 1.1 seconds with accepted
+logical axioms.  Added physical bounds for both interface states and both
+cell orientations, then composed the accepted grid fold with the shared
+nonnegative-word maximum theorem.  The new grid statements include exact
+rejection behavior and a finite bound on every cell's directional spectrum.
+These drafts require their focused checks and later generated-WASM proofs.
+
+The interface/cell bound check required explicit unfolding of the two
+source helper names before rewriting the maximum-value equality.  Added
+those unfoldings.  The numerical bound and acceptance premises are unchanged.
+
+Interface and directional-cell bounds passed in 1.3 seconds with accepted
+logical axioms.  The grid proof needed the array-to-list fold equality on
+both sides of its value equation.  Added that simplification, a positive
+grid-speed theorem given a member cell, and composition with the exact mesh
+CFL theorem for every cell, direction, and characteristic index.
+
+The grid proof passed in 1.7 seconds and the characteristic CFL composition
+in 1.1 seconds, with accepted logical axioms.  The interface helper compiled
+under the standard local runner to 5,260 bytes with SHA-256
+63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba.
+Its 106 direct-call annotations describe two speed calls followed by checked
+maximum selection in entry 42.  wasm-tools 1.251.0 rendered the binary.
+Inspection confirms calls 37, 37, and 3, with unsigned word selection and
+explicit rejection.  The binary has 47 functions including runtime helpers.
+This diagnostic supplies compiler evidence, not a new execution theorem.
+
+A documentation edit was rejected before mutation because one context
+mistakenly said "and internal-energy" instead of "an internal-energy".
+Status and diff confirmed no partial edit.  Corrected the contexts and
+updated the parity plan, proof inventory, queue, Euler plan, and devnotes.
+The reviewed checkpoint contains these five documents, this journal, and
+the six new maximum/CFL source modules.  It excludes all preserved data,
+submission state, and compiler diagnostics.  Generated maximum/CFL proofs
+and each reconstructed-face integration obligation remain open.
+
+The documentation check passed all 120 maintained Markdown files.  Reviewed
+the six source modules and the documentation diff.  Public theorem checks
+already passed, and no proof term changed afterward.  Whitespace checks pass.
+The next implementation is the approved common-factor face limiter, with
+an explicit center-state terminal case and checks on both rounded faces.
