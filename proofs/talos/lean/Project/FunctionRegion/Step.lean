@@ -47,6 +47,8 @@ theorem execOne_succ
   | divUI64 => simp only [renameInstruction, execOne.eq_def]
   | remUI64 => simp only [renameInstruction, execOne.eq_def]
   | andI64 => simp only [renameInstruction, execOne.eq_def]
+  | orI64 => simp only [renameInstruction, execOne.eq_def]
+  | shlI64 => simp only [renameInstruction, execOne.eq_def]
   | f64ReinterpretI64 => simp only [renameInstruction, execOne.eq_def]
   | i64ReinterpretF64 => simp only [renameInstruction, execOne.eq_def]
   | f64Add => simp only [renameInstruction, execOne.eq_def]

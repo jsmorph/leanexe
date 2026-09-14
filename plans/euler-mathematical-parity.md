@@ -80,7 +80,9 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove endpoint enclosure for the required operations, with explicit overflow and invalid-input returns.
 - [x] Prove the side-speed bound under conditions established by acceptance.
 - [x] Prove that interface and grid maxima retain both directional bounds at source level.
-- [ ] Prove maximum selection and the CFL helpers in generated WASM and the revised solver.
+- [x] Prove interface maximum selection and mesh CFL helpers in generated WASM.
+- [ ] Close both helpers over their exact binary bytes.
+- [ ] Prove grid-fold execution and compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [x] Prove its exact-WASM execution, rejection behavior, and speed theorem.
@@ -109,8 +111,15 @@ selection now bounds both states.  The grid fold bounds every cell in both
 directions, including finite rejection behavior and the empty-grid zero
 seed.  Its composition with the mesh test gives dt*n*abs(lambda_i) at most
 one half for every member cell.  The interface helper compiles to 5,260 bytes
-with 106 direct-call annotations.  Maximum/CFL execution proofs and
-timestep controller integration remain open.
+with 106 direct-call annotations.  Its generated-WASM specification proves
+exact output, rejection, store preservation, and the positive finite bound
+for both interface states.  The mesh CFL specification covers every raw
+UInt64 grid-size input, including rejection outside 2..800.  Accepted output
+bounds dt*n from above and its product with alpha by one half.  Its
+integer-to-binary64 conversion reuses the existing execution theorem through
+checked function renaming, extended to cover i64 shift and OR.  Both public
+specifications pass focused checks with standard axioms.  Their binary
+closures, grid-fold execution, and timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

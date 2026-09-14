@@ -121,3 +121,5 @@ import Project.Euler2DCellStep.Spec
 import Project.EulerRiemann.Spec
 import Project.EulerOutwardSpeed.Spec
 import Project.EulerReconstruction.Spec
+import Project.EulerOutwardMaximum.Spec
+import Project.EulerOutwardCfl.Spec

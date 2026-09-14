@@ -20171,3 +20171,110 @@ quantitative state premise beyond conditions derived from accepted status.
 The original source solver, compiled bytes, and production datasets remain
 unchanged.  Compiler and LTG inspection for the next maximum/CFL work is
 recorded above without attributing an execution proof to that inspection.
+
+Published 7232a89cdd78cabee258ee11c411015542f1963f,
+Prove physical Euler conservation through WASM, by non-forced SSH
+push/fetch.  Its parent is a97ff314d173ea199d6a8bd88fd3a2004f4d69e4,
+and its tree is 3119559bc20cd23fb6bea055b857c5eecfdb809c.  HEAD,
+FETCH_HEAD, and origin agree.  The index and tracked worktree match HEAD.
+The unchecked outward-maximum execution draft remains separate.
+
+Registered the outward interface maximum as an incomplete source-driven
+case.  Its Program and annotation matches will come from the repository
+preparation driver.  The pinned local Lean 4.34.0-rc2 and wasm-tools paths
+exist.  This host uses the standard repository runner with one thread,
+4 GiB memory high, 6 GiB memory maximum, and 100 percent CPU quota.
+The historical remote and compatibility-preload envelopes do not apply.
+The proof plan reuses the checked outward-speed region through an explicit
+function-index renaming, then checks the maximum and its two calls against
+the newly generated model.
+
+The preparation driver passed and generated the maximum Program and 106
+direct-call annotation matches.  The function-region transport checked in
+8.7 seconds, including its complete 0..36 helper region and exact speed and
+rejection behavior.  Generated annotation matches checked in 1.5 seconds.
+All three execution audits report only standard axioms.  The emitted entry
+is function 42 and calls 37, 37, then 3, matching the preserved diagnostic.
+Added the merge execution proof with explicit accepted and rejected branches
+and the emitted unsigned comparison used by UInt64.max.
+
+The first merge check failed because its source-definition import was
+missing.  Added Project.EulerRiemann.OutwardMaximum explicitly.  The failed
+elaboration's sorryAx report is not proof evidence.  The generated model
+and checked region transfer are unchanged.  Added the public exact and
+behavior specifications, including store preservation and a positive finite
+bound for all four characteristic speeds on both input states.
+
+The corrected-import check reached both accepted merge branches but left
+the UInt64 maximum unreduced.  The generic max_def simplifier lemma did
+not apply to the core UInt64 Max instance.  Added its exact definitional
+if-expression equality, consistent with the existing nonnegative-maximum
+proof.  This check failed with a theorem diagnostic after 67 seconds.
+No timeout or resource-limit failure occurred.  Registered the mesh CFL
+helper separately as incomplete and prepared its unchecked ten-function
+arithmetic-region transfer from compiler annotation indices.
+
+The maximum merge proof now passes with standard axioms.  The public
+composition proved the three calls and numerical postcondition, leaving
+only the named input-list length unreduced at the entry boundary.  Added
+explicit unfolding of that eight-value argument list.  The failed public
+audit remains excluded.  Added unchecked CFL spacing and ratio execution
+drafts against the preserved diagnostic indices, with all finite-positive
+guards and outward arithmetic rejection branches represented.
+
+The maximum public specification passed in 20 seconds, including both
+standard-only audits.  The CFL preparation driver passed and generated
+its exact Program and 31 call matches.  The exported entry is function 15,
+with scalar arguments n, dt, and alpha.  Added its public specification
+over every UInt64 grid-size input.  The source rejects sizes outside 2..800.
+The accepted statement includes positive input and output words, the
+outward ratio bound dt*n, and ratio*alpha at most one half.
+
+CFL arithmetic transport passed in 7.3 seconds and all ratio paths in
+6.2 seconds, with standard-only audits.  The spacing check identified
+two instructions absent from FunctionRegion's portable subset: i64.or
+and i64.shl.  Extended that shared subset, its tactic, the single-step
+semantic equality, and the no-tail-call proof by the two atomic cases.
+The source and target interpreters evaluate each operation identically.
+This enables reuse of the existing exact integer-to-binary64 theorem.
+Also corrected a namespace-open form that had attempted to open Time as
+a declaration.  The failed spacing audit is excluded.  Added public
+axiom reports for the shared region transport theorem.
+
+The shared NoTail, Step, and Exec targets passed in 6.6 seconds,
+1.2 seconds, and 518 milliseconds.  Both public transport audits report
+only standard axioms.  Rebuilt affected execution dependencies through
+the standard runner, then the corrected spacing target passed in
+2.7 seconds.  Its pure integer function-region certificate uses only
+propext.  The complete CFL specification passed in 2.9 seconds, including
+both standard-only public audits.  Marked both new source cases complete
+and added their aggregate and runtime-cache imports.  Registry import
+membership and focused regeneration are the next checks.  The two
+generated binaries retain their diagnostic digests: maximum
+63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba
+at 5,260 bytes, and CFL
+c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456
+at 2,557 bytes.  Their exact-byte packages remain open.
+
+Both tools/talos-proof.js check euler_outward_maximum and
+tools/talos-proof.js check euler_outward_cfl passed.  Each regenerated
+its exact compiler artifact and compared the generated instruction model
+before checking the public specification.  Maximum's rebuilt Spec took
+2.1 seconds.  The CFL gate reused its accepted Spec.  Every public audit
+uses only standard axioms.  The shared Runtime.Checks target passed in
+1.6 seconds, including all eight new runtime identities.  Registry import
+validation confirms 42 registrations, all complete.  The 120 maintained
+Markdown checks and whitespace review pass.  The new proof sources contain
+no sorry, admit, or axiom declarations.
+
+The reviewed source-execution checkpoint contains the eleven new maximum
+and CFL modules, four FunctionRegion edits, the source registry, aggregate
+and runtime imports, and eight documentation/journal paths: 26 paths in
+total.  The handwritten helper proofs total 367 lines and compose shared
+execution and numerical theorems.  The compiler-generated Program and
+AnnotationMatches files remain unedited.  The next exact-byte proofs will
+use the existing checked parser-part and byte-lookup method, with explicit
+sequence boundaries.  Reviewing the retained LTG entry supplies related
+Euler evidence, not a held-out measurement.  Read-only discovery also
+encountered a nonmatching test/docs glob and inaccessible system-owned
+temporary directories.  Neither required or caused a workspace mutation.
