@@ -82,7 +82,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove that interface and grid maxima retain both directional bounds at source level.
 - [x] Prove interface maximum selection and mesh CFL helpers in generated WASM.
 - [x] Close the interface maximum helper over its exact binary bytes.
-- [ ] Close the mesh CFL helper over its exact binary bytes.
+- [x] Close the mesh CFL helper over its exact binary bytes.
 - [ ] Prove grid-fold execution and compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -122,8 +122,10 @@ checked function renaming, extended to cover i64 shift and OR.  Both public
 specifications pass focused checks with standard axioms.  The maximum's
 5,260-byte package now has complete decoding, validation, translation,
 exact-output, and physical-speed theorems.  Its independent package check
-passes with standard axioms.  The CFL binary closure, grid-fold execution,
-and timestep controller integration remain open.
+passes with standard axioms.  The 2,557-byte CFL package also has complete
+decoding, validation, translation, exact-output, and numerical behavior
+proofs.  Its independent check passes with standard axioms.  Grid-fold
+execution and timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

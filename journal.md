@@ -20338,3 +20338,68 @@ the maximum binary boundary complete.  The CFL byte proof, grid-fold
 execution, and revised-solver integration remain open.  The next checkpoint
 contains only the new maximum package and proof modules, registry and
 embedded-byte-checker additions, and these documentation records.
+
+### 2026-09-14: CFL exact-byte decoding
+
+Published maximum checkpoint 701e87d148312ccd5a85a1330c7b7cb90396dd53,
+parent 633c8a5c6f9c2d7d819ffc4229d15ae28963cb4b, tree
+bd8a7d529493c90b691df8af91f7ad701cbd9382.  The explicit 34-path
+checkpoint contains 6,320 inserted and 21 removed lines.  Maintained
+Markdown checks passed for 120 files.  Whitespace checks passed, and
+the new proof sources contain no sorry, admit, axiom declarations, or
+native decisions.  Non-forced SSH push and fetch verified HEAD,
+FETCH_HEAD, origin/talosfp-euler, the parent, tree, and title.  Both
+index and tracked worktree matched that commit.
+
+Migrated only euler_outward_cfl into a kernel-mode binary package.
+The driver passed in 0.69 seconds.  Its preserved digest is
+c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456
+at 2,557 bytes.  Normative section and nested-code offset extraction
+passed in 0.48 and 0.49 seconds.  Their fresh CSV files remain under
+tmp/euler-outward-cfl-{sections,nested}-20260914.csv.
+
+Added eleven unchecked decoder-part modules, using the same 128-byte
+sequence boundaries and checked vector/section composition as maximum.
+Replaced this new package's default whole-decoder computation with the
+parts proof, and added explicit exact-output and CFL-behavior wrappers.
+The existing source, generated instruction model, and earlier packages
+remain unchanged.  Focused checks will precede independent acceptance.
+
+All CFL decoder and behavior-transfer targets passed on their first
+attempt.  The three code groups took 7.0, 11, and 12 seconds, and all
+20 function audits use only propext.  Type and export vectors took
+3.9 and 9.4 seconds, code vector 1.4 seconds, and metadata 2.4 seconds.
+Section-state, code-section, remaining-section, and header composition
+each took 1.2 to 1.4 seconds.  Validation passed in 5.2 seconds and
+the two explicit byte-facing theorems in 1.6 seconds.  All public
+audits report only standard axioms.  The accepted proof uses the same
+shared parser statements and source/generated-WASM specifications.
+No new local arithmetic or decoder semantics were needed.  Independent
+package verification follows this focused evidence.
+
+The independent CFL package command completed with status zero, checking
+embedded bytes, artifact and behavioral theorems, and all seven manifest
+declarations.  Every manifest audit uses standard axioms.  Updated the
+maintained inventory to 38 exact-artifact packages and marked both
+maximum/CFL byte boundaries complete.  This checkpoint contains only
+the new CFL package and nineteen proof modules, registry/checker additions,
+and the eight documentation records.
+
+Reviewed the existing complete-solver scan, GridAt representation, and
+the retained array-fold-prefix, fixed-array-fold-structure, and
+fixed-array-fold-body LTG guidance.  Generic fold-prefix algebra supports
+arbitrary element and accumulator types.  The direct fixed-array setup
+recipe requires one-word input and a one-word accumulator, while the
+Euler scan represents seven-word Cell values and a two-word Checked
+accumulator.  Compiler annotations and generated instruction equality
+will determine the reusable execution boundary.  One read-only source
+search guessed a nonexistent FixedArrayFoldStructure filename.  The
+guidance identifies the API as FixedArrayFold; no file mutation resulted.
+
+All 120 maintained Markdown checks, whitespace checks, and the new proof
+source scan pass.  Diff review found an obsolete inventory sentence in
+the fixed-step historical paragraph that a broad count replacement had
+also changed.  Removed that duplicated sentence.  The plan's opening
+inventory remains the current authority: 42 complete source cases and
+38 exact-artifact packages.  Only this documentation correction changes
+the initially staged 31-path checkpoint.

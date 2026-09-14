@@ -11921,3 +11921,26 @@ use of retained LTG guidance.  Held-out measurement remains open.
 There are now 37 exact-byte packages.  The mesh CFL byte proof, grid-fold
 execution, and revised-solver integration remain open.  The earlier
 complete solver and its 192/800 data remain preserved.
+
+## 2026-09-14: Exact-byte mesh CFL
+
+The [CFL binary theorems](proofs/talos/lean/Project/EulerOutwardCfl/ArtifactTranslation.lean)
+now cover digest
+c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456
+at 2,557 bytes.  Every raw grid-size, timestep, and speed input has
+terminating exact output and complete store preservation.  Acceptance
+implies size 2..800, positive finite inputs and ratio, dt*n at most the
+ratio, and ratio*alpha at most one half.  Complete decoding, validation,
+translation, and the independent package check pass with standard axioms.
+
+All decoder parts and explicit behavior transfers passed on the first
+attempt.  The twenty function proofs took 7.0, 11, and 12 seconds in
+three groups.  Validation took 5.2 seconds, and the final transfer took
+1.6 seconds.  The source and compiler-generated instruction model remain
+unchanged.  The artifact inventory now contains 38 packages.
+
+Grid-fold execution and revised-solver integration remain open.  The
+existing generic fold-prefix lemmas apply to the seven-word Cell and
+two-word accumulator.  The retained fixed-array setup recipe explicitly
+requires one-word elements and one accumulator.  Its direct setup/body
+theorems therefore require a different checked shape for this scan.
