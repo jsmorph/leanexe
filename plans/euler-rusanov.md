@@ -884,5 +884,8 @@ arithmetic, and physical side fluxes now have rounding bounds connected to
 the preserved solver bytes.  Complete interface and cell operations now
 have exact-byte error and balance theorems.  Recomputed neighboring row
 fluxes agree, and accepted row outputs satisfy the accumulated balance
-and residual bound.  Two-dimensional grid/time instantiation and
+and residual bound.  Both directional sweeps and the complete accepted
+timestep trace now have balance and summed residual bounds attached to
+the complete exact-byte solver theorem.  The independent package check
+passes.  Area/duration-weighted physical boundary-flux comparison and
 revised-solver integration remain open.

@@ -130,7 +130,7 @@ Wminus = (dU-dF/a)/2 and Wplus = (dU+dF/a)/2, with speeds -a and a.
 - [x] Compose a scalar Rusanov arithmetic bound with explicit errors in its two side fluxes.
 - [x] Instantiate the physical reference bound for all four components of the accepted interface call and connect it to exact bytes.
 - [x] Derive all four conservative-update certificates and balance bounds from accepted complete-cell execution, including exact bytes.
-- [ ] Establish stated residual bounds throughout the complete accepted solver trace.
+- [x] Establish conservative-update residual bounds throughout the complete accepted solver trace.
 
 The mathematical wave representation explains the flux that the solver
 computes.  The execution theorem continues to follow that flux computation.
@@ -152,11 +152,22 @@ audits.
 - [x] Prove generic sweep telescoping and time accumulation with explicit residuals.
 - [x] Instantiate a row of rounded updates with one shared flux sequence and bound its accumulated update residual under accepted status.
 - [x] Prove equality of neighboring recomputed row fluxes and derive balance for accepted complete Euler-cell outputs.
-- [ ] Instantiate cancellation of shared internal face fluxes in each solver sweep.
-- [ ] Express total mass, both momenta, and energy changes as boundary fluxes plus the sum of local rounding residuals.
-- [ ] Compose x and y sweeps using their respective intermediate states.
-- [ ] Compose accepted timesteps with their computed durations and boundary states.
-- [ ] Derive the final-array balance from the complete solver trace and attach it to the exact binary theorem.
+- [x] Instantiate cancellation of shared internal face fluxes in each solver sweep.
+- [x] Express total mass, both momenta, and energy changes as computed boundary fluxes plus the sum of local rounding residuals.
+- [x] Compose x and y sweeps using their respective intermediate states.
+- [x] Compose accepted timesteps with their computed ratios and boundary states.
+- [x] Derive the final-grid balance from the complete solver trace and attach it to the exact binary theorem.
+- [ ] Express the area-weighted balance using duration-weighted physical boundary fluxes, including spacing, ratio, and boundary-flux rounding errors.
+
+The source line, grid, two-sweep, and accepted-trace theorems pass focused
+checks.  The complete solve_balance and artifact_solve_balance theorems
+attach the result to the preserved 21,767-byte solver with its original
+termination, memory, exact-output, and accepted-state guarantees.  The
+independent package check passes.  The balance covers each physical
+conserved component in the final internal grid.  The serialized output
+continues to contain density and pressure.  The present boundary term uses
+the decoded computed ratio and flux words.  Its conversion to exact cell
+area and duration-weighted physical flux remains a separate obligation.
 
 Open boundaries contribute physical flux.  Rejected trials preserve the
 last accepted grid, and their discarded values contribute no accepted-step

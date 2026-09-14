@@ -408,7 +408,8 @@
       "behaviorTheorems": [
         "Project.EulerRiemann.Spec.solve_exact",
         "Project.EulerRiemann.Spec.solve_success",
-        "Project.EulerRiemann.Spec.solve_hyperbolic"
+        "Project.EulerRiemann.Spec.solve_hyperbolic",
+        "Project.EulerRiemann.Spec.solve_balance"
       ],
       "complete": true
     },

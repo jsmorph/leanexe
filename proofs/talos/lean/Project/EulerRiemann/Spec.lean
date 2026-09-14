@@ -2,6 +2,7 @@ import Project.EulerRiemann.SolveInitial
 import Project.EulerRiemann.ControlSafe
 import Project.EulerRiemann.ControlTrace
 import Project.EulerRiemann.Hyperbolicity
+import Project.EulerRiemann.NumericsTraceBalance
 
 namespace Project.EulerRiemann.Spec
 open Wasm
@@ -66,9 +67,23 @@ theorem solve_hyperbolic : HyperbolicSpecFor module := by
   exact ⟨hResult, hSafe, hSuccess, Hyperbolicity.cells_hyperbolic _ hSafe,
     Hyperbolicity.initial_trace_hyperbolic n⟩
 
+noncomputable def BalanceSpecFor (m : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (n : Nat) (hn : 2 ≤ n ∧ n ≤ 800),
+    TerminatesWith env m 103 (m.initialStore (α := Unit)) [.i64 (UInt64.ofNat n)]
+      (fun final values => ResultAt n final values ∧
+        Control.CellsSafe (Control.run n).grid ∧ Successful n ∧
+        Conservation.RunBalance n (by omega))
+
+theorem solve_balance : BalanceSpecFor module := by
+  intro env n hn
+  refine TerminatesWith.mono (solve_success env n hn) ?_
+  rintro final values ⟨hResult, hSafe, hSuccess⟩
+  exact ⟨hResult, hSafe, hSuccess, Conservation.run_balance n (by omega) hn⟩
+
 #print axioms source_success
 #print axioms solve_exact
 #print axioms solve_success
 #print axioms solve_hyperbolic
+#print axioms solve_balance
 
 end Project.EulerRiemann.Spec
