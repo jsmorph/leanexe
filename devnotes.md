@@ -11586,3 +11586,9 @@ form.  Propositional equality removes one conditional, reducing the
 diagnostic artifact from 1,110 to 1,099 bytes.  Its annotations contain
 no region recipe.  Both diagnostic artifacts remain preserved.  The
 solver integration will require exact generated execution proofs.
+
+Finite integer packing and local half-step rounding bounds now support a
+signed endpoint enclosure theorem.  Addition and subtraction specialize
+that theorem without a headroom bound, assuming finite inputs and rounded
+results.  The focused checks pass with standard logical axioms.  Executable
+finite-endpoint checks and the remaining arithmetic operations are next.

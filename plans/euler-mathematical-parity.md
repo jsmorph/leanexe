@@ -84,6 +84,12 @@ The user approved this arithmetic design for the executable changes.
 - [ ] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [ ] Prove its exact-WASM execution, rejection behavior, and speed theorem.
 
+Finite integer packing, local half-step error, and signed neighboring-value
+enclosure now pass focused checks.  Addition and subtraction have enclosure
+theorems under finite-input and finite-result premises.  Multiplication,
+division, square root, and executable rejection of nonfinite endpoints
+remain open at this boundary.
+
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
 
