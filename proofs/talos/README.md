@@ -218,6 +218,21 @@ and the 192/800 meshes.  The compiled diagnostic is 2,557 bytes with
 31 direct-call annotations and 14 reachable scalar functions.  Controller
 integration and exact-WASM composition remain open.
 
+The incomplete `euler_outward_speed` case now has a generated
+[instruction model](lean/Project/EulerOutwardSpeed/Program.lean).
+[Guard transport](lean/Project/EulerOutwardSpeed/Guard.lean) reuses the
+nineteen existing admissibility functions after checking their definitions
+and renamed calls.  Execution proofs cover
+[adjacent values](lean/Project/EulerOutwardSpeed/Adjacent.lean),
+[endpoint checks](lean/Project/EulerOutwardSpeed/Endpoint.lean),
+[addition](lean/Project/EulerOutwardSpeed/Addition.lean),
+[subtraction](lean/Project/EulerOutwardSpeed/Subtraction.lean),
+[multiplication](lean/Project/EulerOutwardSpeed/Multiplication.lean),
+[division](lean/Project/EulerOutwardSpeed/Division.lean), and
+[square root](lean/Project/EulerOutwardSpeed/SquareRoot.lean).
+Each returns the exact source result and preserves the complete store.
+The complete speed execution and independent exact-byte package remain open.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
