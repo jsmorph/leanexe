@@ -838,6 +838,8 @@ def func1Def : Wasm.Function :=
     plan.recipes[0].direct.tactic === "wp_entry_single_call" &&
     plan.recipes[0].direct.invocation.includes("func1Def") &&
     plan.recipes[0].supporting.some((item) => item.declaration === "Wasm.wp_call_tw") &&
+    plan.recipes[0].supporting.some((item) =>
+      item.declaration === "Wasm.TerminatesWith.append_args") &&
     JSON.stringify(plan.recipes[0].guidance) ===
       JSON.stringify(["strategy.calls", "strategy.frames"]),
   "direct-call annotation did not select its direct and indirect proof recipe");

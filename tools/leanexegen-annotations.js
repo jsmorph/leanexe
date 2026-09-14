@@ -2442,6 +2442,10 @@ function directCallRecipe(match, selectedSections = [], tacticEligible = false) 
         purpose: "apply the callee theorem to the exact direct call",
       },
       {
+        declaration: "Wasm.TerminatesWith.append_args",
+        purpose: "preserve an identified operand-stack suffix below the callee arguments after checking the internal function lookup and argument count",
+      },
+      {
         declaration: "Project.ProofKit.wp_entry",
         purpose: "establish the entry frame before the call",
       },
