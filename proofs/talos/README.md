@@ -360,6 +360,15 @@ reconstruction behavior and its exact-byte transfer establish this bound
 for every raw input and runtime trial budget.  The strengthened source
 and independent package checks pass with standard axioms.
 
+The [revised side-flux source specification](lean/Project/EulerRiemann/OutwardSideSpec.lean)
+proves complete rejection-or-accepted behavior, finite positive speed,
+positive pressure, finite physical-flux intermediates, and a bound on all
+four characteristic speeds.  Its [physical-flux residual theorem](lean/Project/EulerRiemann/OutwardSideResidual.lean)
+reuses the preserved side's arithmetic error proof with explicit physical
+state and finiteness premises.  The source checks and preserved side's
+exact-byte residual check pass with standard axioms.  The revised side
+has no generated execution or exact-byte theorem yet.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.

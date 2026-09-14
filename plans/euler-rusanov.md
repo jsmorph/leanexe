@@ -897,4 +897,8 @@ the complete exact-byte solver theorem.  The physical balance uses exact
 cell area and duration-weighted boundary fluxes, with bounded update,
 flux, spacing, and ratio errors.  The strengthened source and exact-byte
 theorems pass focused checks and the independent package check.
-Revised-solver integration remains open.
+The revised side-flux source now combines the certified speed with
+positive pressure, finite intermediates, and physical-flux residual bounds.
+Its source checks pass, as does the preserved side's exact-byte theorem
+after sharing the arithmetic proof.  Revised interface execution and
+complete solver integration remain open.
