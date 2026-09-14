@@ -411,6 +411,20 @@
         "Project.EulerRiemann.Spec.solve_hyperbolic"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_outward_speed",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardSpeed",
+      "entry": "Project.EulerRiemann.OutwardSpeed.speedUpper",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardSpeed",
+      "specTarget": "Project.EulerOutwardSpeed.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardSpeed.Spec.speedUpper_exact",
+        "Project.EulerOutwardSpeed.Spec.speedUpper_behavior"
+      ],
+      "complete": false
     }
   ]
 }
