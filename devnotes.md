@@ -11547,3 +11547,26 @@ independent package check.  The manifest registers solve_hyperbolic, and
 artifact_solve_hyperbolic connects the theorem to the binary used for both
 production datasets.  All eight manifest audits contain only the accepted
 logical axioms.
+
+## 2026-09-14: Euler mathematical parity plan
+
+The user authorized review, detailed planning, and implementation of
+[mathematical parity](plans/euler-mathematical-parity.md) for the current
+2D ideal-gas solver.  GitHub main for the reviewed Lanyon source remains
+a736aa5f8b17efd225c4692404e2442361d06729.  The plan distinguishes real
+identities, rounded numerical statements, and complete exact-WASM claims.
+It includes characteristic speeds, wave and flux identities, grid/time
+conservation, and reconstruction with positive face states.  The three
+stale complete-solver checkboxes in the main roadmap are now checked.
+
+At density 1, zero momenta, and total energy 1, Lean kernel evaluation
+checks accepted status and speed word 3fe7f254dab9cc3a.  Its decoded
+value is below sqrt(14/25), the exact sound speed.  The real sharp speed
+bound, left eigenvectors, wave/flux identities, generic sweep/time
+telescoping, and minmod properties also pass.  A second checked example
+shows minmod reconstructing pressure -1/10 from three admissible cells.
+The exact-byte function-22 counterexample also passes, composing the
+existing execution and translation proofs.  The
+[proof inventory](proofs/talos/README.md) records each boundary.
+Outward arithmetic and a common-factor positivity limiter await design
+review.  Standard local runner limits remain in force.

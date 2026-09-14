@@ -145,6 +145,31 @@ The focused independent artifact check passed on 2026-09-14 with
 `solve_hyperbolic` registered.  All eight manifest theorem audits contain
 only `propext`, `Classical.choice`, and `Quot.sound`.
 
+## Euler mathematical parity in progress
+
+The [mathematical parity plan](../../plans/euler-mathematical-parity.md)
+tracks the published 2D wave, flux, speed, and reconstruction statements
+through real mathematics, rounding, and exact WASM.  The following
+foundations passed focused Lean checks on 2026-09-14 with standard axiom
+audits.  The production binary and both datasets remain unchanged.
+
+| Proof | Checked statement |
+|-------|-------------------|
+| [Characteristic speeds](lean/Project/Euler2DConservative/RealCharacteristicSpeed.lean) | A bound on all four directional eigenvalues is equivalent to a bound on abs(un)+c. |
+| [Left eigenvectors](lean/Project/Euler2DConservative/RealLeftEigenvectors.lean) | The inverse right-eigenvector matrix satisfies the left eigenrelation and reconstructs every characteristic decomposition. |
+| [Wave algebra](lean/Project/ProofKit/RealLaxFriedrichs.lean) and [Euler flux identities](lean/Project/EulerRiemann/RealWaves.lean) | State and flux jumps, constant-state consistency, fluctuation identities, and direction reversal for the real reference flux. |
+| [Finite-volume balance](lean/Project/ProofKit/RealFiniteVolumeBalance.lean) | Generic sweep and time telescoping, including explicit residual sums.  Instantiation on the solver trace remains open. |
+| [Minmod reconstruction](lean/Project/ProofKit/RealMinmod.lean) | Constants, componentwise linear profiles, reflection, cell averages, and component bounds over the reals. |
+| [Reconstruction counterexample](lean/Project/EulerRiemann/ReconstructionCounterexample.lean) | Three admissible cells produce a minmod face with pressure -1/10. |
+| [Speed counterexample](lean/Project/EulerRiemann/SpeedCounterexample.lean) | The existing helper accepts rho=E=1 and zero momenta, then computes a speed below the exact sound speed. |
+| [Exact-WASM counterexample](lean/Project/EulerRiemann/ArtifactSpeedCounterexample.lean) | Decoding and validation of the frozen binary lead to the same accepted underestimate in function 22, with complete store preservation. |
+
+The interface error estimate requires quantitative state bounds and an
+internal-energy margin beyond accepted-state safety.  The new plan records
+those premises.  Corrected numerical speed bounds, rounded reconstruction,
+and complete grid/time balance remain open.  Changes to the numerical
+method require review before integration.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.

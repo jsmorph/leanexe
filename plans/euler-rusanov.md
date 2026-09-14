@@ -863,3 +863,11 @@ eigenbasis, and rotation to every unit direction now check.  Solver-facing
 proofs apply them to accepted states and intermediate and terminal grids.
 The independent exact-binary check passed with standard-axiom audits.  Rounded numerical
 signal-speed bounds remain subsequent work.
+
+## Mathematical parity extension
+
+The user authorized the [complete mathematical parity plan](euler-mathematical-parity.md)
+on 2026-09-14.  It covers characteristic-speed bounds, the Rusanov wave and
+flux identities, grid/time conservation with rounding residuals, and
+reconstruction properties with preserved physical admissibility.  Every
+completed numerical claim must connect to the complete exact-WASM solver.
