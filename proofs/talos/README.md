@@ -166,8 +166,9 @@ audits.  The production binary and both datasets remain unchanged.
 
 The interface error estimate requires quantitative state bounds and an
 internal-energy margin beyond accepted-state safety.  The new plan records
-those premises.  Corrected interface/grid speed bounds, rounded reconstruction,
-and complete grid/time balance remain open.  The user approved the
+those premises.  Corrected interface/grid speed bounds now pass source
+checks.  Their execution proofs, rounded reconstruction, and complete
+grid/time balance remain open.  The user approved the
 outward-arithmetic and positivity-limiter design for implementation.
 
 The [adjacent-value implementation](lean/Project/ProofKit/F64Adjacent.lean),
@@ -202,8 +203,9 @@ and shared [accepted-result projections](lean/Project/ProofKit/F64OutwardAccepte
 The [boundary certificates](lean/Project/EulerRiemann/OutwardSpeedBoundary.lean)
 check acceptance of the previous counterexample state and rejection of
 invalid states.  The helper compiles to a 4,936-byte diagnostic with 35
-reachable scalar functions and 102 direct-call annotations.  Exact-WASM
-execution proofs and interface/grid integration remain open.
+reachable scalar functions and 102 direct-call annotations.  Its exact-byte
+execution proof is complete, as recorded below.  Interface/grid integration
+remains open.
 
 The [outward CFL check](lean/Project/EulerRiemann/OutwardCfl.lean) and its
 [source proof](lean/Project/EulerRiemann/OutwardCflSpec.lean) establish an
@@ -245,7 +247,18 @@ passes independent verification.  The
 [exact-byte transfer](lean/Project/EulerOutwardSpeed/ArtifactTranslation.lean)
 establishes both complete execution and the characteristic-speed bound
 after decoding and validating those bytes.  The original solver and data
-remain preserved while maximum selection and controller integration continue.
+remain preserved while maximum execution and controller integration continue.
+
+The [maximum helpers](lean/Project/EulerRiemann/OutwardMaximum.lean) have
+checked [interface and directional-cell bounds](lean/Project/EulerRiemann/OutwardMaximumBounds.lean)
+and [grid-fold behavior](lean/Project/EulerRiemann/OutwardMaximumGrid.lean).
+Acceptance gives a finite bound on every cell's characteristic speeds in
+both directions.  A shared [nonnegative-word maximum proof](lean/Project/ProofKit/F64NonnegativeMaximum.lean)
+accounts for the zero seed.  The [CFL composition](lean/Project/EulerRiemann/OutwardMaximumCfl.lean)
+establishes dt*n*abs(lambda_i) at most one half for every member cell.
+The interface compiler diagnostic has 5,260 bytes and 106 direct-call
+annotations.  Generated maximum/CFL execution and the connection to each
+reconstructed face in the revised solver remain open.
 
 ## Workflow Tools
 
