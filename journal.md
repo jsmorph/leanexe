@@ -18828,3 +18828,94 @@ F64OutwardBoundary, the mathematical-parity plan, proof inventory,
 devnotes, and journal.  The changed Euler speed, limiter, solver proof,
 and production data remain open.  The original binary and datasets
 remain preserved.
+
+Published 4ea0972768f609fe174621d72038da3ed58f4f24, parent
+f43d8afa0fb545ac099f486f721b877988a8c884, tree
+60ac918741a4db81b6e817cb437f3466f8248054, titled
+Prove checked outward binary64 arithmetic.  All eleven explicitly staged
+files passed whitespace and documentation checks.  SSH push/fetch
+succeeded.  HEAD, FETCH_HEAD, and origin identify the same commit and
+tree, with index and tracked worktree equality.  Unrelated state remains.
+
+Added OutwardSpeed as a separate Euler numerical implementation.  Its
+kinetic-energy path computes lower bounds for both squared momenta,
+their sum, the half factor, and division by density.  Subsequent helpers
+compute upper bounds for internal energy, pressure, the sound-speed
+radicand, sound speed, and absolute normal velocity.  The outer helper
+uses the existing proved admissibility guard.  The exact gamma factors
+will be bounded by the selected binary64 constants in the proof.
+Added shared accepted-result projections for the checked arithmetic.
+These modules await their focused checks.
+
+The outward speed source passed in 1.0 seconds.  Its dependencies rebuilt
+under the same serialized runner after the earlier shared order change.
+The accepted-result projections passed in 2.2 seconds.  OutwardConstants
+checks the exact half constant and upper bounds for exact 2/5 and 7/5.
+OutwardKinetic passed its first check in 1.3 seconds, proving a lower
+kinetic-energy bound from accepted arithmetic and positive real density.
+All numerical audits report standard axioms.  Added OutwardThermodynamics
+to connect the subsequent bounds to the existing physical internal-energy
+and pressure definitions.  Its focused check is next.
+
+OutwardThermodynamics passed its first check in 1.2 seconds, using
+the existing physical internal-energy and pressure definitions.  Added
+OutwardSpeedSpec to compose the acoustic and absolute-velocity bounds,
+derive admissibility from accepted input, and bound all four eigenvalues
+by the accepted speed.  Its focused check is next.  The separate paper
+research agent requested by the user has read-only work and owns no Lean
+process or Euler files.
+
+OutwardSpeedSpec's first check found two proof presentation errors:
+the acoustic comparison still contained decodedState's density projection,
+and a dsimp call made no progress after simp had reduced the speed helper.
+An explicit density target and removal of the redundant reduction resolved
+both.  The second check passed in 2.2 seconds.  Its accepted-result theorem
+requires no separate quantitative headroom hypothesis: the returned finite
+speed bounds absolute exact normal velocity plus exact sound speed, and
+therefore all four characteristic speeds, for the accepted physical state.
+All four public audits report only the standard three axioms.  Added a
+complete rejection-or-accepted behavior statement and kernel certificates
+for the previous rest-state counterexample and invalid inputs.  These
+additions await their focused check.
+
+The complete speed behavior and boundary check passed on the first attempt
+in 1.2 seconds per module.  The behavior audit reports the standard three
+axioms.  The kernel certificates report propext and Quot.sound, and check
+acceptance at the old counterexample state, rejection of both zero density
+encodings, and rejection of nonfinite inputs.  No new axiom or native
+evaluation certificate enters these statements.
+
+The compiler report identifies the speed entry as implemented.  Its
+external frontier labels UInt64.decLe rejected, although the compile path
+accepts the enclosing comparisons: the full compile succeeded and emits
+i64.le_u for the checked square-root sign test.  No source or compiler
+change was required.  This report classification needs distinction from
+body-compilation success when assessing compiler evidence.
+
+Compiled to fresh build/euler-parity-outward-speed-v1.wasm and matching
+annotations through the standard runner, three-minute timeout, and
+thirty-second lock wait.  The binary is 4,936 bytes with SHA-256
+be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2.
+Exact-byte WAT inspection identifies speedUpper at function 36, 35
+reachable functions, no imports, and no reachable memory or allocation
+operations.  Two unused projection functions and the standard unused
+runtime exports remain present.  The arithmetic helper bodies contain
+the five expected f64 operations with bit reinterpretations.  The existing
+admissibility helper retains its own six arithmetic instructions.
+
+The compiler supplies 102 direct-call regions with function indices,
+argument/result locals, and structured-list locations.  Their exact
+decoded-region equalities remain obligations of the execution proof.
+Scalar conditional composition and existing admissibility helper proofs
+are the next reusable support.  The source speed proof shares accepted
+arithmetic projections and short thermodynamic composition lemmas.
+No measured LTG retrieval or agent-generated proof ran in this checkpoint.
+The generated execution theorem, interface/grid maxima, CFL, limiter,
+complete revised solver, and new production data remain open.
+
+The checkpoint explicitly stages the seven new accepted-result and Euler
+speed modules, the mathematical-parity plan, proof inventory, devnotes,
+and journal after whitespace and documentation checks.  All unrelated
+tracked and untracked state, ignored diagnostics, and previous artifacts
+remain preserved.  The paper-research agent completed its read-only
+assessment of arXiv:2609.05625 and is saving a separate report under /tmp.

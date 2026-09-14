@@ -166,7 +166,7 @@ audits.  The production binary and both datasets remain unchanged.
 
 The interface error estimate requires quantitative state bounds and an
 internal-energy margin beyond accepted-state safety.  The new plan records
-those premises.  Corrected numerical speed bounds, rounded reconstruction,
+those premises.  Corrected interface/grid speed bounds, rounded reconstruction,
 and complete grid/time balance remain open.  The user approved the
 outward-arithmetic and positivity-limiter design for implementation.
 
@@ -189,8 +189,21 @@ the rejected record or a status-zero finite directed bound with valid
 inputs.  Its [boundary certificates](lean/Project/ProofKit/F64OutwardBoundary.lean)
 check signed zeros, underflow, invalid arguments, and finite-range exits.
 The checked division helper compiles with direct-call annotations and no
-reachable allocation or memory operations.  Generated execution proofs
-and the corrected Euler speed helper remain open.
+reachable allocation or memory operations.
+
+The [corrected Euler speed helper](lean/Project/EulerRiemann/OutwardSpeed.lean)
+has a [complete source behavior theorem](lean/Project/EulerRiemann/OutwardSpeedSpec.lean).
+It either rejects or returns a finite positive bound on all four exact
+characteristic speeds of the accepted state.  Its proof composes
+[kinetic-energy bounds](lean/Project/EulerRiemann/OutwardKinetic.lean) and
+[thermodynamic bounds](lean/Project/EulerRiemann/OutwardThermodynamics.lean),
+using [certified constants](lean/Project/EulerRiemann/OutwardConstants.lean)
+and shared [accepted-result projections](lean/Project/ProofKit/F64OutwardAccepted.lean).
+The [boundary certificates](lean/Project/EulerRiemann/OutwardSpeedBoundary.lean)
+check acceptance of the previous counterexample state and rejection of
+invalid states.  The helper compiles to a 4,936-byte diagnostic with 35
+reachable scalar functions and 102 direct-call annotations.  Exact-WASM
+execution proofs and interface/grid integration remain open.
 
 ## Workflow Tools
 
