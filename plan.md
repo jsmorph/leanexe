@@ -7,8 +7,11 @@ cellwise CFL inequality pass source checks.  The positivity-limited
 reconstruction now has source safety, rounding-error, and conditional
 linearity proofs.  Its complete generated-WASM execution,
 termination, safety, and accuracy specifications pass source regeneration
-and independent exact-byte verification.  Conservation residuals and
-complete revised-solver integration remain active.
+and independent exact-byte verification.  Accepted updates, Rusanov
+arithmetic, and physical side fluxes now have rounding bounds tied to
+the preserved exact binary.  A shared-flux row has a checked balance and
+accumulated update bound.  Interface composition, grid/time conservation,
+and complete revised-solver integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
