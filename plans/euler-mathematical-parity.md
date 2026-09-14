@@ -81,7 +81,8 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove the side-speed bound under conditions established by acceptance.
 - [x] Prove that interface and grid maxima retain both directional bounds at source level.
 - [x] Prove interface maximum selection and mesh CFL helpers in generated WASM.
-- [ ] Close both helpers over their exact binary bytes.
+- [x] Close the interface maximum helper over its exact binary bytes.
+- [ ] Close the mesh CFL helper over its exact binary bytes.
 - [ ] Prove grid-fold execution and compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -118,8 +119,11 @@ UInt64 grid-size input, including rejection outside 2..800.  Accepted output
 bounds dt*n from above and its product with alpha by one half.  Its
 integer-to-binary64 conversion reuses the existing execution theorem through
 checked function renaming, extended to cover i64 shift and OR.  Both public
-specifications pass focused checks with standard axioms.  Their binary
-closures, grid-fold execution, and timestep controller integration remain open.
+specifications pass focused checks with standard axioms.  The maximum's
+5,260-byte package now has complete decoding, validation, translation,
+exact-output, and physical-speed theorems.  Its independent package check
+passes with standard axioms.  The CFL binary closure, grid-fold execution,
+and timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

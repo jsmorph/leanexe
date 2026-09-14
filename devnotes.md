@@ -11898,3 +11898,26 @@ including 21 floating-point helper cases.  Both source-regeneration gates,
 registry import checks, and runtime identities pass.  The 36 existing
 frozen packages remain unchanged.  Exact-byte
 closure for both helpers and complete revised-solver integration follow.
+
+## 2026-09-14: Exact-byte interface maximum
+
+The [binary execution and speed theorems](proofs/talos/lean/Project/EulerOutwardMaximum/ArtifactTranslation.lean)
+now cover the 5,260-byte maximum artifact with digest
+63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba.
+They prove decoding, validation, terminating exact output, complete store
+preservation, and a positive finite bound on both states' characteristic
+speeds after acceptance.  The independent package check passes.  All
+public and manifest audits use only standard axioms.
+
+The decoder reuses the checked byte-lookup and parser-part method.
+All 47 function results passed in six groups taking 6.9 to 16 seconds,
+with only propext in their audits.  The entire decoder composes the
+header, six section results, and the end cursor.  Validation took
+5.7 seconds.  One misplaced import caused the first behavior-transfer
+check to fail.  Correcting the import produced the accepted theorem
+in 2.4 seconds.  This related Euler application supplies another checked
+use of retained LTG guidance.  Held-out measurement remains open.
+
+There are now 37 exact-byte packages.  The mesh CFL byte proof, grid-fold
+execution, and revised-solver integration remain open.  The earlier
+complete solver and its 192/800 data remain preserved.

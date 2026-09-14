@@ -20278,3 +20278,63 @@ sequence boundaries.  Reviewing the retained LTG entry supplies related
 Euler evidence, not a held-out measurement.  Read-only discovery also
 encountered a nonmatching test/docs glob and inaccessible system-owned
 temporary directories.  Neither required or caused a workspace mutation.
+
+### 2026-09-14: maximum exact-byte decoding
+
+Published the maximum/CFL execution checkpoint as
+633c8a5c6f9c2d7d819ffc4229d15ae28963cb4b, parent
+7232a89cdd78cabee258ee11c411015542f1963f, tree
+f4472dd4d33d1bbcd77035d3b65f41086acf011d.  The non-forced
+SSH push and fetch verified HEAD, FETCH_HEAD, and origin/talosfp-euler
+equality, the parent, title, complete tree, index, and tracked worktree.
+
+Migrated only euler_outward_maximum into a new kernel-mode package,
+retaining its 5,260-byte digest
+63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba.
+The driver completed in 0.69 seconds.  Its default whole-decoder proof
+has not been attempted.  Normative CodeOffsets extraction passed for
+section metadata and nested instruction boundaries in 0.47 and
+0.64 seconds.  The preserved CSV files are
+tmp/euler-outward-maximum-sections-20260914.csv and
+tmp/euler-outward-maximum-nested-20260914.csv.
+
+Added fourteen unchecked decoder-part modules for this new package.
+They follow the checked reconstruction example: balanced byte lookup,
+128-byte instruction-sequence boundaries, eight functions per module,
+explicit type/export vectors, and checked section composition.  The
+offsets supply proof goals.  Lean must prove each goal against the
+embedded bytes and normative decoder.  This applies retained LTG
+guidance to another related Euler helper.  No held-out measurement or
+automatic retrieval result is claimed.
+
+All 47 function-decoding proofs passed in six groups taking 6.9, 7.0,
+13, 14, 14, and 16 seconds.  Each function audit uses only propext.
+The type vector passed in 11 seconds, exports in 16 seconds, code vector
+in 2.1 seconds, metadata in 4.5 seconds, and the four section/composition
+targets in 1.1, 1.2, 1.7, and 1.2 seconds.  Complete validation passed
+in 5.7 seconds after its decoded-cache dependencies passed.  All these
+audits use standard axioms.  Added explicit exact-byte execution and
+physical-speed wrappers.  Their first check rejected an import placed
+at the file's end by an unanchored edit.  Moved that import to the header.
+The resulting failed elaboration's sorryAx outputs are excluded from
+accepted evidence.  The decoder and validator proofs had passed before
+this import error.
+
+The corrected ArtifactTranslation passed in 2.4 seconds.  Both explicit
+byte-facing theorems report only propext, Classical.choice, and Quot.sound.
+The independent command tools/artifact-proof.js check on the frozen
+maximum program and Project.EulerOutwardMaximum.ArtifactTranslation
+completed with status zero.  It checked embedded-byte identity, the
+complete artifact theorem, specification import closure, and all seven
+manifest declarations.  Every manifest audit uses standard axioms.
+Reviewed the accepted parts, public theorem, journal, and timing evidence.
+The six code groups compose retained shared parser lemmas, with no new
+decoder semantics or compiler changes.  The only rejected proof attempt
+was the misplaced import.  This is a related helper application, not a
+held-out proof-generation comparison.
+
+Updated the maintained inventory to 37 exact-artifact packages and marked
+the maximum binary boundary complete.  The CFL byte proof, grid-fold
+execution, and revised-solver integration remain open.  The next checkpoint
+contains only the new maximum package and proof modules, registry and
+embedded-byte-checker additions, and these documentation records.
