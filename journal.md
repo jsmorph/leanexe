@@ -19390,3 +19390,107 @@ the six source modules and the documentation diff.  Public theorem checks
 already passed, and no proof term changed afterward.  Whitespace checks pass.
 The next implementation is the approved common-factor face limiter, with
 an explicit center-state terminal case and checks on both rounded faces.
+
+Published 0aa868da72bfc500ded20897bc30ca6bc82cb6bd, parent
+ef36499f22a932d65b0279501f2a9970fae4cd48, tree
+8964afc0e3981a8bf2961b0e954422a91d4c9031, titled
+Prove directional speed maxima and cellwise CFL.  SSH push and fetch
+passed.  HEAD, FETCH_HEAD, and origin agree, and the index and tracked
+worktree equal that commit.
+
+Added a raw-word minmod helper and its initial real-value proof.  The
+implementation compares signs and selects the smaller magnitude when signs
+agree.  The proof reuses signed binary64 decoding and magnitude ordering.
+Finite inputs produce a finite selected word, including signed zeros.
+The next focused check validates the real minmod correspondence before
+the four-component reconstruction uses it.
+
+The first minmod check failed at the sign-bit Nat conversion and the
+unfolding needed for Finite zero.  The real minmod case analysis passed.
+Added the explicit expected Nat inequality and unfolded the finite
+predicate.  Added the reconstruction source: finite rounded differences,
+componentwise minmod, one shared scaling factor, both-face physical guards,
+and a fuel-bounded halving loop with exact center-state terminal output.
+The retry budget remains an explicit helper parameter.  Its production
+instantiation and WASM execution proof remain subsequent obligations.
+
+The minmod real-value proof passed in 1.3 seconds with accepted axioms.
+The reconstruction source passed in 1.1 seconds.  Added the candidate,
+bounded-loop, and public reconstruction safety proofs, including exact
+rejection behavior and preservation of the unrestricted candidate when its
+checks pass.  These statements use the existing proved physical state guard.
+
+The safety draft required splitting the same branches in the acceptance
+hypothesis, reassociating the Boolean conjunction, and reducing a local
+binding before the public behavior split.  Added those proof corrections.
+Added exact boundary certificates for the pressure counterexample, the
+zero-budget center-state return, invalid density, signed zero, and NaN.
+The counterexample should reject factors one half and one quarter, then
+accept one eighth.  The next check determines those exact raw outputs.
+
+Reconstruction safety passed in 1.3 seconds, and all boundary certificates
+passed in 3.1 seconds with accepted axioms.  The exact counterexample
+returns left [1,7/8,0,9/16], right [1,9/8,0,11/16], and factor 1/8.
+Added reusable result-dependent rounding bounds from the already proved
+adjacent-value enclosures, plus finite-slope and rounded minmod identities.
+The reconstruction compiler diagnostic runs through the standard local
+runner while these numerical proof modules receive their next checks.
+
+The shared rounding-residual module passed in 1.1 seconds and the slope
+module in 1.2 seconds, with standard axioms.  The reconstruction compiler
+diagnostic completed with status zero: 5,619 bytes, SHA-256
+0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
+WAT inspection found 34 reachable scalar functions, no reachable memory
+operations, and a bounded loop in function 38.  Compiler annotations supply
+83 direct-call regions and one while-loop region.  The loop has an emitted
+condition/body equality but no specialized loop descriptor.  Its successful
+branch sets the completion flag.  Its failed branch halves the common
+factor and decrements fuel.  There is no recursive WASM call.
+
+Added a shared symmetric-face certificate with multiplication/addition/
+subtraction residuals, face error bounds, and cancellation of the common
+offset from the average.  Added a limiter selection proof that identifies
+the halving count and transfers these certificates to every accepted
+component, with the exact constant-face case stated separately.
+
+The symmetric-face certificate passed in 2.2 seconds.  Limiter selection
+and public reconstruction certificate transfer passed in 1.2 seconds.
+All audits report standard axioms.  Added the minmod perturbation inequality
+using Mathlib's min/max bounds.  Its composition bounds the rounded slope
+against the exact-real minmod of the decoded input states, then propagates
+that discrepancy through the common-factor face certificate.
+
+Added the exact linear-profile statement with explicit representability
+premises: the two differences, slope scaling, and both face operations
+must equal their decoded-real formulas, and the unrestricted candidate
+must pass its checks.  Its conclusion preserves each component's own
+linear increment.  It makes no unconditional binary64 linearity claim.
+
+The minmod perturbation check needed an explicit real expression in the
+nonnegative-absolute-value rewrite.  Its order-based minmod identity passed.
+Supplied that expression before checking the accuracy and linearity modules.
+
+The corrected minmod perturbation proof passed in 907 milliseconds,
+the slope/face accuracy composition in 1.4 seconds, and conditional
+linearity in 1.2 seconds.  Added the public accepted-reconstruction
+accuracy theorem and checked it in 1.4 seconds.  All audits report
+accepted logical axioms.  The unchanged earlier production binary and
+datasets have not been used for new numerical claims.
+
+Correction to the compiler note: the diagnostic JSON contains the loop's
+condition and body descriptions.  The generated Lean region equality has
+not yet been produced or checked for this helper.  The loop annotation
+has no specialized descriptor.  Its exact-WASM proof remains open.
+
+Updated the proof inventory, parity plan, queue, Euler plan, and devnotes
+for this source checkpoint.  The intended publication contains those five
+documents, this journal, seven reconstruction modules, and five shared
+proof modules.  It excludes all compiler diagnostics, preserved data,
+and submission state.  The next checkpoint will generate the reconstruction
+instruction model and prove its annotated scalar calls and bounded loop.
+
+Reviewed the source and documentation changes.  All twelve new Lean files
+have passing focused checks and no sorry, admit, or axiom declarations.
+The documentation check passed all 120 maintained Markdown files, and the
+tracked whitespace check passed.  The staged check will include every new
+proof file before non-forced publication.

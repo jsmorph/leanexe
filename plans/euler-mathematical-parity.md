@@ -154,15 +154,27 @@ stating preservation of a linear profile.  Define face states U +/- D/2.
 - [x] Prove preservation of constants, linear profiles, reflection symmetry, and cell-average symmetry for the real reconstruction.
 - [x] Prove component bounds and retain an exact counterexample to unconditional pressure preservation.
 - [x] Review a common-factor positivity limiter for both faces.  The approved limiter reduces the complete slope together and has an explicit zero-slope terminal case.
-- [ ] Prove admissibility of both returned faces and preservation of the unrestricted reconstruction when its checks pass.
-- [ ] State linear-profile preservation with the precise limiter-inactive and representability conditions required by execution.
-- [ ] Define and prove the rounded reconstruction, including branch selection, finite intermediate results, and rounding residuals.
+- [x] Prove source-level admissibility of both returned faces and preservation of the unrestricted reconstruction when its checks pass.
+- [x] State source-level linear-profile preservation with the precise limiter-inactive and representability conditions required by execution.
+- [x] Define and prove the rounded reconstruction source, including branch selection, finite accepted intermediates, and rounding residuals.
 - [ ] Prove the generated WASM helper and its complete source-model correspondence.
 
 The positivity check belongs at reconstructed faces before flux evaluation.
 Reducing the timestep alone leaves those face states unchanged.  The user
 approved the limiter design and its conditional reconstruction properties
 for integration.
+
+The checked source computes finite rounded differences and exact minmod
+selection on their binary64 values.  It tests both faces, halves one common
+factor after rejection, and returns the center state when the trial budget
+is exhausted.  Acceptance proves both faces admissible.  The source proof
+identifies the selected halving count, bounds every component's error against
+the exact-real minmod slope, and bounds the face-average residual.  The
+linear-profile theorem states exact subtraction, scaling, and face-operation
+premises together with acceptance of the unrestricted candidate.  The
+counterexample rejects factors 1/2 and 1/4 and accepts 1/8.  LeanExe emits a
+5,619-byte diagnostic with a bounded loop and no reachable memory operations.
+Generated execution, the production trial budget, and stage integration remain open.
 
 The checked counterexample has conserved states [1,0,0,1/8],
 [1,1,0,5/8], and [1,2,0,17/8].  Each has internal energy 1/8.
