@@ -11491,5 +11491,16 @@ Complete validation and Talos translation equality pass with only propext.
 The explicit artifact_solve_exact and artifact_solve_success theorems
 transfer the complete public specifications to the frozen bytes.  Their
 audits contain only propext, Classical.choice, and Quot.sound.
-Independent package verification is running.  Production execution waits
-for that gate.
+Independent package verification passed.  All seven manifest theorem
+audits contain only the three accepted logical axioms.
+
+## 2026-09-13: First complete WASM production dataset
+
+The [192-grid calculation](data/euler-riemann-complete-v1/README.md)
+returned status zero at time 0.8 in 49.557 seconds.  Its final density
+range is 0.138–1.490131234 and pressure range is 0.029–1.476780108.
+The raw words, compressed cell CSV, and inspected PNG/SVG/PDF figures
+come from one call to the proved solve export.  The 800-grid call began
+at 2026-09-14 00:51:32 UTC after those figures passed inspection.
+Both calls use the standard local runner limits and the same frozen
+21,767-byte binary.  The dataset metadata names both byte-facing theorems.
