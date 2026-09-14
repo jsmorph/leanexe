@@ -879,8 +879,8 @@ interface maximum and mesh CFL helpers now have terminating execution,
 rejection, store-preservation, and numerical behavior proofs.  The maximum's
 exact-byte package passes, as does the mesh CFL package.  The generated
 grid fold proves terminating exact output, store preservation, and both
-directional speed bounds.  Its exact-byte closure and solver integration
-remain open.  The rounded
+directional speed bounds.  Its complete exact-byte package and independent
+check pass.  Solver integration remains open.  The rounded
 common-factor reconstruction has complete source and exact-byte safety,
 accuracy, and termination proofs, together with a conditional source-level
 linear-profile theorem.  Its independent package check passes.  Accepted
@@ -895,4 +895,4 @@ the complete exact-byte solver theorem.  The physical balance uses exact
 cell area and duration-weighted boundary fluxes, with bounded update,
 flux, spacing, and ratio errors.  The strengthened source and exact-byte
 theorems pass focused checks and the independent package check.
-Grid-fold exact-byte closure and revised-solver integration remain open.
+Revised-solver integration remains open.
