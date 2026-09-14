@@ -59,6 +59,8 @@ mutual
     | divUI64 : PortableInstruction domain .divUI64
     | remUI64 : PortableInstruction domain .remUI64
     | andI64 : PortableInstruction domain .andI64
+    | orI64 : PortableInstruction domain .orI64
+    | shlI64 : PortableInstruction domain .shlI64
     | f64ReinterpretI64 : PortableInstruction domain .f64ReinterpretI64
     | i64ReinterpretF64 : PortableInstruction domain .i64ReinterpretF64
     | f64Add : PortableInstruction domain .f64Add
@@ -123,6 +125,8 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.divUI64
     | apply PortableInstruction.remUI64
     | apply PortableInstruction.andI64
+    | apply PortableInstruction.orI64
+    | apply PortableInstruction.shlI64
     | apply PortableInstruction.f64ReinterpretI64
     | apply PortableInstruction.i64ReinterpretF64
     | apply PortableInstruction.f64Add

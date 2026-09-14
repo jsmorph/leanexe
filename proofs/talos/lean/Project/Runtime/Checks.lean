@@ -30,6 +30,8 @@ import Project.EulerRusanovStep.Program
 import Project.EulerRiemann.Program
 import Project.EulerOutwardSpeed.Program
 import Project.EulerReconstruction.Program
+import Project.EulerOutwardMaximum.Program
+import Project.EulerOutwardCfl.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -249,5 +251,15 @@ example : eraseTypeIdx Project.EulerReconstruction.func41Def = eraseTypeIdx allo
 example : eraseTypeIdx Project.EulerReconstruction.func42Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerReconstruction.func43Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerReconstruction.func44Def = eraseTypeIdx (releaseFuncDef 44) := rfl
+
+example : eraseTypeIdx Project.EulerOutwardMaximum.func43Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardMaximum.func44Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardMaximum.func45Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardMaximum.func46Def = eraseTypeIdx (releaseFuncDef 46) := rfl
+
+example : eraseTypeIdx Project.EulerOutwardCfl.func16Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardCfl.func17Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardCfl.func18Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardCfl.func19Def = eraseTypeIdx (releaseFuncDef 19) := rfl
 
 end Project.Runtime

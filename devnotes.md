@@ -11873,3 +11873,28 @@ and standard-axiom audits pass.  The strengthened independent package
 check passes.  Numerical source, compiler output, frozen bytes, and
 data are unchanged.  Maximum/CFL execution and revised-solver integration
 remain open.
+
+## 2026-09-14: Generated maximum and CFL execution
+
+The [interface maximum specification](proofs/talos/lean/Project/EulerOutwardMaximum/Spec.lean)
+proves termination, exact source output, rejection, store preservation,
+and a positive finite bound on both input states' characteristic speeds.
+The [mesh CFL specification](proofs/talos/lean/Project/EulerOutwardCfl/Spec.lean)
+covers every UInt64 grid-size input.  Acceptance implies size 2..800,
+positive finite timestep, speed, and ratio, dt*n at most the returned
+ratio, and ratio*alpha at most one half.
+
+Checked function-region renaming reuses the existing outward arithmetic,
+admissibility, speed, and integer-conversion proofs.  The shared region
+theorem now covers i64.or and i64.shl, with checked instruction semantics
+and no-tail-call preservation.  Both public semantic-transport audits and
+the new execution audits report only standard axioms.  Compiler annotations
+provide the function map and all 137 direct-call region checks.
+Manual LTG inspection supplied existing call and binary-decoder guidance.
+No automated retrieval or held-out result is claimed.
+
+The source registry now contains 42 completed cases and 42 generated caches,
+including 21 floating-point helper cases.  Both source-regeneration gates,
+registry import checks, and runtime identities pass.  The 36 existing
+frozen packages remain unchanged.  Exact-byte
+closure for both helpers and complete revised-solver integration follow.

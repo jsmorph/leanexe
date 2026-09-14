@@ -441,6 +441,34 @@
         "Project.EulerReconstruction.Spec.reconstruct_accuracy"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_outward_maximum",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardMaximum",
+      "entry": "Project.EulerRiemann.OutwardMaximum.interfaceUpper",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardMaximum",
+      "specTarget": "Project.EulerOutwardMaximum.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardMaximum.Spec.interfaceUpper_exact",
+        "Project.EulerOutwardMaximum.Spec.interfaceUpper_behavior"
+      ],
+      "complete": true
+    },
+    {
+      "name": "euler_outward_cfl",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardMesh",
+      "entry": "Project.EulerRiemann.OutwardCfl.gridRatioChecked",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardCfl",
+      "specTarget": "Project.EulerOutwardCfl.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardCfl.Spec.gridRatioChecked_exact",
+        "Project.EulerOutwardCfl.Spec.gridRatioChecked_behavior"
+      ],
+      "complete": true
     }
   ]
 }
