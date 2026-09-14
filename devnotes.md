@@ -11750,3 +11750,21 @@ check.  The bounded loop and public wrapper remain open.  The reconstruction
 registration remains incomplete, giving forty generated caches and
 thirty-nine completed source cases.  Exact-byte closure and revised-solver
 integration remain open.
+
+## 2026-09-14: Complete reconstruction WASM specification
+
+The [reconstruction specification](proofs/talos/lean/Project/EulerReconstruction/Spec.lean)
+proves total generated-WASM execution, exact output words, rejection,
+accepted-face admissibility, and componentwise accuracy against real minmod.
+The bounded-halving loop composes the compiler-generated guard equality,
+shared fuel-guard and block-loop theorems, a decreasing UInt64 fuel measure,
+and the checked candidate call.  The post-loop proof covers the constant-center
+fallback.  Every public audit uses the standard logical axioms.
+
+Focused loop, return, entry, wrapper, and specification checks passed.
+The wrapper needed a local 400,000-heartbeat budget after a diagnostic
+at its final rejection simplification.  It passed in 9.8 seconds under
+the unchanged runner limits.  The source-driven regeneration gate passed.
+The registry now contains forty complete cases, including nineteen
+floating-point cases, and forty generated caches.  Exact-byte reconstruction
+closure is next.  The frozen-package count remains thirty-five.
