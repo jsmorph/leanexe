@@ -114,4 +114,6 @@ theorem terminatesWith
   obtain ⟨values, finalStore, hRun, hPost⟩ := hFuel fuel hMinimum
   exact ⟨values, finalStore, by rw [run_eq hShift id hDomain]; exact hRun, hPost⟩
 
+#print axioms run_eq
+#print axioms terminatesWith
 end Project.FunctionRegion
