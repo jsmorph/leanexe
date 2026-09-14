@@ -82,7 +82,7 @@ The user approved this arithmetic design for the executable changes.
 - [ ] Prove that interface and grid maxima retain both directional bounds.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
-- [ ] Prove its exact-WASM execution, rejection behavior, and speed theorem.
+- [x] Prove its exact-WASM execution, rejection behavior, and speed theorem.
 
 Finite integer packing, local half-step error, and signed neighboring-value
 enclosure now pass focused checks for all five arithmetic operations.
@@ -101,8 +101,10 @@ unit-domain spacing and proves dt*n*alpha at most one half.  The ratio
 and mesh helpers have complete rejection behavior and checked boundary
 cases.  The generated speed module now has complete terminating execution,
 exact rejection behavior, and a public real characteristic-speed bound.
-The focused source-driven gate passes.  Independent exact-byte closure,
-maximum selection, and timestep controller integration remain open.
+The focused source-driven and independent exact-byte gates pass.  The
+4,936-byte speed artifact has complete decoding, validation, translation,
+and explicit execution and physical-speed theorems.  Maximum selection
+and timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

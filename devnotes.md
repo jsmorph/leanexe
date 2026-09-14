@@ -11672,3 +11672,21 @@ and the Euler division use.  Direct-call recipes name append_args, and
 the task allowlist and proof-kit identity include its source.  The catalog
 and its Lean declaration check pass, as do the LTG and leanexegen tests.
 No proof-agent retrieval or performance measurement accompanied this change.
+
+## 2026-09-14: Exact-byte outward speed
+
+The 4,936-byte speed artifact, SHA-256
+be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2,
+passes its independent package gate and all seven manifest axiom audits.
+Its exact-byte theorems establish terminating execution, exact rejection,
+store preservation, and a finite positive bound on all four physical
+characteristic speeds after acceptance.  The registry has 35 frozen packages.
+
+The proof reuses balanced byte lookup, explicit-cursor sequence certificates,
+and the existing function, vector, section, and module composition lemmas.
+For functions 8 through 15, direct code-parser evaluation reached 180
+seconds.  Sequence composition passed in 10 seconds.  A dependency audit
+confirms root, suffix, nested-suffix, and byte-lookup reuse.  LTG records
+this related-artifact result while retaining the open held-out measurement.
+Maximum selection, limiter execution, conservation residuals, and complete
+solver integration remain open.  The earlier binary and datasets are preserved.
