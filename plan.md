@@ -14,9 +14,11 @@ also have exact-byte error and balance theorems.  Neighboring row cells
 compute equal shared fluxes, giving a row balance and accumulated residual
 bound.  Both directional sweeps and the accepted timestep trace now have
 balance and residual bounds attached to the complete exact-byte solver
-theorem.  The independent package check passes.  Duration-weighted
-physical boundary-flux comparison and complete revised-solver integration
-remain active.
+theorem.  The balance now also uses exact cell areas and duration-weighted
+physical boundary fluxes, with bounded update, flux, spacing, and ratio
+rounding errors.  Its strengthened source and byte theorems pass focused
+checks and the independent package check.  Maximum/CFL
+execution proofs and complete revised-solver integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

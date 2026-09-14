@@ -3,6 +3,7 @@ import Project.EulerRiemann.ControlSafe
 import Project.EulerRiemann.ControlTrace
 import Project.EulerRiemann.Hyperbolicity
 import Project.EulerRiemann.NumericsTraceBalance
+import Project.EulerRiemann.NumericsPhysicalTrace
 
 namespace Project.EulerRiemann.Spec
 open Wasm
@@ -72,13 +73,15 @@ noncomputable def BalanceSpecFor (m : Wasm.Module) : Prop :=
     TerminatesWith env m 103 (m.initialStore (α := Unit)) [.i64 (UInt64.ofNat n)]
       (fun final values => ResultAt n final values ∧
         Control.CellsSafe (Control.run n).grid ∧ Successful n ∧
-        Conservation.RunBalance n (by omega))
+        Conservation.RunBalance n (by omega) ∧
+        Conservation.PhysicalRunBalance n (by omega))
 
 theorem solve_balance : BalanceSpecFor module := by
   intro env n hn
   refine TerminatesWith.mono (solve_success env n hn) ?_
   rintro final values ⟨hResult, hSafe, hSuccess⟩
-  exact ⟨hResult, hSafe, hSuccess, Conservation.run_balance n (by omega) hn⟩
+  exact ⟨hResult, hSafe, hSuccess, Conservation.run_balance n (by omega) hn,
+    Conservation.physical_run_balance n (by omega) hn⟩
 
 #print axioms source_success
 #print axioms solve_exact

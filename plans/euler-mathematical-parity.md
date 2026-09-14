@@ -157,17 +157,21 @@ audits.
 - [x] Compose x and y sweeps using their respective intermediate states.
 - [x] Compose accepted timesteps with their computed ratios and boundary states.
 - [x] Derive the final-grid balance from the complete solver trace and attach it to the exact binary theorem.
-- [ ] Express the area-weighted balance using duration-weighted physical boundary fluxes, including spacing, ratio, and boundary-flux rounding errors.
+- [x] Express the area-weighted balance using duration-weighted physical boundary fluxes, including spacing, ratio, and boundary-flux rounding errors.
 
 The source line, grid, two-sweep, and accepted-trace theorems pass focused
 checks.  The complete solve_balance and artifact_solve_balance theorems
-attach the result to the preserved 21,767-byte solver with its original
-termination, memory, exact-output, and accepted-state guarantees.  The
-independent package check passes.  The balance covers each physical
-conserved component in the final internal grid.  The serialized output
-continues to contain density and pressure.  The present boundary term uses
-the decoded computed ratio and flux words.  Its conversion to exact cell
-area and duration-weighted physical flux remains a separate obligation.
+attach both computed-flux and physical-flux balances to the preserved
+21,767-byte solver with its original termination, memory, exact-output,
+and accepted-state guarantees.  The physical balance uses cell area
+1/n squared and face-length/time factor dt/n.  It bounds errors from cell
+updates, both endpoint flux evaluations, spacing division, and timestep
+ratio division.  The y contribution uses the x-sweep result.  Its source
+and exact-byte checks pass, including the strengthened independent package
+check.  The balance covers each conserved component in the final
+internal grid.  Serialized output continues to contain density and
+pressure.  These statements will require the corresponding instantiation
+for the revised reconstruction and outward-CFL solver.
 
 Open boundaries contribute physical flux.  Rejected trials preserve the
 last accepted grid, and their discarded values contribute no accepted-step

@@ -886,6 +886,8 @@ have exact-byte error and balance theorems.  Recomputed neighboring row
 fluxes agree, and accepted row outputs satisfy the accumulated balance
 and residual bound.  Both directional sweeps and the complete accepted
 timestep trace now have balance and summed residual bounds attached to
-the complete exact-byte solver theorem.  The independent package check
-passes.  Area/duration-weighted physical boundary-flux comparison and
-revised-solver integration remain open.
+the complete exact-byte solver theorem.  The physical balance uses exact
+cell area and duration-weighted boundary fluxes, with bounded update,
+flux, spacing, and ratio errors.  The strengthened source and exact-byte
+theorems pass focused checks and the independent package check.
+Maximum/CFL execution and revised-solver integration remain open.
