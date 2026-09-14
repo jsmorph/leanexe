@@ -18586,3 +18586,15 @@ The exact source and artifact gates for a revised numerical method remain
 future work.  The arithmetic and limiter design question remains pending.
 The user also requested a read-only Palomar investigation by an agent;
 that investigation is separate from this Euler checkpoint.
+
+Published the fifteen-file checkpoint as
+4fbf35c0200f0029fead656158a5cdaa6161418c, with parent
+6ddab174e1401753baac6c6d8add0df42f3b0647 and tree
+9e69d45dd9ea69567070fb64e60c7031162f55ff.  Its headline is
+Prove Euler wave and reconstruction foundations.  The configured SSH
+origin accepted the non-forced push.  Fetch succeeded, and HEAD,
+FETCH_HEAD, and origin/talosfp-euler agree on commit, parent, tree, and
+headline.  Separate index and tracked-worktree comparisons against
+FETCH_HEAD passed.  The original untracked dataset and paper records
+remain present.  This is the single publication receipt for this
+mathematical-foundation checkpoint.
