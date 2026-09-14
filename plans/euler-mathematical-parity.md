@@ -99,8 +99,10 @@ The checked ratio bounds both decoded dt/spacing and its returned ratio
 times alpha.  A downward spacing bound connects acceptance to exact
 unit-domain spacing and proves dt*n*alpha at most one half.  The ratio
 and mesh helpers have complete rejection behavior and checked boundary
-cases.  Exact-WASM execution composition, maximum selection, and timestep
-controller integration remain open.
+cases.  The generated speed module now has complete terminating execution,
+exact rejection behavior, and a public real characteristic-speed bound.
+The focused source-driven gate passes.  Independent exact-byte closure,
+maximum selection, and timestep controller integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

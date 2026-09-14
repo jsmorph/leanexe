@@ -5,7 +5,7 @@ The active Euler work is [mathematical parity with the Lanyon article](plans/eul
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, thirty-eight completed source-driven Talos proofs, thirty-four exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, thirty-nine completed source-driven Talos proofs, thirty-four exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 

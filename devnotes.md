@@ -11649,3 +11649,17 @@ also retains a zero operand below one call argument.  The existing
 CallRemainder theorem proves preservation of that suffix.  Its use
 exposed missing stack-tail guidance in the direct-call recipe.  Complete
 speed composition and the independent exact-byte package remain open.
+
+## 2026-09-14: Complete outward speed execution
+
+The speed entry now has checked execution through kinetic energy, pressure,
+sound speed, and velocity.  It terminates for every four raw input words,
+preserves the complete store, and returns either the exact rejection record
+or a finite positive bound on the four exact characteristic speeds at a
+physically admissible input.  Its source-driven gate regenerated the same
+4,936-byte module and passed.  All audits report standard axioms.
+
+The complete Riemann recurrence still uses its preserved earlier numerical
+helpers.  Independent exact-byte closure for the new speed helper, certified
+maxima, reconstruction, conservation residuals, and solver integration remain
+on the mathematical-parity agenda.
