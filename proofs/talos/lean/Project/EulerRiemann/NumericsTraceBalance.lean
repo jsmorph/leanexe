@@ -4,12 +4,16 @@ import Project.EulerRiemann.ControlTrace
 namespace Project.EulerRiemann.Conservation
 open Project.Euler2DCellStep.Sweep
 
-noncomputable def traceSum {n : Nat} (term : UInt64 → Grid n n → Fin 4 → ℝ) :
+noncomputable def durationSum {n : Nat} (term : UInt64 → Grid n n → Fin 4 → ℝ) :
     Grid n n → List UInt64 → Fin 4 → ℝ
   | _, [], _ => 0
   | grid, dt :: dts, i =>
       let ratio := Wasm.IEEE64.div dt (Time.spacing n)
-      term ratio grid i + traceSum term (stepGrid ratio grid) dts i
+      term dt grid i + durationSum term (stepGrid ratio grid) dts i
+
+noncomputable def traceSum {n : Nat} (term : UInt64 → Grid n n → Fin 4 → ℝ)
+    (grid : Grid n n) (dts : List UInt64) (i : Fin 4) : ℝ :=
+  durationSum (fun dt => term (Wasm.IEEE64.div dt (Time.spacing n))) grid dts i
 
 theorem trace_balance {n : Nat} (hn : 0 < n) {time finalTime : UInt64}
     {grid finalGrid : Grid n n} {dts : List UInt64}
@@ -17,12 +21,12 @@ theorem trace_balance {n : Nat} (hn : 0 < n) {time finalTime : UInt64}
     gridTotal hn finalGrid i - gridTotal hn grid i =
       traceSum (stepBoundary hn) grid dts i + traceSum (stepResidual hn) grid dts i := by
   induction h with
-  | nil => simp [traceSum]
+  | nil => simp [traceSum, durationSum]
   | cons _ hs _ ih =>
     have he := (accepted_step_parts _ _ _ hs).2.2
     have hb := accepted_step_balance hn _ _ _ hs i
     rw [he] at ih hb
-    simp only [traceSum]
+    simp only [traceSum, durationSum] at ih ⊢
     linarith only [hb, ih]
 
 theorem trace_residual_bound {n : Nat} (hn : 0 < n) {time finalTime : UInt64}
@@ -30,7 +34,7 @@ theorem trace_residual_bound {n : Nat} (hn : 0 < n) {time finalTime : UInt64}
     (h : Control.NumericalTrace n time grid dts finalTime finalGrid) (i : Fin 4) :
     |traceSum (stepResidual hn) grid dts i| ≤ traceSum (stepErrorBound hn) grid dts i := by
   induction h with
-  | nil => simp [traceSum]
+  | nil => simp [traceSum, durationSum]
   | cons _ hs _ ih =>
     have he := (accepted_step_parts _ _ _ hs).2.2
     rw [he] at ih

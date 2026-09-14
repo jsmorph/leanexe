@@ -164,6 +164,7 @@ audits.  The production binary and both datasets remain unchanged.
 | [Directional grid balance](lean/Project/EulerRiemann/NumericsGridBalance.lean) | Each actual clamped x/y sweep satisfies a balance for all four physical components, with cancellation of internal fluxes and a summed rounding-radius bound. |
 | [Two-sweep balance](lean/Project/EulerRiemann/NumericsStepBalance.lean) | The y contribution uses the grid produced by the x sweep.  Accepted step status establishes both sweep premises. |
 | [Complete accepted-trace balance](lean/Project/EulerRiemann/NumericsTraceBalance.lean) | Every supported run has final-grid balance and bounded accumulated update residuals along its accepted timestep trace.  The complete exact-byte theorem is `Artifact.artifact_solve_balance`. |
+| [Physical boundary balance](lean/Project/EulerRiemann/NumericsPhysicalTrace.lean) | Final area-weighted mass, both momenta, and energy equal initial totals plus duration-weighted physical boundary fluxes and a bounded residual.  The bound includes update, endpoint-flux, spacing, and ratio rounding.  The complete `Artifact.artifact_solve_balance` theorem includes this statement. |
 | [Exact-byte update residual](lean/Project/EulerRiemann/UpdateResidualArtifact.lean) | Accepted function-58 execution has an exact signed-error certificate and a bound from the three rounded operations. |
 | [Exact-byte Rusanov arithmetic residual](lean/Project/EulerRiemann/ComponentResidualArtifact.lean) | Accepted function-46 execution has a six-operation error certificate and bound. |
 | [Exact-byte physical side-flux bound](lean/Project/EulerRiemann/SideResidualArtifact.lean) | Accepted function-22 execution bounds pressure and physical flux errors, including the stored coefficient's difference from 2/5.  Acceptance establishes every finite-input and intermediate premise. |
@@ -180,9 +181,9 @@ rounding-radius proofs derive their premises from accepted status.  The
 [scalar reference composition](lean/Project/EulerRiemann/NumericsComponentRadius.lean)
 combines Rusanov arithmetic error with both side-flux errors.  Complete
 interface, cell, two-dimensional grid, and accepted-time instantiations
-pass.  The complete exact-byte balance theorem passes its focused check.
-The independent package check passes.  Area/duration-weighted physical
-boundary-flux comparison remains open.  Corrected interface/grid
+pass.  The complete exact-byte balance theorem now includes exact cell
+areas and duration-weighted physical boundary fluxes.  The strengthened
+theorem passes its focused and independent package checks.  Corrected interface/grid
 speed bounds pass source checks, and reconstruction passes exact-byte
 verification.  Maximum/CFL execution and revised-solver integration remain
 open.  The user approved the outward arithmetic and positivity limiter.
