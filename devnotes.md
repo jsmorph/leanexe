@@ -11602,3 +11602,21 @@ unsigned comparison compiles.  The resulting division diagnostic is
 1,603 bytes, with direct-call annotations and no reachable allocation or
 memory operations.  The next implementation target is the Euler speed
 calculation, followed by exact-WASM execution composition.
+
+## 2026-09-14: Certified outward Euler speed
+
+The separate [speed implementation](proofs/talos/lean/Project/EulerRiemann/OutwardSpeed.lean)
+now has a [complete source behavior proof](proofs/talos/lean/Project/EulerRiemann/OutwardSpeedSpec.lean):
+it rejects or returns a positive finite bound on every characteristic speed
+of the accepted physical state.  Acceptance supplies the required density
+and internal-energy positivity.  The calculation accounts for exact gamma
+7/5 and binary64 rounding through the shared outward arithmetic.
+The proof and boundary certificates pass under the standard local runner.
+
+LeanExe produced the 4,936-byte speed diagnostic with SHA-256
+be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2.
+Its 35 reachable functions use scalar parameters and results, with no
+reachable memory operations or allocator calls.  The compiler supplies
+102 direct-call annotations.  Exact-WASM composition and corrected
+interface/grid speed and CFL integration remain open.  The original
+solver binary and production data remain preserved.

@@ -78,10 +78,10 @@ The user approved this arithmetic design for the executable changes.
 - [x] Specify outward arithmetic using the existing integer-bit interface and IEEE64 model.
 - [x] Implement adjacent-value operations and prove their exact spacing and ordering for both signs.
 - [x] Prove endpoint enclosure for the required operations, with explicit overflow and invalid-input returns.
-- [ ] Prove the side-speed bound under conditions established by acceptance.
+- [x] Prove the side-speed bound under conditions established by acceptance.
 - [ ] Prove that interface and grid maxima retain both directional bounds.
 - [ ] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
-- [ ] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
+- [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [ ] Prove its exact-WASM execution, rejection behavior, and speed theorem.
 
 Finite integer packing, local half-step error, and signed neighboring-value
@@ -90,8 +90,12 @@ The checked helpers either return the rejected status/value record or a
 finite directed bound with valid inputs.  Boundary certificates cover
 signed zero, underflow, invalid inputs, and finite-range exits.  LeanExe
 compiles the checked division helper to scalar, allocation-free WASM with
-direct-call annotations.  Exact-WASM execution composition and the Euler
-speed calculation remain open at this boundary.
+direct-call annotations.  The separate Euler speed helper now has a complete
+rejection-or-accepted source theorem.  Acceptance establishes a finite positive
+bound on all four exact characteristic speeds, using the existing physical
+state guard without an extra quantitative headroom premise.  Its compiler
+diagnostic has 35 reachable scalar functions and 102 direct-call annotations.
+Exact-WASM execution composition, maximum selection, and CFL remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
