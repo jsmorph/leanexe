@@ -29,7 +29,11 @@ pass.  The revised side and interface flux now have generated-WASM proofs
 of exact output, termination, store preservation, spectral safety, and
 physical-flux residual bounds.  The interface's exact-byte package now
 passes complete decoding, validation, behavior transfer, and independent
-verification.  Complete revised-solver integration remains active.
+verification.  The revised scalar face-step source now proves output-state
+admissibility, both interfaces' physical speed bounds, exact-real Courant
+bounds, and componentwise physical-reference error bounds.  The unit-mesh
+CFL bridge also passes.  Its generated execution and complete revised-solver
+integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
