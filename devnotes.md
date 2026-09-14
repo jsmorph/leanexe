@@ -11707,3 +11707,28 @@ with 106 direct-call annotations.  Its entry calls the proved speed helper
 twice, then checked integer maximum selection.  The WAT agrees with these
 annotations.  Maximum/CFL execution proofs, reconstruction, and stagewise
 controller integration remain open.  No production calculation changed.
+
+## 2026-09-14: Rounded positivity-limited reconstruction
+
+The [reconstruction source](proofs/talos/lean/Project/EulerRiemann/Reconstruction.lean)
+now has checked physical safety, complete rejection behavior, limiter
+selection, rounding residuals, and accuracy bounds against exact-real minmod.
+Its [linear-profile theorem](proofs/talos/lean/Project/EulerRiemann/ReconstructionLinear.lean)
+requires exact represented differences, scaling, and face arithmetic,
+together with acceptance of the unrestricted candidate.  The proof uses
+each conserved component's own increment.
+
+The pressure counterexample rejects factors 1/2 and 1/4, then accepts 1/8,
+returning left [1,7/8,0,9/16] and right [1,9/8,0,11/16].  The terminal case
+returns the exact center state at both faces.  All focused source checks
+and axiom audits pass.  Shared minmod perturbation and symmetric-face
+certificates account for subtraction, multiplication, addition, and the
+face-average residual.
+
+LeanExe produced 5,619 bytes with SHA-256
+0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
+WAT inspection confirms a bounded loop, 34 reachable scalar functions,
+and no reachable memory operations.  The compiler supplies 83 direct-call
+annotations and one loop annotation.  Generated execution, exact-byte
+closure, the production trial budget, and complete solver integration
+remain open.  The old binary and both datasets remain preserved.

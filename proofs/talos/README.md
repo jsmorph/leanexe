@@ -167,8 +167,8 @@ audits.  The production binary and both datasets remain unchanged.
 The interface error estimate requires quantitative state bounds and an
 internal-energy margin beyond accepted-state safety.  The new plan records
 those premises.  Corrected interface/grid speed bounds now pass source
-checks.  Their execution proofs, rounded reconstruction, and complete
-grid/time balance remain open.  The user approved the
+checks.  Rounded reconstruction also has checked source proofs.  Their
+execution proofs and complete grid/time balance remain open.  The user approved the
 outward-arithmetic and positivity-limiter design for implementation.
 
 The [adjacent-value implementation](lean/Project/ProofKit/F64Adjacent.lean),
@@ -259,6 +259,25 @@ establishes dt*n*abs(lambda_i) at most one half for every member cell.
 The interface compiler diagnostic has 5,260 bytes and 106 direct-call
 annotations.  Generated maximum/CFL execution and the connection to each
 reconstructed face in the revised solver remain open.
+
+The [rounded reconstruction](lean/Project/EulerRiemann/Reconstruction.lean)
+has checked [safety](lean/Project/EulerRiemann/ReconstructionSafety.lean),
+[rounding certificates](lean/Project/EulerRiemann/ReconstructionResidual.lean),
+[accuracy bounds](lean/Project/EulerRiemann/ReconstructionAccuracy.lean), and
+[conditional linear-profile preservation](lean/Project/EulerRiemann/ReconstructionLinear.lean).
+The common-factor limiter checks both faces and returns the center state
+after its trial budget is exhausted.  Accepted output is admissible.
+The proof bounds the discrepancy from exact-real minmod reconstruction and
+the face-average rounding residual.  Shared
+[binary64 minmod](lean/Project/ProofKit/F64MinmodSpec.lean),
+[minmod perturbation](lean/Project/ProofKit/RealMinmodBounds.lean), and
+[symmetric-face certificates](lean/Project/ProofKit/F64SymmetricFaces.lean)
+support that composition.  The
+[boundary certificates](lean/Project/EulerRiemann/ReconstructionBoundary.lean)
+check the earlier pressure counterexample and invalid-input returns.
+The 5,619-byte compiler diagnostic contains a bounded loop, 83 direct-call
+annotations, and no reachable memory operations.  Its generated execution
+and exact-byte proofs remain open.
 
 ## Workflow Tools
 
