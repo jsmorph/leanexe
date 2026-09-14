@@ -175,8 +175,13 @@ The [adjacent-value implementation](lean/Project/ProofKit/F64Adjacent.lean),
 [magnitude bounds](lean/Project/ProofKit/F64MagnitudeGaps.lean) pass focused
 Lean checks.  They cover signed zeros, subnormal and exponent transitions,
 and strict ordering of neighboring values.  The nextUp compiler diagnostic
-also succeeds.  Arithmetic-result enclosure and generated execution proofs
-remain subsequent targets.
+also succeeds.  The [finite packing proof](lean/Project/ProofKit/F64PackingFinite.lean)
+and [local rounding bounds](lean/Project/ProofKit/F64RoundingScale.lean)
+now support [signed endpoint enclosure](lean/Project/ProofKit/F64Enclosure.lean)
+and [addition and subtraction](lean/Project/ProofKit/F64AddEnclosure.lean).
+These statements require finite rounded results.  Executable endpoint
+checks, multiplication, division, square root, and generated execution
+proofs remain open.
 
 ## Workflow Tools
 
