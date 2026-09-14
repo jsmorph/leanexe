@@ -19908,3 +19908,70 @@ checked artifact target.  The documentation test passed for 120 maintained
 Markdown files.  The reviewed 24-path checkpoint passes whitespace checks.
 The three new interface-composition drafts remain outside this checkpoint
 until their own source and byte-facing checks complete.
+
+Published b1a7ae1dea931f41a412553e07f789999f252fa1,
+Prove accepted Euler rounding residuals, by non-forced SSH push/fetch.
+Its parent is 23a18f06bef0df1538fc3d2cf6513b20763a1302 and its tree is
+90bf8872012b029612cccdded51e4d3312225cbb.  HEAD, FETCH_HEAD, and origin
+match, as do the tracked worktree and index.  The checkpoint contains the
+reviewed 24 paths.  The three interface drafts remain untracked.
+
+The interface draft reuses the existing component accessor and real flux
+definitions.  Its first check proved the vector side bound and reached the
+accepted-component extraction.  Assumption did not extract individual
+statuses from the guard's conjunction.  Replaced that final step with
+propositional decomposition.  The physical reference composition uses the
+existing exact-real Rusanov definition, with no additional M premise.
+
+The complete four-component interface source theorem now passes, along
+with generated execution and the exact-byte transfer for function 54.
+The artifact transfer took 1.1 seconds and its audit is standard-only.
+The next source proof derives the four scalar-update certificates and
+balance bounds from acceptance of the complete cell operation.  It uses
+the existing source cell evaluator and vector accessors without changing
+their definitions.
+
+The interface source module passed in 3.1 seconds and its generated-execution
+transfer in 1.2 seconds, with standard-only audits.  The cell draft initially
+tried to unfold leftFlux in both the goal and the acceptance hypothesis,
+although that helper occurs only in the goal.  Limited those two helper
+unfoldings to the goal before unfolding the shared evaluator.  No numerical
+formula or theorem premise changed.
+
+The complete cell source theorem, generated-execution transfer, and
+function-65 exact-byte theorem now pass with standard-only audits.
+The byte-facing module took 1.2 seconds.  Acceptance supplies each scalar
+update's finite-operation certificate and bound, and the returned cell
+words satisfy the corresponding balance equation.  The next row proof
+uses these complete cell outputs and proves equality of the neighboring
+recomputed interface fluxes.
+
+The row shared-flux identity and accumulated bound passed on the first
+check.  The balance application diagnosed opposite written signs for the
+same boundary term: ratio*(left-right) versus -ratio*(right-left).
+Normalized that identity before applying the existing telescoping theorem.
+The local cell equality now names the same row flux expressions explicitly.
+
+The complete-cell row module passed in 1.1 seconds with standard axioms.
+It proves equality of neighboring recomputed interface fluxes, row balance,
+and the bound on accumulated update residuals.  The new interface and cell
+artifact theorems reuse the unchanged binary identity and generic property
+transfer checked by the independent b1a7ae1d package gate.  Their focused
+checks cover the new claims.  The original complete-solver specification,
+artifact target, manifest, and bytes have not changed in this checkpoint.
+The next complete package gate will include the grid/time theorem when it
+is connected to the solver specification.
+
+The reviewed checkpoint consists of seven new numerical/execution/artifact
+modules and the six maintained documentation/journal paths.  It preserves
+the generic scalar and row theorems as reusable support.  Compiler output
+is unchanged, and the new execution proofs compose existing exact function
+theorems through TerminatesWith.mono.  No instruction-level proof or new
+compiler annotation was required for this numerical composition.
+
+The documentation check passed for 120 maintained Markdown files, and
+the preserved WASM still has SHA-256
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
+The seven new proof sources contain no sorry, admit, or axiom declarations.
+The focused public axiom audits pass.  The thirteen reviewed paths are
+ready for the interface/cell/row checkpoint.

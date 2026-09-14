@@ -878,8 +878,11 @@ then compose it with the checked exact-spacing CFL inequality.  Maximum
 and CFL execution proofs and solver integration remain open.  The rounded
 common-factor reconstruction has complete source and exact-byte safety,
 accuracy, and termination proofs, together with a conditional source-level
-linear-profile theorem.  Its independent package check passes.  Accepted conservative updates, Rusanov component
+linear-profile theorem.  Its independent package check passes.  Accepted
+conservative updates, Rusanov component
 arithmetic, and physical side fluxes now have rounding bounds connected to
-the preserved solver bytes.  A row of rounded updates has a shared-flux
-balance and accumulated residual bound.  Full interface composition,
-grid/time instantiation, and revised-solver integration remain open.
+the preserved solver bytes.  Complete interface and cell operations now
+have exact-byte error and balance theorems.  Recomputed neighboring row
+fluxes agree, and accepted row outputs satisfy the accumulated balance
+and residual bound.  Two-dimensional grid/time instantiation and
+revised-solver integration remain open.

@@ -128,7 +128,8 @@ Wminus = (dU-dF/a)/2 and Wplus = (dU+dF/a)/2, with speeds -a and a.
 - [x] Prove signed operation-error certificates and bounds for accepted conservative updates and Rusanov components, including exact-byte execution.
 - [x] Bound physical side-flux error from accepted status alone, including the rounded pressure coefficient, and transfer the bound to exact bytes.
 - [x] Compose a scalar Rusanov arithmetic bound with explicit errors in its two side fluxes.
-- [ ] Instantiate the physical reference bound for all four components of the accepted interface call.
+- [x] Instantiate the physical reference bound for all four components of the accepted interface call and connect it to exact bytes.
+- [x] Derive all four conservative-update certificates and balance bounds from accepted complete-cell execution, including exact bytes.
 - [ ] Establish stated residual bounds throughout the complete accepted solver trace.
 
 The mathematical wave representation explains the flux that the solver
@@ -141,11 +142,16 @@ no quantitative M bound or extra internal-energy margin.  Functions 22, 46,
 and 58 of the preserved binary now carry physical-side, Rusanov-arithmetic,
 and conservative-update residual theorems.  The scalar reference composition
 adds one half of the sum of the two side-flux error bounds.
+The four-component interface theorem now applies that bound to function 54.
+The complete cell theorem transfers all four update certificates and balance
+bounds through function 65.  Both exact-byte transfers pass standard-axiom
+audits.
 
 ## 4. Grid and time conservation
 
 - [x] Prove generic sweep telescoping and time accumulation with explicit residuals.
 - [x] Instantiate a row of rounded updates with one shared flux sequence and bound its accumulated update residual under accepted status.
+- [x] Prove equality of neighboring recomputed row fluxes and derive balance for accepted complete Euler-cell outputs.
 - [ ] Instantiate cancellation of shared internal face fluxes in each solver sweep.
 - [ ] Express total mass, both momenta, and energy changes as boundary fluxes plus the sum of local rounding residuals.
 - [ ] Compose x and y sweeps using their respective intermediate states.
