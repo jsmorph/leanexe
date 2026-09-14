@@ -278,7 +278,7 @@ passes independent verification.  The
 [exact-byte transfer](lean/Project/EulerOutwardSpeed/ArtifactTranslation.lean)
 establishes both complete execution and the characteristic-speed bound
 after decoding and validating those bytes.  The original solver and data
-remain preserved while grid-fold execution and controller integration continue.
+remain preserved while controller integration continues.
 
 The [maximum helpers](lean/Project/EulerRiemann/OutwardMaximum.lean) have
 checked [interface and directional-cell bounds](lean/Project/EulerRiemann/OutwardMaximumBounds.lean)
@@ -300,7 +300,17 @@ prove complete decoding, validation, exact output, and both input states'
 physical speed bounds.  The independent package check passes for digest
 63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba.
 The decoder composes 128-byte instruction-sequence proofs with checked
-vector and section lemmas.  The grid-fold execution proof remains open.
+vector and section lemmas.
+
+The [grid-fold execution](lean/Project/EulerOutwardGrid/Spec.lean) proves
+termination, exact output, and complete store preservation for every grid
+represented in memory.  Acceptance bounds each member cell's characteristic
+speeds in both directions.  The 5,728-byte module takes one borrowed grid
+pointer and returns two words.  Its proof combines the compiler-generated
+fold-region equality, generic fold-prefix lemmas, seven-field memory access,
+and checked transport of the scalar functions.  The loop handles seven-word
+cells and a two-word accumulator.  Source regeneration and runtime identities
+pass.  Exact-byte closure remains open.
 The connection of both helpers to each reconstructed face and stage of the
 revised solver remains open.
 
@@ -340,7 +350,7 @@ validation, translation equality, and independent package verification pass.
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all forty-two registered models, verifies the registry against runtime and specification imports, and builds all forty-two completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all forty-three registered models, verifies the registry against runtime and specification imports, and builds all forty-three completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -378,7 +388,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains forty-two complete cases.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and twenty-one raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains forty-three complete cases.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and twenty-two raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
 The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All thirty-eight packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
 

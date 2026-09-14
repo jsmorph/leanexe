@@ -11944,3 +11944,22 @@ existing generic fold-prefix lemmas apply to the seven-word Cell and
 two-word accumulator.  The retained fixed-array setup recipe explicitly
 requires one-word elements and one accumulator.  Its direct setup/body
 theorems therefore require a different checked shape for this scan.
+
+## 2026-09-14: Generated outward grid-fold execution
+
+The [grid specification](proofs/talos/lean/Project/EulerOutwardGrid/Spec.lean)
+proves terminating exact output and complete store preservation for every
+represented input grid.  Acceptance bounds each cell's characteristic
+speeds in both directions.  The compiler emits 5,728 bytes with 50 functions,
+109 direct-call annotations, and one seven-word, two-accumulator fold.
+The proof reuses scalar function transport, the existing grid memory
+predicate, generic fold-prefix lemmas, and the generated region equality.
+
+The first compiler attempt rejected a named fold callback.  Replacing it
+with the documented direct lambda preserves the Lean definition and passes
+preparation.  All six new handwritten proof modules passed focused checks,
+taking 1.3 to 7.1 seconds each.  The grid and interface-maximum source gates,
+runtime identities, CFL composition, and registry imports pass.  All new
+public audits use standard axioms.  The maintained inventory contains
+43 complete source cases, 43 generated caches, and 38 exact-byte packages.
+Grid-fold exact-byte closure and revised-solver integration remain open.

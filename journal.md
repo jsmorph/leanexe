@@ -20403,3 +20403,80 @@ also changed.  Removed that duplicated sentence.  The plan's opening
 inventory remains the current authority: 42 complete source cases and
 38 exact-artifact packages.  Only this documentation correction changes
 the initially staged 31-path checkpoint.
+
+### 2026-09-14: outward grid-fold execution
+
+Published the CFL checkpoint as
+0dd5beb3118fe2317f28eaa7af13bb66adbfc517, parent
+701e87d148312ccd5a85a1330c7b7cb90396dd53, tree
+326daf8e68868489e683cb646020c5cab3ff6d70.  The reviewed 31-path
+commit has 3,386 inserted and 27 removed lines.  Non-forced SSH push
+and fetch verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent,
+tree, and title.  Index and tracked worktree matched the commit.
+
+Registered the existing OutwardMaximum.gridUpper source as a separate
+incomplete proof case, euler_outward_grid.  This continues the approved
+grid-fold execution task.  It preserves the seven-word Cell layout
+and existing fold source.  Compiler preparation and annotation inspection
+will determine the function map, borrowing behavior, loop boundaries,
+and applicable shared execution proofs before the new proof is written.
+
+The first grid preparation failed with compiler status 3: unsupported
+Array.foldl function.  The source had passed a named scanCell callback.
+The language specification and manual require a direct lambda, and
+Extract.Core's folder extraction rejects a callback that fails that
+lambda shape.  The existing Traversal.scan uses the documented form.
+Changed only gridUpper's callback to fun acc cell => scanCell acc cell.
+This is eta-equivalent Lean code and preserves the specified fold.
+The compiler, exact maximum/CFL binaries, and numerical step remain
+unchanged.  Focused source proofs and regeneration will test this change.
+Two preceding read-only discovery commands also named nonexistent
+talos-cases.js and docs/developing.md paths.  Located the actual
+talos-lib.js through rg --files and used docs/manual.md and docs/spec.md.
+
+The corrected grid preparation passed.  Its 5,728-byte artifact has digest
+d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c.
+Compiler annotations identify 109 direct calls and one seven-word,
+two-accumulator fold.  The public entry is function 45 with one borrowed
+array pointer and two scalar results.  Its call graph reads the represented
+grid and contains no allocation or store operation.  Functions 0..41
+match the maximum helper's scalar functions.  The fold recipe supplies
+the checked full-region and tail equalities, wp_loop_cons, and generic
+foldPrefix support rather than the one-word fixed-array adapter.
+
+Added unchecked scalar transport, cell and accumulator composition,
+loop frame/invariant, loop execution, and entry modules.  The loop
+reuses the existing seven-field GridAt access lemmas.  The entry proof
+uses the generated annotation tail equality, and its invariant uses the
+shared foldPrefix successor and completion theorems.  The function map
+and public one-pointer layout follow the new compiler output.
+
+The six handwritten grid modules passed focused runner checks.  Scalar
+transport took 7.1 seconds, cell/accumulator composition 3.8 seconds,
+loop shape 1.4 seconds, loop execution 2.7 seconds, entry execution
+1.6 seconds, and the public specification 1.3 seconds.  The source
+maximum, bounds, and grid modules rebuilt in 1.1 seconds each after
+the callback change.  All public audits use only standard axioms.
+The accepted entry proof uses the compiler-generated fold-region tail
+equality, shared fold-prefix algebra, existing seven-field memory access,
+and checked scalar function transport.  Every represented input grid
+terminates with exact fold output and complete store preservation.
+Acceptance bounds each cell's characteristic speeds in both directions.
+Marked the source case complete and added its specification import and
+four generated-runtime identities.  Source regeneration follows before
+publication and exact-byte closure.
+
+The grid source-regeneration gate passed, and the interface maximum gate
+reproduced its existing artifact after the source callback edit.  Runtime
+identities and OutwardMaximumCfl passed a focused runner command, with
+the CFL composition rebuilding in 928 milliseconds.  The registry import
+check passes for all 43 cases.  All 120 maintained Markdown checks pass.
+Updated the six maintained inventory/plan documents and devnotes, retaining
+38 accepted byte packages and the historical release counts.  A read-only
+documentation-tool search named a nonexistent root package.json, returned
+status 2, and was replaced by rg --files discovery of tools/check-docs.js.
+The new proof scan found no sorry, admit, or axiom declarations.  Review
+confirmed that generated Program and AnnotationMatches files match the
+compiler output.  The checkpoint contains only the grid registration,
+eight grid modules, eta-equivalent source edit, aggregate/runtime imports,
+and eight documentation records.  Exact-byte proof construction follows.
