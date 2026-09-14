@@ -216,6 +216,12 @@
       "sha256": "0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9",
       "manifest": "euler_reconstruction/0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9/manifest.json",
       "proofTarget": "Project.EulerReconstruction.ArtifactTranslation"
+    },
+    {
+      "case": "euler_outward_maximum",
+      "sha256": "63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba",
+      "manifest": "euler_outward_maximum/63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba/manifest.json",
+      "proofTarget": "Project.EulerOutwardMaximum.ArtifactTranslation"
     }
   ]
 }
