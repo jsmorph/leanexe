@@ -18442,3 +18442,14 @@ docs/status.md, journal.md, plan.md, the two Euler plans, the exact package
 manifest, the Talos inventory and case registry, six new real-mathematics
 modules, the solver Hyperbolicity module, Spec.lean, and ArtifactTranslation.lean.
 No production simulation was run during this proof extension.
+
+Published be3509db9dc21e00ec011aea749ccfd4dc7fbb71 with parent
+e0ed40abff2afabe0ba6ebd3b3064caeff0e3815 and tree
+d7833f5197dbce8bfc96592ac7acf86cd11680fb.  The twenty-file checkpoint
+is titled Prove two-dimensional Euler hyperbolicity.  The configured SSH
+origin accepted the non-forced push.  Fetch succeeded, and separate
+HEAD, FETCH_HEAD, and origin/talosfp-euler queries match the commit,
+parent, tree, and headline.  Both the index and complete tracked worktree
+match the fetched tree.  The original untracked dataset and paper files
+remain present.  This is the single publication receipt for the completed
+hyperbolicity checkpoint.
