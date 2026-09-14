@@ -164,7 +164,7 @@ package checker accepted the frozen 21,767-byte artifact and its
 manifest theorems.  All final Euler audits contain only the three
 accepted logical axioms.
 
-The [192-grid data and density/pressure figures](../data/euler-riemann-complete-v1/README.md)
-are complete.  Its single WASM call returned status zero at time 0.8 in
-49.6 seconds.  The additional 800-grid call is running on the same local
-machine, with the same binary and standard runner limits.
+The [192-grid and 800-grid data and density/pressure figures](../data/euler-riemann-complete-v1/README.md)
+are complete.  Both runs returned status zero at time 0.8, using the same
+binary and one local WASM solve call per grid under the standard runner
+limits.  Recorded monotonic runtimes are 49.6 seconds and 61.6 minutes.
