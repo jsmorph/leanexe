@@ -20480,3 +20480,63 @@ confirmed that generated Program and AnnotationMatches files match the
 compiler output.  The checkpoint contains only the grid registration,
 eight grid modules, eta-equivalent source edit, aggregate/runtime imports,
 and eight documentation records.  Exact-byte proof construction follows.
+
+### 2026-09-14: outward grid exact bytes
+
+Published the grid execution checkpoint as
+c40b12935713b8528e94c1e7f98442915c56ff6a, parent
+0dd5beb3118fe2317f28eaa7af13bb66adbfc517, tree
+0318f158c816495f1f7204fcbbb8c6f0b25e4557.  The reviewed 20-path
+commit has 3,808 inserted and 20 removed lines.  Non-forced SSH push
+and fetch verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent,
+tree, and title.  The index and tracked worktree matched the commit.
+
+The kernel-mode artifact migration created the grid's eight artifact
+modules, frozen bytes and manifest, registry entry, and byte-checker case.
+Section and nested-instruction metadata extraction passed through the
+standard runner in 0.49 and 0.59 seconds.  The fresh CSVs remain at
+tmp/euler-outward-grid-{sections,nested}-20260914.csv.  The artifact
+is d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c,
+with 5,728 bytes and 50 functions.
+
+Added fifteen unchecked decoder-part modules from those offsets, reusing
+the same 128-byte sequence boundaries and checked parser, vector, and
+section statements as the maximum and CFL proofs.  The new package's
+decoded result, raw-cache equality, and validation now use those checked
+boundaries.  Added explicit exact-output and physical-speed theorem
+transfers, with the specification import at the top of the module.
+Focused serial checks and independent package verification follow.
+
+All fifteen grid decoder-part targets passed on their first attempts.
+The seven function groups took 7.1, 7.2, 14, 15, 14, 17, and 7.2 seconds.
+All 50 function audits report only propext.  Type and export vectors
+took 13 and 16 seconds, the code vector 2.0 seconds, and metadata
+4.8 seconds.  Section-state, code-section, remaining-section, and header
+composition took 1.1, 1.2, 1.8, and 1.3 seconds.  Validation passed in
+5.8 seconds, and explicit byte-facing exact-output and speed-bound
+transfers passed in 2.9 seconds.  Every public audit uses standard axioms.
+
+The fresh dependency audit at tmp/euler-outward-grid-proof-dependencies.lean
+passed in 1.3 seconds.  It confirms that code45_decoded uses its root
+sequence, root suffix, block sequence, loop sequence, loop suffix, and
+ByteLookup.data_get.  This extends the retained parser method to another
+related Euler artifact.  It supplies no held-out timing comparison or
+automated retrieval measurement.  The independent package check is running.
+An independent read-only search for future halving support guessed the
+absent F64FiniteRounders filename.  Subsequent discovery used existing
+F64DyadicBounds and the pinned CodeLib Operations source.  No file changed
+as a result of that failed read.
+
+The independent grid package command completed with status zero.  It checked
+the embedded bytes, artifact and behavioral theorems, and all seven manifest
+declarations.  All manifest audits use standard axioms.  Updated the maintained
+inventory to 39 accepted exact-byte packages and marked grid byte closure
+complete.  The checkpoint contains the new frozen package, 23 artifact proof
+modules, registry and byte-checker additions, and eight documentation records.
+The existing scalar/source grid proofs and all previous binaries remain
+unchanged.  Complete revised-solver integration remains open.
+
+Final diff review caught a broad count replacement changing the historical
+Riemann registration ordinal.  Restored that ordinal before committing.
+All maintained Markdown checks and whitespace checks pass.  The reviewed
+checkpoint has 35 paths.  No prior binary or generated source model changed.

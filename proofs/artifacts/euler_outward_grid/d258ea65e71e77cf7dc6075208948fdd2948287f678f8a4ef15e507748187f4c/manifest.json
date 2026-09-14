@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_outward_grid",
+  "sha256": "d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c",
+  "byteLength": 5728,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerOutwardGrid.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerOutwardGrid.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerOutwardGrid.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerOutwardGrid.Program",
+  "cachedProgramDefinition": "Project.EulerOutwardGrid.module",
+  "specModule": "Project.EulerOutwardGrid.Spec",
+  "proofTarget": "Project.EulerOutwardGrid.ArtifactTranslation",
+  "identityTheorem": "Project.EulerOutwardGrid.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerOutwardGrid.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerOutwardGrid.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerOutwardGrid.Spec.gridUpper_exact",
+    "Project.EulerOutwardGrid.Spec.gridUpper_behavior"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
