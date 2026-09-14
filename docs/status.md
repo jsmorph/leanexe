@@ -168,3 +168,12 @@ The [192-grid and 800-grid data and density/pressure figures](../data/euler-riem
 are complete.  Both runs returned status zero at time 0.8, using the same
 binary and one local WASM solve call per grid under the standard runner
 limits.  Recorded monotonic runtimes are 49.6 seconds and 61.6 minutes.
+
+The [2D hyperbolicity extension](../plans/euler-hyperbolicity.md) passed its
+focused independent artifact check on 2026-09-14.  It proves the physical
+flux derivative and a complete real eigenbasis in every unit direction
+for positive-density, positive-pressure states with gamma 7/5.  The
+registered exact-binary specification applies the theorem to accepted
+states, intermediate sweep grids, and terminal arrays.  All eight manifest
+audits contain only the accepted logical axioms.  Rounded numerical
+signal-speed bounds remain open.

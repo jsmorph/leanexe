@@ -854,3 +854,12 @@ theorems also pass.  The independent artifact gate passed.  The authorized
 Both returned status zero at time 0.8 using the same binary under the
 standard local limits.  The [short article and datasets](../data/euler-riemann-complete-v1/README.md)
 contain the figures, raw output, and reproduction commands.
+
+## Two-dimensional hyperbolicity extension
+
+The user authorized the [hyperbolicity development](euler-hyperbolicity.md)
+on 2026-09-14.  The four-component physical flux derivative, complete real
+eigenbasis, and rotation to every unit direction now check.  Solver-facing
+proofs apply them to accepted states and intermediate and terminal grids.
+The independent exact-binary check passed with standard-axiom audits.  Rounded numerical
+signal-speed bounds remain subsequent work.

@@ -11525,3 +11525,25 @@ cgroup memory and 317 MiB peak process RSS.  UTC timestamps advanced
 about 105 minutes between launch and collection, exceeding the recorded
 61.6-minute monotonic runtime.  The journal retains both measurements
 without assigning an unverified cause.
+
+## 2026-09-14: Two-dimensional hyperbolicity development
+
+The user approved the [hyperbolicity plan](plans/euler-hyperbolicity.md).
+The proof will use the existing four-component pressure and admissibility
+definitions, prove the physical flux derivative and a complete eigenbasis,
+extend the result to every unit direction, and apply it to the exact WASM
+solver through the accepted-state theorems.  All Lean work uses the standard
+local runner, one job and one thread.  Rounded numerical signal-speed
+bounds remain a separate mathematical task.
+
+The complete four-component x-flux derivative and eigenbasis now check.
+The rotation proof establishes pressure invariance and flux transformation,
+and admissible_hyperbolic proves the derivative and complete real eigenbasis
+for every unit direction.  The solver bridge also checks for accepted
+states, intermediate x-sweep grids, all initial numerical traces, and
+terminal arrays.  These audits use only propext, Classical.choice, and
+Quot.sound.  The extended exact-binary specification passed the focused
+independent package check.  The manifest registers solve_hyperbolic, and
+artifact_solve_hyperbolic connects the theorem to the binary used for both
+production datasets.  All eight manifest audits contain only the accepted
+logical axioms.
