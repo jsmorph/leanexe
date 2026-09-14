@@ -716,9 +716,18 @@ theorem artifact_solve_success :
       Spec.SafeSpecFor validated.toTalos := by
   exact artifact_correct_of Spec.SafeSpecFor Spec.solve_success
 
+theorem artifact_solve_hyperbolic :
+    ∃ raw validated,
+      decode artifactBytes = .ok raw ∧
+      validate raw = .ok validated ∧
+      CoreValid raw ∧
+      Spec.HyperbolicSpecFor validated.toTalos := by
+  exact artifact_correct_of Spec.HyperbolicSpecFor Spec.solve_hyperbolic
+
 #print axioms translation_cache_eq
 #print axioms artifact_module_eq_cache
 #print axioms artifact_solve_exact
 #print axioms artifact_solve_success
+#print axioms artifact_solve_hyperbolic
 
 end Project.EulerRiemann.Artifact

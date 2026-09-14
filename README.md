@@ -132,3 +132,9 @@ has kernel-checked proofs covering the frozen binary from initialization
 through final output, including termination and the 512 MiB memory bound.
 Both the 192 × 192 and 800 × 800 runs returned status zero at time 0.8
 using that binary.  Their density and pressure figures and raw data are complete.
+
+The [2D hyperbolicity proof](proofs/talos/README.md#two-dimensional-euler-hyperbolicity)
+establishes the physical flux derivative and a complete real eigenbasis in
+every spatial direction at positive-density, positive-pressure states for
+gamma 7/5.  The exact-binary solver theorem applies it to accepted states,
+intermediate sweep grids, and terminal cells.

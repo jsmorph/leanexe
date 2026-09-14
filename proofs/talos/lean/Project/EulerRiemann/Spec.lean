@@ -1,6 +1,7 @@
 import Project.EulerRiemann.SolveInitial
 import Project.EulerRiemann.ControlSafe
 import Project.EulerRiemann.ControlTrace
+import Project.EulerRiemann.Hyperbolicity
 
 namespace Project.EulerRiemann.Spec
 open Wasm
@@ -50,8 +51,24 @@ theorem solve_success : SafeSpecFor module := by
   intro final values hResult
   exact ⟨hResult, Control.run_safe n hn, source_success n hn⟩
 
+noncomputable def HyperbolicSpecFor (m : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (n : Nat), 2 ≤ n ∧ n ≤ 800 →
+    TerminatesWith env m 103 (m.initialStore (α := Unit)) [.i64 (UInt64.ofNat n)]
+      (fun final values => ResultAt n final values ∧
+        Control.CellsSafe (Control.run n).grid ∧ Successful n ∧
+        Hyperbolicity.CellsHyperbolic (Control.run n).grid ∧
+        Hyperbolicity.TraceHyperbolic n)
+
+theorem solve_hyperbolic : HyperbolicSpecFor module := by
+  intro env n hn
+  refine TerminatesWith.mono (solve_success env n hn) ?_
+  rintro final values ⟨hResult, hSafe, hSuccess⟩
+  exact ⟨hResult, hSafe, hSuccess, Hyperbolicity.cells_hyperbolic _ hSafe,
+    Hyperbolicity.initial_trace_hyperbolic n⟩
+
 #print axioms source_success
 #print axioms solve_exact
 #print axioms solve_success
+#print axioms solve_hyperbolic
 
 end Project.EulerRiemann.Spec

@@ -407,7 +407,8 @@
       "specTarget": "Project.EulerRiemann.Spec",
       "behaviorTheorems": [
         "Project.EulerRiemann.Spec.solve_exact",
-        "Project.EulerRiemann.Spec.solve_success"
+        "Project.EulerRiemann.Spec.solve_success",
+        "Project.EulerRiemann.Spec.solve_hyperbolic"
       ],
       "complete": true
     }
