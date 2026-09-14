@@ -18598,3 +18598,85 @@ headline.  Separate index and tracked-worktree comparisons against
 FETCH_HEAD passed.  The original untracked dataset and paper records
 remain present.  This is the single publication receipt for this
 mathematical-foundation checkpoint.
+
+## 2026-09-14: Approved Euler numerical implementation
+
+The user instructed implementation of the detailed Euler plan after the
+published plan and the pending arithmetic/limiter choices were identified.
+This authorizes outward-rounded speed bounds and the common-factor
+positivity limiter.  Updated the plan to record that approval.  Its first
+documentation edit failed before mutation because the paragraph context
+did not match its line breaks.  The corrected edit uses the exact context.
+The previous receipt commit is acaa57e49b2588be699135a883b8129067a4e044.
+
+Reread AGENTS.md, README.md, DEVELOPING.md, the branch operating instructions,
+the detailed plan, and the leanrunner skill.  Standard local cgroup limits
+and one Lean thread apply.  Searched the existing IEEE64 model, numerical
+proof library, and LTG for adjacent-value and outward-rounding support.
+No nextUp/nextDown support exists.  F64OrderComplete, F64StrictOrder,
+F64Absolute, and F64Packing provide reusable ordering, magnitude, and
+rounding facts.  Two guessed module names, F64Arithmetic and F64Scale,
+were absent; the subsequent file inventory identified their existing
+arithmetic-bound and packing counterparts.  LTG's scalar-statement entry
+is relevant to later emitted integer conditionals.  No generated proof
+or compiler run has occurred at this stage.
+
+Added F64Adjacent.lean with raw nextUp/nextDown operations, a proposed
+exact adjacent-value gap proof, and kernel boundary certificates for
+signed zero, the subnormal transition, and overflow to infinity.  Made
+F64Order.unsignedScaled public so the proof reuses its magnitude formula.
+The numerical wrappers must reject nonfinite operands and endpoints.
+
+The first F64Adjacent target failed in 1.5 seconds on the exponent-carry
+branch.  An unrestricted pow_succ rewrite had expanded the constant
+power instead of the variable power.  An explicit variable-power equality
+resolved that rewrite, but nlinarith still did not close the multiplied
+fraction identity.  A two-line ring calculation using the exact fraction
+carry equality resolved it.  A separate UInt64 irreflexivity goal needed
+its own decidable order instance.  The resulting target passed in
+1.7 seconds, including the positive gap and ordering theorem.  The
+boundary certificates use no axioms; real arithmetic uses the standard
+three.  A nonessential tactic-sequencing linter warning remains.
+
+Added F64AdjacentSigned for negative-word decoding, all predecessor and
+successor gaps, and ordering for finite inputs.  Its first check failed
+in 2.9 seconds on constant coercions and zero-case simplification.  The
+second found that change alone did not reduce the constant magnitude
+expressions.  Kernel-evaluated integer equalities normalize those four
+numerators while leaving the real power denominator symbolic.  The
+third check passed in 2.2 seconds.  No recursion limit was raised.
+Added F64MagnitudeGaps to bound spacing from the normalized magnitude;
+its first focused check passed in 2.6 seconds with standard axioms.
+All commands used the standard runner and three-minute bound.
+
+Read the LTG scalar-statement entry, including its typed conditional
+support.  The compiler report accepts the nextUp scalar entry.  Compiled
+it with annotations to the fresh build/euler-parity-next-up-v1.wasm
+and build/euler-parity-next-up-v1.annotations.json paths.  The binary is
+1,110 bytes with SHA-256
+78f21a6d1556b7ec7642155fea097a3707fdefa6df365632340416d04c77f67b.
+The annotation file records one scalar function and zero region recipes.
+The pinned wasm-tools 1.251.0 printed the exact bytes.  Function zero has
+no calls or memory operations, but the Boolean equality source creates
+two extra Boolean-normalization conditionals.  Changed both neighbor
+helpers from Boolean equality to propositional equality, and adjusted
+the branch proofs.  The next compilation will use separate v2 paths.
+The v1 artifact remains preserved.  No generated helper execution theorem
+or production run has been claimed.
+
+The proposition-based helper and its dependent gap modules pass.  The
+signed target took 2.1 seconds and the magnitude target 1.7 seconds.
+Compiled nextUp to the fresh v2 binary and annotation paths.  The binary
+is 1,099 bytes, SHA-256
+8ba358053c309253fd5a6fbba3b956f25225c4e287db1e0d276baf450beab7c3.
+Exact-byte WAT inspection shows one fewer Boolean-normalization
+conditional.  One normalization remains in the generated equality
+condition.  No compiler change is needed for this proof stage.
+
+The checked implementation checkpoint contains F64Adjacent.lean,
+F64AdjacentSigned.lean, F64MagnitudeGaps.lean, the public unsignedScaled
+definition in F64Order.lean, the updated plan and proof inventory, and
+the development notes and journal.  The arithmetic enclosures, Euler
+speed helper, limiter, complete solver, and new production data remain
+open tasks.  No new dependency or additional design approval is needed
+to continue the approved plan.

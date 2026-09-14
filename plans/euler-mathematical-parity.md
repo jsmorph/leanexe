@@ -6,6 +6,10 @@ with exact gamma 7/5, followed through the complete LeanExe-generated WASM
 calculation.  Each completed numerical claim must describe decoded output
 from the exact binary, including the effect of rounding and rejection.
 
+On 2026-09-14 the user authorized implementation of this detailed plan,
+including outward-rounded speed bounds and the common-factor positivity
+limiter.  These choices are approved for the new numerical implementation.
+
 ## Reviewed claims and existing evidence
 
 The [Euler article](https://lanyon.ai/research/euler-equations/) and its
@@ -69,9 +73,10 @@ energy, pressure, and sound speed.  A pressure upper bound uses a lower
 kinetic-energy bound.  The final speed bounds the absolute exact normal
 velocity plus the exact sound speed.  The implementation must account for
 rounded constants, signed zero, subnormal results, and finite-range exits.
-The arithmetic design requires review before the executable changes.
+The user approved this arithmetic design for the executable changes.
 
 - [ ] Specify outward arithmetic using the existing integer-bit interface and IEEE64 model.
+- [x] Implement adjacent-value operations and prove their exact spacing and ordering for both signs.
 - [ ] Prove endpoint enclosure for the required operations, with explicit overflow and invalid-input returns.
 - [ ] Prove the side-speed bound under conditions established by acceptance.
 - [ ] Prove that interface and grid maxima retain both directional bounds.
@@ -120,16 +125,16 @@ stating preservation of a linear profile.  Define face states U +/- D/2.
 
 - [x] Prove preservation of constants, linear profiles, reflection symmetry, and cell-average symmetry for the real reconstruction.
 - [x] Prove component bounds and retain an exact counterexample to unconditional pressure preservation.
-- [ ] Review a common-factor positivity limiter for both faces.  The proposed limiter reduces the complete slope together and has an explicit zero-slope terminal case.
+- [x] Review a common-factor positivity limiter for both faces.  The approved limiter reduces the complete slope together and has an explicit zero-slope terminal case.
 - [ ] Prove admissibility of both returned faces and preservation of the unrestricted reconstruction when its checks pass.
 - [ ] State linear-profile preservation with the precise limiter-inactive and representability conditions required by execution.
 - [ ] Define and prove the rounded reconstruction, including branch selection, finite intermediate results, and rounding residuals.
 - [ ] Prove the generated WASM helper and its complete source-model correspondence.
 
 The positivity check belongs at reconstructed faces before flux evaluation.
-Reducing the timestep alone leaves those face states unchanged.  The limiter
-design and its effect on the published reconstruction properties require
-explicit agreement before integration.
+Reducing the timestep alone leaves those face states unchanged.  The user
+approved the limiter design and its conditional reconstruction properties
+for integration.
 
 The checked counterexample has conserved states [1,0,0,1/8],
 [1,1,0,5/8], and [1,2,0,17/8].  Each has internal energy 1/8.
@@ -152,7 +157,7 @@ establish admissibility of the reconstructed state.
 
 Begin with the speed characterization and counterexample, then the real
 wave/flux and reconstruction lemmas that are independent of numerical design.
-Review arithmetic and limiter choices before changing the solver.  Complete
+Arithmetic and limiter choices are approved.  Complete
 local IEEE64 proofs before generated execution composition.  Complete the
 exact-binary gate before either production calculation.
 

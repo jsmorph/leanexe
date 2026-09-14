@@ -43,7 +43,7 @@ theorem finiteBits_iff (bits : UInt64) :
     (absBits bits).toNat / 2 ^ 52 ≠ 2047
   omega
 
-private def unsignedScaled (n : Nat) : Nat :=
+def unsignedScaled (n : Nat) : Nat :=
   if n / 2 ^ 52 = 0 then n % 2 ^ 52
   else (2 ^ 52 + n % 2 ^ 52) * 2 ^ (n / 2 ^ 52 - 1)
 

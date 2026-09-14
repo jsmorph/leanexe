@@ -11570,3 +11570,19 @@ existing execution and translation proofs.  The
 [proof inventory](proofs/talos/README.md) records each boundary.
 Outward arithmetic and a common-factor positivity limiter await design
 review.  Standard local runner limits remain in force.
+
+## 2026-09-14: Outward arithmetic implementation
+
+The user approved implementation of the detailed Euler plan, including
+the arithmetic and limiter choices.  The adjacent binary64 operations,
+their exact spacing for both signs, and magnitude-based spacing bounds
+now pass focused checks.  All real-number audits use standard logical
+axioms.  Boundary word certificates use none.  Arithmetic-result
+enclosure remains the next proof target.
+
+LeanExe compiles nextUp as a scalar function.  Inspection of its WAT
+identified a redundant Boolean conversion caused by the source equality
+form.  Propositional equality removes one conditional, reducing the
+diagnostic artifact from 1,110 to 1,099 bytes.  Its annotations contain
+no region recipe.  Both diagnostic artifacts remain preserved.  The
+solver integration will require exact generated execution proofs.
