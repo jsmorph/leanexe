@@ -351,4 +351,14 @@ theorem artifact_reconstruct_accuracy :
 
 #print axioms artifact_reconstruct_accuracy
 
+theorem artifact_reconstruct_factor :
+    ∃ raw validated,
+      decode artifactBytes = .ok raw ∧
+      validate raw = .ok validated ∧
+      CoreValid raw ∧
+      Spec.FactorSpecFor validated.toTalos := by
+  exact artifact_correct_of Spec.FactorSpecFor Spec.reconstruct_factor
+
+#print axioms artifact_reconstruct_factor
+
 end Project.EulerReconstruction.Artifact

@@ -438,7 +438,8 @@
       "behaviorTheorems": [
         "Project.EulerReconstruction.Spec.reconstruct_exact",
         "Project.EulerReconstruction.Spec.reconstruct_safe",
-        "Project.EulerReconstruction.Spec.reconstruct_accuracy"
+        "Project.EulerReconstruction.Spec.reconstruct_accuracy",
+        "Project.EulerReconstruction.Spec.reconstruct_factor"
       ],
       "complete": true
     },

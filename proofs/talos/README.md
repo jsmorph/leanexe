@@ -78,7 +78,7 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 Together the counter artifacts cover the runtime end to end: bump allocation, free-list reuse and unlink, release through all three object kinds including recursion, retain both inline and exported, and the null release.
 
-The eighteen completed floating-point kernel cases use raw `UInt64` binary64 interfaces and compiler-recognized `LeanExe.Float64` intrinsics.  They do not prove support for arbitrary Lean `Float` expressions or identify Lean's native `Float` evaluator with Talos's IEEE64 model; native and C execution remain regression or data-generation boundaries rather than proof evidence.
+The completed floating-point kernel cases use raw `UInt64` binary64 interfaces and compiler-recognized `LeanExe.Float64` intrinsics.  They do not prove support for arbitrary Lean `Float` expressions or identify Lean's native `Float` evaluator with Talos's IEEE64 model; native and C execution remain regression or data-generation boundaries rather than proof evidence.
 
 ## Complete Riemann solver
 
@@ -350,6 +350,15 @@ accuracy against real minmod reconstruction.  Source regeneration passes.
 The [exact-byte theorems](lean/Project/EulerReconstruction/ArtifactTranslation.lean)
 connect these properties to the frozen 5,619-byte artifact.  Complete decoding,
 validation, translation equality, and independent package verification pass.
+
+The [factor iteration proof](lean/Project/EulerRiemann/ReconstructionFactor.lean)
+uses the shared [rounded halving lemma](lean/Project/ProofKit/F64Halving.lean)
+to prove that each step preserves finiteness and nonnegativity and cannot
+increase the factor.  Every returned factor lies in [0, 1/2], including
+rejected outputs and the center-state fallback.  The fourth registered
+reconstruction behavior and its exact-byte transfer establish this bound
+for every raw input and runtime trial budget.  The strengthened source
+and independent package checks pass with standard axioms.
 
 ## Workflow Tools
 
