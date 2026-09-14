@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_outward_speed",
+  "sha256": "be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2",
+  "byteLength": 4936,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerOutwardSpeed.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerOutwardSpeed.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerOutwardSpeed.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerOutwardSpeed.Program",
+  "cachedProgramDefinition": "Project.EulerOutwardSpeed.module",
+  "specModule": "Project.EulerOutwardSpeed.Spec",
+  "proofTarget": "Project.EulerOutwardSpeed.ArtifactTranslation",
+  "identityTheorem": "Project.EulerOutwardSpeed.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerOutwardSpeed.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerOutwardSpeed.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerOutwardSpeed.Spec.speedUpper_exact",
+    "Project.EulerOutwardSpeed.Spec.speedUpper_behavior"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

@@ -19198,3 +19198,126 @@ Whitespace checks passed.  The checkpoint stages only the entry, generated
 catalog/declaration indexes, recipe and allowlist/identity changes, the
 existing test extension, devnotes, and journal.  It records checked support
 and a concrete source-proof use without a retrieval or speed claim.
+
+Published df73e96275fc38583dc685ec04631577d4a5dede, parent
+183620cf7aa6a5c5179289b6b9d71c117986d67a, tree
+bcc4a14dae32c330a15eca7cfed34f6b13c1c451, titled
+Add LTG support for retained call operands.  SSH push/fetch succeeded.
+HEAD, FETCH_HEAD, and origin match, with unchanged tracked worktree and
+index content.  The next operation prepares only euler_outward_speed's
+new exact-byte modules and frozen package, plus its registry and CheckFile
+entries, through the existing artifact migration command in kernel mode.
+The earlier solver package and all unrelated state remain preserved.
+
+Kernel-mode migration succeeded.  The frozen speed binary has the previously
+measured 4,936 bytes and digest be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2.
+The generator supplied direct byte constructors, balanced byte-lookup
+equalities, the raw decoded cache, and exact per-function translation
+equalities.  Reused the prior Euler proof-generating cbv approach for the
+new decoder and validator goals, with the checked byte-lookup rewrite
+support selected from LTG.  The decoder theorem compares its complete
+result to the raw cache, so cache equality follows without a second closed
+computation.  A focused three-minute decoder check is next.
+
+The decoder target reached the three-minute limit with status 124 and no
+theorem diagnostic.  Its byte constructors, lookup lemmas, and raw cache
+built in 3.4 seconds, 4.2 seconds, and 695 milliseconds.  The unchanged
+whole-decoder computation will not be repeated.  The normative CodeOffsets
+tool extracted section and item boundaries in 0.7 seconds to the fresh
+/tmp/euler-outward-speed-sections-20260914.csv.  The proof now divides at
+those boundaries and composes the existing vector, section, and module
+lemmas.  The largest individual function occupies 367 bytes.
+
+The metadata check completed in 23 seconds with a heartbeat diagnostic in
+the export section.  Its preceding type, function-index, memory, and global
+section proofs succeeded.  Divided exports into eleven entry equalities
+and composed vector and sized-parser lemmas.  Added individual code-body
+equalities in bounded modules and a vector composition over all 41 bodies.
+
+The first eight code-body proofs passed in 47 seconds, each using only
+propext.  Their proofs use the exact byte lookups and the normative code
+parser.  Added the six section-loop composition steps and the final decoder
+identity.  No generated instruction model or binary bytes changed.
+
+The direct code-parser group for functions 8 through 15 reached its
+three-minute limit without a theorem diagnostic.  Switched the remaining
+functions to the LTG-documented explicit-cursor sequence equations and
+code_eq_of_parts, with nested and suffix boundaries at 128 bytes.  The
+normative nested-offset extraction passed in 0.9 seconds and preserved its
+output at /tmp/euler-outward-speed-nested-20260914.csv.  The eight accepted
+direct-parser proofs remain unchanged.  This iteration tests composition
+on the same frozen artifact after preserving the failed direct approach.
+
+The paper agent completed its separate signed-squarer correspondence plan
+and draft in /tmp/ecdlp-signed-squarer.  After the offset extraction ended,
+the focused runner check against the VQ workspace passed on its first
+attempt.  Five audits contain only accepted logical axioms.  The result
+covers the integer identity, exact measured forward-branch action, resource
+formula, six-call subtotal of 50,558 Toffolis, and Karatsuba value identity.
+It leaves approximate modular accumulation, coherent control, artifact
+identity, and complete ECDLP claims open.  No VQ source changed.
+
+The sequence-composed functions 8 through 15 passed in 10 seconds after
+the direct code-parser computation had reached 180 seconds.  Functions
+16 through 23 passed in 14 seconds, and 24 through 31 in 16 seconds.
+All code-body audits report only propext.  Added a focused dependency audit
+for kineticLower's binary body to check reuse of the root sequence, its
+suffix, a nested suffix, and the byte-lookup theorem.
+
+Functions 32 through 39 passed in 21 seconds, and function 40 in 6.5
+seconds, with only propext.  Export entries and vector composition passed
+in 14 seconds.  The completed metadata module passed in 10 seconds.
+The code-vector composition passed in 2.1 seconds.  The full decoder
+composition is receiving its focused check before validation and explicit
+behavior transfer.
+
+The combined section-transition module reached the three-minute limit
+without a theorem diagnostic after code-vector composition passed.
+Split its state definitions and terminal case, code-section transition,
+remaining section transitions, and final header composition into separate
+modules, following the existing Riemann decoder's proof boundaries.
+The next focused check isolates the state definitions and terminal case.
+
+The isolated state module exposed five structure-layout syntax errors in
+the generated proof draft: each first updated field followed `with` on the
+same line, while the following field had a smaller indentation.  The terminal
+section theorem passed.  Moved the first updated fields to their own lines
+at the same indentation as the remaining fields.  The preceding combined
+timeout therefore included erroneous declarations and is not evidence of
+a slow successful section composition.
+
+The corrected state module passed in 1.4 seconds.  The code-section
+transition passed in 1.5 seconds, remaining transitions in 1.9 seconds,
+complete decoder composition in 1.5 seconds, decoder wrapper in 1.3
+seconds, raw-cache equality in 1.3 seconds, and final decoder identity
+in 1.3 seconds.  Validation passed in 6.6 seconds with only propext.
+Translation and the two explicit exact-binary behavior transfers passed
+in 2.8 seconds with the accepted logical axioms.  The dependency audit
+confirmed all four selected sequence and lookup declarations.  Updated
+the provisional LTG record with this fixed-artifact comparison and its
+limited measurement scope.  The independent artifact gate is running.
+
+The independent euler_outward_speed artifact gate passed with status zero:
+file identity, embedded bytes, complete decoder and validator, translation,
+behavioral specification, and all seven manifest theorem audits.  Each
+audit contains only accepted logical axioms.  Catalog regeneration accepted
+41 entries without index changes.  Two documentation edits were rejected
+before mutation: a repeated target path, then out-of-order edit contexts.
+Combined and ordered the edits, updated the current package inventory to
+35, and marked exact-byte speed closure complete in the parity plan.
+The new F64NonnegativeMaximum draft belongs to the following maximum-selection
+checkpoint and is excluded from this publication until its focused proof check.
+
+The final documentation check passed all 120 maintained Markdown files.
+LTG validation accepted all 41 entries, and whitespace checks passed.
+The reviewed checkpoint stages the new speed artifact's two package files,
+its 21 exact-byte proof modules, registry and CheckFile entries, the LTG
+worked-example update, and current README, status, plan, devnotes, and
+journal changes.  It excludes the new maximum-selection draft and all
+preserved data and submission state.  Publication will use a non-forced
+push followed by fetch and exact commit, parent, tree, and index checks.
+
+The staged whitespace check found a trailing blank line in five new proof
+modules that the earlier tracked-file check had not included.  Removed
+those final blank lines and repeated the staged check.  Their declarations
+and proof terms are unchanged.

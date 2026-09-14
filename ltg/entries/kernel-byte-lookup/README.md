@@ -86,3 +86,21 @@ passed, including all seven manifest theorem audits with only the accepted
 logical axioms.  A held-out measurement remains open.  This entry records a provisional
 proof-generation method and does not import the Riemann declarations
 into later proof tasks.
+
+The 4,936-byte outward-speed artifact supplies another application.  Its
+whole-decoder computation reached a three-minute limit.  Individual direct
+code-parser computations passed for functions 0 through 7 in 47 seconds,
+while the group for functions 8 through 15 reached the same limit.  Rewriting
+that second group with explicit-cursor sequence certificates and
+`code_eq_of_parts` passed in 10 seconds.  The remaining groups passed in
+14, 16, 21, and 6.5 seconds.  Nested sequences and suffixes use 128-byte
+boundaries.  All function-decoding audits report only `propext`.
+
+The [kinetic-energy body proof](../../../proofs/talos/lean/Project/EulerOutwardSpeed/ArtifactCodes24To31.lean)
+uses its root sequence, root suffix, nested suffix, and byte-lookup theorem,
+as confirmed by a dependency audit.  Its
+[complete decoder proof](../../../proofs/talos/lean/Project/EulerOutwardSpeed/ArtifactParsed.lean)
+composes the existing section and module lemmas.  The timing comparison
+concerns one fixed group on one artifact and records a censored direct
+computation.  This related Euler application does not complete the held-out
+measurement or measure automatic LTG retrieval.
