@@ -125,15 +125,27 @@ Wminus = (dU-dF/a)/2 and Wplus = (dU+dF/a)/2, with speeds -a and a.
 - [x] Prove zero waves and numerical-flux consistency for identical states.
 - [x] Prove equivalence between these fluctuations and the real Rusanov reference formula.
 - [x] Prove directional flux reversal and connect the physical flux in the numerical-error modules to the differentiated flux.
-- [ ] Derive exact residual equations for the computed interface flux and cell update, reusing existing componentwise bounds.
-- [ ] Establish finite, stated bounds for every residual claimed by the accepted-execution theorem.
+- [x] Prove signed operation-error certificates and bounds for accepted conservative updates and Rusanov components, including exact-byte execution.
+- [x] Bound physical side-flux error from accepted status alone, including the rounded pressure coefficient, and transfer the bound to exact bytes.
+- [x] Compose a scalar Rusanov arithmetic bound with explicit errors in its two side fluxes.
+- [ ] Instantiate the physical reference bound for all four components of the accepted interface call.
+- [ ] Establish stated residual bounds throughout the complete accepted solver trace.
 
 The mathematical wave representation explains the flux that the solver
 computes.  The execution theorem continues to follow that flux computation.
 
+The new local bounds use neighboring-value rounding radii and derive finite
+inputs and intermediates from accepted status.  The side-flux proof includes
+the stored pressure coefficient's difference from exact 2/5.  It requires
+no quantitative M bound or extra internal-energy margin.  Functions 22, 46,
+and 58 of the preserved binary now carry physical-side, Rusanov-arithmetic,
+and conservative-update residual theorems.  The scalar reference composition
+adds one half of the sum of the two side-flux error bounds.
+
 ## 4. Grid and time conservation
 
 - [x] Prove generic sweep telescoping and time accumulation with explicit residuals.
+- [x] Instantiate a row of rounded updates with one shared flux sequence and bound its accumulated update residual under accepted status.
 - [ ] Instantiate cancellation of shared internal face fluxes in each solver sweep.
 - [ ] Express total mass, both momenta, and energy changes as boundary fluxes plus the sum of local rounding residuals.
 - [ ] Compose x and y sweeps using their respective intermediate states.

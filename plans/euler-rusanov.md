@@ -876,9 +876,10 @@ The outward speed's exact-byte package passes.  Source proofs now extend
 its bound to both interface states and every grid cell in both directions,
 then compose it with the checked exact-spacing CFL inequality.  Maximum
 and CFL execution proofs and solver integration remain open.  The rounded
-common-factor reconstruction now has source safety, residual, accuracy,
-and conditional linear-profile proofs.  Generated scalar execution now
-covers record operations, minmod, the slope, and candidate faces, including
-all rejection branches.  The compiler-generated loop-guard equality checks.
-The bounded halving loop, reconstruction entry, and exact-byte closure
-remain open.
+common-factor reconstruction has complete source and exact-byte safety,
+accuracy, and termination proofs, together with a conditional source-level
+linear-profile theorem.  Its independent package check passes.  Accepted conservative updates, Rusanov component
+arithmetic, and physical side fluxes now have rounding bounds connected to
+the preserved solver bytes.  A row of rounded updates has a shared-flux
+balance and accumulated residual bound.  Full interface composition,
+grid/time instantiation, and revised-solver integration remain open.

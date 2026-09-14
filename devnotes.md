@@ -11786,3 +11786,30 @@ report only propext.  Complete decoding, validation, and translation passed
 without a proof timeout.  Two package preflights rejected an incorrect
 manifest theorem list before the names were aligned with the source-case
 registry.  The exact-artifact inventory now contains thirty-six packages.
+
+## 2026-09-14: Accepted Euler rounding residuals
+
+The [conservative update certificate](proofs/talos/lean/Project/ProofKit/F64ConservativeUpdate.lean)
+and [Rusanov arithmetic certificate](proofs/talos/lean/Project/ProofKit/F64RusanovResidual.lean)
+give exact signed-error equations and operationwise bounds.  Their accepted
+source proofs derive finite inputs and intermediate results from the guards.
+The [physical side-flux bound](proofs/talos/lean/Project/EulerRiemann/NumericsSideResidual.lean)
+propagates rounding radii through division, transport, kinetic energy,
+pressure, and flux.  It includes the binary64 pressure coefficient's error
+relative to exact 2/5 and requires no extra quantitative M premise.
+
+All three results have checked generated-execution and exact-byte theorems
+for functions 58, 46, and 22 of the preserved solver.  The shared
+[error propagation lemmas](proofs/talos/lean/Project/ProofKit/F64ErrorPropagation.lean)
+reuse existing neighboring-value enclosures and product-error algebra.
+The new [row theorem](proofs/talos/lean/Project/EulerRiemann/NumericsRowBalance.lean)
+cancels a shared flux sequence and bounds accumulated update residuals.
+The scalar reference composition adds half the sum of both side-flux errors.
+Full interface, grid, and time instantiation remain open.
+
+Binary decoding and module equality now reside in
+[Artifact module identity](proofs/talos/lean/Project/EulerRiemann/ArtifactModule.lean).
+This lets local numerical theorems check without rebuilding complete solver
+behavior.  The original complete-solver wrappers also pass after the split.
+All checked public audits use standard logical axioms.  No numerical source,
+generated Program, frozen bytes, or dataset changed.
