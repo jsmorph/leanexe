@@ -18453,3 +18453,136 @@ parent, tree, and headline.  Both the index and complete tracked worktree
 match the fetched tree.  The original untracked dataset and paper files
 remain present.  This is the single publication receipt for the completed
 hyperbolicity checkpoint.
+
+## 2026-09-14: Mathematical parity review and first targets
+
+The user requested a second review, a detailed plan, and implementation.
+Reread AGENTS.md, DEVELOPING.md, the branch operating instructions, and the
+leanrunner skill.  Standard local cgroup limits, one process, and one thread
+apply.  The prior publication receipt is
+6ddab174e1401753baac6c6d8add0df42f3b0647.  Read-only verification established
+matching HEAD, FETCH_HEAD, origin, parent, tree, index, and tracked worktree.
+
+Reviewed the article and the published 2D proof definitions and theorem
+statements.  The web reader failed to open the GitHub commit API.  Direct
+curl with a twenty-second bound returned upstream main at
+a736aa5f8b17efd225c4692404e2442361d06729.  Two guessed local source paths
+and a guessed dependency path were absent; subsequent reads used the
+repository inventory and existing imports.  No build or proof failed in
+those read-only attempts.
+
+The detailed plan is plans/euler-mathematical-parity.md.  Updated the main
+queue and Euler plan and recorded the scope in devnotes.md.  Corrected the
+three stale unchecked complete-solver tasks.  The plan specifies real,
+rounded, and exact-binary obligations for speed bounds, jump identities,
+grid/time conservation, and reconstruction.  Numerical arithmetic and
+positivity-limiter choices remain explicit design review points.
+
+A bounded Python diagnostic used exact Fraction comparisons after host
+binary64 calculation.  For rho=1, mx=my=0, E=1, speed word
+3fe7f254dab9cc3a has squared residual
+-42215111444459999/507060240091291760598681282150400 relative to 14/25.
+This is a diagnostic until the pure IEEE64 computation and inequality
+check in Lean.  Added RealCharacteristicSpeed.lean for the sharp real
+eigenvalue bound and SpeedCounterexample.lean for the accepted numerical
+counterexample.  The fixed IEEE result uses kernel evaluation, following
+the existing initial-state certificates.
+
+The first focused check reached RealCharacteristicSpeed in 2.1 seconds and
+failed on unreduced Fin-4 vector entries in the two repeated eigenvalues.
+Explicit branch terms fixed the issue.  The next check accepted that module
+in 1.3 seconds and exposed the same coordinate-normalization issue in the
+counterexample's pressure expression.  Explicit scalar goals fixed both
+the pressure and sound-speed equalities.  Kernel evaluation already checked
+the accepted status and exact speed word.
+
+A subsequent invocation named the counterexample and the independent
+RealLaxFriedrichs target together under one runner.  Future focused commands
+name one target.  The wave identities checked, but their real definitions
+needed a noncomputable section.  The counterexample needed an explicit
+integer-to-real zero coercion in its state-decoding lemma.  After those
+edits, the counterexample target passed in 2.2 seconds.  Its status and
+word audits use propext and Quot.sound; the strict real inequality uses
+the three standard axioms.  No target timed out.
+
+Added the shared RealLaxFriedrichs algebra, its Euler RealWaves adapter,
+and generic finite-volume sweep/time balance lemmas.  The adapter equates
+the existing numerical reference flux with the differentiated physical
+flux.  A design question is pending for outward-rounded speed bounds and
+a common-factor positivity limiter.  Independent real proofs continue.
+
+RealLaxFriedrichs passed its focused target in 845 milliseconds.  The first
+RealWaves adapter check found a namespace-open error and unreduced
+function-valued flux equalities.  Explicit pointwise scalar goals and
+the existing physical-flux equality resolved them.  The adapter passed
+in 1.4 seconds, including direction reversal.  No new numerical or
+compiler implementation was needed for these real identities.
+
+The finite-volume balance proof initially lacked Finset.mul_sum.  Reading
+the Mathlib declaration identified Algebra.BigOperators.Ring.Finset as
+the required existing import.  With that import the focused target passed
+in 987 milliseconds.  This is a generic telescoping theorem with explicit
+residuals; solver-sweep and full-trace instantiation remain open.
+
+The minmod reflection draft used a reversing lemma in unrestricted simp,
+which reached the recursion limit.  Replacing that use with one specialized
+rewrite resolved the loop without raising its limit.  The reconstruction
+counterexample target passed in 1.8 seconds.  Added componentwise face
+bounds and rechecked the leaf successfully in 1.3 seconds.  The three
+dyadic input states are admissible, but the reconstructed right face has
+internal energy -1/4 and pressure -1/10.  All new minmod and counterexample
+audits contain only the three standard logical axioms.
+
+RealLeftEigenvectors first failed to parse matrix-vector notation until
+the Matrix scope was opened.  Its next check found a rewrite in the wrong
+direction.  Reading Matrix.mulVec_mulVec and using its forward direction
+resolved that goal.  The target passed in 1.2 seconds.  The inverse-matrix
+identities, left eigenrelation, and characteristic reconstruction use the
+existing nonsingular right eigenbasis.  Their public audits are standard.
+
+Reviewed NumericsFluxBounds, NumericsSafety, and NumericsInterfaceReference.
+The quantitative StateBounds M predicate is distinct from the accepted
+guard's StateBounds predicate.  Acceptance supplies finite inputs, positive
+density/internal energy, and a true guard.  The current flux-error theorem
+also assumes 1/M <= rho <= M, magnitudes <= M, and internal energy at
+least 24*2^-52*M^3, with 1 <= M <= 2^100.  No theorem examined derives
+those quantitative conditions for every accepted trace.  Added the exact
+premises and this remaining obligation to the plan and proof inventory.
+
+Added ArtifactSpeedCounterexample.lean to compose the existing function-22
+execution theorem with the checked speed counterexample and exact-byte
+translation.  Its first focused check failed in 3.4 seconds because an
+isolated change goal did not determine the namespace of .i64.  Replaced
+both constructors in that goal with Wasm.Value.i64.  The theorem concerns
+the frozen helper on specified raw input words, not reachability of this
+state from the fixed production quadrants.  Read-only searches also
+reported absent guessed ProofKit/Program.lean and package.json paths;
+subsequent reads used the dependency and documentation inventories.
+
+Every focused invocation used tools/leanrun --timeout 3m --lock-timeout 30
+with lake -d proofs/talos/lean --no-ansi build and the named leaf target.
+Standard local cgroup limits and one Lean thread remained in force.
+No proof target timed out.  Cached dependency warnings were replayed.
+This stage reused Mathlib algebra and the existing Euler physical flux,
+guard, numerical reference, and exact execution theorems.  No LTG retrieval
+was attempted and no proof generator ran.  The planned generated-code
+stage must still inspect compiler annotations and relevant LTG material.
+
+The corrected ArtifactSpeedCounterexample target passed in 3.3 seconds.
+Both side_execution and artifact_underestimate audit to propext,
+Classical.choice, and Quot.sound.  The latter theorem starts from the
+preserved artifactBytes and its checked decode/validate translation.
+Its function-22 postcondition includes accepted status, the strict
+speed underestimate, and complete store preservation.  This focused
+theorem is supplementary to the existing package manifest.  The new
+counterexample does not modify its eight registered declarations.
+
+The documentation check accepts 119 maintained Markdown files, and
+git diff --check passes.  Source review of all nine new Lean files found
+no sorry, admit, or axiom declaration.  Preparing a fifteen-file checkpoint:
+the nine new Lean modules, plans/euler-mathematical-parity.md, plan.md,
+plans/euler-rusanov.md, proofs/talos/README.md, devnotes.md, and journal.md.
+The exact source and artifact gates for a revised numerical method remain
+future work.  The arithmetic and limiter design question remains pending.
+The user also requested a read-only Palomar investigation by an agent;
+that investigation is separate from this Euler checkpoint.

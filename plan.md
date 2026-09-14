@@ -1,5 +1,7 @@
 # Development Plan
 
+The active Euler work is [mathematical parity with the Lanyon article](plans/euler-mathematical-parity.md), authorized on 2026-09-14.  It covers physical speed bounds, wave and flux identities, conservation with rounding residuals, reconstruction, and their complete exact-WASM proofs.
+
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
@@ -659,6 +661,6 @@ free-list invariant.  Its pointer and count prefixes use the checked
 scalar-statement descriptor indexed in LTG.  Shared heap-grid bounds
 replace repeated payload-bound and separation derivations.
 
-- [ ] Complete the source and exact-WASM proofs for all success and failure returns, including the memory bounds.
-- [ ] Run 192 by 192 and then render its final density and pressure figure.
-- [ ] Run 800 by 800 and then render its final density and pressure figure.
+- [x] Complete the source and exact-WASM proofs for all success and failure returns, including the memory bounds.
+- [x] Run 192 by 192 and then render its final density and pressure figure.
+- [x] Run 800 by 800 and then render its final density and pressure figure.
