@@ -19156,3 +19156,45 @@ check passed, covering 119 maintained Markdown files.  The reviewed
 checkpoint comprises four execution/specification modules, case completion,
 the runtime and aggregate imports, and the current inventory/plan/journal
 updates.  It does not stage any preserved data or submission files.
+
+Published 183620cf7aa6a5c5179289b6b9d71c117986d67a, parent
+de2761ed5daef70e1ffed6cedebcb41a43806ea6, tree
+7e60a543a6c33f611724644eda55c58941a5c5e9, titled
+Prove complete outward Euler speed execution.  SSH push/fetch succeeded.
+HEAD, FETCH_HEAD, and origin match, and the index and tracked worktree
+equal that commit.  Unrelated state remains preserved.
+
+Added provisional LTG guidance for direct calls retaining a caller operand
+suffix, using the already checked CallRemainder declarations.  The new entry
+records its premises and the concrete division use, and the ProofKit allowlist
+now admits that module.  Direct-call recipes name append_args as supporting
+guidance.  Extended the existing recipe test to require that declaration.
+No new semantic axiom, compiler operation, or dependency is introduced.
+Catalog regeneration and focused checks follow.  Retrieval performance
+remains unmeasured.
+
+The catalog's first validation rejected the feature ordering before writing
+generated indexes.  Sorted the new entry's feature list as required.
+
+The second catalog validation required the same code-unit ordering for
+declarations.  Corrected that list before regenerating.
+
+The catalog regenerated 41 entries.  The existing leanexegen protocol,
+annotation, package, publication, and exit tests passed, using and removing
+only their fresh test directory tmp/leanexegen-test-YFQK3A.  Review also found
+that the module allowlist and packaged source list are maintained separately.
+Added CallRemainder to the latter so a task importing the newly permitted
+module receives its checked source.  The test is rerun after this addition.
+
+Correction: proofKitRelativeFiles defines the proof-kit identity hash.
+The module allowlist controls task-source inclusion.  Both lists now include
+CallRemainder, so the supplied source also enters the recorded identity.
+
+The final leanexegen test passed using its fresh directory
+tmp/leanexegen-test-3Z3jCg.  LTG catalog/index/exclusion/digest tests passed,
+catalog validation accepted all 41 entries, the generated Lean declaration
+check passed, and documentation checks passed 120 maintained Markdown files.
+Whitespace checks passed.  The checkpoint stages only the entry, generated
+catalog/declaration indexes, recipe and allowlist/identity changes, the
+existing test extension, devnotes, and journal.  It records checked support
+and a concrete source-proof use without a retrieval or speed claim.

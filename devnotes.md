@@ -11663,3 +11663,12 @@ The complete Riemann recurrence still uses its preserved earlier numerical
 helpers.  Independent exact-byte closure for the new speed helper, certified
 maxima, reconstruction, conservation residuals, and solver integration remain
 on the mathematical-parity agenda.
+
+## 2026-09-14: LTG direct-call stack support
+
+The provisional direct-call-stack-tail entry exposes the existing
+CallRemainder theorems, their function-lookup and argument-count premises,
+and the Euler division use.  Direct-call recipes name append_args, and
+the task allowlist and proof-kit identity include its source.  The catalog
+and its Lean declaration check pass, as do the LTG and leanexegen tests.
+No proof-agent retrieval or performance measurement accompanied this change.
