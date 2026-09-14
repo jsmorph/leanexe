@@ -9,9 +9,11 @@ linearity proofs.  Its complete generated-WASM execution,
 termination, safety, and accuracy specifications pass source regeneration
 and independent exact-byte verification.  Accepted updates, Rusanov
 arithmetic, and physical side fluxes now have rounding bounds tied to
-the preserved exact binary.  A shared-flux row has a checked balance and
-accumulated update bound.  Interface composition, grid/time conservation,
-and complete revised-solver integration remain active.
+the preserved exact binary.  The complete interface and cell operations
+also have exact-byte error and balance theorems.  Neighboring row cells
+compute equal shared fluxes, giving a row balance and accumulated residual
+bound.  Two-dimensional grid/time conservation and complete revised-solver
+integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

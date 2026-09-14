@@ -160,9 +160,12 @@ audits.  The production binary and both datasets remain unchanged.
 | [Wave algebra](lean/Project/ProofKit/RealLaxFriedrichs.lean) and [Euler flux identities](lean/Project/EulerRiemann/RealWaves.lean) | State and flux jumps, constant-state consistency, fluctuation identities, and direction reversal for the real reference flux. |
 | [Finite-volume balance](lean/Project/ProofKit/RealFiniteVolumeBalance.lean) | Generic sweep and time telescoping, including explicit residual sums.  Instantiation on the solver trace remains open. |
 | [Rounded row balance](lean/Project/EulerRiemann/NumericsRowBalance.lean) | A shared flux sequence cancels internally.  Accepted updates bound the accumulated rounding residual by the sum of local bounds. |
+| [Complete-cell row balance](lean/Project/EulerRiemann/NumericsCellRowBalance.lean) | Neighboring cells recompute identical interface fluxes.  Accepted complete-cell outputs satisfy row balance with a bounded residual sum. |
 | [Exact-byte update residual](lean/Project/EulerRiemann/UpdateResidualArtifact.lean) | Accepted function-58 execution has an exact signed-error certificate and a bound from the three rounded operations. |
 | [Exact-byte Rusanov arithmetic residual](lean/Project/EulerRiemann/ComponentResidualArtifact.lean) | Accepted function-46 execution has a six-operation error certificate and bound. |
 | [Exact-byte physical side-flux bound](lean/Project/EulerRiemann/SideResidualArtifact.lean) | Accepted function-22 execution bounds pressure and physical flux errors, including the stored coefficient's difference from 2/5.  Acceptance establishes every finite-input and intermediate premise. |
+| [Exact-byte interface bound](lean/Project/EulerRiemann/InterfaceResidualArtifact.lean) | Accepted function-54 execution bounds all four components against the physical Rusanov reference, combining side-flux and interface-arithmetic errors. |
+| [Exact-byte cell balance](lean/Project/EulerRiemann/CellResidualArtifact.lean) | Accepted function-65 execution supplies all four conservative-update certificates, exact balance equations, and residual bounds. |
 | [Minmod reconstruction](lean/Project/ProofKit/RealMinmod.lean) | Constants, componentwise linear profiles, reflection, cell averages, and component bounds over the reals. |
 | [Reconstruction counterexample](lean/Project/EulerRiemann/ReconstructionCounterexample.lean) | Three admissible cells produce a minmod face with pressure -1/10. |
 | [Speed counterexample](lean/Project/EulerRiemann/SpeedCounterexample.lean) | The existing helper accepts rho=E=1 and zero momenta, then computes a speed below the exact sound speed. |
@@ -172,8 +175,9 @@ The earlier interface error estimate requires quantitative state bounds and
 an internal-energy margin beyond accepted-state safety.  The new local
 rounding-radius proofs derive their premises from accepted status.  The
 [scalar reference composition](lean/Project/EulerRiemann/NumericsComponentRadius.lean)
-combines Rusanov arithmetic error with both side-flux errors.  Its complete
-interface and grid/time instantiations remain open.  Corrected interface/grid
+combines Rusanov arithmetic error with both side-flux errors.  Complete
+interface and cell instantiations pass, while two-dimensional grid/time
+composition remains open.  Corrected interface/grid
 speed bounds pass source checks, and reconstruction passes exact-byte
 verification.  Maximum/CFL execution and revised-solver integration remain
 open.  The user approved the outward arithmetic and positivity limiter.
