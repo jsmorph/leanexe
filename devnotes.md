@@ -12042,3 +12042,21 @@ a corrected namespace import.  The journal preserves both failures.
 The inventory now has 44 complete source cases and 44 generated caches,
 including 23 floating-point helper cases.  Exact-byte packages remain 39
 while the revised interface's binary proof is in progress.
+
+## 2026-09-14: Exact-byte revised Euler interface
+
+The [interface binary theorems](proofs/talos/lean/Project/EulerOutwardFlux/ArtifactTranslation.lean)
+prove complete decoding, validation, translation equality, terminating
+exact output, accepted physical-speed bounds, and componentwise physical-flux
+residual bounds for digest
+40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189.
+The 7,175-byte package passes independent verification.  All eight
+manifest theorem audits use standard axioms.
+
+All 59 body proofs and the section-composition targets passed on their
+first attempts.  Body groups took 9.9 to 37 seconds, validation took
+11 seconds, and exact-byte behavior transfer took 4.0 seconds.  A checked
+dependency audit confirms use of the root and nested instruction-sequence
+boundaries and balanced byte lookup.  This is related Euler reuse evidence.
+Held-out measurement remains open.  The inventory now contains 40 exact-byte
+packages.  Complete revised-solver integration remains open.

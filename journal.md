@@ -20811,3 +20811,147 @@ composition, and an 84-line public specification.  It reuses existing
 arithmetic theorems and introduces no new shared abstraction or measured
 LTG promotion.  The twenty-path checkpoint is ready for non-forced
 publication.  Existing data, binaries, and unrelated files are preserved.
+
+### 2026-09-14: revised interface exact-byte proof
+
+Published the interface execution checkpoint as
+1b96c30f62a3cca48092d7b21f4a845860fb7cba, parent
+a7e6e07dd9db1e3d0e5973c7fe6ce48aedc11aba, tree
+e3e7905753b876bc6901977235311b6111a32720.  The twenty-path commit
+has 4,863 inserted and 19 removed lines.  Non-forced push and fetch verified
+HEAD, FETCH_HEAD, the remote branch, parent, tree, title, index, and tracked
+worktree.  The exact-byte stage will freeze the unchanged 7,175-byte module
+and reuse the checked cursor-part decoder lemmas.  Its artifact modules,
+package directory, and two named decoder CSV paths were absent at preflight.
+The first journal edit had a malformed addition line and was rejected before
+writing.  The corrected edit generates its addition prefixes consistently.
+
+Migration and both CodeOffsets commands passed.  The checked parser reports
+59 function types and code bodies, six globals, one memory, and eleven
+exports across the six expected sections.  Reused the cursor-part generator
+to create sixteen decoder proof modules, including eight groups of at most
+eight code bodies.  The 2,960 lines use shared byte lookup, explicit sequence
+cursors, code/vector/section composition, and complete-file decoding.
+The three fresh scaffold proof modules now use this checked decomposition
+and the existing bounded validator evaluation.  Added explicit exact-byte
+transfers for all three interface specifications.  No binary, source
+computation, generated model, or annotation equation changed.
+
+The embedded bytes, cache, and checked byte lookup passed in 5.1, 1.1,
+and 6.0 seconds.  Code bodies 0 through 7 passed on their first attempt
+in 9.9 seconds.  All eight decoder audits and the lookup audit report only
+propext.  Reviewed the kernel-byte-lookup LTG guidance and the new generated
+cursor statements.  Their boundaries retain the normative decoder and the
+exact body limits.  No new decoder or proof tactic is introduced.
+
+Code bodies 8 through 15 passed on their first attempt in 13 seconds.
+All eight audits report only propext.  The existing code-part and byte-lookup
+lemmas supply this group's complete body decodings without a proof revision.
+The next group covers the state guard and first outward-arithmetic helpers.
+
+Code bodies 16 through 23 passed on their first attempt in 21 seconds,
+with only propext in every audit.  The generated nested-sequence certificates
+cover the larger admissibility guard.  The next group covers outward
+products, quotients, sums, and the kinetic/internal-energy composition.
+
+Code bodies 24 through 31 passed on their first attempt in 21 seconds.
+All eight audits report only propext.  The kinetic helper's nested cursor
+certificates compose through the same code-part lemma.  The next group
+includes the certified speed and the revised physical side function.
+
+Code bodies 32 through 39 passed on their first attempt in 37 seconds.
+The full speed and revised side bodies now decode to their cached code,
+with only propext in all eight audits.  The next group includes the
+Rusanov component and its wrapper.
+
+Code bodies 40 through 47 passed on their first attempt in 16 seconds,
+with only propext in every audit.  The next group includes the complete
+interface entry and allocator body.  Review confirmed that the interface
+sequence statements preserve both nested branch terminators and byte limits.
+
+Code bodies 48 through 55 passed on their first attempt in 31 seconds.
+The complete interface entry and allocator decode with only propext in all
+eight audits.  The final three runtime bodies complete the code inventory.
+Their decoded presence is required even though the interface never calls them.
+
+The final three code bodies passed on their first attempt in 12 seconds.
+All 59 function-decoding audits now report only propext.  The type-vector
+proof next composes each declared function signature and its payload bounds.
+
+The type vector passed on its first attempt in 25 seconds, with only
+propext in its audit.  The checked item and vector composition covers all
+59 signatures.  The export vector is the next metadata boundary.
+
+The export vector passed first try in 27 seconds.  Its audit reports
+propext, Classical.choice, and Quot.sound.  The next target combines the
+59 accepted body proofs into the complete code vector.
+
+The code vector and sized code section passed first try in 2.0 seconds,
+using only propext.  Both compose the previously checked body statements.
+The next target checks the remaining section payload metadata.
+
+Metadata passed first try in 7.6 seconds.  Type-section audit uses only
+propext; export-section audit uses the three standard logical axioms.
+The next target checks the module parser states between sections.
+
+Parser states passed first try in 1.4 seconds, using the three standard
+logical axioms.  The next target proves the code section's parser transition.
+
+The code-section parser transition passed first try in 1.6 seconds,
+with the three standard logical axioms.  The next target composes all
+six section transitions.
+
+All section transitions passed first try in 2.3 seconds, with standard
+axioms only.  The next target closes the exact complete binary decoding
+equality from those transitions and the checked header.
+
+The complete decoder equality passed first try in 1.6 seconds, with the
+three standard logical axioms.  Validation now checks the complete decoded
+module before the source/model theorem is transferred to the exact bytes.
+
+Validation passed first try in 11 seconds, with only propext.  The
+three intermediate cache/decode bridge modules also passed, each in 1.4
+seconds.  The final target checks all 59 translated functions and the
+exact-byte execution, accepted behavior, and residual wrappers.
+
+Translation passed first try in 4.0 seconds.  Its cache equality uses
+only propext, and the module equality and all three explicit artifact
+wrappers use the standard logical axioms.  The fresh dependency audit
+`tmp/euler-outward-flux-proof-dependencies.lean` passed in 1.8 seconds
+through the standard runner.  It checked that code54_decoded depends on
+its root sequence, root suffix 43, both nested sequence roots, nested
+suffix 61, and ByteLookup.data_get.  The accepted proof therefore uses
+the selected cursor boundaries.  This is another related Euler reuse
+result, not a held-out measurement or automatic retrieval experiment.
+
+The independent package command is now
+`tools/artifact-proof.js check proofs/artifacts/euler_outward_flux/40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189/program.wasm Project.EulerOutwardFlux.ArtifactTranslation`.
+It will check the frozen bytes and manifest through the repository's
+standard serialized runner.  No source, generated model, or numerical
+operation changed during this decoder proof.
+
+The independent package command completed with status zero.  Embedded
+byte identity, complete artifact and behavioral checks, and all eight
+manifest declarations passed.  Each manifest audit uses standard logical
+axioms.  The maintained inventory now records 40 exact-byte packages,
+with the source counts unchanged at 44 cases and 44 caches, including
+23 floating-point helper cases.  The detailed plan marks revised-interface
+byte behavior complete.  Complete revised-solver integration remains open.
+
+This checkpoint contains the new frozen interface package, its 24 artifact
+proof modules, the registry and embedded-checker entries, and the seven
+maintained documentation files plus this append-only journal.  The
+original numerical source, generated model, compiler annotations, preserved
+solver bytes, production data, and unrelated paper state are unchanged.
+The upcoming scalar advancement combines two flux results with the existing
+four conservative updates and the approved outward Courant check.  It does
+not determine grid storage, stencil traversal, or the production limiter
+budget.
+
+All 120 maintained Markdown checks and whitespace checks pass.  The new
+proof directory contains no sorry, admit, axiom declaration, or native
+decision shortcut.  Reviewed the manifest, checker additions, documentation
+diff, and append-only journal.  The explicit 36-path checkpoint is ready
+for non-forced publication as `Prove exact-byte outward Euler interface`.
+Aggregate CLOB and cold-release checks retain their documented deferred
+status.  No production calculation has started for the revised solver.
