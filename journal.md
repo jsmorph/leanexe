@@ -18680,3 +18680,59 @@ the development notes and journal.  The arithmetic enclosures, Euler
 speed helper, limiter, complete solver, and new production data remain
 open tasks.  No new dependency or additional design approval is needed
 to continue the approved plan.
+
+Published c0d86bdb264e71d3c19f4663087efd7103e6a163, parent
+acaa57e49b2588be699135a883b8129067a4e044, tree
+552141eb5323a1699305ef26853e0254c4503dec, titled
+Prove adjacent binary64 value bounds.  The eight reviewed files passed
+the documentation check, source review, and staged whitespace check.
+SSH push and fetch succeeded.  HEAD, FETCH_HEAD, and origin agree on
+commit, parent, tree, and headline; index and tracked worktree comparisons
+against the fetched commit pass.  Unrelated untracked state remains present.
+
+Added F64PackingFinite.lean to derive magnitude and sign from acceptance
+of the rounded encoding, using the existing pack_spec for its prior
+range and explicit overflow rejection at the remaining exponent boundary.
+This removes the old headroom premise from that representation statement.
+The new theorem is awaiting its focused check.
+
+The finite-packing proof's first check failed in 2.4 seconds because the
+Finite predicate did not expose a decidability instance.  The second
+attempt used an ambiguous unqualified name in unfold.  Qualifying
+CodeLib.IEEE64.Finite resolved that constant infinity certificate, and
+the complete magnitude/sign theorem passes with standard axioms.
+
+Added F64RoundingScale to retain the half-step error bound at the integer
+rounder's local scale.  The first two checks found coercion mismatches
+while moving the existing IEEE32 integer bound to the reals.  An explicit
+Int.cast_le application and the Nat/Int cast homomorphism equalities
+resolve those goals.  The module passed in 1.3 seconds.  Added
+F64MagnitudeEnclosure to combine that bound with predecessor/successor
+spacing, including a rounded zero.  It is awaiting its focused check.
+
+F64MagnitudeEnclosure passed its first focused check in 2.7 seconds.
+F64Enclosure lifts that result to both signs and decoded binary64 values.
+Its first check failed in 2.6 seconds at the raw sign comparison because
+omega did not normalize the UInt64 literal projection.  Applying the
+typed Nat contradiction directly resolved it.  The next check passed in
+2.7 seconds.  Both modules report only the standard three logical axioms.
+Added F64AddEnclosure to specialize the enclosure to finite integer packing,
+addition, and subtraction.  It awaits its focused check.  Endpoints still
+require finite checks in the eventual executable wrappers.
+
+The first F64AddEnclosure check failed in 1.5 seconds at a nonexistent
+Int.cast_natAbs lemma and the final negated-division equality.  The existing
+Nat.cast_natAbs lemma and ring solve those coercion goals.  The next check
+passed in 2.0 seconds.  The finite pack, signed pack, addition, and subtraction
+theorems report only propext, Classical.choice, and Quot.sound.  The check
+also replayed the four supporting modules successfully.  No timeout or
+resource failure occurred.
+
+The next checkpoint comprises F64PackingFinite, F64RoundingScale,
+F64MagnitudeEnclosure, F64Enclosure, F64AddEnclosure, the proof inventory,
+the mathematical-parity plan, devnotes, and this journal.  Shared spacing
+and local error lemmas avoid repeated sign and exponent-boundary arguments
+in arithmetic proofs.  There was no LTG retrieval task, generated execution
+proof, or new compiler run in this checkpoint.  The previously inspected
+nextUp compiler artifacts remain diagnostic evidence.  The changed solver
+and its production calculations remain open.
