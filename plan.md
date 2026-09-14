@@ -27,13 +27,14 @@ has terminating exact execution, store preservation, and both directional
 speed bounds.  Its complete exact-byte package and independent check also
 pass.  The revised side and interface flux now have generated-WASM proofs
 of exact output, termination, store preservation, spectral safety, and
-physical-flux residual bounds.  The interface's exact-byte proof and
-complete revised-solver integration remain active.
+physical-flux residual bounds.  The interface's exact-byte package now
+passes complete decoding, validation, behavior transfer, and independent
+verification.  Complete revised-solver integration remains active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, forty-four completed source-driven Talos proofs, thirty-nine exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, forty-four completed source-driven Talos proofs, forty exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 

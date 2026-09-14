@@ -902,5 +902,6 @@ positive pressure, finite intermediates, and physical-flux residual bounds.
 Its source checks pass, as does the preserved side's exact-byte theorem
 after sharing the arithmetic proof.  The revised interface's generated
 execution, termination, store preservation, spectral safety, and
-physical-flux residual theorems now pass.  Its exact-byte proof and
-complete solver integration remain open.
+physical-flux residual theorems now pass.  Its exact-byte package also
+passes complete decoding, validation, behavior transfer, and independent
+verification.  Complete solver integration remains open.

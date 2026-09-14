@@ -234,6 +234,12 @@
       "sha256": "d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c",
       "manifest": "euler_outward_grid/d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c/manifest.json",
       "proofTarget": "Project.EulerOutwardGrid.ArtifactTranslation"
+    },
+    {
+      "case": "euler_outward_flux",
+      "sha256": "40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189",
+      "manifest": "euler_outward_flux/40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189/manifest.json",
+      "proofTarget": "Project.EulerOutwardFlux.ArtifactTranslation"
     }
   ]
 }
