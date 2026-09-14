@@ -104,3 +104,14 @@ composes the existing section and module lemmas.  The timing comparison
 concerns one fixed group on one artifact and records a censored direct
 computation.  This related Euler application does not complete the held-out
 measurement or measure automatic LTG retrieval.
+
+The 5,619-byte reconstruction artifact used this decomposition from its
+first decoder attempt.  Six function groups passed in 8.5, 10, 12, 13,
+22, and 25 seconds, with only propext in all 45 function audits.  The
+[limiter body proof](../../../proofs/talos/lean/Project/EulerReconstruction/ArtifactCodes32To39.lean)
+reuses its root suffix, block sequence, loop sequence, loop suffixes,
+and rejected-candidate branch suffix.  Direct proof-dependency inspection
+confirmed all these links and the checked byte lookup.  Complete decoding,
+validation, explicit byte-facing behavior, and independent package checks
+pass.  This related Euler application adds reuse evidence.  Held-out
+measurement and automatic proof-agent retrieval remain open.

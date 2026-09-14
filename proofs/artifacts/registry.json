@@ -210,6 +210,12 @@
       "sha256": "be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2",
       "manifest": "euler_outward_speed/be3a774857feaf23f0a9c46ee1720ed2bbdba6494ff549e596b7dcbd3d34b8c2/manifest.json",
       "proofTarget": "Project.EulerOutwardSpeed.ArtifactTranslation"
+    },
+    {
+      "case": "euler_reconstruction",
+      "sha256": "0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9",
+      "manifest": "euler_reconstruction/0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9/manifest.json",
+      "proofTarget": "Project.EulerReconstruction.ArtifactTranslation"
     }
   ]
 }

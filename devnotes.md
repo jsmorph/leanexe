@@ -11768,3 +11768,21 @@ the unchanged runner limits.  The source-driven regeneration gate passed.
 The registry now contains forty complete cases, including nineteen
 floating-point cases, and forty generated caches.  Exact-byte reconstruction
 closure is next.  The frozen-package count remains thirty-five.
+
+## 2026-09-14: Exact-byte reconstruction proof
+
+The [frozen reconstruction proof](proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
+now connects exact words, total termination, rejection, face admissibility,
+and real-minmod accuracy to SHA-256
+0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
+The 5,619-byte binary has 45 functions.  Independent package verification
+passes, including all eight manifest audits with standard logical axioms.
+The three explicit byte-facing theorems also pass standard-only audits.
+
+The decoder used checked byte lookup, explicit-cursor sequence certificates,
+and existing parser-composition lemmas from its first proof attempt.
+Six code groups took 8.5, 10, 12, 13, 22, and 25 seconds.  All body audits
+report only propext.  Complete decoding, validation, and translation passed
+without a proof timeout.  Two package preflights rejected an incorrect
+manifest theorem list before the names were aligned with the source-case
+registry.  The exact-artifact inventory now contains thirty-six packages.

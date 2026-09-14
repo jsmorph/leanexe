@@ -19695,3 +19695,84 @@ guard equality and shared FuelGuard/BlockLoop support.  Retained the direct-call
 LTG evidence and its unmeasured retrieval limitation.  This checkpoint stages
 only the six new reconstruction proof modules, registry/import edits, and
 these reviewed documentation and journal changes.  Binary closure follows.
+
+Published ad3f99ddcb0ba779cabe4f50bac63c7a09a4a3ec, parent
+672aa9928282ec335b6071e5b8225d46a18df4e3, tree
+3a32fc7464b505d7b0680ba8a25bdc098ed680ce, title
+Prove complete reconstruction WASM execution.  The explicit seventeen-path
+checkpoint passed whitespace review, the 120-file documentation check,
+and LTG catalog validation (41 entries, seven categories).  Non-forced
+SSH push/fetch verified HEAD, FETCH_HEAD, origin, parent, title, tree,
+index, and tracked worktree equality.
+
+Kernel-mode migration created the reconstruction artifact modules and
+frozen 5,619-byte package with SHA-256
+0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
+The first CodeOffsets invocation used a path relative to the proof workspace,
+but lake env retained the repository working directory.  It exited before
+reading the binary.  Explicit absolute source and artifact paths corrected
+the invocation.  Section and nested-offset extraction passed in 0.5 and
+0.6 seconds, writing fresh /tmp/euler-reconstruction-sections-20260914.csv
+and /tmp/euler-reconstruction-nested-20260914.csv.  The proof will use
+explicit-cursor certificates at 128-byte boundaries from the start,
+composing existing CodeParts, SectionParts, and ModuleParts lemmas.
+
+All reconstruction code groups passed on their first checks: functions
+0–7 in 8.5 seconds, 8–15 in 10, 16–23 in 12, 24–31 in 13,
+32–39 in 22, and 40–44 in 25.  Each function audit reports only propext.
+Type entries took 13 seconds, exports 18, metadata 6.7, and code-vector
+composition 2.5.  Section states, code transition, remaining transitions,
+and header composition passed in 1.3, 1.4, 1.9, and 1.4 seconds.
+Validation passed in 7.3 seconds with only propext.  Exact translation
+and three byte-facing behavior theorems passed in 2.6 seconds with the
+standard logical axioms.  No proof timeout occurred in this iteration.
+
+The first independent package invocation rejected a manifest/registry
+mismatch before running Lean: the manifest named the new byte-facing
+behavior theorems, while migration had kept the source-specification names
+in the registry.  Updated only this new artifact registry entry to name
+the checked byte-facing theorems.  The next package check tests that boundary.
+
+Correction to the preceding registry note: inspection of artifact-manifest.js
+shows that behavior names must match the source-case registry in cases.json.
+The frozen-artifact registry stores case, digest, path, and target only.
+The attempted text replacement there changed no content, and the second
+invocation returned the same preflight rejection.  Restored this new
+manifest to its three source-specification names, as required by the existing
+format.  The checked ArtifactTranslation module retains the three explicit
+byte-facing theorems and their standard-only axiom audits.  The package gate
+also checks decoded-module equality with the execution cache.  No existing
+case, gate, specification, or proof requirement changed.
+
+Independent reconstruction package verification passed with exit status zero.
+All eight manifest theorem audits report only accepted logical axioms.
+The package retains the three checked explicit byte-facing behavior theorems.
+Updated current inventories to thirty-six exact-byte packages, with forty
+complete source cases and forty generated caches.  The reviewed checkpoint
+will include the reconstruction artifact modules, frozen package, registry
+and CheckFile entries, LTG evidence, and documentation.  Separate in-progress
+cell-update residual files remain outside that checkpoint.
+
+The first conservative-update residual bound draft failed in 1.1 seconds
+because a gcongr step left an underconstrained abs_sub_le application.
+The certificate and exact balance identity passed.  Replaced that step with
+an explicit add_le_add_right application specifying both real operands.
+The source bridge derives every finite-input and intermediate premise from
+accepted status.  Its focused check follows this correction.
+
+A focused dependency inspection initially requested definition values only,
+so ConstantInfo.value? returned none for the limiter theorem.  Enabling its
+documented allowOpaque flag exposed theorem proof terms.  The passing audit
+confirmed the complete code38 chain: root sequence, root suffix at instruction
+2, block sequence, loop sequence, suffixes 15 and 75, else-branch sequence,
+and its suffix 1.  Every link uses checked byte lookup.  The diagnostic is
+preserved at /tmp/ReconstructionDecoderDependencies20260914.lean.  Added
+this evidence to the provisional LTG entry without a held-out or retrieval
+measurement claim.
+
+The conservative-update bound had two further one-second diagnostics.
+The proposed abs_sub_le application remained partially applied because
+that triangle theorem takes three points.  Replaced it with the two-term
+abs_add_le theorem, normalized the negated second term, and supplied the
+resulting real inequality to linarith.  The accepted reconstruction artifacts
+are unaffected.  Their checkpoint review excludes the two residual drafts.
