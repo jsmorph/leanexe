@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "direct-call-stack-tail",
+  "title": "Direct calls with retained stack operands",
+  "summary": "Extends a terminating internal-callee theorem to arguments followed by a caller stack suffix, preserving that suffix after the results.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["argument-order", "comparison", "direct-call", "stack-tail"],
+  "annotationKinds": ["leanexe.call.direct.v1"],
+  "modules": ["Project.ProofKit.CallRemainder"],
+  "declarations": ["Wasm.TerminatesWith.append_args", "Wasm.run_append_of_success"],
+  "premises": ["A terminating callee theorem on exactly its arguments", "The function index is outside the import list", "An exact internal-function lookup", "Argument count equals the function parameter count", "The caller stack is the argument list followed by the identified suffix"],
+  "result": "The call terminates with results followed by the unchanged suffix and preserves the callee's store/result postcondition.",
+  "consumers": ["euler-outward-speed-division"],
+  "relatedEntries": ["scalar-statement", "zero-safe-division-remainder"],
+  "exclusion": null
+}

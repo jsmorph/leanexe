@@ -5,6 +5,7 @@ import Project.ProofKit.ArrayField
 import Project.ProofKit.ArrayFieldConstant
 import Project.ProofKit.ArrayPrefix
 import Project.ProofKit.BlockLoop
+import Project.ProofKit.CallRemainder
 import Project.ProofKit.CheckedArrayGet
 import Project.ProofKit.CheckedDivMod
 import Project.ProofKit.CheckedNatMul
@@ -293,6 +294,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.UInt64Array.singleton
 #check Project.ProofKit.UInt64Array.writeElement_frame
 #check UInt64.toNat_mod
+#check Wasm.TerminatesWith.append_args
 #check Wasm.TerminatesWith.of_wp_entry_for
+#check Wasm.run_append_of_success
 #check Wasm.wp.conseq
 #check Wasm.wp_loop_cons
