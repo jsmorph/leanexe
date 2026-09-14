@@ -23,6 +23,6 @@ def scanCell (acc : Checked) (cell : Cell) : Checked :=
   merge acc (cellUpper cell.state)
 
 def gridUpper (grid : Array Cell) : Checked :=
-  grid.foldl scanCell ⟨0, 0⟩
+  grid.foldl (fun acc cell => scanCell acc cell) ⟨0, 0⟩
 
 end Project.EulerRiemann.OutwardMaximum
