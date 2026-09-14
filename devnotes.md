@@ -11832,3 +11832,24 @@ byte theorems pass focused checks.
 The independent package gate at b1a7ae1d checked the unchanged binary and
 module identity.  Two-dimensional traversal, accepted-time composition,
 and revised-solver integration remain open.
+
+## 2026-09-14: Complete grid and accepted-time balance
+
+The [line geometry](proofs/talos/lean/Project/EulerRiemann/NumericsLineGeometry.lean)
+identifies clamped source stencils and output words with the row theorem.
+The [grid balance](proofs/talos/lean/Project/EulerRiemann/NumericsGridBalance.lean)
+sums those rows or columns and restores physical momentum component order.
+The [step balance](proofs/talos/lean/Project/EulerRiemann/NumericsStepBalance.lean)
+uses the x-sweep result as the y-sweep input.  The
+[accepted-trace theorem](proofs/talos/lean/Project/EulerRiemann/NumericsTraceBalance.lean)
+then proves final-grid balance and bounds the accumulated update residuals.
+The computed ratio remains the exact decoded IEEE division of dt by the
+stored spacing.  Rejected trials contribute no accepted-grid update.
+
+Spec.solve_balance and Artifact.artifact_solve_balance attach the result
+to the complete solver while preserving its termination, memory, exact
+output, and accepted-state guarantees.  All new focused checks and public
+axiom audits pass.  The independent package gate passes.  The source
+solver, generated Program, frozen bytes, and datasets are unchanged.
+Conversion to area-weighted totals and duration-weighted physical boundary
+fluxes remains open, along with revised-solver integration.

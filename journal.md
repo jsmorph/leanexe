@@ -19975,3 +19975,98 @@ baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
 The seven new proof sources contain no sorry, admit, or axiom declarations.
 The focused public axiom audits pass.  The thirteen reviewed paths are
 ready for the interface/cell/row checkpoint.
+
+Published e9314ee9414647b3a019bbd1808ff0231eabd039,
+Prove Euler interface and cell balance, by non-forced SSH push/fetch.
+Its parent is b1a7ae1dea931f41a412553e07f789999f252fa1 and its tree is
+c5315127843de5951c3fbd87a3effc31ac19112c.  HEAD, FETCH_HEAD, and origin
+match, along with the index and tracked worktree.  The thirteen reviewed
+paths contain the checked interface, complete-cell, and row claims.
+
+Continued with a two-dimensional line geometry module after rereading the
+repository instructions, README, operating requirements, and leanrunner
+skill.  The new descriptor clamps a natural line coordinate to the existing
+finite grid and proves correspondence with the current x/y cell inputs.
+This proof changes no solver traversal or numerical source.  It will supply
+the existing row balance theorem with actual directional-sweep inputs and
+outputs.  The standard local runner remains the only Lean entry point.
+
+NumericsLineGeometry passed its focused three-minute-limit build in
+1.5 seconds for the new module.  All three public audits report only
+propext and Quot.sound.  It proves clamped neighbor correspondence,
+acceptance of each line cell, and equality of the reoriented output words.
+The new line-balance module applies the checked complete-cell row theorem
+to these inputs and outputs and retains its summed rounding-radius bound.
+
+NumericsLineBalance passed in 1.0 second with standard-only audits.
+The grid composition now sums actual line balances, restores the physical
+x/y momentum component order, and uses finite-sum interchange for y sweeps.
+The total denotes the sum of cell-average values.  Multiplication by cell
+area and comparison with duration-weighted physical boundary flux remain
+separate statements, so no floating ratio is identified with dt*n by fiat.
+
+NumericsGridBalance passed in 1.0 second with standard-only audits.
+All four physical components now have complete directional-grid balance
+and summed residual bounds.  The step composition uses the actual x-sweep
+output as the y-sweep input and extracts both accepted statuses from the
+existing optional step result.  No extra acceptance premise is introduced.
+
+The first step-module check reached the acceptance extraction and diagnosed
+local let bindings around its conditional.  Added definitional reduction
+before splitting the two acceptance branches.  The failed elaboration's
+sorryAx audit is not accepted evidence.  The other three modules remain
+checked, and the corrected step target will receive a fresh focused check.
+
+The corrected step module passed in 3.2 seconds with standard-only audits.
+Added accepted-time accumulation by induction on Control.NumericalTrace.
+Its fold uses each recorded dt, the exact IEEE division by Time.spacing,
+and the grid produced by the corresponding two sweeps.  The run theorem
+will cover the final accepted grid on both success and failure returns.
+Rejected trial grids never occur in this numerical trace.
+
+NumericsTraceBalance passed in 1.1 seconds with standard-only audits.
+Its run theorem reuses the checked traversal/control trace and covers
+every supported grid size.  Added the generated-execution balance
+specification and exact-byte wrapper, and registered the new source
+behavior theorem in both cases.json and the frozen artifact manifest.
+The complete artifact target now also imports the previously checked
+interface and cell residual transfers.  The new complete package gate
+will check these additions against the preserved binary.
+
+The complete Spec module passed in 2.0 seconds and ArtifactTranslation in
+1.4 seconds.  The new source and byte-facing balance audits contain only
+the standard logical axioms.  Started the registered artifact-proof.js
+check for the preserved euler_riemann binary and complete artifact target.
+The gate includes the new balance behavior and the imported interface/cell
+residual transfers.  Updated the maintained plan and theorem inventory to
+record checked grid/time composition and the remaining area/duration-
+weighted physical boundary-flux obligation.  The gate result is pending.
+
+The documentation check passed for all 120 maintained Markdown files.
+While the serialized package check continues, prepared separate unchecked
+boundary-flux and spacing-rounding drafts.  They are outside its import
+closure and outside the grid/time checkpoint.  The boundary draft reduces
+clamped endpoint interfaces to constant-state physical fluxes.  The spacing
+draft derives finite positive division and a local rounding-radius error
+from the existing n-word certificate and shared arithmetic bounds.
+A read-only lookup of a nonexistent CFL.lean found no file.  The current
+source is OutwardCflSpec.lean and was read through its discovered path.
+
+The complete euler_riemann artifact-proof.js check passed with status 0.
+All nine manifest theorem audits report standard logical axioms, including
+solve_balance.  The gate checked the unchanged embedded binary identity,
+the complete artifact target, the local specification import closure, and
+all four registered complete behaviors.  Its repeated Lake invocations
+replay dependency logs, whereas the new proof modules each checked in
+1.0 to 3.2 seconds.  This run is the independent evidence for the new
+complete grid/time claim.  No cached receipt from an earlier input set
+is substituted for it.
+
+Reviewed the five new line/grid/step/trace modules, the complete Spec and
+artifact wrappers, both behavior registries, and the six maintained
+documentation/journal paths for a fifteen-path checkpoint.  The proofs
+reuse the checked row telescope, shared IEEE residual certificates,
+existing traversal trace, and TerminatesWith.mono.  No new instruction
+proof, compiler output, LTG retrieval, or automatically selected guidance
+was required.  The boundary-flux, spacing, ratio, and generic quotient
+drafts remain outside the checkpoint and await their focused checks.

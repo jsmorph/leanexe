@@ -12,8 +12,11 @@ arithmetic, and physical side fluxes now have rounding bounds tied to
 the preserved exact binary.  The complete interface and cell operations
 also have exact-byte error and balance theorems.  Neighboring row cells
 compute equal shared fluxes, giving a row balance and accumulated residual
-bound.  Two-dimensional grid/time conservation and complete revised-solver
-integration remain active.
+bound.  Both directional sweeps and the accepted timestep trace now have
+balance and residual bounds attached to the complete exact-byte solver
+theorem.  The independent package check passes.  Duration-weighted
+physical boundary-flux comparison and complete revised-solver integration
+remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

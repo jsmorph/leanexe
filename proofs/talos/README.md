@@ -158,9 +158,12 @@ audits.  The production binary and both datasets remain unchanged.
 | [Characteristic speeds](lean/Project/Euler2DConservative/RealCharacteristicSpeed.lean) | A bound on all four directional eigenvalues is equivalent to a bound on abs(un)+c. |
 | [Left eigenvectors](lean/Project/Euler2DConservative/RealLeftEigenvectors.lean) | The inverse right-eigenvector matrix satisfies the left eigenrelation and reconstructs every characteristic decomposition. |
 | [Wave algebra](lean/Project/ProofKit/RealLaxFriedrichs.lean) and [Euler flux identities](lean/Project/EulerRiemann/RealWaves.lean) | State and flux jumps, constant-state consistency, fluctuation identities, and direction reversal for the real reference flux. |
-| [Finite-volume balance](lean/Project/ProofKit/RealFiniteVolumeBalance.lean) | Generic sweep and time telescoping, including explicit residual sums.  Instantiation on the solver trace remains open. |
+| [Finite-volume balance](lean/Project/ProofKit/RealFiniteVolumeBalance.lean) | Generic sweep and time telescoping, including explicit residual sums. |
 | [Rounded row balance](lean/Project/EulerRiemann/NumericsRowBalance.lean) | A shared flux sequence cancels internally.  Accepted updates bound the accumulated rounding residual by the sum of local bounds. |
 | [Complete-cell row balance](lean/Project/EulerRiemann/NumericsCellRowBalance.lean) | Neighboring cells recompute identical interface fluxes.  Accepted complete-cell outputs satisfy row balance with a bounded residual sum. |
+| [Directional grid balance](lean/Project/EulerRiemann/NumericsGridBalance.lean) | Each actual clamped x/y sweep satisfies a balance for all four physical components, with cancellation of internal fluxes and a summed rounding-radius bound. |
+| [Two-sweep balance](lean/Project/EulerRiemann/NumericsStepBalance.lean) | The y contribution uses the grid produced by the x sweep.  Accepted step status establishes both sweep premises. |
+| [Complete accepted-trace balance](lean/Project/EulerRiemann/NumericsTraceBalance.lean) | Every supported run has final-grid balance and bounded accumulated update residuals along its accepted timestep trace.  The complete exact-byte theorem is `Artifact.artifact_solve_balance`. |
 | [Exact-byte update residual](lean/Project/EulerRiemann/UpdateResidualArtifact.lean) | Accepted function-58 execution has an exact signed-error certificate and a bound from the three rounded operations. |
 | [Exact-byte Rusanov arithmetic residual](lean/Project/EulerRiemann/ComponentResidualArtifact.lean) | Accepted function-46 execution has a six-operation error certificate and bound. |
 | [Exact-byte physical side-flux bound](lean/Project/EulerRiemann/SideResidualArtifact.lean) | Accepted function-22 execution bounds pressure and physical flux errors, including the stored coefficient's difference from 2/5.  Acceptance establishes every finite-input and intermediate premise. |
@@ -176,8 +179,10 @@ an internal-energy margin beyond accepted-state safety.  The new local
 rounding-radius proofs derive their premises from accepted status.  The
 [scalar reference composition](lean/Project/EulerRiemann/NumericsComponentRadius.lean)
 combines Rusanov arithmetic error with both side-flux errors.  Complete
-interface and cell instantiations pass, while two-dimensional grid/time
-composition remains open.  Corrected interface/grid
+interface, cell, two-dimensional grid, and accepted-time instantiations
+pass.  The complete exact-byte balance theorem passes its focused check.
+The independent package check passes.  Area/duration-weighted physical
+boundary-flux comparison remains open.  Corrected interface/grid
 speed bounds pass source checks, and reconstruction passes exact-byte
 verification.  Maximum/CFL execution and revised-solver integration remain
 open.  The user approved the outward arithmetic and positivity limiter.

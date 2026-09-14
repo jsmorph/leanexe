@@ -20,7 +20,8 @@
   "behaviorTheorems": [
     "Project.EulerRiemann.Spec.solve_exact",
     "Project.EulerRiemann.Spec.solve_success",
-    "Project.EulerRiemann.Spec.solve_hyperbolic"
+    "Project.EulerRiemann.Spec.solve_hyperbolic",
+    "Project.EulerRiemann.Spec.solve_balance"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
