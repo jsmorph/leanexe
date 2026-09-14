@@ -18308,3 +18308,16 @@ forty entries in seven categories.  node tools/check-docs.js accepts
 117 maintained Markdown files.  The completed article links both raw
 datasets and all six export figures.  No Lean input changed after the
 accepted proof gates, and no proof or numerical run was repeated.
+
+Published 0ec19201349595ed1de72ca6163faf095b79f564, parent
+b5e8570035bac6a380db08591caf418d91109395, tree
+83b921d3dcf6879af1038dcfaf12b1dd1be41b0d, with the headline
+Complete the proved 800-grid Riemann calculation.  Non-forced push and
+fetch succeeded.  The first identity-check wrapper expected git show
+to print the same commit three times for three equal refs.  Git printed
+it once, causing that wrapper assertion to fail.  Separate read-only
+queries for HEAD, FETCH_HEAD, and origin/talosfp-euler all returned the
+expected commit, parent, tree, and headline.  The complete index and
+all seventeen checkpoint worktree files match FETCH_HEAD.  Verification
+finished before this receipt edit.  This final receipt is the only
+follow-up publication record for the completed dataset checkpoint.
