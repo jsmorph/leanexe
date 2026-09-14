@@ -877,5 +877,8 @@ its bound to both interface states and every grid cell in both directions,
 then compose it with the checked exact-spacing CFL inequality.  Maximum
 and CFL execution proofs and solver integration remain open.  The rounded
 common-factor reconstruction now has source safety, residual, accuracy,
-and conditional linear-profile proofs.  Its generated execution proof
-is the next reconstruction boundary.
+and conditional linear-profile proofs.  Generated scalar execution now
+covers record operations, minmod, the slope, and candidate faces, including
+all rejection branches.  The compiler-generated loop-guard equality checks.
+The bounded halving loop, reconstruction entry, and exact-byte closure
+remain open.

@@ -425,6 +425,21 @@
         "Project.EulerOutwardSpeed.Spec.speedUpper_behavior"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_reconstruction",
+      "annotations": true,
+      "module": "Project.EulerRiemann.Reconstruction",
+      "entry": "Project.EulerRiemann.Reconstruction.reconstruct",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerReconstruction",
+      "specTarget": "Project.EulerReconstruction.Spec",
+      "behaviorTheorems": [
+        "Project.EulerReconstruction.Spec.reconstruct_exact",
+        "Project.EulerReconstruction.Spec.reconstruct_safe",
+        "Project.EulerReconstruction.Spec.reconstruct_accuracy"
+      ],
+      "complete": false
     }
   ]
 }
