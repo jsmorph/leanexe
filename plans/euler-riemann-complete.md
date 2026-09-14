@@ -1,5 +1,20 @@
 # Complete Riemann solver proof
 
+## Completion
+
+The authorized development is complete.  The source specification,
+exact-byte WASM theorems, termination, complete 512 MiB memory bound,
+and independent artifact check passed before production execution.
+The [192-grid and 800-grid calculations](../data/euler-riemann-complete-v1/README.md)
+both returned status zero at time 0.8.  Their density and pressure figures
+are complete and inspected.  Execution followed the required order:
+192, plot 192, 800, plot 800.  Each grid used one complete local WASM
+solve call under the standard runner limits.
+
+Universal status-zero completion for all grid sizes and convergence to
+the continuous PDE remain open mathematical questions.  The approved
+behavior theorem covers every success and failure return.
+
 ## Authorized calculation
 
 The user authorized the complete development after reviewing the design.
@@ -31,7 +46,7 @@ The host invokes the module and saves returned words for plotting.
 
 ## Proof obligations
 
-The current cell artifact theorem proves exact terminating cell execution
+The earlier cell artifact theorem proves exact terminating cell execution
 and accepted-state safety.  Its mathematical sweep and finite-run theorems
 do not prove executable grid or time control.  The earlier 192-grid host
 calculation remains a comparison dataset with that recorded scope.
@@ -41,7 +56,7 @@ in the source and compiling their calls to the corresponding floating-point
 instructions.  Source and exact-WASM proofs can share these definitions.
 The five mappings and a composed division/square-root expression pass
 source comparisons and byte-identity tests against the existing wrappers.
-The complete source and exact-WASM proofs remain open.
+The complete source and exact-WASM proofs now pass.
 
 Array updates copy the array.  Each sweep must construct its result in
 linear time and reclaim obsolete storage.  The memory proof must account
@@ -90,32 +105,36 @@ thirteen-epsilon exact margin, and preservation of old accepted inputs.
 The checked repair accepts both trials from the normalization-range
 counterexample while retaining their conserved update words.  Source
 integration, compiler regeneration, and generated annotation matching
-pass.  The complete numerical invariant and revised execution proofs
-remain open.
+pass.  The revised execution proofs and status-zero numerical trace
+theorem also pass.  Universal numerical success remains open.
 
-The implementation inventory remains:
+The completed implementation inventory is:
 
 - [x] Prove the ordered index array, clamped-neighbor bounds and coordinate correspondence, and interface-fraction bounds.
 - [x] Prove the four conservative states and admissibility of all 36 rounded cell-average combinations.
 - [x] Test the generated grid-helper WASM, including the complete 800-grid index array.
 - [x] Define the numerical recurrence, accepted sizes, and output layout.
 - [x] Add and test the approved compiler mappings for Talos's formal arithmetic definitions.
-- [ ] Implement and prove linear-time initialization and directional traversal.
+- [x] Implement initialization and directional traversal and prove exact execution.
 - [x] Prove source-array initialization, accepted-sweep correspondence, and the wave-speed reduction.
-- [ ] Prove allocator reuse and the complete memory bound.
-- [ ] Implement and prove timestep selection, retry, and final-time control.
-- [ ] Prove source correctness for every success and failure return.
-- [ ] Freeze the generated WASM and check its complete execution theorem and axiom audit.
-- [ ] Run 192 by 192 and save its final result.
-- [ ] Render and inspect the 192-grid density and pressure figure.
-- [ ] Run 800 by 800 and save its final result.
-- [ ] Render and inspect the 800-grid density and pressure figure.
+- [x] Prove allocator reuse and the complete memory bound.
+- [x] Implement and prove timestep selection, retry, and final-time control.
+- [x] Prove source correctness for every success and failure return.
+- [x] Freeze the generated WASM and check its complete execution theorem and axiom audit.
+- [x] Run 192 by 192 and save its final result.
+- [x] Render and inspect the 192-grid density and pressure figure.
+- [x] Run 800 by 800 and save its final result.
+- [x] Render and inspect the 800-grid density and pressure figure.
 
 Use the local leanrunner limits for builds, proof checks, and runtime work.
 The user selected local execution.  A change to remote or parallel
-execution requires discussion.  The complete proof remains unfinished.
+execution requires discussion.
 
-## Current checkpoint
+## Proof development record
+
+The following paragraphs retain successive proof checkpoints, including
+obligations that were open when each checkpoint was written.  The
+completion section and inventory above record the final task status.
 
 The solver uses the extended guard throughout initialization, scans,
 and cell updates.  Source initialization, sweep correspondence, accepted
@@ -194,9 +213,10 @@ budget is at most 350,243,520 bytes above the initial heap pointer 4096.
 Complete decoding of the frozen 21,767-byte artifact and validation now
 pass with only the accepted logical axioms.  Talos translation equality
 and both complete byte-facing behavior theorems also pass.  The independent
-artifact gate passed.  The 192-grid solve returned status zero at time 0.8
-in 49.6 seconds, and its density/pressure figures are complete.  The
-additional 800-grid solve is running with the same frozen binary.
+artifact gate passed.  Both the 192-grid and 800-grid solves returned
+status zero at time 0.8, with recorded monotonic runtimes of 49.6 seconds
+and 61.6 minutes.  Both density/pressure figures are complete.  The two
+runs used the same frozen binary under the standard local runner limits.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

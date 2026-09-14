@@ -18247,3 +18247,64 @@ proof overview.  The old incremental Riemann overview is replaced by its
 completed theorem boundary and data status.  The detailed history remains
 in this journal.  Preparing the 192 dataset, short article, and completion
 records for publication while the 800 call runs.
+
+Published b5e8570035bac6a380db08591caf418d91109395, parent
+efd1b7a74bcdb1a28acbf0ce12b3057f784dfeba, tree
+25597ccc9404363e071cf6317019d3352a8fb2b0, with the headline
+Publish the proved 192-grid Riemann calculation.  Non-forced push and
+fetch succeeded.  Verified the fetched commit, sole parent, tree,
+headline, complete index, and all twenty-one checkpoint worktree files
+before further mutations.  Aggregate imports match the thirty-eight
+completed registrations.  LTG and documentation checks passed.
+
+During the 800 solve, a read-only Python /proc/414667/stat inspection
+failed with ENOENT inside the sandbox while process discovery still
+reported the host process.  A read using the approved rg prefix outside
+the sandbox succeeded.  At 2026-09-14 02:15:35 UTC the runner scope
+reported cpu.max 100000 100000, memory.high 4294967296,
+memory.max 6442450944, and memory.swap.max 1073741824.  Its memory.current
+was 323133440 bytes.  The process reported VmRSS and VmHWM of 324488 kB
+and two OS threads.  The numerical solve is one WASM execution.  The
+module has no imports or thread primitives.  CPU usage was 2475038244
+microseconds, with 2467518 microseconds of recorded throttling.  No
+resource limits changed.
+
+The 800 command completed with status zero.  Collected its final result
+at 2026-09-14 02:36:25 UTC.  The script records 3698.4121892189996 seconds
+with performance.now, separately from CSV generation and plotting.
+UTC advanced about 105 minutes from launch to collection.  Several
+clock observations jumped by substantially more than their intervening
+45-second tool waits.  The cause was not established.  The publication
+labels the script's measurement as monotonic runtime.
+
+The 800 result has 1,280,004 words and 10,240,032 raw bytes.  Status is
+zero, time bits are 0x3fe999999999999a, and both dimensions are 800.
+The production script checked finite positive density and pressure in
+every cell.  Density is 0.138–1.6710840322409248 and pressure is
+0.02899999999999996–1.632146139515901.  Raw-word SHA-256 is
+d374cc5cd852d9cebad8eac1b440e431a6a89e8c4416d940abbeeb9bfd51dd17.
+The frozen artifact digest remains
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
+The run's stderr is empty.
+
+Ran tools/leanrun --timeout 2m with the existing
+build/tools/riemann-figures-venv/bin/python, tools/euler-riemann-plot.py,
+and data/euler-riemann-complete-v1/800-run.  It returned zero and wrote
+PNG, SVG, and PDF figures.  Inspected the PNG and the Lanyon reference
+density figure.  The 800 result has thinner fronts and a higher central
+maximum than the 192 result.  Front geometry resembles the reference.
+The article describes this as a visual comparison and states the
+separate color ranges.  No additional simulation or dependency was needed.
+
+Preparing the eight 800-run files and completion edits to README.md,
+data/euler-riemann-complete-v1/README.md, docs/status.md,
+proofs/talos/README.md, plan.md, plans/euler-riemann-complete.md,
+plans/euler-rusanov.md, devnotes.md, and journal.md for publication.
+The failed initial 192 launch directory and unrelated paper files remain
+untouched.  All required proof and production gates are complete.
+
+Final diff review and git diff --check passed.  tools/ltg check accepts
+forty entries in seven categories.  node tools/check-docs.js accepts
+117 maintained Markdown files.  The completed article links both raw
+datasets and all six export figures.  No Lean input changed after the
+accepted proof gates, and no proof or numerical run was repeated.

@@ -11504,3 +11504,24 @@ come from one call to the proved solve export.  The 800-grid call began
 at 2026-09-14 00:51:32 UTC after those figures passed inspection.
 Both calls use the standard local runner limits and the same frozen
 21,767-byte binary.  The dataset metadata names both byte-facing theorems.
+
+## 2026-09-14: Complete 800-grid WASM dataset and figures
+
+The [800-grid calculation](data/euler-riemann-complete-v1/README.md)
+returned status zero at the exact binary64 encoding of time 0.8.
+Its recorded monotonic runtime is 3698.412 seconds.  Density ranges
+from 0.138 to 1.671084032, and pressure from 0.029 to 1.632146140.
+All 640,000 cells have finite, positive density and pressure.  Raw-word
+SHA-256 is `d374cc5cd852d9cebad8eac1b440e431a6a89e8c4416d940abbeeb9bfd51dd17`.
+PNG, SVG, and PDF generation passed.  Visual inspection confirms thinner
+fronts and a higher central maximum than the 192-grid result, with front
+geometry comparable to the Lanyon figure.
+
+The complete proof, independent artifact check, 192 solve, 192 figures,
+800 solve, and 800 figures are complete in the authorized order.  Each
+run used one call to the same proved binary under standard local runner
+limits.  One 800-run resource observation recorded about 308 MiB of
+cgroup memory and 317 MiB peak process RSS.  UTC timestamps advanced
+about 105 minutes between launch and collection, exceeding the recorded
+61.6-minute monotonic runtime.  The journal retains both measurements
+without assigning an unverified cause.
