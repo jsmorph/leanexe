@@ -11853,3 +11853,23 @@ axiom audits pass.  The independent package gate passes.  The source
 solver, generated Program, frozen bytes, and datasets are unchanged.
 Conversion to area-weighted totals and duration-weighted physical boundary
 fluxes remains open, along with revised-solver integration.
+
+## 2026-09-14: Physical conservation through exact WASM
+
+The [physical trace balance](proofs/talos/lean/Project/EulerRiemann/NumericsPhysicalTrace.lean)
+uses exact unit-domain cell area 1/n squared and face-length/time factor
+dt/n.  It accounts for both directional sweeps, their intermediate grid,
+and every accepted timestep.  Its residual bound combines cell-update
+radii, endpoint physical-flux errors, and both divisions used to compute
+spacing and the timestep ratio.  The boundary proof uses the clamped
+endpoint's identical left and right states and the checked constant-state
+Rusanov identity.  The spacing proof derives positive finite division
+from the existing exact n-word certificate for supported sizes.
+
+The existing solve_balance and artifact_solve_balance theorems now include
+both computed-flux and physical-flux balances, retaining termination,
+memory, exact output, and accepted-state guarantees.  All focused checks
+and standard-axiom audits pass.  The strengthened independent package
+check passes.  Numerical source, compiler output, frozen bytes, and
+data are unchanged.  Maximum/CFL execution and revised-solver integration
+remain open.
