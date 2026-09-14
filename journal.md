@@ -19776,3 +19776,135 @@ that triangle theorem takes three points.  Replaced it with the two-term
 abs_add_le theorem, normalized the negated second term, and supplied the
 resulting real inequality to linarith.  The accepted reconstruction artifacts
 are unaffected.  Their checkpoint review excludes the two residual drafts.
+
+Published 23a18f06, Prove exact-byte Euler reconstruction, by non-forced
+SSH push/fetch.  HEAD, FETCH_HEAD, origin, and tracked/index contents match.
+The checkpoint includes exactly the reviewed 35 paths.  The two new update
+residual modules remain unstaged.  Both now pass: the shared arithmetic
+certificate in 1.1 seconds and accepted-source transfer in 983 milliseconds.
+All five audits use only standard logical axioms.  Next connect this
+accepted-update residual to the unchanged update function in the existing
+frozen solver, then prove the corresponding interface arithmetic residual.
+
+The first combined update-residual execution/artifact build reached the
+three-minute runner limit while rebuilding existing Riemann execution
+dependencies, before a diagnostic for the new theorem.  It completed
+31-second side proofs and the initial weighted-state proof.  Split the
+new generated-execution and exact-artifact transfers into separate modules.
+The generated theorem can now check without importing the full solver Spec.
+A smaller remaining existing dependency must complete before retrying the
+artifact transfer.  The timeout did not change the checked reconstruction
+package.  Its full publication identity is
+23a18f06bef0df1538fc3d2cf6513b20763a1302, parent
+ad3f99ddcb0ba779cabe4f50bac63c7a09a4a3ec, tree
+4b3c082135a6bc5088be635a9f712a5e9c9e03b4.
+
+The separated generated-WASM update-residual theorem passed in 1.3 seconds.
+The Rusanov six-operation certificate and accepted-status transfer passed
+on their first checks in 1.2 and 1.1 seconds.  Its generated-WASM transfer
+passed in 1.3 seconds.  All public audits use standard axioms.  The smaller
+existing initial-cell dependency passed in 3.8 seconds after the earlier
+aggregate timeout, permitting the now-separated artifact transfer check.
+
+The row sum now composes the existing real telescoping theorem with the
+computed update residual.  Its accumulated error bound passed, while the
+balance proof diagnosed an ambiguous residual name in an unfold command.
+Qualified that name.  Production grid geometry, directional composition,
+and accepted-time accumulation remain to instantiate.
+
+The separated update artifact target also reached the three-minute limit
+while rebuilding existing allocation and flux dependencies, without a new
+theorem diagnostic.  The dependency comes from ArtifactTranslation importing
+the complete solver Spec.  Moved its 108 function equalities, module equality,
+and generic property transfer unchanged into ArtifactModule.  ArtifactTranslation
+imports that module and retains the three complete-solver behavior theorems.
+The new local residual transfers import ArtifactModule directly.  A source
+comparison confirms that every moved theorem body is unchanged.  This
+separates binary identity from the complete solver behavior dependency.
+No binary, generated Program, theorem statement, or manifest changed.
+
+The separated binary-identity module passed in 5.9 seconds.  Update and
+Rusanov residual transfers to the frozen bytes passed in 1.2 and 1.1 seconds.
+The row balance and its accepted residual bound passed in 1.2 seconds.
+All new public audits use the standard logical axioms.  The remaining
+existing cell-execution dependency completed through two 51-second modules.
+The original complete-solver wrappers are now checking against the separated
+module.  Their statements and proofs remain unchanged.
+
+The physical side-flux bound is being extended from quantitative M premises
+to accepted status alone.  New drafts propagate the checked neighboring-value
+rounding radii through division, transport, kinetic energy, pressure, and
+the three nontrivial flux components.  The pressure bound retains the exact
+error of the binary64 coefficient relative to 2/5.  These drafts reuse the
+existing enclosure and real product-error lemmas.  They do not change the
+numerical program or its frozen bytes.
+
+The complete ArtifactTranslation recheck reached its three-minute limit
+while rebuilding the remaining existing initialization and timestep-control
+proofs.  It completed ExecutionRetryTotal and AdvanceTotalTrial without a
+theorem diagnostic.  The next old-solver check will isolate the remaining
+advance boundary before retrying the complete wrappers.  The new residual
+modules remain independently checkable through ArtifactModule.
+
+Accepted-side finiteness passed in 928 milliseconds.  The reusable error
+propagation lemmas passed in 950 milliseconds, and the division residual
+in 886 milliseconds.  The physical side-flux proof reached its final
+record projections, where ring left two definitionally equal bound fields
+unfolded.  Added reflexivity before polynomial normalization at those
+final conversions.  The numerical derivation and its hypotheses did not
+change.  The failed draft's axiom output is not accepted evidence.
+
+The physical side-flux theorem passed in 1.2 seconds with standard axioms.
+A subsequent attempt to simplify three final conversion proofs failed
+because rewriting multiplication order also rewrote terms inside the error
+bounds.  Restored the passing conversions.  The direct source proof has
+no additional quantitative M or internal-energy-margin premise.
+
+Caught an accidental filename collision while adding the scalar reference
+composition: NumericsComponentReference already contained a tracked theorem.
+The immediately preceding clean status establishes its original content.
+Preserved the new draft as NumericsComponentRadius and restored the existing
+file byte-for-byte from HEAD.  No prior user edit was present in that file.
+The original component_reference_error theorem remains unchanged.
+Every proposed new filename must be checked for existence before creation.
+
+The physical side-flux bound now passes at source, generated execution,
+and exact-byte levels.  Its artifact transfer took 1.1 seconds and reports
+only standard axioms.  The existing advance dependency passed through its
+four remaining modules in 2.9, 1.9, 1.2, and 1.6 seconds.  The new scalar
+reference composition diagnosed an ambiguous residual identifier in
+886 milliseconds.  Qualified the existing Rusanov residual definition.
+
+The scalar reference composition passed in 1.1 seconds.  The complete
+solver Spec and its original exact-byte wrappers passed in 1.4 seconds
+each after the remaining existing output and control dependencies completed.
+All public audits report standard logical axioms.  Added the three local
+exact-byte residual modules as imports of ArtifactTranslation so the focused
+independent package gate checks them with the preserved solver package.
+The manifest, binary, and generated Program remain unchanged.
+
+Reviewed the new proof structure against the journal and existing support.
+The new arithmetic proofs use operation enclosures and one shared real
+product-error theorem.  Three small propagation lemmas replace repeated
+triangle-inequality derivations in the physical side proof.  Execution
+transfers reuse checked existing function specifications and module equality.
+No new instruction-level proof, compiler annotation, or measured LTG retrieval
+was needed for these unchanged functions.  The split addresses an import
+dependency rather than changing proof assumptions.  The checkpoint includes
+only the eighteen new Lean modules, the ArtifactTranslation import boundary,
+and the five maintained documentation/journal files updated here.
+
+The reviewed status corrects that path count: seventeen new Lean modules,
+one changed ArtifactTranslation module, and six documentation/journal files.
+The existing NumericsComponentReference has no diff.  The independent
+preserved-binary gate is running with the three new residual imports.
+
+The focused independent euler_riemann package gate completed with exit zero.
+It checked the binary identity, artifact theorem, all 386 local specification
+dependencies, complete solver behavior, and the eight manifest axiom audits.
+Every audit contains only standard logical axioms.  The imported update,
+Rusanov, and physical-side exact-byte residual modules are included in the
+checked artifact target.  The documentation test passed for 120 maintained
+Markdown files.  The reviewed 24-path checkpoint passes whitespace checks.
+The three new interface-composition drafts remain outside this checkpoint
+until their own source and byte-facing checks complete.
