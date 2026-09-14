@@ -20675,3 +20675,139 @@ proof preserves the old public statement and the new source returns the
 certified speed field.  No compiler output or binary changed.  The next
 checkpoint composes two revised sides with the existing guarded Rusanov
 components, retaining explicit rejection, spectral, and residual claims.
+
+### 2026-09-14: revised scalar interface source
+
+Published the side-source checkpoint as
+a7e6e07dd9db1e3d0e5973c7fe6ce48aedc11aba, parent
+aad601d4f2d227d3e84d80c3b16253968cd862a4, tree
+0a6902b2aae8123bd1ba8b6a89e117555bc52072.  The ten-path commit has
+320 inserted and 16 removed lines.  Non-forced push and fetch verified
+the commit, remote branch, parent, tree, title, index, and tracked worktree.
+
+Added OutwardFlux and its source specification.  The computation calls
+both revised sides, selects their maximum certified speed, and applies
+the existing guarded scalar Rusanov component to all four conserved fields.
+The proof reuses the checked positive-word speed selection and component
+finiteness lemmas.  It states exact accepted component values, both input
+acceptances, a finite positive bound on both states' four characteristic
+speeds, finite result components, and complete rejection behavior.
+
+The first interface source check failed in 9.4 seconds: accepted_interface_parts
+exhausted 200,000 elaboration heartbeats while simplifying the revised side
+expressions.  Dependent theorem declarations then failed kernel checking.
+Those failed-run audit lines are not accepted evidence.  The component-value
+and maximum-selection identities passed individually.  Revised the guard
+extraction proof to generalize both side result records before its branch
+analysis, so that analysis concerns the interface's guards and does not
+reduce the larger outward-speed computations.  The heartbeat limit remains
+unchanged.  Added the separate residual composition using the shared scalar
+Rusanov bound and the two revised physical side-flux bounds.
+
+The revised interface source specification passed in 2.0 seconds with the
+default heartbeat limit.  Generalizing the two side records removed the
+unnecessary reduction.  All six public audits now use only standard
+axioms, including both-state spectral bounds and finite flux components.
+The residual module is the next focused check before compiler generation.
+
+The revised interface residual module passed on its first attempt in 1.3
+seconds, with standard axioms.  The preserved interface residual module
+also rebuilt successfully in 3.5 seconds after the shared side proof
+change.  The new source estimate adds the two physical-side error bounds
+to the existing six-operation Rusanov bound for each component.  It
+requires only accepted status, with no additional magnitude parameter.
+
+Registered euler_outward_flux as incomplete for compiler generation.  Its
+target directory and generated artifact directory were absent before this
+operation.  Preparation owns only this case's new Program, annotation
+matches, WASM, WAT, sidecar, and recipes, plus ordinary bounded build caches.
+The source inventory remains 43 completed cases until the new public
+generated-execution specification passes.  Exact-byte packages remain 39.
+
+Preparation passed.  The new binary has 7,175 bytes and digest
+40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189.
+Its compiler sidecar contains 142 direct-call regions.  The eight-argument,
+six-result entry is function 54.  It calls side function 38 twice and
+component wrapper 46 four times.  The 37 speed functions match the earlier
+speed model text exactly, as do component functions 41 through 46 in the
+preserved complete solver.  Added checked FunctionRegion transport for
+these speed, guard, rejection, and component regions.  These are proof
+obligations against the generated model, not an assumption of compiler
+correctness.  Generated annotations and models remain unedited.
+
+Reviewed the direct-call-stack-tail and scalar-statement LTG entries.
+The former's stack convention guides call composition.  The latter targets
+descriptor assignments and does not replace the existing floating-point
+callee theorems.  This is manual related-artifact reuse, with no held-out
+retrieval or timing claim.  A read-only search named a nonexistent
+F64OutwardExecution file and returned status two.  File discovery located
+the existing speed execution modules instead.  The first Scalar addition
+was rejected before writing because its journal hunk had an incorrect
+anchor.  The corrected edit uses the inspected journal tail.
+
+Scalar transport passed on its first attempt in 9.7 seconds.  The seven
+audits cover the complete speed call, both side guards, side rejection,
+and the guarded Rusanov component, using standard axioms.  Added the new
+side execution proof around its compiler-emitted function 38.  It composes
+the speed call with the unchanged physical arithmetic and every finite or
+positive guard, including each rejected path and complete store preservation.
+
+The new side execution theorem passed on its first attempt in 27 seconds,
+with standard axioms.  The proof uses the inspected speed call and the
+existing finite/positive guard execution lemmas.  Added interface execution
+composition for the two side calls and four guarded components, together
+with public exact-output, spectral-safety, and physical-residual specifications.
+These specifications are still awaiting their focused checks.
+
+The inspected call graph reaches 45 of the 59 emitted functions from the
+interface entry.  Its reachable code has no memory operations or allocator
+calls.  All 142 annotation regions are direct calls.  The generated runtime
+functions occupy indexes 55 through 58.  Added their four standard identity
+checks to the shared runtime inventory.  The source registry remains
+incomplete until the execution and numerical specifications pass.
+
+The complete interface execution proof passed on its first attempt in 71
+seconds, including exact rejection and all six returned words, termination,
+and store preservation.  Both public execution audits use standard axioms.
+The shared earlier two-dimensional interface dependency rebuilt in 30
+seconds.  The new public specification and its generated annotation
+equalities are the next focused target.
+
+The first public specification check failed in 1.7 seconds at the namespace
+import: selective open accepts declarations, whereas OutwardNumerics and
+RealRusanov are namespaces.  Their unresolved names caused the subsequent
+definition and theorem errors.  Corrected the open directive to the parent
+namespace.  The failed-run sorryAx audit output is rejected evidence, and
+no sorry or axiom declaration was added to the source.
+
+The corrected public specification passed in 1.5 seconds.  Exact output,
+complete rejection-or-safe behavior, and all four physical-flux residual
+bounds now hold for the generated interface module, with standard axioms.
+The generated annotation equalities also checked.  Marked the case complete
+and added its aggregate specification import.  The runtime identity and
+source-regeneration gates precede the reviewed source checkpoint.
+
+The runtime identity target passed in 1.9 seconds.  The first read-only
+registry check passed the wrong object shape to checkAggregateImports:
+loadRegistry returns the case array directly.  Corrected the invocation
+after inspecting that return statement.  The aggregate import check then
+passed for all 44 registered, completed cases.
+
+The complete euler_outward_flux source-regeneration gate passed.  It
+reproduced the generated model and annotation equalities and checked all
+three public specifications.  Updated README, the root and Euler plans,
+status report, proof inventory, and devnotes to distinguish the completed
+generated-WASM claims from the pending exact-byte package.  The counts
+are 44 completed source cases, 44 caches, 23 floating-point helper cases,
+and 39 completed exact-byte packages.  The reviewed source checkpoint
+contains twenty explicit paths.  Its independent binary proof follows
+publication without changing the numerical computation.
+
+All 120 maintained Markdown checks and whitespace checks pass.  Review
+confirmed the generated 4,036-line model and 26-line annotation module
+remain tool-produced.  The new execution layer has 85 lines of checked
+callee transport, 103 lines of side composition, 119 lines of interface
+composition, and an 84-line public specification.  It reuses existing
+arithmetic theorems and introduces no new shared abstraction or measured
+LTG promotion.  The twenty-path checkpoint is ready for non-forced
+publication.  Existing data, binaries, and unrelated files are preserved.
