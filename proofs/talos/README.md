@@ -167,8 +167,16 @@ audits.  The production binary and both datasets remain unchanged.
 The interface error estimate requires quantitative state bounds and an
 internal-energy margin beyond accepted-state safety.  The new plan records
 those premises.  Corrected numerical speed bounds, rounded reconstruction,
-and complete grid/time balance remain open.  Changes to the numerical
-method require review before integration.
+and complete grid/time balance remain open.  The user approved the
+outward-arithmetic and positivity-limiter design for implementation.
+
+The [adjacent-value implementation](lean/Project/ProofKit/F64Adjacent.lean),
+[signed spacing proofs](lean/Project/ProofKit/F64AdjacentSigned.lean), and
+[magnitude bounds](lean/Project/ProofKit/F64MagnitudeGaps.lean) pass focused
+Lean checks.  They cover signed zeros, subnormal and exponent transitions,
+and strict ordering of neighboring values.  The nextUp compiler diagnostic
+also succeeds.  Arithmetic-result enclosure and generated execution proofs
+remain subsequent targets.
 
 ## Workflow Tools
 
