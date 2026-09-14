@@ -205,6 +205,19 @@ invalid states.  The helper compiles to a 4,936-byte diagnostic with 35
 reachable scalar functions and 102 direct-call annotations.  Exact-WASM
 execution proofs and interface/grid integration remain open.
 
+The [outward CFL check](lean/Project/EulerRiemann/OutwardCfl.lean) and its
+[source proof](lean/Project/EulerRiemann/OutwardCflSpec.lean) establish an
+upper bound for the exact decoded timestep/spacing quotient and prove
+that the returned ratio times speed is at most one half.  The
+[mesh wrapper](lean/Project/EulerRiemann/OutwardMesh.lean)
+uses a downward bound for 1/n.  Its [proof](lean/Project/EulerRiemann/OutwardMeshSpec.lean)
+therefore gives dt*n*alpha at most one half for exact unit-domain spacing.
+[Boundary certificates](lean/Project/EulerRiemann/OutwardCflBoundary.lean)
+cover adjacent encodings at the acceptance threshold, invalid inputs,
+and the 192/800 meshes.  The compiled diagnostic is 2,557 bytes with
+31 direct-call annotations and 14 reachable scalar functions.  Controller
+integration and exact-WASM composition remain open.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
