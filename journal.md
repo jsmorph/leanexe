@@ -18919,3 +18919,75 @@ and journal after whitespace and documentation checks.  All unrelated
 tracked and untracked state, ignored diagnostics, and previous artifacts
 remain preserved.  The paper-research agent completed its read-only
 assessment of arXiv:2609.05625 and is saving a separate report under /tmp.
+
+Published 5aa5a9d2e5cf481b5797b6f039df8dcd7a290239, parent
+4ea0972768f609fe174621d72038da3ed58f4f24, tree
+237fa3cb67fb1875d08e91d935329632632ef768, titled
+Prove outward Euler characteristic speed bounds.  All eleven explicitly
+staged files passed whitespace checks, and the documentation check passed
+119 maintained Markdown files.  SSH push/fetch succeeded.  HEAD, FETCH_HEAD,
+and origin have identical commit, parent, tree, and headline.  The index
+and tracked worktree equal HEAD.  Unrelated state remains preserved.
+
+Added OutwardCfl and OutwardCflSpec for the next scalar numerical boundary.
+The helper checks positive finite timestep, spacing, and speed, computes an
+upward division, then an upward Courant product, and accepts the ratio only
+when the product is at most the exact half encoding.  Its proposed theorem
+bounds both the returned ratio times speed and exact decoded timestep divided
+by decoded spacing times speed.  Mesh-spacing correspondence and solver
+integration remain later obligations.  The source/proof check is next.
+
+The accepted CFL proof passed its first check in 1.2 seconds with standard
+axioms.  It accounts for both division and multiplication rounding and
+proves an exact half bound for every speed bounded by the checked alpha.
+Added complete ratio behavior and a mesh wrapper using a downward bound
+for 1/n from the existing exact small-natural encoding.  The mesh theorem
+aims to prove dt*n*alpha at most one half for the exact unit-domain spacing.
+This avoids leaving stored-spacing rounding as an unstated physical-mesh
+assumption.  Its focused check is next.
+
+The first mesh check passed the complete ratio behavior but failed at the
+local encoding-of-one proof, a missing source-definition reduction, and
+the simplified bounds conjunction.  The encoding proof exceeded the
+default exponent threshold.  Reused the existing smallNaturalBits_value
+theorem at one, exposed spacingLower in the final simplification, and
+matched the reduced conjunction.  No global limit increase is needed.
+
+The second mesh check left one conversion at smallNaturalBits 1.  Added
+its kernel-checked word equality and the natural-cast simplification
+before applying the existing value theorem.
+
+OutwardMeshSpec passed its third check in 1.3 seconds.  The exact-grid
+Courant theorem uses the exact n supplied at runtime and returns the
+half bound without a quantitative state-size premise.  All audits report
+standard axioms.  Added complete grid-ratio behavior, transfer to every
+bounded physical speed, and kernel certificates for the rounding boundary,
+invalid values, and the 192/800 mesh cases.  Their check is next.
+
+The complete grid-ratio behavior and all four boundary certificates passed
+on their first check, in 1.3 seconds per module.  The source theorem audits
+report standard axioms.  Kernel boundary certificates use propext and
+Quot.sound.  The two immediately relevant encodings below one half show
+the effect of outward rounding: two predecessor steps are accepted at
+unit spacing/speed, while the immediate predecessor and exact half reject.
+The 192/800 spacing calculations and selected valid/invalid timestep cases
+also check.  These are numerical-helper certificates, not production runs.
+
+Compiled the mesh-ratio helper through the standard serialized runner to
+fresh build/euler-parity-outward-cfl-v1.wasm and matching annotations.
+The 2,557-byte artifact has SHA-256
+c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456.
+WAT inspection identifies gridRatioChecked at function 15, 14 reachable
+scalar functions, no imports, and no reachable memory/allocator operations.
+The arithmetic bodies use f64.div and f64.mul.  The compiler supplies
+31 direct-call annotations.  The exact generated execution proof remains
+open.  Existing function-region transport and scalar conditional support
+were inspected for subsequent execution composition.  No measured LTG
+retrieval or proof-agent run occurred in this numerical checkpoint.
+
+The next checkpoint stages only the five new CFL/mesh modules, the plan,
+proof inventory, devnotes, and journal, after whitespace and documentation
+checks.  The old solver, its proofs, binary, data, and unrelated files
+remain preserved.  The remaining numerical work includes certified speed
+maxima, positivity-limited faces, and integration with the timestep
+controller, followed by complete exact-WASM proofs and new production runs.

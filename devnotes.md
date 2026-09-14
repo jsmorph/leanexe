@@ -11620,3 +11620,18 @@ reachable memory operations or allocator calls.  The compiler supplies
 102 direct-call annotations.  Exact-WASM composition and corrected
 interface/grid speed and CFL integration remain open.  The original
 solver binary and production data remain preserved.
+
+## 2026-09-14: Exact mesh CFL bound
+
+The [CFL and mesh proof](proofs/talos/lean/Project/EulerRiemann/OutwardMeshSpec.lean)
+now establishes dt*n*alpha at most one half from acceptance.  The
+implementation computes a downward spacing bound for 1/n, an upward
+ratio, and an upward Courant product.  Its complete source behavior
+includes rejection and bounds the returned ratio used by a future update.
+Boundary certificates cover threshold neighbors, invalid arguments,
+and the 192/800 grids.  The focused checks pass with standard axioms.
+
+LeanExe produced a 2,557-byte scalar diagnostic with SHA-256
+c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456.
+It has 31 direct-call annotations and no reachable memory operations.
+The exact-WASM proofs, speed maxima, and controller integration remain open.
