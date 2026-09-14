@@ -112,6 +112,39 @@ zero at time 0.8.  Recorded monotonic runtimes are 49.6 seconds and
 61.6 minutes.  The [complete solver plan](../../plans/euler-riemann-complete.md)
 records the completed gates and development history.
 
+## Two-dimensional Euler hyperbolicity
+
+For the four-component conservative state with exact gamma 7/5,
+`Project.Euler2DConservative.RealFlux.admissible_hyperbolic` proves a
+complete real eigenbasis of the physical flux derivative in every unit
+spatial direction, under positive density and pressure.  The characteristic
+values are un-c, un, un, and un+c.  Independent contact and shear vectors
+span the repeated eigenspace.  The proof establishes the matrix derivative,
+the eigenvector equations, and an invertible eigenvector matrix.
+
+| Proof | Result |
+|-------|--------|
+| [Physical flux](lean/Project/Euler2DConservative/RealFlux.lean) | Reuses the existing four-component pressure and admissibility definitions. |
+| [Jacobian](lean/Project/Euler2DConservative/RealJacobian.lean) | The displayed x-flux matrix is the Fréchet derivative. |
+| [Eigenvectors](lean/Project/Euler2DConservative/RealEigenvectors.lean) | The matrix eigenrelation and determinant 5c³ under the acoustic identity. |
+| [Eigenbasis](lean/Project/Euler2DConservative/RealEigenbasis.lean) | A Lean basis of four nonzero eigenvectors at every admissible state. |
+| [Rotation](lean/Project/Euler2DConservative/RealRotation.lean) | Pressure invariance and physical flux transformation. |
+| [Every direction](lean/Project/Euler2DConservative/RealHyperbolicity.lean) | Derivative and eigenbasis for every unit spatial direction. |
+| [Solver states](lean/Project/EulerRiemann/Hyperbolicity.lean) | Accepted states, intermediate sweep grids, numerical traces, and terminal arrays. |
+
+The registered `Project.EulerRiemann.Spec.solve_hyperbolic` specification
+adds these properties to the complete solver behavior.  The byte-facing
+`Project.EulerRiemann.Artifact.artifact_solve_hyperbolic` theorem transfers
+that specification through decoding, validation, and translation of the
+same 21,767-byte production binary.  The mathematical theorem concerns the
+exact real values of conservative-state words.  Bounds for rounded numerical
+signal speeds and convergence to the continuous PDE remain separate proof
+obligations.
+
+The focused independent artifact check passed on 2026-09-14 with
+`solve_hyperbolic` registered.  All eight manifest theorem audits contain
+only `propext`, `Classical.choice`, and `Quot.sound`.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.

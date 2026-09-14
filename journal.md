@@ -18321,3 +18321,124 @@ expected commit, parent, tree, and headline.  The complete index and
 all seventeen checkpoint worktree files match FETCH_HEAD.  Verification
 finished before this receipt edit.  This final receipt is the only
 follow-up publication record for the completed dataset checkpoint.
+
+## 2026-09-14: Hyperbolicity development authorized
+
+Read the runner skill, repository documentation, and branch operating rules.
+Status matches the preserved untracked dataset and paper files, with no
+tracked changes.  The installed local pinned toolchain exists at
+/home/somebody/.elan/toolchains/leanprover--lean4---v4.34.0-rc2.
+The current standard runner supersedes the historical direct-local host
+envelopes in the operating document.  No compatibility preload is selected.
+
+The first multi-file edit failed before changing files because it expected
+the wrong devnotes heading.  Status confirmed no changes.  The corrected
+edit adds RealFlux.lean, the approved hyperbolicity plan, its active-queue
+link, and these development records.  The real model reuses Guard.Vec4,
+pressure, internalEnergy, and Admissible, including both momentum terms.
+The planned derivative follows the existing 1D calculus construction.
+Four-component eigenvectors and spatial rotation supply the new algebra.
+
+The focused RealFlux build passed through tools/leanrun with a three-minute
+timeout and a 30-second lock wait.  Lake reused the dependency graph and
+reported 11 seconds for the new module.  Its acoustic identity checks with
+the existing pressure definition.  Removed one sequence-style warning and
+added the four-component derivative construction in RealJacobian.lean.
+Compiler annotations and LTG decoder entries address execution proofs;
+this step reuses the checked 1D real-calculus example instead.
+
+The first derivative check failed on an unavailable HasFDerivAt.div API.
+Read the installed calculus source and used reciprocal composition, as the
+existing 1D proof does.  The corrected RealJacobian build passed in 2.4
+seconds with only propext, Classical.choice, and Quot.sound in its audit.
+Removed its unused simp arguments and sequence-style warnings.  Added the
+eigenvector algebra as a separate module, using an explicit acoustic
+residual and a determinant identity to isolate the proof boundaries.
+
+The eigenvector check proved the determinant formula and its nonzero
+consequence.  Its residual proof stopped on an unreduced vector times
+diagonal matrix.  Added the existing Matrix.vecMul_diagonal lemma used by
+the 1D example.  RealJacobian checks without warnings after simplification.
+The new RealEigenbasis module connects the matrix certificate to Mathlib's
+Basis and HasEigenvector, discharging the acoustic relation from positive
+density and pressure.
+
+RealEigenbasis first required the Module namespace and classical finite
+index decisions.  After those explicit additions, x_hyperbolicity passed
+in 1.7 seconds and its audit contains only the three accepted logical axioms.
+The first rotation check exposed an opaque UnitDirection hypothesis and
+normalization-order mismatches.  Unfolded the unit equation for arithmetic,
+proved pressure invariance before expanding the state coordinates, and
+proved the flux identity by multiplying by the rotation before applying its
+transpose.  RealRotation then passed in 3.4 seconds with standard axioms.
+The new RealHyperbolicity module composes the checked derivative with the
+linear rotation and transports the eigenvector matrix through its inverse.
+
+RealHyperbolicity needed an explicit multiplication-associativity rewrite
+for composed derivatives and det_mul for the transported eigenvectors.
+The corrected module passed in 2.3 seconds.  Both the directional derivative
+and admissible_hyperbolic audits report only propext, Classical.choice,
+and Quot.sound.  The new solver-facing module applies this result to decoded
+accepted states, both outputs of an accepted split step, every numerical
+trace from the initial grid, and the terminal array.
+
+The solver bridge first failed because a namespace was listed as an opened
+constant and split was applied before reducing local let bindings.  Corrected
+the namespace and used dsimp before the accepted-step case split.  The trace
+property includes both full-step grids and the intermediate x-sweep grid of
+every accepted following step.  Added solve_hyperbolic to the public spec
+and manifest, with artifact_solve_hyperbolic transferring that property to
+the decoded and validated frozen binary.
+
+The solver-facing Hyperbolicity module passed in 1.3 seconds.  Accepted
+states, both directional-step grids, initial traces, and terminal arrays
+all have standard-axiom audits.  The first independent package invocation
+rejected the new manifest before launching Lean because its behavior list
+also belongs in proofs/talos/cases.json.  Added the same new theorem to
+that authoritative registration and resumed the focused package check.
+
+Reviewed all seven new Lean modules and the spec/artifact/registration
+diffs.  The lexical audit finds only explicit axiom-report commands, with
+no admitted proofs or native decision shortcuts.  The six real-mathematics
+modules total 390 lines, and the solver bridge contains 84 lines.  The
+proof uses the existing pressure predicate throughout and identifies the
+directional matrix with the derivative of n.x*Fx+n.y*Fy.  Unit rotations
+preserve the positive-pressure premise.  The repeated characteristic value
+has two independent basis vectors.  Documentation now records the theorem
+inventory and the ongoing independent check.
+
+Correction to the preceding size note: wc reports 413 lines across the
+six real-mathematics modules and 84 in the solver bridge, totaling 497.
+The earlier 390 count was incorrect.  These counts identify the source
+extent; proof acceptance and the checked statements establish coverage.
+The documentation check accepts 118 maintained Markdown files, and
+git diff --check passes.  Existing aggregate CLOB verification remains
+deferred as recorded in docs/status.md.  This proof extension uses the
+approved focused Euler artifact gate.
+
+The focused artifact-proof.js check completed with exit zero.  It checked
+the 21,767-byte identity, embedding, decode, validation, translation,
+behavioral specifications, and all eight manifest declarations.  The new
+solve_hyperbolic audit uses only propext, Classical.choice, and Quot.sound.
+The exact production SHA-256 is
+baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310.
+The existing driver traversed 387 local specification modules in order.
+Its output replayed cached warnings, while all required targets passed.
+
+The completion documentation edit first failed before mutation because its
+context treated the opening sentence of docs/status.md as a complete line.
+The corrected edit adds a dated status paragraph and updates the plan,
+inventory, root README, dataset article, and development notes.  Preparing
+an explicit checkpoint of these documents, seven new Lean modules, the
+two extended theorem modules, the manifest, and the source registration.
+The pre-existing failed 192 directory and paper outputs remain preserved.
+
+The final documentation check accepts 118 maintained Markdown files and
+git diff --check passes.  Read the accepted ArtifactTranslation build trace
+to confirm that artifact_solve_hyperbolic also reports exactly propext,
+Classical.choice, and Quot.sound.  The explicit checkpoint contains twenty
+reviewed files: README.md, the complete dataset article, devnotes.md,
+docs/status.md, journal.md, plan.md, the two Euler plans, the exact package
+manifest, the Talos inventory and case registry, six new real-mathematics
+modules, the solver Hyperbolicity module, Spec.lean, and ArtifactTranslation.lean.
+No production simulation was run during this proof extension.
