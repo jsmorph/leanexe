@@ -130,5 +130,5 @@ reproducible data.
 The [complete WASM Riemann calculation](data/euler-riemann-complete-v1/README.md)
 has kernel-checked proofs covering the frozen binary from initialization
 through final output, including termination and the 512 MiB memory bound.
-Its 192 × 192 density and pressure figures are complete.  The additional
-800 × 800 run uses the same binary and is running.
+Both the 192 × 192 and 800 × 800 runs returned status zero at time 0.8
+using that binary.  Their density and pressure figures and raw data are complete.

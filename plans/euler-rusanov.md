@@ -1,11 +1,12 @@
 # Verified Euler Rusanov Data
 
-The current extension is the [complete Riemann solver](euler-riemann-complete.md)
-in phase 12 of the root plan.  The user requires complete Lean-source and
-exact-WASM proofs before the new 192-grid and 800-grid calculations and
-their figures.  The earlier phases below retain their recorded scope.
+The [complete Riemann solver](euler-riemann-complete.md) in phase 12 of
+the root plan is complete.  Lean-source and exact-WASM proofs passed
+before the 192-grid calculation, its figures, the 800-grid calculation,
+and its figures, in that order.  Both calculations returned status zero
+at time 0.8.  The earlier phases below retain their recorded scope.
 
-**Status:** Active on branch `talosfp-euler`.  The exact conservative flux,
+**Status:** Complete on branch `talosfp-euler`.  The exact conservative flux,
 genuine Fréchet Jacobian, complete strictly ordered eigenbasis, and decoded
 finite-volume error layer are proved and integrated.  The fixed compiled step
 now has source, generated Talos cache, pure model, runtime pins, exact WAT
@@ -849,5 +850,7 @@ trace through time 0.8.  Complete decoding of the frozen 21,767-byte
 artifact and validation now pass with only the accepted logical axioms.
 Talos translation equality and both complete byte-facing behavior
 theorems also pass.  The independent artifact gate passed.  The authorized
-192-grid run and density/pressure figures are complete.  The additional
-800-grid run is executing the same binary under the standard local limits.
+192-grid and 800-grid runs and density/pressure figures are complete.
+Both returned status zero at time 0.8 using the same binary under the
+standard local limits.  The [short article and datasets](../data/euler-riemann-complete-v1/README.md)
+contain the figures, raw output, and reproduction commands.

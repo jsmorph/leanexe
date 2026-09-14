@@ -498,7 +498,7 @@ benchmark and the cancellation record.
 The user authorized one LeanExe-generated WASM solver with runtime grid
 size, local execution in one process on one thread, and complete source
 and exact-WASM proofs.  The [complete solver plan](plans/euler-riemann-complete.md)
-records the numerical specification and outstanding proof obligations.
+records the numerical specification, completed gates, and development history.
 
 On 2026-09-13 the user approved complete exact-WASM behavior and memory
 bounds, including explicit failure returns, as the proof gate before
@@ -531,8 +531,12 @@ Zero status implies a checked numerical trace through time 0.8.
 Complete decoding of the frozen 21,767-byte artifact and validation now
 pass with only the accepted logical axioms.  Talos translation equality
 and both complete byte-facing behavior theorems also pass.  The independent
-artifact gate passed.  The 192-grid run and its density/pressure figures
-are complete.  The additional 800-grid run is executing the same binary.
+artifact gate passed.  Both the 192-grid and 800-grid runs returned status
+zero at time 0.8.  Their density/pressure figures and raw data are complete
+in the [short article](data/euler-riemann-complete-v1/README.md).  Each run
+used the same binary in one local WASM solve call under the standard
+runner limits, with recorded monotonic runtimes of 49.6 seconds and
+61.6 minutes, respectively.
 
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation

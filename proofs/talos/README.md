@@ -106,11 +106,11 @@ the execution proofs.  LTG records checked array, allocator, loop, and
 binary-decoding reuse.  The [development journal](../../journal.md)
 preserves failed proof attempts and the accepted replacements.
 
-The [192-grid dataset and figures](../../data/euler-riemann-complete-v1/README.md)
-come from one complete WASM call, which returned status zero at time 0.8
-in 49.6 seconds.  The 800-grid call is running.  The
-[complete solver plan](../../plans/euler-riemann-complete.md) records the
-remaining data and presentation work.
+The [192-grid and 800-grid datasets and figures](../../data/euler-riemann-complete-v1/README.md)
+are complete.  Each grid used one complete WASM call and returned status
+zero at time 0.8.  Recorded monotonic runtimes are 49.6 seconds and
+61.6 minutes.  The [complete solver plan](../../plans/euler-riemann-complete.md)
+records the completed gates and development history.
 
 ## Workflow Tools
 
