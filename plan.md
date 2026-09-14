@@ -5,8 +5,10 @@ The active Euler work is [mathematical parity with the Lanyon article](plans/eul
 The outward speed has exact-byte proofs.  Interface/grid maxima and the
 cellwise CFL inequality pass source checks.  The positivity-limited
 reconstruction now has source safety, rounding-error, and conditional
-linearity proofs.  Generated execution, conservation residuals, and complete
-revised-solver integration remain active.
+linearity proofs.  Its scalar generated-WASM calls, slope, candidate faces,
+and annotated loop guard check.  The halving loop, reconstruction wrapper,
+exact-byte closure, conservation residuals, and complete revised-solver
+integration remain active.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

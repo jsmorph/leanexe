@@ -20,6 +20,9 @@ If a continuation tactic also executes the following branch, the branch
 hypotheses must be available before applying that tactic.
 
 Both shared declarations and the division execution theorem check with the
-standard logical axioms.  The complete speed source-driven gate passes.
-The entry remains provisional: independent exact-byte closure and measured
-proof-agent retrieval have not yet been established for this use.
+standard logical axioms.  The complete speed source-driven and independent
+exact-byte gates pass.  The reconstruction minmod proof also uses the
+theorem, preserving the first absolute value across the second call.
+That generated-WASM component checks with standard axioms.  Its complete
+reconstruction and exact-byte proofs remain open.  The entry remains
+provisional, with measured proof-agent retrieval still open.

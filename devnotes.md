@@ -11732,3 +11732,21 @@ and no reachable memory operations.  The compiler supplies 83 direct-call
 annotations and one loop annotation.  Generated execution, exact-byte
 closure, the production trial budget, and complete solver integration
 remain open.  The old binary and both datasets remain preserved.
+
+## 2026-09-14: Reconstruction scalar WASM execution
+
+Reconstruction scalar execution covers subtraction, addition, scaling,
+finite-state and admissibility checks, minmod, the slope, rejected records,
+and [candidate faces](proofs/talos/lean/Project/EulerReconstruction/Candidate.lean).  These exact-word
+theorems preserve the store and cover all short-circuit branches.  Focused
+checks and standard-axiom audits pass.  The slope and candidate checks
+took 5 and 10 seconds.
+
+Guard transfer reuses the nineteen-function outward-speed region.  Minmod
+reuses the LTG direct-call stack-tail theorem.  The generated loop-guard
+equality matches fuel local zero and completion local twenty, and the
+[loop frame and measure](proofs/talos/lean/Project/EulerReconstruction/LoopShape.lean)
+check.  The bounded loop and public wrapper remain open.  The reconstruction
+registration remains incomplete, giving forty generated caches and
+thirty-nine completed source cases.  Exact-byte closure and revised-solver
+integration remain open.
