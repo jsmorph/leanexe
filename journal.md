@@ -20608,3 +20608,70 @@ removed a stale duplicated floating-point case count from the proof
 inventory's historical table discussion.  Its current count remains in
 the inventory paragraph.  The reviewed factor checkpoint contains twelve
 paths and preserves every numerical source, compiler model, and binary.
+
+### 2026-09-14: outward side-flux integration
+
+Published the factor checkpoint as
+aad601d4f2d227d3e84d80c3b16253968cd862a4, parent
+85b9a71272f09bba2daf68dc443eb64469b050c8, tree
+acade3b0fba703d18707a2f19e986a970d393598.  The reviewed twelve-path
+commit has 288 inserted and five removed lines.  Non-forced SSH push
+and fetch verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent,
+tree, and title.  The index and tracked worktree matched the commit.
+
+Added the revised scalar side computation in a separate OutwardNumerics
+namespace.  It obtains the already-proved outward speed, then computes
+the physical flux and pressure with the previous arithmetic association
+and finite-intermediate checks.  Acceptance of the speed establishes the
+input state guard.  The returned speed field is the directed upper bound.
+This implements the approved arithmetic correction and does not choose
+grid storage, the reconstruction stencil, or its production trial budget.
+The previous source and all frozen binaries remain preserved.  Source
+safety, spectral bounds, and physical-flux error composition precede
+compilation of the revised interface operation.
+
+The revised side specification passed on its first attempt in 1.3 seconds.
+It proves exact accepted fields, accepted outward-speed status, positive
+pressure and speed, both physical-state and four-eigenvalue bounds, finite
+physical-flux intermediates, and complete rejection-or-accepted behavior.
+All public audits use standard axioms.
+
+The old physical side-flux error theorem mixed its arithmetic proof with
+the old speed-dependent acceptance predicate.  The revised side can accept
+inputs whose old pressure-over-density calculation underflows, so an
+unconditional equality with the old accepted call would be false.  Exposed
+the shared physical arithmetic theorem with explicit StateBounds and
+SideFinite premises, retaining the old accepted theorem as a short wrapper.
+Added the revised wrapper using the already-proved outward-side premises.
+The physical formulas, error bounds, old public statement, and all numerical
+source definitions remain unchanged by this proof refactor.
+
+Correction: the preceding sentence claiming revised acceptance with an
+underflowing old pressure-over-density result was unproved.  No such
+example was checked.  The two routines have different guards.  The shared
+arithmetic theorem assumes physical StateBounds and finite intermediates
+without requiring equivalence of those guards.
+
+The shared physical-flux theorem and preserved accepted-side wrapper
+passed in 9.6 seconds.  The revised wrapper passed on its first attempt
+in 1.5 seconds.  All three audits use standard axioms.  The proof reuses
+the existing quotient and arithmetic error propagation, including the
+rounded pressure coefficient's difference from exact 2/5.  The preserved
+side's exact-byte residual theorem is the next focused compatibility check.
+
+The preserved SideResidualArtifact compatibility check completed with status
+zero.  SideResidualExecution rebuilt in 7.2 seconds and its exact-byte
+wrapper in 1.6 seconds.  Both audits report only propext, Classical.choice,
+and Quot.sound.  The changed arithmetic abstraction therefore preserves
+the accepted theorem on the frozen solver bytes.  Updated the root plan,
+detailed parity plan, Euler plan, proof inventory, and devnotes to record
+the revised side's source-only status.  No new compiler case or frozen
+package is counted.  Reviewed checkpoint scope is these six records, the
+three new OutwardSide modules, and NumericsSideResidual.
+
+The ten-path side-source checkpoint passed whitespace review and all 120
+maintained Markdown checks.  Review confirmed that the common physical
+proof preserves the old public statement and the new source returns the
+certified speed field.  No compiler output or binary changed.  The next
+checkpoint composes two revised sides with the existing guarded Rusanov
+components, retaining explicit rejection, spectral, and residual claims.

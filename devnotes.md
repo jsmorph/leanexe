@@ -11998,3 +11998,21 @@ the source iteration in 958 milliseconds, the public specification in
 1.2 seconds, and byte transfer in 2.7 seconds.  Source regeneration and
 the strengthened independent package check pass.  All nine manifest audits
 use standard axioms.  The source and artifact counts remain 43 and 39.
+
+## 2026-09-14: Revised side-flux source
+
+The [revised side computation](proofs/talos/lean/Project/EulerRiemann/OutwardSide.lean)
+combines the certified outward speed with the physical flux arithmetic.
+Acceptance proves positive pressure and speed, finite intermediates, and
+a bound on all four physical characteristic speeds.  The source safety
+proof passed in 1.3 seconds.  The shared physical-flux residual proof passed
+in 9.6 seconds, and the revised accepted-side wrapper passed in 1.5 seconds.
+The preserved side's exact-byte wrapper still passes after the refactor.
+All audits use standard axioms.
+
+The old and revised side computations now share an arithmetic theorem
+whose premises state physical admissibility and finite intermediates.
+Their acceptance guards remain separate.  Generated execution for the
+revised side/interface remains open, and the inventory remains 43 source
+cases and 39 exact-byte packages.  This checkpoint does not select a grid
+stencil or production limiter budget.

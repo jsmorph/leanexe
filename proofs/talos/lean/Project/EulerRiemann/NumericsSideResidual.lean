@@ -38,20 +38,23 @@ def sideErrorBounds (rho mx my energy : UInt64) : SideErrorBounds :=
       (|value u| * (radius enthalpy + pressureError) +
         radius u * |value energy + (2 / 5) * I|)⟩
 
-theorem accepted_side_reference_bound (rho mx my energy : UInt64)
-    (h : (sideCheckedBits rho mx my energy).status = 0) :
+theorem physical_side_reference_bound (rho mx my energy : UInt64)
+    (input : Project.Euler2DConservative.Guard.StateBounds rho mx my energy)
+    (finite : SideFinite rho mx my energy) :
+    let u := Wasm.IEEE64.div mx rho
+    let v := Wasm.IEEE64.div my rho
+    let tx := Wasm.IEEE64.mul mx u
+    let ty := Wasm.IEEE64.mul my v
+    let internal := Wasm.IEEE64.sub energy (Wasm.IEEE64.mul 0x3FE0000000000000 (Wasm.IEEE64.add tx ty))
+    let pressure := Wasm.IEEE64.mul 0x3FD999999999999A internal
     let I := value energy - ((value mx)^2 + (value my)^2) / (2 * value rho)
-    let side := sideCheckedBits rho mx my energy
     let bound := sideErrorBounds rho mx my energy
-    value side.massFlux = value mx ∧
-    |value side.pressure - (2 / 5) * I| ≤ bound.pressure ∧
-    |value side.momentumFlux - ((value mx)^2 / value rho + (2 / 5) * I)| ≤ bound.momentum ∧
-    |value side.transverseFlux - value mx * value my / value rho| ≤ bound.transverse ∧
-    |value side.energyFlux - (value energy + (2 / 5) * I) * (value mx / value rho)| ≤
-      bound.energy := by
-  have input := stateGuard_spec rho mx my energy (side_inputGuard rho mx my energy h)
-  obtain ⟨hu, hv, htx, hty, htotal, hkinetic, hi, hp, hnormal, htransverse, henthalpy, heflux⟩ :=
-    accepted_side_finite rho mx my energy h
+    |value pressure - (2 / 5) * I| ≤ bound.pressure ∧
+    |value (Wasm.IEEE64.add tx pressure) - ((value mx)^2 / value rho + (2 / 5) * I)| ≤ bound.momentum ∧
+    |value (Wasm.IEEE64.mul my u) - value mx * value my / value rho| ≤ bound.transverse ∧
+    |value (Wasm.IEEE64.mul u (Wasm.IEEE64.add energy pressure)) -
+      (value energy + (2 / 5) * I) * (value mx / value rho)| ≤ bound.energy := by
+  obtain ⟨hu, hv, htx, hty, htotal, hkinetic, hi, hp, hnormal, htransverse, henthalpy, heflux⟩ := finite
   have hr0 : Wasm.IEEE64.scaledMagnitude rho ≠ 0 := by
     intro hz
     have hzValue : value rho = 0 := by
@@ -97,12 +100,30 @@ theorem accepted_side_reference_bound (rho mx my energy : UInt64)
   simp only [zero_add] at eh
   have ee := Project.ProofKit.F64ErrorPropagation.mul _ _ _ _ _ _ hu henthalpy heflux eu eh
   dsimp only
-  rw [side_values_of_accepted rho mx my energy h]
-  refine ⟨rfl, ep, ?_, ?_, ?_⟩
+  refine ⟨ep, ?_, ?_, ?_⟩
   · convert en using 1 <;> first | rfl | ring
   · convert et using 1 <;> first | rfl | ring
   · convert ee using 1 <;> first | rfl | ring
 
+theorem accepted_side_reference_bound (rho mx my energy : UInt64)
+    (h : (sideCheckedBits rho mx my energy).status = 0) :
+    let I := value energy - ((value mx)^2 + (value my)^2) / (2 * value rho)
+    let side := sideCheckedBits rho mx my energy
+    let bound := sideErrorBounds rho mx my energy
+    value side.massFlux = value mx ∧
+    |value side.pressure - (2 / 5) * I| ≤ bound.pressure ∧
+    |value side.momentumFlux - ((value mx)^2 / value rho + (2 / 5) * I)| ≤ bound.momentum ∧
+    |value side.transverseFlux - value mx * value my / value rho| ≤ bound.transverse ∧
+    |value side.energyFlux - (value energy + (2 / 5) * I) * (value mx / value rho)| ≤
+      bound.energy := by
+  have input := stateGuard_spec rho mx my energy (side_inputGuard rho mx my energy h)
+  have bound := physical_side_reference_bound rho mx my energy input
+    (accepted_side_finite rho mx my energy h)
+  dsimp only
+  rw [side_values_of_accepted rho mx my energy h]
+  exact ⟨rfl, bound⟩
+
+#print axioms physical_side_reference_bound
 #print axioms accepted_side_reference_bound
 end
 end Project.EulerRiemann.Numerics
