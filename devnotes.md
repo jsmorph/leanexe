@@ -11813,3 +11813,22 @@ This lets local numerical theorems check without rebuilding complete solver
 behavior.  The original complete-solver wrappers also pass after the split.
 All checked public audits use standard logical axioms.  No numerical source,
 generated Program, frozen bytes, or dataset changed.
+
+## 2026-09-14: Interface and complete-cell balance
+
+The [four-component interface bound](proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceResidual.lean)
+combines accepted physical side-flux errors with the Rusanov arithmetic
+bound.  Its generated-execution and exact-byte theorems cover function 54
+of the preserved binary.  The [complete-cell theorem](proofs/talos/lean/Project/EulerRiemann/NumericsCellResidual.lean)
+derives four conservative-update certificates, balance equations, and
+residual bounds from accepted cell status.  Its exact-byte transfer covers
+function 65.  All new public audits contain only standard logical axioms.
+
+The [cell-row proof](proofs/talos/lean/Project/EulerRiemann/NumericsCellRowBalance.lean)
+proves equality of the two recomputed versions of a shared interface flux.
+It derives row balance and the accumulated residual bound from accepted
+complete-cell outputs.  The row source theorem and the interface/cell
+byte theorems pass focused checks.
+The independent package gate at b1a7ae1d checked the unchanged binary and
+module identity.  Two-dimensional traversal, accepted-time composition,
+and revised-solver integration remain open.
