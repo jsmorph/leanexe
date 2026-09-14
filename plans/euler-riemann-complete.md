@@ -194,7 +194,9 @@ budget is at most 350,243,520 bytes above the initial heap pointer 4096.
 Complete decoding of the frozen 21,767-byte artifact and validation now
 pass with only the accepted logical axioms.  Talos translation equality
 and both complete byte-facing behavior theorems also pass.  The independent
-artifact gate remains open before production execution.
+artifact gate passed.  The 192-grid solve returned status zero at time 0.8
+in 49.6 seconds, and its density/pressure figures are complete.  The
+additional 800-grid solve is running with the same frozen binary.
 
 The [exact-real Rusanov bounds](../proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 and [complete cell positivity proof](../proofs/talos/lean/Project/EulerRiemann/RealStep.lean)

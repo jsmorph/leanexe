@@ -66,6 +66,8 @@ async function writeDataset(directory, n, seconds) {
     execution: "One call to the complete solve export in one local Wasmtime process",
     specification: "Project.EulerRiemann.Spec.solve_exact",
     successTheorem: "Project.EulerRiemann.Spec.solve_success",
+    artifactExactTheorem: "Project.EulerRiemann.Artifact.artifact_solve_exact",
+    artifactSuccessTheorem: "Project.EulerRiemann.Artifact.artifact_solve_success",
     extrema,
   };
   fs.writeFileSync(path.join(directory, "summary.json"), JSON.stringify(summary, null, 2) + "\n", { flag: "wx" });

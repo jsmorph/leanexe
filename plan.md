@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, thirty-seven completed source-driven Talos proofs, thirty-three exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, thirty-eight completed source-driven Talos proofs, thirty-four exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -531,7 +531,8 @@ Zero status implies a checked numerical trace through time 0.8.
 Complete decoding of the frozen 21,767-byte artifact and validation now
 pass with only the accepted logical axioms.  Talos translation equality
 and both complete byte-facing behavior theorems also pass.  The independent
-artifact gate remains open.
+artifact gate passed.  The 192-grid run and its density/pressure figures
+are complete.  The additional 800-grid run is executing the same binary.
 
 The output packer's capacities, allocations, field operations, and copy
 loops now match shared checked programs.  Arbitrary-stride allocation

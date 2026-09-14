@@ -409,7 +409,7 @@
         "Project.EulerRiemann.Spec.solve_exact",
         "Project.EulerRiemann.Spec.solve_success"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

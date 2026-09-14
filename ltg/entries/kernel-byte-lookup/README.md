@@ -81,7 +81,8 @@ to the frozen bytes pass with the accepted logical axioms.
 
 The [checked lookup module](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactByteLookup.lean)
 and [suffix consumer](../../../proofs/talos/lean/Project/EulerRiemann/ArtifactCode99Part333.lean)
-record the application.  Complete Riemann artifact verification and a
-held-out measurement remain open.  This entry records a provisional
+record the application.  Complete independent Riemann artifact verification
+passed, including all seven manifest theorem audits with only the accepted
+logical axioms.  A held-out measurement remains open.  This entry records a provisional
 proof-generation method and does not import the Riemann declarations
 into later proof tasks.
