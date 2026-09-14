@@ -19092,3 +19092,67 @@ the eight execution-proof modules, case registration, proof inventory,
 devnotes, and journal after whitespace and documentation checks.  The
 case remains explicitly incomplete.  Complete speed execution and its
 exact-byte proof remain open, as do revised solver integration and data.
+
+Published de2761ed5daef70e1ffed6cedebcb41a43806ea6, parent
+387477168b9effaee2766cc65b7a4cd4608f0474, tree
+aaa1fe1a311b657139fcb1ea8bd4be9ae0a376c0, titled
+Prove generated outward arithmetic execution.  The fourteen reviewed
+paths passed staged whitespace checks.  SSH push/fetch succeeded, and
+HEAD, FETCH_HEAD, and origin identify the same commit.  The index and
+tracked worktree equal HEAD.  All unrelated state remains preserved.
+
+Added kinetic-energy execution composition using the generated call order
+and the checked arithmetic statements.  A local call tactic expands the
+two-word result representation before invoking the existing continuation
+tactics.  The focused check follows the independent paper-draft check.
+
+The paper agent supplied an unchecked finite-vector oracle theorem in
+/tmp/ecdlp-randomized-oracle/RandomizedOracle.lean.  The first invocation
+incorrectly passed LeanExe runner options to VQ's different runner API.
+ionice rejected --timeout before Lean ran.  Read both runner scripts, then
+used this repository's runner with lake -d /home/somebody/src/vq and a
+three-minute timeout.  Lean reported one convexity-lambda arity error and
+one unused simp argument.  Corrected both in the draft and added audits.
+No VQ source was changed.  The generated Euler arithmetic proofs and the
+paper's finite-vector proof remain distinct verification targets.
+
+The corrected paper draft passed Lean.  Its per-label mean error, labelled
+state error, and success lower bound report propext, Classical.choice,
+and Quot.sound.  The theorem bounds success by
+(max 0 (sqrt P0 - 2 epsilon))^2 under one input-independent finite law,
+per-label bad-event bounds, coherent good-event equality, and a fixed
+linear contraction.  The measured-circuit correspondence remains open.
+
+Kinetic-energy execution passed its first check in 6.4 seconds with
+standard axioms.  The two-result call tactic reduced the result record
+before existing guard support, and every arithmetic status branch checked.
+Added internal-energy, pressure, radicand, and sound-speed composition
+against generated functions 31, 32, 33, and 35.  Their focused check is next.
+
+Thermodynamic execution passed its first check in 9.9 seconds, with
+standard axioms for internal energy, pressure, radicand, and sound speed.
+Added the complete entry execution and its public exact-result and
+decoded-real behavior statements.  The latter states either the exact
+rejection record or finite positive output bounding every characteristic
+speed at an admissible input.  The focused check precedes case completion.
+
+The final speed execution passed in 5.0 seconds and the public specification
+in 1.4 seconds.  Both audits report standard axioms.  Marked the source-driven
+case complete, added its aggregate import and four runtime definition pins,
+and started the repository gate that regenerates and compares its exact
+instruction cache before checking the registered public theorems.
+
+The focused source-driven gate passed.  It regenerated the same compiler
+output and matched both generated Lean caches before checking the registered
+specification.  The new speed proof covers all raw inputs, exact status/value
+results, physical characteristic bounds after acceptance, and full store
+preservation.  Runtime definition pins are receiving a focused check.
+Updated current inventory counts to thirty-nine complete source cases and
+eighteen floating-point cases.  The thirty-four frozen packages remain
+unchanged.  The independent exact-byte speed package is still open.
+
+Runtime pins passed in 1.6 seconds.  Whitespace checks and the documentation
+check passed, covering 119 maintained Markdown files.  The reviewed
+checkpoint comprises four execution/specification modules, case completion,
+the runtime and aggregate imports, and the current inventory/plan/journal
+updates.  It does not stage any preserved data or submission files.

@@ -424,7 +424,7 @@
         "Project.EulerOutwardSpeed.Spec.speedUpper_exact",
         "Project.EulerOutwardSpeed.Spec.speedUpper_behavior"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

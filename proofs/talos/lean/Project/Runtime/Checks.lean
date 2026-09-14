@@ -28,6 +28,7 @@ import Project.EulerGridStep.Program
 import Project.EulerRusanov.Program
 import Project.EulerRusanovStep.Program
 import Project.EulerRiemann.Program
+import Project.EulerOutwardSpeed.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -237,5 +238,10 @@ example : eraseTypeIdx Project.EulerRiemann.func104Def = eraseTypeIdx allocFuncD
 example : eraseTypeIdx Project.EulerRiemann.func105Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerRiemann.func106Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerRiemann.func107Def = eraseTypeIdx (releaseFuncDef 107) := rfl
+
+example : eraseTypeIdx Project.EulerOutwardSpeed.func37Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardSpeed.func38Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardSpeed.func39Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardSpeed.func40Def = eraseTypeIdx (releaseFuncDef 40) := rfl
 
 end Project.Runtime
