@@ -78,196 +78,45 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 Together the counter artifacts cover the runtime end to end: bump allocation, free-list reuse and unlink, release through all three object kinds including recursion, retain both inline and exported, and the null release.
 
-The nine completed floating-point cases use raw `UInt64` binary64 interfaces and compiler-recognized `LeanExe.Float64` intrinsics.  They do not prove support for arbitrary Lean `Float` expressions or identify Lean's native `Float` evaluator with Talos's IEEE64 model; native and C execution remain regression or data-generation boundaries rather than proof evidence.
+The seventeen completed floating-point kernel cases use raw `UInt64` binary64 interfaces and compiler-recognized `LeanExe.Float64` intrinsics.  They do not prove support for arbitrary Lean `Float` expressions or identify Lean's native `Float` evaluator with Talos's IEEE64 model; native and C execution remain regression or data-generation boundaries rather than proof evidence.
 
-## Incomplete Riemann solver
+## Complete Riemann solver
 
 The thirty-eighth registration, `euler_riemann`, compiles
-`Project.EulerRiemann.Control.solve` from the proof workspace.  Its
-21,386-byte generated module includes initialization, grid traversal,
-timestep control, retries, and output.  The four runtime definitions and
-all-input execution theorems for the thermodynamic side, scalar flux,
-scalar update, two-dimensional flux, cell update, and scan callback pass
-their focused checks and standard-axiom audits.  The complete scan function
-also has a terminating execution theorem for every represented grid,
-including bounded field reads and complete store preservation.  Checked
-neighbor arithmetic, bounded neighbor-state loads, and momentum orientation
-now compose into the complete per-cell sweep callback.  Destination-write
-lemmas establish the growing output prefix and preservation of the input
-grid, using a kernel-checked read/write round-trip theorem.  The generated
-sweep loop now has checked termination, bounded reads and writes, source
-agreement, and preservation outside its allocated destination.  Allocator
-setup, successful completion, bounded memory, complete execution, and
-exact-byte closure remain open.  The allocator's conditional memory-growth
-region now has a checked execution proof within the runtime cap and
-preserves existing grids.  The six-word allocation header has checked
-bounded-store execution, metadata reads, and preservation of disjoint
-grids.  Exact region equalities cover the bump and reuse header sequences.
-The complete bump branch now composes address arithmetic, conditional
-growth, heap-top and root assignment, and metadata stores.  Its execution
-and state lemmas pass standard-axiom audits.  The selected-node reuse
-branch now has checked head/interior unlinking, header stores, and root
-assignment.  Search-fragment proofs cover bounded metadata reads and
-pointer advancement.  Shared unlink and fresh-header state proofs use
-kernel-checked read/write facts.  Both complete search branches now prove
-termination and exact state updates for every represented free list.
-The no-fit branch preserves the store and returns a zero selected pointer.
-The fitting branch selects the first sufficient node, removes it from the
-free list, writes its header, and returns its root.  The combined search,
-conditional bump, and allocation-counter sequence now has an execution
-theorem.  The capacity prefix has exact local-length execution and computes
-8 + 56 times the cell count in bytes for supported grids.  Allocation
-state proofs establish sufficient capacity, bounded payload addresses,
-fresh metadata, and bounded page counts.  They also preserve a source
-grid separated from the free nodes and new heap allocation, prove that
-the destination is disjoint, and preserve free-list representation during
-memory growth.  The complete sweep function now composes entry, capacity
-calculation, allocation, pointer and length installation, traversal, and
-the returned owner/root pair.  Its theorem proves source agreement,
-input-grid preservation, and writes confined to the destination payload,
-under explicit free-list separation and allocation-space premises.  The
-peak-memory invariant and the full solver obligations remain open.  The
-Riemann fixed-array release specialization now gives an exact resulting
-store and proves preservation of its page count and memory limits.
-Release preserves bytes outside its header and inserts the buffer into
-the represented free list.  Allocation preserves the remaining free
-nodes and proves their separation from the selected buffer.  The sweep
-resource theorem carries these facts through length installation and
-payload writes, preserving fresh metadata, strict capacity bounds, and
-the free-list representation.
-Allocator-state theorems now identify the heap top and free-list head,
-preserve other globals and runtime memory caps, and place all remaining
-buffers below the resulting top.  A disjoint owned source retains its
-complete region through allocation and its fresh header through sweep
-writes.
-The complete acceptance scan now has an execution theorem covering its
-bounded length and cell reads, early rejection, loop termination, Boolean
-result, and complete store preservation.  It agrees with the source
-array's all-zero-status predicate, including the empty array.
-The sweep ownership theorem now returns the updated heap, preserved
-source and fresh destination ownership, mutual separation, bounded pages,
-and the unchanged runtime cap.  Its write frame also preserves other
-live grids needed by retry.  Heap-state transformations separately prove
-allocation and release preserve the six globals and represented free list.
-The complete timestep now composes the first sweep, acceptance scan,
-conditional second sweep, and intermediate release.  It returns the
-source step's grid, preserves live input grids, and records the resulting
-heap and runtime limits under explicit bounds for both allocations.
-The time helpers now have exact execution theorems for the end-time
-constant, positive-word predicate, rounded valid-advance guard,
-small-natural conversion, grid spacing, and CFL proposal.  The conversion
-covers every supported grid size.  The proofs preserve the full store
-and caller operands across nested calls and cover both minimum branches.
-A heap reservation theorem now counts sufficiently large free buffers
-and bounds the extra bytes needed for future allocations.  Allocation
-consumes one reservation, and release restores one.  The complete
-timestep derives its two allocation bounds from this invariant and
-returns one fewer reservation.  Releasing its result restores the
-original count.  Initialization must still establish the full byte limit.
-The retry trial region now composes spacing, the reserved timestep, and
-acceptance for arbitrary scratch-local contents.  Separate branch proofs
-cover accepted-result assignment and rejected-result release, rounded
-halving, owner tracking, parameter replacement, and fuel decrement.
-Checked retry-frame lemmas now preserve the parameters, tracker, result
-fields, completion flag, and frame size through each region.  The
-active and completed guards and validity-call prefix have execution
-proofs.  Fuel unfolding, strict counter decrease, and live-grid
-preservation through a trial and its release support the loop invariant.
-The complete generated retry function now has an execution theorem under
-an explicit source-success premise.  It composes entry, terminating
-iteration, completed exit, and all four returned words.  The result
-preserves live grids and runtime limits and consumes one heap reservation.
-The final solver proof must establish source success and final-time
-completion before either production calculation.
-The outer time-loop regions now have execution proofs for scan, CFL
-proposal, checked retry-fuel increment, retry, terminal assignment,
-and replacement of the current grid.  Replacement covers both the
-borrowed initial grid and release of a tracked grid.  Frame preservation
-and active/completed guards support the checked outer-loop invariant.
-The complete advance function now composes the terminating loop and
-returned values, preserving original live grids, tracking the final
-grid's ownership, and restoring reservations for later allocations.
-It requires source success and a sufficient fuel count.  Retry and
-advance share `ProofKit.BlockLoop.program_spec`, while generated
-annotation equalities identify their shared fuel/completion guards.
-LTG records both shared proof uses.  Source success, initialization,
-output execution, full memory initialization, and exact-byte closure
-remain open.
-The initialization scalar helpers now prove exact fifth-weight selection,
-weighted-word evaluation, and primitive-to-conservative conversion.
-The four quadrant constructors and the weighted initializer compose
-these calls while preserving the full store.  The weighted proof follows
-the compiler's 22-call sequence and uses a separate suffix theorem to
-stay within its original elaboration limit.  Both coordinate weights now
-have exact execution proofs for every grid size at most 800 and temporary
-initialization index below 1,048,576.  The common proof composes shared
-multiplication, division/remainder, and saturating subtraction, then
-proves both minimum branches and preserves the non-scratch locals.
-The complete initial-cell execution theorem composes both weights,
-the weighted-state call, the thermodynamic call, and all seven returned
-words.  It preserves the full store.  Growth traversal and initialization
-allocation remain open.  The complete append payload
-composes shared prefix and offset-copy support at width seven and
-reconstructs the concatenated grid.  Extraction matches both emitted
-copy sites and reconstructs the source prefix.  These results preserve
-the input grids and provide the store and outside-byte facts required
-by allocator and ownership composition.
-The initialization map now proves complete terminating traversal,
-including all seven field loads, checked index addition, the initial-cell
-call, all seven stores, and the loop counter.  It returns the source map,
-preserves the input grid and all store components outside the destination
-bytes, and records every caller local preserved by the emitted region.
-The shared ArrayField theorems cover arbitrary element widths and fields
-and are available through the provisional array-field-access LTG entry.
-All four initializer capacity prefixes and bump branches now have exact
-execution theorems.  Shared capacity arithmetic proves the byte count
-under a no-overflow bound, and the initializer instantiates it through
-1,048,576 temporary cells.  The shared bump theorem supports configurable
-local slots, conditional memory growth, exact heap-top updates, and the
-six header stores.  It preserves every other store component.  All four
-initializer allocation regions now compose a terminating no-fit search,
-conditional bump allocation, and allocation counting through shared
-ProofKit theorems.  Their represented-free-list, undersized-capacity,
-32-bit-fit, and runtime-memory-cap premises remain explicit.  The full
-initializer traversal and resource invariant remain open.
-The initializer's allocation theorem now returns `Heap.At` and fresh
-array metadata through the existing heap model.  All four root-transfer
-and length-store sites compose shared result-placement and memory-store
-theorems.  Separate arithmetic bounds the remaining initializer allocation
-reservation by 212,002,896 bytes after the singleton.  The full traversal
-must maintain that reservation.  Shared result-frame getter preservation
-covers parameters as well as internal and invalid reads and is indexed
-by the fixed-array-fold-structure LTG entry.
-Map, append, and extraction now compose pointer installation, the length
-store, and their complete traversal or copy loops.  They preserve the
-source grids and return a combined header/payload write range.  The map
-ownership composition derives destination bounds and separation from
-the represented heap and returns ownership of both source and result.
-Its completed-grid helper covers the initializer's larger temporary
-arrays under the requested-capacity and address-bound premises.
-The complete emitted map region now composes input loading, capacity,
-allocation, and mapped-data construction.  It derives capacity and
-no-fit search from the bounded grid and free-list invariant.  Shared
-header-load and allocation-frame preparation lemmas are available in LTG.
-The append allocation and copy composition now returns ownership of both
-inputs and the concatenated result.  Its count arithmetic matches the
-existing scalar-statement descriptor theorem, now indexed in LTG with
-a Locals-frame adapter.  The complete append region includes its pointer
-transfers, both header loads, count arithmetic, and capacity calculation.
-It derives the allocation premises from the combined size and free-list
-invariant.  Shared heap-grid lemmas supply payload bounds and separation
-for both map and append ownership proofs.
-Extraction allocation and data composition also preserve the source owner
-and establish ownership of the extracted prefix.  Its input preparation
-and the outer initialization loop remain open.
-The [complete solver plan](../../plans/euler-riemann-complete.md)
-records the source proofs and production-run prerequisites.
+`Project.EulerRiemann.Control.solve` with a runtime grid size from two
+through eight hundred.  Its frozen 21,767-byte WASM program includes
+initialization, both directional sweeps, timestep selection, retries,
+allocation and release, and final density/pressure output.
+
+The [public specification](lean/Project/EulerRiemann/Spec.lean) proves
+terminating execution from the module's initial store, exact represented
+output, and at most 512 MiB of linear memory.  It covers explicit failure
+returns.  Status zero establishes the specified numerical trace through
+time 0.8 and admissibility of the final cells.
+
+The [artifact theorems](lean/Project/EulerRiemann/ArtifactTranslation.lean),
+`artifact_solve_exact` and `artifact_solve_success`, transfer those
+specifications through complete byte decoding, validation, and Talos
+translation equality.  Their transitive axiom audits contain only
+`propext`, `Classical.choice`, and `Quot.sound`.  The focused independent
+package check passed on 2026-09-13.
+
+Compiler-generated region equalities and shared ProofKit results support
+the execution proofs.  LTG records checked array, allocator, loop, and
+binary-decoding reuse.  The [development journal](../../journal.md)
+preserves failed proof attempts and the accepted replacements.
+
+The [192-grid dataset and figures](../../data/euler-riemann-complete-v1/README.md)
+come from one complete WASM call, which returned status zero at time 0.8
+in 49.6 seconds.  The 800-grid call is running.  The
+[complete solver plan](../../plans/euler-riemann-complete.md) records the
+remaining data and presentation work.
 
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all thirty-eight registered models, verifies the registry against runtime and specification imports, and builds all thirty-seven completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all thirty-eight registered models, verifies the registry against runtime and specification imports, and builds all thirty-eight completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -275,7 +124,7 @@ tools/talos-proof.js check gcd
 tools/talos-proof.js check --all
 ```
 
-[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete thirty-three-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
+[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete thirty-four-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
 
 ```sh
 tools/artifact-proof.js check-all
@@ -287,7 +136,7 @@ tools/artifact-conformance.js check
 The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  The
 source-driven proof Lake files pin floating-point Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
-All thirty-three exact-artifact manifests identify this same current Talos
+All thirty-four exact-artifact manifests identify this same current Talos
 revision and verifier-source identity.  The source artifact tool fetches its
 pinned dependency and builds the verifier under the resource limits when a
 local verifier is absent.
@@ -305,9 +154,9 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains thirty-seven complete cases, including the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and seventeen raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains thirty-eight complete cases, including the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and seventeen raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
-The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current thirty-eight-case source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All thirty-three packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
+The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current thirty-eight-case source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All thirty-four packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
 
 `tools/artifact-proof.js check` checks one external binary against a registered package and proof target.  `check-all` also rebuilds every behavioral specification and checks every theorem name recorded by the manifests.  Both forms route Lean through `tools/leanrun` and forward driver termination signals to the active process group, so they share the same-user `leanexe`/`vq` lock and the standard cgroup limits, or the retained lock, thread, priority, and timeout controls in explicitly authorized local mode, with the source-driven tools.
 

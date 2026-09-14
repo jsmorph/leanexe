@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-11.  The source-driven registry contains thirty-eight Talos cases, thirty-seven complete.  The separate exact-artifact registry contains thirty-three frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty-eight cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-13.  The source-driven registry contains thirty-eight completed Talos cases.  The separate exact-artifact registry contains thirty-four frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its thirty-eight cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -9,8 +9,8 @@ This report describes the repository state on 2026-09-11.  The source-driven reg
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers thirty-seven complete cases and one incomplete Riemann case, and the proof tree tracks thirty-eight corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
-| Exact-artifact proofs | `proofs/artifacts/registry.json` registers thirty-three frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
+| Source-driven proofs | `proofs/talos/cases.json` registers thirty-eight complete cases, and the proof tree tracks thirty-eight corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
+| Exact-artifact proofs | `proofs/artifacts/registry.json` registers thirty-four frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
@@ -152,20 +152,19 @@ grid/time orchestration is outside the formal proof. Both 192² native runs
 an independent oracle. Fresh Wasmtime runs reproduce all eight canonical
 files. [Data, 21-frame animations and inspected SVG/PNG posters](../data/euler-2d-v1/README.md)
 complete the earlier Euler visualization agenda.  Current inventories
-contain 37 complete source cases, one incomplete Riemann
-case, 38 caches, 17 completed FP cases, and 33 exact-byte packages.
+contain 38 complete source cases, 38 caches, 17 completed floating-point
+kernel cases plus the complete Riemann solver, and 34 exact-byte packages.
 
-The [complete Riemann solver](../plans/euler-riemann-complete.md) moves
-initialization, traversal, timestep control, and output into the Lean
-program.  Source proofs cover the initial grid, accepted numerical trace,
-state safety, output layout, and outer-loop fuel bound.  Its generated
-module has checked all-input execution theorems for the numerical side,
-flux, cell update, and scan callback.  The complete scan loop and function
-now have checked termination, bounded reads, source agreement, and store
-preservation.  Checked neighbor arithmetic and state loads now connect
-the complete per-cell sweep callback to the source computation.  The
-generated sweep loop now has checked termination, source agreement,
-bounded reads and writes, and preservation outside its allocated
-destination.  Allocator setup, successful completion, bounded memory,
-full execution, and exact-byte closure remain open.
-The new 192-grid and 800-grid calculations await those proofs.
+The [complete Riemann solver](../plans/euler-riemann-complete.md) now has
+kernel-checked exact-byte proofs of complete execution, termination,
+output, a 512 MiB memory bound, final-state safety, and the numerical
+trace through time 0.8 when its status is zero.  Complete decoding,
+validation, and Talos translation equality pass.  The independent
+package checker accepted the frozen 21,767-byte artifact and its
+manifest theorems.  All final Euler audits contain only the three
+accepted logical axioms.
+
+The [192-grid data and density/pressure figures](../data/euler-riemann-complete-v1/README.md)
+are complete.  Its single WASM call returned status zero at time 0.8 in
+49.6 seconds.  The additional 800-grid call is running on the same local
+machine, with the same binary and standard runner limits.

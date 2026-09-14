@@ -18194,3 +18194,56 @@ baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310
 package and ArtifactTranslation.  It uses its existing serialized runner
 calls.  The independent gate remains running.  The checkpoint now includes
 the accepted translation and explicit byte-facing behavior theorems.
+
+Published efd1b7a74bcdb1a28acbf0ce12b3057f784dfeba, parent
+b98cdced2af9ee8668ff47ab4c0f4cea0bb4cd43, tree
+be467ced6b79bcfbde9a2fe535af5624f433eea4, with the headline
+Prove complete Euler behavior from frozen WASM bytes.  Non-forced push
+and fetch succeeded.  Verified the fetched commit, sole parent, tree,
+headline, complete index, and all twenty-four checkpoint worktree files
+before making further edits.  LTG accepts forty entries in seven
+categories, and the documentation check accepts 117 maintained files.
+
+The focused independent artifact gate finished with status zero.  Its
+seven final manifest audits contain only propext, Classical.choice,
+and Quot.sound.  The driver traversed 379 local specification dependencies
+through its existing serialized Lake invocations, repeatedly replaying
+dependency logs.  The explicit byte-facing behavior theorems had already
+passed their separate standard-only transitive audits.  All formal gates
+required before production execution are complete.
+
+Created data/euler-riemann-complete-v1 for the additional datasets.
+The first 192 launch failed before numerical execution: the sandbox
+blocked access to the systemd user bus.  Preserved stdout and the error
+in its 192 subdirectory.  The user approved the reusable prefix
+node tools/euler-riemann-complete.js.  The standard runner then started
+the same WASM solve in the fresh 192-run subdirectory.  It returned status
+zero and the exact binary64 encoding of time 0.8 after 49.557342566
+seconds.  The script checked the 73,732-word layout and finite positive
+density and pressure.  Raw-word SHA-256 is
+e097a43d82541eceaebc6169aa9d263b5c02c8b3bf140292bb010bcc0a6a6ae5.
+Final density is 0.138–1.4901312336016124 and pressure is
+0.02899999999999997–1.4767801078426048.
+
+The first plot command used system Python, which lacks Matplotlib.
+Located the existing approved build/tools/riemann-figures-venv environment
+from the earlier journal entry and used its Python through tools/leanrun.
+The PNG, SVG, and PDF passed generation, and visual inspection confirmed
+the expected axes, legends, fronts, and central interaction region.
+No dependency was installed.  Added both byte-facing theorem names to
+the dataset summary.  The script syntax check passes.
+
+After the 192 plot was complete, started the authorized 800 solve in
+data/euler-riemann-complete-v1/800-run at 2026-09-14 00:51:32 UTC.
+It uses the identical frozen WASM binary, one complete solve call, and
+the standard local runner limits.  It remains running.  The observed
+192 runtime gives an estimate of about one hour under cubic scaling
+from cell count and CFL-limited timestep count.  Runtime remains measured
+separately from CSV and plotting time.
+
+Marked the source registration complete and added its checked Spec import
+to the aggregate module.  Updated the current inventories, plans, and
+proof overview.  The old incremental Riemann overview is replaced by its
+completed theorem boundary and data status.  The detailed history remains
+in this journal.  Preparing the 192 dataset, short article, and completion
+records for publication while the 800 call runs.
