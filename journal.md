@@ -18736,3 +18736,95 @@ in arithmetic proofs.  There was no LTG retrieval task, generated execution
 proof, or new compiler run in this checkpoint.  The previously inspected
 nextUp compiler artifacts remain diagnostic evidence.  The changed solver
 and its production calculations remain open.
+
+Published f43d8afa0fb545ac099f486f721b877988a8c884, parent
+c0d86bdb264e71d3c19f4663087efd7103e6a163, tree
+c9749afee6d332453b1278f2b83c2d68b87287ec, titled
+Prove finite binary64 arithmetic enclosures.  The nine reviewed files
+passed whitespace and documentation checks.  SSH push/fetch succeeded,
+all three refs identify the same commit, and the fetched tree matches the
+index and tracked worktree.  Unrelated data and submission files remain.
+
+Added F64RounderEnclosure to share the significand window, representable
+candidate packing, signed zero enclosure, and rescaling of local error
+across dyadic, rational, and square-root rounding.  The existing IEEE32
+rounder bounds and F64DyadicBounds.roundedMagnitude_shifted supply the
+arithmetic facts.  This module awaits its focused check.
+
+F64RounderEnclosure passed its first focused check in 2.6 seconds with
+standard axioms.  Added F64MulEnclosure, using the shared significand
+window and the existing mul_finite_rounder equality.  Its theorem covers
+finite operands and a finite rounded result, including underflow and both
+signs.  The new proof awaits its focused check.
+
+The first multiplication check failed in 2.8 seconds at a cast expression,
+local-shift simplification, and the sign/quotient normal form.  The second
+check failed in 2.9 seconds because congr decomposed a scalar product
+equality too far.  Separate equality goals resolved it.  The third check
+passed in 2.7 seconds, including the multiplication primitive theorem.
+
+Added F64DivEnclosure.  Its first two checks failed in 1.7 and 1.9 seconds
+at nested integer casts and conversion goals in error rescaling.  Explicit
+real denominators, cast homomorphisms, and the product identity resolved
+those goals.  The third check passed in 1.6 seconds.  F64SqrtEnclosure
+passed its first check in 3.1 seconds.  It covers every nonnegative finite
+input, including negative zero.  All operation-level enclosure theorems
+report only the standard three axioms.  All checks used the standard
+local runner, three-minute timeout, and thirty-second lock wait.
+
+Added F64Outward with the established status/value result representation.
+Each operation checks its inputs, rounded result, and selected neighboring
+endpoint.  Division rejects either signed zero denominator.  Square root
+admits negative zero and rejects negative nonzero inputs.  These helpers
+return the explicit rejected result on a failed check.  The compiler's
+Extract/Types.lean names all five Wasm.IEEE64 primitives directly, so this
+source uses the proved integer model without duplicating a Float program.
+The checked helper proofs and compiler diagnostics are the next boundary.
+
+F64OutwardSpec initially failed at higher-order predicate inference in the
+shared guarded-result lemma and untyped operand binders.  The second
+check, in 1.8 seconds, found an invalid dot-projection application of
+Bool.and_eq_true.  Explicit predicates and a typed Boolean conjunction
+resolved these goals.  The third check passed in 2.1 seconds with standard
+axioms for all five behavior theorems.  Each states either the exact
+rejected record or valid inputs and a status-zero finite outward bound.
+
+The compiler report for F64Outward.div identified unsupported proposition
+Ne in the nonzero-denominator test.  Replaced that source predicate with
+the equivalent unsigned test 0 < absBits b, which the compiler supports,
+and changed its proof accordingly.  The rejected report produced no
+binary.  Added kernel boundary certificates for signed zeros, nonfinite
+and extreme endpoints, zero denominators, negative square roots, rounded
+underflow, and an exact normal sum.  Their focused check is next.
+
+The changed behavior module passed in 1.3 seconds.  All six boundary
+certificates passed in 1.1 seconds and audit to propext and Quot.sound.
+The revised compiler report accepts F64Outward.div.  Compiled it through
+the standard runner to fresh build/euler-parity-outward-div-v1.wasm and
+build/euler-parity-outward-div-v1.annotations.json.  The binary is 1,603
+bytes with SHA-256
+f029bf3e3ef1331a9a34c8c1e90bd7ff4ecdbf1ff7a8b7bd3aaa42b85a256800.
+Exact-byte WAT inspection shows eight reachable helper functions, one
+f64.div, two-result status/value returns, and no reachable allocation,
+memory operation, or import.  Standard unused runtime exports are present.
+The annotations identify thirteen direct-call regions, including calls
+with stack results and calls assigning local results.  These region
+descriptions will require exact decoded-program equality checks in the
+execution proof.  No host execution or generated execution theorem was
+used to claim numerical correctness here.
+
+Reviewed the scalar-statement LTG support and existing scalar helper
+composition.  The new proof work shares the candidate-packing and error
+rescaling statements across multiplication, division, and square root,
+and shares guarded-result behavior across the checked arithmetic.  No
+agent proof-generation task or measured LTG retrieval ran.  The checked
+division compiler output supplies concrete call-layout evidence for the
+subsequent exact execution proof.  No compiler change or dependency was
+introduced.
+
+The next checkpoint stages F64RounderEnclosure, F64MulEnclosure,
+F64DivEnclosure, F64SqrtEnclosure, F64Outward, F64OutwardSpec,
+F64OutwardBoundary, the mathematical-parity plan, proof inventory,
+devnotes, and journal.  The changed Euler speed, limiter, solver proof,
+and production data remain open.  The original binary and datasets
+remain preserved.

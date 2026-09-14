@@ -11592,3 +11592,13 @@ signed endpoint enclosure theorem.  Addition and subtraction specialize
 that theorem without a headroom bound, assuming finite inputs and rounded
 results.  The focused checks pass with standard logical axioms.  Executable
 finite-endpoint checks and the remaining arithmetic operations are next.
+
+All five operation enclosures and the checked arithmetic behavior proofs
+now pass.  Each checked result is the rejected status/value record or a
+finite directed bound with valid inputs.  Boundary certificates cover
+signed zero, underflow, invalid arguments, and finite-range exits.  The
+compiler rejected the denominator guard's Ne syntax.  Its equivalent
+unsigned comparison compiles.  The resulting division diagnostic is
+1,603 bytes, with direct-call annotations and no reachable allocation or
+memory operations.  The next implementation target is the Euler speed
+calculation, followed by exact-WASM execution composition.
