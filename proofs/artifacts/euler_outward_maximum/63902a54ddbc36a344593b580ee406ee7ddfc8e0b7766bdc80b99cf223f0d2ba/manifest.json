@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_outward_maximum",
+  "sha256": "63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba",
+  "byteLength": 5260,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerOutwardMaximum.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerOutwardMaximum.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerOutwardMaximum.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerOutwardMaximum.Program",
+  "cachedProgramDefinition": "Project.EulerOutwardMaximum.module",
+  "specModule": "Project.EulerOutwardMaximum.Spec",
+  "proofTarget": "Project.EulerOutwardMaximum.ArtifactTranslation",
+  "identityTheorem": "Project.EulerOutwardMaximum.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerOutwardMaximum.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerOutwardMaximum.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerOutwardMaximum.Spec.interfaceUpper_exact",
+    "Project.EulerOutwardMaximum.Spec.interfaceUpper_behavior"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
