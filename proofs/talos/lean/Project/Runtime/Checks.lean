@@ -34,6 +34,7 @@ import Project.EulerOutwardMaximum.Program
 import Project.EulerOutwardCfl.Program
 import Project.EulerOutwardGrid.Program
 import Project.EulerOutwardFlux.Program
+import Project.EulerOutwardFaceStep.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -273,5 +274,10 @@ example : eraseTypeIdx Project.EulerOutwardFlux.func55Def = eraseTypeIdx allocFu
 example : eraseTypeIdx Project.EulerOutwardFlux.func56Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerOutwardFlux.func57Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerOutwardFlux.func58Def = eraseTypeIdx (releaseFuncDef 58) := rfl
+
+example : eraseTypeIdx Project.EulerOutwardFaceStep.func71Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardFaceStep.func72Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardFaceStep.func73Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerOutwardFaceStep.func74Def = eraseTypeIdx (releaseFuncDef 74) := rfl
 
 end Project.Runtime

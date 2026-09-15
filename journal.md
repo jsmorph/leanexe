@@ -21046,3 +21046,124 @@ new shared reference composition, documentation changes, and journal.
 The explicit 15-path checkpoint is ready as
 `Prove revised Euler face-step source`.  Generated execution remains open,
 and no production run is claimed for this source composition.
+
+### 2026-09-14: generated scalar face-step execution
+
+Published the source checkpoint as
+bd6de8a59574d1f28700c6356d44a4e07ee6a1dd, parent
+a410227e2828e1d24aa8558ee2f9c148801b8906, tree
+cb063ffa9afd7bfd633a8592b44a0979587b9749.  The 15-path commit
+contains 563 inserted and two removed lines.  Non-forced push and fetch
+verified HEAD, FETCH_HEAD, origin/talosfp-euler, parent, tree, title,
+index, and tracked worktree.  The source arithmetic is ready for its
+generated execution proof.
+
+Added incomplete registration euler_outward_face_step for the checked
+OutwardNumerics.faceStepCheckedBits declaration.  Its new generated module
+and named WASM/annotation outputs were absent at preflight.  The entry
+takes the ratio and five four-word states and returns the existing eight-word
+cell result.  The standard preparation driver will determine the emitted
+ABI, call graph, and instruction identities before any execution proof is
+written.  Prior scalar execution and FunctionRegion transport are the
+candidate shared support.  Completion remains false until its public
+theorems and source-regeneration gate pass.
+
+Preparation passed in 13 seconds and emitted digest
+1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01
+at 9,077 bytes.  The entry is function 70, with 21 i64 parameters and eight
+i64 results.  There are 75 complete module functions, 50 reachable scalar
+functions, and 168 compiler direct-call annotations.  The generated entry
+calls interface function 54 twice and advancement function 69 once.  The
+reachable source graph has no allocation or memory access.
+
+Text comparison found all functions 0 through 54 identical to the previous
+interface model.  The preserved update indexes are 57 and 58, with new
+indexes 61 and 62.  An initial comparison against indexes 58 and 59 was
+false and corrected after reading ExecutionScalar.  Two read-only searches
+guessed absent ExecutionUpdate and Arithmetic filenames.  The declarations
+are in ExecutionScalar and Multiplication.  Also, the earlier filename-only
+search did not establish absence of ignored generated outputs.  The scoped
+preparation driver produced its named outputs, now inspected directly.
+
+Reviewed the direct-call-stack-tail LTG entry.  The new scalar transport
+proof reuses both earlier execution modules through checked function-region
+renaming.  Its fresh Scalar module is ready for a focused check.
+
+The first scalar transport check failed in 2.9 seconds at the default
+elaborator recursion depth while checking the large interface function
+lookup.  The independent update renaming and rejected-cell proof checked,
+but the dependent failed audit lines are not accepted evidence.  The
+55-function fluxShift now receives a local maxRecDepth of 32768, matching
+the existing scalar execution proof depth.  The heartbeat budget and
+runner limits are unchanged.
+
+Scalar transport passed in 12 seconds.  All eight audits use standard
+axioms.  The proof checks the common 55-function graph and the separate
+update renaming, then transfers positive-word, outward product, side,
+interface, and update execution.  Added the unchecked advancement proof
+for function 69.  It follows the annotated calls and status branches,
+with complete store preservation and exact returned words.  The existing
+call and scalar-instruction tactics provide the execution steps.
+
+The first advancement check failed in 3.4 seconds.  The first diagnostics
+were parser errors: the local tactic macro used the reserved token
+condition as an argument name.  Renamed that argument checkCond.  Review
+also found an updated-energy binding shadowing the input word.  Renamed
+it nextEnergy and unfolded the argument-list wrapper before entry setup,
+so the continuation contains a concrete dropped argument list.  The
+failed theorem and its sorryAx audit are not accepted proof evidence.
+
+The second advancement check reached the selected-alpha positivity call
+and failed after 8.1 seconds.  Simplifying its call theorem under the raw
+maximum branch changed the returned Boolean to the selected input word,
+while the branch hypothesis still named the conditional alpha binding.
+The scalar tactic could not discharge that branch and therefore could
+not reach either subsequent call.  The selected-alpha branch now
+simplifies its hypothesis with the same maximum equality before stepping.
+
+Added the separate unchecked entry proof for function 70.  Its proof
+follows the three annotated calls: two interface evaluations and one
+advancement.  It uses the shared TerminatesWith call rule and the proved
+scalar outputs to establish all eight result words and store preservation.
+No additional Lean job was started while advancement was checking.
+
+Advancement passed in 57 seconds with only propext, Classical.choice,
+and Quot.sound.  The separate entry proof passed on its first check in
+4.3 seconds with the same axiom audit.  Removed its one unused simp
+argument.  Added the unchecked public specification: exact output,
+exhaustive rejection or accepted safety, characteristic CFL bounds for
+all four supplied faces, the mesh-ratio implication, and the four
+physical-reference residual bounds.  The remaining connection is from
+these generated execution statements to the exact binary bytes.
+
+The public face-step specification passed on its first check in 1.7
+seconds.  All three registered theorem audits use standard axioms.
+The entry proof also rechecked after removing its unused simp argument.
+Marked the case complete, added the aggregate specification import,
+and added the four generated runtime-function identities at indexes
+71 through 74.  The focused regeneration gate and runtime check follow.
+
+The standard tools/talos-proof.js check euler_outward_face_step gate
+passed, including source/compiler regeneration, generated-model equality,
+and all public theorem audits.  Project.Runtime.Checks passed in 2.3
+seconds.  Aggregate import inspection matches all 45 completed cases.
+All 120 maintained Markdown files pass the documentation checker, git
+diff --check is clear, and the new case contains no sorry, admit, or axiom
+declarations.  The generated binary retains digest
+1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01.
+
+Reviewed the four handwritten proof modules: 100 lines of checked helper
+transport, 160 of advancement, 59 of entry composition, and 131 of public
+specification.  Compiler-described calls and shared FunctionRegion and
+TerminatesWith support replace duplicate scalar arithmetic proofs.  The
+remaining local branch scaffolding records the rejection structure.  The
+selected-alpha failure identifies a normalization requirement for future
+branch guidance, but this related case supplies no held-out retrieval
+measurement.  Aggregate CLOB and cold-release checks remain deferred.
+
+The explicit 17-path checkpoint is ready as
+Prove generated Euler face-step execution: the six new face-step modules,
+case registration, aggregate and runtime imports, README, status, proof
+inventory, both Euler plans, root plan, devnotes, and this journal.
+The face-step exact-byte package and complete solver integration remain
+unfinished.  No revised production run is claimed.
