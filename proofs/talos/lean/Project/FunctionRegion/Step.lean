@@ -49,6 +49,7 @@ theorem execOne_succ
   | andI64 => simp only [renameInstruction, execOne.eq_def]
   | orI64 => simp only [renameInstruction, execOne.eq_def]
   | shlI64 => simp only [renameInstruction, execOne.eq_def]
+  | shrUI64 => simp only [renameInstruction, execOne.eq_def]
   | f64ReinterpretI64 => simp only [renameInstruction, execOne.eq_def]
   | i64ReinterpretF64 => simp only [renameInstruction, execOne.eq_def]
   | f64Add => simp only [renameInstruction, execOne.eq_def]
@@ -75,6 +76,7 @@ theorem execOne_succ
       simp only [renameInstruction, execOne.eq_def]
       rw [hCap]
   | unreachable => simp only [renameInstruction, execOne.eq_def]
+  | ret => simp only [renameInstruction, execOne.eq_def]
   | br => simp only [renameInstruction, execOne.eq_def]
   | brIf => simp only [renameInstruction, execOne.eq_def]
   | block params results body paramTypes resultTypes hBody =>

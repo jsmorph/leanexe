@@ -21404,3 +21404,251 @@ both new modules contain no sorry, admit, new axiom, or native_decide.
 The explicit nine-path checkpoint is ready as Prove revised Euler row
 conservation: OutwardFaceRowBalance, OutwardFaceRowReference, devnotes,
 journal, status, root plan, both Euler plans, and the Talos proof inventory.
+
+### 2026-09-14: approved five-cell solver integration
+
+Published row checkpoint 8d46de5c09415c7fecfa644f6a2e7afa9b517f06,
+parent 2c63ab4e2ecedd217f5d76c7c57ed4be0721b8a7, tree
+fd5201a0dd8ac973aeb8360777f677f75a20ec15.  Its nine paths contain
+284 inserted lines.  Non-forced push and fetch passed.  HEAD, FETCH_HEAD,
+origin/talosfp-euler, parent, tree, title, index, and tracked worktree agree.
+
+The user approved the proposed five-cell design and instructed completion
+through the proofs and ordered production runs.  The previous design
+question is resolved.  Added the source composition of three checked
+reconstructions with the checked face-step and its source specification.
+The source retains a runtime trial budget.  Existing grid allocation,
+directional sweep order, initial data, and prior artifacts are preserved.
+
+Reviewed the direct-call-stack-tail, array-fold-prefix, and generated
+fold-frame accessor LTG guidance before the new execution work.  Compiler
+annotations and checked function-region transfer will determine reuse
+after compiling the complete revised source.  No new helper-only artifact
+registration is planned for the reconstructed scalar composition.
+
+ReconstructedStepSpec passed first in 1.1 seconds.  Its five audits use
+standard axioms.  Acceptance establishes all three reconstruction statuses,
+the exact face-step result, six safe reconstructed faces, a safe updated
+state, positive pressure, and characteristic Courant bounds for the four
+flux input states.
+
+Added the complete revised traversal and controller source under the fresh
+EulerReconstructed namespace.  The traversal uses the existing Cell type,
+clamped neighbor function, array map, and intermediate-grid release.  The
+controller uses the proved outward grid maximum and checked mesh ratio.
+A failed ratio check halves the trial timestep, as does a rejected sweep.
+Each accepted scalar update also checks the reconstructed-face speeds,
+including the y sweep on its x-sweep input.  Existing initial-array and
+output functions are reused.  Grid size and limiter trials are parameters.
+
+The revised traversal and controller compiled on their first checks in
+983 and 967 milliseconds.  Registered euler_reconstructed as incomplete
+and confirmed its generated directory does not exist.  The standard
+artifact preparation will create this case's new binary, annotations,
+and execution model.  A read-only guessed SweepSafety filename was absent.
+The required orient_safe theorem is in the already imported SweepModel.
+
+Complete artifact generation passed.  The new binary has 30,726 bytes and
+SHA-256 b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
+Its source annotation map contains 149 source functions, 317 direct-call
+regions, one array fold, and four bounded while regions.  Entry 148 takes
+grid size and reconstruction trials.  Reconstruction is function 75,
+the proved face-step is 105, the new scalar composition 108, the update
+120, sweep 121, two-sweep step 124, retry 125, and advance 129.
+The generated runtime functions follow the source functions.
+
+TraversalSafety passed first in 1.1 seconds.  All five audits use standard
+axioms and cover index preservation and accepted-state safety in both
+sweeps.  Added source retry success and complete-controller safety proofs.
+These retain the accepted mesh-ratio premise in the successful trial.
+A read-only abbreviated annotation filename was absent.  File discovery
+identified program.annotations.json, which supplied the recorded map.
+
+ControlRetry and ControlSafe passed first in 1.1 and 1.3 seconds, with
+standard-axiom audits.  Removed the reported unused reduceIte simplifier.
+Added the accepted numerical trace.  Every transition records a successful
+outward grid scan and mesh-ratio check, exact two-sweep output, accepted
+output status, and increasing time.  Its length bound uses the previously
+checked representable-time order.
+
+The compiler name map finds all 71 face-step source functions, all 41
+reconstruction functions, all 46 grid-scan functions, and all 16 mesh-CFL
+functions inside the complete module.  These names guide the forthcoming
+checked call renamings.  They are not assumptions about instruction equality.
+
+The first trace check proved the complete advance trace and its length
+bound, then failed to close run's domain guard after simp rewrote it to
+True and True.  Replaced that step with the existing explicit if_pos hn
+proof.  The failed run-trace audit is rejected evidence.  ControlSafe's
+check after removing the unused simplifier passed in 9.9 seconds.
+
+Added four helper-region maps derived from the compiler's function names.
+Each Shift theorem must check exact function declarations, renamed calls,
+equal memory declarations, and closure under all called functions.  The
+face region covers 71 source functions, reconstruction 41, grid scan 46,
+and mesh CFL 16.  Read-only guessed Execution filenames were absent in
+the reconstruction and CFL directories.  Their public Spec imports will
+identify the accepted theorem modules.  The first combined edit failed
+before mutation because the journal context began mid-line.  Appended
+using the exact observed tail.
+
+The corrected trace check passed in 4.7 seconds with standard axioms.
+The complete generated Program built in 15 seconds.  FaceRegion passed
+in 12 seconds, ReconstructionRegion in 6.7, GridRegion in 7.3, and
+CflRegion in 3.5.  Their audits use standard axioms.  Correction to the
+preceding grid-region scope: the source-name map matched 46 functions,
+but the compiled scan entry has two array parameters internally and one
+in the standalone artifact.  Inspection caught the difference before
+checking the region.  The accepted region covers the 45 scalar helpers.
+The scan entry will receive a proof with its generated two-parameter frame.
+
+Added scalar execution transfers through those checked regions and the
+new five-cell scalar execution proof.  The latter composes three total
+reconstruction calls and handles the accepted face-step and all rejection
+branches.  No production execution has begun.
+
+Scalar transfers passed first in 2.5 seconds with five standard-axiom
+audits.  The first composed-step check failed after 8.3 seconds: the
+entry argument list retained stateValues wrappers, leaving a concrete
+length obligation and exhausting the default heartbeat budget during
+branch simplification.  Unfolded that argument representation before
+the entry rule.  The rejected run's audit does not establish a theorem.
+
+The revised entry argument representation closed the length obligation.
+The second scalar-composition check reached the first rejection branch
+and exhausted 200,000 heartbeats after 7.8 seconds.  The accepted branch
+closed.  Set a theorem-local 800,000-heartbeat budget for its four branches,
+retaining the three-minute process limit.  This is a diagnostic-directed
+proof budget change.  Added the internal grid-scan proof with two parameters,
+reusing the preceding scratch record, fold prefixes, and memory-read lemmas.
+Only the generated loop frame and its index position change.
+
+The compiler-generated annotation equalities passed in 1.3 seconds and
+the revised scan frame in 1.5.  The scan-loop check established the memory
+reads, scalar call, invariant preservation, and measure decrease, then
+failed at exit after 2.7 seconds because its final simplification omitted
+the reused frame definition.  Added that definition to the exit proof.
+
+The five-cell execution theorem passed in 13 seconds.  Its audit uses
+propext, Classical.choice, and Quot.sound.  It proves termination, exact
+output, and complete store preservation for every raw trial-count and
+ratio word and all five input states, including every rejection branch.
+
+Compiler names and exact generated declarations identify a closed
+90-function region retained from the preceding complete solver.  It
+includes initialization, output packing, time arithmetic, neighbor indices,
+acceptance scanning, and all four runtime functions.  Added a Lean Shift
+proof to check the declarations and every renamed call.  The old side
+computation remains reachable through initial-cell pressure and status
+construction.  Revised timestep and interface speed checks use the new
+outward functions.  The name/declaration inspection is proof guidance;
+the proposed Shift still requires its kernel check.
+
+The corrected internal scan loop passed in 2.8 seconds and the entry
+theorem in 1.8 seconds with standard axioms.  The first 90-function region
+check failed after 3.0 seconds because simplification expanded the final
+singleton as equality or membership in the empty list.  Added the empty-list
+and false-disjunction reductions.  Updated the current inventory to 46
+registered cases, 45 complete, 46 generated caches, and 41 exact-byte
+packages.  The documentation records the complete source and partial
+generated proof boundary without claiming a complete new binary proof.
+
+The documentation check passes all 120 maintained Markdown files, and
+aggregate imports match 46 registered and 45 completed cases.  Diff review
+found that a truncated development-notes read placed the new section inside
+an older entry.  Moved only that newly added section to the observed end
+of the file.  Existing notes remain unchanged.
+
+The next retained-region check verified function declarations and closure,
+then stopped after 23 seconds at four unsupported portability obligations:
+two ordinary returns and two unsigned i64 shifts in the runtime.  Extended
+the shared function-region instruction predicate, tactic, one-step theorem,
+and no-tail-call theorem for those two module-independent instructions.
+Their semantics are unchanged by direct-call renaming.  This addresses the
+missing shared proof coverage exposed by the complete compiler output.
+
+Shared syntax checked in 305 milliseconds, the no-tail-call theorem in
+7.0 seconds, the one-step theorem in 1.2, and execution transfer in
+546 milliseconds.  Both public transfer audits use standard axioms.
+The retained 90-function Shift passed in 33 seconds and uses only propext.
+Runtime identities passed in 1.9 seconds.  Rechecking the composed scalar
+execution against the extended shared library before publication.
+
+Prepared the five-cell memory-read proof while the shared-library dependent
+checks run.  The compiler emits four neighbor-index calls, one explicit
+center-orientation call, and inline directional loads for the other four
+states.  The proof follows those instructions and reuses the existing
+field-address bounds and memory-read lemmas.  Added the retained traversal
+helper transfers and this draft under new paths, pending their checks.
+
+The scalar recheck reached its three-minute process limit while rebuilding
+dependencies after the shared portability extension.  No theorem diagnostic
+was emitted.  The last completed dependency was Euler2DDynamicFlux.Execution
+in 25 seconds.  Preserving the completed caches and dividing the remaining
+dependency boundary before retrying the composed target.
+
+Reviewed the emitted sweep allocation and the existing LTG allocation
+entries.  FixedArrayAllocate.program_spec already supports both free-list
+reuse and conditional growth with arbitrary surrounding locals.  It can
+cover the new allocation region after its instruction equality is checked,
+avoiding a copy of the preceding solver's fixed-slot allocation proof.
+The retrieved empty-free-list and no-fit LTG entries have narrower premises
+than this sweep.  A read-only search named two nonexistent aggregate
+ProofKit files.  The needed theorem was read from its existing module.
+
+The isolated outward-flux execution dependency passed in 60 seconds with
+standard axioms.  Traversal helper transfers passed first in 1.4 seconds.
+The first stencil check reached the center orientation call in both axes
+after 2.9 seconds, then could not infer the Boolean argument through its
+encoded word.  Named the orientation theorem before splitting the axis,
+so each branch has the explicit specialized call theorem.
+
+The named orientation theorem did not resolve the mismatch.  The second
+check failed in 2.9 seconds at the same point.  The inferred-Boolean
+explanation was incomplete.  Added a temporary goal trace to inspect the
+remaining weakest-precondition obligation before changing the proof.
+
+The goal trace identified the first far-left array bounds guard, before
+the orientation call.  The guard contained expanded neighbor-index calls
+while the bounds hypotheses still used local index aliases.  Normalize
+those four aliases in the context and goal before the axis cases.  Removed
+the temporary trace.  The compiler's array bounds checks remain in scope.
+
+The five-cell stencil execution proof passed in 17 seconds after the
+index normalization.  Its public audit uses standard axioms.  The proof
+covers all four clamped neighbor reads, both axis orientations, and store
+preservation.  Continuing the divided dependency recheck with
+Project.EulerOutwardFaceStep.Execution through the standard local runner,
+with a three-minute limit and a 30-second lock wait.
+
+The divided face-step dependency recheck passed: scalar helpers took
+10 seconds, advance 43 seconds, and the entry theorem 3.4 seconds, with
+standard audits.  The composed reconstruction target is rebuilding its
+remaining dependencies.  Added pending cell-update and retained memory
+proofs from the inspected compiler call graph.  Read-only lookup of two
+guessed helper filenames failed.  Located the existing sweep definitions
+and registry helper through file discovery before further reads.
+
+The composed scalar recheck passed in 12 seconds after its dependencies
+completed.  Its audit uses standard axioms.  The first cell-update check
+failed in 5.3 seconds because a selective open named a namespace as a
+declaration.  Opened the parent namespace in the cell-update and retained
+memory modules.  The failed check is not accepted proof evidence.
+
+The cell-update theorem passed in 5.5 seconds after the namespace fix,
+with standard axioms.  Its accepted proof follows calls 57, 108, and 56
+in the emitted function 120, preserves the store, and returns the exact
+seven-word source cell for runtime reconstruction fuel.  Rechecking the
+internal scan and checking retained initialization, output, and release
+entry transfers together in one serialized runner invocation.
+
+Preparing a source-and-cell-execution checkpoint.  The reviewed paths are
+the root README, development notes, status, journal, root plan, mathematical
+parity and Rusanov plans, Talos README and case registry, three shared
+FunctionRegion modules, Runtime.Checks, the two source ReconstructedStep
+modules, and the 21 checked EulerReconstructed modules through UpdateCell.
+The pending RetainedMemory draft remains outside this checkpoint, as do
+all unrelated data and paper paths.  Documentation passes all 120 files,
+registry imports agree, diff whitespace passes, and the new source tree
+contains no sorry, admit, custom axiom, native_decide, or temporary trace.
+The complete new solver specification remains explicitly incomplete.

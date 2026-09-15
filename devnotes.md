@@ -12144,3 +12144,37 @@ The computed-row proof passed first in 1.4 seconds.  The reference-row proof
 passed in 1.1 seconds after correcting the triangle lemma's arity.  All
 seven audits use standard axioms.  Grid traversal and exact-WASM composition
 remain open.
+
+## 2026-09-14: Complete reconstructed Euler source
+
+The approved five-cell traversal and controller compile to a 30,726-byte
+module with digest b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
+Grid size and reconstruction trials are runtime parameters.  Source proofs
+establish safe accepted faces and cells, grid size and index preservation,
+terminal status, and the exact accepted trace with outward mesh-CFL checks.
+
+Compiler annotations identify 149 source functions, 317 direct-call
+regions, one array fold, and four bounded loops.  Checked function regions
+reuse reconstruction, face-step, grid-scan helper, and mesh-CFL proofs.
+The five-cell scalar execution theorem passes in 13 seconds.  The internal
+scan loop passes in 2.8 seconds and its entry theorem in 1.8 seconds.
+Both establish termination, exact results, and store preservation.
+All accepted audits use standard axioms.  The journal records the failed
+argument simplification, branch heartbeat, and scan-frame checks.
+
+The registry now contains 46 cases, 45 complete, with 46 generated caches
+and 41 exact-byte packages.  The revised sweep, controller, complete memory
+bound, and exact-byte package remain open.  Previous production data are
+preserved.  New execution remains gated on the complete binary proof.
+
+The retained 90-function region now passes in 33 seconds and uses only
+propext.  Its exact-declaration and closed-call proof covers initialization,
+output, time arithmetic, neighbor lookup, acceptance, and the runtime.
+The shared renaming proof now includes ordinary return and unsigned i64
+right shift, as required by the emitted allocator.  Runtime identities
+pass in 1.9 seconds.
+
+After the shared-library extension, the composed scalar theorem rechecked
+in 12 seconds.  The complete cell-update execution proof passes in
+5.5 seconds, composing bounded stencil reads, reconstruction, face-step,
+and momentum orientation.  Both audits use standard axioms.
