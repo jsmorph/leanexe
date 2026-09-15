@@ -12317,6 +12317,7 @@ fixed artifact and its use of shared parser support.
 
 The production driver accepts grid size and a UInt64 reconstruction-trial
 count.  It requires status zero, the exact final-time word, matching
-dimensions, and positive finite plotted fields.  The short article draft
-awaits data.  The pending choice of eight or sixteen reconstruction
-attempts precedes the ordered 192, plot, 800, plot production sequence.
+dimensions, and positive finite plotted fields.  The user selected eight
+reconstruction attempts for both grids.  The 192-grid run started on
+2026-09-15 at 11:08:19 CDT under the standard one-CPU, 6 GiB runner scope.
+The ordered work is 192, plot 192, 800, plot 800, and the short article.

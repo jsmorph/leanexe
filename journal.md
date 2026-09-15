@@ -22487,3 +22487,33 @@ Only the pre-existing untracked paper and data paths remain in status.
 No Lean job or revised production process remains running.  A single
 receipt commit records this publication.  The next substantive work
 depends on the pending production reconstruction-trial count.
+
+## 2026-09-15: Reconstructed Euler production runs
+
+The user selected eight reconstruction attempts for both production grids.
+The preceding receipt is 2ba290b2ff2ad2631e30dc8076976ed27fc255dd,
+parent 659dc52c82de58e1d0db30b043c2651ba40ca55d, tree
+7a71bb17054682416bf24c5d09ca8238682f67e2.  Its publication identities
+were checked before this turn.  All proof gates remain passed and unchanged.
+
+Created the fresh data/euler-reconstructed-v1 parent after status and path
+inspection.  Direct invocation of the non-executable JavaScript file failed
+with status 126 before any driver code ran.  The documented Node command,
+node tools/euler-riemann-complete.js run-reconstructed 192 8
+data/euler-reconstructed-v1/192-run, then started the complete solve.
+The driver checks the frozen b955d70e artifact before execution and retains
+stdout and stderr in the fresh run directory.
+
+A read-only systemctl call inside the sandbox could not access the user
+bus.  The approved systemctl prefix outside the sandbox identified the
+running scope run-p1636052-i1636352.scope at 11:08:19 CDT.  Its properties
+confirm MemoryHigh 4 GiB, MemoryMax 6 GiB, swap maximum 1 GiB, and CPU quota
+100 percent.  Its initial observed memory peak was 34,361,344 bytes.
+No runner limit or theorem input changed.  The ordered work remains
+192, plot 192, 800, plot 800, and the short article.
+
+Updated README, the root plan, both Euler plans, and devnotes to record
+the selected count and active 192-grid run.  The diff whitespace check
+and all 120 maintained Markdown files pass.  This six-file checkpoint
+is titled “Start reconstructed Euler runs with eight attempts.”  Running
+output and all unrelated files remain outside its explicit staged paths.
