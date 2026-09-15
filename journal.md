@@ -21167,3 +21167,181 @@ case registration, aggregate and runtime imports, README, status, proof
 inventory, both Euler plans, root plan, devnotes, and this journal.
 The face-step exact-byte package and complete solver integration remain
 unfinished.  No revised production run is claimed.
+
+### 2026-09-14: exact-byte scalar face-step proof
+
+Published checkpoint 7f02bbbb1cae0823b56b7a0c12b034b46bde120b,
+parent bd6de8a59574d1f28700c6356d44a4e07ee6a1dd, tree
+99f97ed2e2b594d57072b01fa9fb1d5f050904ec.  Its 17 reviewed paths
+contain 5,750 inserted and 19 removed lines.  The non-forced push and
+fetch passed.  HEAD, FETCH_HEAD, origin/talosfp-euler, parent, tree,
+commit title, index, and tracked worktree agree.
+
+Preflight found no face-step Artifact modules or frozen package directory.
+The existing artifact-migrate command with --kernel will create only this
+case's eight artifact modules, frozen binary and manifest, and add its entry
+to the registry and CheckFile.  Its decoder scaffold will be replaced by
+the already checked byte-lookup and instruction-sequence decomposition
+used for the revised interface.  The existing CodeOffsets tool supplies
+section and nested instruction boundaries for the new binary.  Those
+offsets guide proof generation and do not supply theorem assumptions.
+
+Kernel-mode migration passed and its diff adds only the requested case
+to registry and CheckFile.  Section and nested offset extraction passed
+under one-minute standard runner limits, producing fresh CSV files in
+tmp.  The generated decomposition contains 75 code-body theorems in
+ten modules, with at most eight functions per module and instruction
+sequence cuts of about 128 bytes.  Eight additional modules compose
+type, export, code, metadata, and complete-file decoding.  Every proof
+uses checked cbv and the shared parser composition lemmas.
+
+Connected the migration scaffold to the decomposed decoder theorem and
+removed whole-file decision evaluation from its two decoder bridges.
+Validation uses the existing checked cbv proof with its established
+one-million-step bound.  Added three explicit binary theorems for exact
+output, safety/CFL, and physical-reference residuals, each quantifying
+the decoded and validated module and transferring the public specification.
+The 75 generated function translation identities remain intact.
+
+The byte array checked in 6.3 seconds and balanced lookup in 8.9 seconds.
+Function bodies 0 through 7 passed first in 11 seconds, and 8 through 15
+passed first in 14 seconds.  All body and lookup audits use propext only.
+Inspection confirms that each code proof composes a checked sequence
+theorem with code_eq_of_parts and proves its cursor and body-size
+premises.  The migration bridges now use those statements directly.
+
+Bodies 16 through 23 passed first in 20 seconds, and 24 through 31
+passed first in 21 seconds, with propext-only audits.  The nested
+sequence proof structure remains unchanged.  Added the fresh diagnostic
+tmp/euler-outward-face-step-proof-dependencies.lean to check transitive
+use of advancement and entry sequence cuts and balanced byte lookup.
+
+Bodies 32 through 39 passed first in 37 seconds, including the nested
+side-flux acceptance branches.  Bodies 40 through 47 passed first in
+16 seconds.  All sixteen body audits use propext only.  The checked
+sequence decomposition continues to fit the three-minute target limits.
+
+The preceding 40..47 timing should read 15 seconds of reported target
+time.  Bodies 48 through 55 passed first in 21 seconds, and 56 through 63
+passed first in 12 seconds.  All audits use propext only.  These groups
+complete the revised interface and conservative-update decoding.  The
+new advancement and entry are the next group.
+
+Bodies 64 through 71 passed first in 48 seconds, and 72 through 74
+passed first in 11 seconds.  All 75 body theorems now pass, each with
+propext only.  The decomposition uses 144 checked instruction-sequence
+theorems.  The advancement's nested branches and entry's two suffix
+boundaries are ready for the transitive dependency diagnostic.
+
+The dependency diagnostic passed and confirmed all eight requested
+declarations, including nested advancement cuts, both entry suffixes,
+and ByteLookup.data_get.  The 75-entry type vector passed first in
+37 seconds with propext only.  Complete section and file composition
+continue through the same shared parser lemmas as the prior interface.
+
+The export vector passed first in 37 seconds, the complete code vector
+and code section in 3.0 seconds, and remaining metadata in 12 seconds.
+All audits use standard axioms.  The code vector composes the 75 accepted
+body theorems and explicit vector lengths.  Metadata composes the checked
+type and export vectors with the function, memory, and global sections.
+
+Section-state composition passed first in 1.5 seconds, the code-section
+transition in 1.8 seconds, preceding sections in 2.7 seconds, and complete
+file decoding in 1.7 seconds.  All audits use standard axioms.  The full
+decoder theorem now identifies Cache.raw from the frozen 9,077 bytes.
+Every body and section target passed on its first attempt, with no
+decoder-specific revisions or enlarged resource limits.
+
+The decoder bridges passed in 1.4, 1.5, and 1.6 seconds.  Validation's
+first attempt failed with a diagnostic at the default 200,000-heartbeat
+normalization limit during checked cbv.  This was an elaborator budget
+failure, and its sorryAx output is rejected evidence.  Added a local
+400,000-heartbeat bound to that one fixed-input validation theorem.
+The checked computation, statement, one-million cbv-step bound,
+three-minute wall timeout, and standard runner limits are unchanged.
+
+Validation also exhausted the local 400,000-heartbeat limit.  The second
+attempt is rejected evidence.  Inspection of Validator.validateRaw shows
+separate section, memory, global, export, type-resolution, and function
+checks, while validateFunctionPairs already recurses one function at a
+time.  Added reusable composition lemmas for those exact executable
+definitions and a separate metadata proof module.  The next checks will
+isolate the expensive validation phase instead of increasing the budget.
+
+The first generic composition check exposed two draft errors: monadic
+reduction needs the explicit Except.bind simplifiers used by CodeParts,
+and ValidatedModule has a private constructor.  The module lemma now
+concludes validateRaw raw = ok (), preserving the public validate
+constructor boundary, and both proofs use the established bind reductions.
+
+Both generic validation composition lemmas passed in 210 milliseconds,
+with propext only.  Removed the two reported unused simp arguments.
+Metadata validation will now determine whether its phase or function
+validation exhausts the monolithic proof's elaboration budget.
+
+Metadata isolation identified the failure at validateExports.  Section,
+memory, global, and function-type checks passed individually.  Added a
+separate duplicate-name check and eleven export-entry checks, separating
+each exact name-encoding equality from its descriptor-index check.
+The name equalities use kernel reflexivity.  The generic validator and
+its accepted-language definition remain unchanged.  A read-only guessed
+Proof/Name filename was absent.  File discovery found no such module,
+and the pinned Lean String definitions provide the relevant encoding API.
+
+The duplicate-name check and all eleven separate export checks passed
+with propext only.  The aggregate export proof failed because default
+simplification changed getElem! into getElem?.getD before matching the
+checked entry equalities.  Restricted that composition to its explicit
+simp lemmas so the indexed entry statements retain their form.
+
+Restricted export composition discharged every entry check and left
+only pure () = ok ().  Added the explicit pure reductions to close
+that final definitional equality.
+
+Export validation passed in 2.2 seconds and the full metadata module
+in 1.1 seconds, with propext-only audits.  The final validator proof now
+composes these results using validateRaw_eq_of_parts.  Only function
+validation uses checked cbv in that module.  Removed the temporary
+400,000-heartbeat setting, restoring the default elaboration budget.
+
+Complete function validation and metadata composition passed in 14
+seconds with propext only.  The exact-byte translation and all three
+behavioral transfers passed first in 5.0 seconds with standard axioms.
+The validation failure was resolved at export-name encoding, while all
+75 function checks remained in one bounded checked computation.  The
+new generic validateRaw composition lemma is used by the accepted proof.
+The independently checked function-pair lemma remains available for a
+future function-validation boundary.  Independent package verification
+is the next gate before the exact-byte checkpoint is published.
+
+Independent package verification completed with exit zero.  It checked
+external-binary identity, equality with the embedded 9,077 bytes, the
+artifact theorem, the public specification and its local dependencies,
+and all eight manifest declarations.  Every manifest audit reports only
+propext, Classical.choice, and Quot.sound, or a subset.  The serial
+dependency checks replayed extensive cached warnings.  No check failed.
+
+Updated current inventories to 41 exact-byte packages and marked the
+scalar face-step byte proof complete in the root plan, Euler plans,
+README, status, proof inventory, and devnotes.  The source inventory
+remains 45 cases and caches, including 24 floating-point helpers.
+Complete revised-solver integration and new production runs remain open.
+The first documentation edit was rejected before mutation because its
+devnotes context began mid-line.  Corrected the context and reapplied it.
+
+Documentation checks pass for all 120 maintained Markdown files.  Aggregate
+imports match all 45 completed source cases, and the artifact registry
+contains 41 entries.  git diff --check is clear.  No sorry, admit, new axiom,
+or native_decide occurs in the face-step proof tree or ValidationParts.
+Reviewed the complete documentation diff, registry and CheckFile additions,
+the validator composition and export proofs, and the byte theorem transfers.
+The accepted proof uses the checked parser and validation decompositions.
+Held-out LTG measurement remains open.  Deferred CLOB and cold-release
+boundaries are unchanged.
+
+The explicit 41-path checkpoint is ready as Prove exact-byte Euler face-step:
+28 new Artifact modules under Project/EulerOutwardFaceStep, the shared
+ValidationParts module, the frozen binary and manifest, registry and
+CheckFile, README, status, proof inventory, root plan, both Euler plans,
+devnotes, and this journal.  The next independent source proof concerns
+conservation for reconstructed face pairs, without choosing grid storage.
