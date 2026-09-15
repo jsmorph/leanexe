@@ -433,8 +433,13 @@ The [complete retry proof](lean/Project/EulerReconstructed/ExecutionRetryTotal.l
 establishes termination and exact source behavior for every retry outcome.
 It covers both rejection branches, invalid time advancement, exhausted
 fuel, preservation of source ownership, the supplied page limit, and heap
-reservation.  Time advancement, the complete memory bound, and the
-exact-byte package remain open.
+reservation.  The [complete advancement proof](lean/Project/EulerReconstructed/ExecutionAdvanceTotal.lean)
+covers accepted steps, scan failure, and retry failure.  The
+[initial-store solver theorem](lean/Project/EulerReconstructed/SolveInitial.lean)
+composes initialization, advancement, and output, proving termination,
+exact source output, and a 512 MiB memory bound for grid sizes from two
+through 800 and every runtime reconstruction-trial word.  Revised-row
+conservation instantiation and the exact-byte package remain open.
 
 ## Workflow Tools
 
