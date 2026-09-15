@@ -38,6 +38,11 @@ The face-step exact-byte package now passes complete decoding, validation,
 behavior transfer, and independent verification with standard axioms.
 Complete revised-solver integration remains active.
 
+Accepted rows of the revised scalar face-step now have computed-flux and
+physical Rusanov reference balances with bounded rounding residuals.
+The source proofs apply to arbitrary supplied face sequences.  Their
+instantiation in the complete traversal and exact-WASM solver remains open.
+
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 

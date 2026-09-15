@@ -176,6 +176,12 @@ Its 9,077-byte package now passes decoding, validation, translation equality,
 all three behavioral transfers, and independent verification.  All eight
 manifest audits use standard axioms.  Complete solver integration remains open.
 
+The revised face-row source proofs establish shared-flux cancellation and
+computed and physical Rusanov reference balances.  The reference residual
+bound contains the two boundary-flux errors and summed update errors.
+All seven audits use standard axioms.  Reconstruction and complete-grid
+instantiation remain open.
+
 The [complete Riemann solver](../plans/euler-riemann-complete.md) now has
 kernel-checked exact-byte proofs of complete execution, termination,
 output, a 512 MiB memory bound, final-state safety, and the numerical

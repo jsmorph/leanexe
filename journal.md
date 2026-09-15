@@ -21345,3 +21345,62 @@ ValidationParts module, the frozen binary and manifest, registry and
 CheckFile, README, status, proof inventory, root plan, both Euler plans,
 devnotes, and this journal.  The next independent source proof concerns
 conservation for reconstructed face pairs, without choosing grid storage.
+
+### 2026-09-14: revised face-row conservation
+
+Published checkpoint 2c63ab4e2ecedd217f5d76c7c57ed4be0721b8a7,
+parent 7f02bbbb1cae0823b56b7a0c12b034b46bde120b, tree
+0e67e7c5d61721c01bed15711c05fc5e7b544cc9.  Its 41 reviewed paths
+contain 10,759 inserted and 19 removed lines.  The non-forced push and
+fetch passed.  HEAD, FETCH_HEAD, origin/talosfp-euler, parent, tree,
+index, and tracked worktree agree.
+
+Added OutwardFaceRowBalance after checking that no such module existed.
+The row model supplies both states at each interface, so neighboring
+updates use the same ordered pair and exact computed flux.  The accepted
+cell theorem composes advance_balance.  The row theorem uses the existing
+RealFiniteVolumeBalance.sweep_balance, and the residual bound sums the
+three-operation rounding bounds.  The definitions accept arbitrary face
+sequences and do not choose a grid allocation or limiter budget.
+
+OutwardFaceRowBalance passed first in 1.4 seconds under the standard
+three-minute runner limit.  All three public audits use standard axioms.
+Added OutwardFaceRowReference to derive acceptance of every shared
+interface from the accepted cell results, apply the physical Rusanov
+reference bounds, and express total change through the two reference
+boundary fluxes.  Its residual bound includes boundary flux errors and
+the sum of update errors.  Interior flux errors cancel with the shared
+computed fluxes.  No allocation or production-execution claim is added.
+
+The first reference-row check proved interface acceptance, physical-flux
+bounds, and the exact reference balance, then failed at the final triangle
+inequality: abs_sub_le requires three arguments.  Supplied the explicit
+zero middle point and simplified its two differences.  The failed
+residual theorem's sorryAx output is rejected evidence.
+
+OutwardFaceRowReference passed in 1.1 seconds.  All four audits use only
+standard axioms.  Its exact balance covers zero-length rows as well.
+The quantitative boundary bound requires a nonempty row so endpoint
+acceptance follows from a cell result.  The computed row module has
+84 lines and the reference module 88 lines.  The proofs reuse checked
+scalar advancement, physical interface error, and real sweep composition.
+No compiler or executable change is made in this checkpoint.
+
+The first row-documentation edit failed before mutation because a context
+line began after the word pressure.  Selected the exact complete line.
+Updated the source-proof inventory, status, root and Euler plans, and
+devnotes.  The pending five-cell-stencil versus stored-face-array design
+question remains unanswered.  This source checkpoint chooses neither
+grid storage nor a production limiter budget.
+
+The final review confirms that all row hypotheses refer to status-zero
+scalar outputs and every physical-interface error premise follows from
+that status.  Exact cancellation uses identical ordered face pairs.
+The physical reference uses the decoded selected Rusanov speed.  These
+are source composition results awaiting complete solver instantiation.
+All 120 maintained Markdown files pass, git diff --check is clear, and
+both new modules contain no sorry, admit, new axiom, or native_decide.
+
+The explicit nine-path checkpoint is ready as Prove revised Euler row
+conservation: OutwardFaceRowBalance, OutwardFaceRowReference, devnotes,
+journal, status, root plan, both Euler plans, and the Talos proof inventory.

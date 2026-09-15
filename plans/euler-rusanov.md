@@ -913,3 +913,9 @@ preservation, and all three public numerical specifications.  Its exact-byte
 package now passes complete decoding, validation, behavior transfer, and
 independent verification with standard axioms.  Complete solver integration
 remains open.
+
+The revised face-row source proofs now establish shared-flux cancellation,
+computed and physical Rusanov reference balances, and bounds on accumulated
+rounding residuals.  All seven audits use standard axioms.  The row model
+accepts arbitrary supplied face sequences.  Complete traversal and exact-WASM
+composition remain open.
