@@ -21652,3 +21652,75 @@ all unrelated data and paper paths.  Documentation passes all 120 files,
 registry imports agree, diff whitespace passes, and the new source tree
 contains no sorry, admit, custom axiom, native_decide, or temporary trace.
 The complete new solver specification remains explicitly incomplete.
+
+Published bc051de1febeb3b738eeea84fceb448cdabd0d93, with parent
+8d46de5c09415c7fecfa644f6a2e7afa9b517f06 and tree
+05b2c22b74303660a383ba05d8bf95ed52865932.  Its title is “Prove
+reconstructed Euler source and cell execution.”  Non-forced push and fetch
+passed.  HEAD, FETCH_HEAD, origin, parent, title, complete tree, index, and
+tracked worktree agree.  The checkpoint contains 36 paths, 18,504
+insertions, and nine deletions, including the generated program.
+
+The combined scan/retained-memory check reached its three-minute limit
+without a theorem diagnostic while rebuilding the old complete solver
+dependencies.  The last completed scalar dependency was
+Euler2DCellStep.Execution in 51 seconds.  Preserving those caches and
+checking the narrower scan boundary before the remaining dependency.
+A read-only lookup of a guessed OutputEntry filename failed.  The existing
+output imports were read and retained.
+
+Added the sweep frame, loop, setup, and entry proof drafts.  They follow
+the emitted extra fuel parameter and shifted local slots.  The setup
+uses general FixedArrayCapacity and FixedArrayAllocate theorems after
+checking exact instruction-region equalities.  The loop reuses existing
+memory field bounds, disjoint write preservation, and prefix completion.
+These new sweep modules await their checks.
+
+The scan recheck passed with standard audits.  The new sweep frame passed
+in 1.8 seconds and the loop first passed in 3.6 seconds, with standard
+axioms.  The sweep setup then failed in 2.1 seconds because decide requires
+a closed goal.  Reduced the two constant local-slot bounds explicitly
+before applying decide.  The four compiler-region equalities and both
+entry/length-install proofs checked in that attempt.
+
+The corrected setup passed in 2.6 seconds, and the complete sweep entry
+passed first in 2.2 seconds.  All public audits use standard axioms.
+The exact emitted allocation region is definitionally equal to
+FixedArrayAllocate.program 49 7.  Its existing proof supplies free-list
+reuse and conditional growth without new allocator lemmas.  Added the
+ownership and page-bound corollaries using the existing heap-resource
+lemmas.  Their proofs await checking.
+
+Sweep ownership and page-bound corollaries passed first in 1.4 and
+1.2 seconds, respectively, with standard audits.  The sweep now covers
+exact output, source preservation, allocation ownership, disjoint writes,
+termination, and the supplied page limit.  Added the two-axis composition
+draft from emitted calls 121, 123, 121, and 152.  Its retained scalar
+dependency is checking separately after the prior dependency timeout.
+
+The isolated retained cell dependency passed in 50 seconds with standard
+audits.  Continuing with the narrower initialization entry boundary.
+Added the two-sweep reservation corollaries without duplicating the
+existing heap reservation arithmetic.  LTG review confirms a retrieval
+gap: the allocation entries describe empty/no-fit free lists, while the
+checked FixedArrayAllocate theorem also covers fitting nodes.  The new
+sweep supplies another exact-program consumer for that broader theorem.
+
+The retained initialization dependency passed, with its entry theorem
+checking in 1.7 seconds.  The retained initialization/output/release
+transfers then passed in 1.4 seconds with standard audits.  The new
+two-axis execution proof passed first in 4.1 seconds.  The reservation
+corollaries passed first in 1.3 seconds.  Their audits use standard axioms.
+The proof composes the existing heap arithmetic with the exact emitted
+sweep, acceptance, and release calls.
+
+Preparing a second checkpoint containing the nine checked traversal and
+retained-memory modules, development notes, journal, status, root plan,
+mathematical-parity and Rusanov plans, and Talos README.  The complete
+retry/time controller and exact-byte specification remain open.
+
+Checkpoint gates pass: all 120 maintained documents, whitespace review,
+and the new proof-tree scan for unproved declarations and temporary traces.
+The reviewed source theorem statements refer to the new module and
+runtime reconstruction fuel.  Only the named 16 checkpoint paths will be
+staged.  All unrelated untracked data and paper records remain preserved.

@@ -424,8 +424,13 @@ reconstruction trials.  The [five-cell execution proof](lean/Project/EulerRecons
 and [internal grid scan](lean/Project/EulerReconstructed/GridScan.lean)
 establish termination, exact results, and store preservation.  Checked
 function-region renaming transfers the existing reconstruction, face-step,
-and mesh-CFL execution theorems.  The revised sweep, controller, complete
-memory bound, and exact-byte package remain open.
+and mesh-CFL execution theorems.  The [two-axis step](lean/Project/EulerReconstructed/ExecutionStep.lean)
+and [memory reservation](lean/Project/EulerReconstructed/StepReserve.lean)
+proofs cover both directional sweeps, exact array output, ownership,
+page limits, and release of the intermediate grid.  Retained initialization,
+output, and release functions have checked execution transfers.
+The retry controller, time advancement, complete memory bound, and
+exact-byte package remain open.
 
 ## Workflow Tools
 

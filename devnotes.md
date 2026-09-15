@@ -12178,3 +12178,22 @@ After the shared-library extension, the composed scalar theorem rechecked
 in 12 seconds.  The complete cell-update execution proof passes in
 5.5 seconds, composing bounded stencil reads, reconstruction, face-step,
 and momentum orientation.  Both audits use standard axioms.
+
+## 2026-09-15: Reconstructed Euler sweeps and memory
+
+The directional sweep proof composes the checked cell update with exact
+seven-word writes and preserves the source grid.  The complete allocation
+region equals FixedArrayAllocate.program 49 7, allowing reuse of its
+general free-list and growth theorem.  The loop checked in 3.6 seconds,
+the entry in 2.2, ownership in 1.4, and the page bound in 1.2.
+
+The two-axis composition checked in 4.1 seconds and its reservation
+corollaries in 1.3.  They cover both sweeps, acceptance of the intermediate
+grid, its release, ownership, and the supplied page limit.  Retained
+initialization, output, and release transfers checked in 1.4 seconds.
+All public audits use standard axioms.  The journal records dependency
+timeouts, the narrower rechecks, and the corrected constant-slot proof.
+
+The retry and time-advancement controllers, complete memory bound, row
+conservation instantiation, and exact-byte closure remain open.  No new
+production run has started.
