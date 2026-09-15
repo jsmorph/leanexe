@@ -22567,3 +22567,13 @@ The next checkpoint, “Publish reconstructed Euler 192-grid results,”
 contains the seven reviewed documentation/journal paths, the short
 article, and the eight completed 192-grid output files.  Active 800-grid
 files and unrelated state remain outside the explicit staged paths.
+
+Published 02742e50a688acc8cab5fcc438639e9dbbaf55c6, parent
+59a15bba7b3390f7a4bbe755cdc0ed4e50ca7cc3, tree
+95cd8ebf947a6c7ebc23f45961c4c1cd46ec28ba, title “Publish
+reconstructed Euler 192-grid results.”  Its 16 reviewed paths contain
+the complete 192-grid data and plots and their documentation.  Non-forced
+push and fetch passed.  HEAD, FETCH_HEAD, origin, parent, tree, title,
+index, and tracked worktree all agree.  The active 800-grid files and
+unrelated paper/data paths remain untracked.  This single receipt records
+that publication.  The 800-grid solve remains active in its recorded scope.
