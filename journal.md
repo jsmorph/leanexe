@@ -21724,3 +21724,193 @@ and the new proof-tree scan for unproved declarations and temporary traces.
 The reviewed source theorem statements refer to the new module and
 runtime reconstruction fuel.  Only the named 16 checkpoint paths will be
 staged.  All unrelated untracked data and paper records remain preserved.
+
+Published 338d8b9597aa7e5b6f3d149c12f206fe655e009a, with parent
+bc051de1febeb3b738eeea84fceb448cdabd0d93 and tree
+96cb89cc5c8f98e1ed9628ddbf68a019b69725c5.  Its title is “Prove
+reconstructed Euler sweeps and memory.”  Non-forced push and fetch passed.
+HEAD, FETCH_HEAD, origin, parent, title, complete tree, index, and tracked
+worktree agree.  The checkpoint contains 16 paths, 1,044 insertions,
+and nine deletions.
+
+Started the retry proof with time-function transfers and exact loop,
+guard, and failure-allocation regions.  The emitted guard matches the
+compiler annotation at fuel local 0 and completion local 13.  Both failure
+paths use the same general allocation region at scratch start 79.
+These new modules await checking.
+
+Time-function transfers and retry instruction-region checks passed, with
+standard audits.  The retry-region module checked in 2.6 seconds.  Added
+the failure-result proof for scratch start 79, adapting the existing
+empty-array result construction and using the general allocation theorem.
+It covers exact status/dt words, allocated empty-grid ownership state,
+and the output-root assignments for both failure paths.
+
+The time transfers checked in 1.3 seconds.  The heap-allocation adapter
+passed in 1.2 seconds and the failure-result execution proof first passed
+in 1.6 seconds, with standard audits.  One inherited unused-simp warning
+remains.  Added the retry parameter/frame, scratch, and returned-result
+invariants for the emitted eight parameters and 77 locals.  The frame
+records both the runtime reconstruction count and the outward speed.
+
+The first retry-frame check rejected the indentation of a multiline record
+field before its final function argument.  Rewrote that field with the
+three named assignments used by the existing proof.  The resulting parser
+errors and their dependent sorryAx reports are failed-check diagnostics.
+Added the validity and fuel-guard adapters, using the checked compiler
+guard equality and FuelGuard.program_spec.
+
+The corrected frame module passed in 2.4 seconds and its guard adapters
+passed first in 1.4 seconds.  All eleven public audits use standard
+axioms.  Added the mesh-ratio call proof for the first 16 instructions
+of the valid-time branch, including preservation of the active frame
+and the unused allocation scratch slots.
+
+The first mesh-ratio execution check exposed two explicit reductions:
+UInt64.size needed its numeric value for omega, and the compiler stores
+the returned value before the returned status.  Matched that emitted
+assignment order in the named frame and reduced the word-size bound.
+Frame and scratch preservation checked in the failed attempt.
+
+The corrected mesh-ratio execution proof passed in 1.5 seconds with
+standard axioms.  Added the CFL-rejection transition, which halves dt,
+decrements retry fuel, preserves the input owner, and leaves the store
+unchanged.  The named frame follows the emitted parameter-copy sequence
+and preserves the empty allocation scratch window.
+
+The first CFL-rejection check stopped at the ownership-tracker read.
+The frame contained the required zero-tracker fact, but simplification
+had only its bounded-read projection in scope.  Named the option-valued
+getter equality before reducing that guard.  The transition's frame and
+scratch preservation proofs passed in the failed attempt.
+
+The CFL-rejection transition passed in 3.0 seconds with standard audits.
+Added the accepted-ratio trial composition: the exact two-axis step and
+the array acceptance scan, carrying page limits, ownership, preserved
+inputs, and the remaining heap reservation into the branch continuation.
+
+The first trial composition reached its continuation with the expected
+heap and memory facts.  Its final frame equality retained boolWord on one
+side and the corresponding conditional on the other.  Added boolWord to
+that final simplification.  The frame and scratch lemmas already passed.
+
+The corrected trial composition passed in 1.7 seconds with standard
+axioms.  Added acceptance and rejection branch proofs.  Rejection executes
+the checked release function, reads the resulting free count, halves dt,
+and decrements fuel.  Its frame and scratch lemmas preserve the facts
+needed for the next retry iteration.
+
+Acceptance and rejection branch proofs passed first in 4.3 seconds with
+standard axioms.  Added the total retry invariant, recording the remaining
+source recurrence, ownership of preserved grids, memory reservation, and
+either an active frame or the exact returned result.  The decreasing
+measure uses remaining fuel until the completion flag is set.
+
+The retry invariant passed in 2.2 seconds, and its new resource dependency
+passed in 1.3 seconds.  All three public audits use standard axioms.
+Added `EulerReconstructed/RetryTotalInvalid.lean` to compose invalid-time
+failure with empty-grid allocation, preserved ownership, page bounds,
+and strict decrease of the retry measure.  It uses the checked allocator
+and old heap resource lemmas with the new eight-parameter frame.
+
+The invalid-time composition passed first in 2.8 seconds with standard
+axioms.  Added `RetryTotalStep.lean` as a separate composition boundary
+for a checked ratio, the two-axis step, and acceptance or release.  The
+subsequent valid-time theorem will compose the outward ratio check and
+its allocation-free rejection branch with this result.
+
+The total step branch passed first in 2.2 seconds with standard axioms.
+Its two unused simplifier arguments came from the old guard composition.
+Added `RetryTotalValid.lean` to compose the ratio call with both outcomes.
+The recurrence and decreasing fuel remain explicit for both rejection
+paths, and only trial rejection executes a release.
+
+The first valid-time check failed in 2.3 seconds.  The case hypothesis
+used a local alias while simplification exposed the source ratio call,
+so neither the source recurrence nor the emitted Boolean branch reduced.
+Changed the case split to the explicit source call and normalized the
+alias only in the source equality.  The failure diagnostics and inferred
+`sorryAx` belong to the rejected elaboration, not an accepted theorem.
+
+The second valid-time check reached the branch continuations and failed
+there.  Source recurrence reduction now succeeds.  Added the explicit
+empty continuation and normalized the status-zero ratio frame at the
+composition boundary.  The conditional continuation discards the empty
+operand stack, so the proof uses the invariant's stack equality.
+
+The third check exposed two remaining frame-presentation obligations:
+the empty-program append equality precedes the frame equality generated
+by conversion, and unfolding the rejected frame prevented the measure
+lemma from matching.  Added the append equality and kept the rejected
+frame intact while reducing its empty continuation.
+
+The fourth check passed the frame conversion and rejected-branch resource
+proof.  It required a qualified shared frame theorem, an explicit measure
+identity for the local ratio-frame alias, and the WP empty-program rule
+before definitional reduction of the conditional continuation.  Added
+those three facts without changing the invariant or theorem premises.
+
+The fifth check exhausted the default heartbeat budget while `change`
+compared the generic WP continuation.  Its diagnostic identifies the
+comparison boundary.  Replaced that conversion with an explicit, reflexive
+empty-stack frame equality, so simplification can close the continuation
+without unfolding generic WP evaluation.
+
+The sixth check reached the same heartbeat budget while constructing the
+frame equality by reflexivity with the full nested ratio frame.  Moved
+that equality to `RetryCflReject.lean`, parameterized by an arbitrary
+incoming frame.  The valid-time composition now applies the named theorem,
+so its elaboration need not inspect the nested numerical state.
+
+Added the iteration and complete block-loop composition drafts in
+`RetryTotalIteration.lean` and `RetryTotalLoop.lean`.  They carry runtime
+reconstruction trials and the outward speed through the loop invariant,
+reuse the compiler-checked guard equality, and use the existing generic
+well-founded block-loop theorem.  Their check awaits the valid-time module.
+
+The seventh valid-time check passed in 2.7 seconds at the default heartbeat
+budget.  The new arbitrary-frame equality has no axiom dependencies, and
+all rechecked public dependencies use standard axioms.  Added the complete
+retry entry draft in `ExecutionRetryTotal.lean`, including fuel-exhausted
+empty-result allocation, exact four-word return values, preserved source
+ownership, memory reservation, and the supplied page limit.
+
+The iteration check rejected one obsolete simplification in 1.2 seconds.
+The new loop-parts theorem already states the invalid-time branch in its
+final form, so the inherited rewrite made no progress.  Removed that
+rewrite.  The next focused build checks the iteration, loop, and entry.
+
+The final iteration passed in 1.9 seconds, the complete block loop in
+1.3 seconds, and the retry entry in 2.2 seconds.  The two public entry
+audits and all transitive public checks use standard axioms.  The target
+was `Project.EulerReconstructed.ExecutionRetryTotal`, run through
+`tools/leanrun --timeout 3m --lock-timeout 30 lake -d proofs/talos/lean
+--no-ansi build`.  It proves terminating execution of generated function
+125 with exact status, dt, and grid results, preserved ownership, a page
+limit, and the remaining heap reservation for every source outcome.
+
+The proof reuses the emitted guard annotation, general allocation region,
+shared ownership/reservation facts, and BlockLoop.program_spec.  The
+valid-time journal records all seven attempts, including the frame
+abstraction that resolved the default-heartbeat boundary.  No LTG
+promotion or held-out performance claim follows from this one controller.
+The revised solver still requires time advancement, full memory closure,
+row-conservation instantiation, and exact-byte verification.
+
+A documentation-tool search named two nonexistent paths, `package.json`
+and `tools/docs-check.js`.  Scoped file discovery found
+`tools/check-docs.js`.  Updated the status, active plan, Euler plans,
+proof inventory, and development notes to record the checked retry result.
+The new proof-source scan contains no sorry, admit, new axiom, or
+native_decide declaration.  The journal diff remains append-only.
+
+Checkpoint review: the documentation gate checked all 120 maintained
+Markdown files, and the whitespace check passed.  The parent is
+338d8b9597aa7e5b6f3d149c12f206fe655e009a.  Stage only the seven reviewed
+documentation/journal paths and these 17 new EulerReconstructed modules:
+ExecutionRetryTotal, HeapAllocate, RetryBranches, RetryCflReject,
+RetryFailureExecute, RetryFrame, RetryGuard, RetryInvariant, RetryRatio,
+RetryShape, RetryTotalInvalid, RetryTotalIteration, RetryTotalLoop,
+RetryTotalStep, RetryTotalValid, RetryTrial, and TimeTransfers.  The
+checkpoint title is “Prove complete reconstructed Euler retries.”
+All unrelated untracked data and paper records remain untouched.

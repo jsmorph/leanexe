@@ -1,0 +1,122 @@
+import Project.EulerReconstructed.RetryInvariant
+
+namespace Project.EulerReconstructed.Execution
+open Wasm Project.Runtime Project.ProofKit.FixedArrayCapacity
+open Project.EulerRiemann
+open Project.EulerRiemann.Execution
+open Project.EulerRiemann.Control (Attempt)
+
+macro "reconstructed_retry_total_peel" : tactic => `(tactic|
+  repeat
+    first
+    | wp_run [retryGuardFrame, retryTrialFrame, retryAcceptedFrame, retryRejectedFrame,
+        List.append_eq, List.cons_append, List.nil_append, List.length_set, List.getElem?_set,
+        List.getElem?_cons_zero, List.getElem?_cons_succ, boolWord, Bool.false_eq_true, reduceIte,
+        Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, *]
+    | refine wp_iff_cons rfl ?_
+      simp [*, -UInt64.not_le])
+
+theorem retry_total_step_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
+    (source : FreeNode) (grid : Array Project.EulerRiemann.Traversal.Cell) (n : Nat) (fuel trials time dt alpha ratio : UInt64)
+    (expected : Attempt) (spare limit pageLimit : Nat) (store : Store Unit) (heap : Heap) (frame : Locals)
+    (hn : 2 ≤ n ∧ n ≤ 800) (hIndexed : Project.EulerRiemann.Traversal.Indexed n grid)
+    (hOwner : initialHeap.Owns initial source grid)
+    (hLimit : limit < 4294967296)
+    (hCap : limit ≤ initial.memoryCap module 0 * 65536)
+    (hStore : RetryStoreAt initial initialHeap store heap)
+    (hPages : store.mem.pages ≤ pageLimit) (hPageLimit : pageLimit ≤ 65536)
+    (hLimitPages : limit ≤ pageLimit * 65536)
+    (hFrame : RetryFrameAt frame fuel n trials time dt alpha source.root 0 0 false)
+    (hScratch : RetryScratch frame) (hRatio : frame.locals[15]? = some (.i64 ratio))
+    (hSame : (if Project.EulerRiemann.Traversal.accepted (Traversal.step n trials.toNat ratio grid)
+      then ({ status := 0, dt, grid := Traversal.step n trials.toNat ratio grid } : Attempt)
+      else Control.retry (fuel - 1).toNat n trials.toNat time
+        (IEEE64.mul 0x3FE0000000000000 dt) alpha grid) = expected)
+    (hReserved : heap.Reserved (normalizedCapacity (UInt64.ofNat grid.size) 7) (spare + 2) limit)
+    (hFuel : fuel ≠ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : ∀ final resultFrame,
+      retryTotalInvariant initial initialHeap n trials time alpha source.root
+        (normalizedCapacity (UInt64.ofNat grid.size) 7) grid expected spare limit pageLimit final resultFrame →
+      retryMeasure resultFrame < retryMeasure frame → wp module rest Q final resultFrame env) :
+    wp module (retryStepBody ++ rest) Q store frame env := by
+  have hCurrentOwner := hStore.held source grid hOwner
+  have hCurrentCap : limit ≤ store.memoryCap module 0 * 65536 := by
+    change limit ≤ store.memoryCap Project.EulerRiemann.«module» 0 * 65536
+    rw [hStore.cap]
+    exact hCap
+  have hParams := hFrame.params
+  have hLocals := hFrame.locals
+  have hValues := hFrame.values
+  rcases frame with ⟨params, locals, values⟩
+  dsimp only at hParams hLocals hValues ⊢
+  subst params
+  subst values
+  let frame : Locals := ⟨[.i64 fuel, .i64 (UInt64.ofNat n), .i64 trials, .i64 time,
+    .i64 dt, .i64 alpha, .i64 source.root, .i64 source.root], locals, []⟩
+  rw [retry_trial_branches_shape]
+  refine retry_trial_pages_spec env store heap frame fuel source grid
+    n trials time dt alpha ratio spare limit pageLimit hFrame.params hFrame.locals
+    hFrame.values hRatio hn hIndexed hStore.heapState hCurrentOwner hPages hPageLimit
+    hReserved hLimit hCurrentCap hLimitPages _ _ ?_
+  intro need result final hFinalHeap hFinalOwner hFinalPages hFinalCap hFinalReserved hCapacity hHeld
+  have hPreserved := hStore.after_step hFinalHeap (hFinalPages.trans hPageLimit) hFinalCap result.2 hHeld
+  have hNewStore := hPreserved.1
+  have hSeparated := hPreserved.2
+  cases hAccepted : Project.EulerRiemann.Traversal.accepted (Traversal.step n trials.toNat ratio grid) with
+  | true =>
+    have hTrialFrame := hFrame.trial ratio result.2.root true
+    have hStatus : expected.status = 0 := by
+      simpa only [hAccepted, ite_true] using (congrArg Attempt.status hSame).symm
+    have hDt : expected.dt = dt := by
+      simpa only [hAccepted, ite_true] using (congrArg Attempt.dt hSame).symm
+    have hGrid : expected.grid = Traversal.step n trials.toNat ratio grid := by
+      simpa only [hAccepted, ite_true] using (congrArg Attempt.grid hSame).symm
+    dsimp only [frame]
+    reconstructed_retry_total_peel
+    apply retry_accept_spec env final frame n fuel trials time dt alpha
+      source.root ratio result.2.root hFrame.params hFrame.locals
+    dsimp only [frame]
+    reconstructed_retry_total_peel
+    have hDoneFrame := (hTrialFrame.accept result.2.root).returned
+    simp only [retryAcceptedFrame, retryTrialFrame, retryGuardFrame, boolWord, reduceIte] at hDoneFrame
+    apply hNext
+    · refine ⟨result.1, hNewStore, hFinalPages, Or.inr ⟨result.2, ?_, ?_,
+        hFinalReserved, fun _ => hCapacity, hSeparated⟩⟩
+      · simpa only [hStatus, hDt] using hDoneFrame
+      · simpa only [hGrid] using hFinalOwner
+    · rw [hDoneFrame.measure, hFrame.measure]
+      simp
+  | false =>
+    have hTrialFrame := hFrame.trial ratio result.2.root false
+    have hSource : source.root ≠ 0 := by
+      intro hZero
+      have hRoot := hOwner.buffer.rootBound
+      simp [hZero] at hRoot
+    have hNextSame : Control.retry (fuel - 1).toNat n trials.toNat time
+        (IEEE64.mul 0x3FE0000000000000 dt) alpha grid = expected := by
+      simpa only [hAccepted, Bool.false_eq_true, ite_false] using hSame
+    dsimp only [frame]
+    reconstructed_retry_total_peel
+    apply retry_reject_spec env final result.1 frame n fuel trials time dt alpha
+      source.root ratio result.2 (Traversal.step n trials.toNat ratio grid) hFrame.params
+      hFrame.locals hFrame.tracker hSource hFinalHeap hFinalOwner
+    dsimp only [frame]
+    reconstructed_retry_total_peel
+    have hNextStore := hNewStore.released result.2 _ hFinalOwner hSeparated
+    have hNextReserved := hFinalReserved.release result.2 hCapacity
+    have hNextFrame := hTrialFrame.reject (result.1.frees + 1)
+    have hNextScratch := (hScratch.trial n trials ratio source.root result.2.root false).reject
+      fuel n trials time dt alpha source.root (result.1.frees + 1)
+    simp only [retryRejectedFrame, retryTrialFrame, retryGuardFrame, boolWord,
+      Bool.false_eq_true, reduceIte] at hNextFrame hNextScratch
+    apply hNext
+    · exact ⟨result.1.release result.2, hNextStore,
+        by simpa only [Heap.releaseStore, releasedStore_pages] using hFinalPages, Or.inl ⟨⟨fuel - 1, IEEE64.mul 0x3FE0000000000000 dt, hNextFrame, hNextSame, hNextReserved⟩,
+          hNextScratch⟩⟩
+    · rw [hNextFrame.measure, hFrame.measure]
+      exact retryFuel_decreases fuel hFuel
+
+#print axioms retry_total_step_spec
+
+end Project.EulerReconstructed.Execution
