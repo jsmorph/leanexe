@@ -12280,3 +12280,18 @@ cuts.  Their audits use propext only.  Larger remaining proof groups
 have bounded dependency-ordered compilation units.  Controller and
 initialization body decoding, full-file composition, validation, translation,
 independent checking, and production execution remain open.
+
+## Reconstructed Euler code and type sections
+
+All 153 function bodies now decode, including grid traversal, retry,
+initialization, output, and the runtime helpers.  Complete code-vector
+and code-section composition passed in 11 seconds.  The function types,
+type section, and export table pass.  The combined metadata check reached
+its three-minute process limit without a theorem diagnostic.  Its five
+section proofs now occupy separate modules to identify the expensive
+computation.  The isolated type section passed in 7.4 seconds.
+
+The accepted proofs use existing shared decoder composition and standard
+axioms.  The source, exact bytes, and runner limits remain unchanged.
+Complete-file decoding, validation, translation, independent checking,
+and revised production data remain open.

@@ -22273,3 +22273,86 @@ the fifteen eight-function modules through 119, the three checked
 104–111 parts, and devnotes, journal, root plan, and Euler plan.
 The title is “Prove reconstructed Euler scalar byte decoding,” with
 parent aa487939552758cc7600aa1e4b34445d2f74f00c.
+
+Published ee0e30f4d64a64268f076b670f62cfcda5996fa1, parent
+aa487939552758cc7600aa1e4b34445d2f74f00c, tree
+04efc307e5f7fa5dab34844cb4f2a98d71d0d4c1, title “Prove
+reconstructed Euler scalar byte decoding.”  The 25 reviewed paths
+contain 23,195 insertions, including the 15,910-line generated raw
+module cache.  Non-forced push and fetch passed.  HEAD, FETCH_HEAD,
+origin, parent, tree, title, index, and the 25 checkpoint worktree
+paths agree.  The three ongoing tracked edits and all remaining
+untracked proof/data/paper state remain preserved.
+
+The first four grid/retry decoder parts passed first in 65, 49,
+57, and 45 seconds.  Functions 120–126 now have complete body
+theorems with propext-only audits, including the array sweep, accepted
+scan, two-sweep step, and full retry controller.  Part 2 contributes
+sequence certificates used by the accepted function 125 theorem in
+part 3.  The final projection part and time-advancement/initialization
+bodies are next.  No proof revision or limit increase was required.
+
+The last 120–127 part passed in 6.0 seconds.  The two 128–135
+parts passed in 51 and 35 seconds, including complete time advancement.
+The first initialization part passed in 63 seconds, completing bodies
+136 and 137.  All public body audits use propext only.  The
+remaining initialization sequences retain their parser-derived splits.
+
+The next four initialization parts passed first in 66, 54, 54,
+and 53 seconds.  Bodies 138 and 139 completed in the first part,
+and body 140 completed in the fourth.  The intermediate accepted
+sequence proofs compose through imports into the grid-building theorem.
+Its transitive audit uses propext only.  Initialization wrappers, output,
+and the remaining runtime helper bodies follow.
+
+The last initialization parts passed in 51 and 9.8 seconds,
+completing bodies 141–143 with propext-only audits.  The first two
+packed-output parts passed in 70 and 55 seconds.  Their sequence
+certificates await composition into the complete output body theorem.
+The final output pieces, solve entry, and runtime helpers are next.
+
+The remaining output parts passed first in 57, 47, and 12 seconds.
+The final release-helper group passed in 16 seconds.  All 153 function
+body decoder theorems now pass, with propext-only public audits.
+Every body uses the existing checked parser composition.  The only
+failed compilation in this decoder development remains the original
+flat byte literal.  Complete code-vector and metadata/file composition
+are the next gates.
+
+The complete 153-body code vector and code section passed first in
+11 seconds, with propext-only audits.  The four remaining aggregate
+body imports passed in 1.2–1.3 seconds.  Divided the unchecked type
+entry module into five independent groups of at most 32 type-entry
+theorems, followed by the existing vector composition.  All statements
+and tactics remain unchanged.  The unsplit draft is preserved in tmp.
+
+The first four type-entry groups passed first in 80, 82, 81, and
+85 seconds.  Function types 0–127 now decode with propext-only
+audits.  The proof bodies use the existing balanced byte lookup and
+checked decoder without changes.  Each group ran sequentially through
+tools/leanrun with a three-minute timeout and the standard local limits.
+The first journal append failed because its context omitted the start
+of a line.  The corrected append uses the complete existing line.
+
+The final 25 type entries passed in 63 seconds, and the complete type
+vector passed in 6.5 seconds.  The export table passed in 111 seconds.
+Its audit uses propext, Classical.choice, and Quot.sound.  The combined
+metadata target then reached its three-minute process limit, status 124,
+without a theorem diagnostic.  Preserved its complete output and source
+in fresh tmp files.  Separated the five section proofs into individual
+modules with unchanged statements and tactics before further checking.
+
+The isolated type-section theorem passed first in 7.4 seconds with
+propext only.  The isolated function-index section is running under the
+same limit.  Prepared a checkpoint of all accepted function-body, code,
+type-entry, type-section, and export-table proofs, with progress records.
+Incomplete section/file/validation/translation modules, the registry,
+CheckFile, and the production driver remain unstaged.
+
+The checkpoint contains 37 explicit paths: code-vector composition,
+the five body groups from 120 through 152 and their 19 parts, five
+type-entry groups, type-vector and type-section composition, export-table
+composition, and the four progress documents.  The maintained-document
+check passed all 120 files, and the diff whitespace check passed.
+The title is “Prove reconstructed Euler code and type sections,” with
+parent ee0e30f4d64a64268f076b670f62cfcda5996fa1.
