@@ -247,8 +247,15 @@ the sum of update residuals, and its rounding bound for accepted output.
 Every interface is accepted when all cells in a nonempty row are accepted.
 The physical Rusanov reference balance adds only the two boundary-flux
 errors to the summed update-error bound.  Both modules pass with standard
-axioms.  They accept arbitrary face sequences, leaving reconstruction,
-grid traversal, and exact-WASM composition as the remaining instantiations.
+axioms.  They accept arbitrary face sequences.  The reconstructed solver now
+instantiates them through its repeated clamped five-cell stencils, source
+arrays, both directional sweeps, and complete accepted timestep trace.
+All four components have computed-flux balances and area-weighted
+real-reference balances with bounded residuals.  The reference uses the
+decoded reconstructed boundary states.  A shared directed-division error
+theorem bounds the outward spacing and ratio errors by adjacent-value
+enclosure widths.  All public audits pass with standard axioms.
+Exact-WASM specification composition remains open.
 
 Open boundaries contribute physical flux.  Rejected trials preserve the
 last accepted grid, and their discarded values contribute no accepted-step
@@ -322,7 +329,8 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Complete the generated-WASM time-advancement controller proof.
 - [x] Reprove allocation, ownership, termination, complete failure behavior, and the full memory bound for the changed call graph.
 - [x] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
-- [ ] Instantiate the revised face-row conservation theorems in the reconstructed traversal and accepted trace.
+- [x] Instantiate the revised face-row conservation theorems in the reconstructed traversal and accepted trace.
+- [ ] Compose accepted-state, reconstructed-face, CFL, hyperbolicity, and conservation specifications with complete generated execution.
 - [ ] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
 - [ ] Check the independent package and all public/transitive axiom audits.
 - [ ] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
