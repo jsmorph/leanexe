@@ -938,5 +938,8 @@ exact source output and a 512 MiB memory bound.  It covers grid sizes from
 two through 800 and every runtime reconstruction-trial word.  The revised
 traversal now has checked conservation for all four components throughout
 its accepted trace.  The area-weighted real-reference balance bounds
-update, boundary-flux, spacing, and outward-ratio errors.  Numerical
-specification composition and the exact-byte package remain open.
+update, boundary-flux, spacing, and outward-ratio errors.  All four
+generated-WASM specifications now compose execution and the numerical
+theorems, including every accepted trace prefix.  Source regeneration
+passes with unchanged bytes and standard axiom audits.  The exact-byte
+package remains open.

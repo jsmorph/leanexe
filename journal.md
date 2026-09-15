@@ -22114,3 +22114,55 @@ ProofKit.F64OutwardError.  The parent is
 da672d3922fb50901bb46bf5770b29239af385f8.  The checkpoint title is
 “Prove reconstructed Euler trace conservation.”  Unrelated data and
 paper records remain unstaged and preserved.
+
+Published f2c961762beb26df007ec6b362058da5bf931e95, with parent
+da672d3922fb50901bb46bf5770b29239af385f8 and tree
+5dd44b5d7837df0f7808d50e2a5df1395b3c2bf5.  Its title is “Prove
+reconstructed Euler trace conservation.”  The non-forced push and fetch
+passed.  HEAD, FETCH_HEAD, origin, parent, title, tree, index, and tracked
+worktree agree.  The checkpoint contains 18 files, 953 insertions, and
+18 deletions.
+
+Added NumericalSafety to collect the established reconstruction safety,
+hyperbolicity, accuracy, factor, and face-characteristic CFL theorems at
+each accepted source stencil and directional sweep.  The computation
+and its generated artifact remain unchanged.  This specification uses
+the existing reconstruction Accuracy predicate and scalar theorem bodies.
+
+NumericalSafety passed first in 1.3 seconds with standard public audits.
+Its dependency check also rebuilt the existing reconstruction specification
+in 1.6 seconds.  Added TraceSafety to apply the cell-grid CFL bound and
+both reconstructed-sweep certificates to every accepted source step and
+reachable trace grid.  All production parameters remain symbolic.
+
+TraceSafety passed first in 1.2 seconds with standard audits.  Added the
+four registered complete-solver specifications.  The strongest combines
+termination, exact represented output, the 512 MiB bound, accepted-state
+safety, status-zero completion through time 0.8, trace reconstruction and
+CFL facts, hyperbolicity, and both conservation balances.
+
+The complete specification passed first in 1.4 seconds.  All five public
+audits use standard axioms, including the four registered behavior
+theorems.  Marked the registration complete and added its aggregate
+specification import.  The next gate regenerates the exact source output
+and checks the specification against the retained generated module.
+
+The source regeneration gate passed: tools/talos-proof.js check
+euler_reconstructed.  All 4,033 dependency jobs completed successfully,
+including the four registered numerical specifications.  The generated
+bytes retain SHA-256 b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
+Updated current documentation to 46 completed source cases and 25
+completed floating-point cases.  Exact-byte packages remain at 41.
+
+A read-only search included the absent proofs/artifacts/README.md and
+returned exit status 2 for that path.  The existing tool implementation
+identifies artifact-migrate.js as the raw-cache and byte generator.
+Its prepareMigration export permits review before bounded installation.
+The next checkpoint contains NumericalSafety, TraceSafety, Spec, the
+complete registration and aggregate import, and eight documentation
+records.  The numerical trial-count choice remains pending.
+
+The documentation check passed for all 120 maintained Markdown files.
+Reviewed the complete new theorem sources and documentation diff.
+The checkpoint title is “Prove reconstructed Euler numerical specification.”
+Its parent is f2c961762beb26df007ec6b362058da5bf931e95.
