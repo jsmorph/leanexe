@@ -145,5 +145,6 @@ check.  Its 30,726-byte module adds positivity-limited minmod reconstruction,
 outward characteristic-speed bounds, and checked CFL conditions.  Its
 accepted trace has state and face safety, hyperbolicity, and conservation
 with bounded rounding residuals.  Both revised production grids use eight
-reconstruction attempts.  The 192-grid run has started, followed by its
-figures, the 800-grid run, and its figures.
+reconstruction attempts.  The [192-grid data and figures](data/euler-reconstructed-v1/README.md)
+are complete, with status zero at time 0.8 in 176.7 seconds.  The 800-grid
+calculation is running.

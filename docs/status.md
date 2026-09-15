@@ -206,8 +206,10 @@ generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The complete
 30,726-byte package now passes decoding, validation, translation, all
-four behavioral theorems, and independent verification.  Revised
-production runs and figures remain pending.
+four behavioral theorems, and independent verification.  The revised
+[192-grid data and figures](../data/euler-reconstructed-v1/README.md) are
+complete, with status zero at time 0.8 in 176.7 seconds.  Both production
+grids use eight reconstruction attempts.  The 800-grid run is active.
 
 The [complete Riemann solver](../plans/euler-riemann-complete.md) now has
 kernel-checked exact-byte proofs of complete execution, termination,

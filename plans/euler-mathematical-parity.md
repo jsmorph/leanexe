@@ -10,7 +10,7 @@ On 2026-09-14 the user authorized implementation of this detailed plan,
 including outward-rounded speed bounds and the common-factor positivity
 limiter.  These choices are approved for the new numerical implementation.
 
-## Reviewed claims and existing evidence
+## Reviewed claims and current evidence
 
 The [Euler article](https://lanyon.ai/research/euler-equations/) and its
 [2D proof source](https://github.com/lanyonai/CompressibleEuler/blob/a736aa5f8b17efd225c4692404e2442361d06729/proofs/compressible_euler_2d.lean)
@@ -22,15 +22,15 @@ and reflection symmetry.  The article reports positive numerical examples
 and discusses entropy behavior.  It describes Roe development as later work
 and identifies the cylinder boundary representation as unverified.
 
-| Claim | Present evidence | Completion target |
-|---|---|---|
-| Physical flux derivative and complete real eigenbasis | The 2D directional theorem and exact-binary connection pass. | Retain these results and add the sharp characteristic-speed bound. |
-| Left eigenvectors | The right eigenvector matrix is invertible. | Check its inverse, the left eigenrelation, and the decomposition identities used by subsequent mathematics. |
-| Executable speed bound | The present quantitative theorem gives velocity plus half the sound speed. | Bound every physical left/right characteristic speed by the selected decoded speed. |
-| Wave consistency and state jump | The production solver evaluates the Rusanov flux. | Prove its two-wave representation, zero waves for equal states, and sum equal to the state jump. |
-| Flux jump and conservation | Fixed 1D balance certificates and local 2D error bounds exist. | Prove the real flux-jump identity, local rounding residuals, and grid/time boundary-flux balance. |
-| Reconstruction | The production solver uses cell averages as face states. | Prove minmod constants, componentwise linear profiles, and reflection symmetry, then connect a positivity-preserving reconstruction to WASM. |
-| Positive density and pressure | Accepted states, sweep intermediates, and terminal arrays are safe. | Preserve this property through reconstructed faces, corrected speeds, and the complete revised solver. |
+| Claim | Completed evidence |
+|---|---|
+| Physical flux derivative and real eigenbasis | The directional derivative, complete right eigenbasis, and sharp characteristic-speed characterization pass.  The exact-binary theorem applies them to accepted cells and reconstructed faces. |
+| Left eigenvectors | The inverse matrix, left eigenrelation, and characteristic decomposition identities pass. |
+| Executable speed bound | The revised binary's outward-rounded speed encloses the physical characteristic magnitudes.  Accepted-stage CFL bounds use that enclosure. |
+| Wave consistency and state jump | The real Rusanov two-wave representation has zero waves for equal states and sums to the state jump. |
+| Flux jump and conservation | The real flux-jump identity and exact-binary grid/time balances pass, including physical boundary fluxes and bounded rounding residuals. |
+| Reconstruction | Real minmod constants, linearity, and reflection symmetry pass.  Rounded reconstruction has bounded errors, conditional linearity, and positivity-preserving face execution in the complete binary. |
+| Positive density and pressure | The complete revised binary preserves safety through reconstructed faces, intermediate sweep grids, accepted steps, and terminal arrays. |
 
 Universal status-zero completion and convergence to a continuous entropy
 solution remain separate mathematical questions.  Each new theorem will
@@ -333,7 +333,7 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Compose accepted-state, reconstructed-face, CFL, hyperbolicity, and conservation specifications with complete generated execution.
 - [x] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
 - [x] Check the independent package and all public/transitive axiom audits.
-- [ ] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
+- [x] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
 - [ ] Run the new 800-grid calculation under the same acceptance conditions and produce its figures.
 - [ ] Update the short article with the claim-to-theorem table, explicit conditions, rounding statements, and comparison with the preserved data.
 
@@ -343,8 +343,9 @@ Complete decoding, validation, translation equality, all four behavioral
 theorems, and independent checking pass.  Public and transitive audits
 use propext, Classical.choice, and Quot.sound only.  The proofs cover
 runtime grid sizes 2..800 and every reconstruction-trial word.  The user
-selected eight reconstruction attempts.  The 192-grid run has started,
-followed by its figures, the 800-grid run, and its figures.
+selected eight reconstruction attempts.  The [192-grid data and figures](../data/euler-reconstructed-v1/README.md)
+are complete, with status zero at time 0.8 in 176.7 seconds.  The 800-grid
+calculation is running.
 
 ## Gates and work order
 
