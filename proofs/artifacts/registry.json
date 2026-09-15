@@ -240,6 +240,12 @@
       "sha256": "40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189",
       "manifest": "euler_outward_flux/40745fe6d9c197672ccb9ce3a49a5ca01c046501932726c5ed4476cd629ef189/manifest.json",
       "proofTarget": "Project.EulerOutwardFlux.ArtifactTranslation"
+    },
+    {
+      "case": "euler_outward_face_step",
+      "sha256": "1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01",
+      "manifest": "euler_outward_face_step/1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01/manifest.json",
+      "proofTarget": "Project.EulerOutwardFaceStep.ArtifactTranslation"
     }
   ]
 }

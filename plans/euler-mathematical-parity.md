@@ -91,7 +91,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove the revised interface's exact-byte behavior.
 - [x] Compose the revised interfaces with conservative advancement and prove source safety, physical-reference error bounds, and exact-real face CFL bounds.
 - [x] Prove the scalar face-step's generated execution, complete rejection behavior, and numerical specifications.
-- [ ] Close the scalar face-step over its exact binary bytes.
+- [x] Close the scalar face-step over its exact binary bytes.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -173,8 +173,13 @@ has complete termination, exact output, store preservation, accepted safety,
 characteristic-CFL, and physical-reference residual proofs.  Its 9,077-byte
 module uses 50 reachable scalar functions and 168 direct-call annotations.
 The advancement proof takes 57 seconds, the entry composition 4.3 seconds,
-and the public specification 1.7 seconds.  The exact-byte package and
-complete solver integration remain open.
+and the public specification 1.7 seconds.  The exact-byte package now proves
+complete decoding, validation, translation, and all three specifications.
+Independent verification and all eight standard-axiom manifest audits pass.
+All body and section targets passed on their first attempts.  Splitting
+export-name encoding from descriptor validation resolved the validator's
+elaboration failure.  The accepted proof uses shared validation composition
+at the default heartbeat budget.  Complete solver integration remains open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

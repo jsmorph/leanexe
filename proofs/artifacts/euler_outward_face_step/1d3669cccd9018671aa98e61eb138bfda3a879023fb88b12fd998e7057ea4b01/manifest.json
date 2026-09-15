@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_outward_face_step",
+  "sha256": "1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01",
+  "byteLength": 9077,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerOutwardFaceStep.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerOutwardFaceStep.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerOutwardFaceStep.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerOutwardFaceStep.Program",
+  "cachedProgramDefinition": "Project.EulerOutwardFaceStep.module",
+  "specModule": "Project.EulerOutwardFaceStep.Spec",
+  "proofTarget": "Project.EulerOutwardFaceStep.ArtifactTranslation",
+  "identityTheorem": "Project.EulerOutwardFaceStep.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerOutwardFaceStep.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerOutwardFaceStep.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_exact",
+    "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_behavior",
+    "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_residual"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
