@@ -880,7 +880,7 @@ rejection, store-preservation, and numerical behavior proofs.  The maximum's
 exact-byte package passes, as does the mesh CFL package.  The generated
 grid fold proves terminating exact output, store preservation, and both
 directional speed bounds.  Its complete exact-byte package and independent
-check pass.  Solver integration remains open.  The rounded
+check pass.  The complete solver now has exact-byte proofs.  The rounded
 common-factor reconstruction has complete source and exact-byte safety,
 accuracy, and termination proofs, together with a conditional source-level
 linear-profile theorem.  Rounded halving is nonincreasing, and every
@@ -941,10 +941,11 @@ its accepted trace.  The area-weighted real-reference balance bounds
 update, boundary-flux, spacing, and outward-ratio errors.  All four
 generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
-passes with unchanged bytes and standard axiom audits.  The exact-byte
-package remains open.
+passes with unchanged bytes and standard axiom audits.  The complete
+30,726-byte package now passes decoding, validation, translation, all
+four behavioral theorems, and independent verification.  Revised
+production runs and figures remain pending.
 
-The revised byte array, balanced lookup, raw cache, all 153 function-body
-decoders, and the complete code section now pass.  All 153 function types,
-the type section, and the export table also pass.  Remaining section
-decoding, complete-file composition, validation, and translation are next.
+The exact-artifact theorems cover every runtime grid size from 2 through
+800 and every reconstruction-trial word.  The production trial count
+awaits selection before the ordered 192-grid and 800-grid calculations.

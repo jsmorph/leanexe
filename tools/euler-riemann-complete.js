@@ -11,8 +11,18 @@ const { runCheckedAsync } = require("./run-process");
 const { ensureHost } = require("./wasmtime-host");
 
 const root = path.resolve(__dirname, "..");
-const digest = "baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310";
-const artifact = path.join(root, "proofs/artifacts/euler_riemann", digest, "program.wasm");
+const solvers = {
+  run: {
+    case: "euler_riemann",
+    digest: "baefc44ed83f46607b7c938a6bc6912fb3fd21442df00c0d0f48c8454bee4310",
+    module: "Project.EulerRiemann",
+  },
+  "run-reconstructed": {
+    case: "euler_reconstructed",
+    digest: "b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb",
+    module: "Project.EulerReconstructed",
+  },
+};
 const hash = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 
 function decodeOutput(text, n) {
@@ -31,7 +41,7 @@ function decodeOutput(text, n) {
   return bytes;
 }
 
-async function writeDataset(directory, n, seconds) {
+async function writeDataset(directory, n, seconds, solver, trials) {
   const bytes = decodeOutput(fs.readFileSync(path.join(directory, "stdout.txt"), "utf8"), n);
   fs.writeFileSync(path.join(directory, "words.u64le"), bytes, { flag: "wx" });
   const status = bytes.readBigUInt64LE(0);
@@ -61,13 +71,14 @@ async function writeDataset(directory, n, seconds) {
     fs.createWriteStream(path.join(directory, "cells.csv.gz"), { flags: "wx" }));
   const summary = {
     grid: [n, n], domain: [0, 1, 0, 1], initialInterfaces: [0.8, 0.8], time: 0.8,
-    status: 0, seconds, artifactSha256: digest, wordsSha256: hash(bytes),
+    status: 0, seconds, artifactSha256: solver.digest, wordsSha256: hash(bytes),
+    ...(trials === undefined ? {} : { reconstructionTrials: trials }),
     format: "Little-endian UInt64 words: status, time bits, nx, ny, density bits, pressure bits",
     execution: "One call to the complete solve export in one local Wasmtime process",
-    specification: "Project.EulerRiemann.Spec.solve_exact",
-    successTheorem: "Project.EulerRiemann.Spec.solve_success",
-    artifactExactTheorem: "Project.EulerRiemann.Artifact.artifact_solve_exact",
-    artifactSuccessTheorem: "Project.EulerRiemann.Artifact.artifact_solve_success",
+    specification: `${solver.module}.Spec.solve_exact`,
+    successTheorem: `${solver.module}.Spec.solve_success`,
+    artifactExactTheorem: `${solver.module}.Artifact.artifact_solve_exact`,
+    artifactSuccessTheorem: `${solver.module}.Artifact.artifact_solve_success`,
     extrema,
   };
   fs.writeFileSync(path.join(directory, "summary.json"), JSON.stringify(summary, null, 2) + "\n", { flag: "wx" });
@@ -75,29 +86,34 @@ async function writeDataset(directory, n, seconds) {
 }
 
 async function main() {
-  const [command, grid, output, ...extra] = process.argv.slice(2);
+  const [command, grid, ...args] = process.argv.slice(2);
+  const solver = solvers[command];
+  const reconstructed = command === "run-reconstructed";
+  const [trials, output, ...extra] = reconstructed ? args : [undefined, ...args];
   const n = Number(grid);
-  if (command !== "run" || !Number.isInteger(n) || n < 2 || n > 800 || !output || extra.length) {
-    throw new Error("usage: euler-riemann-complete.js run <grid-size> <new-directory>");
+  if ((command !== "run" && !reconstructed) || !Number.isInteger(n) || n < 2 || n > 800 || !output || extra.length ||
+      (reconstructed && (!/^(0|[1-9][0-9]*)$/.test(trials) || BigInt(trials) >= 1n << 64n))) {
+    throw new Error("usage: euler-riemann-complete.js run <grid-size> <new-directory> | run-reconstructed <grid-size> <trials> <new-directory>");
   }
-  if (hash(fs.readFileSync(artifact)) !== digest) throw new Error("artifact digest mismatch");
+  const artifact = path.join(root, "proofs/artifacts", solver.case, solver.digest, "program.wasm");
+  if (hash(fs.readFileSync(artifact)) !== solver.digest) throw new Error("artifact digest mismatch");
   const directory = path.resolve(output);
   const host = ensureHost();
   fs.mkdirSync(directory);
   const stdout = fs.openSync(path.join(directory, "stdout.txt"), "wx");
   const stderr = fs.openSync(path.join(directory, "stderr.txt"), "wx");
   const started = performance.now();
-  console.log(`Starting complete WASM solve: ${n} x ${n}; output: ${directory}`);
+  console.log(`Starting complete WASM solve: ${solver.case}, ${n} x ${n}; output: ${directory}`);
   try {
     await runCheckedAsync([path.join(root, "tools/leanrun"), "--timeout", "24h", host,
-      "call", artifact, "solve", "array-u64", `i64:${n}`], {
+      "call", artifact, "solve", "array-u64", `i64:${n}`, ...(reconstructed ? [`i64:${trials}`] : [])], {
       cwd: root, stdio: ["ignore", stdout, stderr],
     });
   } finally {
     fs.closeSync(stdout);
     fs.closeSync(stderr);
   }
-  await writeDataset(directory, n, (performance.now() - started) / 1000);
+  await writeDataset(directory, n, (performance.now() - started) / 1000, solver, trials);
 }
 
 if (require.main === module) {
