@@ -319,9 +319,10 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Prove generated-WASM directional sweeps, their composition, ownership, page limits, and memory reservations.
 - [x] Transfer retained initialization, output, and release execution proofs.
 - [x] Prove complete generated-WASM retry behavior, termination, preserved ownership, page limits, and memory reservation.
-- [ ] Complete the generated-WASM time-advancement controller proof.
-- [ ] Reprove allocation, ownership, termination, complete failure behavior, and the full memory bound for the changed call graph.
-- [ ] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
+- [x] Complete the generated-WASM time-advancement controller proof.
+- [x] Reprove allocation, ownership, termination, complete failure behavior, and the full memory bound for the changed call graph.
+- [x] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
+- [ ] Instantiate the revised face-row conservation theorems in the reconstructed traversal and accepted trace.
 - [ ] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
 - [ ] Check the independent package and all public/transitive axiom audits.
 - [ ] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
