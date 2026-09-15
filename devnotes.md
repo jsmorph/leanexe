@@ -12268,3 +12268,15 @@ from two through 800.  Source regeneration passed with unchanged
 30,726-byte artifact b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
 All public audits use standard axioms.  The exact-byte package is next,
 followed by the ordered revised production runs and figures.
+
+## Reconstructed Euler byte and scalar decoding
+
+The embedded 30,726-byte array, balanced byte lookup, raw cache, and
+function-body decoder theorems 0–119 now pass.  A flat literal exceeded
+Lean's LCNF heartbeat limit.  Four smaller literal definitions retain
+the same byte array and compile under the original budget.  Body proofs
+use the existing checked decoder composition and parser-derived sequence
+cuts.  Their audits use propext only.  Larger remaining proof groups
+have bounded dependency-ordered compilation units.  Controller and
+initialization body decoding, full-file composition, validation, translation,
+independent checking, and production execution remain open.
