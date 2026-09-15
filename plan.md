@@ -55,8 +55,11 @@ output, ownership, page-limit, and memory-reservation proofs.  The complete
 retry function now proves termination and exact source behavior for
 acceptance, CFL rejection, trial rejection, invalid time advancement, and
 fuel exhaustion.  It preserves source ownership, a supplied page limit,
-and the heap reservation.  Time advancement, the complete memory bound,
-and the exact-byte package remain open.
+and the heap reservation.  Complete time advancement, initialization, and
+output now compose into a terminating generated-WASM solver theorem with
+exact source output and a 512 MiB memory bound.  It covers grid sizes from
+two through 800 and every runtime reconstruction-trial word.  Revised-row
+conservation instantiation and the exact-byte package remain open.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

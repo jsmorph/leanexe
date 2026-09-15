@@ -12218,3 +12218,22 @@ a heartbeat limit in the valid-time composition, which then checked in
 Time advancement, the complete solver memory bound, reconstruction-based
 row conservation, and exact-byte closure remain open.  Production runs
 remain gated on those proofs.
+
+## 2026-09-15: Complete reconstructed Euler execution
+
+The revised generated solver now proves termination, exact Lean output,
+and a 512 MiB linear-memory bound for grid sizes from two through 800
+and every runtime reconstruction-trial word.  The advancement theorem
+covers accepted steps, scan failure, and retry failure, retaining the
+last accepted grid when a failure occurs.  Its entry checked in 1.9
+seconds.  Run checked in 2.3 seconds, solve in 1.7, and the initial-store
+theorem in 1.3.  Every new advancement and run/solve module passed its
+first check with standard public axiom audits.
+
+The memory proof reuses the existing allocation budget and checked
+initialization/output transfers.  The byte budget is at most 350,243,520
+plus the initial heap offset, below the 536,870,912-byte limit.  The
+runtime trial count does not enlarge that bound.
+
+Revised-row conservation, the numerical specifications, and exact-byte
+closure remain.  No revised production run has started.

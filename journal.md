@@ -21914,3 +21914,95 @@ RetryShape, RetryTotalInvalid, RetryTotalIteration, RetryTotalLoop,
 RetryTotalStep, RetryTotalValid, RetryTrial, and TimeTransfers.  The
 checkpoint title is “Prove complete reconstructed Euler retries.”
 All unrelated untracked data and paper records remain untouched.
+
+Published 913db47c1274ba26da0ef825e81cfff149b2f16a, with parent
+338d8b9597aa7e5b6f3d149c12f206fe655e009a and tree
+91827a13a083ed028d981ca85686ba7153520316.  Its title is “Prove complete
+reconstructed Euler retries.”  The non-forced push and fetch passed.
+HEAD, FETCH_HEAD, origin, parent, title, full tree, index, and tracked
+worktree agree.  The checkpoint contains 24 files, 1,687 insertions,
+and 11 deletions.  Git write-tree initially failed because the sandbox
+made .git read-only.  The user approved its reusable prefix, and the
+tree-recording operation succeeded before commit.
+
+Started the time-advancement proof by inspecting generated function 129:
+six parameters, 49 locals, guard completion local 11, outward grid scan
+46, proposal 49, retry 125, and release 152.  Added exact loop/branch
+shapes and frame predicates in AdvanceLoopShape and AdvanceFrame.  The
+trial branch passes runtime reconstruction trials and the scanned
+outward speed to retry.  Its continuation releases the prior owned grid
+and installs the returned owner for the next iteration.
+
+AdvanceLoopShape passed first in 3.8 seconds, and AdvanceFrame in 2.5,
+with standard public audits.  Added guard, outward-scan, total-trial,
+returned-frame, and continuation proofs.  The trial composes the existing
+proposal fuel-encoding theorem and the complete new retry theorem.  The
+continuation distinguishes the initial borrowed grid from subsequent owned
+grids, releasing only the latter when replacing the current grid.
+
+The scan, total trial, guards, and continuation passed first in 1.4,
+2.6, 1.5, and 3.9 seconds, respectively.  All public audits use standard
+axioms.  Added the total advancement invariant, retaining the existing
+current-grid ownership and replacement model while expressing the new
+source recurrence with runtime reconstruction trials.  The next check
+also checks the pending returned-frame module.
+
+Added the work-branch composition in AdvanceTotalWork.  Its source
+equalities use the outward grid maximum and new retry recurrence, with
+the same current-grid ownership model.  Accepted trials advance time and
+restore the next iteration's reservation.  Scan failure and retry failure
+produce the exact source return and preserve the current grid.
+
+The returned-frame module passed first in 1.0 seconds and the total
+invariant in 2.1.  The old shared replacement and preservation dependencies
+rechecked in 1.3 seconds each.  The complete work branch passed first in
+3.3 seconds.  All public audits use standard axioms.  Added the iteration,
+block loop, and complete advancement entry, composing this result with
+the time-finished branch and existing well-founded loop theorem.
+
+The final advancement iteration passed first in 2.3 seconds, its loop in
+1.4, and its entry in 1.9.  Both entry audits use standard axioms.  The
+remaining function composition is initialization, run, and output.
+A filename search assumed ExecutionRunTotal and ExecutionSolveTotal,
+which do not exist.  Scoped discovery identified ExecutionRun and
+ExecutionSolve, which contain the complete existing compositions.
+
+Inspected generated run function 142 and solve function 148.  Both take
+two runtime words.  Added RunGuard, ExecutionRun, ExecutionSolve, and
+SolveInitial, composing the retained initialization/output functions with
+the newly checked controller.  The resource proof reuses the unchanged
+array capacities and allocation budget.  The initial-store theorem
+targets the same 512 MiB limit for every grid size from two through 800
+and every runtime reconstruction-trial word.
+
+The complete generated solver check passed.  RunGuard checked first in
+2.5 seconds, run in 2.3, solve in 1.7, and the initial-store theorem in
+1.3.  The build also rechecked the old total-controller dependencies
+required by the shared RunResources module.  All public audits use
+standard axioms.  The new initial-store theorem proves termination and
+exact output for function 148 at every runtime reconstruction-trial
+word and grid size from two through 800, with at most 8192 memory pages.
+The allocation budget is at most 350,243,520 bytes plus the initial
+4096-byte heap offset, below the stated 512 MiB bound.
+
+Reviewed the accepted controller, run, and solve proof compositions with
+the journal and build telemetry.  All 16 new modules passed their first
+checks.  The existing compiler guard equality, exact generated branch
+shapes, shared ownership/replacement lemmas, and retained function-region
+transfers supplied the reusable components.  This checkpoint makes no
+LTG promotion or held-out performance claim.  The exact binary still
+requires decoding, validation, translation, and numerical specifications.
+Updated the plans, status, proof inventory, and development notes.
+
+The documentation gate checked all 120 maintained Markdown files, the
+whitespace check passed, and the revised proof-source scan found no
+sorry, admit, new axiom, or native_decide declaration.  Stage the seven
+reviewed documentation/journal paths and the 16 new modules:
+AdvanceContinue, AdvanceFrame, AdvanceGuard, AdvanceLoopShape,
+AdvanceScan, AdvanceTotalFrame, AdvanceTotalInvariant,
+AdvanceTotalIteration, AdvanceTotalLoop, AdvanceTotalTrial,
+AdvanceTotalWork, ExecutionAdvanceTotal, ExecutionRun, ExecutionSolve,
+RunGuard, and SolveInitial.  The parent is
+913db47c1274ba26da0ef825e81cfff149b2f16a.  The checkpoint title is
+“Prove complete reconstructed Euler execution.”  Unrelated data and
+paper records remain unstaged and preserved.
