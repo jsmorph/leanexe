@@ -1,6 +1,6 @@
 # Development Plan
 
-The active Euler work is [mathematical parity with the Lanyon article](plans/euler-mathematical-parity.md), authorized on 2026-09-14.  It covers physical speed bounds, wave and flux identities, conservation with rounding residuals, reconstruction, and their complete exact-WASM proofs.
+The [Euler mathematical parity development](plans/euler-mathematical-parity.md), authorized on 2026-09-14, is complete.  It covers physical speed bounds, wave and flux identities, conservation with rounding residuals, reconstruction, and their complete exact-WASM proofs.  Both revised production grids and their figures are complete.  The short article records the theorem conditions and numerical comparisons.  Convergence to a continuous entropy solution remains a separate open question.
 
 The outward speed has exact-byte proofs.  Interface/grid maxima and the
 cellwise CFL inequality pass source checks.  The generated interface
@@ -66,15 +66,16 @@ generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The complete
 30,726-byte package now passes decoding, validation, translation, all
-four behavioral theorems, and independent verification.  The revised
-192-grid run returned status zero at time 0.8 in 176.7 seconds.  Its
-density and pressure figures are complete.  The 800-grid run is active.
+four behavioral theorems, and independent verification.  Both revised
+runs returned status zero at time 0.8.  The 192-grid runtime was 176.7
+seconds, and the 800-grid runtime was 3 hours 58 minutes.  Their density
+and pressure figures are complete.
 
 The exact-artifact theorems cover every runtime grid size from 2 through
 800 and every reconstruction-trial word.  The user selected eight
 reconstruction attempts for both production grids.  The
-[revised calculation](data/euler-reconstructed-v1/README.md) contains the
-192-grid results.  The 800-grid data, figures, and final comparison remain.
+[revised calculation](data/euler-reconstructed-v1/README.md) contains both
+datasets, figures, the claim-to-theorem table, and the final comparison.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

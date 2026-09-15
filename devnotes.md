@@ -12320,11 +12320,14 @@ count.  It requires status zero, the exact final-time word, matching
 dimensions, and positive finite plotted fields.  The user selected eight
 reconstruction attempts for both grids.  The 192-grid run returned status
 zero at time 0.8 in 176.652815209 seconds.  Density and pressure are finite
-and positive.  Plotting produced PNG, SVG, and PDF.  The PNG passed visual review.  The
-[short article](data/euler-reconstructed-v1/README.md) includes its data
-and the checked mathematical claims.
+and positive.  The 800-grid run returned status zero at time 0.8 in
+14,277.803336597 seconds.  Its density and pressure values pass the same
+checks.  Each run used one Wasmtime solve under the standard one-CPU,
+4 GiB high, 6 GiB maximum, and 1 GiB swap limits.  The monitored 800-grid
+memory stayed near 309 MiB.  Both runs produced PNG, SVG, and PDF figures,
+and both PNGs passed visual review.  All earlier datasets remain preserved.
 
-The 800-grid run started on 2026-09-15 at 11:11:46 CDT in scope
-run-p1639145-i1639445.scope.  The runner enforces one CPU, 4 GiB high,
-6 GiB maximum, and 1 GiB swap.  The initial memory peak was 323,854,336
-bytes.  Its data, figures, and final article comparison remain.
+The [short article](data/euler-reconstructed-v1/README.md) includes both
+datasets, figures, numerical comparisons, and the claim-to-theorem table.
+The authorized mathematical parity plan and ordered production sequence
+are complete.  Convergence to a continuous entropy solution remains open.

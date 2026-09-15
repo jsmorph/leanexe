@@ -912,7 +912,7 @@ now has terminating generated-WASM execution, exact output, store
 preservation, and all three public numerical specifications.  Its exact-byte
 package now passes complete decoding, validation, behavior transfer, and
 independent verification with standard axioms.  Complete solver integration
-remains open.
+now passes its exact-byte proof and independent check.
 
 The revised face-row source proofs now establish shared-flux cancellation,
 computed and physical Rusanov reference balances, and bounds on accumulated
@@ -943,12 +943,13 @@ generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The complete
 30,726-byte package now passes decoding, validation, translation, all
-four behavioral theorems, and independent verification.  The revised
-192-grid run returned status zero at time 0.8 in 176.7 seconds.  Its
-density and pressure figures are complete.  The 800-grid run is active.
+four behavioral theorems, and independent verification.  Both revised
+runs returned status zero at time 0.8.  The 192-grid runtime was 176.7
+seconds, and the 800-grid runtime was 3 hours 58 minutes.  Their density
+and pressure figures are complete.
 
 The exact-artifact theorems cover every runtime grid size from 2 through
 800 and every reconstruction-trial word.  The user selected eight
 reconstruction attempts for both production grids.  The
-[revised calculation](../data/euler-reconstructed-v1/README.md) contains the
-192-grid results.  The 800-grid data, figures, and final comparison remain.
+[revised calculation](../data/euler-reconstructed-v1/README.md) contains both
+datasets, figures, the claim-to-theorem table, and the final comparison.

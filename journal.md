@@ -22577,3 +22577,53 @@ push and fetch passed.  HEAD, FETCH_HEAD, origin, parent, tree, title,
 index, and tracked worktree all agree.  The active 800-grid files and
 unrelated paper/data paths remain untracked.  This single receipt records
 that publication.  The 800-grid solve remains active in its recorded scope.
+
+The publication receipt is 31717e2a5a32b1d1abba832c5ca4a44ec0687090,
+parent 02742e50a688acc8cab5fcc438639e9dbbaf55c6, tree
+0226f5988cfba5d3d17d940ab13929124a2bd074, title “Record
+reconstructed Euler data publication.”  Its non-forced push, fetch,
+commit, parent, tree, title, index, and tracked worktree checks passed.
+No further receipt-only commit was created for that receipt.
+
+The 800-grid calculation completed with driver exit zero and solver status
+zero at the exact binary64 time-0.8 word.  Runtime was
+14,277.803336597 seconds, or 3 hours 57 minutes 57.8 seconds, about
+12 percent above the cubic-grid estimate from the 192 run.  The final
+words have SHA-256 64ff9d32fe0f7db442211b1c160726962d7742e92a3e7336d96199232a87dd4c.
+Density ranges from 0.138 to 1.7392110221579629.  Pressure ranges from
+0.02899999999999997 to 1.6635239523489416.  Dimensions, output length,
+and all finite-positive field checks pass.  Stderr is empty.
+
+During the run, the scope remained active and reported about 308.6–308.9
+MiB of memory.  A final monitor query ran after systemd collected the scope
+and formatted its absent resource properties as NaN.  That monitoring
+display did not concern the numerical fields.  The driver then returned
+its successful result.  Monitoring neither inspected nor changed WASM
+state, and no duplicate numerical process ran.  The final dataset and
+figure files total about 51 MB.
+
+The unchanged plotting command passed under tools/leanrun --timeout 2m
+and produced the 800-grid PNG, SVG, and PDF.  Viewed the new PNG beside
+the preserved 800-grid PNG and the previously viewed Lanyon density
+reference.  The revised finer grid shows thinner fronts and more curved
+internal structure.  Large-scale front positions and the high-density
+region near (0.6, 0.6) resemble the reference.  The article identifies
+these as comparisons of discrete fields and retains the unproved
+continuous-convergence boundary.
+
+Completed the article's two-grid results, links, ranges, runtimes, and
+claim-to-theorem table.  Updated README, status, the root plan, both
+Euler plans, and devnotes to record completion.  Corrected a stale
+solver-integration-open sentence in the Rusanov plan.  The proof sources,
+frozen binary, completed proof checks, runner settings, and old data are
+unchanged.  The authorized sequence is complete: proofs, 192 run,
+192 plot, 800 run, and 800 plot.
+
+Reviewed the final documentation and article, including theorem names,
+numerical conditions, both datasets, and the visual comparison.  The
+whitespace check, all 120 maintained Markdown files, and all 19 local
+article links pass.  The scope inventory confirms both numerical runs
+and plotting have ended.  The final checkpoint, “Complete reconstructed
+Euler runs and figures,” stages exactly eight reviewed documentation
+and journal paths and the eight completed 800-grid output files.
+Every unrelated path and all earlier outputs remain preserved.
