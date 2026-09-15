@@ -12318,6 +12318,13 @@ fixed artifact and its use of shared parser support.
 The production driver accepts grid size and a UInt64 reconstruction-trial
 count.  It requires status zero, the exact final-time word, matching
 dimensions, and positive finite plotted fields.  The user selected eight
-reconstruction attempts for both grids.  The 192-grid run started on
-2026-09-15 at 11:08:19 CDT under the standard one-CPU, 6 GiB runner scope.
-The ordered work is 192, plot 192, 800, plot 800, and the short article.
+reconstruction attempts for both grids.  The 192-grid run returned status
+zero at time 0.8 in 176.652815209 seconds.  Density and pressure are finite
+and positive.  Plotting produced PNG, SVG, and PDF.  The PNG passed visual review.  The
+[short article](data/euler-reconstructed-v1/README.md) includes its data
+and the checked mathematical claims.
+
+The 800-grid run started on 2026-09-15 at 11:11:46 CDT in scope
+run-p1639145-i1639445.scope.  The runner enforces one CPU, 4 GiB high,
+6 GiB maximum, and 1 GiB swap.  The initial memory peak was 323,854,336
+bytes.  Its data, figures, and final article comparison remain.

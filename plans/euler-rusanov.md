@@ -943,10 +943,12 @@ generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The complete
 30,726-byte package now passes decoding, validation, translation, all
-four behavioral theorems, and independent verification.  Revised
-production runs and figures remain pending.
+four behavioral theorems, and independent verification.  The revised
+192-grid run returned status zero at time 0.8 in 176.7 seconds.  Its
+density and pressure figures are complete.  The 800-grid run is active.
 
 The exact-artifact theorems cover every runtime grid size from 2 through
 800 and every reconstruction-trial word.  The user selected eight
-reconstruction attempts for both production grids.  The 192-grid run
-has started.  Its figures precede the 800-grid run and figures.
+reconstruction attempts for both production grids.  The
+[revised calculation](../data/euler-reconstructed-v1/README.md) contains the
+192-grid results.  The 800-grid data, figures, and final comparison remain.

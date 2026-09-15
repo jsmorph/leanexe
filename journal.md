@@ -22517,3 +22517,53 @@ the selected count and active 192-grid run.  The diff whitespace check
 and all 120 maintained Markdown files pass.  This six-file checkpoint
 is titled “Start reconstructed Euler runs with eight attempts.”  Running
 output and all unrelated files remain outside its explicit staged paths.
+
+Published 59a15bba7b3390f7a4bbe755cdc0ed4e50ca7cc3, parent
+2ba290b2ff2ad2631e30dc8076976ed27fc255dd, tree
+11cabc7c3fba5c1f944e82c67c9b137143cc47fc, with the recorded title.
+Non-forced push and fetch passed.  HEAD, FETCH_HEAD, origin, parent,
+tree, title, index, and tracked worktree all agree.  The active output
+and preserved unrelated paths remain untracked.  A sandboxed process
+query saw only its own PID namespace and supplied no run evidence.
+The approved systemctl query supplied the running-scope evidence instead.
+
+The 192-grid driver finished with status zero in 176.652815209 seconds,
+returned the exact time-0.8 word and dimensions, and accepted every density
+and pressure value as finite and positive.  The output-word SHA-256 is
+6304853f58507013eca1eef730c0081de271233694f5b122d03539175ccb6b3c.
+Density ranges from 0.138 to 1.7251032968852273.  Pressure ranges from
+0.02899999999999997 to 1.670588687881711.  Stderr is empty.  The unchanged
+plot script passed under tools/leanrun --timeout 2m and produced PNG,
+SVG, and PDF.  Visual review of the new and preserved 192-grid figures
+shows thinner fronts and more structure in the interaction region.
+Both reconstruction and speed arithmetic changed, so this comparison
+does not isolate either change or establish an accuracy order.
+
+After completing and viewing those plots, started
+node tools/euler-riemann-complete.js run-reconstructed 800 8
+data/euler-reconstructed-v1/800-run.  Its single Wasmtime solve runs in
+scope run-p1639145-i1639445.scope, active since 11:11:46 CDT.  The scope
+confirms the standard one-CPU, 4 GiB high, 6 GiB maximum, and 1 GiB swap
+limits.  Its initial memory peak is 323,854,336 bytes.  Cubic grid scaling
+of the 192 measurement estimates 3.55 hours, subject to retry and memory
+cost differences.  The program emits final output only, so that estimate
+does not measure its current simulation time.
+
+Re-read the Lanyon article and the public exact-artifact, trace-safety,
+and physical-conservation specifications.  Created the short article
+with the 192-grid figure and data, the chosen trial count, checked claims,
+explicit floating-point conditions, runtime trust boundary, and remaining
+continuous-solution question.  Its 800-grid result remains marked running.
+The original draft and all earlier data remain preserved.  Updated the
+maintained plans, README, status, and devnotes to match the completed
+192-grid result and active 800-grid calculation.
+
+The parity overview now records completed evidence for all seven reviewed
+mathematical claim groups.  Reviewed the complete documentation diff and
+the short article twice.  The whitespace check, 120 maintained Markdown
+files, and all nine local article links pass.  The 192-grid deliverables
+total about 3.7 MB, including raw decimal stdout and binary words.
+The next checkpoint, “Publish reconstructed Euler 192-grid results,”
+contains the seven reviewed documentation/journal paths, the short
+article, and the eight completed 192-grid output files.  Active 800-grid
+files and unrelated state remain outside the explicit staged paths.

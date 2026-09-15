@@ -1,0 +1,38 @@
+{
+  "grid": [
+    192,
+    192
+  ],
+  "domain": [
+    0,
+    1,
+    0,
+    1
+  ],
+  "initialInterfaces": [
+    0.8,
+    0.8
+  ],
+  "time": 0.8,
+  "status": 0,
+  "seconds": 176.65281520899998,
+  "artifactSha256": "b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb",
+  "wordsSha256": "6304853f58507013eca1eef730c0081de271233694f5b122d03539175ccb6b3c",
+  "reconstructionTrials": "8",
+  "format": "Little-endian UInt64 words: status, time bits, nx, ny, density bits, pressure bits",
+  "execution": "One call to the complete solve export in one local Wasmtime process",
+  "specification": "Project.EulerReconstructed.Spec.solve_exact",
+  "successTheorem": "Project.EulerReconstructed.Spec.solve_success",
+  "artifactExactTheorem": "Project.EulerReconstructed.Artifact.artifact_solve_exact",
+  "artifactSuccessTheorem": "Project.EulerReconstructed.Artifact.artifact_solve_success",
+  "extrema": {
+    "density": [
+      0.138,
+      1.7251032968852273
+    ],
+    "pressure": [
+      0.02899999999999997,
+      1.670588687881711
+    ]
+  }
+}
