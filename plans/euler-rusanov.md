@@ -947,5 +947,6 @@ four behavioral theorems, and independent verification.  Revised
 production runs and figures remain pending.
 
 The exact-artifact theorems cover every runtime grid size from 2 through
-800 and every reconstruction-trial word.  The production trial count
-awaits selection before the ordered 192-grid and 800-grid calculations.
+800 and every reconstruction-trial word.  The user selected eight
+reconstruction attempts for both production grids.  The 192-grid run
+has started.  Its figures precede the 800-grid run and figures.
