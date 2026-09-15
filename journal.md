@@ -22475,3 +22475,15 @@ The title is “Prove the complete reconstructed Euler binary,” with
 parent 64f24a2bfa688400e24d20aae078d47eb2d89524.  Revised numerical
 execution awaits the pending reconstruction-trial count.  All unrelated
 paper, data, generated, cached, and failed-proof state remains preserved.
+
+Published 659dc52c82de58e1d0db30b043c2651ba40ca55d, parent
+64f24a2bfa688400e24d20aae078d47eb2d89524, tree
+6f978f2773a3b5160910a01f47a6c69d6074e3b6, title “Prove the
+complete reconstructed Euler binary.”  The 36 reviewed paths contain
+3,351 insertions, 61 deletions, and the new 30,726-byte binary.
+Non-forced push and fetch passed.  HEAD, FETCH_HEAD, origin, parent,
+tree, title, index, and all 36 checkpoint worktree paths agree.
+Only the pre-existing untracked paper and data paths remain in status.
+No Lean job or revised production process remains running.  A single
+receipt commit records this publication.  The next substantive work
+depends on the pending production reconstruction-trial count.
