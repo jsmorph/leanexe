@@ -22166,3 +22166,110 @@ The documentation check passed for all 120 maintained Markdown files.
 Reviewed the complete new theorem sources and documentation diff.
 The checkpoint title is “Prove reconstructed Euler numerical specification.”
 Its parent is f2c961762beb26df007ec6b362058da5bf931e95.
+
+Published aa487939552758cc7600aa1e4b34445d2f74f00c, parent
+f2c961762beb26df007ec6b362058da5bf931e95, tree
+8b2ebae5b783a39db990a8c1ea9e19872a5a124f, title “Prove reconstructed
+Euler numerical specification.”  Its 13 paths contain 337 insertions
+and 21 deletions.  The non-forced push and fetch passed.  HEAD,
+FETCH_HEAD, origin, parent, tree, title, and index agree.  Status before
+artifact generation confirmed no tracked worktree differences.
+A Node subprocess-based read-only verification reported spawnSync EPERM.
+Direct Git reads supplied the identities.  The later worktree comparison
+shows exactly the subsequent artifact registration changes.
+
+Kernel-mode artifact migration passed for euler_reconstructed.  Reviewed
+its bounded registry and CheckFile additions.  The frozen binary has
+30,726 bytes, 153 functions, and the unchanged b955d70e digest.  The
+normative CodeOffsets section and nested extraction commands passed
+under one-minute standard runner limits.  Their fresh CSV records remain
+in tmp.  Added a scoped proof generator using the prior face-step
+decomposition, 128-byte sequence cuts, groups of eight functions, and
+the shared parser composition lemmas.  It also composes explicit
+decoded-binary forms of the four numerical behavior theorems.
+
+The decoder generator produced 34 modules, 153 code-body theorems,
+and 452 instruction-sequence certificates.  The first byte-lookup
+build failed in ArtifactBytes after 13 seconds: Lean LCNF compilation
+of the flat 30,726-element literal exceeded 200,000 heartbeats.
+Preserved the flat draft in tmp and divided its literal into four
+list definitions of at most 8,192 bytes.  The artifactData and
+artifactBytes values remain definitionally identical.  No proof
+budget, runner limit, decoder, or executable byte changed.
+
+Extended the existing complete-solver host command with run-reconstructed,
+an explicit runtime trial word, the frozen revised artifact identity,
+and revised theorem names in its output summary.  The same Wasmtime
+host performs one solve call, and the same output acceptance and CSV
+code applies.  This edit prepares the authorized production sequence.
+No revised simulation has executed.  The plotting command remains
+tools/euler-riemann-plot.py.  A read of the absent complete-plot.py
+path failed before the documented path was read.
+
+The split byte constant passed in 19 seconds.  Balanced byte lookup
+passed in 25 seconds, with propext only.  The original default
+heartbeat and runner bounds remain.  This result confirms that the
+LCNF failure came from one oversized literal definition.  The host
+command passes Node syntax checking.  Review tightened command-name
+validation before selecting the artifact.
+
+Code bodies 0 through 7 passed first in 38 seconds with propext-only
+audits.  The raw cache compiled in 3.0 seconds.  Each body result
+composes its checked instruction-sequence certificate with code_eq_of_parts,
+including size and cursor premises.  The larger cache and byte array
+increase these measured costs relative to the face-step helper.  This
+is a further fixed-artifact measurement, not a held-out retrieval result
+or an LTG promotion.  The revised complete module uses the existing
+shared decoder and byte-lookup abstractions without changing them.
+
+Bodies 8 through 15 passed first in 42 seconds.  The next four groups
+passed first: 16–23 in 58 seconds, 24–31 in 58 seconds, 32–39 in
+63 seconds, and 40–47 in 65 seconds.  Every body audit uses propext
+only.  The accepted proofs retain the same shared sequence, cursor,
+size, and lookup composition.  All checks ran sequentially through
+the standard runner with three-minute limits.  The preserved full
+outputs contain no theorem failures or proof revisions.
+
+Bodies 48–55 passed first in 64 seconds, 56–63 in 127 seconds,
+64–71 in 70 seconds, and 72–79 in 120 seconds.  Every audit uses
+propext only.  The larger stencil and limiter groups stay below the
+three-minute process limit without local proof-budget increases.
+Reviewed their accepted nested sequence cuts against the parser-derived
+goals.  Before checking the remaining update and controller groups,
+inspect their sizes to choose bounded module boundaries.
+
+The remaining initializer and output bodies contain substantially more
+sequence certificates than the passing stencil group.  Divided five
+unchecked eight-function modules into dependency-ordered parts of at
+most 16 whole theorem declarations.  Their original module names now
+import the final part, retaining the code-vector import API and every
+public theorem statement.  Saved each unsplit draft under a fresh tmp
+path.  The split changes proof compilation boundaries, without changing
+proof tactics, bytes, semantics, or resource limits.
+
+Bodies 80–87 passed first in 54 seconds, 88–95 in 67 seconds,
+and 96–103 in 53 seconds.  Every body audit uses propext only.
+All first 104 body theorems now pass.  The next checks use the split
+modules for scalar advancement and the reconstructed step, then the
+remaining stencil projections.  The sequence goals, theorem names,
+and shared composition remain identical to the retained unsplit drafts.
+
+The advancement/reconstructed-step parts passed first in 63 seconds,
+52 seconds, and 7.3 seconds.  Bodies 112–119 passed first in
+35 seconds.  All audits use propext only.  Decoder bodies 0–119
+are complete, with no body-specific proof revision.  The split files
+preserve the public theorem names and prior sequence declarations.
+Prepared a coherent checkpoint of these accepted byte/cache/scalar
+proofs and their progress records.  Remaining package scaffolds, the
+registry addition, CheckFile addition, and production-driver edit stay
+unstaged until their complete package gate passes.
+
+The split 104–111 aggregate import passed in 1.2 seconds.  All 120
+maintained Markdown files passed the documentation check.  A read-only
+reconstruction of the four byte literals matches the exact 30,726-byte
+generated file and b955d70e digest.  The staged checkpoint comprises
+25 explicit paths: ArtifactBytes, ArtifactByteLookup, ArtifactCache,
+the fifteen eight-function modules through 119, the three checked
+104–111 parts, and devnotes, journal, root plan, and Euler plan.
+The title is “Prove reconstructed Euler scalar byte decoding,” with
+parent aa487939552758cc7600aa1e4b34445d2f74f00c.

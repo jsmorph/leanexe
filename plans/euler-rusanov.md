@@ -943,3 +943,7 @@ generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The exact-byte
 package remains open.
+
+The revised byte array, balanced lookup, raw cache, and function-body
+decoding through function 119 now pass.  The remaining controller,
+initialization, and output bodies and complete file composition are next.
