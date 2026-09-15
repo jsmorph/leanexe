@@ -242,6 +242,14 @@ internal grid.  Serialized output continues to contain density and
 pressure.  These statements will require the corresponding instantiation
 for the revised reconstruction and outward-CFL solver.
 
+The revised face-row source model now proves shared-flux cancellation,
+the sum of update residuals, and its rounding bound for accepted output.
+Every interface is accepted when all cells in a nonempty row are accepted.
+The physical Rusanov reference balance adds only the two boundary-flux
+errors to the summed update-error bound.  Both modules pass with standard
+axioms.  They accept arbitrary face sequences, leaving reconstruction,
+grid traversal, and exact-WASM composition as the remaining instantiations.
+
 Open boundaries contribute physical flux.  Rejected trials preserve the
 last accepted grid, and their discarded values contribute no accepted-step
 balance.  A useful error theorem must bound the residuals using established

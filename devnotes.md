@@ -12126,3 +12126,21 @@ The accepted validator uses the default heartbeat budget and the shared
 Export checks took 2.2 seconds, metadata 1.1 seconds, complete validation
 14 seconds, and behavioral transfer 5.0 seconds.  The journal preserves
 the failed attempts.  Complete revised-solver integration remains open.
+
+## 2026-09-14: Revised face-row conservation
+
+The [row balance](proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowBalance.lean)
+proves exact cancellation of shared computed interface fluxes for every
+accepted row and bounds the sum of update-rounding residuals.  The
+[reference balance](proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowReference.lean)
+expresses the row change through the physical Rusanov boundary fluxes.
+Its error bound contains the two boundary-flux errors and the sum of
+update errors.  Interface acceptance follows from accepted cell results.
+
+The proofs accept arbitrary supplied face sequences, allowing later
+instantiation with the checked reconstruction.  They reuse advance_balance,
+the physical-interface bound, and RealFiniteVolumeBalance.sweep_balance.
+The computed-row proof passed first in 1.4 seconds.  The reference-row proof
+passed in 1.1 seconds after correcting the triangle lemma's arity.  All
+seven audits use standard axioms.  Grid traversal and exact-WASM composition
+remain open.
