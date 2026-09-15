@@ -297,7 +297,7 @@ operations.  Complete generated execution, termination, exact-word output,
 safety, and accuracy specifications pass the source regeneration gate.
 The exact-byte decoder, validator, execution transfer, and independent package
 check pass for digest 0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
-Stage integration is proved.  The production trial budget awaits selection.
+Stage integration is proved.  Both production grids use eight reconstruction attempts.
 
 The shared halving theorem proves finite, nonnegative, nonincreasing output
 for each factor step, including subnormal rounding and zero.  The source
@@ -342,9 +342,9 @@ b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
 Complete decoding, validation, translation equality, all four behavioral
 theorems, and independent checking pass.  Public and transitive audits
 use propext, Classical.choice, and Quot.sound only.  The proofs cover
-runtime grid sizes 2..800 and every reconstruction-trial word.  Production
-execution awaits the trial-count choice, then follows the prescribed
-192, plot, 800, plot order.
+runtime grid sizes 2..800 and every reconstruction-trial word.  The user
+selected eight reconstruction attempts.  The 192-grid run has started,
+followed by its figures, the 800-grid run, and its figures.
 
 ## Gates and work order
 

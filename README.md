@@ -144,5 +144,6 @@ now has complete exact-byte proofs and an accepted independent package
 check.  Its 30,726-byte module adds positivity-limited minmod reconstruction,
 outward characteristic-speed bounds, and checked CFL conditions.  Its
 accepted trace has state and face safety, hyperbolicity, and conservation
-with bounded rounding residuals.  Revised 192-grid and 800-grid runs await
-the production reconstruction-trial count.
+with bounded rounding residuals.  Both revised production grids use eight
+reconstruction attempts.  The 192-grid run has started, followed by its
+figures, the 800-grid run, and its figures.
