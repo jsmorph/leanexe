@@ -51,9 +51,12 @@ status, and the exact accepted numerical trace.  The generated module has
 Its five-cell update and internal grid scan have checked terminating
 execution with exact output and store preservation.  Both directional
 sweeps and their composition now have terminating execution, exact array
-output, ownership, page-limit, and memory-reservation proofs.  The retry
-controller, time advancement, complete memory bound, and exact-byte package
-remain open.
+output, ownership, page-limit, and memory-reservation proofs.  The complete
+retry function now proves termination and exact source behavior for
+acceptance, CFL rejection, trial rejection, invalid time advancement, and
+fuel exhaustion.  It preserves source ownership, a supplied page limit,
+and the heap reservation.  Time advancement, the complete memory bound,
+and the exact-byte package remain open.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.

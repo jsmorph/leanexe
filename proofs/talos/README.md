@@ -429,7 +429,11 @@ and [memory reservation](lean/Project/EulerReconstructed/StepReserve.lean)
 proofs cover both directional sweeps, exact array output, ownership,
 page limits, and release of the intermediate grid.  Retained initialization,
 output, and release functions have checked execution transfers.
-The retry controller, time advancement, complete memory bound, and
+The [complete retry proof](lean/Project/EulerReconstructed/ExecutionRetryTotal.lean)
+establishes termination and exact source behavior for every retry outcome.
+It covers both rejection branches, invalid time advancement, exhausted
+fuel, preservation of source ownership, the supplied page limit, and heap
+reservation.  Time advancement, the complete memory bound, and the
 exact-byte package remain open.
 
 ## Workflow Tools
