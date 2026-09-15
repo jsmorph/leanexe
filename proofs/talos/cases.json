@@ -499,6 +499,21 @@
         "Project.EulerOutwardFlux.Spec.fluxCheckedBits_residual"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_outward_face_step",
+      "annotations": true,
+      "module": "Project.EulerRiemann.OutwardFaceStep",
+      "entry": "Project.EulerRiemann.OutwardNumerics.faceStepCheckedBits",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerOutwardFaceStep",
+      "specTarget": "Project.EulerOutwardFaceStep.Spec",
+      "behaviorTheorems": [
+        "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_exact",
+        "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_behavior",
+        "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_residual"
+      ],
+      "complete": true
     }
   ]
 }

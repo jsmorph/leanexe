@@ -12081,3 +12081,26 @@ shared reference composition in 1.2 seconds, face-step reference error in
 audits use standard axioms.  The journal preserves the failed attempts.
 Generated execution and complete solver integration remain open.  This
 checkpoint makes no grid-storage or production-limiter-budget choice.
+
+## 2026-09-14: Generated Euler face-step execution
+
+The [face-step specification](proofs/talos/lean/Project/EulerOutwardFaceStep/Spec.lean)
+proves termination, exact output, store preservation, exhaustive rejection
+or accepted-state safety, characteristic Courant numbers at most one half,
+and four physical-reference residual bounds.  The mesh-ratio implication
+uses exact unit-domain dt*n.  All three public audits use standard axioms.
+The compiler emits 9,077 bytes, 21 arguments, eight results, 50 reachable
+scalar functions, and 168 direct-call annotations.
+
+Checked function-region transport reuses the preceding interface and
+conservative-update proofs.  Advancement required three attempts: a macro
+parser correction, then matching the selected-alpha Boolean hypothesis to
+the simplified call result.  The accepted advancement check took 57 seconds.
+Entry composition passed first in 4.3 seconds and the public specification
+first in 1.7 seconds.  The journal preserves each failure.  The exact-byte
+face-step package and complete revised-solver integration remain open.
+
+The focused source-regeneration gate passes.  Runtime identities checked in
+2.3 seconds, aggregate imports match all 45 completed source cases, and all
+120 maintained Markdown files pass.  The current inventory has 45 source
+cases and caches, 24 floating-point helper cases, and 40 exact-byte packages.
