@@ -248,8 +248,8 @@ includes integer shift and OR.  The
 prove complete decoding, validation, exact output, and the accepted CFL
 bounds for digest
 c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456.
-The independent package check passes with standard axioms.  Controller
-integration remains open.
+The independent package check passes with standard axioms.  The complete
+revised controller now composes this bound with each accepted step.
 
 The completed `euler_outward_speed` case has a generated
 [instruction model](lean/Project/EulerOutwardSpeed/Program.lean).
@@ -316,8 +316,8 @@ d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c.
 The independent package check passes with standard axioms.  Dependency
 inspection confirms that the loop decoder uses its checked root, block,
 loop, and suffix equations and byte-lookup theorem.
-The connection of both helpers to each reconstructed face and stage of the
-revised solver remains open.
+The complete revised solver applies the grid bound and mesh test to its
+accepted timesteps, with a separate CFL check at reconstructed faces.
 
 The [rounded reconstruction](lean/Project/EulerRiemann/Reconstruction.lean)
 has checked [safety](lean/Project/EulerRiemann/ReconstructionSafety.lean),
@@ -404,8 +404,8 @@ manifest audits use standard axioms.  All 75 body proofs and section targets
 passed on their first attempts.  Export validation separates checked name
 encoding from index checks.  The shared
 [validation composition lemmas](lean/Project/Artifact/Binary/ValidationParts.lean)
-combine the validated phases at the default elaboration budget.  Complete
-solver integration remains open.
+combine the validated phases at the default elaboration budget.  The
+complete revised solver now has exact-byte proofs.
 
 The [revised face-row balance](lean/Project/EulerRiemann/OutwardFaceRowBalance.lean)
 composes accepted scalar steps with the shared real sweep theorem.  It proves
@@ -454,7 +454,14 @@ standard axioms.  The [complete numerical specification](lean/Project/EulerRecon
 now combines these results with termination, exact output, the memory
 bound, status-zero completion, state and face safety, hyperbolicity, and
 CFL bounds throughout each accepted trace.  Source regeneration passes
-with unchanged bytes.  The exact-byte package remains open.
+with unchanged bytes.  The [exact-byte theorems](lean/Project/EulerReconstructed/ArtifactTranslation.lean)
+now transfer all four specifications through complete decoding, validation,
+and translation equality.  Independent package checking passes.  The
+153 function-body decoder proofs use shared parser composition and
+balanced byte lookup.  All public and manifest audits use standard axioms.
+The [startup reset proof](lean/Project/EulerReconstructed/HostInitial.lean)
+establishes that reset preserves the solve theorem's initial store.
+Production runs await the reconstruction-trial count.
 
 ## Workflow Tools
 
@@ -468,7 +475,7 @@ tools/talos-proof.js check gcd
 tools/talos-proof.js check --all
 ```
 
-[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete forty-one-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
+[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete forty-two-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
 
 ```sh
 tools/artifact-proof.js check-all
@@ -480,7 +487,7 @@ tools/artifact-conformance.js check
 The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  The
 source-driven proof Lake files pin floating-point Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
-All forty-one exact-artifact manifests identify this same current Talos
+All forty-two exact-artifact manifests identify this same current Talos
 revision and verifier-source identity.  The source artifact tool fetches its
 pinned dependency and builds the verifier under the resource limits when a
 local verifier is absent.
@@ -500,7 +507,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains forty-six cases, forty-six complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and twenty-five raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
-The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All forty-one packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
+The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All forty-two packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
 
 `tools/artifact-proof.js check` checks one external binary against a registered package and proof target.  `check-all` also rebuilds every behavioral specification and checks every theorem name recorded by the manifests.  Both forms route Lean through `tools/leanrun` and forward driver termination signals to the active process group, so they share the same-user `leanexe`/`vq` lock and the standard cgroup limits, or the retained lock, thread, priority, and timeout controls in explicitly authorized local mode, with the source-driven tools.
 

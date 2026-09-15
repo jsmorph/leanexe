@@ -140,8 +140,8 @@ speeds in both directions.  The proof uses the compiler-generated fold-region
 equality and shared fold-prefix and memory-access lemmas.  Its source gate
 passes.  Complete decoding, validation, exact output, and physical-speed
 bounds now hold for the 5,728-byte grid artifact, with standard-axiom audits
-and an accepted independent package check.  Timestep controller integration
-remains open.
+and an accepted independent package check.  The revised controller now
+composes these bounds with its accepted trace.
 
 The separate revised side computation now returns the certified outward
 speed with positive pressure and finite physical-flux intermediates.
@@ -179,7 +179,8 @@ Independent verification and all eight standard-axiom manifest audits pass.
 All body and section targets passed on their first attempts.  Splitting
 export-name encoding from descriptor validation resolved the validator's
 elaboration failure.  The accepted proof uses shared validation composition
-at the default heartbeat budget.  Complete solver integration remains open.
+at the default heartbeat budget.  The complete revised solver now has
+exact-byte proofs.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.
@@ -239,8 +240,7 @@ ratio division.  The y contribution uses the x-sweep result.  Its source
 and exact-byte checks pass, including the strengthened independent package
 check.  The balance covers each conserved component in the final
 internal grid.  Serialized output continues to contain density and
-pressure.  These statements will require the corresponding instantiation
-for the revised reconstruction and outward-CFL solver.
+pressure.  The complete revised solver now has these balances.
 
 The revised face-row source model now proves shared-flux cancellation,
 the sum of update residuals, and its rounding bound for accepted output.
@@ -255,7 +255,7 @@ real-reference balances with bounded residuals.  The reference uses the
 decoded reconstructed boundary states.  A shared directed-division error
 theorem bounds the outward spacing and ratio errors by adjacent-value
 enclosure widths.  All public audits pass with standard axioms.
-Exact-WASM specification composition remains open.
+The complete exact-WASM specification now includes these balances.
 
 Open boundaries contribute physical flux.  Rejected trials preserve the
 last accepted grid, and their discarded values contribute no accepted-step
@@ -297,7 +297,7 @@ operations.  Complete generated execution, termination, exact-word output,
 safety, and accuracy specifications pass the source regeneration gate.
 The exact-byte decoder, validator, execution transfer, and independent package
 check pass for digest 0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
-The production trial budget and stage integration remain open.
+Stage integration is proved.  The production trial budget awaits selection.
 
 The shared halving theorem proves finite, nonnegative, nonincreasing output
 for each factor step, including subnormal rounding and zero.  The source
@@ -331,11 +331,20 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
 - [x] Instantiate the revised face-row conservation theorems in the reconstructed traversal and accepted trace.
 - [x] Compose accepted-state, reconstructed-face, CFL, hyperbolicity, and conservation specifications with complete generated execution.
-- [ ] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
-- [ ] Check the independent package and all public/transitive axiom audits.
+- [x] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
+- [x] Check the independent package and all public/transitive axiom audits.
 - [ ] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
 - [ ] Run the new 800-grid calculation under the same acceptance conditions and produce its figures.
 - [ ] Update the short article with the claim-to-theorem table, explicit conditions, rounding statements, and comparison with the preserved data.
+
+The frozen 30,726-byte artifact has digest
+b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
+Complete decoding, validation, translation equality, all four behavioral
+theorems, and independent checking pass.  Public and transitive audits
+use propext, Classical.choice, and Quot.sound only.  The proofs cover
+runtime grid sizes 2..800 and every reconstruction-trial word.  Production
+execution awaits the trial-count choice, then follows the prescribed
+192, plot, 800, plot order.
 
 ## Gates and work order
 

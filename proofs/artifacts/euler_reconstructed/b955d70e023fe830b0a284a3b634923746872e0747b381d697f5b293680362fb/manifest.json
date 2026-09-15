@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_reconstructed",
+  "sha256": "b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb",
+  "byteLength": 30726,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerReconstructed.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerReconstructed.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerReconstructed.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerReconstructed.Program",
+  "cachedProgramDefinition": "Project.EulerReconstructed.module",
+  "specModule": "Project.EulerReconstructed.Spec",
+  "proofTarget": "Project.EulerReconstructed.ArtifactTranslation",
+  "identityTheorem": "Project.EulerReconstructed.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerReconstructed.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerReconstructed.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerReconstructed.Spec.solve_exact",
+    "Project.EulerReconstructed.Spec.solve_success",
+    "Project.EulerReconstructed.Spec.solve_hyperbolic",
+    "Project.EulerReconstructed.Spec.solve_balance"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}
