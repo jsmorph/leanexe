@@ -944,6 +944,7 @@ theorems, including every accepted trace prefix.  Source regeneration
 passes with unchanged bytes and standard axiom audits.  The exact-byte
 package remains open.
 
-The revised byte array, balanced lookup, raw cache, and function-body
-decoding through function 119 now pass.  The remaining controller,
-initialization, and output bodies and complete file composition are next.
+The revised byte array, balanced lookup, raw cache, all 153 function-body
+decoders, and the complete code section now pass.  All 153 function types,
+the type section, and the export table also pass.  Remaining section
+decoding, complete-file composition, validation, and translation are next.
