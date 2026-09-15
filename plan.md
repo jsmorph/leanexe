@@ -43,6 +43,15 @@ physical Rusanov reference balances with bounded rounding residuals.
 The source proofs apply to arbitrary supplied face sequences.  Their
 instantiation in the complete traversal and exact-WASM solver remains open.
 
+The complete revised source now uses five-cell reconstruction, outward grid
+speed bounds, checked mesh ratios, and timestep retry.  Its source proofs
+cover accepted-state safety, grid size and index preservation, terminal
+status, and the exact accepted numerical trace.  The generated module has
+30,726 bytes and two runtime inputs: grid size and reconstruction trials.
+Its five-cell update and internal grid scan have checked terminating
+execution with exact output and store preservation.  The revised sweep,
+controller, complete memory bound, and exact-byte package remain open.
+
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 

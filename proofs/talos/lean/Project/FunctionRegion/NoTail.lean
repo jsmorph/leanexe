@@ -100,6 +100,7 @@ private theorem noReturnCall_aux : ∀ fuel,
         | andI64 => no_return_call_atomic
         | orI64 => no_return_call_atomic
         | shlI64 => no_return_call_atomic
+        | shrUI64 => no_return_call_atomic
         | f64ReinterpretI64 => no_return_call_atomic
         | i64ReinterpretF64 => no_return_call_atomic
         | f64Add => no_return_call_atomic
@@ -120,6 +121,7 @@ private theorem noReturnCall_aux : ∀ fuel,
         | memorySize => no_return_call_atomic
         | memoryGrow => no_return_call_atomic
         | unreachable => no_return_call_atomic
+        | ret => no_return_call_atomic
         | br => no_return_call_atomic
         | brIf => no_return_call_atomic
         | block params results body paramTypes resultTypes hBody =>
