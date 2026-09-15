@@ -407,6 +407,16 @@ encoding from index checks.  The shared
 combine the validated phases at the default elaboration budget.  Complete
 solver integration remains open.
 
+The [revised face-row balance](lean/Project/EulerRiemann/OutwardFaceRowBalance.lean)
+composes accepted scalar steps with the shared real sweep theorem.  It proves
+exact cancellation of internal computed fluxes and bounds the sum of update
+residuals.  The [physical Rusanov reference balance](lean/Project/EulerRiemann/OutwardFaceRowReference.lean)
+derives interface acceptance and bounds the row residual by the two boundary
+flux errors plus summed update errors.  The computed proof passed first in
+1.4 seconds.  The reference proof passed in 1.1 seconds after a triangle-lemma
+arity correction.  All seven audits use standard axioms.  These source
+theorems await reconstruction, traversal, and exact-WASM instantiation.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
