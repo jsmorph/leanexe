@@ -12104,3 +12104,25 @@ The focused source-regeneration gate passes.  Runtime identities checked in
 2.3 seconds, aggregate imports match all 45 completed source cases, and all
 120 maintained Markdown files pass.  The current inventory has 45 source
 cases and caches, 24 floating-point helper cases, and 40 exact-byte packages.
+
+## 2026-09-14: Exact-byte Euler face-step
+
+The [face-step binary theorems](proofs/talos/lean/Project/EulerOutwardFaceStep/ArtifactTranslation.lean)
+prove exact output, accepted safety and characteristic CFL bounds, and
+physical-reference residual bounds for the frozen 9,077-byte module with
+digest 1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01.
+Independent verification passes.  All eight manifest audits use standard
+axioms.  The inventory now contains 41 exact-byte packages.
+
+All 75 body proofs and section-composition targets passed first, using 144
+checked instruction-sequence cuts and balanced byte lookup.  A dependency
+audit confirms use of the nested advancement and entry boundaries.  This
+extends related Euler evidence.  Held-out measurement remains open.
+
+Monolithic validation exhausted both 200,000 and 400,000 heartbeats.
+Separate export-name encoding and descriptor proofs resolved the failure.
+The accepted validator uses the default heartbeat budget and the shared
+[validation composition lemmas](proofs/talos/lean/Project/Artifact/Binary/ValidationParts.lean).
+Export checks took 2.2 seconds, metadata 1.1 seconds, complete validation
+14 seconds, and behavioral transfer 5.0 seconds.  The journal preserves
+the failed attempts.  Complete revised-solver integration remains open.

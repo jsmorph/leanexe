@@ -909,5 +909,7 @@ admissibility, physical speed bounds for its four face states, exact-real
 Courant bounds, and componentwise physical-reference error bounds.  The
 mesh-ratio bridge gives the corresponding exact dt*n bound.  The face-step
 now has terminating generated-WASM execution, exact output, store
-preservation, and all three public numerical specifications.  The face-step
-exact-byte package and complete solver integration remain open.
+preservation, and all three public numerical specifications.  Its exact-byte
+package now passes complete decoding, validation, behavior transfer, and
+independent verification with standard axioms.  Complete solver integration
+remains open.
