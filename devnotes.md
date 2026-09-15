@@ -12237,3 +12237,22 @@ runtime trial count does not enlarge that bound.
 
 Revised-row conservation, the numerical specifications, and exact-byte
 closure remain.  No revised production run has started.
+
+## 2026-09-15: Reconstructed Euler conservation
+
+The reconstructed traversal now has checked array/grid/row correspondence,
+including both repeated clamped neighbors.  Its accepted directional
+sweeps share identical interface fluxes, giving a balance for mass,
+both momenta, and energy through the full accepted timestep trace.
+The area-weighted balance uses real Rusanov boundary fluxes on the decoded
+reconstructed states, cell area 1/n squared, and duration factor dt/n.
+Its residual bound includes update rounding, boundary-flux evaluation,
+spacing, and outward-ratio errors.  Every premise follows from the
+accepted trace and valid indexed initial grid.
+
+The shared directed-division error theorem uses the checked adjacent-value
+enclosure width.  It passed first in 1.3 seconds.  Final trace and physical
+step checks took 1.1 seconds each, and the physical trace passed first in
+1.1 seconds.  All public audits use standard axioms.  The journal records
+the failed elaboration drafts and corrections.  Numerical specification
+composition, exact-byte verification, and production data remain open.

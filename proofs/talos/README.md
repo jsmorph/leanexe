@@ -415,7 +415,7 @@ derives interface acceptance and bounds the row residual by the two boundary
 flux errors plus summed update errors.  The computed proof passed first in
 1.4 seconds.  The reference proof passed in 1.1 seconds after a triangle-lemma
 arity correction.  All seven audits use standard axioms.  These source
-theorems await reconstruction, traversal, and exact-WASM instantiation.
+theorems now have a checked reconstructed-traversal instantiation.
 
 The [revised complete source](lean/Project/EulerReconstructed/Control.lean)
 has checked safety, index preservation, terminal-status, and accepted-trace
@@ -438,8 +438,20 @@ covers accepted steps, scan failure, and retry failure.  The
 [initial-store solver theorem](lean/Project/EulerReconstructed/SolveInitial.lean)
 composes initialization, advancement, and output, proving termination,
 exact source output, and a 512 MiB memory bound for grid sizes from two
-through 800 and every runtime reconstruction-trial word.  Revised-row
-conservation instantiation and the exact-byte package remain open.
+through 800 and every runtime reconstruction-trial word.
+
+The [reconstructed traversal model](lean/Project/EulerReconstructed/TraversalModel.lean)
+connects source arrays to both directional grid sweeps, including repeated
+clamped neighbors.  The [accepted trace balance](lean/Project/EulerReconstructed/TraceBalance.lean)
+covers all four conserved components with computed boundary fluxes and
+summed update residuals.  The [area-weighted reference balance](lean/Project/EulerReconstructed/PhysicalTrace.lean)
+uses exact cell area 1/n squared, factor dt/n, and real Rusanov boundary
+fluxes on decoded reconstructed states.  Its bounds include updates,
+boundary-flux evaluations, spacing, and the outward mesh ratio.  A shared
+[directed division error theorem](lean/Project/ProofKit/F64OutwardError.lean)
+uses the checked adjacent-value enclosure width.  All public audits use
+standard axioms.  Numerical specification composition and the exact-byte
+package remain open.
 
 ## Workflow Tools
 

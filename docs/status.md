@@ -179,8 +179,8 @@ manifest audits use standard axioms.  Complete solver integration remains open.
 The revised face-row source proofs establish shared-flux cancellation and
 computed and physical Rusanov reference balances.  The reference residual
 bound contains the two boundary-flux errors and summed update errors.
-All seven audits use standard axioms.  Reconstruction and complete-grid
-instantiation remain open.
+All seven audits use standard axioms.  The reconstructed traversal now
+instantiates these balances through its accepted timestep trace.
 
 The complete revised source now uses five-cell reconstruction, outward grid
 speed bounds, checked mesh ratios, and timestep retry.  Its source proofs
@@ -197,8 +197,11 @@ fuel exhaustion.  It preserves source ownership, a supplied page limit,
 and the heap reservation.  Complete time advancement, initialization, and
 output now compose into a terminating generated-WASM solver theorem with
 exact source output and a 512 MiB memory bound.  It covers grid sizes from
-two through 800 and every runtime reconstruction-trial word.  Revised-row
-conservation instantiation and the exact-byte package remain open.
+two through 800 and every runtime reconstruction-trial word.  The revised
+traversal now has checked conservation for all four components throughout
+its accepted trace.  The area-weighted real-reference balance bounds
+update, boundary-flux, spacing, and outward-ratio errors.  Numerical
+specification composition and the exact-byte package remain open.
 
 The [complete Riemann solver](../plans/euler-riemann-complete.md) now has
 kernel-checked exact-byte proofs of complete execution, termination,

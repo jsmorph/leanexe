@@ -22006,3 +22006,111 @@ RunGuard, and SolveInitial.  The parent is
 913db47c1274ba26da0ef825e81cfff149b2f16a.  The checkpoint title is
 “Prove complete reconstructed Euler execution.”  Unrelated data and
 paper records remain unstaged and preserved.
+
+Published da672d3922fb50901bb46bf5770b29239af385f8, with parent
+913db47c1274ba26da0ef825e81cfff149b2f16a and tree
+31a0708e785abee7adde2326cc3c624a37c9c35a.  Its title is “Prove complete
+reconstructed Euler execution.”  The non-forced push and fetch passed.
+HEAD, FETCH_HEAD, origin, parent, title, full tree, index, and tracked
+worktree agree.  The checkpoint contains 23 files, 1,341 insertions,
+and 11 deletions.
+
+Started the reconstructed-grid conservation connection.  Reused the
+checked face-row cancellation and reference-flux bounds.  The new row
+model uses two ghost positions on each side with clamped values, matching
+the source's repeated clamped neighbor operations.  This establishes
+shared reconstructed interface states before applying cancellation.
+A read named nonexistent TraversalNeighbors.lean.  Scoped discovery
+identified Neighbors.lean and TraversalSweep.lean instead.  Added
+NumericsModel with the five-cell grid and row models and the accepted
+row-to-face-step equality.  The Lean checks retain the standard local
+runner, one thread, shared lock, and three-minute diagnostic timeout.
+
+NumericsModel passed first in 2.1 seconds with only propext and Quot.sound
+in its public audit.  Added the source-array/grid connection in
+TraversalModel and the padded row geometry in LineGeometry.  The geometry
+proof explicitly matches both repeated clamped neighbors to all five
+padded row positions.
+
+TraversalModel and LineGeometry passed their first checks in 1.3 and
+1.2 seconds.  Their public audits use standard axioms.  Added LineBalance,
+which applies the existing shared-flux cancellation theorem and bounds
+both endpoint errors against the exact-real Rusanov flux on the decoded
+reconstructed states.
+
+The first LineBalance check reported a redundant second proof branch:
+congruence had already discharged the unchanged input total by definitional
+equality.  Removed that branch.  The remaining theorem bodies and audits
+checked.  Added GridBalance by summing the accepted row identities and
+their error bounds, with the existing orientation/component permutation.
+
+LineBalance passed after the redundant branch removal.  GridBalance
+passed its first check.  Added StepBalance to connect both accepted
+source sweeps to the array grid totals.  The y contribution uses the
+computed x-sweep grid.  Asked for the production reconstruction budget,
+which the approved plan leaves open, while continuing independent proof
+work.  No dataset calculation has started.
+
+The first StepBalance check rejected a tactic invocation: split accepts
+one target, while the proof named the goal and hypothesis.  Replaced it
+with split_ifs, which supports both.  Added TraceBalance for the accepted
+array recurrence and a shared F64OutwardError lemma that bounds directed
+division by the checked adjacent-value enclosure width.  Failed checks
+remain failures until the corrected modules pass their audits.
+
+The second StepBalance check exposed the outer source let-binding before
+its conditional.  Added dsimp only before split_ifs.  The separate shared
+outward-error check passed.  Added RatioResidual to combine its directed
+division width with the spacing denominator error.  The resulting bound
+uses accepted mesh checks to establish positive denominators and the
+valid grid range.
+
+StepBalance now passes with standard axioms.  TraceBalance required a
+named traceRatio equality before rewriting the next-grid index premise.
+RatioResidual required explicit unfolding of its spacing aliases in the
+final conversion.  Both failures were local elaboration mismatches.
+
+RatioResidual passed in 1.2 seconds with standard axioms.  The trace
+residual bound also checked.  The trace balance needed traceSum unfolded
+in its induction hypothesis before linear arithmetic could combine the
+two balances.  Added that explicit unfolding and PhysicalStep, which
+uses cell area 1/n squared and timestep/face-length factor dt/n.  Its
+reference flux uses the decoded reconstructed interface states and bounds
+both their flux-evaluation errors and the outward mesh-ratio error.
+The initial journal edit missed a wrapped-line anchor and was corrected
+after reading the file tail.  No Lean check ran in that rejected command.
+
+The rejected edit had also left the trace proof unchanged.  The following
+PhysicalStep build therefore repeated the same trace diagnostic.  Applied
+the missing induction-hypothesis unfolding before the next build.
+
+TraceBalance and PhysicalStep now pass in 1.1 seconds each.  PhysicalTrace
+passed first in 1.1 seconds.  The complete accepted recurrence now has
+computed-flux and area-weighted real-reference balances for all four
+conserved components, with bounded accumulated residuals.  All public
+audits use standard logical axioms.  No revised production run has started.
+
+Reviewed the accepted proofs with their failed drafts and check telemetry.
+The shared face-row cancellation, real product/quotient error, and grid
+orientation theorems remove repeated arithmetic derivations.  The only new
+general support is the directed-division enclosure-width estimate.
+This source-mathematics checkpoint adds no compiler annotations, LTG
+promotion, or held-out retrieval measurement.  Exact-byte specification
+composition remains the next gate.
+
+A registry search named nonexistent tools/talos-cases.js.  Discovery and
+the tool source identified proofs/talos/cases.json.  Documentation edits
+initially failed on duplicate file sections, descending hunk order, and a
+wrapped-line anchor.  All were corrected before reviewing the resulting
+diff.  The journal remains append-only, and the proof-source scan found
+no sorry, admit, new axiom, or native_decide declaration.
+
+The documentation gate checked all 120 maintained Markdown files, and
+the whitespace check passed.  Stage the seven reviewed documentation
+and journal paths, ten EulerReconstructed modules (GridBalance,
+LineBalance, LineGeometry, NumericsModel, PhysicalStep, PhysicalTrace,
+RatioResidual, StepBalance, TraceBalance, and TraversalModel), and shared
+ProofKit.F64OutwardError.  The parent is
+da672d3922fb50901bb46bf5770b29239af385f8.  The checkpoint title is
+“Prove reconstructed Euler trace conservation.”  Unrelated data and
+paper records remain unstaged and preserved.

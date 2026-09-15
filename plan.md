@@ -40,8 +40,8 @@ Complete revised-solver integration remains active.
 
 Accepted rows of the revised scalar face-step now have computed-flux and
 physical Rusanov reference balances with bounded rounding residuals.
-The source proofs apply to arbitrary supplied face sequences.  Their
-instantiation in the complete traversal and exact-WASM solver remains open.
+The source proofs apply to arbitrary supplied face sequences and now
+have a checked instantiation in the reconstructed traversal.
 
 The complete revised source now uses five-cell reconstruction, outward grid
 speed bounds, checked mesh ratios, and timestep retry.  Its source proofs
@@ -58,8 +58,11 @@ fuel exhaustion.  It preserves source ownership, a supplied page limit,
 and the heap reservation.  Complete time advancement, initialization, and
 output now compose into a terminating generated-WASM solver theorem with
 exact source output and a 512 MiB memory bound.  It covers grid sizes from
-two through 800 and every runtime reconstruction-trial word.  Revised-row
-conservation instantiation and the exact-byte package remain open.
+two through 800 and every runtime reconstruction-trial word.  The revised
+traversal now has checked conservation for all four components throughout
+its accepted trace.  The area-weighted real-reference balance bounds
+update, boundary-flux, spacing, and outward-ratio errors.  Numerical
+specification composition and the exact-byte package remain open.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
