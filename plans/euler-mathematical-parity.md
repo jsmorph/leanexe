@@ -334,8 +334,8 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
 - [x] Check the independent package and all public/transitive axiom audits.
 - [x] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
-- [ ] Run the new 800-grid calculation under the same acceptance conditions and produce its figures.
-- [ ] Update the short article with the claim-to-theorem table, explicit conditions, rounding statements, and comparison with the preserved data.
+- [x] Run the new 800-grid calculation under the same acceptance conditions and produce its figures.
+- [x] Update the short article with the claim-to-theorem table, explicit conditions, rounding statements, and comparison with the preserved data.
 
 The frozen 30,726-byte artifact has digest
 b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
@@ -343,9 +343,10 @@ Complete decoding, validation, translation equality, all four behavioral
 theorems, and independent checking pass.  Public and transitive audits
 use propext, Classical.choice, and Quot.sound only.  The proofs cover
 runtime grid sizes 2..800 and every reconstruction-trial word.  The user
-selected eight reconstruction attempts.  The [192-grid data and figures](../data/euler-reconstructed-v1/README.md)
-are complete, with status zero at time 0.8 in 176.7 seconds.  The 800-grid
-calculation is running.
+selected eight reconstruction attempts.  The [192-grid and 800-grid data and figures](../data/euler-reconstructed-v1/README.md)
+are complete, with status zero at time 0.8.  Runtimes were 176.7 seconds
+and 3 hours 58 minutes.  The short article includes their comparison,
+the claim-to-theorem table, and the remaining continuous-solution question.
 
 ## Gates and work order
 
