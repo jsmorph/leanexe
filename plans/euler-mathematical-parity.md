@@ -90,6 +90,8 @@ The user approved this arithmetic design for the executable changes.
 - [x] Prove the revised side/interface's generated execution, rejection behavior, store preservation, and numerical bounds.
 - [x] Prove the revised interface's exact-byte behavior.
 - [x] Compose the revised interfaces with conservative advancement and prove source safety, physical-reference error bounds, and exact-real face CFL bounds.
+- [x] Prove the scalar face-step's generated execution, complete rejection behavior, and numerical specifications.
+- [ ] Close the scalar face-step over its exact binary bytes.
 - [ ] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
@@ -166,8 +168,13 @@ one half.  The mesh-ratio theorem transfers the bound to exact dt*n on the
 unit domain.  The four-component update certificate and physical-reference
 error bound derive their premises from acceptance.  A shared conservative
 reference lemma adds the two flux errors to the update residual.  These
-source proofs pass with standard axioms.  Generated execution and complete
-solver integration remain open.
+source proofs pass with standard axioms.  The generated-WASM entry now
+has complete termination, exact output, store preservation, accepted safety,
+characteristic-CFL, and physical-reference residual proofs.  Its 9,077-byte
+module uses 50 reachable scalar functions and 168 direct-call annotations.
+The advancement proof takes 57 seconds, the entry composition 4.3 seconds,
+and the public specification 1.7 seconds.  The exact-byte package and
+complete solver integration remain open.
 
 The original frozen binary and production data remain preserved.  A changed
 speed produces a new binary and a separately identified numerical recurrence.

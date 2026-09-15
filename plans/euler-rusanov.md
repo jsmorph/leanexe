@@ -907,5 +907,7 @@ passes complete decoding, validation, behavior transfer, and independent
 verification.  The revised scalar face-step source now proves output-state
 admissibility, physical speed bounds for its four face states, exact-real
 Courant bounds, and componentwise physical-reference error bounds.  The
-mesh-ratio bridge gives the corresponding exact dt*n bound.  Generated
-face-step execution and complete solver integration remain open.
+mesh-ratio bridge gives the corresponding exact dt*n bound.  The face-step
+now has terminating generated-WASM execution, exact output, store
+preservation, and all three public numerical specifications.  The face-step
+exact-byte package and complete solver integration remain open.

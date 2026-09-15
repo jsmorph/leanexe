@@ -125,5 +125,6 @@ import Project.EulerOutwardMaximum.Spec
 import Project.EulerOutwardCfl.Spec
 import Project.EulerOutwardGrid.Spec
 import Project.EulerOutwardFlux.Spec
+import Project.EulerOutwardFaceStep.Spec
 import Project.EulerRiemann.OutwardFaceStepSpec
 import Project.EulerRiemann.OutwardFaceStepResidual
