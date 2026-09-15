@@ -12197,3 +12197,24 @@ timeouts, the narrower rechecks, and the corrected constant-slot proof.
 The retry and time-advancement controllers, complete memory bound, row
 conservation instantiation, and exact-byte closure remain open.  No new
 production run has started.
+
+## 2026-09-15: Reconstructed Euler retry execution
+
+The complete retry function now has terminating generated-WASM execution
+and exact return-value proofs.  Its cases include accepted trials, CFL
+rejection without allocation, rejected trials with release, invalid time
+advancement, and exhausted fuel with an allocated empty result.  The
+proof preserves source ownership, memory reservation, and a supplied page
+limit.  Runtime reconstruction trials and the outward speed remain
+parameters.
+
+The final iteration checked in 1.9 seconds, the loop in 1.3, and the entry
+in 2.2.  All public audits use standard axioms.  The proof uses the
+compiler-checked fuel-guard equality and existing allocation, ownership,
+and block-loop theorems.  A separate arbitrary-frame equality resolved
+a heartbeat limit in the valid-time composition, which then checked in
+2.7 seconds with the default budget.
+
+Time advancement, the complete solver memory bound, reconstruction-based
+row conservation, and exact-byte closure remain open.  Production runs
+remain gated on those proofs.
