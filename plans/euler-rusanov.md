@@ -926,5 +926,8 @@ cover accepted-state safety, grid size and index preservation, terminal
 status, and the exact accepted numerical trace.  The generated module has
 30,726 bytes and two runtime inputs: grid size and reconstruction trials.
 Its five-cell update and internal grid scan have checked terminating
-execution with exact output and store preservation.  The revised sweep,
-controller, complete memory bound, and exact-byte package remain open.
+execution with exact output and store preservation.  Both directional
+sweeps and their composition now have terminating execution, exact array
+output, ownership, page-limit, and memory-reservation proofs.  The retry
+controller, time advancement, complete memory bound, and exact-byte package
+remain open.
