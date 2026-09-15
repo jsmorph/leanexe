@@ -1,0 +1,5 @@
+import Project.EulerReconstructed.ArtifactTypeSection
+import Project.EulerReconstructed.ArtifactFunctionSection
+import Project.EulerReconstructed.ArtifactMemorySection
+import Project.EulerReconstructed.ArtifactGlobalSection
+import Project.EulerReconstructed.ArtifactExportSection

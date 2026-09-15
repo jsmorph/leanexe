@@ -12295,3 +12295,28 @@ The accepted proofs use existing shared decoder composition and standard
 axioms.  The source, exact bytes, and runner limits remain unchanged.
 Complete-file decoding, validation, translation, independent checking,
 and revised production data remain open.
+
+## Complete reconstructed Euler exact-binary proof
+
+The 30,726-byte artifact b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb
+now has complete decoding, validation, execution-model equality, and four
+behavioral theorems.  They cover termination, exact output, the 512 MiB
+memory bound, accepted-state and face safety, hyperbolicity, CFL, and
+conservation with bounded rounding residuals.  The independent package
+check passed, including all nine manifest audits.  A separate checked
+startup-reset theorem preserves the solve theorem's initial store.
+Every public and transitive audit uses standard logical axioms.
+
+The combined metadata and isolated function-index evaluations reached
+three-minute limits.  Individual index proofs and shared vector composition
+resolved the boundary without changing the artifact or resource limits.
+Complete-file composition took 3.1 seconds, function validation 54 seconds,
+execution transfer 10 seconds, and the final reset proof 1.7 seconds.
+The detailed journal preserves failed drafts and measurements for this
+fixed artifact and its use of shared parser support.
+
+The production driver accepts grid size and a UInt64 reconstruction-trial
+count.  It requires status zero, the exact final-time word, matching
+dimensions, and positive finite plotted fields.  The short article draft
+awaits data.  The pending choice of eight or sixteen reconstruction
+attempts precedes the ordered 192, plot, 800, plot production sequence.

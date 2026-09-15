@@ -27,7 +27,7 @@ Lean checks the exact 21,767-byte binary through decoding, validation, and trans
 
 Both runs returned status zero at the exact binary64 encoding of 0.8, using the same binary and one complete solve call per grid.  Host code decodes the returned words and plots the fields.  Runtimes use the run script's monotonic timer and exclude CSV generation and plotting.
 
-The [hyperbolicity extension](../../proofs/talos/README.md#two-dimensional-euler-hyperbolicity), checked on 2026-09-14, proves a complete real eigenbasis of the physical Euler flux derivative in every unit direction at the accepted conservative states.  Its exact-binary theorem applies to both production calculations, including accepted intermediate sweep grids.  A bound for the rounded numerical signal speed remains open.
+The [hyperbolicity extension](../../proofs/talos/README.md#two-dimensional-euler-hyperbolicity), checked on 2026-09-14, proves a complete real eigenbasis of the physical Euler flux derivative in every unit direction at the accepted conservative states.  Its exact-binary theorem applies to both production calculations, including accepted intermediate sweep grids.  A subsequent [speed audit](../../plans/euler-mathematical-parity.md#1-characteristic-speeds-and-the-existing-binary) proved that the rounded signal speed can underestimate the physical characteristic speed for an admissible helper input.  Reachability of that input from these production quadrants remains unproved.  The revised solver uses certified outward speed bounds.
 
 | Grid and summary | Runtime | Density range | Pressure range | Data | Export figures |
 |------------------|--------:|--------------:|---------------:|------|----------------|

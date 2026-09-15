@@ -36,7 +36,7 @@ CFL bridge also passes.  Its generated-WASM proofs now establish termination,
 exact output, store preservation, and all three numerical specifications.
 The face-step exact-byte package now passes complete decoding, validation,
 behavior transfer, and independent verification with standard axioms.
-Complete revised-solver integration remains active.
+Complete revised-solver integration now has exact-byte proofs.
 
 Accepted rows of the revised scalar face-step now have computed-flux and
 physical Rusanov reference balances with bounded rounding residuals.
@@ -64,18 +64,19 @@ its accepted trace.  The area-weighted real-reference balance bounds
 update, boundary-flux, spacing, and outward-ratio errors.  All four
 generated-WASM specifications now compose execution and the numerical
 theorems, including every accepted trace prefix.  Source regeneration
-passes with unchanged bytes and standard axiom audits.  The exact-byte
-package remains open.
+passes with unchanged bytes and standard axiom audits.  The complete
+30,726-byte package now passes decoding, validation, translation, all
+four behavioral theorems, and independent verification.  Revised
+production runs and figures remain pending.
 
-The revised byte array, balanced lookup, raw cache, all 153 function-body
-decoders, and the complete code section now pass.  All 153 function types,
-the type section, and the export table also pass.  Remaining section
-decoding, complete-file composition, validation, and translation are next.
+The exact-artifact theorems cover every runtime grid size from 2 through
+800 and every reconstruction-trial word.  The production trial count
+awaits selection before the ordered 192-grid and 800-grid calculations.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, forty-six completed source-driven Talos proofs, forty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, forty-six completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 

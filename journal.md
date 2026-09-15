@@ -22356,3 +22356,122 @@ composition, and the four progress documents.  The maintained-document
 check passed all 120 files, and the diff whitespace check passed.
 The title is “Prove reconstructed Euler code and type sections,” with
 parent ee0e30f4d64a64268f076b670f62cfcda5996fa1.
+
+Published 64f24a2bfa688400e24d20aae078d47eb2d89524, parent
+ee0e30f4d64a64268f076b670f62cfcda5996fa1, tree
+806b9e4e0ed2ac3fc3e4fce488ba54ef3c8d3198, title “Prove
+reconstructed Euler code and type sections.”  The checkpoint contains
+37 reviewed paths, with 4,660 insertions and six deletions.  Non-forced
+push and fetch passed.  HEAD, FETCH_HEAD, origin, parent, tree, title,
+index, and the 37 checkpoint worktree paths agree.  Remaining work
+and unrelated data and paper files remain preserved.
+
+The isolated function-index section reached the same three-minute limit,
+status 124, without a theorem diagnostic.  Preserved its source and
+complete output.  It evaluated all 153 indices in one cbv invocation.
+The revised proof checks individual indices in five groups and composes
+them with vectorLoop_eq_cons, vector_eq_of_parts, and sized_eq_of_parts.
+Its goals use offsets read from the frozen file.  Lean checks each
+claimed decode against the embedded bytes.  The isolated memory-section
+check runs separately under the standard limits.
+
+The memory, global, and export sections passed in 6.5, 9.3, and
+3.2 seconds.  All five function-index groups passed first in 74, 75,
+74, 75, and 59 seconds.  The revised full function-index section
+passed in 8.4 seconds.  Its transitive audit uses propext only.
+Splitting the long vector evaluation into checked entries resolved the
+timeout without changing the bytes, decoder, theorem statement, or
+resource limits.  Complete-file composition is next.
+
+Complete-file decoding passed.  The metadata aggregate checked in
+1.2 seconds, terminal parser state in 1.7, code composition in 3.2,
+remaining section composition in 11, and the full decoder theorem in
+3.1.  The decoded-value and cache-identity modules then passed in
+1.2–1.3 seconds each.  Every new composition passed first, with only
+propext, Classical.choice, and Quot.sound in the transitive audits.
+The theorem establishes decode artifactBytes = .ok Cache.raw for the
+complete 30,726-byte file.  Validation and execution transfer follow.
+
+Export validation and metadata validation passed.  The metadata check
+took 2.2 seconds.  Complete function-body validation passed first in
+54 seconds, followed by successful composition into validate Cache.raw.
+All validation audits use propext only.  Execution-model equality and
+the four exact-artifact behavioral theorems are the next target.
+
+ArtifactTranslation passed first in 10 seconds.  All 153 translated
+functions equal the generated execution model.  The exact-artifact
+execution, safety, hyperbolicity/CFL, and conservation theorems pass with
+propext, Classical.choice, and Quot.sound only.  No new axiom or
+unchecked decision enters their proof dependencies.  The independent
+package check follows, with complete output retained in the fresh file
+tmp/euler-reconstructed-independent-20260915.log.
+
+The first independent-check invocation verified the file identity, then
+the sandbox denied access to the systemd user bus.  No Lean target
+started.  The failed output remains preserved.  Retry the repository
+artifact-proof tool outside that sandbox with the same standard runner
+limits and a fresh output log.  Local execution without cgroups remains
+disabled.
+
+Prepared the shorter article's problem, method, and claim-to-theorem
+sections in tmp/euler-reconstructed-article-20260915.md.  The draft marks
+production-dependent fields as pending and makes no claim about unseen
+results.  The independent checker is progressing through the existing
+620-dependency specification gate.  Its artifact theorem and embedded-file
+comparison have passed.  The production trial-count question remains
+unanswered, so neither revised dataset has started.
+
+The independent package check completed with status zero.  It compared
+the frozen file with the embedded bytes, accepted the complete artifact
+theorem, checked the 620 specification dependencies, and accepted all
+nine manifest declarations and standard-axiom audits.  Its complete log
+is tmp/euler-reconstructed-independent-20260915-02.log.  The first failed
+sandbox invocation remains in its separate log.
+
+Host review found that init_runtime calls the exported reset before solve.
+The decoded reset writes 4096 followed by five zeros to the six globals,
+matching their initializers, and performs no memory operation.  Add a
+focused exact-byte theorem that reset terminates with the identical initial
+store.  This makes the host's initial-store precondition explicit.  Two
+read-only path lookups used nonexistent Runtime/Talos locations.  File
+discovery identified the pinned CodeLib interpreter's Syntax and Spec/Defs
+modules, which define initialStore and the terminating-run constructor.
+
+The first reset draft failed in 1.9 seconds: reflexive reduction did
+not close the run equation.  Its source and full diagnostic are preserved.
+The revised proof uses the existing entry and instruction rules, first
+for any store with the six initialized globals and then for initialStore.
+This follows the accepted grid-reset proof's global-store reasoning.
+
+The instruction proof reduced the goal to six concrete list lookups
+and an empty result-list equality in 1.6 seconds.  Added their ordinary
+simplification and an audit of the general store-preservation theorem.
+The preceding draft and diagnostic remain preserved.  The independent
+package inputs and their accepted results are unchanged by this separate
+startup-precondition corollary.
+
+The startup-reset module passed in 1.7 seconds.  Its general initialized-
+global store theorem, initial-store specialization, and exact-byte
+corollary all use standard logical axioms.  Reviewed the production
+driver's scalar argument order, UInt64 validation, single solve call,
+raw-word decoding, required final status/time/dimensions, and positive
+finite payload checks.  Node syntax checking passed.  The frozen and
+generated files still match byte for byte at 30,726 bytes, and the
+artifact registry now contains 42 entries.
+
+Updated the maintained proof inventory and parity plan to record complete
+exact-byte proofs and independent checking.  Corrected the earlier data
+article's stale open-speed-bound statement to the checked helper
+counterexample and its separate reachability question.  The preserved
+dataset and figure files remain unchanged.  Prepared the complete binary
+checkpoint, including the production driver and startup corollary.
+
+The final checkpoint stages 36 reviewed paths: the frozen binary and
+manifest, registry and CheckFile additions, 21 remaining decoding/
+validation/translation modules, the startup corollary, the production
+driver, seven maintained documentation files, devnotes, and this journal.
+All 120 maintained Markdown files and the diff whitespace check pass.
+The title is “Prove the complete reconstructed Euler binary,” with
+parent 64f24a2bfa688400e24d20aae078d47eb2d89524.  Revised numerical
+execution awaits the pending reconstruction-trial count.  All unrelated
+paper, data, generated, cached, and failed-proof state remains preserved.
