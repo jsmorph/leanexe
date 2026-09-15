@@ -61,13 +61,16 @@ exact source output and a 512 MiB memory bound.  It covers grid sizes from
 two through 800 and every runtime reconstruction-trial word.  The revised
 traversal now has checked conservation for all four components throughout
 its accepted trace.  The area-weighted real-reference balance bounds
-update, boundary-flux, spacing, and outward-ratio errors.  Numerical
-specification composition and the exact-byte package remain open.
+update, boundary-flux, spacing, and outward-ratio errors.  All four
+generated-WASM specifications now compose execution and the numerical
+theorems, including every accepted trace prefix.  Source regeneration
+passes with unchanged bytes and standard axiom audits.  The exact-byte
+package remains open.
 
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, forty-five completed source-driven Talos proofs, forty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, forty-six completed source-driven Talos proofs, forty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 

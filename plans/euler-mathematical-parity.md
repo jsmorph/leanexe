@@ -92,7 +92,7 @@ The user approved this arithmetic design for the executable changes.
 - [x] Compose the revised interfaces with conservative advancement and prove source safety, physical-reference error bounds, and exact-real face CFL bounds.
 - [x] Prove the scalar face-step's generated execution, complete rejection behavior, and numerical specifications.
 - [x] Close the scalar face-step over its exact binary bytes.
-- [ ] Compose maximum/CFL checks with the revised solver stages.
+- [x] Compose maximum/CFL checks with the revised solver stages.
 - [x] Prove an exact-real CFL inequality from the executable timestep test, including multiplication and division rounding.
 - [x] Compile the revised numerical helper and inspect compiler annotations and emitted operations.
 - [x] Prove its exact-WASM execution, rejection behavior, and speed theorem.
@@ -330,7 +330,7 @@ order remain.  The limiter trial count remains a runtime proof parameter.
 - [x] Reprove allocation, ownership, termination, complete failure behavior, and the full memory bound for the changed call graph.
 - [x] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
 - [x] Instantiate the revised face-row conservation theorems in the reconstructed traversal and accepted trace.
-- [ ] Compose accepted-state, reconstructed-face, CFL, hyperbolicity, and conservation specifications with complete generated execution.
+- [x] Compose accepted-state, reconstructed-face, CFL, hyperbolicity, and conservation specifications with complete generated execution.
 - [ ] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
 - [ ] Check the independent package and all public/transitive axiom audits.
 - [ ] Run the new 192-grid calculation, require status zero at time 0.8, and produce density and pressure figures.
