@@ -22627,3 +22627,13 @@ and plotting have ended.  The final checkpoint, “Complete reconstructed
 Euler runs and figures,” stages exactly eight reviewed documentation
 and journal paths and the eight completed 800-grid output files.
 Every unrelated path and all earlier outputs remain preserved.
+
+Published 73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a, parent
+31717e2a5a32b1d1abba832c5ca4a44ec0687090, tree
+76aa4d3bbf3759e5add0aa5ba443844bf0be96e3, title “Complete
+reconstructed Euler runs and figures.”  Non-forced push and fetch passed.
+HEAD, FETCH_HEAD, origin, parent, tree, title, index, and tracked worktree
+all agree.  All 16 reviewed paths are published.  Only the pre-existing
+untracked paper and old data paths remain.  This single receipt records
+completion of the authorized proof, two-grid calculation, figures, and
+short-article agenda.  No Euler numerical or plotting process remains active.
