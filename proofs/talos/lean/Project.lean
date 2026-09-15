@@ -128,3 +128,4 @@ import Project.EulerOutwardFlux.Spec
 import Project.EulerOutwardFaceStep.Spec
 import Project.EulerRiemann.OutwardFaceStepSpec
 import Project.EulerRiemann.OutwardFaceStepResidual
+import Project.EulerReconstructed.Spec

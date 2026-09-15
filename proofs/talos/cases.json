@@ -529,7 +529,7 @@
         "Project.EulerReconstructed.Spec.solve_hyperbolic",
         "Project.EulerReconstructed.Spec.solve_balance"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

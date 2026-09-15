@@ -12256,3 +12256,15 @@ step checks took 1.1 seconds each, and the physical trace passed first in
 1.1 seconds.  All public audits use standard axioms.  The journal records
 the failed elaboration drafts and corrections.  Numerical specification
 composition, exact-byte verification, and production data remain open.
+
+## Complete reconstructed Euler numerical specification
+
+The four generated-WASM specifications now combine exact execution,
+termination, the 512 MiB memory bound, status-zero completion through
+time 0.8, accepted-state and reconstructed-face safety, hyperbolicity,
+CFL bounds, and computed and physical-reference conservation balances.
+They apply to every runtime reconstruction-trial word and grid size
+from two through 800.  Source regeneration passed with unchanged
+30,726-byte artifact b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb.
+All public audits use standard axioms.  The exact-byte package is next,
+followed by the ordered revised production runs and figures.
