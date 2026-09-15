@@ -514,6 +514,22 @@
         "Project.EulerOutwardFaceStep.Spec.faceStepCheckedBits_residual"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_reconstructed",
+      "annotations": true,
+      "module": "Project.EulerReconstructed.Control",
+      "entry": "Project.EulerReconstructed.Control.solve",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerReconstructed",
+      "specTarget": "Project.EulerReconstructed.Spec",
+      "behaviorTheorems": [
+        "Project.EulerReconstructed.Spec.solve_exact",
+        "Project.EulerReconstructed.Spec.solve_success",
+        "Project.EulerReconstructed.Spec.solve_hyperbolic",
+        "Project.EulerReconstructed.Spec.solve_balance"
+      ],
+      "complete": false
     }
   ]
 }

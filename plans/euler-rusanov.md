@@ -919,3 +919,12 @@ computed and physical Rusanov reference balances, and bounds on accumulated
 rounding residuals.  All seven audits use standard axioms.  The row model
 accepts arbitrary supplied face sequences.  Complete traversal and exact-WASM
 composition remain open.
+
+The complete revised source now uses five-cell reconstruction, outward grid
+speed bounds, checked mesh ratios, and timestep retry.  Its source proofs
+cover accepted-state safety, grid size and index preservation, terminal
+status, and the exact accepted numerical trace.  The generated module has
+30,726 bytes and two runtime inputs: grid size and reconstruction trials.
+Its five-cell update and internal grid scan have checked terminating
+execution with exact output and store preservation.  The revised sweep,
+controller, complete memory bound, and exact-byte package remain open.

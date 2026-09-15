@@ -307,7 +307,16 @@ establish admissibility of the reconstructed state.
 
 ## 6. Complete revised solver and data
 
-- [ ] Integrate accepted face states, certified speeds, and the checked CFL rule into the existing directional traversal.
+The user approved the five-cell update design and instructed completion on
+2026-09-14.  Each update reads the center cell and two neighbors on each
+side, reconstructs three cells, and supplies their four interface states
+to the checked face-step.  The existing array layout and directional sweep
+order remain.  The limiter trial count remains a runtime proof parameter.
+
+- [x] Implement the five-cell source traversal, outward grid maximum, checked mesh ratio, and retry controller.
+- [x] Prove source safety, grid size and index preservation, terminal status, and the accepted numerical trace.
+- [x] Prove terminating generated execution of the five-cell update and internal grid scan.
+- [ ] Complete generated-WASM traversal and controller proofs.
 - [ ] Reprove allocation, ownership, termination, complete failure behavior, and the full memory bound for the changed call graph.
 - [ ] Reuse compiler-described scalar and array regions, existing ProofKit lemmas, and relevant LTG entries.  Inspect generated equalities before repeating local instruction proofs.
 - [ ] Freeze the new artifact and prove complete decoding, validation, Talos translation, and all registered behavior theorems.
