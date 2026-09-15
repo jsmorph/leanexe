@@ -4,7 +4,9 @@ A LeanExe-compiled WebAssembly program evaluates the four-state Euler problem fr
 
 ![Density and pressure at time 0.8 on the 192-grid](192-run/density-pressure.png)
 
-The 192 × 192 calculation reached time 0.8 with status zero in 176.7 seconds.  The 800 × 800 calculation is running.  Both use eight reconstruction attempts and the same proved binary.
+![Density and pressure at time 0.8 on the 800-grid](800-run/density-pressure.png)
+
+Both calculations reached time 0.8 with status zero.  The 192 × 192 run took 176.7 seconds, and the 800 × 800 run took 3 hours 58 minutes.  Both used eight reconstruction attempts and the same proved binary in one local Wasmtime process per run.
 
 ## Problem and method
 
@@ -21,25 +23,26 @@ Each cell stores density, both momenta, and total energy.  Initialization uses c
 
 Reconstruction uses componentwise minmod slopes with a common scale factor.  The program tests both reconstructed faces for positive density and pressure, halves all four slopes after rejection, and uses the cell average if eight attempts fail.  Outward-rounded speed bounds and executable CFL checks establish dt times grid size times each physical characteristic-speed magnitude ≤ 1/2 at accepted stages.
 
-Compared with the [earlier 192-grid calculation](../euler-riemann-complete-v1/192-run/density-pressure.png), the new density plot shows thinner fronts and more structure in the interaction region.  Its density maximum rises from 1.4901 to 1.7251, and its pressure maximum from 1.4768 to 1.6706.  Reconstruction and the speed bounds both changed.  Each panel uses its own linear color range.  White curves show interpolated isolines.
+The finer grid resolves thinner fronts and more internal structure.  The large-scale front positions and the high-density region near (0.6, 0.6) resemble the [Lanyon density figure](https://lanyon.ai/figs/euler-equations/2d-riem-density-final.png).  The new 800-grid image shows finer curved layers than the [preserved first-order calculation](../euler-riemann-complete-v1/800-run/density-pressure.png).  Its density maximum rises from 1.6711 to 1.7392, and its pressure maximum from 1.6321 to 1.6635.  Reconstruction and speed arithmetic both changed.  These are visual and numerical comparisons of the discrete fields.  Each panel uses its own linear color range.  White curves show interpolated isolines.
 
 ## Checked claims and data
 
 The [exact-binary theorems](../../proofs/talos/lean/Project/EulerReconstructed/ArtifactTranslation.lean) prove decoding, validation, and complete execution for the frozen 30,726-byte module.  They apply to grid sizes 2 through 800 and every UInt64 reconstruction-trial count.
 
-| Claim | Checked statement |
-|-------|-------------------|
-| Execution and completion | The solve call terminates, returns the specified words, and uses at most 512 MiB of linear memory.  Status zero establishes the numerical trace through the binary64 encoding of time 0.8.  Explicit failure returns are covered. |
-| Positivity and hyperbolicity | Accepted cell and face states have positive physical density and pressure.  The physical directional flux derivative has a complete real eigenbasis. |
-| Characteristic speeds and CFL | Outward bounds enclose the physical speeds.  Accepted stages satisfy the exact-real inequalities established by the executable tests. |
-| Waves and conservation | The real Rusanov two-wave representation satisfies state-jump and flux-jump identities.  Changes in mass, both momenta, and energy equal boundary fluxes plus bounded rounding residuals throughout the accepted trace. |
-| Reconstruction | Real minmod preserves constants, componentwise linear profiles, and reflection symmetry.  Rounded reconstruction has error bounds and a linear-profile theorem with explicit representability and acceptance premises. |
+| Claim | Checked statement | Proof |
+|-------|-------------------|-------|
+| Execution and completion | The solve call terminates, returns the specified words, and uses at most 512 MiB of linear memory.  Status zero establishes the numerical trace through the binary64 encoding of time 0.8.  Explicit failure returns are covered. | `artifact_solve_exact`, `artifact_solve_success` |
+| Positivity and hyperbolicity | Accepted cell and face states have positive physical density and pressure.  The physical directional flux derivative has a complete real eigenbasis. | `artifact_solve_hyperbolic` |
+| Characteristic speeds and CFL | Outward bounds enclose the physical speeds.  Accepted stages satisfy the exact-real inequalities established by the executable tests. | `artifact_solve_hyperbolic` |
+| Waves and conservation | The real Rusanov two-wave representation satisfies state-jump and flux-jump identities.  Changes in mass, both momenta, and energy equal boundary fluxes plus bounded rounding residuals throughout the accepted trace. | [Wave identities](../../proofs/talos/lean/Project/EulerRiemann/RealWaves.lean), `artifact_solve_balance` |
+| Reconstruction | Real minmod preserves constants, componentwise linear profiles, and reflection symmetry.  Rounded reconstruction has error bounds and a linear-profile theorem with explicit representability and acceptance premises. | [Reconstruction proofs](../../plans/euler-mathematical-parity.md#5-reconstruction-and-positivity), [rounded accuracy](../../proofs/talos/lean/Project/EulerRiemann/ReconstructionAccuracy.lean), [conditional linearity](../../proofs/talos/lean/Project/EulerRiemann/ReconstructionLinear.lean) |
 
 The [detailed proof inventory](../../plans/euler-mathematical-parity.md) records the statements and conditions.  Conservation bounds include update, flux, spacing, and ratio rounding errors.  Proof audits use `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime and the hardware implementing the modeled WASM semantics.  Convergence to a continuous entropy solution remains unproved.
 
 | Grid and summary | Runtime | Density range | Pressure range | Data | Export figures |
 |------------------|--------:|--------------:|---------------:|------|----------------|
 | [192 × 192](192-run/summary.json) | 176.7 s | 0.138–1.725103297 | 0.029–1.670588688 | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
+| [800 × 800](800-run/summary.json) | 237.96 min | 0.138–1.739211022 | 0.029–1.663523952 | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
 
 The run script requires status zero, the exact final-time word, matching dimensions, and finite positive density and pressure.  Its monotonic runtime excludes CSV generation and plotting.  Raw words preserve the binary64 fields.  Host code decodes and plots those fields.
 
