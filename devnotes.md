@@ -13195,3 +13195,42 @@ bilinear expansion identities also check.  Their axiom audits contain only
 the standard logical axioms.  The checkpoint coefficient certificate and
 binary64 error margin remain open.  The four new modules check in 1.1 to
 2.4 seconds each.
+
+The centered-projection theorem now connects the bilinear bound to the
+model's real attention scores for arbitrary tokens and positions.  The
+result assumes two coefficient-norm bounds for each head.  It checks in
+1.7 seconds.  A rational binary64 decoder also checks against the existing
+real-value definition, allowing exact coefficient arithmetic to discharge
+those assumptions.
+
+The instruction suffixes check equal to the generated hidden function
+after increasing the recursion limit.  Their module takes 107 seconds to
+check.  The enclosing proof still reaches its five-minute timeout.  A
+shared proof_step tactic now abstracts a proved prefix while keeping its
+remaining goals as theorem arguments.  Lean's mkAuxTheorem checks each
+prefix.  This applies the same core closure operation as as_aux_lemma,
+but allows the rest of the proof to remain open.  Branching and newly
+introduced-variable examples check.  The hidden proof is now divided into
+thirty sequential prefix proofs.
+
+The prefix version also times out after four minutes, with memory pressure
+late in the run.  A reduced diagnostic accepts its first three helper calls.
+A longer prefix diagnostic will identify whether the remaining cost lies
+in a particular stage or in the completed theorem.
+
+The generated 2,488-word checkpoint checks in Lean.  Direct kernel reduction
+of Array.all consumes excessive memory and reaches three minutes.  Its
+logical implementation repeats indexed list reads.  The equivalent
+List.all predicate on words.toList checks in 2.2 seconds.  Array.all_toList
+then transfers the result to arbitrary valid array indices.  Every stored
+weight is finite and has real magnitude at most four.  The generator's
+--check mode confirms equality with the manifest-checked JSON checkpoint.
+
+The two attention heads pass the exact rational matrix-norm and
+linear-coefficient bounds.  The real-cast lemmas connect those calculations
+to the model parameters, proving real attention score spread at most 103/7
+for every four-byte context.  This certificate checks in six seconds and
+uses only the standard logical axioms.  Kernel evaluation is needed for
+the concrete raw-word computations.  Ordinary decide stops at primitive
+reductions.  The binary64 normalization, projection, and score roundoff
+margin remains open.
