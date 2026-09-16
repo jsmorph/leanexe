@@ -58,14 +58,37 @@
     {
       "name": "layernorm",
       "kind": "layernorm",
-      "fields": ["values_bits", "scale_bits", "bias_bits"],
+      "fields": [
+        "values_bits",
+        "scale_bits",
+        "bias_bits"
+      ],
       "case": "layer_norm",
       "wasm": "proofs/talos/.generated/layer_norm/program.wasm",
       "export": "layerNorm",
       "domain": "Four finite binary64 inputs, four scales, and four biases, all in [-4, 4]; real epsilon is 1/100000",
-      "absoluteErrorBound": {"numerator": "1", "denominator": "1000000"},
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "1000000"
+      },
       "theorem": "Project.LayerNorm.Spec.layerNorm_real_error",
       "sha256": "b290d7d3931d40f81c97aaa9a156960e841280e28d10e618719eb0975d3ea76b"
+    },
+    {
+      "name": "gelu",
+      "case": "gelu",
+      "wasm": "proofs/talos/.generated/gelu/program.wasm",
+      "sha256": "6159578dd1662f2bb1df3df0dbd4912734d5de0d16bcdb77f1d395ec085f38fd",
+      "export": "gelu",
+      "fields": [
+        "x_bits"
+      ],
+      "domain": "Finite binary64 input in [-3, 3], including signed zeros and subnormals",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "100"
+      },
+      "theorem": "Project.Gelu.Spec.gelu_real_error"
     }
   ]
 }

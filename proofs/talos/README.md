@@ -39,6 +39,14 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The [GELU component](lean/Project/Gelu/Spec.lean) proves total generated-WAT
+execution and finite output within 1/100 of the pinned tanh GELU formula
+on [-3, 3].  Its real perturbation bound is four times the input error.
+Checked function-region renaming transfers the existing exponential
+execution theorem into this module.  The
+[command-line demonstration](../../data/numerical/README.md) accepts a
+decimal value or raw binary64 word.
+
 The [LayerNorm component](lean/Project/LayerNorm/Spec.lean) proves total
 generated-WAT execution and absolute component error at most 1/1000000 for
 four inputs, four scales, and four biases in [-4, 4].  The real epsilon is
