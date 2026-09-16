@@ -23311,3 +23311,47 @@ loop passed in 11 seconds, and boundary sum plus timestep scaling passed
 in 14 seconds.  Five existing memory and scan proofs transferred in 1.7
 seconds.  All audits use standard axioms.  The next proof boundary is the
 observer's Option Trial controller, including release on both failure paths.
+
+The totals and boundary checkpoint was pushed as 0c7eff960d2291d672a1bc3c97aecff4c862642f.
+A fetch confirmed origin/main.  Two trailing blank lines were removed before
+the push.  That whitespace edit required no Lean run.
+
+The sweep reservation wrapper passed in 1.3 seconds.  It composes the checked
+sweep with the existing Heap.Reserved and owned-grid preservation lemmas.
+Its first drafts needed the normalized-capacity equality stated at the same
+syntactic expression used by the simplifier.  The trial execution theorem
+then passed in 5.8 seconds.  It proves all three allocation/release paths,
+preserves every initially owned grid, returns the specified interval vector
+on success, and restores both grid reserves after rejection.  Its first
+draft reached the recursion limit while rewriting a memory-cap equality
+stated with the earlier module.  Giving that equality an explicit type for
+the observer module removed the elaboration failure.  Both public audits
+use standard axioms.  Failed drafts are preserved.  No source or artifact
+change was needed.  The retry loop is next.
+
+The retry proof now covers the generated trial, validity and CFL guards,
+halving branches, invalid-time exit, fuel exhaustion, and sixteen-word
+return.  The source state includes twelve interval words in addition to
+the previous status, timestep, and grid pointer pair.  Compiler annotation
+equalities identify the loop and fuel guard.  The existing BlockLoop,
+FuelGuard, allocator, empty-grid, and reservation lemmas provide the shared
+support.  The retrieved scalar fold guidance does not supply this controller
+invariant, so no LTG promotion follows from this checkpoint.
+
+The first trial-invariant composition reached 400,000 heartbeats while
+reducing nested local updates.  Normalizing the proved frame facts before
+constructing the invariant removed that elaboration problem.  Other failed
+drafts exposed reversed source equalities in the simplifier, a branch
+continuation represented at the wrong instruction level, and missing
+reductions of constant conditions and list ranges.  The final return uses
+a separate checked sixteen-word lemma.  Failed drafts remain in the research
+directory.  Removing unused proof arguments caused dependency rebuilding
+under the same one-thread runner.  No concurrent Lean job was launched.
+
+The complete retry entry theorem and its page-bound variant pass, and all
+twenty new modules have warning-free public axiom audits using only
+propext, Classical.choice, and Quot.sound.  The checks used direct local
+tools/leanrun invocations, without shell redirection or another approval.
+The outer advance loop must now carry the boundary accumulator through
+accepted trials, update it with the checked vector-add function, and return
+it unchanged on failure.  Output packing and exact-byte verification follow.
