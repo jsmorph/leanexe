@@ -12580,3 +12580,21 @@ execution.  Exact-byte packages remain deferred by user authorization.
 The historical aggregate gate remains deferred after its documented
 2026-09-07 timeout in existing CLOB dependencies.  This checkpoint makes
 no aggregate-test claim.  Domain extension to [-8, 0] and softmax follow.
+
+## 2026-09-16: Extended exponential checkpoint
+
+The generated exp_wide module now proves total exact execution, exact
+domain recognition, successful output on [-8, 0], finite output at least
+1/100000, and absolute error at most 1/400.  Division by eight remains
+inside the small polynomial's domain: the mixed error lies below the
+binary64 gap above one.  F64UnitInterval records this discrete endpoint
+argument.  F64Square propagates magnitude, lower-bound, and approximation
+information through three rounded squares.  The input perturbation lemma
+bounds exponential variation around a nonpositive reference input.
+
+The focused source-artifact gate and all 26 native-bit-model versus
+Wasmtime vectors pass, including both signed zeros and the adjacent words
+around -8.  All public proof audits use the three accepted logical axioms.
+At -8, Wasmtime returns 3f3611b84a764371, approximately
+0.00033674954689737804.  The historical aggregate-build deferral is unchanged.
+Softmax composition is next.

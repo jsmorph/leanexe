@@ -8,10 +8,31 @@
       "wasm": "proofs/talos/.generated/exp_small/program.wasm",
       "sha256": "331de6537d47522498fa593afd5a973422c89208c6585c6777c61dfe7f26e877",
       "export": "expSmall",
-      "fields": ["x_bits"],
+      "fields": [
+        "x_bits"
+      ],
       "domain": "Finite binary64 input in [-1, 0], including both signed zeros and subnormals",
-      "absoluteErrorBound": {"numerator": "1", "denominator": "4000"},
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "4000"
+      },
       "theorem": "Project.ExpSmall.Spec.expSmall_real_error"
+    },
+    {
+      "name": "exp-wide",
+      "case": "exp_wide",
+      "wasm": "proofs/talos/.generated/exp_wide/program.wasm",
+      "sha256": "598acb47e6983dcd5328f91820160e6eed2c1dd61fc63f2be0adabf15cb71a44",
+      "export": "expWide",
+      "fields": [
+        "x_bits"
+      ],
+      "domain": "Finite binary64 inputs in [-8, 0], including signed zeros and subnormals",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "400"
+      },
+      "theorem": "Project.ExpWide.Spec.expWide_real_error"
     }
   ]
 }

@@ -40,6 +40,28 @@ With no `--input` argument the runner reads JSON from standard input.
 The [rejection input](exp-small/rejected.json) contains positive one and
 returns `{"status":1,"bits":"0000000000000000"}`.
 
+## Extended exponential
+
+`exp-wide` accepts every binary64 input in [-8, 0].  It divides by eight,
+evaluates the small polynomial, and squares three times.  Its output is
+finite, at least 1/100000, and within 1/400 of the real exponential.
+Both signed zeros return exactly one.  The domain guard rejects every
+other input with status one and zero payload.
+
+```sh
+tools/talos-artifact.js prepare exp_wide
+tools/talos-proof.js check exp_wide
+tools/numeric-demo.js exp-wide --input data/numerical/exp-wide/minus-eight.json
+```
+
+`Project.ExpWide.Spec.expWide_real_error` connects the error and positivity
+bounds to generated-WAT execution.  `Project.ExpWide.reduction` proves
+that rounded division stays within the polynomial domain, using binary64
+spacing at one and a mixed division error bound.  The shared
+`F64Square.approximation` lemma propagates each reconstruction error.
+`Project.ExpWide.perturbed_exp` bounds the exponential error caused by
+perturbing a nonpositive reference input.
+
 ## Proofs and numerical bounds
 
 | Theorem | Statement |
