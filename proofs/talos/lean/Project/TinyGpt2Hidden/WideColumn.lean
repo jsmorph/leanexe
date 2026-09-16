@@ -47,7 +47,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 2 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -64,7 +64,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+2*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 3 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -81,7 +81,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+3*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 4 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -98,7 +98,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+4*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 5 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -115,7 +115,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+5*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 6 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -132,7 +132,7 @@ theorem dotColumn8_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 31 32 _ _ _ _ pointer weights
     (offset+6*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 39 40 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 39 40 _ _ _ _ 7 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_

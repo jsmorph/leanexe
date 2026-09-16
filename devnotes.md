@@ -13159,3 +13159,39 @@ The hidden-state proof now reaches the high feed-forward bias loads.
 The 99-second attempt exposed four emitted overflow guards for the constant
 index 1140+4.  The proof now discharges those guards before applying the
 array-load theorem.
+
+The next hidden-state attempt reaches the return but fails on an ambiguous
+unqualified name in its final simplification.  The model equality now has
+a separate checked lemma, which compiles in 1.5 seconds.  The subsequent
+enclosing check reaches the four-minute timeout without a diagnostic while
+memory use increases.  The unchanged proof is preserved under build/tiny-gpt2.
+The revised proof introduces auxiliary lemmas every six helper calls,
+reducing each term submitted to the kernel.
+
+The six-call grouping also reaches the four-minute timeout.  A three-call
+diagnostic reaches the final model equality, then reports a conjunction
+whose first goal has already simplified to True.  It also exhausts eight
+million heartbeats while checking an auxiliary lemma.  The next check uses
+the explicit True constructor and a larger heartbeat budget.  These runs
+have not yet accepted the enclosing theorem.
+
+The output-array proof can reuse FixedArrayAllocateNone and
+FixedArraySearch.noneProgram_spec.  Increasing result sizes make every
+previously freed result too small for the next request.  The existing
+free-list search theorem covers that case.  The remaining loop invariant
+must connect the copied prefix, next logit, allocation bounds, and releases.
+
+The three-call enclosing proof reaches the six-minute timeout without a
+diagnostic.  Its generated function has 785 combined locals and 90 helper
+calls.  The next version names each instruction-list suffix at a call
+boundary and proves their composition equal to the generated function.
+This reduces repeated instruction lists in symbolic-execution proof terms.
+
+Lean checks the normalized-row zero sum, squared norm at most four, and
+squared distance at most sixteen.  Dimension-parameterized Cauchy–Schwarz
+lemmas then prove the conditional attention spread bound 103/7 from the
+proposed matrix and linear-coefficient bounds.  Projection-centering and
+bilinear expansion identities also check.  Their axiom audits contain only
+the standard logical axioms.  The checkpoint coefficient certificate and
+binary64 error margin remain open.  The four new modules check in 1.1 to
+2.4 seconds each.

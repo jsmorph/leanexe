@@ -48,8 +48,8 @@ relationship between query and key coefficients.
 
 ## Remaining checks
 
-- [ ] Check the normalized-row sum and squared-norm facts.
-- [ ] Check the bilinear and linear score-difference estimate.
+- [x] Check the normalized-row sum and squared-norm facts.
+- [x] Check the bilinear and linear score-difference estimate.
 - [ ] Check the checkpoint's exact rational matrix-norm bounds.
 - [ ] Include binary64 normalization, projection, and score errors.
 - [ ] Bound the attention residual and feed-forward stages.
