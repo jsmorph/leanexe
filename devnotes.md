@@ -12826,3 +12826,38 @@ the pinned dependency.  Its approved invocation built the source inputs
 and regenerated gcd, then stopped on the existing assoc_list cache
 mismatch.  The aggregate remains incomplete.  Its failure does not change
 the successful focused GELU gate or runtime tests.
+
+## 2026-09-16: Global GELU bounds and affine arithmetic
+
+The GELU tail estimate in the [analysis](plans/gelu-analysis.md) now checks.
+For a at least three, exp(z(a)) is at least 100a.  Replacing the positive
+tail by a and the negative tail by zero therefore preserves the 1/100
+absolute error against tanh GELU.  evaluateAll combines that estimate with
+the bounded evaluator and proves finite output for every finite input.
+Its generated execution remains open.
+
+The global real perturbation theorem retains multiplier four without an
+input interval.  Differentiating the logistic expression separates its
+derivative into a sigmoid in [0, 1] and a correction of magnitude at most
+three.  This prevents the later feed-forward proof from requiring both
+perturbed endpoints inside [-3, 3].  Initial derivative checks exposed
+unapplied function definitions and additive-module instance differences.
+Explicit function conversion and ring normalization resolved the remaining
+equality goals.  The global module checks in two seconds.
+
+The [affine analysis](plans/affine-analysis.md) derives balanced dot-product
+budgets before their numerical proofs.  Widths two, four, and eight now
+have checked binary64 calculations for input magnitudes up to 64 and
+coefficient magnitudes up to sixteen.  Four- and eight-input affine outputs
+have error at most 1/10000000000, including bias addition.  The real
+perturbation theorem retains individual coefficient magnitudes, so later
+checkpoint-specific estimates can use the sum of absolute weights.
+The numerical target checks in two seconds.  Generated execution and
+checkpoint range certification remain open.
+
+The next softmax composition proof will interpolate between two real score
+rows.  Each exponential weight derivative has magnitude at most delta
+times its weight when every score perturbation is at most delta.  The
+quotient rule and nonnegative normalized weights then bound a probability's
+derivative by 2*delta.  The mean-value theorem gives a global component
+perturbation bound independent of the absolute score magnitudes.

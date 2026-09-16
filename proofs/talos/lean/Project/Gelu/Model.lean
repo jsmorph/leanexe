@@ -22,6 +22,10 @@ def evaluate (x : UInt64) : UInt64 :=
 
 def inDomain (x : UInt64) : Bool := decide (absBits x ≤ 0x4008000000000000)
 
+def evaluateAll (x : UInt64) : UInt64 :=
+  if inDomain x then evaluate x
+  else if x < 0x8000000000000000 then x else 0
+
 def gelu (x : UInt64) : ExpSmall.Result :=
   if inDomain x then ⟨0, evaluate x⟩ else ⟨1, 0⟩
 
