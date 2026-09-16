@@ -40,7 +40,7 @@ def checkScope (g : Array UInt64) (root depth fuel : UInt64) : UInt64 := Id.run 
       if d == 18446744073709551615 then return 2
       stack := stack.push (nodeB g r) |>.push (d + 1)
       stack := stack.push (nodeA g r) |>.push d
-    else if tag == 4 then
+    else if tag == 4 || tag == 5 then
       stack := stack.push (nodeB g r) |>.push d
       stack := stack.push (nodeA g r) |>.push d
   if stack.isEmpty then return 0 else return 5

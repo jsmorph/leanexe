@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: executable milestones M0.0–M0.9 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
+Status: executable milestones M0.0–M0.10 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -10,7 +10,7 @@ Review decision: start with M0.0, a single executable sort-typing rule intended 
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** M0.10 checked lets, then M0.11 a real Lean export. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are explicitly outside current work. See [the proof ledger](../LeanExe/KernelCheck/PROOFS.md).
+- **Next task:** M0.11: a real Lean export. M0.10 passed its let checks. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are explicitly outside current work. See [the proof ledger](../LeanExe/KernelCheck/PROOFS.md).
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
 - **First actual Lean export:** M0.11, using the already functioning checker.
 - **M1:** integration of the small checkpoints, not the first work unit.
@@ -593,7 +593,7 @@ These links pin the inspected source state. Recheck current files when implement
 - [x] M0.7: substitution; 12 exact WASM/standard-Lean output cases pass.
 - [x] M0.8: application typing; 7 WASM/standard-Lean cases pass.
 - [x] M0.9: beta reduction and bounded conversion; 5 conversion and 4 reduction cases pass.
-- [ ] M0.10: let checking and reduction.
+- [x] M0.10: let checking and reduction; 8 WASM/standard-Lean cases pass.
 - [ ] M0.11: actual Lean proof export through the checker.
 - [ ] M1: command-line checking of actual dependent-function proofs and meaningful corruptions.
 - [ ] M2: independently checked induction/equality and arithmetic proofs.
