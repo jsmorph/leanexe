@@ -39,7 +39,7 @@ theorem retry_boundary (fuel n trials : Nat) (time dt alpha : UInt64) (grid : Ar
       · exact ih _
     · simp
 
-theorem retry_valid {n : Nat} (hn : 0 < n) (hmax : n ≤ 800) (fuel trials : Nat)
+theorem retry_boundary_valid {n : Nat} (hn : 0 < n) (hmax : n ≤ 800) (fuel trials : Nat)
     (time dt : UInt64) (grid : Array Cell) (hg : Indexed n grid)
     (h : (retry fuel n trials time dt (OutwardMaximum.gridUpper grid).value grid).status = 0) :
     let out := retry fuel n trials time dt (OutwardMaximum.gridUpper grid).value grid
@@ -50,5 +50,5 @@ theorem retry_valid {n : Nat} (hn : 0 < n) (hmax : n ≤ 800) (fuel trials : Nat
 
 #print axioms retry_success
 #print axioms retry_boundary
-#print axioms retry_valid
+#print axioms retry_boundary_valid
 end Project.EulerCertificate.Control

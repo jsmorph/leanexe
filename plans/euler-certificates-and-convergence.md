@@ -35,11 +35,12 @@ The binary64 time word and the sum of decoded timestep durations are separate qu
 - [x] Prove shared residual-enclosure and accumulation results.
 - [x] Specify the executable certificate and its relation to the unchanged numerical recurrence.
 - [x] Prove the scalar arithmetic, totals, boundary evaluation, accepted-step observer, and complete observer recurrence.
-- [ ] Inspect compiler output and reuse checked regions, fold guidance, and allocation theorems where their premises match.
+- [x] Inspect compiler output and reuse checked regions, fold guidance, and allocation theorems where their premises match.
 - [x] Prove exact generated execution and store preservation for grid totals, boundary reads, reconstructed face fluxes, the boundary fold, and physical timestep scaling.
 - [x] Prove exact trial and retry execution, all failure paths, heap reservations, and interval results.
 - [x] Prove complete outer-loop and enclosing-run execution through initialization, final totals, and residual intervals.
-- [ ] Prove complete generated execution, allocation, exact output, and exact-byte behavior.  Run independent package checking and axiom audits.
+- [x] Prove complete generated execution, allocation, exact output, the 512 MiB memory bound, and certificate inclusion.  Pass the focused source-artifact gate and public axiom audits.
+- [ ] Prove exact-byte behavior.  Run independent package checking and axiom audits.
 - [ ] Run and inspect the proved certificate at 192, then at 800, with the standard one-process runner limits.  Preserve both earlier datasets.
 - [ ] Publish the certificate values, meanings, widths, run measurements, and proof references.
 
@@ -72,4 +73,4 @@ The checked foundation comprises `ProofKit.RealBalanceEnclosure`, `ProofKit.F64O
 
 The scalar certificate implementation has source soundness and generated-WASM execution proofs.  `ProofKit.F64Interval` provides checked addition, subtraction, multiplication by a decoded word, and division by a positive decoded word.  `EulerCertificate.Flux` composes them into pressure, physical flux, and Rusanov interface bounds.  `EulerCertificateFlux.Spec` proves exact output and componentwise enclosure whenever the corresponding status is zero.  Its 5,741-byte generated module reuses the existing outward arithmetic through a checked function-region renaming.  The focused source-artifact gate passes.
 
-The complete observer now has source proofs.  `Totals.physical_encloses_grid` relates the two normalized array folds to the existing physical total.  `Boundary.physicalStep_encloses_trace` uses the same reconstructed faces and selected speeds as the two directional sweeps.  `Control.advance_base` proves numerical projection equality, and `Control.advance_trace` proves boundary inclusion along that same accepted trace.  `Solve.run_enclosure` composes these results with physical conservation.  `Solve.solve_toList` proves the previous solver output is the exact prefix, followed by four status/lower/upper triples.  The triples represent mass, x-momentum, y-momentum, and energy in that order.  All source audits use standard axioms.  The complete observer's generated execution, allocation, and exact-byte verification remain open.
+The complete observer now has source proofs.  `Totals.physical_encloses_grid` relates the two normalized array folds to the existing physical total.  `Boundary.physicalStep_encloses_trace` uses the same reconstructed faces and selected speeds as the two directional sweeps.  `Control.advance_base` proves numerical projection equality, and `Control.advance_trace` proves boundary inclusion along that same accepted trace.  `Solve.run_enclosure` composes these results with physical conservation.  `Solve.solve_toList` proves the previous solver output is the exact prefix, followed by four status/lower/upper triples.  The triples represent mass, x-momentum, y-momentum, and energy in that order.  All source audits use standard axioms.  The complete observer's generated execution, allocation, exact output, and 512 MiB memory bound now pass, together with the focused source-artifact gate.  Exact-byte verification remains open.

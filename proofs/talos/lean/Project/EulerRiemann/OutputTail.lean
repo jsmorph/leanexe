@@ -12,21 +12,21 @@ theorem output_tail_shape : outputTailProgram = outputHeaderProgram ++ outputApp
     outputReleaseProgram 26 33 ++ outputReturnProgram := rfl
 
 theorem output_tail_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
-    (frame : Locals) (fields : FreeNode) (words : Array UInt64) (n time status : UInt64) (pageLimit : Nat)
+    (frame : Locals) (fields : FreeNode) (words : Array UInt64) (n time status : UInt64) (spare pageLimit : Nat)
     (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 52)
     (hValues : frame.values = []) (hScratch : I64LocalRange frame 42 57)
     (hN : frame.get 0 = some (.i64 n)) (hTime : frame.get 1 = some (.i64 time))
     (hStatus : frame.get 2 = some (.i64 status))
     (hOwnerLocal : frame.get 26 = some (.i64 fields.root)) (hPointerLocal : frame.get 27 = some (.i64 fields.root))
     (hHeap : heap.At store) (hOwner : heap.OwnsWords store fields words) (hSize : words.size ≤ 1280000)
-    (hBudget : OutputBudget store heap (8 * words.size + 176) pageLimit)
+    (hBudget : OutputBudget store heap (8 * words.size + 176 + spare) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final finalHeap target result,
       finalHeap.At final → finalHeap.OwnsWords final target (outputHeaderWords n time status ++ words) →
-      OutputBudget final finalHeap 0 pageLimit → result.values = [.i64 target.root, .i64 target.root] →
+      OutputBudget final finalHeap spare pageLimit → result.values = [.i64 target.root, .i64 target.root] →
       wp module rest Q final result env) :
     wp module (outputTailProgram ++ rest) Q store frame env := by
-  have hBumpH := hBudget.bump 40 (by change 48 + 40 ≤ 8 * words.size + 176; omega)
+  have hBumpH := hBudget.bump 40 (by change 48 + 40 ≤ 8 * words.size + 176 + spare; omega)
   let heapH := heap.allocate 40
   let header := allocatedNode heap.top 40 heap.nodes
   have hHeaderSize : (outputHeaderWords n time status).size = 4 := rfl
@@ -40,8 +40,8 @@ theorem output_tail_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     (hBudget.pages.trans hBudget.pageLimitBound)
   intro storeH frameH hHeapH hHeaderH hWritesH hParamsEq hLocalsH hValuesH hScratchH hRootH hPresH
   have hParamsH : frameH.params.length = 5 := (congrArg List.length hParamsEq).trans hParams
-  have hBudgetH : OutputBudget storeH heapH (8 * words.size + 88) pageLimit :=
-    hBudget.allocated 40 1 _ (by change 48 + 40 + (8 * words.size + 88) ≤ 8 * words.size + 176; omega) hWritesH
+  have hBudgetH : OutputBudget storeH heapH (8 * words.size + 88 + spare) pageLimit :=
+    hBudget.allocated 40 1 _ (by change 48 + 40 + (8 * words.size + 88 + spare) ≤ 8 * words.size + 176 + spare; omega) hWritesH
   have hFieldsH : heapH.OwnsWords storeH fields words :=
     hOwner.arrayWritten 40 1 4 hHeap (by decide) (fun hNone => (hBumpH hNone).1.le) hWritesH
   have hFieldsPointer : frameH.get 27 = some (.i64 fields.root) := (hPresH 27 (by decide)).trans hPointerLocal
@@ -58,8 +58,8 @@ theorem output_tail_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
   intro storeR frameR hHeapR hHeaderR hFieldsR hResultR hWritesR hParamsR hLocalsR hValuesR hScratchR
     hOwnerR hPointerR hPresR
   simp only [hHeaderSize] at hHeapR hHeaderR hFieldsR hResultR hWritesR hOwnerR hPointerR
-  have hBudgetR : OutputBudget storeR heapR 0 pageLimit :=
-    hBudgetH.allocated need 1 0 (by rw [hNeed]; omega) hWritesR
+  have hBudgetR : OutputBudget storeR heapR spare pageLimit :=
+    hBudgetH.allocated need 1 spare (by rw [hNeed]; omega) hWritesR
   have hFieldsGet : frameR.get 26 = some (.i64 fields.root) :=
     (hPresR 26 (by decide) (by decide) (by decide)).trans hFieldsOwner
   have hRootBound := hFieldsR.buffer.rootBound

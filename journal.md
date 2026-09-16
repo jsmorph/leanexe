@@ -23405,3 +23405,72 @@ only the final page bound.  Generalizing its composition to retain an
 arbitrary spare budget will justify the certificate and combined-array
 allocations.  The earlier output API can remain as the zero-spare corollary.
 The generated binary and numerical recurrence remain unchanged.
+
+The outer-loop and run checkpoint was pushed and fetched at
+5007d4721fb71ace273a7c182a8e8f6a6c4d111f.  All twenty new modules have
+warning-free public axiom audits with standard axioms.  The output budget
+generalization now passes: field extraction and output concatenation
+preserve an arbitrary spare budget, and the previous output_exact statement
+follows by choosing zero spare bytes.  Checked region maps transfer the
+stronger result through the reconstructed solver to observer function 3.
+
+The twelve-word certificate memory proof also passes.  It reuses the checked
+array-prefix write theorem and memory-frame composition.  The generated
+store sequence uses one temporary local for each word, so its instruction
+proof composes the existing result-copy and constant-field store lemmas.
+The literal region equality is checked against observer function 15.
+
+The generated certificate construction now passes through capacity selection,
+free-list allocation, length storage, all twelve element stores, ownership,
+and memory-frame preservation.  The first store draft had an incorrectly
+transcribed local-list length and a parenthesization error in explicit list
+indexing.  Their diagnostics are retained.  The corrected public audits are
+warning-free and use standard axioms.
+
+The complete concatenation allocation and copy composition also passes.
+It instantiates the existing shared two-array copy theorem with the generated
+local indices and proves the capacity arithmetic for at most 1,280,016
+output words.  The allocation proof preserves both input arrays and owns
+the concatenated result.  Existing local-copy, length-read, scalar-frame,
+allocator, and copy theorems provide the reusable support.  The generated
+packing tail copies the result root, releases the two temporary arrays,
+and returns the root twice.  Its ownership composition is next.
+
+The release tail and packing-body composition now pass with standard axioms.
+Their proofs preserve the concatenated array while releasing both temporary
+arrays, and they retain the final page bound.  The first composition draft
+needed an explicit simplification of the frame parameter length and a direct
+application of the memory-cap premise after normalizing certificate size.
+Those corrections change no resource hypothesis.  The complete packing
+entry is being checked.  A missing import and existential type annotations
+were corrected before diagnosing a 400,000-heartbeat elaboration boundary.
+The failed draft and diagnostics are preserved.
+
+The complete packing entry now passes in 3.3 seconds.  Diagnostics identified
+two elaboration costs: a reversed parameter-list representation left symbolic
+lengths inside every local access, and repeated reduction of nested local
+updates exhausted the heartbeat limit.  An explicit ABI-order parameter
+list and checked list-update simplification removed both costs.  The proved
+packing result contains exactly the source solver output and four certificate
+triples, owns the returned array, and retains the physical page bound.
+The exported solve composition and initial-store instance are next.
+
+The exported solve, initial-store instance, exact specification, and residual
+enclosure specification now pass.  The first combined import exposed two
+different Control.retry_valid declarations: time progress and boundary
+inclusion.  Renaming the latter retry_boundary_valid resolved the collision.
+All final public audits use only propext, Classical.choice, and Quot.sound.
+The allocation arithmetic bounds the reserved solve work by 360,483,856
+bytes and establishes the public 512 MiB page bound.  The specification
+retains exact equality with the previous numerical output and makes each
+interval's status-zero premise explicit.  Source-artifact checking and
+exact-byte composition follow.
+
+The focused euler_certificate source-artifact gate passed.  Regeneration
+matches the tracked execution model and both public specifications build.
+The production driver now reads and validates the twelve certificate words
+without computing numerical updates on the host.  Its focused output test
+passes after correcting JavaScript exponentiation parenthesization in the
+test fixture.  The test covers malformed certificate status, endpoints,
+length, and component order.  Exact binary verification remains required
+before any production run.

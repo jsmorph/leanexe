@@ -13,17 +13,17 @@ theorem output_fields_shape : outputFieldsProgram = outputMapProgram false ++ ou
     outputAppendProgram false ++ outputReleaseProgram 13 28 ++ outputReleaseProgram 23 29 := rfl
 
 theorem output_fields_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
-    (frame : Locals) (source : FreeNode) (grid : Array Traversal.Cell) (pageLimit : Nat)
+    (frame : Locals) (source : FreeNode) (grid : Array Traversal.Cell) (spare pageLimit : Nat)
     (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 52)
     (hValues : frame.values = []) (hScratch : I64LocalRange frame 42 57)
     (hSource : frame.get 4 = some (.i64 source.root))
     (hHeap : heap.At store) (hOwner : heap.Owns store source grid) (hSize : grid.size ≤ 640000)
-    (hBudget : OutputBudget store heap (outputBytes grid.size) pageLimit)
+    (hBudget : OutputBudget store heap (outputBytes grid.size + spare) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final finalHeap fields result,
       finalHeap.At final →
       finalHeap.OwnsWords final fields (outputMapResult false grid ++ outputMapResult true grid) →
-      OutputBudget final finalHeap (16 * grid.size + 176) pageLimit →
+      OutputBudget final finalHeap (16 * grid.size + 176 + spare) pageLimit →
       result.params.length = 5 → result.locals.length = 52 → result.values = [] →
       I64LocalRange result 42 57 → result.get 26 = some (.i64 fields.root) →
       result.get 27 = some (.i64 fields.root) →
@@ -44,7 +44,7 @@ theorem output_fields_spec (env : HostEnv Unit) (store : Store Unit) (heap : Hea
     hHeap hOwner hSize hBumpD (hBudget.pages.trans hBudget.pageLimitBound)
   dsimp only
   intro storeD frameD hHeapD hGridD hDensityD hWritesD hParamsD hLocalsD hValuesD hScratchD hOwnerD hPointerD hPresD
-  have hBudgetD : OutputBudget storeD heapD (40 * grid.size + 288) pageLimit :=
+  have hBudgetD : OutputBudget storeD heapD (40 * grid.size + 288 + spare) pageLimit :=
     hBudget.allocated need 1 _ (by rw [hNeed]; unfold outputBytes; omega) hWritesD
   have hSourceD : frameD.get 4 = some (.i64 source.root) :=
     (hPresD 4 (by decide) (Or.inl (by decide)) (by decide) (by decide)).trans hSource
@@ -56,7 +56,7 @@ theorem output_fields_spec (env : HostEnv Unit) (store : Store Unit) (heap : Hea
     hHeapD hGridD hSize hBumpP (hBudgetD.pages.trans hBudgetD.pageLimitBound)
   dsimp only
   intro storeP frameP hHeapP hGridP hPressureP hWritesP hParamsP hLocalsP hValuesP hScratchP hOwnerP hPointerP hPresP
-  have hBudgetP : OutputBudget storeP heapP (32 * grid.size + 232) pageLimit :=
+  have hBudgetP : OutputBudget storeP heapP (32 * grid.size + 232 + spare) pageLimit :=
     hBudgetD.allocated need 1 _ (by rw [hNeed]; omega) hWritesP
   have hDensityP : heapP.OwnsWords storeP density (outputMapResult false grid) :=
     hDensityD.arrayWritten need 1 grid.size hHeapD hNeed.ge (fun hNone => (hBumpP hNone).1.le) hWritesP
@@ -79,7 +79,7 @@ theorem output_fields_spec (env : HostEnv Unit) (store : Store Unit) (heap : Hea
   intro storeF frameF hHeapF hDensityF hPressureF hFieldsF hWritesF hParamsF hLocalsF hValuesF hScratchF
     hOwnerF hPointerF hPresF
   simp only [outputMapResult, Array.size_map] at hHeapF hDensityF hPressureF hFieldsF hWritesF hOwnerF hPointerF
-  have hBudgetF : OutputBudget storeF heapF (16 * grid.size + 176) pageLimit :=
+  have hBudgetF : OutputBudget storeF heapF (16 * grid.size + 176 + spare) pageLimit :=
     hBudgetP.allocated fieldNeed 1 _ (by rw [hFieldNeed]; omega) hWritesF
   have hDensityGet : frameF.get 13 = some (.i64 density.root) :=
     (hPresF 13 (by decide) (by decide) (by decide)).trans hDensityOwner

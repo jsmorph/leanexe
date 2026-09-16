@@ -557,7 +557,7 @@
         "Project.EulerCertificate.Spec.solve_exact",
         "Project.EulerCertificate.Spec.solve_enclosure"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }
