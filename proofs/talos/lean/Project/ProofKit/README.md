@@ -25,6 +25,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.F64Bounds` | Raw binary64 sign-clearing guards, including the proof that an accepted half-unit encoding is finite with modeled real magnitude at most one half. |
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |
 | `Project.ProofKit.RealNormBounds` | Dimension-parameterized squared-norm, dot-product, matrix, and bilinear bounds, plus invariance of a zero-sum dot product under constant coefficient shifts. |
+| `Project.ProofKit.F64Rational` | Computable exact rational decoding of a binary64 word and equality of its real cast with the existing scaled-integer real-value definition. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarFrame` | Adapts scalar statement execution and assignment evaluation to arbitrary Locals and result-assignment frames. |
 | `Project.ProofKit.ScalarConditional` | Executes scalar conditional expressions and assignments while retaining decoded control-type metadata. |
