@@ -12642,3 +12642,20 @@ digest is 44e7632e97bbd4ddaf9a3f420ba727896afa4ded542178570e865965468ececd.
 Exact-byte packaging remains deferred.  The aggregate source-proof gate
 is the remaining repository check for this checkpoint.  LayerNorm
 sensitivity and checkpoint ranges remain the next numerical investigation.
+
+The aggregate source-proof gate passed its import-inventory check and
+regenerated gcd, then stopped on assoc_list before the aggregate Lean build.
+A generated candidate removes the unused recursive function formerly at
+index three, shifting allocator and runtime indices.  The compiler and
+AssocList source have no changes in these numerical commits.  The tracked
+cache was restored after diagnosis, and the candidate remains in the ignored
+generation directory.  Repairing that older cache and its runtime pins is
+a separate source-proof maintenance task.  The current aggregate therefore
+remains incomplete.  The three new focused gates and numerical runtime
+tests pass.
+
+The complete Project.Runtime.Checks target also passes with all three new
+sets of runtime-function equalities.  Lean runs used the local repository
+runner with 4 GiB MemoryHigh, 6 GiB MemoryMax, 1 GiB swap maximum, 100 percent
+CPU quota, and one thread.  The final tracked changes consist of the
+numerical implementations, proofs, tests, command-line tool, and records.
