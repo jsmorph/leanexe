@@ -15,6 +15,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Canonical final-module image, host ABI, precise self-hosting claim, compatibility rules, and bootstrap receipt. |
 | [Architecture Diagram](leanexe.png) | High-level source, compilation, annotation, LTG, execution, and proof flow. |
 | [JSON Tree WASI Example](demo.md) | Source, compilation, command execution, and verification for a typed tree-processing program. |
+| [Pseudorandom Number Generator](prng.md) | Lean SplitMix64 example, seed/count/modulus CLI, and execution tests. |
 
 ## Artifact verification and proving
 

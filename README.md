@@ -68,6 +68,10 @@ build/tools/wasmtime/current/wasmtime run \
 
 Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  WASI command modes provide bounded stdin, argv, stdout, stderr, and explicit error results while keeping the selected Lean entry pure.
 
+The [pseudorandom generator](docs/prng.md) runs with
+`tools/prng.js 42 5 100`: seed 42, five results, modulus 100.  It compiles
+the Lean SplitMix64 example and prints the WASM results as decimal integers.
+
 ## Generate and verify an artifact proof
 
 `tools/leanexegen` uses separate headless Codex tasks to generate a formal specification, a Lean program, and a proof about the compiled artifact.  Each task may iterate with Lean, while the outer tool independently checks its result.  The proof task receives the frozen specification and exact artifact model but does not receive the source program or compiler implementation.
