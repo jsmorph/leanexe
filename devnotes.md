@@ -12659,3 +12659,19 @@ sets of runtime-function equalities.  Lean runs used the local repository
 runner with 4 GiB MemoryHigh, 6 GiB MemoryMax, 1 GiB swap maximum, 100 percent
 CPU quota, and one thread.  The final tracked changes consist of the
 numerical implementations, proofs, tests, command-line tool, and records.
+
+## 2026-09-16: LayerNorm derivation before implementation
+
+The [LayerNorm analysis](plans/layernorm-analysis.md) records the source audit
+and a squared-distance identity for normalized rows.  The identity gives an
+endpoint-variance bound without differentiating the normalization map or
+assuming a positive variance along an interpolating segment.  Centering
+decreases squared Euclidean distance.  Positive epsilon covers constant rows.
+The first Lean step will check these real-arithmetic statements independently
+of binary64 operation order and executable input bounds.
+
+The pinned public constructor uses epsilon 1/100000, affine scale and bias,
+and a final normalization after the block.  Its specification centers twice
+when computing variance.  That second centering vanishes over the reals but
+affects rounded evaluation, so the later implementation must state its
+operation tree.  No dependency or compiler change is required for this step.
