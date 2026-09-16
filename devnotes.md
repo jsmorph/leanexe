@@ -1,5 +1,26 @@
 # Development Journal
 
+## 2026-09-16: Tiny transformer implementation
+
+The user authorized implementation of the tiny GPT-2-style model, beginning
+with a runnable verified softmax, and requested frequent commits and pushes.
+The agreed completion boundary for early components is generated-WAT execution,
+success, and numerical error.  Frozen exact-byte packages move to later
+releases.  The [component plan](plans/tiny-transformer.md) records the scope.
+
+Implementation starts at revision 0eeb992d896a90b63848ca578567c8d3f7a30942,
+Lean 4.34.0-rc2, and Talos 87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47.
+The standard local runner works with the required cgroup limits.
+The focused `tools/talos-proof.js check f64_horner2_checked_bits` gate passed,
+including regeneration equality, numerical error, termination, and the
+explicit execution trace.  Existing deprecation warnings were replayed.
+
+Mathlib's `Real.exp_bound` in `Analysis/Complex/Exponential.lean` bounds the
+degree-six Taylor remainder on absolute input at most one by
+`abs(x)^7 / 4410`.  This gives room within the proposed 1/1000 bound for
+binary64 coefficient and evaluation errors.  ProofKit's mixed arithmetic
+bounds include underflow and avoid excluding small inputs.
+
 ## 2026-08-11: Documentation consolidation
 
 The maintained documentation now assigns current language behavior, compiler architecture, artifact proving, annotation semantics, status, and active work to separate authority documents.  The consolidation removed superseded design reports and historical work queues after migrating their current facts.  Demo 1 now identifies its scalar ABI as the predecessor of the current array interface, while Demos 2 through 11 remain the current-interface examples.
