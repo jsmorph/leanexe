@@ -13,10 +13,11 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.MemoryGrowth` | Checked page-delta arithmetic and execution of the allocator's memory-growth sequence within the runtime cap. |
 | `Project.ProofKit.MemoryEnsure` | Checked conditional growth to the larger of the current and requested page counts, preserving memory bytes and the local frame. |
 | `Project.ProofKit.Frame` | Local-frame extensionality, operand-stack replacement projections, and conversion from combined `Locals.get` facts to internal-local optional and indexed getters. |
+| `Project.ProofKit.ConstantFunction` | Exact execution and store preservation for a constant-returning function with one local in a module without imports. |
 | `Project.ProofKit.FuelGuard` | Short-circuit fuel and completion guards with exact store and frame preservation and arbitrary exit or body continuations. |
 | `Project.ProofKit.BlockLoop` | Empty-stack block/loop composition from a proved iteration, a decreasing natural measure, a completed-state predicate, and an arbitrary suffix continuation. |
 | `Project.ProofKit.CheckedArrayGet` | Bounds-checked `Array UInt64` loads for arbitrary staged pointer and index locals, preserving the store and an operand-stack tail. |
-| `Project.ProofKit.CheckedNatMul` | Checked natural multiplication from staged operands, including the zero branch, overflow exclusion, and preservation of an arbitrary operand-stack tail. |
+| `Project.ProofKit.CheckedNatMul` | Checked natural multiplication from staged operands or its evaluated zero guard, including overflow exclusion and preservation of an arbitrary operand-stack tail. |
 | `Project.ProofKit.CheckedNatMulArithmetic` | The natural-product bound that discharges the emitted maximum-word division guard. |
 | `Project.ProofKit.CheckedDivMod` | Zero-safe unsigned division and remainder from staged operands, preserving the store and stack tail. |
 | `Project.ProofKit.NatSub` | Saturating natural subtraction from staged operands, preserving the store and stack tail. |

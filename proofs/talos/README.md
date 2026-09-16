@@ -71,8 +71,10 @@ numerical theorem for finite scores with active spread at most sixteen,
 without an absolute score bound.  The public demonstration retains its
 [-4, 4] input guard.  The [tiny model definition](lean/Project/TinyGpt2/Real.lean)
 and [causal-prefix theorem](lean/Project/TinyGpt2/Causality.lean) describe
-the complete real-valued architecture.  Model execution and checkpoint
-certification remain open.
+the complete real-valued architecture.  The model's component execution
+proofs cover embedding lookup, normalization, attention, matrix-column
+access, context projection, and feed-forward contraction.  The enclosing
+model execution and checkpoint certification remain open.
 
 The internal exponential evaluator now has a checked [-16, 0] theorem
 with the same 1/400 absolute error and a positive lower bound of
