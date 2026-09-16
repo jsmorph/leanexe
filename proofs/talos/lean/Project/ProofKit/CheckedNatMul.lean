@@ -52,4 +52,30 @@ theorem program_spec (leftLocal rightLocal : Nat) (module_ : Wasm.Module)
 #print axioms zero_spec
 #print axioms program_spec
 
+def guardProgram (leftLocal rightLocal : Nat) : Wasm.Program :=
+  [.iff 0 1 [.constI64 0]
+    [.constI64 (-1), .localGet rightLocal, .divUI64, .localGet leftLocal, .ltUI64,
+      .iff 0 1 [.unreachable]
+        [.localGet leftLocal, .localGet rightLocal, .mulI64] [] [.i64]]]
+
+theorem guard_spec (leftLocal rightLocal : Nat) (module_ : Wasm.Module)
+    (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
+    (left right : UInt64) (tail : List Value)
+    (hValues : frame.values = .i32 (if right = 0 then 1 else 0) :: tail)
+    (hLeft : frame.get leftLocal = some (.i64 left))
+    (hRight : frame.get rightLocal = some (.i64 right))
+    (hFit : left.toNat * right.toNat < UInt64.size)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q store
+      { frame with values := .i64 (left * right) :: tail } env) :
+    wp module_ (guardProgram leftLocal rightLocal ++ rest) Q store frame env := by
+  have hp := program_spec leftLocal rightLocal module_ env store
+    { frame with values := tail } left right tail rfl hLeft hRight hFit Q rest hNext
+  have hRead := hRight
+  simp only [Locals.get] at hRead
+  simpa only [program, guardProgram, List.cons_append, List.nil_append, wp_localGet_cons,
+    wp_constI64_cons, wp_eqI64_cons, wp_iff_control_types, Locals.get, hRead, ← hValues] using hp
+
+#print axioms guard_spec
+
 end Project.ProofKit.CheckedNatMul

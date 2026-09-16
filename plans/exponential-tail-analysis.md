@@ -44,3 +44,26 @@ result with the existing theorem covers [-16, 0].
 - [x] Check the three squarings and exponential tail bound.
 - [x] Extend the internal softmax spread theorem to sixteen.
 - [ ] Certify the trained model's score spread within that domain.
+
+## Sharper bound for model composition
+
+The existing 1/400 bound loses the dependence between the polynomial
+remainder and the later squarings.  Put t = -x/8, so 0 ≤ t ≤ 2.
+Taylor's remainder gives
+`0 ≤ P6(-t) - exp(-t) ≤ t^7/5040`.
+The eighth-power difference is therefore at most
+`8 * (t * P6(-t))^7 / 5040`.
+
+In the degree-seven Bernstein basis on [0, 2], the coefficients of
+`t * P6(-t)` are
+`[0, 2/7, 8/21, 2/5, 8/21, 22/63, 32/105, 14/45]`.
+All lie between zero and 2/5.  The resulting exact-real approximation
+bound is `64/24609375`, about 2.601 × 10^-6, throughout [-16, 0].
+The rational coefficient calculation has been checked in Python.
+The Taylor remainder, polynomial identity, and numerical composition
+still require Lean proofs.
+
+- [ ] Check the signed Taylor remainder and Bernstein bound.
+- [ ] Check the eighth-power error estimate.
+- [ ] Add division, coefficient, Horner, and squaring roundoff.
+- [ ] Propagate the sharper bound through softmax and bounded GELU.

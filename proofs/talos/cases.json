@@ -678,7 +678,12 @@
       "behaviorTheorems": [
         "Project.TinyGpt2Hidden.Spec.loadRow_exact",
         "Project.TinyGpt2Hidden.Spec.dot8_exact",
-        "Project.TinyGpt2Hidden.Spec.gelu_all_exact"
+        "Project.TinyGpt2Hidden.Spec.gelu_all_exact",
+        "Project.TinyGpt2Hidden.Spec.norm_exact",
+        "Project.TinyGpt2Hidden.Spec.attentionRow_exact",
+        "Project.TinyGpt2Hidden.Spec.projectContext_exact",
+        "Project.TinyGpt2Hidden.Spec.contractRow_exact",
+        "Project.TinyGpt2Hidden.Spec.embedding_exact"
       ],
       "complete": false
     }
