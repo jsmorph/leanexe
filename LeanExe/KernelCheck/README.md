@@ -1,6 +1,6 @@
 # Lean kernel checker: executable checkpoints
 
-Executable coverage reaches M0.9. Formal source proofs currently cover only
+Executable coverage reaches M0.10. Formal source proofs currently cover only
 sort typing and concrete max/imax (P0/P1); binding, checker soundness and
 exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
 and run `node test/kernel_proofs.js` to check the ten universal theorems.
@@ -91,6 +91,7 @@ Each zero-based node occupies three UInt64 words:
 | 2: Pi | domain node ID | body node ID |
 | 3: lambda | domain node ID | body node ID |
 | 4: application (from M0.8) | function node ID | argument node ID |
+| 5: let (from M0.10) | value node ID | lambda node carrying annotation/body |
 
 Every child must precede its parent. The entire array is validated, including
 unreachable nodes; the root must exist. Result 0 means structurally valid;
@@ -250,8 +251,26 @@ original subterms before using reduction on their types. Eta/proof irrelevance
 remain incomplete; the test requiring eta returns unsupported (3).
 Fuel exhaustion returns 5, never an incorrect-proof verdict.
 
+## M0.10: checked lets and zeta reduction
+
+`node test/kernel_let.js` builds `checker-m0-10.wasm`; `checkLet` has the
+same proof/type/fuel interface. Eight cases check ordinary proof lets,
+dependent local definitions, lets in function/type positions, malformed
+binder containers, and invalid annotations/values, including unused values.
+
+A tag-5 node points to its value and a tag-3 binder container. The container's
+domain is the declared type and its body is the let body. This preserves the
+three-word graph format and makes binding behavior explicit. Inference checks
+the annotation as a type and the value against it **before** substituting into
+and checking the body. Reduction also supports zeta substitution.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-10.wasm checkLet i64 array-u64:0,1,0,0,0,0,1,0,0,3,0,2,5,1,3 i64:4 i64:0 i64:100
+```
+
+This returns 0 for `let A : Type := Prop; A : Type`.
+
 ## Next checkpoint
 
-M0.10 adds checked lets and zeta reduction, then M0.11 checks a real Lean export.
-This remains a PoC. Larger source proofs are deferred; no WASM proof work is
-planned now. The [full plan](../../plans/lean-kernel-checker.md) records the scope.
+M0.11 checks a real Lean export. This remains a PoC: larger source proofs are
+deferred and no WASM proof work is planned now. See the [full plan](../../plans/lean-kernel-checker.md).

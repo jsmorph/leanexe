@@ -12869,3 +12869,19 @@ The user then clarified that no WASM proofs should be attempted now and some
 source-level proofs may be deferred: this remains a PoC to establish LeanExe
 feasibility. Keep P0/P1, make larger source gaps visible, and resume M0.10/M0.11.
 That clarification supersedes the temporary feature pause described above.
+
+## 2026-09-16: Kernel checker M0.10
+
+Let nodes reuse the three-word representation: value plus a lambda-shaped
+annotation/body container, which validation requires explicitly. Scope and
+binding operations naturally traverse that binder. Inference checks the
+annotation and value before substituting into the body, so unused invalid
+values are rejected and dependent local definitions are available in body
+types. The reducer implements zeta with the same instantiation operation.
+
+Eight WASM/standard-Lean cases passed, including proof lets, dependent type
+aliases, function/type positions, malformed containers, and unused invalid
+values. Lean also checked the actual positive examples. The 9 conversion,
+17 graph and 25 binding regression cases passed; documentation checks passed.
+Source soundness for this operation remains deferred under the user's PoC
+clarification. M0.11, an actual Lean export, is next.

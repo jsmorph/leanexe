@@ -20,6 +20,11 @@ def whnfLoop : Nat → Result → UInt64 → Array UInt64 → Bool → Result
           let tag := nodeTag s.graph current
           if tag == 4 then
             whnfLoop fuel s (nodeA s.graph current) (args.push (nodeB s.graph current)) false
+          else if tag == 5 then
+            let binder := nodeB s.graph current
+            let next := instantiateCore s (nodeB s.graph binder) (nodeA s.graph current)
+            if next.status != 0 then next
+            else whnfLoop fuel next next.root args false
           else if tag == 3 && !args.isEmpty then
             let next := instantiateCore s (nodeB s.graph current) (args.getD (args.size - 1) 0)
             if next.status != 0 then next
