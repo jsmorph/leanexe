@@ -2,9 +2,12 @@ import LeanExe.KernelCheck.Graph
 
 namespace LeanExe.KernelCheck
 
-def nodeTag (g : Array UInt64) (r : UInt64) : UInt64 := g[r.toNat * 3]!
-def nodeA (g : Array UInt64) (r : UInt64) : UInt64 := g[r.toNat * 3 + 1]!
-def nodeB (g : Array UInt64) (r : UInt64) : UInt64 := g[r.toNat * 3 + 2]!
+/-- Internal total reads. Public entries validate every ID first; generated
+IDs come only from addNode. Word arithmetic avoids a partial Nat multiply
+forcing callers to inline these otherwise first-order helper arguments. -/
+def nodeTag (g : Array UInt64) (r : UInt64) : UInt64 := g.getD (r * 3).toNat 0
+def nodeA (g : Array UInt64) (r : UInt64) : UInt64 := g.getD (r * 3 + 1).toNat 0
+def nodeB (g : Array UInt64) (r : UInt64) : UInt64 := g.getD (r * 3 + 2).toNat 0
 
 structure Result where
   graph : Array UInt64

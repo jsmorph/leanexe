@@ -26,6 +26,8 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
     let a := nodeA s.graph term
     let b := nodeB s.graph term
     if phase == 1 then
+      s := whnfCore s s.root
+      if s.status != 0 then return s
       if nodeTag s.graph s.root != 0 then
         return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
       let u := nodeA s.graph s.root
@@ -35,6 +37,8 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
     else if phase == 2 then
       ctx := ctx.pop
       if tag == 2 then
+        s := whnfCore s s.root
+        if s.status != 0 then return s
         if nodeTag s.graph s.root != 0 then
           return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
         let v := nodeA s.graph s.root
@@ -42,6 +46,8 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
       else
         s := addNode s 2 a s.root
     else if phase == 3 then
+      s := whnfCore s s.root
+      if s.status != 0 then return s
       if nodeTag s.graph s.root != 2 then
         return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
       stack := stack.push term |>.push 4 |>.push s.root
@@ -75,6 +81,8 @@ def admitContext (g ctx : Array UInt64) (root : UInt64) (fuel : Nat) : Result :=
   for ty in ctx do
     if ty.toNat >= g.size / 3 then return { s with status := 4 }
     s := inferCore admitted s ty
+    if s.status != 0 then return s
+    s := whnfCore s s.root
     if s.status != 0 then return s
     if nodeTag s.graph s.root != 0 then
       return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }

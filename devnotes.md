@@ -12811,3 +12811,33 @@ application, applied identity, clear invalid applications, and two beta-dependen
 cases returning unsupported. Lean checked the actual positive terms too.
 The 25 binding, 12 substitution and 12 closed-proof regression cases passed,
 as did the source/documentation gates. M0.9 will make the two beta cases pass.
+
+## 2026-09-16: Kernel checker M0.9 and proof expectation
+
+Beta reduction and conversion now share the instantiation work budget. The
+normalizer maintains an argument spine; inference reduces before demanding a
+Sort or Pi, and comparison normalizes each paired head. Full eta and proof
+irrelevance remain unsupported; a valid eta-dependent case returns 3.
+
+The first source implementation passed native checks but the WASM function-type
+case trapped on allocation. Its generated WAT remains in the ignored build
+area as a diagnostic. An explicit step structure and then a tail-recursive
+normalizer exposed an inlining diagnostic for instantiateCore. Inspection of
+strict argument materialization led to total internal node reads after public
+graph validation, using UInt64 address arithmetic, and a total guarded spine
+read. The tail-recursive form then compiled and all failing runtime cases passed.
+Public bounds validation is unchanged; generated node IDs come from addNode.
+No compiler changes were made. Large artifact/code expansion remains a later
+performance concern, not a proved compiler property.
+
+Five conversion and four reduction cases passed in WASM and standard Lean,
+including the formerly trapping case, capture avoidance, definite inequality,
+eta inconclusiveness and exhaustion of an untyped looping term. The affected
+application (7), proof (12), binding (25), substitution (12), context (14),
+Pi (10), and graph (17) regressions all passed. Documentation checks passed.
+
+The user asked whether correctness was being proved as work progressed. The
+answer is no: these checks were tests and source/WASM comparisons, not formal
+source soundness or artifact correctness proofs. New feature work is paused
+to add a clearly separated formal proof track, starting with sort typing and
+concrete universes, then graph/binding refinement. M0.10 and M0.11 remain pending.
