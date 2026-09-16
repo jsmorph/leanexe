@@ -13540,3 +13540,26 @@ bounds and the release theorem to its loop invariant.
 The focused tiny_gpt2_infer gate passes after both additions.  It compares
 the regenerated program and checks the imported release and layout lemmas.
 All new axiom reports contain only propext, Classical.choice, and Quot.sound.
+
+The output memory invariant now tracks the original empty array, the current
+array header, the represented free list, and the six runtime globals.
+Allocation and length initialization preserve the earlier buffers and any
+represented input array.  The append-result theorem combines those facts
+with the copy theorem's write interval and the conditional release step.
+It restores the next invariant, preserves the new result array, retains the
+page count when the reserved memory fits, and preserves every byte below
+the initial heap top.  This last property will preserve the checkpoint
+through the vocabulary loop.
+
+Shared bump-allocation lemmas establish header-write bounds, free-list
+preservation, and the no-growth case.  The new modules build in 1.3 to
+2.4 seconds.  The first memory checks exposed missing natural-number
+normalization at address bounds.  Explicit order proofs resolve those
+goals.  A length-header check needed the 32-bit address bound before
+rewriting the modulus.  A record-update expression also needed parentheses
+around its function application.  All focused module checks pass.  The
+generated-loop execution proof remains open.
+
+The focused tiny_gpt2_infer gate also passes with the complete memory
+composition imported by Spec.  Its axiom reports contain only the standard
+logical axioms.  Documentation and whitespace checks pass.
