@@ -124,7 +124,28 @@ build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-3-shi
 These return `0` and `[0, 1, 1, 0, 0, 1, 1, 0]`, respectively. The second
 result appends bvar 1 and returns its node ID (1).
 
+## M0.4: validated contexts and variable typing
+
+`node test/kernel_infer.js` builds `checker-m0-4.wasm` and checks 14 exact
+WASM/standard-Lean results. `inferOpen graph context root fuel` returns
+`[0, inferredTypeRoot, ...graph]` or `[status]`. Context entries are node IDs
+of assumption types, oldest first; each type is expressed relative to the
+preceding context. The checker admits them in order only after inferring a
+Sort for each. They remain explicit local assumptions, not closed theorems.
+
+Variable lookup lifts the stored type across the variable itself and every
+newer binder. Unsupported forms return 3; out-of-scope variables and non-type
+assumptions return 1. Fuel is shared across admission, inference and shifting.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-4.wasm inferOpen array-u64 array-u64:0,1,0,1,0,0 array-u64:0,1 i64:1 i64:20
+```
+
+This checks `A : Sort 1, x : A |- x : A`. It returns
+`[0, 3, 0, 1, 0, 1, 0, 0, 0, 2, 0, 1, 1, 0]`:
+the inferred type at node 3 is bvar 1, referring to A across x's binder.
+
 ## Next checkpoint
 
-M0.4 adds validated local contexts and Sort/bvar inference. The complete handoff and later
+M0.5 adds Pi formation using concrete imax. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).
