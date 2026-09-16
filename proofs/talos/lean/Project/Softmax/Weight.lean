@@ -1,5 +1,5 @@
 import Project.Softmax.Order
-import Project.ExpWide.Tail
+import Project.ExpWide.Sharp
 
 namespace Project.Softmax
 open CodeLib.IEEE64 Project.ProofKit
@@ -50,9 +50,9 @@ theorem shifted_weight_sixteen (x m : UInt64) (hx : Finite x) (hm : Finite m)
     (hab : |value x-value m| ≤ 16) (ho : value x ≤ value m) :
     Finite (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
     1/1000000000 ≤ value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
-    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) - Real.exp (value x-value m)| ≤ 1/399 := by
+    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) - Real.exp (value x-value m)| ≤ 1/299000 := by
   have hs := subtract_max_sixteen x m hx hm hab ho
-  have he := ExpWide.evaluate_error_sixteen _ hs.1 hs.2.1 hs.2.2.1
+  have he := ExpWide.evaluate_error_sharp _ hs.1 hs.2.1 hs.2.2.1
   have hp := ExpWide.perturbed_exp (value x-value m) (value (Wasm.IEEE64.sub x m))
     (16*arithmeticEpsilon) (sub_nonpos.mpr ho) hs.2.2.2 (by norm_num [arithmeticEpsilon])
   refine ⟨he.1, he.2.1, (abs_sub_le _ _ _).trans ((add_le_add he.2.2 hp).trans ?_)⟩
@@ -62,12 +62,13 @@ theorem shifted_weight_spread (x m : UInt64) (hx : Finite x) (hm : Finite m)
     (hab : |value x-value m| ≤ 8) (ho : value x ≤ value m) :
     Finite (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
     1/100000 ≤ value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
-    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) - Real.exp (value x-value m)| ≤ 1/399 := by
+    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) - Real.exp (value x-value m)| ≤ 1/299000 := by
   have hs := subtract_max_spread x m hx hm hab ho
-  have he := ExpWide.evaluate_error _ hs.1 hs.2.1 hs.2.2.1
+  have he := ExpWide.evaluate_error_sharp _ hs.1 (by linarith [hs.2.1]) hs.2.2.1
+  have hpositive := ExpWide.evaluate_error _ hs.1 hs.2.1 hs.2.2.1
   have hp := ExpWide.perturbed_exp (value x-value m) (value (Wasm.IEEE64.sub x m))
     (8*arithmeticEpsilon) (sub_nonpos.mpr ho) hs.2.2.2 (by norm_num [arithmeticEpsilon])
-  refine ⟨he.1, he.2.1, (abs_sub_le _ _ _).trans ((add_le_add he.2.2 hp).trans ?_)⟩
+  refine ⟨he.1, hpositive.2.1, (abs_sub_le _ _ _).trans ((add_le_add he.2.2 hp).trans ?_)⟩
   norm_num [arithmeticEpsilon]
 
 theorem subtract_max (x m : UInt64) (hx : Finite x) (hm : Finite m)
@@ -81,7 +82,7 @@ theorem shifted_weight (x m : UInt64) (hx : Finite x) (hm : Finite m)
     (bx : |value x| ≤ 4) (bm : |value m| ≤ 4) (ho : value x ≤ value m) :
     Finite (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
     1/100000 ≤ value (ExpWide.evaluate (Wasm.IEEE64.sub x m)) ∧
-    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m))-Real.exp (value x-value m)| ≤ 1/399 :=
+    |value (ExpWide.evaluate (Wasm.IEEE64.sub x m))-Real.exp (value x-value m)| ≤ 1/299000 :=
   shifted_weight_spread x m hx hm ((abs_sub _ _).trans (by linarith)) ho
 
 #print axioms subtract_max

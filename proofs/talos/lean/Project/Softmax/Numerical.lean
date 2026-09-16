@@ -22,7 +22,7 @@ def NumericalResult (n a b c d : UInt64) (result : Result) : Prop :=
   (∀ i, Finite (outputs result i) ∧ 0 ≤ value (outputs result i) ∧
     (indexWord i < n → 0 < value (outputs result i)) ∧
     (¬indexWord i < n → outputs result i = 0) ∧
-    |value (outputs result i)-reference n (scores a b c d) i| ≤ 1/64) ∧
+    |value (outputs result i)-reference n (scores a b c d) i| ≤ 1/50000) ∧
   |(∑ i, value (outputs result i))-1| ≤ 32*arithmeticEpsilon
 
 theorem compute_numerical_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
@@ -35,10 +35,10 @@ theorem compute_numerical_spread (n a b c d : UInt64) (h : SpreadValid n a b c d
   have hp : ∀ i, 0 ≤ value (w i) := fun i => (hw.1 i).2.1
   have hr : ∀ i, 0 ≤ r i ∧ r i ≤ 1 := fun i =>
     ⟨(hw.1 i).2.2.2.2.1, (hw.1 i).2.2.2.2.2.1⟩
-  have he : ∀ i, |value (w i)-r i| ≤ 1/399 := fun i => (hw.1 i).2.2.2.2.2.2
+  have he : ∀ i, |value (w i)-r i| ≤ 1/299000 := fun i => (hw.1 i).2.2.2.2.2.2
   have hd := denominator w r hf hp hr he hw.2
   change Finite den ∧ 49/50 ≤ value den ∧ value den ≤ 5 ∧
-    |value den-∑ i, r i| ≤ 1/90 ∧
+    |value den-∑ i, r i| ≤ 1/74000 ∧
     |value den-∑ i, value (w i)| ≤ 18*arithmeticEpsilon ∧ 1 ≤ ∑ i, r i at hd
   have hb : ∀ i, 0 ≤ value (w i) ∧ value (w i) ≤ 2 := by
     intro i

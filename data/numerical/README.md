@@ -10,7 +10,7 @@ decimal display are outside the formal execution theorem.
 ## GELU
 
 `gelu` accepts finite binary64 inputs in [-3, 3].  It returns a finite
-result within 1/100 of x*(1+tanh(sqrt(2/pi)*(x+0.044715*x^3)))/2.
+result within 1/80000 of x*(1+tanh(sqrt(2/pi)*(x+0.044715*x^3)))/2.
 The input perturbation theorem adds four times the input error when both
 reference and decoded inputs lie in that interval.
 
@@ -97,7 +97,7 @@ The [extreme-score input](softmax/extremes.json) exercises [-4, 4].
 The output includes four raw words, decimal values, active count, exact
 rational bounds, theorem name, and binary digest.
 
-The numerical theorem proves absolute error at most 1/64 per component
+The numerical theorem proves absolute error at most 1/50000 per component
 against real exponential softmax of the decoded inputs.  Active outputs
 are positive and finite.  Their sum differs from one by at most
 32 times 2^-52, or 1/140737488355328.  The computed denominator lies in
@@ -113,7 +113,7 @@ terminating generated-WAT execution with complete store preservation.
 `Project.Softmax.Spec.softmax_input_error` extends that execution theorem
 to perturbed input scores.  If each score differs from its real target by
 at most delta, each output differs from the target softmax by at most
-1/64 + 2*delta.  The target scores may be any real values.
+1/50000 + 2*delta.  The target scores may be any real values.
 
 ## Small exponential
 
@@ -152,7 +152,7 @@ returns `{"status":1,"bits":"0000000000000000"}`.
 
 `exp-wide` accepts every binary64 input in [-8, 0].  It divides by eight,
 evaluates the small polynomial, and squares three times.  Its output is
-finite, at least 1/100000, and within 1/400 of the real exponential.
+finite, at least 1/100000, and within 1/300000 of the real exponential.
 Both signed zeros return exactly one.  The domain guard rejects every
 other input with status one and zero payload.
 

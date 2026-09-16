@@ -20,6 +20,18 @@ theorem scale_bounds : 797884/1000000 ≤ scale ∧ scale ≤ 797885/1000000 := 
     apply (div_le_iff₀ hp).mpr
     nlinarith only [Real.pi_gt_d6]
 
+theorem scale_bounds_precise :
+    7978845608028653/10000000000000000 ≤ scale ∧
+    scale ≤ 7978845608028654/10000000000000000 := by
+  have hp := Real.pi_pos
+  constructor
+  · apply (Real.le_sqrt (by norm_num) (by positivity)).mpr
+    apply (le_div_iff₀ hp).mpr
+    nlinarith only [Real.pi_lt_d20]
+  · apply (Real.sqrt_le_left (by norm_num)).mpr
+    apply (div_le_iff₀ hp).mpr
+    nlinarith only [Real.pi_gt_d20]
+
 theorem argument_bounds (a : ℝ) (ha : 0 ≤ a) (hu : a ≤ 3) :
     0 ≤ argument a ∧ argument a ≤ 7 := by
   have hk : 0 ≤ scale ∧ scale ≤ 4/5 := by

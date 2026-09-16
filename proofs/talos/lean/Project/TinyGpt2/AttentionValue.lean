@@ -25,14 +25,14 @@ theorem weightedValue_perturbed (n a b c d : UInt64) (h : Softmax.SpreadValid n 
     let output := weightedValue (Softmax.compute n a b c d) (v 0) (v 1) (v 2) (v 3)
     Finite output ∧
       |value output-∑ j, Softmax.Real.probability (Softmax.visible n) targetScores j*targetValues j| ≤
-        1/10000000000+(∑ j, |value (v j)|)*(1/64+2*scoreError)+valueError := by
+        1/10000000000+(∑ j, |value (v j)|)*(1/50000+2*scoreError)+valueError := by
   let p := Softmax.outputs (Softmax.compute n a b c d)
   let r := Softmax.Real.probability (Softmax.visible n) targetScores
   have hn := Affine.dot4_error p v (probability_output_bound n a b c d h) hv
-  have hp : ∀ j, |value (p j)-r j| ≤ 1/64+2*scoreError :=
+  have hp : ∀ j, |value (p j)-r j| ≤ 1/50000+2*scoreError :=
     Softmax.compute_spread_perturbed n a b c d h targetScores scoreError hs hscore
   have hd := Affine.Real.dot_perturbation (fun j => value (p j)) r (fun j => value (v j))
-    targetValues (fun _ => 1/64+2*scoreError) (fun _ => valueError) hp hvalue
+    targetValues (fun _ => 1/50000+2*scoreError) (fun _ => valueError) hp hvalue
   have hr : ∑ j, |r j| = 1 := by
     have hrn (j : Fin 4) : 0 ≤ r j :=
       Softmax.Real.probability_nonnegative (Softmax.visible n) targetScores j

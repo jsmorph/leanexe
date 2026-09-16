@@ -33,10 +33,10 @@ traversal, expanded positional embeddings, training, and new certificates.
 |-----------|----------------|-----------------|
 | Existing Horner baseline | Four binary64 magnitudes at most one half | Reproduced execution and error theorem. |
 | Small exponential | Binary64 values in [-1, 0] | Finite positive output, exact one at zero, absolute error at most 1/4000 (proved). |
-| Extended exponential | Binary64 values in [-8, 0] | Proved positivity and absolute error at most 1/400 after range reduction and reconstruction. |
-| Softmax | One to four scores in [-4, 4], nonempty prefix mask | Proved exact masked zeros, positive finite active outputs, component error at most 1/64, and normalization error at most 32 times 2^-52. |
+| Extended exponential | Binary64 values in [-8, 0] | Proved positivity and absolute error at most 1/300000 after range reduction and reconstruction. |
+| Softmax | One to four scores in [-4, 4], nonempty prefix mask | Proved exact masked zeros, positive finite active outputs, component error at most 1/50000, and normalization error at most 32 times 2^-52. |
 | LayerNorm | Four inputs, four scales, and four biases in [-4, 4] | Proved successful execution, absolute error at most 1/1000000, and input and parameter perturbation bounds, including constant inputs. |
-| GELU | Finite binary64 inputs in [-3, 3] | Proved finite output, error at most 1/100, and input perturbation multiplier four. |
+| GELU | Finite binary64 inputs in [-3, 3] | Proved finite output, error at most 1/80000, and input perturbation multiplier four. |
 | Affine operations | Explicit bounded inputs and parameters | Local error and perturbed-input bounds. |
 | Attention and block | Certified intermediate ranges | Composed execution and numerical theorems. |
 | Trained model | Frozen weights and certified token domain | Concrete logit bound and successful inference. |

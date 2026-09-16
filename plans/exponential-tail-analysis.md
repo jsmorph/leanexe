@@ -69,4 +69,4 @@ error.  The resulting evaluator error is at most 1/300000 on [-16, 0].
 - [x] Check the signed Taylor remainder and Bernstein bound.
 - [x] Check the eighth-power error estimate.
 - [x] Add division, coefficient, Horner, and squaring roundoff.
-- [ ] Propagate the sharper bound through softmax and bounded GELU.
+- [x] Propagate the sharper bound through softmax and bounded GELU.
