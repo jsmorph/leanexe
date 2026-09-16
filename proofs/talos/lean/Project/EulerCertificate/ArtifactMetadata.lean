@@ -1,0 +1,5 @@
+import Project.EulerCertificate.ArtifactTypeSection
+import Project.EulerCertificate.ArtifactFunctionSection
+import Project.EulerCertificate.ArtifactMemorySection
+import Project.EulerCertificate.ArtifactGlobalSection
+import Project.EulerCertificate.ArtifactExportSection

@@ -12478,3 +12478,50 @@ functions.  The remaining body targets passed without proof edits or
 target warnings, and their audits contain only standard logical axioms.
 The type-section item checks are in progress.  Complete section parsing,
 validation, translation, and independent package checking remain open.
+
+## 2026-09-16: Transformer review
+
+The user requested an agent review of the
+[Lean transformer project](https://srush.github.io/lean-transformer/).
+The review examined its
+[published source at e60e7f13](https://github.com/srush/lean-transformer/blob/e60e7f13c86ef7f64677de6893fd9066fe85fc72/Transformer.lean).
+Its tensors are functions from finite indices to rational numbers.  Its
+normalization divides each weight, one plus the positive part of its input,
+by the sum of weights.  This requires addition and division, together with
+a finite-value comparison.  The source pins Lean 4.33.0, while LeanExe pins
+4.34.0-rc2.  Build compatibility remains untested.
+
+The generic tile_fold_eq theorem preserves the order of an arbitrary
+accumulator step.  A proposed first experiment is a bounded scalar state
+scan using separately rounded multiplication and addition, with the same
+accumulator carried between tiles.  The required proofs connect arrays to
+the generic scan, establish bit equality between tiled and ordinary loops,
+bound accumulated numerical error, and close exact-byte execution.
+Tensor-parallel and attention equalities use rational arithmetic laws.
+Their binary64 counterparts need explicit operation-order or error claims.
+
+The existing [dot-product specification](proofs/talos/lean/Project/F64DotCheckedBits/README.md)
+provides loop execution and numerical-error proofs.  The arithmetic and
+error-propagation lemmas in ProofKit provide scalar support under stated
+bounds.  The dot-product case still needs exact-byte closure.  The review
+proposed the experiment for discussion and made no implementation changes.
+
+## 2026-09-16: Euler pause checkpoint
+
+The [resume record](plans/euler-certificate-resume.md) preserves the current
+proof boundary and commands.  All 195 bodies, signatures, and function
+indices pass, as do the complete type, function, memory, and global
+sections.  Eleven export-entry proofs failed at maxRecDepth 131072 in a
+148.632-second target.  Its diagnostics are preserved.  Export composition,
+whole-file decoding, validation, translation, reset, and independent
+package checking remain pending, followed by the 192 and 800 certificate
+runs and publication.  The prepared package remains outside the active
+exact-artifact registry.  Its registration changes are saved for the gate.
+
+The checked index-field equality removes a raw-record projection before
+cbv, but the measured groups still took 84–90 seconds.  The pinned
+[Lean projection evaluator](https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2b50214762f91d/src/Lean/Meta/Tactic/Cbv/Main.lean#L236)
+explains the projection behavior.  These measurements establish no speed
+improvement.  A matched one-index profile is prepared and unexecuted.
+The export failure requires a separate diagnosis of name and slice
+parsing before the next proof attempt.

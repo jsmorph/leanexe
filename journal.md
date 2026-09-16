@@ -23559,3 +23559,53 @@ the outer controller, exported solve, and four runtime functions.  The
 last five bounded targets passed without edits.  The complete body audit
 contains standard logical axioms and no target warnings.  Section parsing,
 module validation, translation, and independent package checking remain.
+
+The complete function-body checkpoint is pushed and fetched as
+6aa9838b04b69bb2b36a57f911d74344ba9b203d.  Type-section parsing now
+covers 112 signatures.  The item proofs evaluate the existing checked
+function-type parser through balanced byte lookup and have passed without
+edits.  Their public audits use propext only.  The shared parser lemmas and
+normative cursor offsets suffice for these fixed metadata items.  No new
+LTG retrieval or held-out measurement occurred.
+
+All 195 type signatures and the complete type-section composition now
+pass.  Every signature audit uses propext only, with no target warnings
+or proof revisions.  The composed vector reuses the checked item theorems
+without reevaluating the parser.  Function indices and the remaining
+module sections are next.
+
+The first three sixteen-index groups passed in 87.012, 90.079, and
+91.483 seconds.  Reviewing the pinned Lean evaluator identified its
+handleProj path: it recursively simplifies the record before selecting
+a field.  These goals contain a functionTypeIndices projection from the
+complete decoded module.  A new field equality rewrites that projection
+to List.range 195 before evaluation.  The queued groups from index 64
+onward will check this change under the same runner limits.  Their result
+and runtime are pending.  The accepted first-group source is preserved
+under tmp for a later matched comparison.
+
+The field-equality draft first used List Nat where the decoded indices
+have type List UInt32.  Mapping UInt32.ofNat corrects that mismatch.
+The equality and indices 64 through 79 now pass with standard axioms.
+Their target took 87.128 seconds, comparable to the preceding 87–94-second
+groups.  This measurement does not establish a runtime improvement.  The
+record-projection evaluation behavior is confirmed by the pinned Lean
+source, but it does not explain the observed cost by itself.  The remaining
+section proofs continue without a broader evaluator change.  The failed
+draft and build output are preserved under tmp.
+
+All 195 function indices and the complete function, memory, and global
+sections passed.  The next target, ArtifactExportSectionItems, returned
+status 1 after 148.632 seconds.  All eleven export entries reached the
+configured recursion-depth limit of 131072.  The resulting sorryAx messages
+belong to failed elaboration.  No export theorem was accepted.  The batch
+stopped before export-section composition, complete file decoding,
+validation, or translation.
+
+The user requested a written checkpoint, commit, and push.  The resume
+record preserves the exact failure output, a source-hashed proof-status
+inventory, preparation offsets and scripts, and the next proof and run
+commands.  Pending registration changes are saved outside the active
+registry until the artifact targets pass.  The frozen package and
+unfinished Lean modules are preserved at their intended paths.  The
+certificate simulations remain pending.  The sequential batch has exited.
