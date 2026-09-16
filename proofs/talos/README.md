@@ -65,6 +65,15 @@ error at most 1/64 against real exponential softmax, and normalization error
 at most 32 times 2^-52.  Its [command-line interface](../../data/numerical/README.md)
 accepts decimal scores or exact binary64 words.
 
+The softmax input-error theorem adds twice the maximum score error to the
+1/64 local bound.  Its internal computation also has a generated-WAT
+numerical theorem for finite scores with active spread at most eight,
+without an absolute score bound.  The public demonstration retains its
+[-4, 4] input guard.  The [tiny model definition](lean/Project/TinyGpt2/Real.lean)
+and [causal-prefix theorem](lean/Project/TinyGpt2/Causality.lean) describe
+the complete real-valued architecture.  Model execution and checkpoint
+certification remain open.
+
 The `exp_wide` case extends the exponential domain to [-8, 0] with proved absolute error at most 1/400 and output at least 1/100000.  Its generated-WAT execution, successful domain, rejection behavior, and command-line runner are complete.
 
 The [small exponential demonstration](../../data/numerical/README.md) adds
