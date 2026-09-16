@@ -4,4 +4,9 @@ import Project.TinyGpt2Infer.Logit
 import Project.TinyGpt2Infer.OutputCopy
 import Project.TinyGpt2Infer.OutputRelease
 import Project.TinyGpt2Infer.OutputAppend
+import Project.TinyGpt2Infer.OutputLogitExec
+import Project.TinyGpt2Infer.OutputCapacityExec
+import Project.TinyGpt2Infer.OutputPrepareExec
+import Project.TinyGpt2Infer.OutputReleaseExec
+import Project.TinyGpt2Infer.OutputAdvanceExec
 import Project.TinyGpt2.OutputModel
