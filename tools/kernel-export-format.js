@@ -64,6 +64,10 @@ function decodeExport(text) {
       let tag,a,b=0;
       if(kind==="sort"){tag=0;a=prior(value,levels,"level");}
       else if(kind==="bvar"){tag=1;a=nat(value,"bound variable");}
+      else if(kind==="app"){
+        fields(value,["fn","arg"],"application");
+        tag=4;a=prior(value.fn,exprs,"function");b=prior(value.arg,exprs,"argument");
+      }
       else if(kind==="lam"||kind==="forallE"){
         fields(value,["binderInfo","body","name","type"],"binder");
         prior(value.name,names,"binder name");

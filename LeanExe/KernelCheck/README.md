@@ -1,6 +1,6 @@
 # Lean kernel checker: executable checkpoints
 
-Executable coverage reaches M0.11, including an actual Lean proof export. Formal source proofs currently cover only
+Executable coverage reaches M1.0, including real identity and composition proof exports. Formal source proofs currently cover only
 sort typing and concrete max/imax (P0/P1); binding, checker soundness and
 exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
 and run `node test/kernel_proofs.js` to check the ten universal theorems.
@@ -298,11 +298,26 @@ The host adapter handles syntax only. Inference, checking and conversion stay
 in the LeanExe-compiled artifact. Adapter fidelity and overall soundness are
 not formally proved; the source proof coverage remains limited to P0/P1.
 
+## M1.0: exported applications
+
+`node test/kernel_export.js composition` builds `checker-m1-0.wasm` and checks
+an actual exported implication-composition proof, `fun p q r f g hp => f (g hp)`.
+Its two application records exercise the existing application checker. Changing
+`g hp` to `g f` stays well scoped and is rejected. The gate also covers nineteen
+adapter failures, exhaustion, exact decoding, and the import-free artifact.
+No kernel implementation or source-proof coverage changed.
+
+```sh
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-0.wasm test/fixtures/kernel-check/composition.ndjson
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-0.wasm test/fixtures/kernel-check/composition-corrupt.ndjson
+```
+
+These return accepted/exit 0 and rejected/exit 1. Reproduce the frozen export
+with `node tools/kernel-export-fixture.js composition`.
+
 ## Next checkpoint
 
-M1.0 should extend the adapter to application expressions and check an actual
-exported implication-composition proof. The underlying application checker
-already runs. Then extend the adapter to lets before tackling symbolic levels
+M1.1 extends the adapter to lets before tackling symbolic levels
 and global declarations. See the [full plan](../../plans/lean-kernel-checker.md).
 This remains a PoC: larger source proofs may be deferred, and no WASM proof
 work is planned now.
