@@ -12,9 +12,9 @@ function run(args){return runChecked(args,{cwd:root,encoding:"utf8",timeout:9000
 assert.equal(run(["git","-C",exporter,"rev-parse","HEAD"]).trim(),pin,"exporter revision");
 assert.equal(run(["git","-C",exporter,"status","--porcelain"]).trim(),"","exporter checkout must be clean");
 const fixture=process.argv[2] || "identity";
-assert(["identity","composition"].includes(fixture),"known export fixture");
-const moduleName=`LeanExe.KernelCheck.Fixtures.${fixture==="identity"?"Identity":"Composition"}`;
-const declaration=fixture==="identity"?"implicationIdentity":"implicationComposition";
+assert(["identity","composition","let"].includes(fixture),"known export fixture");
+const moduleName=`LeanExe.KernelCheck.Fixtures.${{identity:"Identity",composition:"Composition",let:"Let"}[fixture]}`;
+const declaration={identity:"implicationIdentity",composition:"implicationComposition",let:"implicationLet"}[fixture];
 run(["lake","build",moduleName]);
 const actual=run(["lake","env",path.join(exporter,".lake/build/bin/lean4export"),
   moduleName,"--",declaration]);

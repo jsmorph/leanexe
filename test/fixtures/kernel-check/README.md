@@ -1,4 +1,4 @@
-# Real Lean proof exports: M0.11 and M1.0
+# Real Lean proof exports: M0.11–M1.1
 
 `identity.ndjson` is the unchanged output of pinned lean4export on the minimal
 `prelude` module `LeanExe/KernelCheck/Fixtures/Identity.lean`. It declares
@@ -60,17 +60,15 @@ export. It does not overwrite the committed fixture.
 ## Adapter scope and trust boundary
 
 The narrow adapter supports names, concrete zero/successor levels, and Sort,
-bvar, Pi, lambda and application expressions. Table IDs and bvars must be exactly represented
+bvar, Pi, lambda, application and let expressions. Table IDs and bvars must be exactly represented
 JavaScript safe integers; larger values are rejected rather than rounded.
 Successor levels are decoded with BigInt and checked against UInt64 capacity.
 It validates metadata versions, record fields, sequential IDs and references.
 Binder names/info are validated then omitted from the kernel graph because
 they do not affect these typing judgments. The raw export remains available.
 
-Other expression/declaration/level forms, including constants,
-lets and symbolic universes, are explicitly rejected at this adapter boundary.
-The checker already supports let graphs; extending the export
-adapter to them is the next small PoC milestone. No inference, normalization,
+Other expression/declaration/level forms, including constants and symbolic
+universes, are explicitly rejected at this adapter boundary. No inference, normalization,
 axiom insertion, or acceptance decision occurs in the adapter.
 
 Adapter fidelity and overall checker soundness remain operational assumptions,
@@ -108,3 +106,28 @@ second reproduces the frozen raw export. The checker artifact has exactly
 the M0.11 size and SHA-256 above: this milestone extends the adapter, while
 using the existing application inference implementation. The same runtime
 requirements and unproved soundness boundaries apply.
+
+
+## M1.1: an unused let with a checked value
+
+`let.ndjson` preserves a real letE record for
+`fun p hp => let unused : p := hp; hp`. The source is
+`LeanExe/KernelCheck/Fixtures/Let.lean`, with pins and hashes in
+`let-provenance.json`. `let-corrupt.ndjson` changes only the let value from
+expression 1 (`hp`) to expression 2 (`p`). The binding is unused, but its value
+still must have the annotated type. This corruption is scoped and rejected.
+
+```sh
+node test/kernel_export.js let
+node tools/kernel-export-fixture.js let
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-1.wasm test/fixtures/kernel-check/let.ndjson
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-1.wasm test/fixtures/kernel-check/let-corrupt.ndjson
+```
+
+The adapter preserves the annotation/body using a synthetic lambda node and
+then emits a let node. Consequently export expression 7 maps to graph node 8;
+`let.decoded.json` fixes this mapping explicitly. Binder names and the Boolean
+nondep optimization flag are validated but omitted; no flag authorizes skipping
+value checking. The gate covers twenty-one malformed/unsupported variants,
+exhaustion, exact decoding, native/WASM scope/verdict comparisons and no imports.
+The kernel code is unchanged. No new formal correctness claim is made.

@@ -1,11 +1,13 @@
 # Correctness evidence and next proof milestones
 
 Executable milestones and formal proof coverage are different statuses.
-M0.0–M0.11 have source tests and WASM/standard-Lean comparisons. They do **not**
+M0.0–M0.11 and M1.0–M1.1 have source tests and WASM/standard-Lean comparisons. They do **not**
 establish overall checker soundness or correctness of the emitted WASM.
 The user clarified the current priority: this is a PoC of what LeanExe can
 execute; some source proofs may be deferred, and there is no WASM proof work
-now. Keep useful small source proofs without blocking executable milestones.
+now. The latest user direction prioritizes feasibility until apparent full-Lean
+coverage. Retain existing proofs but defer new proof work, including the
+previously suggested binding/substitution pass after M1.1.
 
 ## Proved source properties
 
