@@ -13279,3 +13279,68 @@ four-byte input and each attention head.  It checks in 1.2 seconds.  The
 embedding and context-score axiom audits contain only propext,
 Classical.choice, and Quot.sound.  The 2,488-word reproduction check,
 134-document check, and whitespace check pass.
+
+Naming continuation propositions leaves the assembled term at 550,897
+nodes and still reaches three minutes.  The prefix tactic currently runs
+its body against the original goal and then replaces that goal's existing
+assignment.  Earlier instantiation can retain the expanded original proof.
+The revised tactic creates a fresh goal for the prefix body, extracts its
+auxiliary theorem, and assigns the original goal only once.
+
+The next residual bound combines each head's value projection with its
+output projection before taking magnitudes.  Preliminary CPU binary64 calculations
+on decoded weights give centered coefficient norms below 1/3 for the first head
+and 5/6 for the second.  Bias magnitudes fit 1/100 and 3/25 respectively.
+The normalized-row norm bound then gives head-output magnitudes 7/10 and
+9/5.  Nonnegative attention weights and their proved sum bound can preserve
+these estimates through attention, avoiding a separate magnitude bound on
+each value coordinate before the output projection.
+
+The fresh-goal variant also times out.  A three-prefix term diagnostic
+shows that the first auxiliary theorem still receives a delayed metavariable
+for the whole unfinished derivation.  Lean's MetavarContext documentation
+states that instantiateMVars expands a delayed assignment only after its
+pending assignment is ground.  Consequently, the reported prefix kernel
+checks did not establish acceptance of the intended instruction prefixes.
+The earlier journal inference was incorrect.
+
+The revised tactic reverts each continuation's new local variables, makes
+that continuation an explicit hypothesis, and assigns it before extracting
+the prefix theorem.  The prefix proof must then contain no metavariables.
+Its theorem application receives a fresh continuation goal, with the
+original local-variable names restored.  The branching and introduced-binder
+examples pass.  This resolves delayed assignments without changing Lean's
+checking rules or adding axioms.
+
+The residual coefficient certificates now pass exact rational checks.
+Each head's combined value/output projection has real magnitude at most
+7/10 or 9/5 on any normalized input row.  A nonnegative attention vector
+with sum at most mass therefore gives total projected magnitude at most
+(5/2)*mass.  The projection identities check in 1.8 seconds and the
+checkpoint certificate in fourteen seconds.
+
+The grounded-prefix diagnostic accepts nineteen instruction groups before
+its three-minute limit.  A group containing the value projection, its
+48 local-variable moves, and attention takes 32 seconds.  Later groups
+take nine to fourteen seconds each.  The complete proof is now divided
+into 98 sections, with one helper call per section and six-instruction
+sections for the long local-variable transfer.  The next complete check
+has an eight-minute limit for these smaller boundaries.
+
+The user emphasized reusable lemmas and larger networks.  I deferred the
+eight-minute check while developing a shared functional representation of
+local-variable slots.  The current frame tactic expands the complete list
+of local values and repeats list traversal for each read and write.  The
+new representation keeps a slot function and proves its list length,
+indexed read, and indexed update once for arbitrary frame sizes.  The
+existing Talos list semantics remains the proof subject.
+
+The real first-residual bound now checks: every component has magnitude
+at most 18/5 for all four-byte contexts.  Its numerical implementation
+margin remains open.
+
+The generic functional-frame read, write, length, and constant-frame lemmas
+check in 2.4 seconds.  The generated hidden function's initialization checks
+equal to that representation in 2.9 seconds.  Its local-type list contains
+782 entries, plus six parameters.  The earlier count of 785 combined slots
+was incorrect.
