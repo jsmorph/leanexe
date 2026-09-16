@@ -23524,3 +23524,23 @@ revisions.  The frozen byte identity, balanced lookup, raw cache, and these
 accepted body proofs form the next checkpoint.  The remaining function
 bodies, section composition, validation, and independent package check
 remain open.
+
+The accepted byte-identity and initial-decoding checkpoint is pushed and
+fetched as 70fa944fe3ba9d68755911725cdae36807c67a66.  Functions 64 through
+95 now also pass, covering interval arithmetic, totals, speed scanning,
+and timestep selection.  The eight separately bounded targets needed no
+proof edits.  All 96 completed body audits contain only standard logical
+axioms and no target warnings.  Reconstruction and flux decoding follow.
+
+Functions 96 through 119 now pass, including the reconstruction loop and
+entry.  The eight separately bounded targets passed without proof edits.
+All 120 completed body audits use standard logical axioms and have no
+target warnings.  The remaining numerical kernels, sweeps, observer
+controller, and runtime functions precede complete section composition.
+
+Functions 120 through 159 now pass, including the flux entry, numerical
+kernels, and complete sweep.  The ten separately bounded targets needed
+no proof edits.  All 160 completed body audits use standard logical axioms
+and have no target warnings.  Boundary observation, retry, the outer
+controller, the exported solve, and the four runtime functions remain
+before full module composition.

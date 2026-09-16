@@ -1,0 +1,1 @@
+import Project.EulerCertificate.ArtifactCodes80To87Part1

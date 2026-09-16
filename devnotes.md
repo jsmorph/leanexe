@@ -12465,3 +12465,9 @@ list composition.  Grouped decoding checks then reached their cumulative
 time limit, so the existing submodules now run as separate bounded targets.
 The remaining function bodies, section composition, validation, and
 independent package checking precede production data.
+
+Function-body decoding now covers functions 0 through 159, including
+reconstruction, flux evaluation, and the complete sweep.  The later
+separately bounded groups passed without proof edits or target warnings.
+Boundary observation, retry, the main controller, the exported solve,
+and runtime helpers remain before module decoding and validation.
