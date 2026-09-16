@@ -11,6 +11,18 @@ execution, cleanup, or another action prohibited here.
 
 ## Immediate non-negotiable summary
 
+### 2026-09-15: continued Euler work on main
+
+The user authorized merging `talosfp-euler` into `main`, pushing `main`, and
+continuing the numerical-certificate, successful-completion, and convergence
+agenda there in that order.  The fast-forward completed at d942e3cb.
+The preservation, single-process, journaling, and exact-proof requirements
+continue on `main`.  Current local execution uses the standard
+`tools/leanrun` cgroup limits documented in AGENTS and DEVELOPING.  The older
+host-specific direct-local and connector-publication instructions below
+record earlier environments.  Ordinary authenticated Git fetch and push
+work in the current checkout.
+
 ### 2026-09-13: complete behavior proof authorized
 
 The user approved revising the proof requirement to include explicit
