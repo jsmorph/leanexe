@@ -220,7 +220,34 @@ domain, then instantiates the codomain using the tested substitution operation.
 Structural mismatches below applications are conservative: missing conversion
 or proof irrelevance must not be reported as a definite rejection.
 
+## M0.9: beta reduction and bounded conversion
+
+`node test/kernel_conversion.js` builds `checker-m0-9.wasm` (entry
+`checkConversion`, same proof interface) and `checker-m0-9-reduce.wasm`
+(entry `reduceHead graph root fuel`, returning a graph packet).
+Five conversion and four reduction cases pass in WASM and standard Lean.
+The two formerly unsupported application-suite beta cases now pass too.
+
+Reduction maintains an argument spine, reuses capture-avoiding instantiation,
+and shares the work budget. Conversion normalizes each compared head and
+then compares children. Type inference also reduces before requiring a Sort
+or Pi. The corpus checks capture avoidance, a type-level identity application,
+a function type exposed by beta reduction, a definite universe mismatch,
+and an untyped looping term that exhausts its reduction budget.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-9-reduce.wasm reduceHead array-u64 array-u64:0,0,0,1,0,0,3,0,1,4,2,0 i64:3 i64:100
+```
+
+This reduces `(fun x : Prop => x) Prop` syntactically to `Prop`; the standalone
+reducer makes no typing claim about its input. The checker always checks
+original subterms before using reduction on their types. Eta/proof irrelevance
+remain incomplete; the test requiring eta returns unsupported (3).
+Fuel exhaustion returns 5, never an incorrect-proof verdict.
+
 ## Next checkpoint
 
-M0.9 adds beta reduction and bounded conversion. The complete handoff and later
+New language features are paused while formal source-level proof coverage is
+added. Start with sort typing and concrete universe operations; see the plan
+for the binding and checker refinement obligations. M0.10 remains pending. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).
