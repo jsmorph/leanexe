@@ -58,11 +58,31 @@ The real argument covers all embedding rows through the normalization
 identities.  It avoids enumerating four-token contexts while retaining the
 relationship between query and key coefficients.
 
+## First residual
+
+The [output-projection certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointResidual.lean)
+combines each head's value and attention-output matrices before bounding
+magnitudes.  This retains the shared normalized input in both value
+coordinates.  Exact rational checks give these bounds:
+
+| Head | Centered coefficient norm | Projected bias magnitude | Head-output magnitude |
+|------|---------------------------|--------------------------|-----------------------|
+| First | 1/3 | 1/100 | 7/10 |
+| Second | 5/6 | 3/25 | 9/5 |
+
+Nonnegative attention weights with sum at most `mass` give output-projection
+magnitude at most `(5/2)*mass`.  Real softmax weights sum to one.  Adding
+embedding magnitude at most one and output bias magnitude at most 1/10
+bounds every real first-residual component by 18/5.  The binary64 margin
+for this residual remains open.
+
 ## Remaining checks
 
 - [x] Check the normalized-row sum and squared-norm facts.
 - [x] Check the bilinear and linear score-difference estimate.
 - [x] Check the checkpoint's exact rational matrix-norm bounds.
 - [x] Include binary64 normalization, projection, and score errors.
-- [ ] Bound the attention residual and feed-forward stages.
+- [x] Bound the real attention residual.
+- [ ] Include the attention-residual roundoff margin.
+- [ ] Bound the feed-forward stages.
 - [ ] Derive the complete logit error bound.

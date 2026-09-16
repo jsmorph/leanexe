@@ -52,8 +52,9 @@ now establishes real score spread at most 103/7 for every accepted context.
 The binary64 certificate adds normalization, projection, and score errors
 and proves computed spread at most sixteen.  Every byte embedding satisfies
 the first normalization domain.  Lean also proves that all 2,488 weights
-are finite with real magnitude at most four.  Attention residual,
-feed-forward, final-normalization, and complete logit certificates remain open.
+are finite with real magnitude at most four.  The real first residual has
+component magnitude at most 18/5.  Its binary64 margin, feed-forward and
+final-normalization domains, and complete logit certificate remain open.
 
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
@@ -71,7 +72,7 @@ against this checkpoint with:
 ```sh
 tools/tiny-gpt2-certificate.js --check
 tools/leanrun --timeout 3m lake -d proofs/talos/lean build \
-  Project.TinyGpt2.CheckpointScore
+  Project.TinyGpt2.CheckpointScore Project.TinyGpt2.CheckpointResidual
 ```
 
 The [training environment](../../training/tiny-gpt2/README.md) records the
