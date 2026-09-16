@@ -13497,3 +13497,23 @@ command prints [13, 91, 58, 64, 50].  The host decodes the returned array
 from WASM memory.  The user authorized later seed-controlled sampling from
 the top k model logits and kept PRNG correctness outside the formal proof
 scope.  The transformer plan records that follow-up.
+
+## Tiny-model output construction
+
+The shared UInt64Array push proof now combines an existing prefix-copy
+theorem with the generated final-element store.  It proves the resulting
+array, preservation of the source array, and confinement of writes to the
+target buffer.  Separate count and length locals match the compiler's
+generated push sequence.  Its first check exposed an address-conversion
+proof boundary and an overbroad simplification that unfolded local lookups.
+The accepted proof uses a UInt64 address identity and explicit instruction
+simplifications.  It builds in 1.7 seconds.
+
+Checked instruction equalities identify the full inference loop, its two
+allocation regions, and its copy-and-append region.  A short adapter applies
+the shared push theorem to that region.  The output model proves that
+appending the next logit extends the vocabulary prefix and that the prefix
+at 256 equals source inference.  The adapter and model build in 1.3 and
+1.1 seconds.  Their axiom reports contain only the standard logical axioms.
+The focused tiny_gpt2_infer gate passes, including regenerated-program
+comparison.  Allocation, release, and the full loop invariant remain open.
