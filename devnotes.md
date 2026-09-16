@@ -12436,3 +12436,22 @@ list-update lemmas avoids expanding hundreds of local updates during
 elaboration.  Final packing needs the existing output proof to preserve an
 arbitrary spare allocation budget.  The exported entry and exact-byte
 package follow that proof.  Production data remain unchanged.
+
+The observer's complete generated-WASM specification now passes its focused
+source-artifact gate.  The unchanged module remains 45,644 bytes with digest
+22696951ce81106990843e19494430292bdde35183058a34ff30133cc47bd981.
+Final packing preserves spare allocation budget, writes the twelve interval
+words, concatenates them with the previous solver output, and releases both
+temporary arrays.  The exported solve theorem proves exact output and the
+512 MiB page bound for runtime sizes 2 through 800.  Its enclosure theorem
+connects each status-zero interval to the accumulated physical residual.
+Every public audit uses standard logical axioms.  A combined import exposed
+two differently typed retry_valid declarations.  The boundary theorem now
+has the specific name retry_boundary_valid.
+
+The production driver has a run-certificate mode for the frozen observer
+digest.  It requires accepted finite, ordered certificate endpoints and
+records their raw words, absolute bounds, and approximate widths.  Output
+tests cover layout, component order, truncation, failed status, nonfinite
+endpoints, and reversed endpoints.  The new mode has not run a simulation.
+Exact-byte proofs and independent package checking precede both grids.
