@@ -12783,3 +12783,15 @@ the actual identity examples. The 14 context and 10 Pi regression cases and
 documentation gate passed. Structural equality is sufficient for well-typed
 types in the currently admitted four-form fragment; later application and
 conversion work must preserve unsupported/inconclusive outcomes. M0.7 is next.
+
+## 2026-09-16: Kernel checker M0.7
+
+Instantiation removes one binder, substitutes its argument with binder-aware
+lifting, and decrements indices referring past the removed binder. It uses an
+explicit traversal stack and the existing shiftCore directly. Both operations
+consume the same remaining budget, so nested replacement traversals are bounded.
+Twelve independently specified output graphs/statuses passed in WASM and
+standard Lean: nested capture avoidance, bound-variable preservation, domain
+substitution, unused variables, index decrement, overflow, malformed input and
+shared-budget exhaustion. Source and documentation checks passed.
+M0.8 adds applications; normalization remains separate.
