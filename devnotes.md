@@ -13380,3 +13380,52 @@ in one goal and proves its equality in the next.  It passes, together with
 the earlier three examples.  The list-frame hidden proof has passed forty-two
 instruction groups with the corrected tactic.  The 48-instruction local
 transfer uses the existing six-instruction proof boundaries.
+
+The complete list-frame run accepts ninety-five of ninety-eight groups
+before its three-minute limit.  Each general call rule repeats existential
+return elimination and store-equality substitution, although the component
+specifications all preserve the store and specify exact results.  The new
+ExactCall module proves that composition once, including an arbitrary
+operand-stack tail.  It checks in 2.3 seconds.  Replacing all ninety call
+sites removes 180 repeated introduction and substitution lines.  The next
+complete check uses the same smaller local-transfer boundaries.
+
+The complete hidden-state theorem now passes.  The instrumented run checks
+all ninety-eight prefixes in 175.965 seconds, then accepts the enclosing
+hidden_exact theorem with only propext, Classical.choice, and Quot.sound.
+The retained proof uses ordinary local lists and the shared ProofStep and
+ExactCall support.  The functional-frame experiment remains under ignored
+build/tiny-gpt2 paths because it increased prefix checking cost.  The
+registered source case now imports and names the enclosing theorem.
+
+The user requested an agent assessment of Waterfall.  The agent reviewed
+[Waterfall 0.1 at commit 522c35fb](https://github.com/samth/waterfall/commit/522c35fb5836fa55b91a897bf07c273274a719e0)
+and its [implementation](https://github.com/samth/waterfall/blob/522c35fb5836fa55b91a897bf07c273274a719e0/docs/IMPLEMENTATION.md).
+The strongest candidate uses are free-list properties, scalar-state
+preservation, and recursive program-description proofs.  waterfall? emits
+ordinary Lean commands and checks their replay.  A proposed evaluation
+would compare 12–16 theorem statements with Aesop, already present in the
+proof manifest, and explicit induction followed by simp_all, omega, or grind.
+Each environment must exclude the original target theorem and dependent
+results to prevent search from retrieving the existing proof.  The package
+targets Lean 4.33.1.  Compatibility with our 4.34.0-rc2 and an isolated,
+approved dependency remain prerequisites.  This assessment changed no
+dependencies and ran no Lean jobs.
+
+The focused source-artifact gate passes for tiny_gpt2_hidden.  Regeneration
+matches the tracked Talos program.  The registered hidden proof builds in
+179 seconds and its specification entry in 2.6 seconds.  The registry and
+aggregate imports agree on fifty-four completed source cases.  The complete
+inference module still needs its internal hidden-function adapter and
+vocabulary-output allocation loop proof.
+
+The trained execution test passes: twenty-four hidden rows and ninety-six
+selected logits match the native raw-bit model, and all 1,536 logits from
+six complete-inference contexts also match.  Maximum empirical PyTorch
+differences remain 2.6041599e-5 for hidden coordinates, 3.5410002e-5 for
+selected logits, and 3.9139185e-5 across the complete outputs.  The documentation
+and whitespace checks pass.
+
+The aggregate source-artifact check stops at the existing assoc_list cache
+mismatch during regeneration, as in the previous run.  No cache was refreshed.
+The focused tiny-model gate and its trained execution test both pass.
