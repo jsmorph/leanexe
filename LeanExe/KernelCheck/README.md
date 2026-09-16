@@ -188,7 +188,23 @@ sufficient for its well-typed types. Beta conversion, applications, lets,
 globals, inductives, and symbolic universes are still absent. When those
 forms arrive, missing conversion must be reported as inconclusive.
 
+## M0.7: capture-avoiding substitution
+
+`node test/kernel_substitution.js` builds `checker-m0-7.wasm` and checks 12
+exact graph outputs in WASM and standard Lean. `instantiateGraph graph body
+argument fuel` removes the outermost binder from body: index 0 is replaced by
+the argument, outer indices decrease, and the argument is lifted under nested
+binders. Open terms are allowed. The result packet matches `shiftGraph`.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-7.wasm instantiateGraph array-u64 array-u64:0,0,0,1,0,0 i64:1 i64:0 i64:10
+```
+
+This replaces bvar 0 by Sort 0 and returns `[0, 0, 0, 0, 0, 1, 0, 0]`.
+Substitution and every nested shift consume one shared work budget.
+This operation does not itself check types or normalize terms.
+
 ## Next checkpoint
 
-M0.7 adds capture-avoiding substitution as a separately runnable operation. The complete handoff and later
+M0.8 adds application typing. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).

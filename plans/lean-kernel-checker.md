@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: M0.0–M0.6 complete on 2026-09-16. M0.7 is next. Work is committed and published on branch lean-kernel-checker after each increment.
+Status: M0.0–M0.7 complete on 2026-09-16. M0.8 is next. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -10,7 +10,7 @@ Review decision: start with M0.0, a single executable sort-typing rule intended 
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** M0.7: capture-avoiding substitution. M0.0–M0.6 are complete, including a closed proof checked in WASM; see the checker README and journal for commands and receipts.
+- **Next task:** M0.8: application typing. M0.0–M0.7 are complete; see the checker README and journal for commands and receipts.
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
 - **First actual Lean export:** M0.11, using the already functioning checker.
 - **M1:** integration of the small checkpoints, not the first work unit.
@@ -573,7 +573,7 @@ These links pin the inspected source state. Recheck current files when implement
 - [x] M0.4: local contexts and variable inference; 14 exact-output cases pass.
 - [x] M0.5: Pi formation; 10 WASM/standard-Lean cases and Lean universe judgments pass.
 - [x] M0.6: lambda checking and the first closed proof; 12 WASM/standard-Lean judgments pass.
-- [ ] M0.7: substitution.
+- [x] M0.7: substitution; 12 exact WASM/standard-Lean output cases pass.
 - [ ] M0.8: application typing.
 - [ ] M0.9: beta reduction and bounded conversion.
 - [ ] M0.10: let checking and reduction.
