@@ -13582,3 +13582,24 @@ terminating vocabulary loop remains open.
 
 The focused tiny_gpt2_infer gate passes with these stages imported, including
 the regenerated-program comparison.  Documentation and whitespace checks pass.
+
+The complete vocabulary loop now proves termination and the 256-word raw-bit
+logit array.  Its invariant composes the allocator, copy, release, and register
+proofs.  The count increases by one and the remaining-count measure decreases.
+The reserved-memory hypothesis covers every allocation, so the page count
+stays fixed.  Bytes below the output heap remain unchanged, preserving the
+represented checkpoint.  The result covers every represented checkpoint with
+at least 2,488 words and every hidden row under these memory assumptions.
+
+The first large instruction-list equality reached Lean's recursion limit.
+Splitting the list with take/drop identities checked the same equality
+without increasing that limit.  The loop proof also exposed an invalid
+projection and an unknown free variable in inline invariant lambdas.
+Explicit invariant subproofs, following the existing BlockLoop applications,
+pass.  The allocation adapter, append execution, iteration, guard, and loop
+checks take 1.5 to 3.2 seconds each.  Function entry, initial allocation,
+terminal release, and the composed numerical theorem remain open.
+
+The focused tiny_gpt2_infer gate passes with the full loop imported.  Its
+axiom report contains only propext, Classical.choice, and Quot.sound.
+Documentation and whitespace checks pass.

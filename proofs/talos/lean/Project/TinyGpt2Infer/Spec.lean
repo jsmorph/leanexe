@@ -9,4 +9,5 @@ import Project.TinyGpt2Infer.OutputCapacityExec
 import Project.TinyGpt2Infer.OutputPrepareExec
 import Project.TinyGpt2Infer.OutputReleaseExec
 import Project.TinyGpt2Infer.OutputAdvanceExec
+import Project.TinyGpt2Infer.OutputLoop
 import Project.TinyGpt2.OutputModel
