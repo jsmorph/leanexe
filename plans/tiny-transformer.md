@@ -63,6 +63,10 @@ proved active-score spread of at most eight in its internal numerical
 theorem and propagates real score error with multiplier two.  Frozen
 checkpoint ranges and full-model execution remain open.
 
+The [weight layout and arithmetic body](tiny-model-layout.md) record the
+runtime tensor representation, compiled initialization tests, and remaining
+model proof obligations.
+
 Use existing ProofKit arithmetic bounds, including their underflow terms.
 Use the existing Wasmtime host and source-driven Talos registry.  Dependencies,
 toolchains, and compiler semantics remain pinned to the current checkout.

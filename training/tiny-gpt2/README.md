@@ -35,6 +35,12 @@ direct CPU test.  Training and exported-weight verification remain open.
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The inference proof must establish its own ranges and error bounds.
 
+`node test/tiny_gpt2_body.js` compares sixteen initialized model rows with
+the compiled hidden-state and vocabulary-head bodies.  Wasmtime agrees
+bit-for-bit with the native Talos evaluator.  The
+[model layout record](../../plans/tiny-model-layout.md) gives the measured
+PyTorch differences and proof status.
+
 PyTorch reports that optional NumPy integration is unavailable in this
 environment.  The training and export code uses tensor operations and
 standard-library binary packing.
