@@ -12945,3 +12945,26 @@ The aggregate suite now includes the composition gate. The focused changed
 export gates were run this increment; unchanged kernel suites were not rerun.
 Source proof coverage remains P0/P1; no WASM proofs were attempted. M1.1,
 exported lets including an invalid unused value, is the next small increment.
+
+## 2026-09-16: Kernel checker M1.1 and feasibility priority
+
+The user now favors feasibility until apparent full-Lean coverage. This
+supersedes the proposed source-proof pass after M1.1. Keep existing P0/P1
+proofs and focused tests; defer new source and WASM proofs. Native/WASM
+agreement is compilation evidence, not an independent soundness oracle.
+
+The minimal Let module exports an actual unused let binding. Its frozen
+letE retains name, annotation, value, body and nondep fields. The adapter
+validates these and inserts the existing lambda-shaped annotation/body
+container, then the let node. Export-to-graph references must consequently
+be remapped: expression 7 becomes graph node 8. The nondep flag is never
+used to skip value checking. Changing the unused value from hp to p keeps
+scope but creates the required negative typing case.
+
+The focused let gate passed exact decoding, provenance hashes, native scope
+and checker verdicts, WASM acceptance/rejection, exhaustion and twenty-one
+adapter failure cases. Fresh pinned export reproduction matched the frozen
+bytes. The artifact is byte-identical to M0.11/M1.0, with no kernel changes:
+2,429,809 bytes, SHA-256
+aa1353e70bdbf4a101efe57beb1220ca603820d19c0c7a767638a0bc1645350d.
+Next is symbolic-universe syntax validation (M1.2), not a proof detour.

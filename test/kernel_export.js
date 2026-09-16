@@ -6,15 +6,16 @@ const {decodeExport}=require("../tools/kernel-export-format");
 const {checkExportFile}=require("../tools/kernel-check-export");
 const fixtures="test/fixtures/kernel-check";
 const fixture=process.argv[2] || "identity";
-assert(["identity","composition"].includes(fixture),"known export fixture");
-const composition=fixture==="composition", checkpoint=composition?"m1-0":"m0-11";
+assert(["identity","composition","let"].includes(fixture),"known export fixture");
+const composition=fixture==="composition", letFixture=fixture==="let";
+const checkpoint={identity:"m0-11",composition:"m1-0",let:"m1-1"}[fixture];
 const raw=fs.readFileSync(`${fixtures}/${fixture}.ndjson`,"utf8");
 const bad=fs.readFileSync(`${fixtures}/${fixture}-corrupt.ndjson`,"utf8");
 const decoded=decodeExport(raw), corrupt=decodeExport(bad);
 assert.deepEqual(decoded,JSON.parse(fs.readFileSync(`${fixtures}/${fixture}.decoded.json`,"utf8")),"exact decoded structure");
-const expectedBad=structuredClone(decoded);expectedBad.graph[composition?44:17]=composition?"12":"2";
+const expectedBad=structuredClone(decoded);expectedBad.graph[letFixture?19:composition?44:17]=composition?"12":"2";
 assert.deepEqual(corrupt,expectedBad,"corruption changes only the intended child reference");
-const manifest=JSON.parse(fs.readFileSync(`${fixtures}/${composition?"composition-provenance":"provenance"}.json`,"utf8"));
+const manifest=JSON.parse(fs.readFileSync(`${fixtures}/${fixture==="identity"?"provenance":fixture+"-provenance"}.json`,"utf8"));
 for(const [file,digest] of Object.entries(manifest.sha256)){
   assert.equal(crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"),digest,file);
 }
@@ -42,6 +43,20 @@ if(composition){
     ["missing argument",r=>{delete r.find(x=>x.app).app.arg;}],
     ["extra application field",r=>{r.find(x=>x.app).app.extra=0;}],
     ["negative argument",r=>{r.find(x=>x.app).app.arg=-1;}],
+  );
+}
+if(letFixture){
+  const records=raw.trim().split("\n").map(JSON.parse);
+  assert.equal(records.filter(r=>r.letE).length,1,"real export retains the unused let");
+  assert.deepEqual(decoded.graph.slice(15,21),["3","2","2","5","1","5"],"annotation/body binder and let value");
+  assert.equal(decoded.term,8,"export root 7 maps past inserted binder to graph root 8");
+  for(const field of ["name","type","value","body"]){
+    mutations.push([`forward let ${field}`,r=>{r.find(x=>x.letE).letE[field]=99;}]);
+  }
+  mutations.push(
+    ["missing let annotation",r=>{delete r.find(x=>x.letE).letE.type;}],
+    ["invalid nondep flag",r=>{r.find(x=>x.letE).letE.nondep=1;}],
+    ["extra let field",r=>{r.find(x=>x.letE).letE.extra=0;}],
   );
 }
 for(const [name,mutate] of mutations){

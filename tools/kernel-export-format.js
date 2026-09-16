@@ -68,6 +68,16 @@ function decodeExport(text) {
         fields(value,["fn","arg"],"application");
         tag=4;a=prior(value.fn,exprs,"function");b=prior(value.arg,exprs,"argument");
       }
+      else if(kind==="letE"){
+        fields(value,["name","type","value","body","nondep"],"let");
+        prior(value.name,names,"let name");
+        if(typeof value.nondep!=="boolean")throw new Error("invalid let nondep flag");
+        const type=prior(value.type,exprs,"let type"), body=prior(value.body,exprs,"let body");
+        a=prior(value.value,exprs,"let value");
+        // Preserve annotation/body with a synthetic binder. Never trust nondep
+        // to skip checking the value. Export IDs now differ from graph IDs.
+        b=graph.length/3;graph.push("3",String(type),String(body));tag=5;
+      }
       else if(kind==="lam"||kind==="forallE"){
         fields(value,["binderInfo","body","name","type"],"binder");
         prior(value.name,names,"binder name");

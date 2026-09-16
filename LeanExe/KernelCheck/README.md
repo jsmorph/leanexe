@@ -1,6 +1,6 @@
 # Lean kernel checker: executable checkpoints
 
-Executable coverage reaches M1.0, including real identity and composition proof exports. Formal source proofs currently cover only
+Executable coverage reaches M1.1, including real identity, composition and let proof exports. Formal source proofs currently cover only
 sort typing and concrete max/imax (P0/P1); binding, checker soundness and
 exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
 and run `node test/kernel_proofs.js` to check the ten universal theorems.
@@ -315,9 +315,26 @@ node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-0.wasm tes
 These return accepted/exit 0 and rejected/exit 1. Reproduce the frozen export
 with `node tools/kernel-export-fixture.js composition`.
 
+## M1.1: exported lets
+
+`node test/kernel_export.js let` builds `checker-m1-1.wasm` and checks
+`fun p hp => let unused : p := hp; hp` from a real export that retains the let.
+Changing its unused value to `p` remains scoped but is rejected: the checker
+checks the annotation and value even when the binding is unused. The adapter
+inserts the existing annotation/body container and remaps subsequent node IDs.
+No kernel implementation or proof coverage changed.
+
+```sh
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-1.wasm test/fixtures/kernel-check/let.ndjson
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-1.wasm test/fixtures/kernel-check/let-corrupt.ndjson
+```
+
+These report accepted/exit 0 and rejected/exit 1. Reproduce with
+`node tools/kernel-export-fixture.js let`.
+
 ## Next checkpoint
 
-M1.1 extends the adapter to lets before tackling symbolic levels
-and global declarations. See the [full plan](../../plans/lean-kernel-checker.md).
-This remains a PoC: larger source proofs may be deferred, and no WASM proof
-work is planned now.
+M1.2 adds a standalone symbolic-level syntax validation artifact, followed by
+parameter substitution and then comparison/global declaration work. See the [full plan](../../plans/lean-kernel-checker.md).
+Prioritize feasibility until apparent full-Lean coverage; retain tests and
+existing proofs, but defer new source and WASM proofs.
