@@ -7,6 +7,48 @@ corresponding WASM digest, and the runner checks it before execution.
 Exact-byte proof packages are deferred.  JSON parsing, host loading, and
 decimal display are outside the formal execution theorem.
 
+## Softmax
+
+`softmax` accepts one to four scores in [-4, 4].  Decimal arguments run directly:
+
+```sh
+tools/numeric-demo.js softmax --scores 0 1 2
+```
+
+The host converts each decimal argument to binary64 before execution.  The
+theorem concerns these decoded binary64 inputs.  JSON input instead supplies
+their exact binary64 encodings as an array.  Array length selects the active prefix,
+and the host pads the remaining input positions with zero.  The WASM entry
+checks the count and all four score words.  It subtracts the active maximum,
+evaluates the extended exponential, sums the weights in two pairs, and
+divides each active weight by that total.  Masked outputs contain exact
+positive-zero bits.
+
+```sh
+tools/talos-artifact.js prepare softmax
+tools/talos-proof.js check softmax
+tools/numeric-demo.js softmax --input data/numerical/softmax/example.json
+```
+
+The example encodes [0, 1, 2].  Its captured probability output is
+[0.09003058303323568, 0.24472846855334776, 0.6652409484134166, 0].
+The [extreme-score input](softmax/extremes.json) exercises [-4, 4].
+The output includes four raw words, decimal values, active count, exact
+rational bounds, theorem name, and binary digest.
+
+The numerical theorem proves absolute error at most 1/64 per component
+against real exponential softmax of the decoded inputs.  Active outputs
+are positive and finite.  Their sum differs from one by at most
+32 times 2^-52, or 1/140737488355328.  The computed denominator lies in
+[49/50, 5].  Out-of-domain inputs return status one and four zero words.
+
+`Project.Softmax.shifted_reference` proves equality between the shifted
+reference and standard exponential softmax.  `subtract_max` accounts for
+rounded subtraction.  `compute_numerical` combines the exponential,
+denominator, division, mask, and normalization bounds.  The registered
+`Project.Softmax.Spec.softmax_real_error` theorem connects the result to
+terminating generated-WAT execution with complete store preservation.
+
 ## Small exponential
 
 `exp-small` accepts every binary64 input in [-1, 0], including signed zeros
@@ -76,4 +118,6 @@ perturbing a nonpositive reference input.
 The proof sources are in the [small exponential project](../../proofs/talos/lean/Project/ExpSmall/Spec.lean).
 The runtime tests compare WASM with native execution of Talos's bit model
 and cover endpoints, signed zeros, subnormals, infinities, NaNs, and rejection.
-The host exponential comparison is empirical test evidence.
+The host exponential comparison is empirical test evidence.  The test suite
+also covers all four active lengths, maximum positions, mixed signs,
+equal scores, masks, invalid counts, and decimal command-line input.
