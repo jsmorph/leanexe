@@ -12331,3 +12331,21 @@ The [short article](data/euler-reconstructed-v1/README.md) includes both
 datasets, figures, numerical comparisons, and the claim-to-theorem table.
 The authorized mathematical parity plan and ordered production sequence
 are complete.  Convergence to a continuous entropy solution remains open.
+
+## Comprehensive reconstructed Euler report
+
+The [15-page report](paper/euler-reconstructed-report/v6/pass-02/main.pdf)
+documents the completed proof and both production runs at checkpoint
+73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a.  It includes the 800-grid image.
+Section 5.2 gives the end-to-end proof composition from exact executable
+bytes through complete execution, output packing, and the numerical
+postconditions.  The report states the runtime assumptions and remaining
+continuous-convergence obligation.
+
+marXiv accepted the final report as
+[2609.00006v4](http://127.0.0.1:8405/abs/2609.00006v4), with no editorial
+remarks.  Submission 661f900da98f contains the accepted final PDF.
+All changed PDF pages passed visual review.  The final build has no
+warnings, extracted metadata matches, and the archive PDF digest agrees
+with the submitted file.  The [review record](paper/euler-reconstructed-report/review.md)
+preserves the technical checks, editorial remarks, and corrections.

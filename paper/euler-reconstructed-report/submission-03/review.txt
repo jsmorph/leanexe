@@ -1,0 +1,11 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 12, Throat-clearing and announcements: “This report presents their density and pressure images, the mathematical and execution theorems, two counterexamples that motivated numerical corrections, and reproducible artifact identities.”  Replace this contents announcement with the counterexamples’ findings: negative reconstructed pressure and an underestimated characteristic speed.
+- Requirement 12, Headings: “Result and evidence” does not identify the section’s result or subject.  A heading such as “Verified solver execution” would name the claim.
+- Requirement 12, Register: “Report preparation inspected the existing results and theorem statements” assigns the inspection to an activity.  Identify who inspected the results and statements.
+- Requirement 12, Register: “which the development added and checked” leaves the actor unspecified.  Identify who added and checked the instruction-renaming cases.
+- Requirement 12, Redundancy: “These are recorded proof-engineering results for this binary.”  The preceding sentences describe those results, and the surrounding text identifies their records.  Delete this sentence.

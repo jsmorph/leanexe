@@ -1,6 +1,6 @@
 # LeanExe research papers
 
-This directory contains the main research paper and four focused reports on LeanExe's language, WebAssembly verification, and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each report retains its source, references, reviewed PDF, and publication record in a separate directory.
+This directory contains the main research paper and five focused reports on LeanExe's language, WebAssembly verification, numerical computation, and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each report retains its source, references, reviewed PDF, and publication record in a separate directory.
 
 | Work | Subject | Record |
 |------|---------|--------|
@@ -9,6 +9,7 @@ This directory contains the main research paper and four focused reports on Lean
 | [Frame-accessor note](frame-accessor-note/README.md) | Compiler-generated frame projections and their proof screens. | [marXiv:2608.00034](http://localhost:8000/abs/2608.00034) |
 | [Tactic-retrieval note](tactic-retrieval-note/README.md) | Goal-shape tactic indexing, selection, and accepted proof evidence. | [marXiv:2608.00036](http://localhost:8000/abs/2608.00036) |
 | [Type theory and specification report](leanexe-type-theory-specification/README.md) | Runtime typing, extraction acceptance, execution semantics, and open refinement obligations. | [marXiv:2609.00005](http://127.0.0.1:8405/abs/2609.00005) |
+| [Reconstructed Euler report](euler-reconstructed-report/README.md) | Exact-binary solver proof, physical numerical guarantees, and 192-grid and 800-grid results. | [marXiv:2609.00006](http://127.0.0.1:8405/abs/2609.00006) |
 
 The root manuscript consists of four publication files:
 
