@@ -13471,3 +13471,22 @@ including regenerated-program comparison.  The registry and aggregate
 imports agree on fifty-five registrations and fifty-four completed cases.
 The documentation and whitespace checks pass.  The previously recorded
 assoc_list cache mismatch still blocks the aggregate source-artifact gate.
+
+## Lean PRNG command
+
+The user requested a separate agent to implement a Lean PRNG, compile it
+to WASM, and expose a seed, count, and modulus command without proof work.
+The [example](docs/prng.md) follows
+[Vigna's SplitMix64 reference](https://prng.di.unimi.it/splitmix64.c).
+The generator advances its 64-bit state independently of the output modulus.
+Each output is the mixed word modulo the supplied positive modulus.
+Reduction introduces modulo bias when the modulus does not divide 2^64.
+
+The 2,218-byte WASM module passes seven vectors totaling 374 words against
+the C reference and native Lean.  CLI tests cover exact decimal output,
+zero count, repeatability, maximum seeds and moduli, argument rejection,
+and child failure propagation.  Current array pushes copy accumulated
+values, giving quadratic allocation and execution costs.  The command
+limits execution to sixty seconds and adds no dependencies.  The initial
+sandboxed test failed to spawn cc.  Its approved retry and the final test
+both pass.  Documentation and whitespace checks pass.
