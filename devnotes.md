@@ -12918,3 +12918,30 @@ compatibility and performance at scale are not established by this example.
 The handoff splits next work into M1.0 exported applications, M1.1 exported
 lets, M1.2 symbolic-level syntax validation, and M1.3 level substitution.
 Each should retain a runnable artifact and its own commit/push.
+
+## 2026-09-16: Kernel checker M1.0
+
+The export adapter now admits app records with exactly fn/arg fields and
+earlier expression references, mapping them to existing tag-4 nodes. No
+checker source or typing rule changed. The minimal Composition module proves
+implication composition as f (g hp). Its pinned lean4export output contains
+two applications, with no globals, universe parameters or axioms. Raw export,
+decoded graph and provenance hashes are retained. The negative fixture changes
+only the inner argument from hp to f, preserving scope while making the
+application's argument type incorrect.
+
+The composition gate passed ordinary-Lean scope/checker comparisons, WASM
+accept/reject outcomes, exhaustion, nineteen adapter failure cases, exact
+decoding and an import-section check. The M0.11 identity gate passed after
+generalizing the fixture driver. Both exports reproduced byte-for-byte from
+the pinned exporter. A missing selector declaration in the reproduction
+driver was caught on its first run and fixed before these successful runs.
+Runtime CLI tests with the Lean environment/preload removed returned exit 0
+for composition and exit 1 for its corruption. Documentation checks passed.
+
+checker-m1-0.wasm is byte-identical to M0.11: 2,429,809 bytes, SHA-256
+aa1353e70bdbf4a101efe57beb1220ca603820d19c0c7a767638a0bc1645350d.
+The aggregate suite now includes the composition gate. The focused changed
+export gates were run this increment; unchanged kernel suites were not rerun.
+Source proof coverage remains P0/P1; no WASM proofs were attempted. M1.1,
+exported lets including an invalid unused value, is the next small increment.

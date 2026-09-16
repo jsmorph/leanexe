@@ -1,4 +1,4 @@
-# M0.11: one actual Lean proof export
+# Real Lean proof exports: M0.11 and M1.0
 
 `identity.ndjson` is the unchanged output of pinned lean4export on the minimal
 `prelude` module `LeanExe/KernelCheck/Fixtures/Identity.lean`. It declares
@@ -60,16 +60,16 @@ export. It does not overwrite the committed fixture.
 ## Adapter scope and trust boundary
 
 The narrow adapter supports names, concrete zero/successor levels, and Sort,
-bvar, Pi and lambda expressions. Table IDs and bvars must be exactly represented
+bvar, Pi, lambda and application expressions. Table IDs and bvars must be exactly represented
 JavaScript safe integers; larger values are rejected rather than rounded.
 Successor levels are decoded with BigInt and checked against UInt64 capacity.
 It validates metadata versions, record fields, sequential IDs and references.
 Binder names/info are validated then omitted from the kernel graph because
 they do not affect these typing judgments. The raw export remains available.
 
-Other expression/declaration/level forms, including constants, applications,
+Other expression/declaration/level forms, including constants,
 lets and symbolic universes, are explicitly rejected at this adapter boundary.
-The checker already supports application/let graphs; extending the export
+The checker already supports let graphs; extending the export
 adapter to them is the next small PoC milestone. No inference, normalization,
 axiom insertion, or acceptance decision occurs in the adapter.
 
@@ -77,3 +77,34 @@ Adapter fidelity and overall checker soundness remain operational assumptions,
 not proved results. Current universal source proofs cover only the scalar sort
 and concrete universe primitives. Larger source proofs are deferred and no
 WASM proof work is being attempted in this PoC.
+
+
+## M1.0: implication composition
+
+`composition.ndjson` is the unchanged pinned export of
+`implicationComposition : (p q r : Prop) → (q → r) → (p → q) → p → r`.
+Its body `fun p q r f g hp => f (g hp)` contains two nested applications,
+with no globals, universe parameters or axioms. The source is
+`LeanExe/KernelCheck/Fixtures/Composition.lean`; the hashes and pins are in
+`composition-provenance.json`, and the exact graph is in
+`composition.decoded.json`.
+
+`composition-corrupt.ndjson` changes only application node 14's argument
+from expression 13 (bvar 0, `hp`) to expression 12 (bvar 2, `f`). This gives
+`g f`, a well-scoped application with an incorrect argument type. Both raw
+files pass through the same adapter and checker.
+
+```sh
+node test/kernel_export.js composition
+node tools/kernel-export-fixture.js composition
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-0.wasm test/fixtures/kernel-check/composition.ndjson
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-0.wasm test/fixtures/kernel-check/composition-corrupt.ndjson
+```
+
+The runtime commands report accepted/exit 0 and rejected/exit 1. The first
+command checks both native/WASM verdicts, scope, exhaustion, exact decoding,
+provenance hashes and nineteen malformed/unsupported adapter inputs. The
+second reproduces the frozen raw export. The checker artifact has exactly
+the M0.11 size and SHA-256 above: this milestone extends the adapter, while
+using the existing application inference implementation. The same runtime
+requirements and unproved soundness boundaries apply.
