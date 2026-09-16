@@ -1,0 +1,43 @@
+Warning: truncated output (original token count: 1053)
+Total output lines: 42
+
+⚠ [4/376] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been d…553 tokens truncated…en deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [15/376] Replayed Interpreter.Wasm.SmallStep
+warning: Interpreter/Wasm/SmallStep.lean:6300:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6872:24: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6874:24: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6888:13: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [18/376] Replayed Interpreter.Wasm.Host.StdIO
+warning: Interpreter/Wasm/Host/StdIO.lean:88:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Host/StdIO.lean:100:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Host/StdIO.lean:118:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+✖ [3353/3358] Building Project.EulerCertificate.ArtifactIndexLookup (167ms)
+trace: .> LEAN_PATH=/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/Cli/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/aesop/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/importGraph/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/plausible/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/Qq/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/batteries/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/mathlib/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/iris/Iris/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/CodeLib/interpreter/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/packages/CodeLib/codelib/.lake/build/lib/lean:/home/somebody/src/leanexe/.lake/build/lib/lean:/home/somebody/src/leanexe/proofs/talos/lean/.lake/build/lib/lean /home/somebody/.elan/toolchains/leanprover--lean4---v4.34.0-rc2/bin/lean /home/somebody/src/leanexe/proofs/talos/lean/Project/EulerCertificate/ArtifactIndexLookup.lean -o /home/somebody/src/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/EulerCertificate/ArtifactIndexLookup.olean -i /home/somebody/src/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/EulerCertificate/ArtifactIndexLookup.ilean -c /home/somebody/src/leanexe/proofs/talos/lean/.lake/build/ir/Project/EulerCertificate/ArtifactIndexLookup.c --setup /home/somebody/src/leanexe/proofs/talos/lean/.lake/build/ir/Project/EulerCertificate/ArtifactIndexLookup.setup.json --json
+error: Project/EulerCertificate/ArtifactIndexLookup.lean:5:65: Type mismatch
+  List.range 195
+has type
+  List Nat
+but is expected to have type
+  List UInt32
+error: Project/EulerCertificate/ArtifactIndexLookup.lean:6:2: Tactic `rfl` failed: The left-hand side
+  true
+is not definitionally equal to the right-hand side
+  Function.const Lean.Name ()
+    `Project.EulerCertificate.ArtifactIndexLookup.5.33.5.79.33.79._sorry._@.Project.EulerCertificate.ArtifactIndexLookup.1275875699._hygCtx._hyg.8
+
+⊢ sorry
+info: Project/EulerCertificate/ArtifactIndexLookup.lean:8:0: 'Project.EulerCertificate.Artifact.functionTypeIndices_eq' does not depend on any axioms
+Some required targets logged failures:
+- Project.EulerCertificate.ArtifactIndexLookup
+error: build failed
