@@ -530,6 +530,20 @@
         "Project.EulerReconstructed.Spec.solve_balance"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_certificate_flux",
+      "annotations": true,
+      "module": "Project.EulerCertificate.Flux",
+      "entry": "Project.EulerCertificate.Flux.interface",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerCertificateFlux",
+      "specTarget": "Project.EulerCertificateFlux.Spec",
+      "behaviorTheorems": [
+        "Project.EulerCertificateFlux.Spec.interface_exact",
+        "Project.EulerCertificateFlux.Spec.interface_enclosure"
+      ],
+      "complete": true
     }
   ]
 }

@@ -22940,3 +22940,133 @@ confirms HEAD = origin/main = FETCH_HEAD at that commit and the same
 tree.  Both worktree-versus-HEAD and index-versus-HEAD checks are clean.
 The complete untracked inventory still equals the pre-merge inventory.
 This entry is the single publication receipt for that checkpoint.
+
+## Net conservation certificate implementation
+
+The user selected the recommended net-error certificate.  Work continues
+on main from receipt commit 93854cada220ebfcca6b4804fd83e1d376e8af72,
+whose published identity and tree were checked after the preceding turn.
+Read the instructions and current documentation again.  Reviewed the
+controller, sweep, physical balance, boundary reconstruction, exact-real
+flux, and available signed-word inequalities before writing new code.
+
+The physical-flux formulas require interval addition, subtraction, scaling
+by a decoded word, and division by a positive decoded word.  Reassociation
+in real arithmetic expresses energy flux as (energy + pressure) times
+momentum divided by density.  Thus a general interval-product routine is
+unnecessary for this observer.  Pressure uses exact integer factors two
+and five.  The operations reuse the existing checked outward primitives,
+preserve rejection in a status word, and keep finite lower and upper
+endpoints.  Added this small scalar source and its soundness draft before
+its first focused check.  The solver remains unchanged.
+
+The first F64IntervalSpec check failed in ten seconds with heartbeat
+diagnostics in add_sound and sub_sound.  The omitted Checked operands made
+Lean infer records from their value projections inside expanded arithmetic.
+The point, sign-dependent scaling, and positive-division proofs passed.
+Preserved the failed source and complete returned diagnostic output in the
+research directory.  Supplied explicit Checked records and real arguments
+to the two shared composition lemmas, and replaced two deprecated if_pos
+uses with ite_eq_left.  The next check retains the original runner and
+heartbeat limits.  Failed-check sorryAx diagnostics are not accepted proofs.
+
+Explicit operands resolved both elaboration failures.  F64IntervalSpec
+passed in 1.2 seconds at the same limits, with five standard-only public
+audits and no target warnings.  Reviewed the proof and diagnostic together.
+The correction follows the existing LTG guidance to specify dependent
+operands where inference expands low-level semantics.  Added conditional
+composition lemmas so expression proofs propagate every input status.
+Drafted physical and Rusanov flux interval source using those same small
+arithmetic operations.  Scalar compilation and generated proof inspection
+will precede observer-loop implementation.
+
+The conditional arithmetic-composition module passed first in 1.1 seconds.
+The first flux specification check failed in fourteen seconds.  An open
+declaration treated RealRusanov, a namespace, as a constant.  Corrected it
+to open its parent namespace.  Pressure and interface-component arithmetic
+already passed.  The vector projection proof also exhausted heartbeats
+because rfl unfolded the nested executable flux while reducing projections.
+Replaced that reduction with explicit outer-definition and vector-projection
+rewrites.  Preserved the failed source and returned diagnostics, removed two
+unused simp arguments, and retained the same resource limits.
+
+The second flux check accepted pressure, all physical-flux components, and
+the Rusanov component bound.  The remaining failure was tuple indexing in
+get_interface.  Read Mathlib's VecNotation source: its cons_val simproc
+recognizes numeral indices, whereas fin_cases produced explicit Fin.mk
+terms.  Selected cons_val_zero' and cons_val_succ', which state exactly
+those constructor-index equations.  Preserved the second source and log.
+
+FluxSpec now passes in 1.7 seconds.  Its four public audits use only
+standard axioms and the target has no warnings.  Registered the new scalar
+certificate-flux source as an incomplete case with compiler annotations.
+The next step is the existing artifact-generation driver, followed by
+inspection of its exact function map and proof recipes.  Existing completed
+registrations and frozen solver artifacts remain unchanged.
+
+The artifact driver generated 5,741 bytes with SHA-256
+c36ce83eb401ec6d31e161583e1902957bb034b50cb425bdc411c0b1b1ff461a.
+Its annotations identify 36 source functions and the interval and flux
+call sequences.  Compared the generated bodies with the existing outward
+arithmetic module and proved a FunctionRegion.Shift for all required
+arithmetic helpers, including their callees.  The first check lacked three
+imports.  The corrected transfer passed in 2.9 seconds with standard
+axioms.  The generated bodies and memory declarations check by equality.
+
+The first interval execution check left local-list reductions and function
+metadata unexpanded.  Preserved that draft and its log.  Explicitly reducing
+the local list and function metadata fixed the proof without resource-limit
+changes.  IntervalBasic passed in 3.8 seconds.  Its unused simp argument was
+removed.  The four interval arithmetic execution theorems then passed on
+their first check in fourteen seconds with standard axioms and no target
+warnings.  These proofs account for every accepted and rejected branch.
+They reuse the arithmetic transfer instead of rederiving the primitive
+floating-point execution.  Pressure composition is the next boundary.
+
+Pressure's first execution draft omitted the final empty-stack-append
+simplification.  Preserved the failed draft and diagnostic, then added that
+reduction through the standard simplifier.  Pressure passed in 3.7 seconds,
+the Rusanov component in 5.5 seconds, and physical flux in 5.3 seconds.
+Their public audits contain only standard axioms, with no target warnings.
+The compiler emits three identical component calls per conserved component
+in the final nested Vector constructor, selecting one Bounds projection
+after each call.  The interface proof accounts for all twelve component
+calls.  This is a compiler-output efficiency observation, not an assumed
+execution equivalence.  The generated model remains unchanged.
+
+Interface composition first exceeded Lean's default recursion depth while
+reducing the 507-instruction list.  A theorem-local depth of 4,096 allowed
+that reduction.  The next check reached the 200,000-heartbeat limit near
+the final calls.  Replaced nested physical and component expressions with
+explicit result variables and their proved call equations.  This removed
+repeated arithmetic unfolding, but checking the composed theorem still
+reached the heartbeat limit in 7.6 seconds.  Preserved all three drafts and
+diagnostics.  The next check uses a theorem-local 400,000-heartbeat budget
+for these fourteen calls.  The three-minute timeout and standard machine
+resource limits remain fixed.  Other declarations retain their defaults.
+
+The composed interface proof passed in eleven seconds and the public
+specification in 1.4 seconds.  Both public specifications have only standard
+axioms and no target warnings.  The focused source-artifact gate then
+regenerated the binary and model, checked the tracked model equality, and
+accepted both specifications.  Marked the case complete in the source
+registry and added its aggregate import and four runtime equality checks.
+The separate exact-artifact registry remains at 42 packages.  This scalar
+case will support the complete observer's byte-level proof.
+
+Counting the generated straight-line body gives 506 instructions and
+fourteen calls.  The earlier 507-instruction journal count was off by one.
+Reviewed the source enclosure statements, accepted execution proofs,
+compiler call map, and failure logs together.  Explicit arguments and
+symbolic call results kept arithmetic definitions out of composition.
+No new automatic LTG promotion follows from this single case.  The existing
+checked function-region transfer and guard-call tactics cover the work.
+
+Runtime equality checks passed in 1.6 seconds.  Registry and aggregate
+imports agree at 47 cases and 47 completed specifications.  Reviewed the
+documentation changes and source statements, checked for admitted proofs,
+and found no whitespace errors.  The new case has no admitted theorem,
+additional axiom, or native-decision shortcut.  The checkpoint includes
+the checked scalar source, generated model, execution and enclosure
+proofs, registration, and updated plan.  Existing report and data files
+remain outside this commit.
