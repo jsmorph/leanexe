@@ -490,6 +490,15 @@ status/lower/upper triples for mass, both momenta, and energy.
 The observer's complete generated execution, allocation, and exact-byte
 proofs remain open before production runs.
 
+[Grid totals](lean/Project/EulerCertificate/TotalsExecution.lean) and
+[boundary contributions](lean/Project/EulerCertificate/BoundaryExecution.lean)
+have complete generated-function execution and store-preservation proofs,
+including their array folds, face reconstruction, and interval arithmetic.
+[Solver memory transfers](lean/Project/EulerCertificate/SolverMemory.lean)
+reuse the checked sweep, initialization, output, release, and scan functions.
+Every audit uses standard axioms.  The observer controller and its complete
+allocation and output composition remain open.
+
 ## Workflow Tools
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.

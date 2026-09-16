@@ -12405,3 +12405,13 @@ Option Trial, which lets the generated code release local sweep grids and
 return failure without allocating an empty placeholder.  Array-fold and
 complete allocation proofs are next.  The journal records the generated
 call counts, proof corrections, and the limits of retrieved fold support.
+
+The observer's generated grid-total and boundary-contribution functions now
+have exact execution and store-preservation proofs.  The two array folds
+use the existing checked prefix theorem and generated loop-shape equalities.
+Boundary reads include clamping, checked integer arithmetic, and grid-memory
+bounds.  Five memory and scan transfers passed in 1.7 seconds through the
+existing solver-region equality.  The complete boundary fold took 11 seconds,
+and its entry, return, and physical scaling took 14 seconds.  All audits use
+standard axioms.  The observer controller, complete allocation and output
+composition, and exact-byte package remain open.

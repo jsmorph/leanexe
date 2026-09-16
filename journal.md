@@ -23262,3 +23262,52 @@ elaboration boundary.  All seven vector theorems then passed in 29 seconds
 with standard axioms.  Both failed drafts are preserved.  No resource limit
 was raised.  The complete observer registration remains incomplete until
 the array folds, allocation, controller, output, and exact-byte gates pass.
+
+Pushed the source/scalar checkpoint fc603759c8da61f3c0f7e7ebb6f430f0b09e9f7d
+to main.  A fetch confirmed that local HEAD and origin/main agree.
+
+The cell-total wrapper reached 400,000 heartbeats while checking nested
+local updates.  Abstracting its returned vectors did not remove the failure.
+A bounded diagnostic reported 828,936 Nat.rec reductions, 449,954 List.rec
+reductions, and 37,724 List.set reductions.  It then reached its two-minute
+wall timeout while producing traces.  The diagnostic source and available
+output are preserved.  I submitted the revised build before that diagnostic
+had exited.  The runner rejected it after the 30-second shared-lock wait
+with status 75, so no second Lean job ran.  Future dependent submissions
+must wait for an observed exit code.  The revised proof reduces List.set and
+numeric local indices during its initial instruction sequence, matching
+the existing guarded-call tactic's treatment of later sequences.
+
+The local-index changes also failed, including a diagnostic with one million
+heartbeats.  Inspecting the goal showed that the initial wp_run had retained
+constant if expressions because its simplifier lacked reduceIte.  Adding
+that rule let the concise two-call cell proof pass in 3.7 seconds at the
+original 400,000-heartbeat limit.  The named-frame experiments are removed.
+The fold shape passed in 1.5 seconds, and the complete total fold loop passed
+in 11 seconds.  Their audits use standard axioms.  The nine solver-helper
+transfers also passed.  The failed drafts remain in the research directory.
+
+The total-sum entry and return proof needed the generated fold's prefix
+restored around its checked tail equality, followed by explicit list-append
+reduction.  Its sum and area-normalization theorems passed in 7.8 seconds
+with standard axioms.  The boundary read proof then passed in 16 seconds.
+Its first drafts left the array-size comparison in inconsistent forms and
+left zero additions and continuation-list appends unreduced.  The checked
+proof uses the existing multiplication-overflow lemma and grid-field read
+theorems.  The source and generated artifact remain unchanged.
+
+A diagnostic used an unsupported pp.maxDepth option and failed.  That option
+is removed.  Redirecting a runner invocation to a log prevented reuse of the
+existing command approval and caused a permission request.  Subsequent
+runs use direct tools/leanrun commands and capture results through the tool.
+
+The face and line execution proofs passed in 20 seconds.  The boundary-fold
+draft needed the library equality between a bounded fold and a fold of an
+extracted prefix.  Its frame proof also needed the prefix update proved
+before rewriting the dependent memory-read expressions.  The entry proof
+then caught one excess unused local in my frame description.  The generated
+function has 159 locals, and the corrected frame matches that count.  The
+loop passed in 11 seconds, and boundary sum plus timestep scaling passed
+in 14 seconds.  Five existing memory and scan proofs transferred in 1.7
+seconds.  All audits use standard axioms.  The next proof boundary is the
+observer's Option Trial controller, including release on both failure paths.
