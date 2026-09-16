@@ -12659,3 +12659,33 @@ sets of runtime-function equalities.  Lean runs used the local repository
 runner with 4 GiB MemoryHigh, 6 GiB MemoryMax, 1 GiB swap maximum, 100 percent
 CPU quota, and one thread.  The final tracked changes consist of the
 numerical implementations, proofs, tests, command-line tool, and records.
+
+## 2026-09-16: Kernel checker M0.0
+
+The user requested a full Lean kernel checker implemented in LeanExe and
+required small runnable milestones. The integrated
+[checker plan](plans/lean-kernel-checker.md) preserves the complete discussion.
+M0.0 implements only the concrete rule Sort u : Sort (u + 1), returning
+0 for acceptance, 1 for an incorrect claimed level, and 2 when the successor
+exceeds its initial UInt64 representation. The overflow guard precedes addition.
+
+LeanExe.KernelCheck.SortTest passed its three Lean sort judgments and eleven
+source guards. node test/kernel_sort.js built the compiler, emitted the
+1,116-byte checker, and passed 32 WASM judgments and standard-Lean
+comparisons, including signed-i64 and UInt64 boundaries. The artifact SHA-256 is
+1ce9499a8f44633db3bd540d8b96e6d3ab389345cb99c5f745fc696154cff19b.
+Direct calls for (0,1), (0,0), (1,2), and (UInt64.max,0) returned 0, 1, 0, 2.
+This is execution evidence for one rule, not a proof checker or a formal
+compiler/artifact theorem. The focused documentation gate also passed.
+
+This session cloned d6511c65255aece97afa08dbfd994fb088f4ff6f and created local
+branch kernel-checker-m0-0. The user explicitly authorized local Lean execution
+after the systemd user-scope probe failed. The unchanged runner uses
+LEANRUN_LOCAL=1. Official Lean 4.34.0-rc2, Wasmtime 44.0.0, and Node 24.13.0
+were downloaded and checksum-verified. Missing /proc executable links required
+a session-local AT_EXECFN/readlink compatibility preload and explicit library
+paths, all under ignored build/tools/work-mode. The detailed setup and exact
+commands are recorded in the checker plan's implementation receipt.
+
+M0.1, concrete max/imax universe checks, is next. The transformer and Euler
+work retain their recorded state.
