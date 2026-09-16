@@ -683,9 +683,10 @@
         "Project.TinyGpt2Hidden.Spec.attentionRow_exact",
         "Project.TinyGpt2Hidden.Spec.projectContext_exact",
         "Project.TinyGpt2Hidden.Spec.contractRow_exact",
-        "Project.TinyGpt2Hidden.Spec.embedding_exact"
+        "Project.TinyGpt2Hidden.Spec.embedding_exact",
+        "Project.TinyGpt2Hidden.Spec.hidden_exact"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

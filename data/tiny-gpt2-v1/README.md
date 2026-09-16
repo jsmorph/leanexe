@@ -18,7 +18,11 @@ WASM call.  JSON output contains decimal logits, raw binary64 words, input
 tokens, artifact hashes, and the current verification status.  The host
 checks the recorded checkpoint and module hashes before execution.
 The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
-C host.  The complete model proof remains in progress.
+C host.  The separate 15,423-byte hidden-state module has a
+[proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
+exact agreement with the raw-bit model, and store preservation for every
+four-byte input.  The complete inference module's execution and composed
+numerical certificate remain open.
 
 ## Training record
 

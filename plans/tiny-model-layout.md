@@ -52,5 +52,9 @@ This test requires the approved [training environment](../training/tiny-gpt2/REA
 The fixture contains initialization weights and records that no training
 occurred.  Its maximum measured PyTorch differences are approximately
 3.86 × 10^-6 for hidden coordinates and 5.49 × 10^-7 for selected logits.
-Those comparisons supply empirical evidence.  Full-model execution,
-checkpoint range certification, and the composed logit theorem remain open.
+Those comparisons supply empirical evidence.  The
+[hidden-state execution theorem](../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean)
+now proves termination, exact raw-bit model agreement, and store preservation
+for all four-byte inputs and represented weight arrays of at least 2,488 words.
+The vocabulary-output loop, remaining checkpoint ranges, and composed logit
+theorem remain open.

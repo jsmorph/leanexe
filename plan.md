@@ -771,6 +771,8 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [ ] Investigate checkpoint ranges and their effect on LayerNorm sensitivity.
 - [x] Complete bounded GELU and its input perturbation theorem.
 - [ ] Complete affine operations, attention, and a transformer block.
-- [ ] Train and export the tiny model, then prove its execution and logit bound.
+- [x] Train and export the four-byte model.
+- [x] Prove hidden-state execution and store preservation.
+- [ ] Prove the full vocabulary-output loop and composed logit bound.
 - [ ] Extend the proved model to a 64-byte context with a trained checkpoint.
 - [ ] Complete the final exact-byte package and weight identity evidence.
