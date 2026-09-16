@@ -13234,3 +13234,48 @@ uses only the standard logical axioms.  Kernel evaluation is needed for
 the concrete raw-word computations.  Ordinary decide stops at primitive
 reductions.  The binary64 normalization, projection, and score roundoff
 margin remains open.
+
+The longer hidden-state diagnostic checks twenty prefixes, covering sixty
+helper calls.  A second diagnostic reaches all ninety calls and the final
+reflexive row equality.  The assembled theorem still incurs the excessive
+checking cost.  The next version uses an expected-row parameter throughout
+symbolic execution and a separate equality hypothesis connecting that row
+to the model.  The model composition lemma supplies the final equality.
+
+The expected-row hidden proof also reaches its four-minute timeout.  The
+next diagnostic measures the assembled term and separates tactic completion
+from kernel acceptance.  Lean's AddDecl implementation permits asynchronous
+checking of auxiliary declarations.  A synchronous diagnostic will record
+the beginning, tactic completion, and kernel acceptance of each prefix.
+
+The checkpoint's first-normalization coefficients now prove output magnitude
+at most three.  Query and key projections have magnitude at most fifteen
+and error at most 1/200000.  Combining them with the score operation gives
+score error at most 1/3000.  The exact real spread bound 103/7 then proves
+binary64 score spread at most sixteen for arbitrary valid input rows.  The
+projection, score-perturbation, and spread modules check in 1.3 to 2.2 seconds.
+The embedding-domain certificate remains the next prerequisite.
+
+The embedding certificate checks the first 1,040 sign-cleared weight words
+against the binary64 encoding of one half, using List.all on the selected
+prefix.  The binary64-order theorem transfers that integer comparison to
+real magnitudes.  The addition-error theorem proves every accepted token
+and position produces a finite embedding within the normalization domain.
+This module checks in 1.5 seconds.
+
+The completed hidden proof term has 550,764 distinct expression nodes,
+349 distinct constants, and no remaining goals before final declaration
+checking.  Its check still reaches three minutes.  The next experiment
+names continuation propositions so that the assembled proof can refer to
+small applications instead of repeating large local-frame expressions.
+
+The synchronous diagnostic accepts all 31 prefix lemmas, including the
+last model-equality step.  Most prefix kernel checks take less than one
+second, and the final prefix takes 3.6 seconds.  The remaining cost occurs
+after those checks while processing the enclosing proof.
+
+The combined context theorem now proves the softmax domain for every
+four-byte input and each attention head.  It checks in 1.2 seconds.  The
+embedding and context-score axiom audits contain only propext,
+Classical.choice, and Quot.sound.  The 2,488-word reproduction check,
+134-document check, and whitespace check pass.
