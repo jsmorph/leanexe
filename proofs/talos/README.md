@@ -39,6 +39,13 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The `softmax` case proves exact terminating generated-WAT execution for all
+raw inputs, including rejection.  On one to four scores in [-4, 4], it
+proves positive finite active probabilities, exact masked zeros, component
+error at most 1/64 against real exponential softmax, and normalization error
+at most 32 times 2^-52.  Its [command-line interface](../../data/numerical/README.md)
+accepts decimal scores or exact binary64 words.
+
 The `exp_wide` case extends the exponential domain to [-8, 0] with proved absolute error at most 1/400 and output at least 1/100000.  Its generated-WAT execution, successful domain, rejection behavior, and command-line runner are complete.
 
 The [small exponential demonstration](../../data/numerical/README.md) adds

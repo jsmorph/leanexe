@@ -21,6 +21,17 @@ function decimal(word) {
   return bytes.readDoubleLE();
 }
 
+function inputWords(demo, input) {
+  if (demo.kind === "softmax") {
+    if (!Array.isArray(input.scores_bits) || input.scores_bits.length < 1 || input.scores_bits.length > 4) {
+      throw new Error("scores_bits must contain one to four binary64 words");
+    }
+    const scores = input.scores_bits.map((word, i) => parseWord(word, `scores_bits[${i}]`));
+    return [BigInt(scores.length), ...scores, ...Array(4 - scores.length).fill(0n)];
+  }
+  return demo.fields.map(field => parseWord(input[field], field));
+}
+
 function runDemo(name, input) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "data/numerical/manifest.json"), "utf8"));
   const demo = manifest.demos.find(item => item.name === name);
@@ -29,27 +40,47 @@ function runDemo(name, input) {
       Object.keys(input).sort().join(",") !== [...demo.fields].sort().join(",")) {
     throw new Error(`${name} requires fields: ${demo.fields.join(", ")}`);
   }
-  const arguments_ = demo.fields.map(field => parseWord(input[field], field));
+  const arguments_ = inputWords(demo, input);
   const wasm = path.join(root, demo.wasm);
   const digest = crypto.createHash("sha256").update(fs.readFileSync(wasm)).digest("hex");
   if (digest !== demo.sha256) throw new Error(`${name}: WASM digest differs from the recorded demonstration`);
-  const [status, bits] = callI64Slots(wasm, demo.export, 2, arguments_);
+  const [status, ...words] = callI64Slots(wasm, demo.export, demo.kind === "softmax" ? 5 : 2, arguments_);
   if (status !== 0n && status !== 1n) throw new Error(`${name}: unexpected status ${status}`);
-  const result = { status: Number(status), bits: bits.toString(16).padStart(16, "0") };
+  const hex = words.map(word => word.toString(16).padStart(16, "0"));
+  const result = demo.kind === "softmax"
+    ? { status: Number(status), active: Number(arguments_[0]), probabilities_bits: hex }
+    : { status: Number(status), bits: hex[0] };
   if (status === 0n) {
-    const value = decimal(bits);
-    if (!Number.isFinite(value)) throw new Error(`${name}: accepted output is nonfinite`);
-    Object.assign(result, { value, absolute_error_bound: demo.absoluteErrorBound,
+    const values = words.map(decimal);
+    if (values.some(value => !Number.isFinite(value))) throw new Error(`${name}: accepted output is nonfinite`);
+    Object.assign(result, demo.kind === "softmax"
+      ? { probabilities: values, normalization_error_bound: demo.normalizationErrorBound }
+      : { value: values[0] });
+    Object.assign(result, { absolute_error_bound: demo.absoluteErrorBound,
       theorem: demo.theorem, wasm_sha256: digest });
   }
   return result;
 }
 
 function main(args) {
-  if (args.length !== 1 && !(args.length === 3 && args[1] === "--input")) {
-    throw new Error("usage: tools/numeric-demo.js <demo> [--input FILE]; otherwise read JSON from stdin");
+  let input;
+  if (args[0] === "softmax" && args[1] === "--scores" && args.length >= 3 && args.length <= 6) {
+    input = { scores_bits: args.slice(2).map(text => {
+      if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
+        throw new Error(`invalid decimal score: ${text}`);
+      }
+      const value = Number(text);
+      if (!Number.isFinite(value)) throw new Error(`nonfinite decimal score: ${text}`);
+      const bytes = Buffer.alloc(8);
+      bytes.writeDoubleLE(value);
+      return bytes.readBigUInt64LE().toString(16).padStart(16, "0");
+    }) };
+  } else {
+    if (args.length !== 1 && !(args.length === 3 && args[1] === "--input")) {
+      throw new Error("usage: tools/numeric-demo.js <demo> [--input FILE], or softmax --scores SCORE [SCORE ...]");
+    }
+    input = JSON.parse(fs.readFileSync(args.length === 3 ? args[2] : 0, "utf8"));
   }
-  const input = JSON.parse(fs.readFileSync(args.length === 3 ? args[2] : 0, "utf8"));
   process.stdout.write(`${JSON.stringify(runDemo(args[0], input))}\n`);
 }
 

@@ -28,7 +28,7 @@ tanh GELU formula.  Training is outside the inference proof.
 | Existing Horner baseline | Four binary64 magnitudes at most one half | Reproduced execution and error theorem. |
 | Small exponential | Binary64 values in [-1, 0] | Finite positive output, exact one at zero, absolute error at most 1/4000 (proved). |
 | Extended exponential | Binary64 values in [-8, 0] | Proved positivity and absolute error at most 1/400 after range reduction and reconstruction. |
-| Softmax | One to four scores in [-4, 4], nonempty prefix mask | Exact masked zeros, positive denominator, finite probabilities, approximation and normalization bounds. |
+| Softmax | One to four scores in [-4, 4], nonempty prefix mask | Proved exact masked zeros, positive finite active outputs, component error at most 1/64, and normalization error at most 32 times 2^-52. |
 | LayerNorm | Width four, bounded inputs and parameters | Success and error propagation, including constant inputs. |
 | GELU and affine operations | Explicit bounded inputs and parameters | Local error and perturbed-input bounds. |
 | Attention and block | Certified intermediate ranges | Composed execution and numerical theorems. |
