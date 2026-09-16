@@ -12744,3 +12744,40 @@ aggregate source gate passes its updated import inventory, then stops on the
 same assoc_list generated-cache mismatch before the aggregate proof build.
 Its tracked cache remains unchanged.  This checkpoint therefore records a
 successful focused LayerNorm gate and an incomplete repository aggregate.
+
+## 2026-09-16: Training backend and GELU analysis
+
+The user approved CPU PyTorch 2.9.1 in an isolated repository-local Python
+environment.  The first download failed because sandbox DNS could not
+resolve the package index.  The approved network invocation installed
+2.9.1+cpu and its dependencies.  The checked requirements file records that
+set.  PyTorch reports unavailable optional NumPy integration.  The code
+uses tensor operations and standard-library export, and its shape, causal
+prefix, and finite-gradient test passes.
+
+The source audit confirms input-by-output attention matrices, adjacent
+two-coordinate heads, scaling by 1/sqrt(2), a causal prefix mask, absent
+query/key/value biases, and a present attention output bias.  The training
+model implements the agreed 2,488-parameter architecture in binary64.
+The corpus and all-logits compiled interface await the user's requested
+design confirmation.  No training run has occurred.
+
+The [GELU analysis](plans/gelu-analysis.md) derives a logistic evaluation
+from the pinned tanh formula.  On [-3, 3], its negative exponential
+argument fits the existing interval [-8, 0].  Lean checks the identity,
+coefficient interval, argument range, and magnitude bound.  A shared
+negative-magnitude bit operation now proves exact finite-value and sign
+properties, including signed zero and subnormal inputs.
+
+The initial real proof required explicit nonnegativity for a conjunctive
+coefficient hypothesis.  The perturbation proof's first check found
+function-inverse normalization and numeral normalization obligations, and
+an inferred intermediate inequality that was too weak.  These failures
+required explicit expressions and bounds.  All runs use the standard
+local Lean runner limits.
+
+The real perturbation target now passes: GELU has Lipschitz bound four on
+[-3, 3].  Its proof factors through the global sigmoid derivative bound
+1/4.  Public theorem audits contain the standard logical axioms.  The two
+real GELU modules and the shared sign operation check in about two seconds
+each.  Documentation and whitespace checks pass.

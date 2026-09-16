@@ -18,6 +18,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local configuration
+/.venv-tiny-gpt2/
 .env
 .env.*
 !.env.example
