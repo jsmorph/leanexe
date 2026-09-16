@@ -45,6 +45,12 @@ replacing the negative tail by zero.  This provides a possible proved
 extension to all finite inputs while retaining the tanh formula as the
 real reference.
 
+Lean now checks both tail bounds and the extended evaluator's finite
+output and error bound.  Its generated execution remains model integration
+work.  A global derivative argument also proves |G(x)-G(y)| at most
+4*|x-y| for all real inputs: the sigmoid contribution is at most one,
+and the derivative's other term has magnitude at most three.
+
 ## Work
 
 - [x] Prove the logistic identity, magnitude bound, and input perturbation.
