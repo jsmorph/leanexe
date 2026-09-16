@@ -1,5 +1,7 @@
 import LeanExe.KernelCheck.Binding
 import LeanExe.KernelCheck.Universe
+import LeanExe.KernelCheck.Substitution
+import LeanExe.KernelCheck.Equality
 
 namespace LeanExe.KernelCheck
 
@@ -24,7 +26,8 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
     let a := nodeA s.graph term
     let b := nodeB s.graph term
     if phase == 1 then
-      if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+      if nodeTag s.graph s.root != 0 then
+        return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
       let u := nodeA s.graph s.root
       ctx := ctx.push a
       stack := stack.push term |>.push 2 |>.push u
@@ -32,11 +35,22 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
     else if phase == 2 then
       ctx := ctx.pop
       if tag == 2 then
-        if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+        if nodeTag s.graph s.root != 0 then
+          return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
         let v := nodeA s.graph s.root
         s := addNode s 0 (imaxLevel saved v) 0
       else
         s := addNode s 2 a s.root
+    else if phase == 3 then
+      if nodeTag s.graph s.root != 2 then
+        return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
+      stack := stack.push term |>.push 4 |>.push s.root
+      stack := stack.push b |>.push 0 |>.push 0
+    else if phase == 4 then
+      s := equalCore s s.root (nodeA s.graph saved)
+      if s.status != 0 then return s
+      s := instantiateCore s (nodeB s.graph saved) b
+      if s.status != 0 then return s
     else if tag == 0 then
       if a == 18446744073709551615 then return { s with status := 2 }
       s := addNode s 0 (a + 1) 0
@@ -47,6 +61,9 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
       if s.status != 0 then return s
     else if tag == 2 || tag == 3 then
       stack := stack.push term |>.push 1 |>.push 0
+      stack := stack.push a |>.push 0 |>.push 0
+    else if tag == 4 then
+      stack := stack.push term |>.push 3 |>.push 0
       stack := stack.push a |>.push 0 |>.push 0
     else return { s with status := 3 }
   if stack.isEmpty then return s else return { s with status := 5 }
@@ -59,7 +76,8 @@ def admitContext (g ctx : Array UInt64) (root : UInt64) (fuel : Nat) : Result :=
     if ty.toNat >= g.size / 3 then return { s with status := 4 }
     s := inferCore admitted s ty
     if s.status != 0 then return s
-    if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+    if nodeTag s.graph s.root != 0 then
+      return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
     admitted := admitted.push ty
   return s
 

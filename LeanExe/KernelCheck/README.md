@@ -85,6 +85,7 @@ Each zero-based node occupies three UInt64 words:
 | 1: bvar | de Bruijn index | 0 |
 | 2: Pi | domain node ID | body node ID |
 | 3: lambda | domain node ID | body node ID |
+| 4: application (from M0.8) | function node ID | argument node ID |
 
 Every child must precede its parent. The entire array is validated, including
 unreachable nodes; the root must exist. Result 0 means structurally valid;
@@ -204,7 +205,22 @@ This replaces bvar 0 by Sort 0 and returns `[0, 0, 0, 0, 0, 1, 0, 0]`.
 Substitution and every nested shift consume one shared work budget.
 This operation does not itself check types or normalize terms.
 
+## M0.8: application typing
+
+`node test/kernel_application.js` builds `checker-m0-8.wasm`; the entry
+`checkApplication` has the same graph/proof/type/fuel arguments as `checkProof`.
+Seven cases accept implication composition, dependent application and applied
+identity, reject clear argument/type errors, and report unsupported (3) for
+cases requiring beta conversion. The genuine composition and dependent
+application terms are also checked by Lean in `ApplicationTest.lean`.
+
+Tag 4 adds application. Its two children share the surrounding scope; it binds
+no variable. Inference requires an exposed Pi, checks the argument against its
+domain, then instantiates the codomain using the tested substitution operation.
+Structural mismatches below applications are conservative: missing conversion
+or proof irrelevance must not be reported as a definite rejection.
+
 ## Next checkpoint
 
-M0.8 adds application typing. The complete handoff and later
+M0.9 adds beta reduction and bounded conversion. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).

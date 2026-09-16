@@ -12795,3 +12795,19 @@ standard Lean: nested capture avoidance, bound-variable preservation, domain
 substitution, unused variables, index decrement, overflow, malformed input and
 shared-budget exhaustion. Source and documentation checks passed.
 M0.8 adds applications; normalization remains separate.
+
+## 2026-09-16: Kernel checker M0.8
+
+Tag 4 adds application with no binding in either child. Scope, shifting and
+instantiation handle both children at the same depth. The inference machine
+checks the function's Pi type, checks its argument type, and instantiates the
+codomain. Comparison moved to a separate module to avoid a dependency cycle.
+It accepts structural equality but conservatively returns unsupported for a
+mismatch below applications. Sort/Pi inspection likewise reports a needed
+reduction as unsupported rather than a false type error.
+
+Seven WASM/standard-Lean cases passed: implication composition, dependent
+application, applied identity, clear invalid applications, and two beta-dependent
+cases returning unsupported. Lean checked the actual positive terms too.
+The 25 binding, 12 substitution and 12 closed-proof regression cases passed,
+as did the source/documentation gates. M0.9 will make the two beta cases pass.
