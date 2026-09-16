@@ -1,0 +1,44 @@
+# Tiny GPT-2 training
+
+This directory trains the architecture in the
+[inference plan](../../plans/tiny-transformer.md).  It has 2,488 parameters:
+four byte-token positions, vocabulary 256, one pre-normalized block, two
+heads of width two, model width four, feed-forward width eight, tanh GELU,
+and a final LayerNorm.  Query, key, and value projections have no biases.
+The attention output, both feed-forward projections, and the independent
+vocabulary head have biases.  LayerNorm uses epsilon 1/100000.
+
+## Environment and commands
+
+The user approved CPU PyTorch 2.9.1 for training.  The isolated environment
+uses Python's standard library and PyTorch.  The requirements file pins the
+installed dependency set from the official CPU package index.
+
+```sh
+python3 -m venv .venv-tiny-gpt2
+.venv-tiny-gpt2/bin/python -m pip install -r training/tiny-gpt2/requirements.txt
+.venv-tiny-gpt2/bin/python training/tiny-gpt2/train.py \
+  --corpus path/to/corpus.txt --output build/tiny-gpt2/checkpoint.json
+```
+
+Training uses binary64, Adam, one CPU thread, a recorded seed, and a
+90/10 contiguous corpus split.  Embeddings start uniform in [-0.02, 0.02].
+Projection matrices use Xavier-uniform initialization.  Normalization
+scales start at one and biases at zero.  The checkpoint records corpus
+identity, training settings, before/after losses, and raw binary64 words.
+Matrices use input-by-output row-major order.
+
+## Evidence
+
+The model's shape, causal prefix equality, and finite gradients pass a
+direct CPU test.  Training and exported-weight verification remain open.
+The sampled intermediate ranges in an exported checkpoint are measurements.
+The inference proof must establish its own ranges and error bounds.
+
+PyTorch reports that optional NumPy integration is unavailable in this
+environment.  The training and export code uses tensor operations and
+standard-library binary packing.
+
+The [pinned TorchLean architecture](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/API/Models/CausalTransformer/Architecture.lean)
+and [attention implementation](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Runtime/Autograd/Model/Layers/Attention.lean)
+define the audited dimensions, biases, head layout, and scaling.
