@@ -773,6 +773,7 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [ ] Complete affine operations, attention, and a transformer block.
 - [x] Train and export the four-byte model.
 - [x] Prove hidden-state execution and store preservation.
+- [x] Reuse the hidden-state proof in the full module and prove single-logit execution.
 - [ ] Prove the full vocabulary-output loop and composed logit bound.
 - [ ] Extend the proved model to a 64-byte context with a trained checkpoint.
 - [ ] Complete the final exact-byte package and weight identity evidence.
