@@ -37,11 +37,19 @@ The checkpoint range investigation will determine whether the feed-forward
 inputs fit this interval.  Wider inputs require a proved extension before
 model integration.
 
+For a at least three, z(a) is at least 2a.  The exponential series gives
+exp(6) at least 300, and exp(2a-6) is at least 2a-5.  Thus exp(z(a)) is
+at least 100a.  The exact identity G(a)-a = -a/(1+exp(z(a))) then bounds
+the positive tail error by 1/100.  Symmetry gives the same bound for
+replacing the negative tail by zero.  This provides a possible proved
+extension to all finite inputs while retaining the tanh formula as the
+real reference.
+
 ## Work
 
 - [x] Prove the logistic identity, magnitude bound, and input perturbation.
-- [ ] Prove binary64 argument, exponential, and output errors.
-- [ ] Check generated-WAT execution and command-line examples.
+- [x] Prove binary64 argument, exponential, and output errors.
+- [x] Check generated-WAT execution and command-line examples.
 
 The checked real perturbation theorem bounds |G(x)-G(y)| by 4*|x-y|
 for x and y in [-3, 3].  It uses the global sigmoid derivative bound 1/4

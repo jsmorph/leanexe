@@ -135,3 +135,4 @@ import Project.ExpSmall.Spec
 import Project.ExpWide.Spec
 import Project.Softmax.Spec
 import Project.LayerNorm.Spec
+import Project.Gelu.Spec

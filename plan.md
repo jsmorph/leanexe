@@ -769,6 +769,7 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [x] Release a masked, one-to-four-score softmax command-line demo.
 - [x] Establish LayerNorm execution, roundoff, and input and parameter error propagation.
 - [ ] Investigate checkpoint ranges and their effect on LayerNorm sensitivity.
-- [ ] Complete GELU, affine operations, attention, and a transformer block.
+- [x] Complete bounded GELU and its input perturbation theorem.
+- [ ] Complete affine operations, attention, and a transformer block.
 - [ ] Train and export the tiny model, then prove its execution and logit bound.
 - [ ] Complete the final exact-byte package and weight identity evidence.

@@ -42,6 +42,7 @@ import Project.ExpSmall.Program
 import Project.ExpWide.Program
 import Project.Softmax.Program
 import Project.LayerNorm.Program
+import Project.Gelu.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -321,5 +322,10 @@ example : eraseTypeIdx Project.LayerNorm.func7Def = eraseTypeIdx allocFuncDef :=
 example : eraseTypeIdx Project.LayerNorm.func8Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.LayerNorm.func9Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.LayerNorm.func10Def = eraseTypeIdx (releaseFuncDef 10) := rfl
+
+example : eraseTypeIdx Project.Gelu.func9Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gelu.func10Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gelu.func11Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gelu.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
 
 end Project.Runtime

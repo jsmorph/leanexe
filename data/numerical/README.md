@@ -7,6 +7,27 @@ corresponding WASM digest, and the runner checks it before execution.
 Exact-byte proof packages are deferred.  JSON parsing, host loading, and
 decimal display are outside the formal execution theorem.
 
+## GELU
+
+`gelu` accepts finite binary64 inputs in [-3, 3].  It returns a finite
+result within 1/100 of x*(1+tanh(sqrt(2/pi)*(x+0.044715*x^3)))/2.
+The input perturbation theorem adds four times the input error when both
+reference and decoded inputs lie in that interval.
+
+```sh
+tools/talos-artifact.js prepare gelu
+tools/talos-proof.js check gelu
+tools/numeric-demo.js gelu --value -1
+tools/numeric-demo.js gelu --input data/numerical/gelu/minus-one.json
+```
+
+Negative one returns approximately -0.15880801373558184.  The evaluator uses
+a logistic identity and the proved exponential.  The generated-WAT theorem
+proves termination, exact status and result words, and complete store
+preservation for every raw input.  The guard recognizes exactly the stated
+finite interval.  Rejected input returns status one and a zero payload.
+The [GELU analysis](../../plans/gelu-analysis.md) records the derivation.
+
 ## LayerNorm
 
 `layernorm` accepts four inputs, four scales, and four biases, each in [-4, 4].

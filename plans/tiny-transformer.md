@@ -30,7 +30,8 @@ tanh GELU formula.  Training is outside the inference proof.
 | Extended exponential | Binary64 values in [-8, 0] | Proved positivity and absolute error at most 1/400 after range reduction and reconstruction. |
 | Softmax | One to four scores in [-4, 4], nonempty prefix mask | Proved exact masked zeros, positive finite active outputs, component error at most 1/64, and normalization error at most 32 times 2^-52. |
 | LayerNorm | Four inputs, four scales, and four biases in [-4, 4] | Proved successful execution, absolute error at most 1/1000000, and input and parameter perturbation bounds, including constant inputs. |
-| GELU and affine operations | Explicit bounded inputs and parameters | Local error and perturbed-input bounds. |
+| GELU | Finite binary64 inputs in [-3, 3] | Proved finite output, error at most 1/100, and input perturbation multiplier four. |
+| Affine operations | Explicit bounded inputs and parameters | Local error and perturbed-input bounds. |
 | Attention and block | Certified intermediate ranges | Composed execution and numerical theorems. |
 | Trained model | Frozen weights and certified token domain | Concrete logit bound and successful inference. |
 
@@ -50,6 +51,9 @@ produce an uninformative logit bound, together with their causes.
 
 The [LayerNorm analysis](layernorm-analysis.md) records the pinned source
 audit, endpoint perturbation identity, and implementation sequence.
+The [GELU analysis](gelu-analysis.md) records its logistic identity and
+binary64 error budget.  The [training implementation](../training/tiny-gpt2/README.md)
+uses the approved CPU PyTorch backend.
 
 Use existing ProofKit arithmetic bounds, including their underflow terms.
 Use the existing Wasmtime host and source-driven Talos registry.  Dependencies,

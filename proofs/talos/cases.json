@@ -652,6 +652,20 @@
         "Project.LayerNorm.Spec.layerNorm_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "gelu",
+      "annotations": true,
+      "module": "Project.Gelu.Model",
+      "entry": "Project.Gelu.gelu",
+      "sourceWorkspace": "proof",
+      "leanModule": "Gelu",
+      "specTarget": "Project.Gelu.Spec",
+      "behaviorTheorems": [
+        "Project.Gelu.Spec.gelu_exact",
+        "Project.Gelu.Spec.gelu_real_error"
+      ],
+      "complete": true
     }
   ]
 }
