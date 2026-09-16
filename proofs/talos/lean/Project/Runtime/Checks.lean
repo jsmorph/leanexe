@@ -43,6 +43,7 @@ import Project.ExpWide.Program
 import Project.Softmax.Program
 import Project.LayerNorm.Program
 import Project.Gelu.Program
+import Project.TinyGpt2Hidden.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -327,5 +328,10 @@ example : eraseTypeIdx Project.Gelu.func9Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func10Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func11Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
+
+example : eraseTypeIdx Project.TinyGpt2Hidden.func72Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func73Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func74Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func75Def = eraseTypeIdx (releaseFuncDef 75) := rfl
 
 end Project.Runtime

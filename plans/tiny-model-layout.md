@@ -37,7 +37,7 @@ proved tail bounds.  Each head divides its two-coordinate dot product by
 binary64 word 3ff6a09e667f3bcd, the rounded square root of two.  Its local
 score theorem includes constant and division errors.
 
-The hidden-state body compiles to a 16 KiB WASM module.  The deterministic
+The hidden-state body compiles to a 15,423-byte WASM module.  The deterministic
 initialization test covers four contexts at all four output positions.
 Wasmtime and the native Talos evaluator agree on every hidden-state word
 and four selected vocabulary logits per position.  The test also checks

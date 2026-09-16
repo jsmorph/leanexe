@@ -31,7 +31,10 @@ Matrices use input-by-output row-major order.
 ## Evidence
 
 The model's shape, causal prefix equality, and finite gradients pass a
-direct CPU test.  Training and exported-weight verification remain open.
+direct CPU test.  The first [trained checkpoint](../../data/tiny-gpt2-v1/README.md)
+uses the approved Tiny Shakespeare corpus and 4,000 Adam steps.
+Its validation cross-entropy fell from 5.5688 to 2.7068.
+Exported-weight verification remains open.
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The inference proof must establish its own ranges and error bounds.
 
