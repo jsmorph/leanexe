@@ -6,7 +6,7 @@ committed and published on branch lean-kernel-checker. See its plan and
 [executable checkpoints](LeanExe/KernelCheck/README.md) for current status.
 The [proof ledger](LeanExe/KernelCheck/PROOFS.md) records proved scalar
 primitives and deferred source obligations. This remains a PoC: continue
-the next small export-coverage increment (M1.2); M0 and M1.0–M1.1 are complete. Favor feasibility until broad full-Lean coverage is demonstrated; defer new source and WASM proof work.
+the next small level-substitution increment (M1.3); M0 and M1.0–M1.2 are complete. Favor feasibility until broad full-Lean coverage is demonstrated; defer new source and WASM proof work.
 Other work retains its recorded status.
 
 The user authorized the [tiny transformer development](plans/tiny-transformer.md)

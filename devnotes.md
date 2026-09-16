@@ -12968,3 +12968,63 @@ bytes. The artifact is byte-identical to M0.11/M1.0, with no kernel changes:
 2,429,809 bytes, SHA-256
 aa1353e70bdbf4a101efe57beb1220ca603820d19c0c7a767638a0bc1645350d.
 Next is symbolic-universe syntax validation (M1.2), not a proof detour.
+
+## 2026-09-16: Kernel checker M1.2 and installed runner
+
+The user approved standard Linux delegation to installed leanrunner and a
+separate three-word symbolic-level table.  The user then chose queue waiting
+without a lock timeout.  Execution keeps its timeout after admission.  The
+shared runner remains unchanged.  `tools/leanrun` supplies the pinned toolchain,
+one job, one Lean thread, 4 GiB memory high, 6 GiB memory maximum, 1 GiB swap,
+100% CPU, and 512 tasks.  Installed leanrunner owns the shared VQ lock and the
+scope under `leanrun.slice`.  The old repository wrapper used a separate lock
+and created its scope outside that aggregate slice.
+
+The installed runner accepts integer seconds.  The wrapper converts positive
+integer durations with optional s/m/h/d suffixes and retains the command timeout
+inside the scope.  Standard mode rejects local-mode lock-timeout options.
+Inherited execution checks slice membership and the per-job cgroup properties.
+The explicit local and macOS paths retain their existing behavior.  The kernel
+suite delegates execution limits to each Lean invocation, so its enclosing
+driver does not impose a deadline on queue waiting.
+
+The runner/process tests pass, including delegation, argument and exit-status
+preservation, fixed resource settings, invalid durations, and local-mode
+nesting rejection.  A live child reported the required cgroup limits under
+leanrun.slice.  A nested invocation reported Lean 4.34.0-rc2 at commit
+6a10ac8c22beadecabdbb0919c2b50214762f91d.  Sandbox access to the user bus and
+Node child processes failed with permission errors.  These tests passed outside
+the sandbox with the resource-limited runner.  The existing Wasmtime 44.0.0
+C API in the neighboring checkout supplies this checkout's rebuilt host through
+`WASMTIME_C_API`; no runtime dependency was added.
+
+The level constructors follow pinned
+[Lean universe syntax](https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2b50214762f91d/src/Lean/Level.lean).
+The implementation validates zero, successor, parameter, max, and imax records.
+Children precede their parent, unused fields are zero, and parameters lie below
+a supplied count.  Every record is checked, including records outside the root's
+reachable graph.  Numeric IDs separate this executable syntax operation from
+later name encoding and declaration admission.  The tests give independent
+expected results for 35 cases and compare native and WASM executions.
+
+The first native universe example incorrectly placed `PProd A B` in
+`Sort (max u v)` for arbitrary sorts.  Lean reported its additional positive
+universe requirement.  The example now checks `A × B : Type (max u v)` for
+`A : Type u` and `B : Type v`.  The corrected focused gate passes all 35 cases.
+Its WASM is 4,348 bytes, SHA-256
+`3179296d43118752ca30885e3dbd56540a311e7a568ebba759674316674e10fb`.
+
+- [x] Add standard runner delegation and check live resource enforcement.
+- [x] Implement level-table validation and focused tests.
+- [x] Complete the M1.2 WASM test and existing kernel suite.
+- [x] Record the artifact, update the handoff, and prepare the increment for publication.
+
+The complete `node test/kernel_all.js` suite passed on this workstation with
+`WASMTIME` selecting the neighboring checkout's pinned 44.0.0 executable.  It
+includes the existing scalar, term, binding, inference, substitution,
+conversion, and let tests, all three exported-proof fixtures, the new level
+validator, and the ten source theorems with their axiom audit.  Every Lean job
+ran through standard installed-runner delegation with the limits above.  The
+M1.2 README commands returned 0 and 4 as documented.  The runner/process tests,
+shell syntax check, maintained-documentation check, and whitespace check passed.
+Formal proof coverage remains P0/P1.  M1.3 parameter substitution is next.

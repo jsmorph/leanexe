@@ -1,6 +1,6 @@
 # Lean kernel checker: executable checkpoints
 
-Executable coverage reaches M1.1, including real identity, composition and let proof exports. Formal source proofs currently cover only
+Executable coverage reaches M1.2: real identity, composition, and let proof exports, plus standalone symbolic-level validation. Formal source proofs currently cover only
 sort typing and concrete max/imax (P0/P1); binding, checker soundness and
 exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
 and run `node test/kernel_proofs.js` to check the ten universal theorems.
@@ -332,9 +332,47 @@ node tools/kernel-check-export.js .lake/build/kernel-check/checker-m1-1.wasm tes
 These report accepted/exit 0 and rejected/exit 1. Reproduce with
 `node tools/kernel-export-fixture.js let`.
 
+## M1.2: symbolic universe syntax
+
+`node test/kernel_levels.js` builds `checker-m1-2.wasm`.  The entry is
+`validateLevels levels parameterCount root`, where `levels` is an `Array UInt64`
+and the other arguments are `UInt64`.  It returns 0 for a valid table and 4
+for malformed input.  The table represents level syntax before comparison or
+parameter substitution.
+
+Each zero-based node occupies three words:
+
+| Tag | First payload | Second payload |
+|---|---|---|
+| 0: zero | 0 | 0 |
+| 1: successor | Earlier level node ID | 0 |
+| 2: parameter | Parameter ID below `parameterCount` | 0 |
+| 3: max | Earlier left level node ID | Earlier right level node ID |
+| 4: imax | Earlier left level node ID | Earlier right level node ID |
+
+The root must exist, and every node is checked, including unreachable nodes.
+Backward references exclude cycles.  Repeated nodes and shared children are
+valid.  Parameter IDs identify entries in a caller-declared range.  Name
+encoding and declaration admission belong to later checkpoints.  Both `max u 0`
+and `imax u 0` are valid syntax.  The validation loop runs once per record,
+bounded by the supplied array length.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m1-2.wasm validateLevels i64 array-u64:2,0,0,1,0,0 i64:1 i64:1
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m1-2.wasm validateLevels i64 array-u64:2,0,0 i64:0 i64:0
+```
+
+These return 0 for the successor of parameter 0 and 4 for an undeclared
+parameter.  The focused test compares 35 inputs with explicit expected
+results in Wasmtime and native Lean.  Cases include all five forms, nested
+levels, sharing, high parameter IDs, invalid roots, malformed fields,
+forward references, self-references, and invalid unreachable records.
+The generated artifact is 4,348 bytes, with SHA-256
+`3179296d43118752ca30885e3dbd56540a311e7a568ebba759674316674e10fb`.
+
 ## Next checkpoint
 
-M1.2 adds a standalone symbolic-level syntax validation artifact, followed by
-parameter substitution and then comparison/global declaration work. See the [full plan](../../plans/lean-kernel-checker.md).
+M1.3 adds parameter substitution, followed by comparison and global declaration
+work.  See the [full plan](../../plans/lean-kernel-checker.md).
 Prioritize feasibility until apparent full-Lean coverage; retain tests and
 existing proofs, but defer new source and WASM proofs.

@@ -9,6 +9,7 @@ elan_root="${ELAN_HOME:-$HOME/.elan}"
 toolchain="${LEANRUN_TOOLCHAIN:-$elan_root/toolchains/$toolchain_key}"
 run_timeout="${LEANRUN_TIMEOUT:-900}"
 lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
+lock_timeout_set="${LEANRUN_LOCK_TIMEOUT+x}"
 lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
@@ -28,6 +29,7 @@ while [ "$#" -gt 0 ]; do
     --lock-timeout)
       [ "$#" -ge 2 ] || usage
       lock_timeout="$2"
+      lock_timeout_set=x
       shift 2
       ;;
     --toolchain)
@@ -73,6 +75,11 @@ case "$local_mode" in
     ;;
 esac
 
+if [ "$local_mode" = "0" ] && [ "$lock_timeout_set" = x ]; then
+  echo "leanrun: --lock-timeout applies only to local mode; standard mode waits for the shared slot" >&2
+  exit 2
+fi
+
 if [ "${LEANRUN_LOCAL_IN_SCOPE:-0}" = "1" ]; then
   echo "leanrun: nested tools/leanrun is not supported in LEANRUN_LOCAL mode (LEANRUN_LOCAL=1); invoke the repository driver directly" >&2
   exit 1
@@ -92,12 +99,20 @@ export PATH LEAN_NUM_THREADS NO_COLOR XDG_CACHE_HOME
 
 if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
   cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
+  case "$cgroup_path" in
+    */leanrun.slice/*) ;;
+    *)
+      echo "leanrun: inherited scope must belong to leanrun.slice" >&2
+      exit 1
+      ;;
+  esac
   cgroup_dir="/sys/fs/cgroup$cgroup_path"
   if [ ! -d "$cgroup_dir" ] ||
      [ "$(cat "$cgroup_dir/memory.high")" != "4294967296" ] ||
      [ "$(cat "$cgroup_dir/memory.max")" != "6442450944" ] ||
      [ "$(cat "$cgroup_dir/memory.swap.max")" != "1073741824" ] ||
-     [ "$(cat "$cgroup_dir/cpu.max")" != "100000 100000" ]; then
+     [ "$(cat "$cgroup_dir/cpu.max")" != "100000 100000" ] ||
+     [ "$(cat "$cgroup_dir/pids.max")" != "512" ]; then
     echo "leanrun: inherited scope does not have the required resource limits" >&2
     exit 1
   fi
@@ -124,23 +139,49 @@ if [ "$(uname -s)" = "Darwin" ]; then
   exec "$helper" "$lock_dir/1" "$lock_timeout" "$run_timeout" "$@"
 fi
 
-mkdir -p "$lock_dir"
-exec 9>"$lock_dir/1"
-if ! flock -w "$lock_timeout" 9; then
-  echo "leanrun: timed out waiting for the machine-wide Lean slot" >&2
-  exit 75
-fi
-
 if [ "$local_mode" = "1" ]; then
+  mkdir -p "$lock_dir"
+  exec 9>"$lock_dir/1"
+  if ! flock -w "$lock_timeout" 9; then
+    echo "leanrun: timed out waiting for the machine-wide Lean slot" >&2
+    exit 75
+  fi
   echo "leanrun: LEANRUN_LOCAL=1; cgroup CPU, memory, and swap limits are not enforced" >&2
   exec env LEANRUN_LOCAL_IN_SCOPE=1 nice -n 10 ionice -c 3 \
     timeout "$run_timeout" "$@"
 fi
 
-exec systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  env LEANRUN_IN_SCOPE=1 nice -n 10 ionice -c 3 \
+case "$run_timeout" in
+  *s) duration="${run_timeout%s}"; multiplier=1 ;;
+  *m) duration="${run_timeout%m}"; multiplier=60 ;;
+  *h) duration="${run_timeout%h}"; multiplier=3600 ;;
+  *d) duration="${run_timeout%d}"; multiplier=86400 ;;
+  *) duration="$run_timeout"; multiplier=1 ;;
+esac
+case "$duration" in
+  ''|*[!0-9]*)
+    echo "leanrun: standard-mode timeout requires a positive integer with optional s, m, h, or d suffix" >&2
+    exit 2
+    ;;
+esac
+duration="$(printf '%s' "$duration" | sed 's/^0*//')"
+if [ -z "$duration" ] || [ "${#duration}" -gt 9 ]; then
+  echo "leanrun: standard-mode timeout is outside the supported range" >&2
+  exit 2
+fi
+timeout_seconds=$((duration * multiplier))
+if [ "$timeout_seconds" -gt 2147483647 ]; then
+  echo "leanrun: standard-mode timeout exceeds 2147483647 seconds" >&2
+  exit 2
+fi
+runner="${LEANRUN_RUNNER:-$HOME/src/leanrunner/leanrun}"
+if [ ! -x "$runner" ]; then
+  echo "leanrun: installed runner not found at $runner; set LEANRUN_RUNNER" >&2
+  exit 2
+fi
+
+exec env LEANRUN_TOOLCHAIN="$toolchain" LEANRUN_TIMEOUT="$timeout_seconds" \
+  LEANRUN_MEMORY_HIGH=4G LEANRUN_MEMORY_MAX=6G LEANRUN_SWAP_MAX=1G \
+  LEANRUN_CPU_QUOTA=100% LEANRUN_TASKS_MAX=512 LEANRUN_NICE=10 LEANRUN_JOBS=1 \
+  "$runner" env LEANRUN_IN_SCOPE=1 \
   timeout "$run_timeout" "$@"

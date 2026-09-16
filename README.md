@@ -13,13 +13,14 @@ Ordinary library-mode binary serialization can also run through LeanExe's experi
 The compiler and proof workspaces pin exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`.  The proof workspace pins Talos revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
 
 Run every direct Lean or Lake command through `tools/leanrun`.  The runner
-serializes Lean work with the neighboring VQ repository; in standard mode it
-also applies the repository's CPU, memory, swap, and thread limits.  Repository
+delegates standard Linux execution to installed leanrunner, which queues work
+with the neighboring VQ repository under the aggregate `leanrun.slice` limits.
+The wrapper sets the repository's per-job CPU, memory, swap, and thread limits.  Repository
 drivers that invoke Lean already use this runner for their child processes.
 
 If a container has no systemd user scope and the user explicitly authorizes
 local execution, set `LEANRUN_LOCAL=1`.  This opt-in mode still selects the
-pinned toolchain, takes the shared lock, applies the command timeout,
+pinned toolchain, takes the legacy local-mode lock, applies the command timeout,
 `LEAN_NUM_THREADS=1`, `nice`, and `ionice`, and prints a warning that cgroup
 CPU, memory, and swap limits are unavailable.  It never enables itself.  Put
 the variable on a runner-calling repository driver instead of wrapping that
