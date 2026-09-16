@@ -1,0 +1,134 @@
+{
+  "ArtifactFunctionSectionItemsPart0": {
+    "exitCode": 0,
+    "seconds": 87.012
+  },
+  "ArtifactFunctionSectionItemsPart1": {
+    "exitCode": 0,
+    "seconds": 90.078
+  },
+  "ArtifactFunctionSectionItemsPart2": {
+    "exitCode": 0,
+    "seconds": 91.483
+  },
+  "ArtifactFunctionSectionItemsPart3": {
+    "exitCode": 0,
+    "seconds": 93.64
+  },
+  "ArtifactFunctionSectionItemsPart4": {
+    "exitCode": 0,
+    "seconds": 87.128
+  },
+  "ArtifactFunctionSectionItemsPart5": {
+    "exitCode": 0,
+    "seconds": 85.666
+  },
+  "ArtifactFunctionSectionItemsPart6": {
+    "exitCode": 0,
+    "seconds": 89.664
+  },
+  "ArtifactFunctionSectionItemsPart7": {
+    "exitCode": 0,
+    "seconds": 87.892
+  },
+  "ArtifactFunctionSectionItemsPart8": {
+    "exitCode": 0,
+    "seconds": 84.474
+  },
+  "ArtifactFunctionSectionItemsPart9": {
+    "exitCode": 0,
+    "seconds": 85.76
+  },
+  "ArtifactFunctionSectionItemsPart10": {
+    "exitCode": 0,
+    "seconds": 87.316
+  },
+  "ArtifactFunctionSectionItemsPart11": {
+    "exitCode": 0,
+    "seconds": 89.179
+  },
+  "ArtifactTypeSectionItemsPart0": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart1": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart2": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart3": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart4": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart5": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart6": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart7": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart8": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart9": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart10": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItemsPart11": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSectionItems": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactTypeSection": {
+    "exitCode": 0,
+    "seconds": null
+  },
+  "ArtifactFunctionSectionItems": {
+    "exitCode": 0,
+    "seconds": 20.878
+  },
+  "ArtifactFunctionSection": {
+    "exitCode": 0,
+    "seconds": 18.163
+  },
+  "ArtifactMemorySectionItems": {
+    "exitCode": 0,
+    "seconds": 8.274
+  },
+  "ArtifactMemorySection": {
+    "exitCode": 0,
+    "seconds": 12.649
+  },
+  "ArtifactGlobalSectionItems": {
+    "exitCode": 0,
+    "seconds": 36.357
+  },
+  "ArtifactGlobalSection": {
+    "exitCode": 0,
+    "seconds": 14.209
+  },
+  "ArtifactExportSectionItems": {
+    "exitCode": 1,
+    "seconds": 148.632
+  }
+}

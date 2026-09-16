@@ -1,0 +1,1802 @@
+{
+  "scope": "Observed focused builds at the pause checkpoint; independent package check pending",
+  "modules": [
+    {
+      "module": "Project.EulerCertificate.ArtifactByteLookup",
+      "sourceSha256": "3740f4b8f30a9fabbfb36bdb174a88f70158b4f76b4812f3529c832cd2b60593",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactByteLookup.lean:4374:0: 'Project.EulerCertificate.Artifact.ByteLookup.data_get' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactBytes",
+      "sourceSha256": "c430f790e253be1bc31ae8a0a2c959f57a141c2362a75727267cda60b1e06432",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCache",
+      "sourceSha256": "62aabe25c456ad8129463c71bc2326abcf4cd9244074275a341672e871104775",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodeVector",
+      "sourceSha256": "d5a2cd6b29f054f6856a12ff6bc6dd4b643ee31b638c85f0c6cb7c582944aeff",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes0To7",
+      "sourceSha256": "cb936bbc7601118d35f6880a0873f8fede378146d0bb48de9ee2a782331e8f4a",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes0To7Part0",
+      "sourceSha256": "f57937e1c7e12f377aba4c80f90bdf182c3aa248973350acc3285d49ea193231",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes0To7Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code0_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code1_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code2_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes0To7Part1",
+      "sourceSha256": "84882d61ca318b4f8c730a3f92251797c14068ff4a5917b4b64a4324885883ed",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes0To7Part2",
+      "sourceSha256": "40eec6e6ce4e5600681a3788e5ef2f98a292c3be91d06590441d2b76a748e2d2",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes0To7Part3",
+      "sourceSha256": "0aeba9090fb0219de950dc54ef08def0f5c838224292ca4052a8a13148a2ba33",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes0To7Part3.lean:55:0: 'Project.EulerCertificate.Artifact.code3_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part3.lean:77:0: 'Project.EulerCertificate.Artifact.code4_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part3.lean:99:0: 'Project.EulerCertificate.Artifact.code5_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part3.lean:121:0: 'Project.EulerCertificate.Artifact.code6_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes0To7Part3.lean:143:0: 'Project.EulerCertificate.Artifact.code7_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes104To111",
+      "sourceSha256": "51aa7480ee80ec9308751030986a198427c2bdeb2284e71446db174ac19ebdc0",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes104To111Part0",
+      "sourceSha256": "3b2ef03f89775878914e3256e0831b648e397caff54c9eb3c6c3d08037a1b4cd",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code104_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code105_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:89:0: 'Project.EulerCertificate.Artifact.code106_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:111:0: 'Project.EulerCertificate.Artifact.code107_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:133:0: 'Project.EulerCertificate.Artifact.code108_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:155:0: 'Project.EulerCertificate.Artifact.code109_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes104To111Part0.lean:177:0: 'Project.EulerCertificate.Artifact.code110_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes104To111Part1",
+      "sourceSha256": "ea4a3443467f779147f6faa273e67221b39ead860e8fe6992b0cfcdb07d38828",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes104To111Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code111_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes112To119",
+      "sourceSha256": "4a1864ff5e80fbfeae173912f6b16f3c75e8522fa2caf581e9d466303d3221ed",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes112To119Part0",
+      "sourceSha256": "d3178ac527bee6c7a365e740bd3b0bb1fe1c9a29f925d7bed891badeae302121",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes112To119Part0.lean:50:0: 'Project.EulerCertificate.Artifact.code112_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes112To119Part0.lean:72:0: 'Project.EulerCertificate.Artifact.code113_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes112To119Part0.lean:129:0: 'Project.EulerCertificate.Artifact.code114_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes112To119Part1",
+      "sourceSha256": "192f982eb4a3347f2750a12b726f77d2cc3898b59c5474e7523624c472be8db4",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes112To119Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code115_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes112To119Part1.lean:87:0: 'Project.EulerCertificate.Artifact.code116_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes112To119Part2",
+      "sourceSha256": "237e56f7c9e8d0feec923e2792257908e1c97e3a6ffbf3adf8f1bbaaa4db0ea2",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes112To119Part2.lean:35:0: 'Project.EulerCertificate.Artifact.code117_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes112To119Part2.lean:57:0: 'Project.EulerCertificate.Artifact.code118_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes112To119Part2.lean:79:0: 'Project.EulerCertificate.Artifact.code119_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes120To127",
+      "sourceSha256": "21852a78ab80ab1e26b5a72298038cfabb7bd716679fe606757c991c6696e9b9",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes120To127Part0",
+      "sourceSha256": "e0ccb030796ecea3984e7ca2e4649a5298037a5b12d365b7a844eec915852c28",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code120_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code121_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code122_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:116:0: 'Project.EulerCertificate.Artifact.code123_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:138:0: 'Project.EulerCertificate.Artifact.code124_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part0.lean:160:0: 'Project.EulerCertificate.Artifact.code125_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes120To127Part1",
+      "sourceSha256": "3a0a2f6225b92d76eff9dcbf5b57064d866042ee9d36bd5f949265b51b3d6d62",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes120To127Part1.lean:30:0: 'Project.EulerCertificate.Artifact.code126_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes120To127Part1.lean:52:0: 'Project.EulerCertificate.Artifact.code127_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes128To135",
+      "sourceSha256": "cfbc642c3f6b78799bcc1e24a45f4c9b655ea28ed5050be93b5a9e259804a024",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes128To135Part0",
+      "sourceSha256": "7a26625044cc9d8cd3d5eb192fc5d9ab58894270ef4cf10ae17e12818060f8c8",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes128To135Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code128_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code129_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code130_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part0.lean:101:0: 'Project.EulerCertificate.Artifact.code131_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part0.lean:153:0: 'Project.EulerCertificate.Artifact.code132_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes128To135Part1",
+      "sourceSha256": "81278e5a57ef52fbca3625ec03d3258b09bdf26706b6dd412c8da3785cf164f2",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes128To135Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code133_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part1.lean:57:0: 'Project.EulerCertificate.Artifact.code134_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes128To135Part1.lean:89:0: 'Project.EulerCertificate.Artifact.code135_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes136To143",
+      "sourceSha256": "559001bedf9c70c7575fc611d0b22600d732694cffb206be48d79d5239b0405a",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes136To143Part0",
+      "sourceSha256": "7f1aa46a68907d5bc94c7a1251697282df228aed91a62f625afbe9e0d1ba218f",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code136_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code137_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code138_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:101:0: 'Project.EulerCertificate.Artifact.code139_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:123:0: 'Project.EulerCertificate.Artifact.code140_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part0.lean:145:0: 'Project.EulerCertificate.Artifact.code141_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes136To143Part1",
+      "sourceSha256": "b41eece2c4acbc3a79c16e616e8a8d97a0f6ab7d24646e58ab7028821a8feb2a",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes136To143Part1.lean:70:0: 'Project.EulerCertificate.Artifact.code142_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes136To143Part1.lean:102:0: 'Project.EulerCertificate.Artifact.code143_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes144To151",
+      "sourceSha256": "6f475527ef90e61f14ce72b415bb0a3187b6b7b8afe6e8141d4b534d848bc763",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes144To151Part0",
+      "sourceSha256": "55c8a08842bdb97f1a5d3642939e71dbe9f3ab3c897caa1c1a57f4f74edfaab2",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes144To151Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code144_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code145_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part0.lean:109:0: 'Project.EulerCertificate.Artifact.code146_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part0.lean:131:0: 'Project.EulerCertificate.Artifact.code147_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part0.lean:153:0: 'Project.EulerCertificate.Artifact.code148_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes144To151Part1",
+      "sourceSha256": "838ca82877bff2c5fefce76dae096b1201ed3a01d32b11423ca3c76465744da5",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes144To151Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code149_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part1.lean:57:0: 'Project.EulerCertificate.Artifact.code150_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes144To151Part1.lean:79:0: 'Project.EulerCertificate.Artifact.code151_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes152To159",
+      "sourceSha256": "1da911678a24e896498436285e60633d27303b181d8dc0482f0af40c7a82bcd6",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes152To159Part0",
+      "sourceSha256": "ca276c44ec59d812dcc04c1e9163b7e0bb82b55c6fdd7d459d70687a7fb798f1",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code152_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code153_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code154_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:101:0: 'Project.EulerCertificate.Artifact.code155_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:123:0: 'Project.EulerCertificate.Artifact.code156_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part0.lean:145:0: 'Project.EulerCertificate.Artifact.code157_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes152To159Part1",
+      "sourceSha256": "488cdb35b9948c9009f167145c81a7491a74c511ccb06d20419c2e0f011cde55",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes152To159Part1.lean:30:0: 'Project.EulerCertificate.Artifact.code158_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes152To159Part1.lean:117:0: 'Project.EulerCertificate.Artifact.code159_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes160To167",
+      "sourceSha256": "918102b95f424775636eac80c19bf12ceb677673718fcc3d5c214064383794ff",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes160To167Part0",
+      "sourceSha256": "8c8874da182b7c16cfd76ef9be698e722feca75677ca1fb068ba1e86ad93b452",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes160To167Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code160_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes160To167Part0.lean:77:0: 'Project.EulerCertificate.Artifact.code161_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes160To167Part0.lean:129:0: 'Project.EulerCertificate.Artifact.code162_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes160To167Part1",
+      "sourceSha256": "3bc7e8b0c6817d8d21e2fcbef2d0b2fadd7c77a8508d68a91b9f7635f9c3d4c6",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes160To167Part1.lean:40:0: 'Project.EulerCertificate.Artifact.code163_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes160To167Part1.lean:77:0: 'Project.EulerCertificate.Artifact.code164_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes160To167Part1.lean:104:0: 'Project.EulerCertificate.Artifact.code165_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes160To167Part1.lean:141:0: 'Project.EulerCertificate.Artifact.code166_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes160To167Part2",
+      "sourceSha256": "8b1ac2684bae589d454c701d43b5128ae6bfd1a34e4b31816af5bffd00e712ba",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes160To167Part2.lean:50:0: 'Project.EulerCertificate.Artifact.code167_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes168To175",
+      "sourceSha256": "1b4af788fe3a3c8ecc7102b8778cc58f240a9e25226a9f2f97951eaa0b5b1fdc",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes168To175Part0",
+      "sourceSha256": "0fbe6bc32d4a8773b1fd4d71fd1dcc2f5b32b065654f50f29272abb7a450886f",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes168To175Part0.lean:45:0: 'Project.EulerCertificate.Artifact.code168_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes168To175Part0.lean:87:0: 'Project.EulerCertificate.Artifact.code169_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes168To175Part1",
+      "sourceSha256": "5c72f0bcbc5bb4cbda8160237aca614ed93e72fa739b1da7289254499a7e00b6",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes168To175Part1.lean:40:0: 'Project.EulerCertificate.Artifact.code170_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes168To175Part1.lean:72:0: 'Project.EulerCertificate.Artifact.code171_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes168To175Part1.lean:109:0: 'Project.EulerCertificate.Artifact.code172_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes168To175Part2",
+      "sourceSha256": "2b1f4a5186788c74f608cedff03d3b1c16ca7abd05843b77d874bbfaf8a1df82",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes168To175Part2.lean:55:0: 'Project.EulerCertificate.Artifact.code173_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes168To175Part2.lean:82:0: 'Project.EulerCertificate.Artifact.code174_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes168To175Part2.lean:129:0: 'Project.EulerCertificate.Artifact.code175_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes16To23",
+      "sourceSha256": "15918d55f73e658a9bca4666f2708730247c0bdbd7ac5b920dae345a59f49bf3",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes16To23Part0",
+      "sourceSha256": "397d60b3cd0f7ef496e8cf2c4c9b9bc27a9df7abbf6678fbe90bf1f032399bb5",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:50:0: 'Project.EulerCertificate.Artifact.code16_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:72:0: 'Project.EulerCertificate.Artifact.code17_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:94:0: 'Project.EulerCertificate.Artifact.code18_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:116:0: 'Project.EulerCertificate.Artifact.code19_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:138:0: 'Project.EulerCertificate.Artifact.code20_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part0.lean:160:0: 'Project.EulerCertificate.Artifact.code21_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes16To23Part1",
+      "sourceSha256": "273130d45e2f7ef74f7e5ab515f21d916c03fce01f3970d1a6d4064331cf34c9",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes16To23Part1.lean:30:0: 'Project.EulerCertificate.Artifact.code22_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes16To23Part1.lean:52:0: 'Project.EulerCertificate.Artifact.code23_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes176To183",
+      "sourceSha256": "3c37450aa43aa5590059a166cadd55831354a02d14692c0a53817a3929c2de24",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes176To183Part0",
+      "sourceSha256": "faecaaf68448f26816b7fb549e4c580a8af6d3f9e46033f7c3c99ce5496e42f6",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes176To183Part0.lean:60:0: 'Project.EulerCertificate.Artifact.code176_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes176To183Part0.lean:82:0: 'Project.EulerCertificate.Artifact.code177_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes176To183Part0.lean:104:0: 'Project.EulerCertificate.Artifact.code178_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes176To183Part1",
+      "sourceSha256": "3501a56654620e3e61cad57ef73a4a9be80885cbca86961e06c60d6440f61294",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes176To183Part2",
+      "sourceSha256": "fc3efef59648d16483b5f1a11a369d17aaab3143cabcc0fb6624cb45fe560277",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes176To183Part2.lean:75:0: 'Project.EulerCertificate.Artifact.code179_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes176To183Part2.lean:97:0: 'Project.EulerCertificate.Artifact.code180_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes176To183Part2.lean:119:0: 'Project.EulerCertificate.Artifact.code181_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes176To183Part2.lean:141:0: 'Project.EulerCertificate.Artifact.code182_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes176To183Part3",
+      "sourceSha256": "47b36ebb8709e43d8fa7382cc54942bcc15aed2844dfeee828d177812ddfb481",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes176To183Part3.lean:35:0: 'Project.EulerCertificate.Artifact.code183_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes184To191",
+      "sourceSha256": "bc118a46a80a72a47ad0c52c4f930f117dc0228566a9c49fc229baf6b57872c6",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes184To191Part0",
+      "sourceSha256": "2776e61a8b650c260bcd5551c313f6cff657d6b9f831aaca4e135c718486e91e",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes184To191Part1",
+      "sourceSha256": "79b24153a5fcdd11d30ff8c0a2e5071faf46078ab283d9ef0e04b171eb74eceb",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes184To191Part1.lean:30:0: 'Project.EulerCertificate.Artifact.code184_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes184To191Part1.lean:52:0: 'Project.EulerCertificate.Artifact.code185_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes184To191Part1.lean:74:0: 'Project.EulerCertificate.Artifact.code186_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes184To191Part1.lean:96:0: 'Project.EulerCertificate.Artifact.code187_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes184To191Part1.lean:118:0: 'Project.EulerCertificate.Artifact.code188_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes184To191Part2",
+      "sourceSha256": "b574933907506f9b317bd4d0d9ca4083d9588fc36b17c6606239af099c2858f2",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes184To191Part2.lean:95:0: 'Project.EulerCertificate.Artifact.code189_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes184To191Part3",
+      "sourceSha256": "12bbafcad66ea0007a5f06a082b0c0040548c770a0dbe70cda217b499c17f2c4",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes184To191Part3.lean:30:0: 'Project.EulerCertificate.Artifact.code190_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes184To191Part3.lean:87:0: 'Project.EulerCertificate.Artifact.code191_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes192To194",
+      "sourceSha256": "8b519ecf3ae43f9b2c9f0db3e6d711443fe9aba386a99f1314b33e5505199044",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes192To194.lean:35:0: 'Project.EulerCertificate.Artifact.code192_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes192To194.lean:57:0: 'Project.EulerCertificate.Artifact.code193_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes192To194.lean:89:0: 'Project.EulerCertificate.Artifact.code194_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes24To31",
+      "sourceSha256": "297e5b1d334442decbe6d73a0ecb4da162d7310db780f77281ac2cd7d2b0634b",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes24To31Part0",
+      "sourceSha256": "a7ed6f90491c41b9fa73bd23de4c2bea4371eb6bdc3f7ea6a1f8f56d15ee7ea6",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code24_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code25_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:89:0: 'Project.EulerCertificate.Artifact.code26_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:111:0: 'Project.EulerCertificate.Artifact.code27_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:133:0: 'Project.EulerCertificate.Artifact.code28_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:155:0: 'Project.EulerCertificate.Artifact.code29_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes24To31Part0.lean:177:0: 'Project.EulerCertificate.Artifact.code30_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes24To31Part1",
+      "sourceSha256": "3a2d41968947cd15f240cd3e4127075a8a405b9699450aacffaee089e2559a44",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes24To31Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code31_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes32To39",
+      "sourceSha256": "9e203fd3643b8b64ef0bd078a6cc488730b12d7b6a9fa7d8950281411aa6b511",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:35:0: 'Project.EulerCertificate.Artifact.code32_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:57:0: 'Project.EulerCertificate.Artifact.code33_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:79:0: 'Project.EulerCertificate.Artifact.code34_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:101:0: 'Project.EulerCertificate.Artifact.code35_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:123:0: 'Project.EulerCertificate.Artifact.code36_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:145:0: 'Project.EulerCertificate.Artifact.code37_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:167:0: 'Project.EulerCertificate.Artifact.code38_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes32To39.lean:189:0: 'Project.EulerCertificate.Artifact.code39_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes40To47",
+      "sourceSha256": "9c92e43bde5eb5f7d66452e40bd55b954d6e8b83883f9c71562044e5c4a3788f",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes40To47Part0",
+      "sourceSha256": "3b9c7d89eb9055f1c7778a985fa280ae536962d21db4656923ee58bf29b6ef6a",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code40_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code41_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code42_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:106:0: 'Project.EulerCertificate.Artifact.code43_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:143:0: 'Project.EulerCertificate.Artifact.code44_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part0.lean:165:0: 'Project.EulerCertificate.Artifact.code45_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes40To47Part1",
+      "sourceSha256": "eb11e5e7e8356035902dc79fea21d88884ad29102900bdaeb64e7f495d24ac39",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes40To47Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code46_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes40To47Part1.lean:102:0: 'Project.EulerCertificate.Artifact.code47_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55",
+      "sourceSha256": "037e1941fb5fc93644a6b634f27b3f1b72a7af7671965ca947f26ea8fa87c751",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part0",
+      "sourceSha256": "f3b79df1bd3335e5d5670c7279b2444307ae9d122fc16f4353b2e80daae08f85",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes48To55Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code48_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes48To55Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code49_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes48To55Part0.lean:94:0: 'Project.EulerCertificate.Artifact.code50_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes48To55Part0.lean:116:0: 'Project.EulerCertificate.Artifact.code51_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part1",
+      "sourceSha256": "ada512df1a14c8632f373e7aa93084e547f1e9b5be7e3a89649df8afc98a0e4b",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part2",
+      "sourceSha256": "9b686366d1af1ea9816a0f6af4d13825e7c2a453ac4202a4e32267ecea450441",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part3",
+      "sourceSha256": "200fa766b0ac64cf63c15d2276d1dc9eaa0307fb4bd94e86436b22adb2e44eb0",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes48To55Part3.lean:60:0: 'Project.EulerCertificate.Artifact.code52_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part4",
+      "sourceSha256": "05a734ff6efe97f6f3cfe897039f160cd916d1e87ff84678995955b4eef5804f",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes48To55Part4.lean:80:0: 'Project.EulerCertificate.Artifact.code53_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes48To55Part4.lean:117:0: 'Project.EulerCertificate.Artifact.code54_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes48To55Part5",
+      "sourceSha256": "82accf59a05f3412977b496af064a40deac9aa450cec6ce68299285c79a5944c",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes48To55Part5.lean:35:0: 'Project.EulerCertificate.Artifact.code55_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes56To63",
+      "sourceSha256": "8f997f354d44910b8f9a7a5b8ea7f742fba0f1e900b27325ac8359162d3d1ee2",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:35:0: 'Project.EulerCertificate.Artifact.code56_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:57:0: 'Project.EulerCertificate.Artifact.code57_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:79:0: 'Project.EulerCertificate.Artifact.code58_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:101:0: 'Project.EulerCertificate.Artifact.code59_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:123:0: 'Project.EulerCertificate.Artifact.code60_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:145:0: 'Project.EulerCertificate.Artifact.code61_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:167:0: 'Project.EulerCertificate.Artifact.code62_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes56To63.lean:189:0: 'Project.EulerCertificate.Artifact.code63_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes64To71",
+      "sourceSha256": "e15cda023e7bbed303b9b856bc38b6c079bc580e62a5572a96dedc880932d6cd",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes64To71Part0",
+      "sourceSha256": "2c70edf99d0467d53bfd20e02c7ddd36c0d7e2017b363f29b25e1c6bafb8cc2c",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code64_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:62:0: 'Project.EulerCertificate.Artifact.code65_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:89:0: 'Project.EulerCertificate.Artifact.code66_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:111:0: 'Project.EulerCertificate.Artifact.code67_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:133:0: 'Project.EulerCertificate.Artifact.code68_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part0.lean:160:0: 'Project.EulerCertificate.Artifact.code69_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes64To71Part1",
+      "sourceSha256": "4081908f714612483036bfba2afa3990f79a44738ef3d18eab377e28582bdfea",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes64To71Part1.lean:40:0: 'Project.EulerCertificate.Artifact.code70_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes64To71Part1.lean:62:0: 'Project.EulerCertificate.Artifact.code71_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes72To79",
+      "sourceSha256": "d61ee17ba49a0e269025e3382e581aa00bb05b2a49bf2aeae93119606227c07f",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes72To79Part0",
+      "sourceSha256": "b645ced5d6e76b019318f3e890132e18b14f4f2bd9ae406a34637f25835c4e45",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes72To79Part0.lean:40:0: 'Project.EulerCertificate.Artifact.code72_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part0.lean:72:0: 'Project.EulerCertificate.Artifact.code73_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part0.lean:129:0: 'Project.EulerCertificate.Artifact.code74_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes72To79Part1",
+      "sourceSha256": "e1031a8d398c6ac81c1755e9c0d1999a2ff0faddebc0076f3be91bb41aae0663",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes72To79Part1.lean:45:0: 'Project.EulerCertificate.Artifact.code75_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part1.lean:67:0: 'Project.EulerCertificate.Artifact.code76_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part1.lean:89:0: 'Project.EulerCertificate.Artifact.code77_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part1.lean:111:0: 'Project.EulerCertificate.Artifact.code78_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes72To79Part1.lean:148:0: 'Project.EulerCertificate.Artifact.code79_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes80To87",
+      "sourceSha256": "f3783fcf51abcd7ddaed87eceb910ceeafc1a4f4e0fb40ade89f671c281bef30",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes80To87Part0",
+      "sourceSha256": "9371c324d1ed002233bc3d0b3c8d9b9d6a12050c7e560cea36cedb8b5dbaa947",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code80_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code81_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code82_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:106:0: 'Project.EulerCertificate.Artifact.code83_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:128:0: 'Project.EulerCertificate.Artifact.code84_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part0.lean:150:0: 'Project.EulerCertificate.Artifact.code85_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes80To87Part1",
+      "sourceSha256": "139698bc34af7621a78e11bcb450a2dfd46934f37c41f470d2e4a9bfaf075764",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes80To87Part1.lean:35:0: 'Project.EulerCertificate.Artifact.code86_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes80To87Part1.lean:57:0: 'Project.EulerCertificate.Artifact.code87_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes88To95",
+      "sourceSha256": "6ab70e3751de290e877cf09eb99670a3f958b0fb57bc5d69b8fd3a56340d0bd9",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes88To95Part0",
+      "sourceSha256": "91b03a99088e20e3548ea6b6f648ed570ce8e66380d1090f395b6c2430febed7",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code88_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:77:0: 'Project.EulerCertificate.Artifact.code89_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:99:0: 'Project.EulerCertificate.Artifact.code90_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:121:0: 'Project.EulerCertificate.Artifact.code91_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:143:0: 'Project.EulerCertificate.Artifact.code92_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part0.lean:165:0: 'Project.EulerCertificate.Artifact.code93_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes88To95Part1",
+      "sourceSha256": "89edc183254de76b4c8628fde19d501bcec9183bff94b805183c45fd5201d0e9",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes88To95Part1.lean:50:0: 'Project.EulerCertificate.Artifact.code94_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes88To95Part1.lean:77:0: 'Project.EulerCertificate.Artifact.code95_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes8To15",
+      "sourceSha256": "e847e94d59a5ea5be1531f2799730b6c568b0523e45f5e65a128674854a36524",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes8To15Part0",
+      "sourceSha256": "d1b1b1652d6c481071ae22753113865b236b6f3aab8fbe02312a3ec9a70fe367",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:35:0: 'Project.EulerCertificate.Artifact.code8_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:57:0: 'Project.EulerCertificate.Artifact.code9_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:79:0: 'Project.EulerCertificate.Artifact.code10_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:101:0: 'Project.EulerCertificate.Artifact.code11_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:123:0: 'Project.EulerCertificate.Artifact.code12_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:145:0: 'Project.EulerCertificate.Artifact.code13_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes8To15Part0.lean:167:0: 'Project.EulerCertificate.Artifact.code14_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes8To15Part1",
+      "sourceSha256": "19f9238ef7177052b7cf452cb5f5e49a920fb4045f841083c205f1576b070e65",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes8To15Part2",
+      "sourceSha256": "57f22916e093ccb0be1551257b0ae5e13ffb4dbf30433a927929c0e93b88799e",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes8To15Part2.lean:40:0: 'Project.EulerCertificate.Artifact.code15_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes96To103",
+      "sourceSha256": "4f205791c129b60622f5888b08c1d97ee28d3e5a3dfefb64d3bdcb698419950e",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes96To103Part0",
+      "sourceSha256": "cd14e8091d246b3ce448513a9dbf9b717681c33185657bea1c79d230071d1d8e",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes96To103Part0.lean:40:0: 'Project.EulerCertificate.Artifact.code96_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes96To103Part0.lean:62:0: 'Project.EulerCertificate.Artifact.code97_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes96To103Part1",
+      "sourceSha256": "cf73b5f31c37d669b4867580d8b0fb28ef9fea83594a29abaaec8f0dc54988f6",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes96To103Part1.lean:85:0: 'Project.EulerCertificate.Artifact.code98_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes96To103Part1.lean:107:0: 'Project.EulerCertificate.Artifact.code99_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes96To103Part1.lean:129:0: 'Project.EulerCertificate.Artifact.code100_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactCodes96To103Part2",
+      "sourceSha256": "c9255f29472bb923f60935586b05979b23bf19e4c1788612399feac3e160f0e0",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactCodes96To103Part2.lean:35:0: 'Project.EulerCertificate.Artifact.code101_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes96To103Part2.lean:57:0: 'Project.EulerCertificate.Artifact.code102_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactCodes96To103Part2.lean:79:0: 'Project.EulerCertificate.Artifact.code103_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactDecode",
+      "sourceSha256": "b0d6d86c8035794e20d5be829d54a397e90d125059d37d56af343944fa58326c",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactDecoded",
+      "sourceSha256": "ae29589584714571eb3d50ead8cdec0174e918a13f4320c16c03e45b813bded4",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactExportSection",
+      "sourceSha256": "8b1493d08cf327697fa9fcb772e8b7c1957febc0d8a0600c2deafcc0648a12c8",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactExportSectionItems",
+      "sourceSha256": "f849c57f1a19df81b73916f313e91c361523ac7f15890d2a3d4130011d0848c2",
+      "status": "failed",
+      "reason": "All eleven export entries reached maxRecDepth 131072"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSection",
+      "sourceSha256": "8da5ed6517fecf882ed8e6b0930a4e6bf5577dd2aef351ec10163a29e1b6b409",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSection.lean:1015:0: 'Project.EulerCertificate.Artifact.functionTypeIndices_vector_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSection.lean:1029:0: 'Project.EulerCertificate.Artifact.functionTypeIndices_section_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItems",
+      "sourceSha256": "0e4c79913fc1dc1107a1d193a92bfbe1232b060f0e4f07eefcc8954d036565a8",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart0",
+      "sourceSha256": "6588415ad120f79530d078a24a1740ccd4837d610a543cdb84bc1a0bffd17f8e",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:19:0: 'Project.EulerCertificate.Artifact.functionIndex0_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:25:0: 'Project.EulerCertificate.Artifact.functionIndex1_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:31:0: 'Project.EulerCertificate.Artifact.functionIndex2_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:37:0: 'Project.EulerCertificate.Artifact.functionIndex3_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:43:0: 'Project.EulerCertificate.Artifact.functionIndex4_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:49:0: 'Project.EulerCertificate.Artifact.functionIndex5_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:55:0: 'Project.EulerCertificate.Artifact.functionIndex6_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:61:0: 'Project.EulerCertificate.Artifact.functionIndex7_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:67:0: 'Project.EulerCertificate.Artifact.functionIndex8_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:73:0: 'Project.EulerCertificate.Artifact.functionIndex9_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:79:0: 'Project.EulerCertificate.Artifact.functionIndex10_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:85:0: 'Project.EulerCertificate.Artifact.functionIndex11_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:91:0: 'Project.EulerCertificate.Artifact.functionIndex12_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:97:0: 'Project.EulerCertificate.Artifact.functionIndex13_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:103:0: 'Project.EulerCertificate.Artifact.functionIndex14_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart0.lean:109:0: 'Project.EulerCertificate.Artifact.functionIndex15_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart1",
+      "sourceSha256": "fcc67a962c0eb227f495e64bffbfd4e5a3ebe3ee0ad2282672a1490373bf6207",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:19:0: 'Project.EulerCertificate.Artifact.functionIndex16_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:25:0: 'Project.EulerCertificate.Artifact.functionIndex17_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:31:0: 'Project.EulerCertificate.Artifact.functionIndex18_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:37:0: 'Project.EulerCertificate.Artifact.functionIndex19_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:43:0: 'Project.EulerCertificate.Artifact.functionIndex20_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:49:0: 'Project.EulerCertificate.Artifact.functionIndex21_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:55:0: 'Project.EulerCertificate.Artifact.functionIndex22_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:61:0: 'Project.EulerCertificate.Artifact.functionIndex23_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:67:0: 'Project.EulerCertificate.Artifact.functionIndex24_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:73:0: 'Project.EulerCertificate.Artifact.functionIndex25_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:79:0: 'Project.EulerCertificate.Artifact.functionIndex26_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:85:0: 'Project.EulerCertificate.Artifact.functionIndex27_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:91:0: 'Project.EulerCertificate.Artifact.functionIndex28_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:97:0: 'Project.EulerCertificate.Artifact.functionIndex29_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:103:0: 'Project.EulerCertificate.Artifact.functionIndex30_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart1.lean:109:0: 'Project.EulerCertificate.Artifact.functionIndex31_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart10",
+      "sourceSha256": "fa2521047eea733d5511446afbea592e073c2e42474bb72ce85d2caed4ba03a3",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex160_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex161_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex162_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex163_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex164_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex165_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex166_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex167_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex168_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex169_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex170_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex171_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex172_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex173_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex174_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart10.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex175_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart11",
+      "sourceSha256": "48922e4416bc86e9609fbda6ee1b57907a21455f6363f1a445d3eccdc8bf6c8d",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex176_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex177_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex178_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex179_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex180_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex181_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex182_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex183_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex184_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex185_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex186_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex187_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex188_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex189_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex190_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart11.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex191_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart12",
+      "sourceSha256": "127abc07e02f53fe035edfec14d10a094f595bac30d2cb5b0c834242f8167c81",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart12.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex192_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart12.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex193_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart12.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex194_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart2",
+      "sourceSha256": "3e56a9d60c589a76277e9fb2b8fc923a593ed626043b19bdf247637c4bdcfac7",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:19:0: 'Project.EulerCertificate.Artifact.functionIndex32_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:25:0: 'Project.EulerCertificate.Artifact.functionIndex33_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:31:0: 'Project.EulerCertificate.Artifact.functionIndex34_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:37:0: 'Project.EulerCertificate.Artifact.functionIndex35_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:43:0: 'Project.EulerCertificate.Artifact.functionIndex36_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:49:0: 'Project.EulerCertificate.Artifact.functionIndex37_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:55:0: 'Project.EulerCertificate.Artifact.functionIndex38_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:61:0: 'Project.EulerCertificate.Artifact.functionIndex39_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:67:0: 'Project.EulerCertificate.Artifact.functionIndex40_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:73:0: 'Project.EulerCertificate.Artifact.functionIndex41_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:79:0: 'Project.EulerCertificate.Artifact.functionIndex42_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:85:0: 'Project.EulerCertificate.Artifact.functionIndex43_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:91:0: 'Project.EulerCertificate.Artifact.functionIndex44_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:97:0: 'Project.EulerCertificate.Artifact.functionIndex45_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:103:0: 'Project.EulerCertificate.Artifact.functionIndex46_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart2.lean:109:0: 'Project.EulerCertificate.Artifact.functionIndex47_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart3",
+      "sourceSha256": "d66e8359d64e7ce7b63d958ed06fce4295c21c5ba7664f5fa47e1c1e63b34f85",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:19:0: 'Project.EulerCertificate.Artifact.functionIndex48_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:25:0: 'Project.EulerCertificate.Artifact.functionIndex49_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:31:0: 'Project.EulerCertificate.Artifact.functionIndex50_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:37:0: 'Project.EulerCertificate.Artifact.functionIndex51_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:43:0: 'Project.EulerCertificate.Artifact.functionIndex52_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:49:0: 'Project.EulerCertificate.Artifact.functionIndex53_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:55:0: 'Project.EulerCertificate.Artifact.functionIndex54_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:61:0: 'Project.EulerCertificate.Artifact.functionIndex55_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:67:0: 'Project.EulerCertificate.Artifact.functionIndex56_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:73:0: 'Project.EulerCertificate.Artifact.functionIndex57_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:79:0: 'Project.EulerCertificate.Artifact.functionIndex58_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:85:0: 'Project.EulerCertificate.Artifact.functionIndex59_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:91:0: 'Project.EulerCertificate.Artifact.functionIndex60_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:97:0: 'Project.EulerCertificate.Artifact.functionIndex61_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:103:0: 'Project.EulerCertificate.Artifact.functionIndex62_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart3.lean:109:0: 'Project.EulerCertificate.Artifact.functionIndex63_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart4",
+      "sourceSha256": "286bacb32b9aa304fab2bddb180c0da7e324c5172fffdbc06295da15f3ac2580",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex64_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex65_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex66_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex67_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex68_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex69_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex70_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex71_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex72_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex73_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex74_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex75_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex76_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex77_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex78_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart4.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex79_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart5",
+      "sourceSha256": "b1171b6aa8388f6380cf91a747543b37b81814398012087f3b58736776e991a7",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex80_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex81_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex82_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex83_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex84_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex85_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex86_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex87_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex88_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex89_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex90_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex91_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex92_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex93_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex94_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart5.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex95_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart6",
+      "sourceSha256": "b839252117f59264710f6c4c9c88f6dbf707703187d16f2ee0793ae1ce3c0b0f",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex96_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex97_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex98_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex99_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex100_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex101_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex102_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex103_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex104_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex105_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex106_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex107_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex108_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex109_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex110_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart6.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex111_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart7",
+      "sourceSha256": "23e01b764f58d2050fac4acadbb5ab08f8b65268eebaa9574541c896eabd0244",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex112_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex113_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex114_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex115_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex116_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex117_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex118_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex119_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex120_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex121_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex122_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex123_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex124_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex125_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex126_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart7.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex127_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart8",
+      "sourceSha256": "cb38d60c4f7fd3e9f7b3301e6aab9753a409caa272bb82e492213c65ec701033",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex128_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex129_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex130_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex131_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex132_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex133_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex134_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex135_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex136_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex137_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex138_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex139_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex140_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex141_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex142_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart8.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex143_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactFunctionSectionItemsPart9",
+      "sourceSha256": "c256eb62ce53ddbc86ed35e1c7659f657ec333de3ff85bc68b43212841d6cda0",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:22:0: 'Project.EulerCertificate.Artifact.functionIndex144_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:30:0: 'Project.EulerCertificate.Artifact.functionIndex145_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:38:0: 'Project.EulerCertificate.Artifact.functionIndex146_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:46:0: 'Project.EulerCertificate.Artifact.functionIndex147_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:54:0: 'Project.EulerCertificate.Artifact.functionIndex148_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:62:0: 'Project.EulerCertificate.Artifact.functionIndex149_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:70:0: 'Project.EulerCertificate.Artifact.functionIndex150_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:78:0: 'Project.EulerCertificate.Artifact.functionIndex151_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:86:0: 'Project.EulerCertificate.Artifact.functionIndex152_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:94:0: 'Project.EulerCertificate.Artifact.functionIndex153_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:102:0: 'Project.EulerCertificate.Artifact.functionIndex154_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:110:0: 'Project.EulerCertificate.Artifact.functionIndex155_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:118:0: 'Project.EulerCertificate.Artifact.functionIndex156_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:126:0: 'Project.EulerCertificate.Artifact.functionIndex157_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:134:0: 'Project.EulerCertificate.Artifact.functionIndex158_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactFunctionSectionItemsPart9.lean:142:0: 'Project.EulerCertificate.Artifact.functionIndex159_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactGlobalSection",
+      "sourceSha256": "948489e41ebfc0a91b26304d0f8d756b8eea40e4207b15cc2782c3261c38cfb3",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactGlobalSection.lean:58:0: 'Project.EulerCertificate.Artifact.globals_vector_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSection.lean:72:0: 'Project.EulerCertificate.Artifact.globals_section_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactGlobalSectionItems",
+      "sourceSha256": "ae5a2b1ecd3726f490d1644993d373b15fa2583fc3e6dc6343ad0d90d09d5a21",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:19:0: 'Project.EulerCertificate.Artifact.global0_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:25:0: 'Project.EulerCertificate.Artifact.global1_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:31:0: 'Project.EulerCertificate.Artifact.global2_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:37:0: 'Project.EulerCertificate.Artifact.global3_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:43:0: 'Project.EulerCertificate.Artifact.global4_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactGlobalSectionItems.lean:49:0: 'Project.EulerCertificate.Artifact.global5_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactIndexLookup",
+      "sourceSha256": "d5fc2f9e5eb4d09936478b68003705da53d3d761ad274dd8fa6bd7ae62e635a8",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactIndexLookup.lean:9:0: 'Project.EulerCertificate.Artifact.functionTypeIndices_eq' does not depend on any axioms"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactMemorySection",
+      "sourceSha256": "14e69ede2152462f152302064f129d113d3ebc313d9b0f65ff7341a202719aa9",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactMemorySection.lean:33:0: 'Project.EulerCertificate.Artifact.memories_vector_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactMemorySection.lean:47:0: 'Project.EulerCertificate.Artifact.memories_section_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactMemorySectionItems",
+      "sourceSha256": "d75ada23c530724d7ffa1012d460613c52d2145faf5f8205d54f2cd6bc92ff50",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactMemorySectionItems.lean:19:0: 'Project.EulerCertificate.Artifact.memory0_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactMetadata",
+      "sourceSha256": "a31e2f49cb92ab2b68ced5026dc661218539cb28770129d8432e87a2dad6c250",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactParsed",
+      "sourceSha256": "6f6838500a5838600beeacc5a0361128dbdb9b2da2a3fc114d16b2e456c4f1da",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactParsedCode",
+      "sourceSha256": "587545333b6aeff149950ae875f5beffcbe860a1060f889604963770d6ff31e3",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactParsedSections",
+      "sourceSha256": "db5fbda817ffd358db29d22d500c8ffe5ef6b1f1691921f2d368382d4844e7fb",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactParsedStates",
+      "sourceSha256": "a24e078d7ab2fb44eb494aa5203fb1377ecadaa05429f1a1f894813a6542f81b",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactRawCache",
+      "sourceSha256": "449a6ae51cf803302072a3a233293b1edeab97f0c9d59d7c9cbf3baaafd81980",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTranslation",
+      "sourceSha256": "0fd915d8f4ed2bdc1743144c75c944c0278d8f55453787e03c41b6abcd2a0f58",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSection",
+      "sourceSha256": "1e85a4b7c803272af5de04efb81fb67347e4dbfc15d7b56e77dc15c62926fbc8",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSection.lean:1015:0: 'Project.EulerCertificate.Artifact.types_vector_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSection.lean:1029:0: 'Project.EulerCertificate.Artifact.types_section_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItems",
+      "sourceSha256": "d6392ba1804ec4b16bd0139cb5802dad3100cf1abeaa382a6a4b8af6cfa4343e",
+      "status": "passed",
+      "reportedAxioms": [],
+      "auditMessages": []
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart0",
+      "sourceSha256": "8599c35c87f882e8815c6ef4bbea3ff0ca90937e433bed94f8b3d9bedfd9d211",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:19:0: 'Project.EulerCertificate.Artifact.type0_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:25:0: 'Project.EulerCertificate.Artifact.type1_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:31:0: 'Project.EulerCertificate.Artifact.type2_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:37:0: 'Project.EulerCertificate.Artifact.type3_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:43:0: 'Project.EulerCertificate.Artifact.type4_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:49:0: 'Project.EulerCertificate.Artifact.type5_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:55:0: 'Project.EulerCertificate.Artifact.type6_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:61:0: 'Project.EulerCertificate.Artifact.type7_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:67:0: 'Project.EulerCertificate.Artifact.type8_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:73:0: 'Project.EulerCertificate.Artifact.type9_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:79:0: 'Project.EulerCertificate.Artifact.type10_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:85:0: 'Project.EulerCertificate.Artifact.type11_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:91:0: 'Project.EulerCertificate.Artifact.type12_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:97:0: 'Project.EulerCertificate.Artifact.type13_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:103:0: 'Project.EulerCertificate.Artifact.type14_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart0.lean:109:0: 'Project.EulerCertificate.Artifact.type15_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart1",
+      "sourceSha256": "77f0150d746981388fc91f6b3f699d3cf1cf7572f71ff4a757d3b78b73069b91",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:19:0: 'Project.EulerCertificate.Artifact.type16_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:25:0: 'Project.EulerCertificate.Artifact.type17_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:31:0: 'Project.EulerCertificate.Artifact.type18_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:37:0: 'Project.EulerCertificate.Artifact.type19_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:43:0: 'Project.EulerCertificate.Artifact.type20_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:49:0: 'Project.EulerCertificate.Artifact.type21_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:55:0: 'Project.EulerCertificate.Artifact.type22_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:61:0: 'Project.EulerCertificate.Artifact.type23_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:67:0: 'Project.EulerCertificate.Artifact.type24_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:73:0: 'Project.EulerCertificate.Artifact.type25_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:79:0: 'Project.EulerCertificate.Artifact.type26_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:85:0: 'Project.EulerCertificate.Artifact.type27_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:91:0: 'Project.EulerCertificate.Artifact.type28_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:97:0: 'Project.EulerCertificate.Artifact.type29_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:103:0: 'Project.EulerCertificate.Artifact.type30_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart1.lean:109:0: 'Project.EulerCertificate.Artifact.type31_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart10",
+      "sourceSha256": "6f7ad4459e9dfbd29ec792ae132ae99b554b387005b994d239dbd04e8d30abca",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:19:0: 'Project.EulerCertificate.Artifact.type160_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:25:0: 'Project.EulerCertificate.Artifact.type161_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:31:0: 'Project.EulerCertificate.Artifact.type162_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:37:0: 'Project.EulerCertificate.Artifact.type163_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:43:0: 'Project.EulerCertificate.Artifact.type164_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:49:0: 'Project.EulerCertificate.Artifact.type165_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:55:0: 'Project.EulerCertificate.Artifact.type166_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:61:0: 'Project.EulerCertificate.Artifact.type167_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:67:0: 'Project.EulerCertificate.Artifact.type168_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:73:0: 'Project.EulerCertificate.Artifact.type169_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:79:0: 'Project.EulerCertificate.Artifact.type170_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:85:0: 'Project.EulerCertificate.Artifact.type171_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:91:0: 'Project.EulerCertificate.Artifact.type172_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:97:0: 'Project.EulerCertificate.Artifact.type173_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:103:0: 'Project.EulerCertificate.Artifact.type174_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart10.lean:109:0: 'Project.EulerCertificate.Artifact.type175_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart11",
+      "sourceSha256": "9fdd8c8a94c3556b55eecc731faa7d793dc822846ac9c9162cf7e073266dec24",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:19:0: 'Project.EulerCertificate.Artifact.type176_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:25:0: 'Project.EulerCertificate.Artifact.type177_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:31:0: 'Project.EulerCertificate.Artifact.type178_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:37:0: 'Project.EulerCertificate.Artifact.type179_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:43:0: 'Project.EulerCertificate.Artifact.type180_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:49:0: 'Project.EulerCertificate.Artifact.type181_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:55:0: 'Project.EulerCertificate.Artifact.type182_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:61:0: 'Project.EulerCertificate.Artifact.type183_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:67:0: 'Project.EulerCertificate.Artifact.type184_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:73:0: 'Project.EulerCertificate.Artifact.type185_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:79:0: 'Project.EulerCertificate.Artifact.type186_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:85:0: 'Project.EulerCertificate.Artifact.type187_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:91:0: 'Project.EulerCertificate.Artifact.type188_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:97:0: 'Project.EulerCertificate.Artifact.type189_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:103:0: 'Project.EulerCertificate.Artifact.type190_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart11.lean:109:0: 'Project.EulerCertificate.Artifact.type191_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart12",
+      "sourceSha256": "f8b370c7399aa792a6af6c3edd1afa6d509a0eb4b017d89bc63cf074729b3d6e",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart12.lean:19:0: 'Project.EulerCertificate.Artifact.type192_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart12.lean:25:0: 'Project.EulerCertificate.Artifact.type193_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart12.lean:31:0: 'Project.EulerCertificate.Artifact.type194_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart2",
+      "sourceSha256": "5f392e70993428007bc8032304312b118083e952d4e2d6263d08e1df93b2116a",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:19:0: 'Project.EulerCertificate.Artifact.type32_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:25:0: 'Project.EulerCertificate.Artifact.type33_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:31:0: 'Project.EulerCertificate.Artifact.type34_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:37:0: 'Project.EulerCertificate.Artifact.type35_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:43:0: 'Project.EulerCertificate.Artifact.type36_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:49:0: 'Project.EulerCertificate.Artifact.type37_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:55:0: 'Project.EulerCertificate.Artifact.type38_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:61:0: 'Project.EulerCertificate.Artifact.type39_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:67:0: 'Project.EulerCertificate.Artifact.type40_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:73:0: 'Project.EulerCertificate.Artifact.type41_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:79:0: 'Project.EulerCertificate.Artifact.type42_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:85:0: 'Project.EulerCertificate.Artifact.type43_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:91:0: 'Project.EulerCertificate.Artifact.type44_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:97:0: 'Project.EulerCertificate.Artifact.type45_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:103:0: 'Project.EulerCertificate.Artifact.type46_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart2.lean:109:0: 'Project.EulerCertificate.Artifact.type47_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart3",
+      "sourceSha256": "04fc24bb16813345f298ecb97d659c3d405fc15f2119059da2ea18d604ec87d1",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:19:0: 'Project.EulerCertificate.Artifact.type48_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:25:0: 'Project.EulerCertificate.Artifact.type49_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:31:0: 'Project.EulerCertificate.Artifact.type50_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:37:0: 'Project.EulerCertificate.Artifact.type51_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:43:0: 'Project.EulerCertificate.Artifact.type52_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:49:0: 'Project.EulerCertificate.Artifact.type53_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:55:0: 'Project.EulerCertificate.Artifact.type54_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:61:0: 'Project.EulerCertificate.Artifact.type55_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:67:0: 'Project.EulerCertificate.Artifact.type56_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:73:0: 'Project.EulerCertificate.Artifact.type57_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:79:0: 'Project.EulerCertificate.Artifact.type58_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:85:0: 'Project.EulerCertificate.Artifact.type59_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:91:0: 'Project.EulerCertificate.Artifact.type60_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:97:0: 'Project.EulerCertificate.Artifact.type61_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:103:0: 'Project.EulerCertificate.Artifact.type62_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart3.lean:109:0: 'Project.EulerCertificate.Artifact.type63_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart4",
+      "sourceSha256": "be5b83bd3d66064d2ab289a63290aa9cfd0de92d772b6aced2677693f8ecc936",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:19:0: 'Project.EulerCertificate.Artifact.type64_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:25:0: 'Project.EulerCertificate.Artifact.type65_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:31:0: 'Project.EulerCertificate.Artifact.type66_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:37:0: 'Project.EulerCertificate.Artifact.type67_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:43:0: 'Project.EulerCertificate.Artifact.type68_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:49:0: 'Project.EulerCertificate.Artifact.type69_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:55:0: 'Project.EulerCertificate.Artifact.type70_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:61:0: 'Project.EulerCertificate.Artifact.type71_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:67:0: 'Project.EulerCertificate.Artifact.type72_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:73:0: 'Project.EulerCertificate.Artifact.type73_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:79:0: 'Project.EulerCertificate.Artifact.type74_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:85:0: 'Project.EulerCertificate.Artifact.type75_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:91:0: 'Project.EulerCertificate.Artifact.type76_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:97:0: 'Project.EulerCertificate.Artifact.type77_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:103:0: 'Project.EulerCertificate.Artifact.type78_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart4.lean:109:0: 'Project.EulerCertificate.Artifact.type79_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart5",
+      "sourceSha256": "70be741b3f773d80a7480b0d385c28d08cdb793e32adb9bc2e954aa680bcb2ec",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:19:0: 'Project.EulerCertificate.Artifact.type80_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:25:0: 'Project.EulerCertificate.Artifact.type81_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:31:0: 'Project.EulerCertificate.Artifact.type82_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:37:0: 'Project.EulerCertificate.Artifact.type83_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:43:0: 'Project.EulerCertificate.Artifact.type84_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:49:0: 'Project.EulerCertificate.Artifact.type85_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:55:0: 'Project.EulerCertificate.Artifact.type86_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:61:0: 'Project.EulerCertificate.Artifact.type87_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:67:0: 'Project.EulerCertificate.Artifact.type88_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:73:0: 'Project.EulerCertificate.Artifact.type89_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:79:0: 'Project.EulerCertificate.Artifact.type90_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:85:0: 'Project.EulerCertificate.Artifact.type91_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:91:0: 'Project.EulerCertificate.Artifact.type92_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:97:0: 'Project.EulerCertificate.Artifact.type93_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:103:0: 'Project.EulerCertificate.Artifact.type94_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart5.lean:109:0: 'Project.EulerCertificate.Artifact.type95_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart6",
+      "sourceSha256": "11850705ff5e2b3e220941d0952a7ea824c77ed7ac2d9818fdac466d4e28fc54",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:19:0: 'Project.EulerCertificate.Artifact.type96_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:25:0: 'Project.EulerCertificate.Artifact.type97_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:31:0: 'Project.EulerCertificate.Artifact.type98_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:37:0: 'Project.EulerCertificate.Artifact.type99_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:43:0: 'Project.EulerCertificate.Artifact.type100_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:49:0: 'Project.EulerCertificate.Artifact.type101_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:55:0: 'Project.EulerCertificate.Artifact.type102_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:61:0: 'Project.EulerCertificate.Artifact.type103_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:67:0: 'Project.EulerCertificate.Artifact.type104_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:73:0: 'Project.EulerCertificate.Artifact.type105_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:79:0: 'Project.EulerCertificate.Artifact.type106_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:85:0: 'Project.EulerCertificate.Artifact.type107_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:91:0: 'Project.EulerCertificate.Artifact.type108_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:97:0: 'Project.EulerCertificate.Artifact.type109_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:103:0: 'Project.EulerCertificate.Artifact.type110_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart6.lean:109:0: 'Project.EulerCertificate.Artifact.type111_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart7",
+      "sourceSha256": "0ac442c6a5c473868551a28b356dc6249127117655324ef3d8aa3be793dd6625",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:19:0: 'Project.EulerCertificate.Artifact.type112_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:25:0: 'Project.EulerCertificate.Artifact.type113_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:31:0: 'Project.EulerCertificate.Artifact.type114_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:37:0: 'Project.EulerCertificate.Artifact.type115_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:43:0: 'Project.EulerCertificate.Artifact.type116_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:49:0: 'Project.EulerCertificate.Artifact.type117_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:55:0: 'Project.EulerCertificate.Artifact.type118_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:61:0: 'Project.EulerCertificate.Artifact.type119_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:67:0: 'Project.EulerCertificate.Artifact.type120_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:73:0: 'Project.EulerCertificate.Artifact.type121_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:79:0: 'Project.EulerCertificate.Artifact.type122_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:85:0: 'Project.EulerCertificate.Artifact.type123_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:91:0: 'Project.EulerCertificate.Artifact.type124_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:97:0: 'Project.EulerCertificate.Artifact.type125_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:103:0: 'Project.EulerCertificate.Artifact.type126_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart7.lean:109:0: 'Project.EulerCertificate.Artifact.type127_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart8",
+      "sourceSha256": "ecd00ce15c236d833a1e18e6f47550c3980977b172e9fabb09fa9e81ba8aff5d",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:19:0: 'Project.EulerCertificate.Artifact.type128_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:25:0: 'Project.EulerCertificate.Artifact.type129_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:31:0: 'Project.EulerCertificate.Artifact.type130_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:37:0: 'Project.EulerCertificate.Artifact.type131_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:43:0: 'Project.EulerCertificate.Artifact.type132_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:49:0: 'Project.EulerCertificate.Artifact.type133_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:55:0: 'Project.EulerCertificate.Artifact.type134_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:61:0: 'Project.EulerCertificate.Artifact.type135_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:67:0: 'Project.EulerCertificate.Artifact.type136_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:73:0: 'Project.EulerCertificate.Artifact.type137_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:79:0: 'Project.EulerCertificate.Artifact.type138_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:85:0: 'Project.EulerCertificate.Artifact.type139_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:91:0: 'Project.EulerCertificate.Artifact.type140_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:97:0: 'Project.EulerCertificate.Artifact.type141_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:103:0: 'Project.EulerCertificate.Artifact.type142_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart8.lean:109:0: 'Project.EulerCertificate.Artifact.type143_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactTypeSectionItemsPart9",
+      "sourceSha256": "4e34e4c7831fa261248c364a965c7f080f642de16790e3a90f0fc8f9d502fd74",
+      "status": "passed",
+      "reportedAxioms": [
+        "propext"
+      ],
+      "auditMessages": [
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:19:0: 'Project.EulerCertificate.Artifact.type144_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:25:0: 'Project.EulerCertificate.Artifact.type145_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:31:0: 'Project.EulerCertificate.Artifact.type146_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:37:0: 'Project.EulerCertificate.Artifact.type147_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:43:0: 'Project.EulerCertificate.Artifact.type148_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:49:0: 'Project.EulerCertificate.Artifact.type149_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:55:0: 'Project.EulerCertificate.Artifact.type150_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:61:0: 'Project.EulerCertificate.Artifact.type151_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:67:0: 'Project.EulerCertificate.Artifact.type152_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:73:0: 'Project.EulerCertificate.Artifact.type153_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:79:0: 'Project.EulerCertificate.Artifact.type154_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:85:0: 'Project.EulerCertificate.Artifact.type155_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:91:0: 'Project.EulerCertificate.Artifact.type156_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:97:0: 'Project.EulerCertificate.Artifact.type157_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:103:0: 'Project.EulerCertificate.Artifact.type158_decoded' depends on axioms: [propext]",
+        "Project/EulerCertificate/ArtifactTypeSectionItemsPart9.lean:109:0: 'Project.EulerCertificate.Artifact.type159_decoded' depends on axioms: [propext]"
+      ]
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactValidation",
+      "sourceSha256": "49dd85b4bc36a6eaa20ee9b84dc756ef6bebcd1e4ffdac649e73bab9519ffbe0",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactValidationExports",
+      "sourceSha256": "31ef0de618942b92ef1682faecec91ff3e28223a515584392123e8359b84d390",
+      "status": "untested"
+    },
+    {
+      "module": "Project.EulerCertificate.ArtifactValidationMetadata",
+      "sourceSha256": "5eb6acf024ab1ec87c1830dde98aa09327625aa8adefb681ab3c0dc399e733a3",
+      "status": "untested"
+    }
+  ]
+}

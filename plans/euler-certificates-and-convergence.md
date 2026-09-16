@@ -2,6 +2,8 @@
 
 This plan expands phase 13 of the root development plan.  The user authorized the sequence on 15 September 2026 after merging the completed Euler branch into `main`.  The order is numerical certificates, successful completion, and continuum convergence.  Each stage starts with source review and mathematical research before Lean execution.
 
+The [16 September resume record](euler-certificate-resume.md) preserves the paused exact-byte work.  All function bodies, signatures, indices, and four complete sections pass.  Export decoding is the first unresolved proof boundary.
+
 ## 1. Numerical conservation and rounding certificates
 
 For conserved component `i`, the existing `physical_trace_balance` theorem gives
