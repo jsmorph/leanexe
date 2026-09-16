@@ -21,8 +21,12 @@ The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
 C host.  The separate 15,423-byte hidden-state module has a
 [proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
 exact agreement with the raw-bit model, and store preservation for every
-four-byte input.  The complete inference module's execution and composed
-numerical certificate remain open.
+four-byte input.  The full module's hidden function and single-logit function
+also have execution proofs.  Its
+[output loop](../../proofs/talos/lean/Project/TinyGpt2Infer/OutputLoop.lean)
+proves termination, all 256 raw-bit logits, checkpoint preservation, and a
+fixed page count under its memory reservation.  Function entry and exit and
+the composed numerical certificate remain open.
 
 ## Training record
 
