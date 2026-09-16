@@ -23474,3 +23474,53 @@ passes after correcting JavaScript exponentiation parenthesization in the
 test fixture.  The test covers malformed certificate status, endpoints,
 length, and component order.  Exact binary verification remains required
 before any production run.
+
+The complete-output checkpoint is pushed and fetched as
+d1b84d7d4e67c9034212b885c5e4103726f5eea4.  Kernel-mode migration froze the
+unchanged 45,644-byte observer.  The normative decoder extracted six section
+ranges and all 195 code-body ranges.  The new proof scripts reuse checked
+cursor composition, balanced byte lookup, and the previous solver's section
+proof structure.  Evaluated instruction and item proofs are divided into
+groups of at most sixteen declarations.  Vector compositions use one
+module each.  Six byte-list definitions avoid the previous oversized-literal
+compiler boundary.  The generated proof scripts await kernel checking.
+
+The first byte-lookup check reached the standard 200,000-heartbeat limit in
+the single equality between the complete byte list and its balanced lookup
+tree.  The byte and raw-cache definitions compiled.  The failed lookup
+source and diagnostic are preserved.  Eight chunk equalities now align
+with the lookup tree, and list associativity composes the complete identity.
+The bytes, decoder, and resource limits remain unchanged.
+
+The chunk proof initially lacked the original equality's scoped recursion
+depth setting.  Restoring that setting made byte lookup pass with propext
+only.  No heartbeat or process limit increased.  The first grouped body
+check passed its initial module, including code0_decoded through
+code2_decoded, then reached the three-minute cumulative limit during the
+next submodule.  The remaining generated submodules are now checked as
+separate targets.  This preserves the accepted first part and the existing
+sixteen-declaration proof boundaries.
+
+All eight code-body theorems for functions 0 through 7 now pass.  Each public
+audit uses propext only.  The large density/pressure output body composes
+three checked instruction-sequence submodules before its code-level proof.
+The failed grouped command reflects the combined build time, while each
+isolated submodule passes under the same three-minute limit.  The certificate
+packing body and scalar helpers in functions 8 through 15 are next.
+
+Functions 0 through 47 now have complete code-body decoding proofs.  The
+certificate-packing body passed, followed by scalar and state-processing
+groups.  The later batch ran six sequential, separately bounded targets.
+All new modules passed without edits, and all 48 public body audits use
+propext only.  The accepted proofs reuse the same checked cursor, nested
+sequence, vector, and byte-lookup lemmas.  This is evidence for the fixed
+observer artifact.  No new LTG retrieval or held-out measurement occurred.
+
+Functions 48 through 63 also pass, including the complete initialization
+helper and entry.  Their large instruction sequences check in six separately
+bounded submodules, followed by the next scalar group.  All 64 completed
+code-body audits use propext only, with no target warnings or further proof
+revisions.  The frozen byte identity, balanced lookup, raw cache, and these
+accepted body proofs form the next checkpoint.  The remaining function
+bodies, section composition, validation, and independent package check
+remain open.
