@@ -1,0 +1,449 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx,booktabs,array,longtable,tabularx}
+\usepackage{microtype,seqsplit,xurl}
+\usepackage[hidelinks]{hyperref}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\longcode}[1]{\texttt{\seqsplit{#1}}}
+\newcommand{\val}[1]{\langle #1\rangle}
+\newcommand{\fl}{\operatorname{fl}}
+\newcommand{\mm}{\operatorname{minmod}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\repo}[2]{\href{https://github.com/jsmorph/leanexe/blob/73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a/#1}{#2}}
+\newcommand{\proofref}[2]{\repo{proofs/talos/lean/Project/#1}{#2}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newtheorem{theorem}{Theorem}[section]
+\emergencystretch=2em
+\hypersetup{pdftitle={A Verified WebAssembly Solver for a Two-Dimensional Euler Riemann Problem},pdfauthor={Codex GPT-6, Jamie Stephens},pdfsubject={Logic in computer science; verified numerical computation}}
+\title{A Verified WebAssembly Solver for a Two-Dimensional Euler Riemann Problem}
+\author{Codex GPT-6, Jamie Stephens}
+\date{15 September 2026}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+A LeanExe-compiled WebAssembly solver has kernel-checked proofs of complete execution, bounded memory, and numerical invariants for a two-dimensional Euler Riemann problem on grids from 2 by 2 through 800 by 800.  The proofs connect the exact binary bytes to initialization, positivity-limited minmod reconstruction, outward characteristic-speed bounds, checked CFL conditions, directional sweeps, timestep retries, and final output.  Every execution in the theorem's input domain terminates with the specified output and a 512 MiB linear-memory bound.  Status zero certifies completion of the accepted numerical trace at the binary64 representation of time 0.8.  Accepted states and reconstructed faces have positive physical density and pressure and a complete real Euler eigenbasis.  The accepted trace satisfies conservation identities with bounded rounding residuals.  The same binary completed 192 by 192 and 800 by 800 calculations in 176.7 seconds and 3 hours 58 minutes, respectively.  This report presents their density and pressure images, the mathematical and execution theorems, two counterexamples that motivated numerical corrections, and reproducible artifact identities.  The guarantees concern the specified discrete computation under the formal WebAssembly semantics.  Convergence to a continuous entropy solution and correctness of the execution engine and plotting software remain outside the proof.
+\end{abstract}
+
+\section{Result and evidence}
+\label{sec:result}
+
+A LeanExe-compiled WebAssembly solver has kernel-checked proofs of complete execution, bounded memory, and numerical invariants for a two-dimensional Euler Riemann problem on grids from $2\times2$ through $800\times800$.  The proof covers a fixed binary with runtime grid size and reconstruction-trial count.  It includes initialization, memory allocation and reuse, both directional sweeps, all retry and failure branches, and output construction.  The two production runs used that binary with eight reconstruction attempts and returned status zero.
+
+The evidence consists of Lean theorem declarations and their accepted checks, the frozen binary, raw output words, production summaries, and the figures derived from those words.  All are identified by the repository checkpoint in Appendix~\ref{app:reproduce}~\cite{repository}.  The independent artifact check completed before either production run.  Report preparation inspected the existing results and theorem statements without rerunning the simulations or modifying the numerical implementation.
+
+The computation follows the four-quadrant problem presented by Hakim~\cite{lanyon}.  The objective is a comparable visualization with an explicit theorem connecting the executable file to the discrete method.  The scope is the four-variable, two-dimensional ideal-gas Euler system with $\gamma=7/5$.  A grid outside the proved range, a different equation of state, or an obstacle geometry requires a separate extension.
+
+\section{Problem and numerical representation}
+
+\subsection{Euler state and initial data}
+
+Let $U=(\rho,m_x,m_y,E)^T$, with $m_x=\rho u$ and $m_y=\rho v$.  The physical pressure and Cartesian fluxes are
+\begin{align}
+p(U)&=\frac25\left(E-\frac{m_x^2+m_y^2}{2\rho}\right),\label{eq:pressure}\\
+F_x(U)&=\left(m_x,\frac{m_x^2}{\rho}+p,\frac{m_xm_y}{\rho},\frac{m_x}{\rho}(E+p)\right)^T,\label{eq:flux}\\
+F_y(U)&=\left(m_y,\frac{m_xm_y}{\rho},\frac{m_y^2}{\rho}+p,\frac{m_y}{\rho}(E+p)\right)^T.
+\end{align}
+The PDE is $\partial_t U+\partial_xF_x(U)+\partial_yF_y(U)=0$.  A real state is admissible when $\rho>0$ and $p(U)>0$.
+
+An executable state is \emph{safe} when its four binary64 words are finite and their decoded real density, total energy, and internal energy are positive.  The Lean predicate \code{StateSafe} conjoins these conditions, named \code{StateBounds}, with admissibility of the decoded state.  Since $p$ is $2/5$ times internal energy, safety implies positive physical pressure.  The grid predicate \code{CellsSafe} requires \code{StateSafe} for every cell's conserved state.  Stored pressure words have their own executable definitions and are distinct from this state-safety predicate~\cite{statesafety}.
+
+The domain is $[0,1]^2$, the target time is $0.8$, and the initial interfaces are $x=y=4/5$.  Table~\ref{tab:initial} gives the primitive states.  Conversion to conserved variables uses
+\begin{equation}
+U(p,\rho,u,v)=\left(\rho,\rho u,\rho v,\frac{p}{\gamma-1}+\frac{\rho}{2}(u^2+v^2)\right)^T.
+\end{equation}
+Every listed state has positive pressure and density.  In particular, the velocity $1.206$ violates no physical admissibility condition.  A sufficient implementation guard that restricts momentum relative to density can exclude an admissible state.  The solver's checked admissibility test supports these initial states and their required mixtures~\cite{initial}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Quadrant & $p$ & $\rho$ & $u$ & $v$\\
+\midrule
+Top left & 0.3 & 0.5323 & 1.206 & 0\\
+Top right & 1.5 & 1.5 & 0 & 0\\
+Bottom left & 0.029 & 0.138 & 1.206 & 1.206\\
+Bottom right & 0.3 & 0.5323 & 0 & 1.206\\
+\bottomrule
+\end{tabular}
+\caption{Initial primitive states.  The interfaces lie at $x=y=0.8$.}
+\label{tab:initial}
+\end{table}
+
+For an $n\times n$ grid, $h=1/n$ and the cell centers are $((i+1/2)h,(j+1/2)h)$.  Initialization evaluates conservative area mixtures for cells cut by an interface.  For example, the fraction of cell $i$ to the left of $4/5$ is $\min(1,\max(0,4n/5-i))$.  Products of the horizontal and vertical fractions determine the four quadrant weights.  The implementation evaluates the corresponding binary64 construction.  The initial-state proof establishes safety for every possible mixture used by the grid, including the cut cells on the 192 grid.  At $n=800$, both interfaces align with cell boundaries.
+
+\subsection{Words, real values, and time}
+
+The executable represents each numerical scalar by a \code{UInt64} binary64 word.  For a finite word $b$, write $\val{b}$ for its exact real value.  The notation $\fl$ denotes the associated formal binary64 operation with its specified rounding, and does not imply native Lean floating-point evaluation.  The plotted pressure is the rounded thermodynamic output computed from the conserved state.  Equation~\eqref{eq:pressure} defines the corresponding physical real pressure.  The physical reference uses the exact constants $2/5$ and $7/5$.  The executable's nearest binary64 constants and all arithmetic intermediates enter the rounding analysis.
+
+The final-time word is
+\begin{equation}
+T=\code{0x3fe999999999999a},\qquad
+\val{T}=\frac{3602879701896397}{4503599627370496}.
+\end{equation}
+The figures label this time as $0.8$.  The control theorem establishes equality of the returned word with $T$.  Each accepted advance uses rounded addition, so this claim does not assert that the exact real sum of accepted timestep values equals $4/5$.  The conservation theorem uses the individual decoded timestep values and the numerical trace.
+
+\section{Reconstruction, fluxes, and time control}
+
+\subsection{Five-cell directional update}
+
+Each sweep reads a five-cell stencil, reconstructs the left, center, and right cells, and obtains the four states needed at the center cell's two interfaces.  For a scalar component, the ideal slope is
+\begin{equation}
+d_i=\mm(U_i-U_{i-1},U_{i+1}-U_i),\qquad
+\mm(a,b)=\begin{cases}\operatorname{sgn}(a)\min(|a|,|b|),&ab>0,\\0,&ab\leq0.\end{cases}
+\end{equation}
+The implementation forms rounded backward and forward differences and applies minmod componentwise.  A shared factor $f$ scales all four slope components.  It forms $U_i^-=\fl(U_i-\fl(f d_i))$ and $U_i^+=\fl(U_i+\fl(f d_i))$, then checks both faces.  Eight attempts test $f=1/2,1/4,\ldots,1/256$.  If every candidate fails, the limiter returns the center state at both faces with $f=0$.  Invalid input states or nonfinite slope differences produce a checked rejection~\cite{reconstruction}.
+
+For a normal direction $\nu$, let $F_\nu=\nu_xF_x+\nu_yF_y$.  The real reference flux at an interface is
+\begin{equation}
+G_\nu(L,R;a)=\frac{F_\nu(L)+F_\nu(R)}{2}-\frac a2(R-L),\label{eq:rusanov}
+\end{equation}
+where the executable selects an outward upper bound $a$ for the characteristic speeds of both reconstructed states.  The directional update has the finite-volume form
+\begin{equation}
+U_i^{\rm new}=U_i-r\bigl(G_{i+1/2}-G_{i-1/2}\bigr),\label{eq:update}
+\end{equation}
+with the executable's operation order and rounding.  The decoded ratio $r$ bounds $n\val{\Delta t}$ from above.  The proof retains the difference between $r$ and $n\val{\Delta t}$ as a residual.
+
+An $x$ sweep precedes a $y$ sweep with the same accepted timestep.  The $y$ sweep reads the intermediate grid produced by the $x$ sweep.  Neighbor indices clamp at the domain edge, implementing a constant extension of the boundary cells.  The method has no half-time predictor or second-order time integrator.  The local reconstruction results therefore do not establish second-order accuracy of the complete time-dependent scheme.
+
+\subsection{Positivity limiter and local accuracy}
+
+Positive cell averages can produce a negative-pressure reconstructed face.  A checked example uses
+\begin{equation}
+L=(1,0,0,1/8),\quad C=(1,1,0,5/8),\quad R=(1,2,0,17/8).
+\end{equation}
+All three states have internal energy $1/8$.  Minmod reconstruction at $C$ with $f=1/2$, before positivity limiting, gives the right face $(1,3/2,0,7/8)$, whose internal energy is $-1/4$ and pressure is $-1/10$.  The real counterexample and the executable limiter behavior are checked separately.  The executable rejects $f=1/2$ and $f=1/4$, then accepts $f=1/8$~\cite{counterexample}.
+
+Accepted reconstruction yields two safe faces, a finite factor in $[0,1/2]$, and a local accuracy certificate.  Let $D_k$ be the real minmod slope computed from the decoded inputs, $d_k$ the rounded slope word, and $R_k^{\rm slope}$ its proved error bound.  Write $R(b)$ for the library's rounding-radius bound at word $b$.  For each conserved component $k$, the certificate includes
+\begin{align}
+\left|\val{U_k^{\pm}}-\bigl(\val{U_k}\pm\val{f}D_k\bigr)\right|
+&\leq R(\fl(fd_k))+R(U_k^{\pm})+|\val{f}|R_k^{\rm slope},\label{eq:recon-error}\\
+\left|\frac{\val{U_k^-}+\val{U_k^+}}2-\val{U_k}\right|
+&\leq\frac{R(U_k^-)+R(U_k^+)}2.\label{eq:average-error}
+\end{align}
+The constant fallback satisfies exact equality with the center state.  The companion real minmod results establish preservation of constants, linear data, and reflection.  Exact linear reconstruction in the binary64 implementation requires the stated representability and acceptance premises.  Equations~\eqref{eq:recon-error}--\eqref{eq:average-error} describe local rounding error, independently of spatial truncation error~\cite{reconstructionaccuracy}.
+
+\subsection{Outward speed bounds and accepted timesteps}
+
+Nearest-rounded evaluation of a characteristic speed can underestimate its physical real value.  For $U=(1,0,0,1)$, the physical sound speed is $\sqrt{14/25}$.  The previous nearest-rounded helper accepts this input and returns \code{0x3fe7f254dab9cc3a}, whose decoded value is strictly smaller.  The repository proves both the strict inequality and execution of the corresponding helper in the previous exact binary.  Reachability of this state from the production initial data is unproved~\cite{speedcounterexample}.
+
+The reconstructed solver uses checked outward arithmetic for the speed and mesh bounds.  Successful checks establish
+\begin{equation}
+a\ \geq\ |u_\nu|+\sqrt{\frac{7p}{5\rho}},\qquad
+r\ \geq\ n\val{\Delta t},\qquad ra\leq\frac12,\label{eq:cfl}
+\end{equation}
+at the required accepted interfaces.  Here $u_\nu=(\nu_xm_x+\nu_ym_y)/\rho$, and $a,r$ denote decoded executable values.  The outward construction accounts for rounding in thermodynamics, square root, the maximum over states, and grid spacing.  Its validity follows from status-zero checks, without a caller-supplied bound on an unknown arithmetic error~\cite{outward}.
+
+Time control first scans the current grid for a speed bound.  It proposes the minimum of a nearest-rounded $0.4h/a$ and the rounded remaining time.  It then checks positive progress, the outward ratio and CFL conditions, and both sweeps.  A failed CFL or sweep check halves the timestep and retries.  A successful step commits the new grid.  A failure returns the last accepted grid and its time~\cite{control}.
+
+The controller has explicit finite fuel for reconstruction attempts, timestep retries, and advances.  It sizes advance fuel from the final-time word and retry fuel from the proposed timestep word, using their unsigned integer values.  The proof uses these bounds for termination.  They are deliberately loose bounds on execution length, and do not estimate elapsed runtime.  Status zero means that the time word equals $T$.  The remaining controller statuses distinguish invalid grid size (1), a failed speed scan (2), invalid time progress (3), exhausted retry fuel (4), and exhausted advance fuel before $T$ (5).  The complete theorem covers the supported grid range and every \code{UInt64} reconstruction budget, including failure returns.
+
+\section{Mathematical guarantees on the accepted trace}
+
+\subsection{Physical flux derivative and hyperbolicity}
+
+For an admissible state, put $u=m_x/\rho$, $v=m_y/\rho$, $H=(E+p)/\rho$, and $c=\sqrt{7p/(5\rho)}$.  The proof first establishes that the specified matrix $A_x$ is the Fr\'echet derivative of $F_x$.  It then verifies
+\begin{equation}
+A_xR=R\operatorname{diag}(u-c,u,u,u+c),\qquad
+R=\begin{pmatrix}
+1&1&0&1\\
+u-c&u&0&u+c\\
+v&v&1&v\\
+H-uc&(u^2+v^2)/2&v&H+uc
+\end{pmatrix}.
+\end{equation}
+The acoustic identity $c^2=(2/5)(H-(u^2+v^2)/2)$ gives $\det R=5c^3\ne0$.  Thus $A_x$ has a complete eigenbasis, including two independent eigenvectors for the repeated advective eigenvalue~\cite{hyperbolicity}.
+
+An orthogonal rotation establishes the derivative and eigenbasis in every unit direction $\nu$.  The eigenvalues are $u_\nu-c,u_\nu,u_\nu,u_\nu+c$.  Defining $L_\nu=R_\nu^{-1}$ yields $L_\nu R_\nu=R_\nu L_\nu=I$, the left eigenrelation, and $R_\nu(L_\nu\Delta U)=\Delta U$.  The sharp spectral magnitude is $|u_\nu|+c$.  The positivity guard's soundness connects accepted finite words to admissible real states, so these results apply to the terminal cells, intermediate accepted grids, and reconstructed faces used in an accepted sweep.
+
+The accepted-trace specification also carries the physical characteristic Courant inequalities.  On the input grid it covers each characteristic in both Cartesian orientations.  On each sweep it covers the four reconstructed interface states and the resulting grid.  Equation~\eqref{eq:cfl} then gives $\val{\Delta t}\,n\,|\lambda_k|\leq1/2$ for those interface states.  These are proved local inequalities on an accepted discrete trace.  A global PDE stability or entropy theorem requires additional arguments.
+
+\subsection{Wave and interface identities}
+
+Let $\Delta U=R-L$ and $\Delta F=F_\nu(R)-F_\nu(L)$.  For $a\ne0$, define the two Lax--Friedrichs waves
+\begin{equation}
+W^- =\frac12\left(\Delta U-\frac{\Delta F}{a}\right),\qquad
+W^+ =\frac12\left(\Delta U+\frac{\Delta F}{a}\right).
+\end{equation}
+The shared real algebra proves
+\begin{equation}
+W^-+W^+=\Delta U,\qquad -aW^-+aW^+=\Delta F.
+\end{equation}
+The interface flux satisfies $G_\nu(U,U;a)=F_\nu(U)$, its left and right fluctuation formulas, and the orientation identity $G_{-\nu}(R,L;a)=-G_\nu(L,R;a)$.  These identities describe the real Rusanov reference.  Separate residual bounds connect the executable interface arithmetic to it~\cite{waves}.
+
+\subsection{Conservation and physical rounding residuals}
+
+Adjacent cell updates use the same ordered reconstructed face pair.  The exact computation of their shared interface flux is therefore identical even when the two cells recompute it.  Summing their update equations cancels interior interface terms.  The proof establishes cancellation for each row, each directional sweep, and the complete accepted trace~\cite{balance}.
+
+For component $k$, define the area-weighted total
+\begin{equation}
+\mathcal M_k(U)=\frac1{n^2}\sum_{i,j}\val{U_{ij,k}}.
+\end{equation}
+Let $U^0,\ldots,U^N$ be the accepted grids, and $\Delta t_\ell$ their timestep words.  Let $\mathcal B_{\ell,k}$ be the net boundary sum of the exact-real Rusanov reference fluxes, with inward sign, using the decoded reconstructed faces and selected speed.  It includes the $x$ boundary terms on $U^\ell$ and the $y$ boundary terms on that step's intermediate grid.  The final physical balance has the form
+\begin{align}
+\mathcal M_k(U^N)-\mathcal M_k(U^0)
+&=\sum_{\ell=0}^{N-1}\frac{\val{\Delta t_\ell}}n\mathcal B_{\ell,k}
+  +\sum_{\ell=0}^{N-1}\mathcal R_{\ell,k},\label{eq:balance}\\
+\left|\sum_{\ell=0}^{N-1}\mathcal R_{\ell,k}\right|
+&\leq\sum_{\ell=0}^{N-1}\mathcal E_{\ell,k}.\label{eq:balancebound}
+\end{align}
+Each $\mathcal E_{\ell,k}$ is an explicit expression in the proved local update, flux, and ratio error bounds.  If $r_\ell$ is the decoded executable ratio, $\widehat{\mathcal B}_{\ell,k}$ the computed boundary flux sum, and $e^{\rm upd}_{\ell,k}$ the summed update residual, then
+\begin{equation}
+\mathcal R_{\ell,k}=\frac{e^{\rm upd}_{\ell,k}
+  +r_\ell\widehat{\mathcal B}_{\ell,k}
+  -n\val{\Delta t_\ell}\mathcal B_{\ell,k}}{n^2}.
+\end{equation}
+For update bound $E^{\rm upd}_{\ell,k}$, boundary-flux bound $E^{\rm flux}_{\ell,k}$, and ratio bound $E^{\rm ratio}_\ell$, the formal majorant is
+\begin{equation}
+\mathcal E_{\ell,k}=\frac{E^{\rm upd}_{\ell,k}
+  +|r_\ell|E^{\rm flux}_{\ell,k}
+  +E^{\rm ratio}_\ell|\mathcal B_{\ell,k}|}{n^2}.
+\end{equation}
+It accounts for floating-point updates, physical side fluxes, Rusanov arithmetic, mesh spacing, and the ratio.  The physical flux reference uses the decoded face states, so its definition does not absorb spatial reconstruction error into a roundoff claim.
+
+The balance holds for all four conserved components of the internal grid, including runs that return after a failed trial.  Rejected trials contribute no accepted step.  The production output retains density and pressure, and does not export momenta, energy, or the complete timestep trace.  Consequently the report presents the symbolic proved bounds, without claiming a numerically evaluated global conservation-error budget from the saved two-field files.
+
+\section{Exact-binary execution theorem}
+
+\subsection{Statement and input domain}
+
+Let $B$ be the frozen 30,726-byte artifact, $\operatorname{decode}(B)=\operatorname{ok}(r_B)$, and $\operatorname{validate}(r_B)=\operatorname{ok}(v_B)$.  The package proves both equalities, core validity of $r_B$, and equality of the translated validated module with the module used in the execution proofs.  Let $M=v_B.\code{toTalos}$, $S_0=M.\code{initialStore}$, and $C(n,q)=\code{Control.solve}\ n\ q$.
+
+\begin{theorem}[Complete artifact behavior]
+\label{thm:artifact}
+For every host environment, $n\in\NN$ with $2\leq n\leq800$, and reconstruction budget $q$ represented by a \code{UInt64}, function 148 of $M$ terminates from $S_0$.  It returns one pointer to an owned array whose words equal $C(n,q)$.  Its final linear memory has at most 8192 pages of 65,536 bytes, or 512 MiB.  The internal final grid is safe.  If the returned status word is zero, the returned time word is $T$ and that grid is the endpoint of the specified accepted numerical trace from initialization.  That trace has the hyperbolicity, reconstruction, Courant, and physical balance properties stated above.
+\end{theorem}
+
+The four exported artifact theorems establish these claims in increasing scope: exact execution, safety and successful completion, hyperbolicity and trace facts, and conservation~\cite{spec,artifact}.  The proof interface places the arguments on the formal operand stack as $[\code{i64}\ q,\code{i64}\ n]$.  The host's ordinary call order is \code{solve(n,q)}.  The postcondition identifies the heap object and every output word.  It does not assume successful completion for every supported input.
+
+The theorem quantifies over the reconstruction budget, but the grid bound is explicit in both the source and specification.  The current executable rejects $n>800$.  A $1600\times1600$ calculation therefore requires changes to the grid domain, allocation bounds, generated binary, and corresponding proofs.  It cannot instantiate Theorem~\ref{thm:artifact} unchanged.
+
+\subsection{End-to-end proof composition}
+\label{sec:composition}
+
+End-to-end verification here connects the embedded executable bytes to the complete numerical recurrence and its output words under the formal WebAssembly semantics.  Its entry state is the initialized module store with the two runtime arguments.  Its endpoint is the returned array in linear memory.  Initialization, reconstruction, speed scans, timestep selection, both sweeps, rejected trials, memory reuse, and output packing all lie inside the proved execution.
+
+The byte-level part establishes the following checked equalities and validity statement:
+\begin{equation}
+\begin{split}
+\operatorname{decode}(B)&=\operatorname{ok}(r_B),\qquad
+\operatorname{validate}(r_B)=\operatorname{ok}(v_B),\\
+\operatorname{CoreValid}(r_B)&,\qquad v_B.\code{toTalos}=M_{\rm exec}.
+\end{split}
+\end{equation}
+The module $M_{\rm exec}$ is the exact generated execution model used by the behavioral proofs.  The theorem \code{artifact\_correct\_of} transfers a proved property of $M_{\rm exec}$ to $v_B.\code{toTalos}$ by that equality.  Instantiating it with \code{BalanceSpecFor} yields the complete execution and numerical postcondition for $B$~\cite{artifact,spec}.
+
+The execution predicate \code{TerminatesWith} is a total-correctness statement.  For a postcondition $P$ on final stores and returned value lists, its definition is
+\begin{equation}
+\begin{split}
+&\operatorname{TerminatesWith}(e,M,i,S_0,A,P)\\
+&\quad\Longleftrightarrow\quad
+\exists N\in\NN,\ \forall f\geq N,\ \exists V,S,\
+\operatorname{run}(f,M,i,S_0,A,e)=\operatorname{Success}(V,S)\ \land\ P(S,V).
+\end{split}
+\end{equation}
+Here $e$ is the host environment, $i$ the function index, $A$ the input operand stack, and $f$ the formal interpreter's execution fuel~\cite{talossemantics}.  The existence of $N$ proves termination in this semantics.  Interpreter success means that the call returns values.  The application's status word in those values then distinguishes completed evolution from a checked numerical failure.  Interpreter fuel and the solver's explicit retry counters are separate quantities.
+
+For the solve call, the basic postcondition is the defined predicate \code{ResultAt}.  Writing $q$ for the budget's unsigned natural value, it expands to
+\begin{equation}
+\begin{split}
+\operatorname{ResultAt}_{n,q}(S,V)\ \Longleftrightarrow\ \exists p:\code{UInt64},\quad
+&V=[\code{i64}\ p]\\
+{}\land\ &\operatorname{UInt64Array.At}(S,p,C(n,q))\\
+{}\land\ &65536\operatorname{pages}(S)\leq536870912.
+\end{split}
+\end{equation}
+The array predicate fixes the length and every stored word of the object at $p$.  The heap-ownership result used to prove it also tracks the allocated object and surrounding heap.  The equality with $C(n,q)$ connects the executed function to the source-level recurrence for this program.
+
+Let $(s,t,Q)=\code{Control.run}(n,q)$.  The exact packing definition gives
+\begin{equation}
+C(n,q)=[s,t,n,n]\mathbin{+\!+}
+[Q_j.\rho]_{j=0}^{n^2-1}\mathbin{+\!+}
+[Q_j.\widehat p]_{j=0}^{n^2-1},
+\end{equation}
+where $Q_j.\widehat p$ is the stored rounded pressure word and $+\!+$ denotes array concatenation~\cite{output}.  The complete grid $Q$ also contains both momenta and energy.  The theorem relates the returned two-field array to that internal grid through the packing equality.
+
+The strengthened postcondition conjoins \code{ResultAt} with final-grid safety, the status-zero implication, final-grid hyperbolicity, \code{TraceFacts}, and the computed and physical run-balance predicates.  The accepted trace starts at the defined initial grid.  Every trace edge contains a valid rounded time advance, successful speed and ratio checks, an accepted next grid, and equality of that grid with the defined two-sweep update.  Induction on these edges transfers reconstruction, physical characteristic bounds, and conservation through the entire accepted evolution.  If $s=0$, the terminal-time proof gives $t=T$~\cite{control,spec}.
+
+For each production run, the host supplied $n\in\{192,800\}$ and $q=8$ to the identified binary after the proved startup reset.  The returned words recorded $s=0$ and $t=T$.  Under the runtime assumptions in Section~\ref{sec:trusted}, those observations instantiate the corresponding successful execution result.  Lean checks the quantified artifact theorem.  The host records the numerical instance, and the plotting program transforms the saved density and pressure values into the figures.  Correct behavior of the engine, loading, serialization, and rendering is assumed for that observed computation and image.
+
+\subsection{Execution, termination, and allocation}
+
+The execution proof composes exact scalar-operation theorems with memory reads and writes, array traversal, allocation, release, and loop invariants.  The source recurrence provides the exact output specification.  Compiler-produced function and instruction regions identify reusable portions of the preceding solver, and checked equalities justify transfer to the new function indices.  The remaining reconstructed sweep and control regions receive their own execution proofs~\cite{execution}.
+
+The memory argument tracks owned buffers, reusable free nodes, the heap top, and available pages.  The proved allocation budget is at most 350,243,520 bytes beyond the initial heap base of 4096 bytes.  The initial memory has 16 pages.  Specializing the allocation lemmas to an 8192-page bound proves the final-memory postcondition, including retries and released trial grids.  The formal execution follows the module's memory-growth rules.  The reported bound concerns WebAssembly linear memory, and does not bound Wasmtime's JIT code, native stack, runtime metadata, or operating-system memory.
+
+The host initializes the runtime by calling exported reset function 150 before the single solve call.  A separate exact-byte theorem proves that this reset preserves the module's initial store and returns no values.  Its six global writes reproduce the initializers, and it performs no memory operation~\cite{hostinitial}.  Thus the observed startup sequence meets the solve theorem's initial-store premise under the formal semantics.
+
+\subsection{Binary decoding and proof reuse}
+
+The decoder proof works from the embedded byte array, validates the decoded module, and proves translation equality for all 153 functions.  The function count includes 149 source functions and four runtime functions.  The proof about these bytes needs no general compiler-correctness assumption: compilation produces the candidate artifact, and the subsequent artifact proof checks its behavior.  A digest identifies the external file.  The mathematical theorem uses the embedded bytes, and the independent package checker compares them with the file to execute~\cite{artifact}.
+
+Proof construction used compiler annotations together with the repository's lemmas, tactics, and guidance (LTG) catalog, which indexes checked proof assets and their application guidance~\cite{ltg}.  The journal records consultation of direct-call, array-fold, generated-frame, and allocation material.  Checked region transfer reused retained solver functions.  The shared allocation theorem covered both free-list reuse and growth, while narrower retrieved allocation examples did not fit the sweep's premises.  Compiler inspection also exposed missing return and unsigned-shift cases in the shared instruction-renaming support, which the development added and checked~\cite{journal}.
+
+Large combined decoder and metadata evaluations reached their three-minute resource limits.  Dividing the work into bounded entry and section proofs, then applying shared vector and parser-composition lemmas, completed the exact-file check without changing the artifact.  These are recorded proof-engineering results for this binary.  The development did not establish a held-out performance improvement for the decoding method or a general LTG speedup.  The retained journal distinguishes retrieval attempts, failed checks, and accepted proof compositions.
+
+The independent package check accepted all nine manifest declarations and their axiom audits.  The behavioral theorems depend only on the accepted standard logical axioms \code{propext}, \code{Classical.choice}, and \code{Quot.sound}, or subsets of them.  The completed proof adds no admitted theorem, new axiom, or unchecked native decision.  The proof workspace pins Lean 4.34.0-rc2 and the Talos revision recorded in Appendix~\ref{app:reproduce}.
+
+\subsection{Trusted components}
+\label{sec:trusted}
+
+The formal result assumes the Lean kernel and the mathematical definitions of binary64 operations and WebAssembly execution used by the proof.  A mistake in the intended specification or in its relation to the physical modeling goal remains possible despite successful type checking.  The report exposes the equations, domain restrictions, status conditions, and residual definitions so those choices can be reviewed.
+
+Wasmtime's implementation, the operating system, hardware, artifact loading, host output serialization, CSV conversion, and plotting are outside the Lean theorem.  The driver checks the artifact digest and validates output length, status, time, dimensions, finiteness, and positivity.  Those checks supply execution evidence.  They do not formally verify the execution engine or the image-generation software.  Likewise, the pure source recurrence is mathematically specified in Lean, but evaluating it through Lean's native compiler would require confidence in that execution path.  The artifact proof supplies a precise executable target and its formal semantics for the calculation reported here.
+
+\section{Production runs and visualization}
+
+Both runs used one local Wasmtime process and one solve call, with eight reconstruction attempts.  The numerical loop, boundary reads, accepted-step control, and allocation execute within the WASM module.  The host receives the final array after the solve completes.  The standard runner limited the process to one CPU, a 4 GiB memory-high threshold, a 6 GiB memory maximum, and 1 GiB of swap.  The 800-grid monitoring samples were near 309 MiB.  That observation is a sampled process-resource measurement, distinct from the formal linear-memory bound.
+
+Table~\ref{tab:results} records the measured endpoints~\cite{data}.  Elapsed time starts immediately before the runner invocation and ends after the host exits.  It includes runner startup and serialization of the returned words to stdout, and excludes subsequent CSV conversion and plotting.  The files contain neither accepted-step counts nor limiter-retry counts, so these measurements do not separate reconstruction cost from timestep changes.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Quantity & $192\times192$ & $800\times800$\\
+\midrule
+Status & 0 & 0\\
+Elapsed time & 176.7 s & 14,277.8 s\\
+Minimum density & 0.138 & 0.138\\
+Maximum density & 1.72510 & 1.73921\\
+Minimum pressure & 0.02900 & 0.02900\\
+Maximum pressure & 1.67059 & 1.66352\\
+\bottomrule
+\end{tabular}
+\caption{Production results from the same proved artifact.  Both final-time words equal $T$.  Extrema are rounded for display.  The raw words retain the exact binary64 values.}
+\label{tab:results}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{data/euler-reconstructed-v1/192-run/density-pressure.png}
+\caption{Density and pressure on the $192\times192$ grid at the binary64 time labeled $0.8$.  Color shows cell values.  White lines are interpolated contours.  Each field uses its own linear color range.}
+\label{fig:192}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{data/euler-reconstructed-v1/800-run/density-pressure.png}
+\caption{Density and pressure on the $800\times800$ grid from the completed single-process WASM run.  The original production PNG is included without numerical resampling or image editing.  The finer grid shows thinner fronts and more curved internal layers.}
+\label{fig:800}
+\end{figure}
+
+Figures~\ref{fig:192} and~\ref{fig:800} show similar large-scale front positions and a high-density region near $(0.6,0.6)$.  The 800-grid result resolves more internal structure.  These visual features resemble the density figure in the Lanyon article~\cite{lanyon}.  The comparison is qualitative: neither an exact two-dimensional solution nor a reference-field error norm accompanies these images.
+
+The repository also preserves the preceding first-order 800-grid run~\cite{firstorder}.  Its density maximum was 1.6711 and its pressure maximum was 1.6321, compared with 1.7392 and 1.6635 here.  The revised method changes both reconstruction and speed arithmetic, so the difference cannot isolate either change.  Two grid resolutions and these extrema establish neither an empirical convergence rate nor a continuum error estimate.
+
+The plotting script reads the saved cell CSV and uses nearest-cell color rendering on the unit square, with density in \code{viridis}, pressure in \code{magma}, and 16 white contour levels strictly between each field's extrema.  Contours interpolate between cell centers.  Each panel has its own scale, including across resolutions.  The retained PNG, SVG, and PDF figures allow inspection of the same data in three formats.
+
+\section{Comparison with the published Lanyon treatment}
+
+Hakim's article supplies the problem and presents Lax-flux simulations alongside claims about hyperbolicity and wave identities~\cite{lanyon}.  Its linked two-dimensional proof file defines real-valued states and expressions~\cite{lanyonproof}.  At the cited revision, \code{xHyperbolicity} and \code{yHyperbolicity} assert that each already real-typed eigenvalue expression equals some real number.  Their witnesses are the expressions themselves.  Those statements do not establish a flux derivative or an eigenbasis.  The present derivative, eigenrelation, and nonzero-determinant proofs establish those mathematical obligations.
+
+The published minmod expressions reconstruct each conserved component with factor $1/2$, without a face-admissibility test in those definitions.  Their real consistency, linearity, and reflection statements provide a comparison of local algebraic properties.  Our implementation adds checked binary64 reconstruction, common-factor positivity limiting, and outward speed bounds, then composes their properties through the complete accepted grid trace.  The exact-artifact theorem connects that trace to the file executed for the figures.  This comparison concerns the cited public declarations and this specific ideal-gas problem.  It does not assess uninspected Lanyon implementations or establish parity for general equations of state, three-dimensional flow, or cylinder boundaries.
+
+\section{Remaining mathematical obligations}
+
+Convergence to a continuous entropy solution remains open.  A result of that form would require a family of discretizations as $h,\Delta t\to0$, a stated mode of convergence, compactness or stability estimates sufficient for that limit, consistency in the weak formulation, treatment of the boundary conditions, and an entropy admissibility argument.  The current finite input range and fixed binary64 arithmetic also require explicit treatment: a limiting theorem cannot follow by increasing $n$ indefinitely in this unchanged binary.  The proved local Courant bounds, admissibility, and residual identities are inputs to such an analysis, but supply neither its compactness nor its entropy conclusion.
+
+Universal status-zero completion for every supported grid and reconstruction budget remains unproved.  Complete behavior and termination hold even when a checked computation fails.  Both production runs demonstrated the successful branch, which activates the proved terminal-time statement.  A universal success proof would need bounds ensuring that the evolving states, arithmetic guards, timestep progress, and retry process remain acceptable through the target time.
+
+The final data contain enough information to reproduce the reported density and pressure figures.  Quantitative audits of total momentum, energy, accumulated physical rounding error, or accepted-step statistics require additional output or a separately justified trace reconstruction.  Any such executable change would create a new artifact requiring its own exact-byte proof.
+
+\appendix
+\section{Theorem and source index}
+
+Table~\ref{tab:proofs} gives the primary declarations behind the report.  Paths are relative to \path{proofs/talos/lean/Project/} at the fixed checkpoint.  The prefix \code{ER} in the table abbreviates the namespace \longcode{Project.EulerReconstructed}, and \code{RF} abbreviates \longcode{Project.Euler2DConservative.RealFlux}.  Links resolve to the complete source definitions and premises.
+
+\small
+\begin{longtable}{L{0.27\textwidth}L{0.65\textwidth}}
+\caption{Claim-to-declaration index.}\label{tab:proofs}\\
+\toprule
+Claim & Declaration and source\\
+\midrule
+\endfirsthead
+\toprule Claim & Declaration and source\\\midrule
+\endhead
+Complete execution & \code{ER.Spec.solve\_exact}, \code{ER.Execution.solve\_initial\_exact}.  \proofref{EulerReconstructed/Spec.lean}{Specification} and \proofref{EulerReconstructed/SolveInitial.lean}{initial-store execution}.\\[5pt]
+Successful endpoint & \code{ER.Spec.solve\_success}, \code{ER.Spec.source\_success}.  \proofref{EulerReconstructed/Spec.lean}{Status-zero specification}.\\[5pt]
+Accepted trace facts & \code{ER.Spec.solve\_hyperbolic}, \code{ER.Numerics.initial\_trace\_facts}.  \proofref{EulerReconstructed/TraceSafety.lean}{Trace safety} and \proofref{EulerReconstructed/NumericalSafety.lean}{stencil facts}.\\[5pt]
+Physical balance & \code{ER.Spec.solve\_balance}, \code{ER.Conservation.physical\_run\_balance}.  \proofref{EulerReconstructed/PhysicalTrace.lean}{Physical trace balance}.\\[5pt]
+Exact bytes & \code{ER.Artifact.artifact\_solve\_exact}, \code{artifact\_solve\_success}, \code{artifact\_solve\_hyperbolic}, \code{artifact\_solve\_balance} in that namespace.  \proofref{EulerReconstructed/ArtifactTranslation.lean}{Artifact translation}.\\[5pt]
+Host reset & \code{ER.HostInitial.artifact\_reset\_initial}.  \proofref{EulerReconstructed/HostInitial.lean}{Startup-state proof}.\\[5pt]
+Flux derivative & \code{RF.hasFDerivAt\_xFlux}, \code{RF.hasFDerivAt\_directionalFlux}.  \proofref{Euler2DConservative/RealJacobian.lean}{Cartesian derivative} and \proofref{Euler2DConservative/RealHyperbolicity.lean}{directional derivative}.\\[5pt]
+Complete eigenbasis & \code{RF.directional\_hyperbolicity}, \code{RF.directional\_eigenvector\_inverses}, \code{RF.directional\_characteristic\_reconstruction}.  \proofref{Euler2DConservative/RealLeftEigenvectors.lean}{Inverse and decomposition}.\\[5pt]
+Reconstruction error & \code{Project.EulerReconstruction.Spec.reconstruct\_accuracy} and \code{reconstruct\_factor}.  \proofref{EulerReconstruction/Spec.lean}{Reconstruction specification}.\\[5pt]
+Wave identities & \code{directional\_wave\_identities} in \longcode{Project.EulerRiemann.RealRusanov}.  \proofref{EulerRiemann/RealWaves.lean}{Wave and interface algebra}.\\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\section{Artifact identities and reproduction}
+\label{app:reproduce}
+
+The evidence checkpoint is
+\begin{center}\longcode{73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a}.\end{center}
+The reconstructed solver's SHA-256 is
+\begin{center}\longcode{b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb}.\end{center}
+The binary and manifest reside under \code{proofs/artifacts/euler\_reconstructed/}, in the directory named by that digest.  The manifest identifies the byte definition, decoded cache, generated execution model, behavioral specification, and validation profile \code{leanexe-core-v1}.  Its formal host-assumption list is empty.  The external runtime assumptions remain those in Section~\ref{sec:trusted}.
+
+The Lean toolchain is 4.34.0-rc2, commit
+\begin{center}\longcode{6a10ac8c22beadecabdbb0919c2b50214762f91d}.\end{center}
+The Talos revision is
+\begin{center}\longcode{87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.\end{center}
+The runtime and data tools are Wasmtime 44.0.0, Node.js 24.13.0, \code{wasm-tools} 1.251.0, and Matplotlib 3.10.8.  The repository documents the pinned environment and runner~\cite{repository}.
+
+Each dataset resides under \code{data/euler-reconstructed-v1/}, in \code{192-run} or \code{800-run}.  It contains retained stdout and stderr, \code{words.u64le}, \code{cells.csv.gz}, \code{summary.json}, and density-pressure PNG, SVG, and PDF files.  The binary word sequence has length $4+2n^2$: status, time bits, $n_x$, $n_y$, $n^2$ density words, and $n^2$ pressure words, all little-endian.  Cells use row-major order with $x$ varying fastest.  The CSV columns are \code{i,j,x,y,density,pressure}.
+
+The output-word SHA-256 values are
+\begin{align*}
+192:&\quad\text{\longcode{6304853f58507013eca1eef730c0081de271233694f5b122d03539175ccb6b3c}},\\
+800:&\quad\text{\longcode{64ff9d32fe0f7db442211b1c160726962d7742e92a3e7336d96199232a87dd4c}}.
+\end{align*}
+The production driver verifies the solver digest before execution and preserves the raw output before checking success.  To reproduce the numerical runs from the repository root, select new output directories:
+\begin{verbatim}
+node tools/euler-riemann-complete.js \
+  run-reconstructed 192 8 new-192-directory
+node tools/euler-riemann-complete.js \
+  run-reconstructed 800 8 new-800-directory
+\end{verbatim}
+The driver invokes the resource runner for the numerical process.  Plot each completed directory with the installed figure environment:
+\begin{verbatim}
+tools/leanrun --timeout 2m \
+  build/tools/riemann-figures-venv/bin/python \
+  tools/euler-riemann-plot.py new-800-directory
+\end{verbatim}
+The same plotting command accepts \code{new-192-directory}.  The accepted independent proof check uses \code{tools/artifact-proof.js check}, the frozen \code{program.wasm} path, and the target \code{Project.EulerReconstructed.ArtifactTranslation}.  It invokes Lean through the serialized resource runner.  The detailed development journal retains the check outcomes and the separate startup-reset proof result~\cite{journal}.
+
+\begin{thebibliography}{99}
+\bibitem{repository} LeanExe contributors.  \emph{LeanExe: completed reconstructed Euler proof and data}.  Repository checkpoint \code{73e5b54e}, 15 September 2026.  \repo{README.md}{Repository and toolchain documentation}.
+\bibitem{lanyon} Ammar Hakim.  \emph{The Euler Equations of Gas Dynamics}.  Lanyon.AI, July 2026.  \url{https://lanyon.ai/research/euler-equations/}.
+\bibitem{initial} LeanExe contributors.  \emph{Initial-state geometry, mixtures, and admissibility}.  \proofref{EulerRiemann/Initial.lean}{Initial-state proof}, \proofref{EulerRiemann/InitialModel.lean}{binary64 construction}, and \proofref{EulerRiemann/Geometry.lean}{cell geometry}.
+\bibitem{reconstruction} LeanExe contributors.  \emph{Checked minmod reconstruction}.  \proofref{EulerRiemann/Reconstruction.lean}{Executable model} and \proofref{EulerRiemann/ReconstructionSafety.lean}{safety proof}.
+\bibitem{counterexample} LeanExe contributors.  \emph{Reconstruction positivity counterexample}.  \proofref{EulerRiemann/ReconstructionCounterexample.lean}{Real counterexample} and \proofref{EulerRiemann/ReconstructionBoundary.lean}{binary64 limiter behavior}.
+\bibitem{reconstructionaccuracy} LeanExe contributors.  \emph{Reconstruction accuracy and factor bounds}.  \proofref{EulerReconstruction/Spec.lean}{Specification}, \proofref{EulerRiemann/ReconstructionAccuracy.lean}{accuracy}, and \proofref{EulerRiemann/ReconstructionLinear.lean}{conditional linear exactness}.
+\bibitem{speedcounterexample} LeanExe contributors.  \emph{Accepted speed underestimate}.  \proofref{EulerRiemann/SpeedCounterexample.lean}{Strict physical inequality} and \proofref{EulerRiemann/ArtifactSpeedCounterexample.lean}{exact-artifact execution}.
+\bibitem{outward} LeanExe contributors.  \emph{Outward speed and Courant bounds}.  \proofref{EulerRiemann/OutwardSpeedSpec.lean}{Speed specification}, \proofref{EulerRiemann/OutwardMaximumCfl.lean}{grid characteristic bound}, and \proofref{EulerRiemann/OutwardMeshSpec.lean}{mesh ratio}.
+\bibitem{control} LeanExe contributors.  \emph{Reconstructed solver control}.  \proofref{EulerReconstructed/Control.lean}{Recurrence}, \proofref{EulerReconstructed/ControlTrace.lean}{accepted trace}, and \proofref{EulerRiemann/Time.lean}{time operations}.
+\bibitem{hyperbolicity} LeanExe contributors.  \emph{Euler flux derivative and complete eigenbasis}.  \proofref{Euler2DConservative/RealJacobian.lean}{Derivative}, \proofref{Euler2DConservative/RealEigenvectors.lean}{eigenrelation and determinant}, \proofref{Euler2DConservative/RealHyperbolicity.lean}{directional hyperbolicity}, and \proofref{Euler2DConservative/RealLeftEigenvectors.lean}{inverse basis}.
+\bibitem{waves} LeanExe contributors.  \emph{Real Rusanov wave and flux identities}.  \proofref{EulerRiemann/RealWaves.lean}{Euler specialization} and \proofref{ProofKit/RealLaxFriedrichs.lean}{shared algebra}.
+\bibitem{balance} LeanExe contributors.  \emph{Reconstructed physical conservation}.  \proofref{EulerReconstructed/TraceBalance.lean}{Computed trace}, \proofref{EulerReconstructed/PhysicalStep.lean}{physical step}, \proofref{EulerReconstructed/PhysicalTrace.lean}{physical run}, and \proofref{EulerReconstructed/RatioResidual.lean}{ratio residual}.
+\bibitem{spec} LeanExe contributors.  \emph{Complete reconstructed solver specifications}.  \proofref{EulerReconstructed/Spec.lean}{Exact, safe, hyperbolic, and balance specifications}.
+\bibitem{artifact} LeanExe contributors.  \emph{Reconstructed Euler artifact proof}.  \proofref{EulerReconstructed/ArtifactTranslation.lean}{Exact-byte behavior} and \repo{docs/artifact-format.md}{package format and independent checking}.
+\bibitem{execution} LeanExe contributors.  \emph{Complete reconstructed execution and allocation}.  \proofref{EulerReconstructed/ExecutionSolve.lean}{Solve composition and budget} and \proofref{EulerReconstructed/SolveInitial.lean}{initial-store specialization}.
+\bibitem{hostinitial} LeanExe contributors.  \emph{Exact-artifact startup reset}.  \proofref{EulerReconstructed/HostInitial.lean}{Reset preservation theorem}.
+\bibitem{ltg} LeanExe contributors.  \emph{Knowledge Forest and Structured LTG (Lemmas, Tactics, and Guidance)}.  \repo{docs/ltg.md}{Retrieval and checked proof assets} and \repo{docs/annotations.md}{compiler annotations}.
+\bibitem{journal} LeanExe contributors.  \emph{Development journal}.  Entries of 14--15 September 2026 at the evidence checkpoint.  \repo{journal.md}{Commands, failed checks, accepted proofs, and production records}.
+\bibitem{data} LeanExe contributors.  \emph{Reconstructed Euler data}.  \repo{data/euler-reconstructed-v1/README.md}{Article and datasets}, \repo{tools/euler-riemann-complete.js}{execution and decoding driver}, and \repo{tools/euler-riemann-plot.py}{figure renderer}.
+\bibitem{firstorder} LeanExe contributors.  \emph{Complete first-order Euler calculation}.  \repo{data/euler-riemann-complete-v1/README.md}{Preserved proof, data, and figures}.
+\bibitem{lanyonproof} Lanyon.AI.  \emph{CompressibleEuler: two-dimensional proof source}.  Revision \longcode{a736aa5f8b17efd225c4692404e2442361d06729}.  \href{https://github.com/lanyonai/CompressibleEuler/blob/a736aa5f8b17efd225c4692404e2442361d06729/proofs/compressible_euler_2d.lean}{Real state, hyperbolicity, wave, and reconstruction declarations}.  Inspected 15 September 2026.
+\bibitem{statesafety} LeanExe contributors.  \emph{State and grid safety predicates}.  \proofref{Euler2DConservative/Guard.lean}{Real state bounds}, \proofref{Euler2DCellStep/SweepModel.lean}{binary64 state safety}, and \proofref{EulerRiemann/ControlSafe.lean}{grid safety}.
+\bibitem{talossemantics} Talos contributors.  \emph{Total-correctness execution predicate}.  Revision \longcode{87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.  \href{https://github.com/jsmorph/talos/blob/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Spec/Defs.lean}{Definition and fuel monotonicity of TerminatesWith}.
+\bibitem{output} LeanExe contributors.  \emph{Final output representation}.  \proofref{EulerRiemann/Output.lean}{Packing definition} and \proofref{EulerRiemann/OutputModel.lean}{array contents and length}.
+\end{thebibliography}
+\end{document}

@@ -22637,3 +22637,180 @@ all agree.  All 16 reviewed paths are published.  Only the pre-existing
 untracked paper and old data paths remain.  This single receipt records
 completion of the authorized proof, two-grid calculation, figures, and
 short-article agenda.  No Euler numerical or plotting process remains active.
+
+### 2026-09-15: comprehensive Euler report preparation
+
+The user requested drafting, reviewing, and submitting a comprehensive
+marXiv technical report on the completed result, including the 800-grid
+image.  The preceding publication receipt is ef8766e0831914d17fcc7db6773b272185d869fb.
+The report fixes its proof and data references at substantive checkpoint
+73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a.  No numerical or proof rerun is
+needed for this reporting task.
+
+Read AGENTS, README, the operating requirements, both production summaries,
+the shorter article, the submission skill, and the live archive standards
+and style manual before drafting.  The archive at 127.0.0.1:8405 is up.
+The optional guide linked from the skill was absent at its resolved path.
+A read used the absent root main.tex in the earlier type-theory report,
+then its README identified the existing v5 source.  Another search had no
+matching guide and stopped dependent reads.  Reissued those reads against
+the discovered files.  A later source lookup used the nonexistent aggregate
+EulerRiemann.lean path.  The initial model was read from its existing module.
+These were read-only lookup failures, not failed proofs.
+
+Inspected the exact solver specifications, reset theorem, numerical and
+physical trace definitions, initial-state construction, reconstruction
+accuracy and boundary examples, real eigenbasis, wave identities, outward
+speed bounds, execution budget, artifact manifest, driver, and plotter.
+Reviewed the retained independent-check result and compiler/LTG journal
+entries.  Fetched the cited Lanyon article and its pinned two-dimensional
+Lean source.  Its named hyperbolicity declarations have existential
+real-valued-expression conclusions.  The report contrasts their exact
+scope with the checked derivative and eigenbasis here.
+
+Created the bounded paper/euler-reconstructed-report directory with a
+first manuscript, README, review checklist, and preserved archive policy
+snapshots.  The source embeds both existing production PNGs by reference.
+It explains the binary64 time word, conditional successful completion,
+physical rounding balance, memory domain, and runtime trust boundary.
+All earlier submissions, logs, datasets, proof sources, and binaries remain
+unchanged.  The installed pdflatex and Poppler tools will build and inspect
+the report without adding dependencies.
+
+The first manuscript built to 14 pages.  Its initial pass had expected
+unresolved references and three overfull theorem-index boxes.  Preserved
+that source and build, then created v2 with precise output-pressure wording,
+the published reconstruction comparison, and line-breaking corrections.
+Its second pass had no warnings or overfull boxes.  A source-link check
+first mistook a macro parameter for a concrete path.  Correcting that
+read-only check verified all 44 concrete linked files.  The exact final-time
+word decodes to 3602879701896397/4503599627370496 as stated.
+
+The second technical and prose review examined the extracted body and
+created v3 with separate state and trace claims in the abstract, precise
+eigenspace wording, and a direct universal-success limitation.  Both v3
+passes succeeded.  The final 14-page PDF has no warnings, undefined
+references, or overfull/underfull boxes.  Rendered and viewed every page.
+Both original figures are legible, including the required 800-grid PNG on
+page 10.  Extracted title, authors, and abstract match the PDF and source.
+The PDF SHA-256 is 1869fe0def46936e2b43deeb60c62bbba43ee3a8b135028842a235e2738eef88.
+
+Verified the frozen numerical binary and both word-file digests, lengths,
+and success/time/dimension headers.  Preserved the cited-file and production
+input identities.  The repository documentation check passed all 124 files
+before adding the publication record.  No simulation or Lean proof ran.
+
+The first upload's Python subprocess could not connect inside its sandbox.
+Curl returned 7 with HTTP 000.  Its error-reporting code then attempted to
+read an absent response file.  No submission reached the archive.  Retained
+the request and failed curl result, then invoked curl directly outside that
+sandbox.  It returned HTTP 303.  Submission 5994a7522c90 entered review at
+22:59:51 UTC on 15 September.  Public static export is off.  The initial
+documentation edit was rejected because its paper-index context named only
+part of a line.  Inspection confirmed that none of that edit was applied.
+Reissued the bounded edit against the complete observed line, preserving
+all prior manuscript and build versions.
+
+### 2026-09-15: Euler report acceptance and end-to-end expansion
+
+marXiv accepted submission 5994a7522c90 at 23:02:37 UTC as 2609.00006.
+The reviewer requested definitions of binary64 state and grid safety,
+expansion of LTG, and deletion of the repeated sentence about the required
+800-grid image.  Preserved the complete review and accepted status page.
+The user also requested careful coverage of end-to-end formal verification.
+
+Created a fourth manuscript while preserving the accepted third draft.
+The new safety definition follows Guard.StateBounds, Guard.Admissible,
+StateSafe, and CellsSafe.  The report expands LTG as lemmas, tactics, and
+guidance, confirmed against the repository's existing report, and removes
+the duplicate figure sentence.  Section 5.2 now states the proof composition
+from embedded binary bytes, checked decoding and validation, and execution
+model equality to total correctness and the exact returned array.
+
+Read the pinned Talos TerminatesWith definition and checked its quantified
+fuel statement.  Inspected output packing, accepted trace edges, and final
+postconditions.  The expanded section distinguishes interpreter success
+from application status zero, describes the returned two-field array's
+relation to the complete internal grid, and states the runtime and image
+assumptions needed to interpret the recorded production computation.
+
+Both fourth-draft LaTeX passes succeeded.  The final PDF has 15 pages and
+no warnings, undefined references, or overfull/underfull boxes.  Rendered
+and viewed every page, including the two figures and the new equations.
+Preserved all build passes, extracted text, PDF information, metadata, and
+additional cited-source identities.  Its SHA-256 is
+c5eb51617a1c50d4b8b86598c2edfbd531c421e66f245ade4961015ece7189c4.
+
+The title and abstract extracted from that PDF match the request metadata.
+A direct curl upload returned HTTP 303 and submission 128aa5349052 at
+23:12:01 UTC, replacing 2609.00006 with a reviewed archive revision when
+accepted.  This invocation used the existing curl command permission.
+Public static export remains off.  Editorial review of the revision is
+running.  No Lean build, solver run, new dependency, or remote computation
+was needed for this report revision.
+
+A follow-up provenance check compared all 50 cited-source digests with
+Git objects at the report's fixed checkpoint and the pinned Talos revision.
+It found one mismatch: the draft identity record hashed the working journal
+after report preparation instead of the cited checkpoint's journal.  The
+other 49 files matched.  Preserved that draft record and wrote a corrected
+final-source-identities.json from the referenced Git objects.  The report's
+citations already point to the correct checkpoint, so its PDF needs no
+change for this record correction.
+
+marXiv accepted the second submission as another version of 2609.00006.
+The status page records acceptance at 23:55:13 UTC.  Its single remaining
+remark identifies ambiguous terminology: minmod already limits the slope,
+so “unlimited minmod reconstruction” should name the factor before the
+additional positivity limiter.  Preserved the complete accepted review.
+
+Created v5 with one sentence changed to “Minmod reconstruction at C with
+f = 1/2, before positivity limiting.”  Both LaTeX passes succeeded without
+warnings.  The document remains 15 pages.  A pagewise text comparison found
+only page 4 changed, and its rendered page passed visual review.  The title,
+authors, and abstract remain identical.  The PDF SHA-256 is
+640d0efb91245258ffa397bac5ec924575e3759b8ba6d46dac50864d9ca2d15c.
+The archive returned HTTP 303 and submission f0787a3ef99b for that revision.
+The final provenance record also includes the initial figure, data, and
+binary entries, checked against Git objects at the cited checkpoint.
+
+The third submission was accepted.  Its review returned five prose remarks:
+the abstract's contents announcement, a generic first heading, two unclear
+actor references, and one redundant sentence.  Preserved the complete
+review.  Created v6 to address all five.  The abstract now states the two
+counterexample findings, the first heading names verified solver execution,
+and the body names Codex and the proving agent where they performed the
+reported work.  The redundant sentence is removed.
+
+Both v6 build passes succeeded.  The 15-page final PDF has no warnings.
+Only pages 1 and 9 differ in extracted text, and both rendered pages passed
+visual review.  The end-to-end section, equations, theorem statements,
+references, production data, and both figures remain unchanged.  Extracted
+title and abstract match the PDF and source.  Its SHA-256 is
+88d4f024626722462ea622ccda871ee8f1ec261f6c6cd42822df56b9bf0b4eba.
+Submission 661f900da98f entered review at 00:02:49 UTC on 16 September.
+
+The publication file list selects the authored documentation, manuscript
+versions, accepted PDFs, extracted metadata, build output, source identities,
+and complete reviews.  Page previews, intermediate build passes, archive
+response headers, downloaded duplicate PDFs, and preexisting untracked files
+remain local.  Raw LaTeX logs and pdfinfo output retain their emitted trailing
+whitespace.  Preserved policy and review exports retain final blank lines.
+A check treating the full journal as newly added also reported an old
+unchanged trailing space.  These are recorded output-format diagnostics.
+Authored changes receive their own whitespace check.
+
+marXiv accepted submission 661f900da98f at 00:05:08 UTC on 16 September
+as 2609.00006v4.  The complete review says “Accepted” and “No remarks.”
+The archive page confirms version 4, the final title, authors, abstract,
+15 pages, and two figures.  The downloaded archive PDF matches the final
+submitted digest.  Updated the report README, publication record, review
+checklist, paper index, and development notes with the completed result.
+
+The final authored-whitespace diagnostic initially treated git diff
+--no-index's ordinary difference exit code 1 as an error even when its
+--check output was empty.  Corrected that read-only diagnostic to inspect
+whitespace diagnostics and accept the documented difference status.  No
+source change followed from that diagnostic mistake.  The final publication
+review selects 51 explicit files.  The fetched branch, FETCH_HEAD, and local
+HEAD all match ef8766e0831914d17fcc7db6773b272185d869fb before staging.
