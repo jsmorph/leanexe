@@ -4,6 +4,9 @@ The [full Lean kernel checker](plans/lean-kernel-checker.md) work began on
 2026-09-16. The user authorized continued small runnable increments, each
 committed and published on branch lean-kernel-checker. See its plan and
 [executable checkpoints](LeanExe/KernelCheck/README.md) for current status.
+The [proof ledger](LeanExe/KernelCheck/PROOFS.md) records proved scalar
+primitives and deferred source obligations. This remains a PoC: continue
+M0.10/M0.11, and do no WASM proof work now.
 Other work retains its recorded status.
 
 The user authorized the [tiny transformer development](plans/tiny-transformer.md)

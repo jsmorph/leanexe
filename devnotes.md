@@ -12841,3 +12841,31 @@ answer is no: these checks were tests and source/WASM comparisons, not formal
 source soundness or artifact correctness proofs. New feature work is paused
 to add a clearly separated formal proof track, starting with sort typing and
 concrete universes, then graph/binding refinement. M0.10 and M0.11 remain pending.
+
+## 2026-09-16: Kernel checker P0/P1 universal source proofs
+
+Correctness work now has explicit theorem coverage. SortProofs proves three
+iff statements over every UInt64 pair: acceptance is exactly mathematical Nat
+succession; rejection is exactly an incorrect claim whose successor fits;
+overflow is exactly the nonrepresentable successor. The proofs explicitly
+connect word addition to unbounded natural numbers rather than assuming no wrap.
+
+UniverseProofs proves max/imax correspondence with Nat specifications, their
+accept/reject iff properties, and the unsupported-operation outcome. All ten
+public theorems kernel-check in pinned Lean. The new kernel_proofs.js command
+also audits transitive axioms and permits only propext, Classical.choice and
+Quot.sound; it excludes sorryAx, added axioms and native-evaluation trust.
+The 32 sort and 98 universe WASM/standard-Lean regressions passed separately,
+as did documentation checks. Source proof modules do not alter the checker.
+
+PROOFS.md states remaining obligations and small next milestones: P2a address
+safety and entry validation, P2b full graph refinement, P3 binding, P4 substitution,
+P5/P6 typing/checking, P7 conversion, and W0 exact scalar artifact verification.
+The old plan's deferral of all proof work until M1 is superseded. No source
+theorem for the graph checker and no exact-byte WASM theorem is claimed.
+New language features remain paused; M0.10/M0.11 are pending.
+
+The user then clarified that no WASM proofs should be attempted now and some
+source-level proofs may be deferred: this remains a PoC to establish LeanExe
+feasibility. Keep P0/P1, make larger source gaps visible, and resume M0.10/M0.11.
+That clarification supersedes the temporary feature pause described above.
