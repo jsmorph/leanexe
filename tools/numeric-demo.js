@@ -85,7 +85,9 @@ function decimalWord(text) {
 
 function main(args) {
   let input;
-  if (args[0] === "softmax" && args[1] === "--scores" && args.length >= 3 && args.length <= 6) {
+  if (args[0] === "gelu" && args[1] === "--value" && args.length === 3) {
+    input = { x_bits: decimalWord(args[2]) };
+  } else if (args[0] === "softmax" && args[1] === "--scores" && args.length >= 3 && args.length <= 6) {
     input = { scores_bits: args.slice(2).map(decimalWord) };
   } else if (args[0] === "layernorm" && args[1] === "--values" &&
       (args.length === 6 || (args.length === 16 && args[6] === "--scale" && args[11] === "--bias"))) {
@@ -96,7 +98,7 @@ function main(args) {
     };
   } else {
     if (args.length !== 1 && !(args.length === 3 && args[1] === "--input")) {
-      throw new Error("usage: tools/numeric-demo.js <demo> [--input FILE], softmax --scores SCORE [SCORE ...], or layernorm --values X0 X1 X2 X3 [--scale G0 G1 G2 G3 --bias B0 B1 B2 B3]");
+      throw new Error("usage: tools/numeric-demo.js <demo> [--input FILE], gelu --value X, softmax --scores SCORE [SCORE ...], or layernorm --values X0 X1 X2 X3 [--scale G0 G1 G2 G3 --bias B0 B1 B2 B3]");
     }
     input = JSON.parse(fs.readFileSync(args.length === 3 ? args[2] : 0, "utf8"));
   }

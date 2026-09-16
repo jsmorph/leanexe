@@ -25,6 +25,35 @@ function decoded(word) {
   return bytes.readDoubleLE();
 }
 
+function checkGelu() {
+  const inputs = [0, -0, 1, -1, 2, -2, 3, -3, 0.5, -0.5].map(bits);
+  inputs.push(1n, 0x8000000000000001n, 0x000fffffffffffffn, 0x800fffffffffffffn,
+    bits(3)-1n, bits(-3)-1n, bits(3)+1n, bits(-3)+1n,
+    bits(Infinity), bits(-Infinity), 0x7ff8000000000000n, 0x7ff0000000000001n);
+  const reference = runChecked(["lake", "env", "lean", "--run", "Project/Gelu/NativeTest.lean",
+    ...inputs.map(String)], {cwd: path.join(root, "proofs/talos/lean"), encoding: "utf8"})
+    .stdout.trim().split(/\r?\n/).map(line => line.split(" ").map(BigInt));
+  assert.equal(reference.length, inputs.length);
+  for (const [index, word] of inputs.entries()) {
+    const output = runDemo("gelu", {x_bits: word.toString(16).padStart(16, "0")});
+    assert.deepEqual([BigInt(output.status), BigInt(`0x${output.bits}`)], reference[index]);
+    const x = decoded(word);
+    const accepted = Number.isFinite(x) && Math.abs(x) <= 3;
+    assert.equal(output.status, accepted ? 0 : 1);
+    if (accepted) {
+      const expected = x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x*x*x)))/2;
+      assert.ok(Math.abs(output.value-expected) <= 1/100);
+    } else {
+      assert.equal(output.bits, "0000000000000000");
+      assert.equal(output.absolute_error_bound, undefined);
+    }
+  }
+  const cli = runChecked([process.execPath, path.join(root, "tools/numeric-demo.js"),
+    "gelu", "--value", "-1"], {encoding: "utf8"});
+  assert.deepEqual(JSON.parse(cli.stdout), runDemo("gelu", {x_bits: "bff0000000000000"}));
+  return inputs.length;
+}
+
 function checkLayerNorm() {
   const inputs = [[0, 0, 0, 0], [0, -0, 0, -0], [1, 1, 1, 1],
     [4, 4, 4, 4], [-4, -4, -4, -4], [0, 1, 2, 3], [-4, 4, -4, 4],
@@ -182,7 +211,8 @@ function main() {
   }
   checkSoftmax();
   const layerNormCount = checkLayerNorm();
-  console.log(`Checked 26 exponential, 31 softmax, and ${layerNormCount} LayerNorm vectors against the native bit model, including boundaries, signed zeros, subnormals, rejection, and CLI input validation`);
+  const geluCount = checkGelu();
+  console.log(`Checked 26 exponential, 31 softmax, ${layerNormCount} LayerNorm, and ${geluCount} GELU vectors against the native bit model, including boundaries, signed zeros, subnormals, rejection, and CLI input validation`);
 }
 
 try { main(); }

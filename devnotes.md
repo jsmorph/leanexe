@@ -12781,3 +12781,48 @@ The real perturbation target now passes: GELU has Lipschitz bound four on
 1/4.  Public theorem audits contain the standard logical axioms.  The two
 real GELU modules and the shared sign operation check in about two seconds
 each.  Documentation and whitespace checks pass.
+
+## 2026-09-16: Verified GELU execution
+
+The bounded GELU component now proves finite output within 1/100 of the
+pinned tanh formula for every binary64 input in [-3, 3].  Coefficient
+conversion, argument arithmetic, exponential approximation, addition,
+division, and the negative-input subtraction enter the proof.  The argument
+error is at most 1/10000.  The exponential error after argument perturbation
+is at most 27/10000.  The rounded denominator stays above one, and the
+positive-part error is at most 9/1000.  The public input perturbation bound
+is 1/100 plus four times the input error.
+
+The shared F64Approximation rules propagate addition and multiplication
+errors, and F64Bounded identifies finite magnitude guards.  The executable
+negative-magnitude operation preserves the exponential domain at signed
+zero and subnormal inputs.  Initial checks found a nested absolute-value
+parser ambiguity and a nonexistent zero-bound lemma name.  Explicit abs
+syntax and elementary inequalities resolved both.  Numerical modules check
+in about two seconds each.
+
+The existing FunctionRegion semantic transport checks that the exponential
+function bodies match after renaming calls and type indices.  It transfers
+the completed exponential execution theorem into the GELU module.  The
+remaining execution proof checks in four seconds.  The focused source gate
+passes, and its public axiom audits contain only propext, Classical.choice,
+and Quot.sound.  The runtime-index inventory also passes.
+
+All 22 GELU vectors agree bit-for-bit between Wasmtime and the native Talos
+bit model.  Tests include both signs, interval endpoints and adjacent
+words, signed zeros, subnormals, infinities, and NaNs.  The complete numerical
+test passes 175 vectors, including the previous exponential, softmax, and
+LayerNorm cases.  Decimal and hexadecimal input agree.  The JavaScript WASM
+execution guard, documentation checks, and whitespace checks pass.
+
+The command tools/numeric-demo.js gelu --value -1 returns
+-0.15880801373558184.  The binary digest is
+6159578dd1662f2bb1df3df0dbd4912734d5de0d16bcdb77f1d395ec085f38fd.
+The source registry contains 53 completed cases.  Exact-byte packaging
+remains deferred.  The integrated tiny model and its training remain open.
+
+The aggregate source gate first encountered sandbox EPERM while inspecting
+the pinned dependency.  Its approved invocation built the source inputs
+and regenerated gcd, then stopped on the existing assoc_list cache
+mismatch.  The aggregate remains incomplete.  Its failure does not change
+the successful focused GELU gate or runtime tests.
