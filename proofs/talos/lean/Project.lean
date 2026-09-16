@@ -134,3 +134,4 @@ import Project.EulerCertificate.Spec
 import Project.ExpSmall.Spec
 import Project.ExpWide.Spec
 import Project.Softmax.Spec
+import Project.LayerNorm.Real

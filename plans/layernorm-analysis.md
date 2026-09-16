@@ -2,8 +2,9 @@
 
 This analysis supports the LayerNorm step in [Verified tiny transformer
 inference](tiny-transformer.md).  The real-arithmetic argument precedes the
-binary64 implementation.  Bounds below become checked claims only when the
-corresponding Lean theorem passes.
+binary64 implementation.  The [real LayerNorm proofs](../proofs/talos/lean/Project/LayerNorm/Real.lean)
+check centering, normalized magnitude, input perturbation, and affine parameter
+perturbation.  Binary64 execution remains the next step.
 
 ## Reference and source audit
 
@@ -58,8 +59,8 @@ For a bound G on the perturbed scale, the composed component estimate is
 
 ## Implementation sequence
 
-- [ ] Check centering, normalized magnitude, and the perturbation identity in Lean.
-- [ ] Check the width-four component bound, including affine parameter error.
+- [x] Check centering, normalized magnitude, and the perturbation identity in Lean.
+- [x] Check the width-four component bound, including affine parameter error.
 - [ ] Define the binary64 operation tree and account for the rounded epsilon.
 - [ ] Prove successful execution and roundoff bounds on an explicit input domain.
 - [ ] Add the generated-WAT execution proof and command-line demonstration.
