@@ -1,0 +1,17 @@
+{
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "exporterRepository": "https://github.com/leanprover/lean4export",
+  "exporterCommit": "483e011449cce37c3f8ad5e2aae434cbb1d2e53c",
+  "format": "3.1.0",
+  "declaration": "implicationComposition",
+  "globals": [],
+  "universeParameters": [],
+  "axioms": [],
+  "sha256": {
+    "LeanExe/KernelCheck/Fixtures/Composition.lean": "3ac103b7eae002e2a9c9fbe1d6967438e04a65d6f3362816645a73054dd6f2ad",
+    "test/fixtures/kernel-check/composition.ndjson": "73aed4f2525ec18f0d8cd4564bdac82766e786b1c55436b65a8156cfa511e9c6",
+    "test/fixtures/kernel-check/composition-corrupt.ndjson": "d3329433aa20385f7c733229dec14a0cf00a4ea153a43d4ec4592262b12d910a",
+    "test/fixtures/kernel-check/composition.decoded.json": "29b7b6579a8181f14994edac809b36e711265463b2312f79d2bd204d1598d938"
+  }
+}
