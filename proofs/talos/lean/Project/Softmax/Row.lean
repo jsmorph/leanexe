@@ -9,6 +9,16 @@ def indexWord (i : Fin 4) : UInt64 := UInt64.ofNat i.val
 def Valid (n a b c d : UInt64) : Prop :=
   0 < n ∧ n ≤ 4 ∧ ∀ i, Finite (scores a b c d i) ∧ |value (scores a b c d i)| ≤ 4
 
+def SpreadValid (n a b c d : UInt64) : Prop :=
+  0 < n ∧ n ≤ 4 ∧ (∀ i, Finite (scores a b c d i)) ∧
+    ∀ i j, indexWord i < n → indexWord j < n →
+      |value (scores a b c d i)-value (scores a b c d j)| ≤ 8
+
+theorem valid_spread (n a b c d : UInt64) (h : Valid n a b c d) : SpreadValid n a b c d := by
+  refine ⟨h.1, h.2.1, fun i => (h.2.2 i).1, ?_⟩
+  intro i j _ _
+  exact (abs_sub _ _).trans (by linarith [(h.2.2 i).2, (h.2.2 j).2])
+
 theorem inDomain_iff (n a b c d : UInt64) : inDomain n a b c d = true ↔ Valid n a b c d := by
   simp only [inDomain, Bool.and_eq_true, decide_eq_true_eq, bounded_iff, Valid]
   constructor
@@ -82,7 +92,7 @@ theorem shifted_reference (n : UInt64) (s : Fin 4 → UInt64) (m : UInt64) (i : 
   simp only [hi, ← Finset.sum_div, reference]
   exact div_div_div_cancel_right₀ (ne_of_gt (Real.exp_pos _)) _ _
 
-theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
+theorem row_weights_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
     let s := scores a b c d
     let m := rowMaximum n a b c d
     (∀ i, Finite (weight n (indexWord i) (s i) m) ∧
@@ -95,10 +105,11 @@ theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
   dsimp only
   constructor
   · intro i
-    have hm := row_maximum_bounds n a b c d h
+    obtain ⟨j, hj, hm⟩ := row_maximum_attained n a b c d h.1
     by_cases hi : indexWord i < n
     · have ho := row_maximum_ge n a b c d i hi
-      have hs := shifted_weight _ _ (h.2.2 i).1 hm.1 (h.2.2 i).2 hm.2 ho
+      have hs := shifted_weight_spread _ _ (h.2.2.1 i)
+        (by rw [hm]; exact h.2.2.1 j) (by rw [hm]; exact h.2.2.2 i j hi hj) ho
       have hu : Real.exp (value (scores a b c d i)-value (rowMaximum n a b c d)) ≤ 1 := by
         simpa using Real.exp_le_exp.mpr (sub_nonpos.mpr ho)
       simp only [weight, realWeight, if_pos hi]
@@ -111,6 +122,18 @@ theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
       simp [weight, realWeight, hi, hf0, hv0]
   · obtain ⟨i, hi, hm⟩ := row_maximum_attained n a b c d h.1
     exact ⟨i, by simp [realWeight, hi, hm]⟩
+
+theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
+    let s := scores a b c d
+    let m := rowMaximum n a b c d
+    (∀ i, Finite (weight n (indexWord i) (s i) m) ∧
+      0 ≤ value (weight n (indexWord i) (s i) m) ∧
+      (indexWord i < n → 1/100000 ≤ value (weight n (indexWord i) (s i) m)) ∧
+      (¬indexWord i < n → weight n (indexWord i) (s i) m = 0) ∧
+      0 ≤ realWeight n s m i ∧ realWeight n s m i ≤ 1 ∧
+      |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/399) ∧
+    ∃ i, realWeight n s m i = 1 :=
+  row_weights_spread n a b c d (valid_spread n a b c d h)
 
 #print axioms inDomain_iff
 #print axioms shifted_reference

@@ -25,12 +25,12 @@ def NumericalResult (n a b c d : UInt64) (result : Result) : Prop :=
     |value (outputs result i)-reference n (scores a b c d) i| ≤ 1/64) ∧
   |(∑ i, value (outputs result i))-1| ≤ 32*arithmeticEpsilon
 
-theorem compute_numerical (n a b c d : UInt64) (h : Valid n a b c d) :
+theorem compute_numerical_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
     NumericalResult n a b c d (compute n a b c d) := by
   let w := computedWeights n a b c d
   let r := realWeight n (scores a b c d) (rowMaximum n a b c d)
   let den := denominatorWord n a b c d
-  have hw := row_weights n a b c d h
+  have hw := row_weights_spread n a b c d h
   have hf : ∀ i, Finite (w i) := fun i => (hw.1 i).1
   have hp : ∀ i, 0 ≤ value (w i) := fun i => (hw.1 i).2.1
   have hr : ∀ i, 0 ≤ r i ∧ r i ≤ 1 := fun i =>
@@ -78,6 +78,10 @@ theorem compute_numerical (n a b c d : UInt64) (h : Valid n a b c d) :
       have hh := mul_le_mul_of_nonneg_left hd.2.1 ee
       nlinarith [hd.2.2.2.2.1]
     exact (abs_sub_le _ _ _).trans ((add_le_add herr hnorm).trans (by ring_nf; rfl))
+
+theorem compute_numerical (n a b c d : UInt64) (h : Valid n a b c d) :
+    NumericalResult n a b c d (compute n a b c d) :=
+  compute_numerical_spread n a b c d (valid_spread n a b c d h)
 
 theorem softmax_success (n a b c d : UInt64) (h : Valid n a b c d) :
     softmax n a b c d = compute n a b c d := by
