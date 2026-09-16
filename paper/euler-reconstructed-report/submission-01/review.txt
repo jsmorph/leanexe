@@ -1,0 +1,12 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+1. Requirement 9: “The initial-state proof establishes safety” (§2.1), “two safe faces” (§3.2), and “The returned grid is safe” (§5.1) use “safe” without defining the predicate.  Define safety for binary64 states and grids, including its relationship to the real admissibility condition in §2.1.
+
+2. Requirement 9: “the repository’s LTG retrieval system” (§5.3) introduces an unexplained abbreviation.  Expand LTG and identify its role at first use.  The reference title “Knowledge Forest and Structured LTG” also leaves the abbreviation unexplained.
+
+3. Requirement 12, Relevance and Redundancy: “The report embeds the required 800-grid PNG directly” (§6) repeats the Figure 2 caption’s statement that the original production PNG is included.  “Required” refers to an unspecified report-production instruction.  Delete the repeated sentence.
+
