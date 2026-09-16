@@ -59,11 +59,14 @@ In the degree-seven Bernstein basis on [0, 2], the coefficients of
 `[0, 2/7, 8/21, 2/5, 8/21, 22/63, 32/105, 14/45]`.
 All lie between zero and 2/5.  The resulting exact-real approximation
 bound is `64/24609375`, about 2.601 × 10^-6, throughout [-16, 0].
-The rational coefficient calculation has been checked in Python.
-The Taylor remainder, polynomial identity, and numerical composition
-still require Lean proofs.
+Lean checks the signed Taylor remainder, polynomial identity, and eighth-power
+bound.  The polynomial is 8-Lipschitz on [-2, 2].  Rounded division therefore
+adds at most 16 times 2^-52 to its error.  Together with coefficient and Horner
+roundoff, the computed polynomial differs from P6(x/8) by at most 10^-10.
+Three rounded squarings add at most 15 times 10^-10 to the exact eighth-power
+error.  The resulting evaluator error is at most 1/300000 on [-16, 0].
 
-- [ ] Check the signed Taylor remainder and Bernstein bound.
-- [ ] Check the eighth-power error estimate.
-- [ ] Add division, coefficient, Horner, and squaring roundoff.
+- [x] Check the signed Taylor remainder and Bernstein bound.
+- [x] Check the eighth-power error estimate.
+- [x] Add division, coefficient, Horner, and squaring roundoff.
 - [ ] Propagate the sharper bound through softmax and bounded GELU.
