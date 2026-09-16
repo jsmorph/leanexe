@@ -12996,3 +12996,26 @@ the native Talos bit model.  Its maximum CPU PyTorch differences are
 for selected logits.  The focused incomplete-case gate regenerates the
 15,423-byte hidden-state module without a cache difference and checks its
 completed component proofs.  The enclosing theorem remains open.
+
+The [exponential tail analysis](plans/exponential-tail-analysis.md) derives
+the required domain extension before its Lean implementation.  It bounds
+both the computed value and exact exponential on [-16, -8], retaining
+the existing 1/400 error budget.  The arithmetic and compiled component
+functions remain the proof subjects.
+
+The initial all-logit helper placed its fuel after weight and row arguments.
+The extractor requires fuel first and rejected the generated Nat.brecOn.
+Moving fuel first exposed a separate demand check: the zero-fuel branch
+does not demand the hidden-state argument.  The inference definition now
+uses the documented fixed-range for loop, which expresses its fixed
+256-element traversal in the supported source language.
+
+The fixed-range wrapper compiles to 16,788 bytes.  The trained command
+tools/tiny-gpt2.js --text 'To b' returns all 256 logits in one WASM call.
+The first invocation encountered sandbox EPERM starting the host.  The
+approved reusable tool prefix then passed.  The command checks its recorded
+checkpoint and module hashes and reports the incomplete model-proof status.
+The full-inference test matches 1,536 logits across six contexts against
+the native Talos bit model.  Maximum CPU PyTorch difference is
+0.000039139185227021756.  This completes the executable interface while
+the model execution and numerical proofs continue.
