@@ -13517,3 +13517,26 @@ at 256 equals source inference.  The adapter and model build in 1.3 and
 1.1 seconds.  Their axiom reports contain only the standard logical axioms.
 The focused tiny_gpt2_infer gate passes, including regenerated-program
 comparison.  Allocation, release, and the full loop invariant remain open.
+
+The release execution and memory lemmas now have a shared ProofKit module.
+Both the transformer output array and Euler's seven-word cell array apply
+the same theorem.  The theorem records the exact header writes and counter
+updates.  The memory lemmas preserve bytes outside the released header and
+prove insertion into a represented free list.  The first Euler refactor
+replaced its store definition with an abbreviation, which prevented an
+existing simplification from unfolding the store update.  Retaining the
+definition and replacing the proofs preserves that use.  Euler's release
+and heap-state checks and the transformer release check pass.
+
+The shared array-push layout model proves the addresses and free-list
+bounds for successive one-word arrays, with arbitrary starting address
+and result count.  Every released array has smaller capacity than the next
+request, so the allocator takes its bump path.  The layout check passes
+in 1.8 seconds.  For 256 values, the empty array and all larger arrays
+require 277,560 bytes in total.  The emitted module starts with sixteen
+memory pages.  The complete execution proof still needs to connect these
+bounds and the release theorem to its loop invariant.
+
+The focused tiny_gpt2_infer gate passes after both additions.  It compares
+the regenerated program and checks the imported release and layout lemmas.
+All new axiom reports contain only propext, Classical.choice, and Quot.sound.
