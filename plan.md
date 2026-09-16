@@ -1,5 +1,10 @@
 # Development Plan
 
+The user authorized the [tiny transformer development](plans/tiny-transformer.md)
+on 2026-09-16.  Its first implementation target is runnable, verified binary64
+exponential softmax.  Exact-byte packages are deferred to later releases.
+The Euler work remains at its recorded pause checkpoint.
+
 The active Euler work on `main` follows the [certificate, completion, and convergence plan](plans/euler-certificates-and-convergence.md), authorized on 2026-09-15.  Phase 13 pursues those items in that order.  The certificate observer has complete source and generated-WASM execution proofs.  Exact-byte verification precedes the new 192-grid and 800-grid runs.
 
 The user requested a pause checkpoint on 2026-09-16.  The [resume record](plans/euler-certificate-resume.md) identifies the accepted proofs, export-decoding failure, unfinished modules, and next commands.
@@ -750,3 +755,19 @@ The user authorized merging `talosfp-euler` into `main`, publishing it, and purs
 - [ ] Complete and run the proved numerical certificate.
 - [ ] Investigate and establish the supported successful-completion theorem.
 - [ ] Investigate and establish the justified continuum-convergence result.
+
+## 14. Build verified tiny transformer inference
+
+The [detailed plan](plans/tiny-transformer.md) records the component domains,
+proof boundaries, and numerical research questions.  Each completed component
+has a command-line WASM demonstration and generated-WAT execution, success,
+and numerical-error proofs.  Frozen exact-byte packages are later release work.
+
+- [x] Reproduce the existing guarded Horner proof.
+- [ ] Release a bounded scalar exponential with a proved error bound.
+- [ ] Extend the exponential to the negative interval needed by softmax.
+- [ ] Release a masked, one-to-four-score softmax command-line demo.
+- [ ] Establish LayerNorm error propagation and investigate checkpoint ranges.
+- [ ] Complete GELU, affine operations, attention, and a transformer block.
+- [ ] Train and export the tiny model, then prove its execution and logit bound.
+- [ ] Complete the final exact-byte package and weight identity evidence.
