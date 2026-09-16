@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: executable milestones M0.0–M0.10 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
+Status: executable milestones M0.0–M0.11 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -10,9 +10,9 @@ Review decision: start with M0.0, a single executable sort-typing rule intended 
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** M0.11: a real Lean export. M0.10 passed its let checks. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are explicitly outside current work. See [the proof ledger](../LeanExe/KernelCheck/PROOFS.md).
+- **Next task:** M1.0: extend the export adapter to application expressions and check a real exported implication-composition proof. M0.0–M0.11 are complete. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are outside current work.
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
-- **First actual Lean export:** M0.11, using the already functioning checker.
+- **First actual Lean export:** M0.11 complete: pinned lean4export output for implicationIdentity is accepted in WASM; a well-scoped corrupted body is rejected through the same path. No globals, universe parameters or axioms enter that package.
 - **M1:** integration of the small checkpoints, not the first work unit.
 - **M2–M5:** longer-term targets to subdivide before implementation; no full-project schedule has been established.
 - **Current evidence:** each completed checkpoint has focused source checks, generated-WASM execution, and standard-Lean comparison; commands and counts are in the checker README and journal. Ten universal source theorems now cover sort typing and concrete max/imax, with an axiom audit. No overall checker soundness or exact-WASM theorem is claimed.
@@ -309,6 +309,28 @@ Check the requested type and body in WASM. In this first package, require a clos
 
 ### 5.0.1 What follows M0
 
+The completed M0 PoC reaches actual export checking. Use these small next steps:
+
+- **M1.0 — application exports:** extend only the host adapter for `app` records;
+  export implication composition from minimal Lean, preserve raw/decoded data,
+  and accept it plus reject a scoped wrong-argument corruption in the existing
+  WASM checker. No new kernel rule or symbolic-universe work is required.
+- **M1.1 — let exports:** map `letE` records losslessly to the existing value/binder
+  representation. Verify the raw fixture actually contains a let; accept it and
+  reject a malformed or wrong-valued unused let through the same path.
+- **M1.2 — symbolic-level syntax:** add a checked level table and references for
+  zero, successor, parameter, max and imax. Deliver a syntax-validation artifact;
+  do not also implement general universe comparison in this increment.
+- **M1.3 — level parameter substitution:** implement separately runnable,
+  capture-free parameter instantiation with concrete expected outputs. Keep
+  symbolic comparison and global declaration admission as subsequent increments.
+
+Subdivide symbolic comparison (including imax's zero cases) and global-environment
+admission after inspecting those workloads. The larger M1 exit gate below remains
+an integration target, not one implementation task. Keep cheap useful source
+proofs; defer larger source obligations explicitly and do no WASM proof work now.
+
+
 M1 integrates these small capabilities and adds symbolic universes, a minimal validated global declaration environment, and the fuller proof corpus described below. Break those additions into similarly scoped checkpoints when M0.11 is reached. M1 is not one few-hour task.
 
 For each M0 checkpoint retain only the source, runnable WASM, exact command, tiny input/expected-output set, and a short scope note. Full release packaging, axiom reporting, memory benchmarks, and export provenance are required when applicable; they are not imposed on the scalar M0.0 function. Do not let a growing checklist prevent delivery of the next small executable.
@@ -463,7 +485,7 @@ precise obligations, and small proof increments.
 A separate model theorem or one successful fixture does not establish checker
 soundness. A source theorem does not establish a WASM theorem. Keep both proof
 coverage and missing cases visible, and keep executable regression evidence as
-an additional gate. M0.10 and M0.11 are the active PoC sequence. Larger source proofs may
+an additional gate. M0.10 and M0.11 are complete; M1.0 is the next PoC increment. Larger source proofs may
 be deferred explicitly; no WASM proofs are being attempted now. Self-checking cannot remove the logical bootstrap by assertion.
 
 ## 6. Native certificates and bootstrap trust
@@ -594,7 +616,7 @@ These links pin the inspected source state. Recheck current files when implement
 - [x] M0.8: application typing; 7 WASM/standard-Lean cases pass.
 - [x] M0.9: beta reduction and bounded conversion; 5 conversion and 4 reduction cases pass.
 - [x] M0.10: let checking and reduction; 8 WASM/standard-Lean cases pass.
-- [ ] M0.11: actual Lean proof export through the checker.
+- [x] M0.11: actual Lean proof export through the checker; raw export reproduction, exact graph, corrupt proof, exhaustion and 14 adapter failure cases pass.
 - [ ] M1: command-line checking of actual dependent-function proofs and meaningful corruptions.
 - [ ] M2: independently checked induction/equality and arithmetic proofs.
 - [ ] M3: complete pinned-version kernel and Init closure.
@@ -689,3 +711,42 @@ build/tools/wasmtime/current/wasmtime run --invoke checkSort build/kernel-check/
 
 Next: M0.1 only. M0.0 establishes executable concrete sort typing; it does
 not check general Lean terms, declarations, proofs, or symbolic universes.
+
+
+## 13. Current PoC receipt: M0.1–M0.11 and P0/P1
+
+All M0 increments are implemented and published on lean-kernel-checker. The
+[checkpoint README](../LeanExe/KernelCheck/README.md) retains each command and
+scope; the journal records failed approaches and gate results. The complete
+focused command is `node test/kernel_all.js`.
+
+M0.11 uses lean4export revision 483e011449cce37c3f8ad5e2aae434cbb1d2e53c,
+matching Lean 4.34.0-rc2 / 6a10ac8c22beadecabdbb0919c2b50214762f91d. The minimal
+prelude theorem's raw export has 17 records and zero constant references,
+universe parameters, axioms, or other declarations. Fresh export bytes match
+the frozen fixture exactly. The adapter's decoded graph is checked against a
+separate exact fixture. A scoped corruption returns rejection (1); fuel 1
+returns exhaustion (5); 14 unsupported/malformed adapter variants fail closed.
+
+The generated import-free artifact is 2,429,809 bytes, SHA-256
+`aa1353e70bdbf4a101efe57beb1220ca603820d19c0c7a767638a0bc1645350d`.
+Actual accepted/rejected runtime commands also passed with Lean environment
+variables and the Lean preload removed. This environment needs the Wasmtime
+C API directory in LD_LIBRARY_PATH because its dynamic loader cannot resolve
+its usual executable-relative path; that session setup is not a Lean runtime
+dependency. Runtime commands and export reproduction instructions are in the
+[fixture receipt](../test/fixtures/kernel-check/README.md).
+
+P0/P1 add ten kernel-checked source theorems for all scalar sort/universe inputs.
+The axiom audit permits only propext, Classical.choice and Quot.sound. Binding,
+checker soundness, and adapter fidelity are not yet proved. Per the user's
+clarification, larger source proofs may be deferred in this PoC and no WASM
+proofs are being attempted. The [proof ledger](../LeanExe/KernelCheck/PROOFS.md)
+keeps those boundaries explicit.
+
+Implementation feasibility is materially better supported now: explicit first-
+order machines in LeanExe perform binding, dependent-function typing, beta/zeta
+conversion and an actual exported closed proof check. This does not establish
+full Lean compatibility, inductive/recursor support, symbolic universe handling,
+or large-library performance. The multi-megabyte artifact and naive graph copying
+are remaining scale concerns. M1.0 is the next small task, not a full-kernel port.

@@ -1,9 +1,15 @@
 # Lean kernel checker: executable checkpoints
 
-Executable coverage reaches M0.10. Formal source proofs currently cover only
+Executable coverage reaches M0.11, including an actual Lean proof export. Formal source proofs currently cover only
 sort typing and concrete max/imax (P0/P1); binding, checker soundness and
 exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
 and run `node test/kernel_proofs.js` to check the ten universal theorems.
+
+Run the complete focused suite with `node test/kernel_all.js`. For the real
+export demo, run `node test/kernel_export.js`, then use the runtime command
+in the M0.11 section below.
+
+## M0.0: concrete sort typing
 
 This is the first executable checkpoint toward a full Lean kernel checker
 implemented in LeanExe. It checks one rule for concrete universe levels:
@@ -24,7 +30,7 @@ accepts a wrapped successor. These words are function results, not shell
 exit statuses. This checkpoint does not parse declarations, check proofs,
 or implement symbolic universe parameters.
 
-## Build and check
+### Build and check
 
 Use the repository's pinned tools and execution rules from `AGENTS.md` and
 `DEVELOPING.md`. Install Wasmtime with `tools/download-wasmtime.sh`, then:
@@ -44,7 +50,7 @@ It fails if the returned word differs from the expected result.
 Lean to validate `Sort 0 : Sort 1`, `Sort 1 : Sort 2`, and `Sort 2 : Sort 3`.
 These are focused source checks, not a generic compiler-correctness theorem.
 
-## Run the generated artifact
+### Run the generated artifact
 
 Once built, only the WASM file and Wasmtime are required:
 
@@ -270,7 +276,33 @@ build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-10.wa
 
 This returns 0 for `let A : Type := Prop; A : Type`.
 
+## M0.11: a real Lean export
+
+`node test/kernel_export.js` builds `checker-m0-11.wasm`, decodes the unchanged
+pinned-Lean export of `implicationIdentity`, and passes its type and body to
+WASM. It accepts the real proof and rejects a well-scoped corruption through
+the same path. Fourteen malformed/unsupported adapter cases are rejected;
+exhaustion remains separate from rejection. The binary has no imports.
+
+```sh
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m0-11.wasm test/fixtures/kernel-check/identity.ndjson
+node tools/kernel-check-export.js .lake/build/kernel-check/checker-m0-11.wasm test/fixtures/kernel-check/identity-corrupt.ndjson
+```
+
+The reports are `accepted` (exit 0) and `rejected` (exit 1), with zero globals,
+universe parameters and axioms. After preparation these commands require no
+Lean or Tenet. See the [fixture receipt](../../test/fixtures/kernel-check/README.md)
+for the exact exporter revision, hashes, decoder limits, and reproduction command.
+
+The host adapter handles syntax only. Inference, checking and conversion stay
+in the LeanExe-compiled artifact. Adapter fidelity and overall soundness are
+not formally proved; the source proof coverage remains limited to P0/P1.
+
 ## Next checkpoint
 
-M0.11 checks a real Lean export. This remains a PoC: larger source proofs are
-deferred and no WASM proof work is planned now. See the [full plan](../../plans/lean-kernel-checker.md).
+M1.0 should extend the adapter to application expressions and check an actual
+exported implication-composition proof. The underlying application checker
+already runs. Then extend the adapter to lets before tackling symbolic levels
+and global declarations. See the [full plan](../../plans/lean-kernel-checker.md).
+This remains a PoC: larger source proofs may be deferred, and no WASM proof
+work is planned now.

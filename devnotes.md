@@ -12885,3 +12885,36 @@ values. Lean also checked the actual positive examples. The 9 conversion,
 17 graph and 25 binding regression cases passed; documentation checks passed.
 Source soundness for this operation remains deferred under the user's PoC
 clarification. M0.11, an actual Lean export, is next.
+
+## 2026-09-16: Kernel checker M0.11
+
+The first real-export artifact checks implicationIdentity, a closed proof of
+forall p : Prop, p -> p from a minimal prelude module. Frozen NDJSON is unchanged
+output from lean4export revision 483e011449cce37c3f8ad5e2aae434cbb1d2e53c,
+matching Lean 4.34.0-rc2. The reproduction command rebuilt the fixture and
+confirmed byte-for-byte equality. Provenance records source, export, decoded
+graph and corrupted fixture hashes. There are no globals, universe parameters
+or axioms in this example.
+
+The adapter only validates and decodes this explicitly bounded export subset;
+it does not infer, reduce, or decide acceptance. Unsupported records fail
+explicitly. Changing the inner lambda body from its proof hypothesis to the
+outer proposition preserves scope but changes the type. The WASM checker
+accepts the original and rejects this corruption. Both runtime commands also
+passed with the Lean environment and session preload removed, using Node,
+the adapter and Wasmtime. The emitted WASM has no imports.
+
+The artifact has 2,429,809 bytes and SHA-256
+aa1353e70bdbf4a101efe57beb1220ca603820d19c0c7a767638a0bc1645350d.
+This is an execution receipt, not a proof of binary correctness. The export
+gate covers the exact decoded graph, native scope of both fixtures, native
+and WASM verdicts, fuel exhaustion, and fourteen adapter failure variants.
+The serial kernel_all.js gate passed all M0.0 through M0.11 suites and all ten
+primitive source theorem/axiom audits. Maintained documentation checks passed.
+
+The user's PoC scope remains controlling: no WASM proofs now; larger source
+soundness and adapter-refinement proofs are deferred explicitly. Full Lean
+compatibility and performance at scale are not established by this example.
+The handoff splits next work into M1.0 exported applications, M1.1 exported
+lets, M1.2 symbolic-level syntax validation, and M1.3 level substitution.
+Each should retain a runnable artifact and its own commit/push.
