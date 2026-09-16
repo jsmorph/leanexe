@@ -26,11 +26,13 @@ function runLeanrun(args, localMode) {
     ...process.env,
     LEANRUN_LOCAL: localMode,
     LEANRUN_TOOLCHAIN: toolchain,
+    LEANRUN_RUNNER: path.join(toolchainBin, "systemd-run"),
     LEANRUN_LOCKDIR: lockDirectory,
     LEANRUN_CACHE_HOME: cacheDirectory,
     LEANRUN_TEST_SYSTEMD_MARKER: systemdMarker,
   };
   delete env.LEANRUN_IN_SCOPE;
+  delete env.LEANRUN_LOCK_TIMEOUT;
   return spawnSync(leanrun, args, {
     cwd: repoRoot,
     env,
