@@ -77,8 +77,12 @@ access, context projection, and feed-forward contraction.  The
 [hidden-state theorem](lean/Project/TinyGpt2Hidden/Hidden.lean) now composes
 those results, proving termination, exact raw-bit model agreement, and
 store preservation for every four-byte input and represented weight array
-with at least 2,488 words.  The full vocabulary-output loop and composed
-checkpoint numerical certificate remain open.
+with at least 2,488 words.  The same composition proof now checks the
+[internal hidden function](lean/Project/TinyGpt2Infer/Hidden.lean) in the
+complete inference module.  Its
+[single-logit theorem](lean/Project/TinyGpt2Infer/Logit.lean) proves exact
+execution and store preservation for every vocabulary token.  The full
+vocabulary-output loop and composed checkpoint numerical certificate remain open.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

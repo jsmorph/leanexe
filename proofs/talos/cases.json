@@ -687,6 +687,20 @@
         "Project.TinyGpt2Hidden.Spec.hidden_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "tiny_gpt2_infer",
+      "annotations": true,
+      "module": "Project.TinyGpt2.Inference",
+      "entry": "Project.TinyGpt2.infer",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Infer",
+      "specTarget": "Project.TinyGpt2Infer.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Infer.Spec.hidden_exact",
+        "Project.TinyGpt2Infer.Spec.logit_exact"
+      ],
+      "complete": false
     }
   ]
 }

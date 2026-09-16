@@ -56,5 +56,7 @@ Those comparisons supply empirical evidence.  The
 [hidden-state execution theorem](../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean)
 now proves termination, exact raw-bit model agreement, and store preservation
 for all four-byte inputs and represented weight arrays of at least 2,488 words.
+The complete inference module reuses this composition proof for its internal
+hidden function, and its single-logit function has a checked execution theorem.
 The vocabulary-output loop, remaining checkpoint ranges, and composed logit
 theorem remain open.

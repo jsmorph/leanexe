@@ -13429,3 +13429,45 @@ and whitespace checks pass.
 The aggregate source-artifact check stops at the existing assoc_list cache
 mismatch during regeneration, as in the previous run.  No cache was refreshed.
 The focused tiny-model gate and its trained execution test both pass.
+
+The full inference entry is now registered as an incomplete source case.
+Its regenerated 16,788-byte binary matches the published CLI artifact's
+SHA-256, 336f7e80db383f7d4745f711c53a355d4074fced19d0d3bc37e4c4bd2b4c849a.
+The first seventy-one helper definitions match the hidden-state module.
+A checked FunctionRegion identity transfers their execution theorems to
+the full module.  This region proof builds in eleven seconds.  Its internal
+hidden function adds an owner parameter while retaining 782 local slots.
+A shared composition tactic will accept the target module, instruction
+suffix namespace, theorem transfer, and owner value.  Its first three
+public-entry calls pass a focused diagnostic.  Full composition checks
+remain pending.
+
+The complete shared-template public-entry check passes with the standard
+logical axioms.  The template preserves the accepted composition body and
+parameterizes the target definitions, instruction suffixes, component
+execution transfer, and owner value.  I replaced its initial keyword syntax
+with punctuation-delimited arguments so ordinary parameter names remain
+available to importing modules.  The internal-entry adapter is fifty lines.
+Its complete check remains pending.
+
+The first internal-entry check found one component call that still used
+the standalone module: residual addition.  Applying the same checked region
+transfer used by the other component calls fixes it.  The public adapter
+also needed its zero owner argument without a type annotation inside the
+macro's delimiter.  The complete internal hidden-state theorem now builds
+in 183 seconds.  Its axiom report contains propext, Classical.choice, and
+Quot.sound.  The generated instruction-suffix equality builds in 111 seconds.
+
+The vocabulary-logit function now has an execution and store-preservation
+theorem for every byte token and represented weight array of at least
+2,488 words.  It composes the transferred four-term column dot product,
+the checked bias lookup, and the binary64 addition.  The proof builds in
+3.2 seconds with the same standard logical axioms.  The full inference
+registration remains incomplete while its allocation and output loop are open.
+
+The public hidden-state adapter also passes, in 181 seconds.  The focused
+tiny_gpt2_hidden gate and the incomplete tiny_gpt2_infer target both pass,
+including regenerated-program comparison.  The registry and aggregate
+imports agree on fifty-five registrations and fifty-four completed cases.
+The documentation and whitespace checks pass.  The previously recorded
+assoc_list cache mismatch still blocks the aggregate source-artifact gate.
