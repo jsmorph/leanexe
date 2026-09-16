@@ -54,6 +54,18 @@
       },
       "theorem": "Project.Softmax.Spec.softmax_real_error",
       "sha256": "44e7632e97bbd4ddaf9a3f420ba727896afa4ded542178570e865965468ececd"
+    },
+    {
+      "name": "layernorm",
+      "kind": "layernorm",
+      "fields": ["values_bits", "scale_bits", "bias_bits"],
+      "case": "layer_norm",
+      "wasm": "proofs/talos/.generated/layer_norm/program.wasm",
+      "export": "layerNorm",
+      "domain": "Four finite binary64 inputs, four scales, and four biases, all in [-4, 4]; real epsilon is 1/100000",
+      "absoluteErrorBound": {"numerator": "1", "denominator": "1000000"},
+      "theorem": "Project.LayerNorm.Spec.layerNorm_real_error",
+      "sha256": "b290d7d3931d40f81c97aaa9a156960e841280e28d10e618719eb0975d3ea76b"
     }
   ]
 }

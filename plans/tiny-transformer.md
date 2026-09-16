@@ -29,7 +29,7 @@ tanh GELU formula.  Training is outside the inference proof.
 | Small exponential | Binary64 values in [-1, 0] | Finite positive output, exact one at zero, absolute error at most 1/4000 (proved). |
 | Extended exponential | Binary64 values in [-8, 0] | Proved positivity and absolute error at most 1/400 after range reduction and reconstruction. |
 | Softmax | One to four scores in [-4, 4], nonempty prefix mask | Proved exact masked zeros, positive finite active outputs, component error at most 1/64, and normalization error at most 32 times 2^-52. |
-| LayerNorm | Width four, bounded inputs and parameters | Success and error propagation, including constant inputs. |
+| LayerNorm | Four inputs, four scales, and four biases in [-4, 4] | Proved successful execution, absolute error at most 1/1000000, and input and parameter perturbation bounds, including constant inputs. |
 | GELU and affine operations | Explicit bounded inputs and parameters | Local error and perturbed-input bounds. |
 | Attention and block | Certified intermediate ranges | Composed execution and numerical theorems. |
 | Trained model | Frozen weights and certified token domain | Concrete logit bound and successful inference. |
