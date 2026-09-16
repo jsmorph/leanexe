@@ -12689,3 +12689,18 @@ commands are recorded in the checker plan's implementation receipt.
 
 M0.1, concrete max/imax universe checks, is next. The transformer and Euler
 work retain their recorded state.
+
+## 2026-09-16: Kernel checker M0.1 and publication
+
+The user authorized a dedicated branch and publication after each increment.
+M0.0 is published on lean-kernel-checker as a2450771e57d6cfed9e2fde359a0b0451c0fa915.
+Command-line Git lacked credentials; the connected GitHub tree/commit API
+published the exact tested tree. Fetch and tree equality verified the result;
+the original local M0.0 commit remains on kernel-checker-m0-0.
+
+M0.1 adds concrete maxLevel, imaxLevel, and checkLevelOp. The zero codomain
+returns universe zero, including a maximum UInt64 domain. Unknown operations
+return unsupported (3). The focused source build and 98 WASM/standard-Lean
+comparisons passed, including incorrect claims and high-bit inputs.
+The M0.0 32-case regression and documentation gate also passed.
+No compiler changes were required. M0.2, validated term graphs, is next.

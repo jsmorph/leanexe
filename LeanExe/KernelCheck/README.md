@@ -1,4 +1,4 @@
-# Lean kernel checker: M0.0
+# Lean kernel checker: executable checkpoints
 
 This is the first executable checkpoint toward a full Lean kernel checker
 implemented in LeanExe. It checks one rule for concrete universe levels:
@@ -56,7 +56,22 @@ Wasmtime's CLI accepts signed i64 arguments. To supply UInt64 maximum,
 use its two's-complement spelling `-1`; `checkSort ... -1 0` returns `2`.
 The regression driver converts boundary inputs automatically.
 
+## M0.1: concrete universe operations
+
+`node test/kernel_universe.js` builds `checker-m0-1.wasm` and checks 98
+WASM results against mathematical expectations and standard Lean.
+The scalar entry is `checkLevelOp op u v expected`: operation 0 is `max`,
+1 is `imax`; results are 0 for a correct claim, 1 for an incorrect claim,
+and 3 for an unsupported operation. In particular, `imax u 0 = 0`.
+
+```sh
+build/tools/wasmtime/current/wasmtime run --invoke checkLevelOp .lake/build/kernel-check/checker-m0-1.wasm 1 7 0 0
+build/tools/wasmtime/current/wasmtime run --invoke checkLevelOp .lake/build/kernel-check/checker-m0-1.wasm 0 7 0 0
+```
+
+These return 0 and 1. No symbolic universe expressions are supported yet.
+
 ## Next checkpoint
 
-M0.1 adds concrete universe `max` and `imax`. The complete handoff and later
+M0.2 adds validated term graphs. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).

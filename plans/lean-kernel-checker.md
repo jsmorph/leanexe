@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: M0.0 complete on 2026-09-16; source checks and 32 generated-WASM judgments pass. M0.1 is next.
+Status: M0.0 and M0.1 complete on 2026-09-16. M0.2 is next. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -10,13 +10,13 @@ Review decision: start with M0.0, a single executable sort-typing rule intended 
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** M0.1: add concrete max/imax universe checks. M0.0 is complete; see section 12 for its implementation and runtime receipt.
+- **Next task:** M0.2: validate encoded term graphs. M0.0 and M0.1 are complete; see section 12 and the development journal for receipts.
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
 - **First actual Lean export:** M0.11, using the already functioning checker.
 - **M1:** integration of the small checkpoints, not the first work unit.
 - **M2–M5:** longer-term targets to subdivide before implementation; no full-project schedule has been established.
 - **Current evidence:** M0.0 source checks, 32 generated-WASM judgments, and direct command-line smoke checks pass. The 1,116-byte artifact implements only concrete sort typing. No full-kernel checker or soundness theorem is claimed.
-- **Current action scope:** the user authorized implementation and local Lean execution; M0.0 has been implemented. Preserve leanexe's existing roadmap and unrelated work; M0.1 is the next unimplemented checkpoint.
+- **Current action scope:** the user authorized continued implementation, local Lean execution, and a commit and push after each increment on lean-kernel-checker. Preserve the existing roadmap and unrelated work.
 
 Read sections 1–2 for the goal and claim boundaries, section 5.0 for exact M0 checkpoints, and section 8 for the first-session procedure. Sections 3–4 and 6–10 retain the design constraints, coverage requirements, trust discussion, and pinned evidence needed later; they are not all prerequisites for M0.0.
 
@@ -567,7 +567,7 @@ These links pin the inspected source state. Recheck current files when implement
 - [x] Reviewed feasibility and replaced horizontal implementation phases with runnable release milestones.
 - [x] Incorporated the user's correction: M1 was too large; start with small M0 checkpoints.
 - [x] M0.0: scalar concrete-sort typing rule and runnable WASM; source checks and 32 runtime judgments pass.
-- [ ] M0.1: concrete max/imax checks.
+- [x] M0.1: concrete max/imax checks; 98 WASM/standard-Lean comparisons pass.
 - [ ] M0.2: validated encoded syntax.
 - [ ] M0.3: bound-variable scope and shifting.
 - [ ] M0.4: local contexts and variable inference.
