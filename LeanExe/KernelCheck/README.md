@@ -1,5 +1,10 @@
 # Lean kernel checker: executable checkpoints
 
+Executable coverage reaches M0.9. Formal source proofs currently cover only
+sort typing and concrete max/imax (P0/P1); binding, checker soundness and
+exact-WASM correctness remain unproved. See the [proof coverage ledger](PROOFS.md)
+and run `node test/kernel_proofs.js` to check the ten universal theorems.
+
 This is the first executable checkpoint toward a full Lean kernel checker
 implemented in LeanExe. It checks one rule for concrete universe levels:
 
@@ -247,7 +252,6 @@ Fuel exhaustion returns 5, never an incorrect-proof verdict.
 
 ## Next checkpoint
 
-New language features are paused while formal source-level proof coverage is
-added. Start with sort typing and concrete universe operations; see the plan
-for the binding and checker refinement obligations. M0.10 remains pending. The complete handoff and later
-milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).
+M0.10 adds checked lets and zeta reduction, then M0.11 checks a real Lean export.
+This remains a PoC. Larger source proofs are deferred; no WASM proof work is
+planned now. The [full plan](../../plans/lean-kernel-checker.md) records the scope.
