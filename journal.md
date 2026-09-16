@@ -23355,3 +23355,53 @@ tools/leanrun invocations, without shell redirection or another approval.
 The outer advance loop must now carry the boundary accumulator through
 accepted trials, update it with the checked vector-add function, and return
 it unchanged on failure.  Output packing and exact-byte verification follow.
+
+The trial/retry checkpoint was pushed and fetched as
+f7e4bc1b58836bb132904bda4d8cb26fae665046.  The outer-loop review identified
+18 parameters, 157 locals, the checked guard at local 35, and a 109-instruction
+accepted-boundary accumulation prefix.  The loop retains its previous
+ownership replacement invariant and adds an interval accumulator.  The
+accepted continuation composes checked vector addition before the existing
+release and time update.
+
+The outer scan, trial call, vector accumulation, and continuation proofs
+pass with standard axioms.  Guard and return-frame proofs also pass.  The
+first drafts needed the larger generated function's recursion-depth limit
+and the updated guard index.  Expanding the parameter list into its ABI
+order removed repeated reverse-list simplification from instruction steps.
+The invariant composition is in progress.  Its first draft retained a
+redundant existential accumulator on completed states, and frame equalities
+needed normalization to the explicit parameter list used by the instruction
+proof.  Failed drafts are preserved.
+
+The complete outer advance entry and page-bound theorem now pass with
+standard axioms.  They cover the exact generated 184 function, all failure
+returns, accepted boundary accumulation, grid ownership, reservation reuse,
+and the finite loop measure.  The enclosing run theorem initially exhausted
+400,000 elaboration heartbeats after the first total subtraction.  Progress
+markers localized the cost to a theorem carrying hundreds of generated
+local updates.  The failed drafts remain in the research directory.
+
+A separate residual-tail theorem now checks the final subtraction and
+sixteen-word return against explicit local-frame premises.  Its axiom audit
+contains propext, Classical.choice, and Quot.sound.  The first helper draft
+omitted list-index reductions needed to expose the selected instruction
+region.  Adding those reductions made the proof pass.  No resource limit,
+source program, generated instruction, or execution assumption changed.
+
+The run composition now passes.  The initial split still reached the
+heartbeat limit while reducing the length of a generated local list.
+Replacing reduction by the checked List.length_set lemma removed that
+cost.  Final-total, total-difference, and residual subproofs each check
+against their generated call boundaries.  Their explicit frame premises
+preserve the initial totals and controller result.  The run theorem covers
+all controller status returns and preserves the page and reservation bounds.
+Its axiom audit contains only propext, Classical.choice, and Quot.sound.
+The new checks used direct tools/leanrun commands and one Lean process.
+
+Output packing research identified the exact missing resource result.
+The existing output theorem consumes its allocation budget and exposes
+only the final page bound.  Generalizing its composition to retain an
+arbitrary spare budget will justify the certificate and combined-array
+allocations.  The earlier output API can remain as the zero-spare corollary.
+The generated binary and numerical recurrence remain unchanged.

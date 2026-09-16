@@ -38,6 +38,7 @@ The binary64 time word and the sum of decoded timestep durations are separate qu
 - [ ] Inspect compiler output and reuse checked regions, fold guidance, and allocation theorems where their premises match.
 - [x] Prove exact generated execution and store preservation for grid totals, boundary reads, reconstructed face fluxes, the boundary fold, and physical timestep scaling.
 - [x] Prove exact trial and retry execution, all failure paths, heap reservations, and interval results.
+- [x] Prove complete outer-loop and enclosing-run execution through initialization, final totals, and residual intervals.
 - [ ] Prove complete generated execution, allocation, exact output, and exact-byte behavior.  Run independent package checking and axiom audits.
 - [ ] Run and inspect the proved certificate at 192, then at 800, with the standard one-process runner limits.  Preserve both earlier datasets.
 - [ ] Publish the certificate values, meanings, widths, run measurements, and proof references.

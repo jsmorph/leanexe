@@ -159,5 +159,7 @@ The generated totals and boundary-contribution functions have exact execution
 and store-preservation proofs.  Checked function-region equality reuses the
 previous sweep, initialization, output, and release proofs.
 The trial and retry functions now have complete execution proofs, including
-all failure paths, exact interval results, and heap reservations.  The outer
-time-step loop, final output, and exact-byte package remain open.
+all failure paths, exact interval results, and heap reservations.  The complete
+time-step loop and enclosing run now prove exact generated execution through
+initialization, final totals, and the four residual intervals.  Final packing,
+the exported entry, and the exact-byte package remain open.
