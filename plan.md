@@ -1,5 +1,11 @@
 # Development Plan
 
+The [full Lean kernel checker](plans/lean-kernel-checker.md) work began on
+2026-09-16. Its immediate scope is M0.0: a runnable concrete sort-typing rule
+compiled through LeanExe. M0.0 is complete: its source checks and 32 WASM
+judgments pass. M0.1 adds concrete max/imax universe checks. Other work
+retains its recorded status.
+
 The user authorized the [tiny transformer development](plans/tiny-transformer.md)
 on 2026-09-16.  Its first implementation target is runnable, verified binary64
 exponential softmax.  Exact-byte packages are deferred to later releases.
