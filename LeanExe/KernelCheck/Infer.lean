@@ -57,6 +57,21 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
       if s.status != 0 then return s
       s := instantiateCore s (nodeB s.graph saved) b
       if s.status != 0 then return s
+    else if phase == 5 then
+      s := whnfCore s s.root
+      if s.status != 0 then return s
+      if nodeTag s.graph s.root != 0 then
+        return { s with status := if nodeTag s.graph s.root == 4 then 3 else 1 }
+      stack := stack.push term |>.push 6 |>.push 0
+      stack := stack.push a |>.push 0 |>.push 0
+    else if phase == 6 then
+      s := equalCore s s.root (nodeA s.graph b)
+      if s.status != 0 then return s
+      s := instantiateCore s (nodeB s.graph b) a
+      if s.status != 0 then return s
+      -- Infer after substituting the checked value, so local definitions are
+      -- available in dependent body types. Even unused values were checked.
+      stack := stack.push s.root |>.push 0 |>.push 0
     else if tag == 0 then
       if a == 18446744073709551615 then return { s with status := 2 }
       s := addNode s 0 (a + 1) 0
@@ -71,6 +86,9 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
     else if tag == 4 then
       stack := stack.push term |>.push 3 |>.push 0
       stack := stack.push a |>.push 0 |>.push 0
+    else if tag == 5 then
+      stack := stack.push term |>.push 5 |>.push 0
+      stack := stack.push (nodeA s.graph b) |>.push 0 |>.push 0
     else return { s with status := 3 }
   if stack.isEmpty then return s else return { s with status := 5 }
 

@@ -1,7 +1,7 @@
 # Correctness evidence and next proof milestones
 
 Executable milestones and formal proof coverage are different statuses.
-M0.0–M0.9 have source tests and WASM/standard-Lean comparisons. They do **not**
+M0.0–M0.10 have source tests and WASM/standard-Lean comparisons. They do **not**
 establish overall checker soundness or correctness of the emitted WASM.
 The user clarified the current priority: this is a PoC of what LeanExe can
 execute; some source proofs may be deferred, and there is no WASM proof work
@@ -51,7 +51,7 @@ one successful fixture is not a theorem about every accepted input.
    size bound. Prove address arithmetic and root/record access safety for the
    actual helpers, plus the validator's root/alignment implications. Keep this
    first graph proof narrow; it does not establish the entire validator yet.
-2. **P2b: full graph validation refinement.** Define the decoded four/five-form
+2. **P2b: full graph validation refinement.** Define the decoded admitted-form
    syntax and prove that every successful validation satisfies the backward
    reference and canonical-field invariants, including unreachable records.
 3. **P3a: scope.** Prove the explicit traversal invariant at each occurrence;

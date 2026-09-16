@@ -1,7 +1,8 @@
 namespace LeanExe.KernelCheck
 
 /-- Three words per node: tag, first payload, second payload. Node IDs are
-zero-based. Tags: 0 sort, 1 bvar, 2 Pi, 3 lambda, 4 app. Children precede parents. -/
+zero-based. Tags: 0 sort, 1 bvar, 2 Pi, 3 lambda, 4 app, 5 let.
+A let holds its value and a lambda node encoding its annotation/body. -/
 def validateGraph (g : Array UInt64) (root : UInt64) : UInt64 := Id.run do
   if g.size % 3 != 0 then return 4
   let count := g.size / 3
@@ -12,8 +13,9 @@ def validateGraph (g : Array UInt64) (root : UInt64) : UInt64 := Id.run do
     let b := g[i * 3 + 2]!
     if tag == 0 || tag == 1 then
       if b != 0 then return 4
-    else if tag == 2 || tag == 3 || tag == 4 then
+    else if tag == 2 || tag == 3 || tag == 4 || tag == 5 then
       if a.toNat >= i || b.toNat >= i then return 4
+      if tag == 5 && g.getD (b * 3).toNat 0 != 3 then return 4
     else return 4
   return 0
 
