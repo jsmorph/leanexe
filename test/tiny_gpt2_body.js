@@ -20,7 +20,7 @@ function main() {
   fs.mkdirSync(directory, { recursive: true });
   runChecked([path.join(root, ".venv-tiny-gpt2/bin/python"), "training/tiny-gpt2/fixture.py",
     "--output", fixturePath, ...(checkpoint ? ["--checkpoint", checkpoint] : [])], { cwd: root, encoding: "utf8" });
-  runChecked(["lake", "--log-level=error", "build", "Project.TinyGpt2.Model"],
+  runChecked(["lake", "--log-level=error", "build", "Project.TinyGpt2.Inference"],
     { cwd: proofRoot, encoding: "utf8" });
   runChecked(["lake", "env", path.join(root, ".lake/build/bin/lean-wasm"), "compile",
     "--module", "Project.TinyGpt2.Model", "--entry", "Project.TinyGpt2.hidden", "--out", wasm],
@@ -65,8 +65,36 @@ function main() {
   });
   assert.deepEqual(outputs[0], outputs[4], "position zero depends on future tokens");
   assert.deepEqual(outputs[1], outputs[5], "position one depends on future tokens");
+  const allNative = runChecked(["lake", "env", "lean", "--run", "Project/TinyGpt2/NativeTest.lean", fixturePath, "all"],
+    { cwd: proofRoot, encoding: "utf8", timeout: 180000 }).stdout.trim().split(/\r?\n/)
+    .map(line => line.split(/\s+/).map(BigInt));
+  const finalCases = fixture.cases.filter(c => c.position === 3);
+  assert.equal(allNative.length, finalCases.length);
+  let allDifference = 0;
+  for (const [i, c] of finalCases.entries()) {
+    const text = host.call(path.join(root, "data/tiny-gpt2-v1/inference.wasm"), "infer", "array-u64",
+      [host.arrayU64(fixture.weights), ...c.tokens.map(host.i64)]);
+    assert.match(text, /^\[[0-9]+(?:, [0-9]+)*\]$/);
+    const actual = text.slice(1, -1).split(", ").map(BigInt);
+    assert.equal(actual.length, 256);
+    assert.deepEqual(actual, allNative[i], `native full inference differs at case ${i}`);
+    actual.forEach((word, token) => {
+      const bytes = Buffer.alloc(8);
+      bytes.writeBigUInt64LE(word);
+      const difference = Math.abs(bytes.readDoubleLE() - c.all_logits[token]);
+      allDifference = Math.max(allDifference, difference);
+      assert(difference < 0.01, `PyTorch full inference differs at case ${i}, token ${token}`);
+    });
+  }
+  if (checkpoint === "data/tiny-gpt2-v1/checkpoint.json") {
+    const cli = JSON.parse(runChecked([path.join(root, "tools/tiny-gpt2.js"), "--text", "To b"],
+      { cwd: root, encoding: "utf8" }).stdout);
+    assert.deepEqual(cli.tokens, [84, 111, 32, 98]);
+    assert.deepEqual(cli.logits_bits.map(x => BigInt(`0x${x}`)), allNative.at(-1));
+  }
   process.stdout.write(`Checked ${native.length} ${checkpoint ? "trained" : "initialized"} model rows against the native bit model; ` +
-    `maximum empirical PyTorch hidden/logit differences ${maximumDifference}/${maximumLogitDifference}\n`);
+    `maximum empirical PyTorch hidden/logit differences ${maximumDifference}/${maximumLogitDifference}\n` +
+    `Checked ${finalCases.length * 256} complete inference logits; maximum empirical PyTorch difference ${allDifference}\n`);
 }
 
 try { main(); }
