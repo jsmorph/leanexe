@@ -1,7 +1,7 @@
 # Correctness evidence and next proof milestones
 
 Executable milestones and formal proof coverage are different statuses.
-M0.0–M0.10 have source tests and WASM/standard-Lean comparisons. They do **not**
+M0.0–M0.11 have source tests and WASM/standard-Lean comparisons. They do **not**
 establish overall checker soundness or correctness of the emitted WASM.
 The user clarified the current priority: this is a PoC of what LeanExe can
 execute; some source proofs may be deferred, and there is no WASM proof work
@@ -71,11 +71,13 @@ one successful fixture is not a theorem about every accepted input.
 8. **P7: beta conversion.** Prove the reducer's stack invariant, typing
    preservation, and successful comparison soundness. Missing eta and proof
    irrelevance remain explicit incompleteness, not assumed rules.
+
 Exact-WASM proofs are explicitly outside current work. The binary refinement
 row above records an unproved boundary, not an active PoC task.
 
 For each proof increment, retain the theorem statement, its source connection,
 axiom audit, executable regression command, remaining gaps, and a commit/push.
 Revise source structure when needed to support tractable invariants; recheck
-its observable WASM behavior after each such change. Continue M0.10–M0.11 now; defer larger source obligations openly rather than
-treating tested coverage as already proved.
+its observable WASM behavior after each such change. M0.10–M0.11 are complete.
+Continue the next small PoC increments; defer larger source obligations openly
+rather than treating tested coverage as already proved.

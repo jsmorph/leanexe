@@ -11,6 +11,8 @@ const roots = [
   "plan.md",
   "docs",
   "plans",
+  "LeanExe/KernelCheck",
+  "test/fixtures/kernel-check",
   "demos",
   "benchmarks",
   "ltg",
