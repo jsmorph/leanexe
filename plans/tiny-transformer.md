@@ -27,6 +27,10 @@ numerical bound first.  Parameterize new sequence and softmax lemmas by
 length where practical.  The larger model will require array-based context
 traversal, expanded positional embeddings, training, and new certificates.
 
+The user also authorized later seed-controlled sampling from the top k logits
+using the [Lean PRNG](../docs/prng.md).  PRNG correctness remains outside the
+formal proof scope.
+
 ## Component sequence
 
 | Component | Initial domain | Required result |
