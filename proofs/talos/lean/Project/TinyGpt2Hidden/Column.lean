@@ -7,14 +7,6 @@ open Wasm Project.TinyGpt2 Project.ProofKit
 set_option maxHeartbeats 1000000
 set_option maxRecDepth 4096
 
-macro "wp_column_stage" : tactic => `(tactic|
-  (first
-    | rw [wp_localGet_cons]
-    | rw [wp_localSet_cons]
-    | rw [wp_constI64_cons]
-   simp only [Locals.get, Locals.set?, List.length, List.getElem?_cons,
-     List.set, Nat.reduceAdd, Nat.reduceSub, Nat.reduceLT, Nat.succ_ne_zero, reduceIte]))
-
 macro "wp_column_add" h:Lean.Parser.Tactic.simpLemma : tactic => `(tactic|
   (try simp only [wp_iff_control_types]
    refine wp_iff_cons rfl ?_
@@ -61,7 +53,7 @@ theorem dotColumn4_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 19 20 _ _ _ _ pointer weights
     (offset+width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 27 28 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 27 28 _ _ _ _ 2 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
@@ -78,7 +70,7 @@ theorem dotColumn4_exact (env : HostEnv Unit) (initial : Store Unit)
     _ initial _ env
   refine CheckedArrayGet.checkedGetCore_spec 19 20 _ _ _ _ pointer weights
     (offset+2*width+column) [] rfl rfl rfl ha (by omega) _ _ ?_
-  iterate 9 wp_column_stage
+  iterate 9 wp_fixed_frame_step
   change wp Project.TinyGpt2Hidden.module (CheckedNatMul.program 27 28 ++ _) _ initial _ env
   refine CheckedNatMul.program_spec 27 28 _ _ _ _ 3 (UInt64.ofNat width) []
     rfl rfl rfl ?_ _ _ ?_
