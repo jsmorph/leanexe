@@ -12767,3 +12767,19 @@ judgments; its elaborator needed maxUniverseOffset 128 for the Sort 100 fixture.
 The 14 atomic/context regression cases and documentation gate also passed.
 Earlier inference commands now admit Pi; the former unsupported-form case
 now uses lambda, the next unimplemented form. M0.6 is next.
+
+## 2026-09-16: Kernel checker M0.6
+
+The first closed theorem is checked in generated WASM: lambda p hp => hp
+against forall p : Prop, p -> p. The checker validates the claimed type,
+infers the lambda's Pi type, then compares structures with a shared budget.
+It also accepts concrete Type identity and separately allocated equal types.
+The false p -> q proof returning hp is rejected, along with wrong bodies,
+unused ill-typed binder annotations, free terms, and invalid claimed types.
+No external declarations or axioms enter this boundary.
+
+The 12-case proof suite passed in WASM and standard Lean; Lean also checked
+the actual identity examples. The 14 context and 10 Pi regression cases and
+documentation gate passed. Structural equality is sufficient for well-typed
+types in the currently admitted four-form fragment; later application and
+conversion work must preserve unsupported/inconclusive outcomes. M0.7 is next.

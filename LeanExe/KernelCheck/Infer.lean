@@ -30,10 +30,13 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
       stack := stack.push term |>.push 2 |>.push u
       stack := stack.push b |>.push 0 |>.push 0
     else if phase == 2 then
-      if nodeTag s.graph s.root != 0 then return { s with status := 1 }
-      let v := nodeA s.graph s.root
       ctx := ctx.pop
-      s := addNode s 0 (imaxLevel saved v) 0
+      if tag == 2 then
+        if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+        let v := nodeA s.graph s.root
+        s := addNode s 0 (imaxLevel saved v) 0
+      else
+        s := addNode s 2 a s.root
     else if tag == 0 then
       if a == 18446744073709551615 then return { s with status := 2 }
       s := addNode s 0 (a + 1) 0
@@ -42,7 +45,7 @@ def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Resu
       let stored := ctx[ctx.size - 1 - a.toNat]!
       s := shiftCore s.graph stored 0 (a + 1) s.fuel
       if s.status != 0 then return s
-    else if tag == 2 then
+    else if tag == 2 || tag == 3 then
       stack := stack.push term |>.push 1 |>.push 0
       stack := stack.push a |>.push 0 |>.push 0
     else return { s with status := 3 }
