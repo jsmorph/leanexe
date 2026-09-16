@@ -12749,3 +12749,21 @@ as a type, invalid context IDs, out-of-scope variables and universe overflow;
 unsupported syntax and exhausted fuel remain distinct. The existing binding
 operation is reused directly. Source and documentation gates passed.
 M0.5 adds Pi formation next.
+
+## 2026-09-16: Kernel checker M0.5
+
+Pi inference checks domain and body as types and computes their concrete imax.
+The first natural recursive implementation hit unsupported Nat matcher arity;
+equation-style carried parameters resolved that shape but exposed a non-tail
+recursive call diagnostic. Rather than enlarging compiler scope, inference
+now uses explicit (term, phase, saved-universe) frames and a local-context
+stack. Its shared remaining budget also accounts for variable-type shifting.
+This representation compiles without compiler changes or recursive runtime calls.
+
+Ten WASM/standard-Lean cases passed, including the closed identity proposition,
+its Type-universe counterpart, Pi assumptions, invalid domains and codomains,
+and exhaustion/overflow. Lean directly checked the corresponding universe
+judgments; its elaborator needed maxUniverseOffset 128 for the Sort 100 fixture.
+The 14 atomic/context regression cases and documentation gate also passed.
+Earlier inference commands now admit Pi; the former unsupported-form case
+now uses lambda, the next unimplemented form. M0.6 is next.

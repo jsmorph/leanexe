@@ -145,7 +145,26 @@ This checks `A : Sort 1, x : A |- x : A`. It returns
 `[0, 3, 0, 1, 0, 1, 0, 0, 0, 2, 0, 1, 1, 0]`:
 the inferred type at node 3 is bvar 1, referring to A across x's binder.
 
+## M0.5: Pi formation
+
+`node test/kernel_pi.js` builds `checker-m0-5.wasm`; its `inferPi` entry uses
+the same graph/context/root/fuel interface as `inferOpen`. Ten cases check
+formation of `∀ p : Prop, p → p : Prop`, concrete-universe identity types,
+large impredicative domains, invalid domains/bodies, and resource limits.
+`PiTest.lean` also asks Lean itself to check the stated universe judgments.
+
+Both the domain and body must infer to Sorts; their levels are combined by
+`imax`. Inference uses explicit frames with a shared work budget. The earlier
+inference command now supports Pi types too, including Pi context entries.
+These commands infer a proposition's sort; they do not yet check its proof.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-5.wasm inferPi array-u64 array-u64:0,0,0,1,0,0,1,1,0,2,1,2,2,0,3 array-u64: i64:4 i64:100
+```
+
+This returns a success packet whose inferred root is `Sort 0`.
+
 ## Next checkpoint
 
-M0.5 adds Pi formation using concrete imax. The complete handoff and later
+M0.6 adds lambda checking and the first closed proof. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).

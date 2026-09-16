@@ -12,7 +12,7 @@ const cases = [
   ["unbound assumption", [1,0,0], [0], 0,20,[1]],
   ["proof is not a type", [0,0,0,1,0,0], [0,1,1], 1,20,[1]],
   ["bad context id", [0,0,0], [1], 0,20,[4]],
-  ["unsupported Pi", [0,0,0,2,0,0], [], 1,20,[3]],
+  ["unsupported lambda", [0,0,0,3,0,0], [], 1,20,[3]],
   ["overflow", [0,max,0], [], 0,20,[2]],
   ["exhausted during context", [0,1,0,1,0,0], [0,1], 1,2,[5]],
   ["no fuel", [0,0,0], [], 0,0,[5]],
