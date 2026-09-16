@@ -4,7 +4,8 @@ This analysis supports the LayerNorm step in [Verified tiny transformer
 inference](tiny-transformer.md).  The real-arithmetic argument precedes the
 binary64 implementation.  The [real LayerNorm proofs](../proofs/talos/lean/Project/LayerNorm/Real.lean)
 check centering, normalized magnitude, input perturbation, and affine parameter
-perturbation.  Binary64 execution remains the next step.
+perturbation.  The [execution theorem](../proofs/talos/lean/Project/LayerNorm/Spec.lean)
+adds binary64 evaluation and total generated-WAT execution.
 
 ## Reference and source audit
 
@@ -59,13 +60,32 @@ For a bound G on the perturbed scale, the composed component estimate is
 
 ## Implementation sequence
 
+The first executable domain bounds each input, scale, and bias by four in
+magnitude.  The operation tree uses pairwise sums divided by four for the
+mean, one centering pass, squared centered values averaged in the same order,
+addition of binary64 epsilon, square root, division, scale, and bias.
+The epsilon word is 3ee4f8b588e368f1.  Every arithmetic operation rounds
+separately.  The real reference retains epsilon 1/100000.
+
+Let u = 2^-52.  A pairwise average of four words bounded by B, with
+1 ≤ B ≤ 256, has error at most 5Bu.  This gives centered error 32u
+and centered magnitude at most twelve.  Squaring contributes at most 784u
+against the exact centered square.  Averaging gives variance error at most
+1536u.  Adding epsilon gives argument error at most 1603u, hence relative
+error at most 200000000u because the exact argument is at least 1/100000.
+The existing square-root composition lemma converts this to relative
+denominator error.  The normalized magnitude bound of two then bounds
+division error without a separate factor of epsilon to the power -3/2.
+The final affine error is at most 1/1000000.  The binary64 proof checks
+these budgets, including epsilon conversion and underflow.
+
 - [x] Check centering, normalized magnitude, and the perturbation identity in Lean.
 - [x] Check the width-four component bound, including affine parameter error.
-- [ ] Define the binary64 operation tree and account for the rounded epsilon.
-- [ ] Prove successful execution and roundoff bounds on an explicit input domain.
-- [ ] Add the generated-WAT execution proof and command-line demonstration.
+- [x] Define the binary64 operation tree and account for the rounded epsilon.
+- [x] Prove successful execution and roundoff bounds on an explicit input domain.
+- [x] Add the generated-WAT execution proof and command-line demonstration.
 - [ ] Use checkpoint ranges to evaluate the composed bound before block integration.
 
-The initial proofs keep epsilon symbolic and positive.  The executable domain
-and checkpoint ranges remain separate obligations.  No trained checkpoint
-has been selected or measured.
+The real-arithmetic proofs keep epsilon symbolic and positive.  The executable
+uses the audited epsilon and an explicit bounded domain.  No trained
+checkpoint has been selected or measured.

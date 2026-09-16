@@ -638,6 +638,20 @@
         "Project.Softmax.Spec.softmax_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "layer_norm",
+      "annotations": true,
+      "module": "Project.LayerNorm.Model",
+      "entry": "Project.LayerNorm.layerNorm",
+      "sourceWorkspace": "proof",
+      "leanModule": "LayerNorm",
+      "specTarget": "Project.LayerNorm.Spec",
+      "behaviorTheorems": [
+        "Project.LayerNorm.Spec.layerNorm_exact",
+        "Project.LayerNorm.Spec.layerNorm_real_error"
+      ],
+      "complete": true
     }
   ]
 }

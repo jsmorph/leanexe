@@ -39,13 +39,16 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
-The [real LayerNorm component](lean/Project/LayerNorm/Real.lean) proves
-width-four magnitude and perturbation bounds for every positive epsilon,
-including constant inputs and scale and bias errors.  Its shared
+The [LayerNorm component](lean/Project/LayerNorm/Spec.lean) proves total
+generated-WAT execution and absolute component error at most 1/1000000 for
+four inputs, four scales, and four biases in [-4, 4].  The real epsilon is
+1/100000.  Its [real-arithmetic proofs](lean/Project/LayerNorm/Real.lean)
+cover constant inputs and input, scale, and bias perturbations.  The shared
 [normalization identity](lean/Project/ProofKit/RealNormalization.lean)
 bounds squared output distance using both endpoint standard deviations.
 The [analysis](../../plans/layernorm-analysis.md) records the derivation.
-Binary64 evaluation and generated-WAT execution remain unfinished.
+Its [command-line interface](../../data/numerical/README.md) accepts decimal
+arguments or raw binary64 words.
 
 The `softmax` case proves exact terminating generated-WAT execution for all
 raw inputs, including rejection.  On one to four scores in [-4, 4], it

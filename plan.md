@@ -767,7 +767,8 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [x] Release a bounded scalar exponential with a proved error bound.
 - [x] Extend the exponential to the negative interval needed by softmax.
 - [x] Release a masked, one-to-four-score softmax command-line demo.
-- [ ] Establish LayerNorm error propagation and investigate checkpoint ranges.
+- [x] Establish LayerNorm execution, roundoff, and input and parameter error propagation.
+- [ ] Investigate checkpoint ranges and their effect on LayerNorm sensitivity.
 - [ ] Complete GELU, affine operations, attention, and a transformer block.
 - [ ] Train and export the tiny model, then prove its execution and logit bound.
 - [ ] Complete the final exact-byte package and weight identity evidence.
