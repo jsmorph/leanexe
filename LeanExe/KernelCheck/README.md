@@ -98,7 +98,33 @@ build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-2.was
 
 These return 0 and 4 (the second graph contains a self-reference).
 
+## M0.3: scope and shifting
+
+`node test/kernel_binding.js` builds `checker-m0-3-scope.wasm` and
+`checker-m0-3-shift.wasm`. It checks 13 scope results and 12 exact shift
+outputs against standard Lean and independently specified expectations.
+
+- `checkScope graph root depth fuel` checks the reachable term with `depth`
+  surrounding binders. A binder extends scope only in its body.
+- `shiftGraph graph root cutoff delta fuel` raises free indices at or above
+  `cutoff`. A successful result is `[0, newRoot, ...newGraph]`; failure is
+  `[status]`. The original graph is retained and new nodes appended.
+
+Both use explicit traversal stacks. Fuel counts visited frames (including
+reconstruction frames for shifting), so sharing cannot evade the budget.
+Status 1 means an out-of-scope variable, 2 means index/depth overflow,
+4 means malformed structure, and 5 means exhausted fuel. Success is 0.
+Neither operation establishes that the term is well typed.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-3-scope.wasm checkScope i64 array-u64:0,0,0,1,0,0,3,0,1 i64:2 i64:0 i64:10
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-3-shift.wasm shiftGraph array-u64 array-u64:1,0,0 i64:0 i64:0 i64:1 i64:10
+```
+
+These return `0` and `[0, 1, 1, 0, 0, 1, 1, 0]`, respectively. The second
+result appends bvar 1 and returns its node ID (1).
+
 ## Next checkpoint
 
-M0.3 adds binder scope and shifting. The complete handoff and later
+M0.4 adds validated local contexts and Sort/bvar inference. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).
