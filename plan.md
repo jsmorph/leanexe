@@ -1,6 +1,6 @@
 # Development Plan
 
-The active Euler work on `main` follows the [certificate, completion, and convergence plan](plans/euler-certificates-and-convergence.md), authorized on 2026-09-15.  Phase 13 pursues those items in that order.  The certificate stage is in mathematical preparation.
+The active Euler work on `main` follows the [certificate, completion, and convergence plan](plans/euler-certificates-and-convergence.md), authorized on 2026-09-15.  Phase 13 pursues those items in that order.  The certificate observer has complete source proofs.  Its complete WASM execution and exact-byte proofs are next.
 
 The [Euler mathematical parity development](plans/euler-mathematical-parity.md), authorized on 2026-09-14, is complete.  It covers physical speed bounds, wave and flux identities, conservation with rounding residuals, reconstruction, and their complete exact-WASM proofs.  Both revised production grids and their figures are complete.  The short article records the theorem conditions and numerical comparisons.  Convergence to a continuous entropy solution remains a separate open question.
 
@@ -82,7 +82,7 @@ datasets, figures, the claim-to-theorem table, and the final comparison.
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, forty-six completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, forty-seven completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -743,7 +743,7 @@ replace repeated payload-bound and separation derivations.
 
 ## 13. Extend the Euler mathematical guarantees
 
-The user authorized merging `talosfp-euler` into `main`, publishing it, and pursuing numerical conservation and rounding certificates, successful completion, and continuum convergence sequentially.  The fast-forward and remote verification completed at `d942e3cbd91a78cefa8be7e45617b05110bf955d`.  The [detailed plan](plans/euler-certificates-and-convergence.md) records the mathematical targets, research, proof gates, and open design choice for the first certificate.
+The user authorized merging `talosfp-euler` into `main`, publishing it, and pursuing numerical conservation and rounding certificates, successful completion, and continuum convergence sequentially.  The fast-forward and remote verification completed at `d942e3cbd91a78cefa8be7e45617b05110bf955d`.  The user selected the net conservation-error certificate first.  The [detailed plan](plans/euler-certificates-and-convergence.md) records the mathematical targets, research, source proofs, and remaining artifact gates.
 
 - [ ] Complete and run the proved numerical certificate.
 - [ ] Investigate and establish the supported successful-completion theorem.

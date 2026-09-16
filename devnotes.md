@@ -12383,3 +12383,25 @@ outward helpers reused through a checked function-region renaming.
 The [journal](journal.md) records proof failures, corrections, and the
 compiler's repeated component calls.  Grid totals, boundary accumulation,
 the observer recurrence, and its exact-byte proof are next.
+
+The complete certificate observer now has source proofs for normalized cell
+totals, reconstructed boundary fluxes, accepted-step accumulation, and the
+net physical residual.  The grid-line fold uses the first n indexed cells
+to enumerate boundary lines, avoiding a temporary array.  The x-sweep grid
+remains available for the y-boundary evaluation before its existing release.
+Projection theorems prove the observer preserves numerical grids, timestep
+choices, status, and time.  Its output appends four status/lower/upper triples
+to the previous solver words.  The [source enclosure theorem](proofs/talos/lean/Project/EulerCertificate/SolveSpec.lean)
+uses the same accepted NumericalTrace as the physical conservation theorem.
+All audits use standard axioms.  The complete generated execution,
+allocation, and exact-byte proofs remain open.
+
+The generated observer is 45,644 bytes with SHA-256
+22696951ce81106990843e19494430292bdde35183058a34ff30133cc47bd981.
+Its checked region maps reuse 142 solver functions and 39 interval-flux
+functions.  The new six-call flux interface and seven vector operations
+have exact execution and store-preservation proofs.  Failed trials use
+Option Trial, which lets the generated code release local sweep grids and
+return failure without allocating an empty placeholder.  Array-fold and
+complete allocation proofs are next.  The journal records the generated
+call counts, proof corrections, and the limits of retrieved fold support.
