@@ -558,6 +558,20 @@
         "Project.EulerCertificate.Spec.solve_enclosure"
       ],
       "complete": true
+    },
+    {
+      "name": "exp_small",
+      "annotations": true,
+      "module": "Project.ExpSmall.Model",
+      "entry": "Project.ExpSmall.expSmall",
+      "sourceWorkspace": "proof",
+      "leanModule": "ExpSmall",
+      "specTarget": "Project.ExpSmall.Spec",
+      "behaviorTheorems": [
+        "Project.ExpSmall.Spec.expSmall_exact",
+        "Project.ExpSmall.Spec.expSmall_real_error"
+      ],
+      "complete": true
     }
   ]
 }
