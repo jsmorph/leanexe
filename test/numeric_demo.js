@@ -25,6 +25,71 @@ function decoded(word) {
   return bytes.readDoubleLE();
 }
 
+function checkLayerNorm() {
+  const inputs = [[0, 0, 0, 0], [0, -0, 0, -0], [1, 1, 1, 1],
+    [4, 4, 4, 4], [-4, -4, -4, -4], [0, 1, 2, 3], [-4, 4, -4, 4],
+    [4, -4, 0, 1], [0.001, -0.001, 0.001, -0.001]].map(row => row.map(bits));
+  inputs.push([1n, 0x8000000000000001n, 0n, 0x8000000000000000n],
+    [bits(1), bits(1)+1n, bits(1)-1n, bits(1)],
+    [bits(4), bits(4)-1n, bits(4), bits(4)-1n]);
+  const rows = inputs.flatMap(input => [
+    [...input, ...Array(4).fill(bits(1)), ...Array(4).fill(0n)],
+    [...input, ...[4, -4, 0, 0.5].map(bits), ...[-4, 4, 0, -0].map(bits)],
+  ]);
+  const sample = [0, 1, 2, 3, 1, 1, 1, 1, 0, 0, 0, 0].map(bits);
+  for (let index = 0; index < 12; ++index) {
+    for (const invalid of [bits(4)+1n, bits(-4)+1n, bits(Infinity), bits(-Infinity),
+      0x7ff8000000000000n, 0x7ff0000000000001n]) {
+      const row = [...sample];
+      row[index] = invalid;
+      rows.push(row);
+    }
+  }
+  const reference = runChecked(["lake", "env", "lean", "--run", "Project/LayerNorm/NativeTest.lean",
+    ...rows.flat().map(String)], {cwd: path.join(root, "proofs/talos/lean"), encoding: "utf8"})
+    .stdout.trim().split(/\r?\n/).map(line => line.split(" ").map(BigInt));
+  assert.equal(reference.length, rows.length);
+  function inputFor(row) {
+    const hex = row.map(word => word.toString(16).padStart(16, "0"));
+    return {values_bits: hex.slice(0, 4), scale_bits: hex.slice(4, 8), bias_bits: hex.slice(8, 12)};
+  }
+  for (const [index, row] of rows.entries()) {
+    const output = runDemo("layernorm", inputFor(row));
+    assert.deepEqual([BigInt(output.status), ...output.values_bits.map(word => BigInt(`0x${word}`))], reference[index]);
+    const values = row.map(decoded);
+    const accepted = values.every(value => Number.isFinite(value) && Math.abs(value) <= 4);
+    assert.equal(output.status, accepted ? 0 : 1);
+    if (accepted) {
+      const x = values.slice(0, 4);
+      const mean = ((x[0]+x[1])+(x[2]+x[3]))/4;
+      const centered = x.map(value => value-mean);
+      const variance = centered.reduce((sum, value) => sum+value*value, 0)/4;
+      for (let i = 0; i < 4; ++i) {
+        const expected = centered[i]/Math.sqrt(variance+1e-5)*values[4+i]+values[8+i];
+        assert.ok(Math.abs(output.values[i]-expected) <= 1e-6);
+      }
+    } else {
+      assert.deepEqual(output.values_bits, Array(4).fill("0000000000000000"));
+      assert.equal(output.absolute_error_bound, undefined);
+    }
+  }
+  const valid = inputFor(sample);
+  for (const field of ["values_bits", "scale_bits", "bias_bits"]) {
+    for (const invalid of [[], Array(3).fill("0000000000000000"), Array(5).fill("0000000000000000"),
+      [0, 0, 0, 0], ["0", "0", "0", "0"]]) {
+      assert.throws(() => runDemo("layernorm", {...valid, [field]: invalid}));
+    }
+  }
+  assert.throws(() => runDemo("layernorm", {...valid, extra: 0}));
+  const cli = [process.execPath, path.join(root, "tools/numeric-demo.js"), "layernorm",
+    "--values", "0", "1", "2", "3"];
+  assert.deepEqual(JSON.parse(runChecked(cli, {encoding: "utf8"}).stdout), runDemo("layernorm", valid));
+  assert.deepEqual(JSON.parse(runChecked([...cli, "--scale", "4", "-4", "0", "0.5",
+    "--bias", "-4", "4", "0", "-0"], {encoding: "utf8"}).stdout),
+    runDemo("layernorm", inputFor([...sample.slice(0, 4), ...[4, -4, 0, 0.5, -4, 4, 0, -0].map(bits)])));
+  return rows.length;
+}
+
 function checkSoftmax() {
   const rows = [[0], [-0], [4], [-4], [0, 0], [0, -0, 0, -0],
     [-4, 4], [4, -4], [-1, -2], [-2, -1], [0, -1], [-1, 0],
@@ -116,7 +181,8 @@ function main() {
     assert.throws(() => runDemo("exp-small", bad));
   }
   checkSoftmax();
-  console.log("Checked 26 exponential and 31 softmax vectors against the native bit model, including masks, interval boundaries, signed zeros, subnormals, rejection, and CLI input validation");
+  const layerNormCount = checkLayerNorm();
+  console.log(`Checked 26 exponential, 31 softmax, and ${layerNormCount} LayerNorm vectors against the native bit model, including boundaries, signed zeros, subnormals, rejection, and CLI input validation`);
 }
 
 try { main(); }

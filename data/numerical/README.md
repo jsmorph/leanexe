@@ -7,6 +7,46 @@ corresponding WASM digest, and the runner checks it before execution.
 Exact-byte proof packages are deferred.  JSON parsing, host loading, and
 decimal display are outside the formal execution theorem.
 
+## LayerNorm
+
+`layernorm` accepts four inputs, four scales, and four biases, each in [-4, 4].
+The real reference uses population variance and epsilon 1/100000.  The WASM
+entry returns four finite values with absolute component error at most
+1/1000000.  It rejects every other input with status one and four zero words.
+
+```sh
+tools/numeric-demo.js layernorm --values 0 1 2 3
+tools/numeric-demo.js layernorm --values 2 2 2 2 --scale 1 1 1 1 --bias 1 2 3 4
+```
+
+Omitting scale and bias selects ones and zeros.  The first command returns
+approximately [-1.3416354199689269, -0.447211806656309,
+0.447211806656309, 1.3416354199689269].  The second returns [1, 2, 3, 4].
+JSON supplies `values_bits`, `scale_bits`, and `bias_bits`, each containing
+exactly four hexadecimal words.  Output includes `values_bits`, decimal
+`values`, the rational error bound, theorem name, and binary digest.
+
+```sh
+tools/talos-artifact.js prepare layer_norm
+tools/talos-proof.js check layer_norm
+tools/numeric-demo.js layernorm --input data/numerical/layernorm/example.json
+node test/numeric_demo.js
+```
+
+The computation averages two pairwise sums, centers once, averages the squared
+centered values, adds rounded epsilon, takes a square root, divides, and
+applies scale and bias.  Every operation rounds separately.  The numerical
+proof includes epsilon conversion error, subnormal arithmetic, and constant
+inputs.  `Project.LayerNorm.Spec.layerNorm_real_error` connects the bound to
+terminating generated-WAT execution with complete store preservation.
+
+`Project.LayerNorm.layerNorm_perturbed` adds upstream input and parameter
+errors.  For coordinatewise input error δ, scale error η, bias error θ,
+scale magnitude G, and a positive lower bound L on both endpoint standard
+deviations, its bound is 1/1000000 + 2Gδ/L + 2η + θ.  The
+[LayerNorm analysis](../../plans/layernorm-analysis.md) derives the endpoint
+bound and records the remaining checkpoint-range investigation.
+
 ## Softmax
 
 `softmax` accepts one to four scores in [-4, 4].  Decimal arguments run directly:
@@ -121,3 +161,5 @@ and cover endpoints, signed zeros, subnormals, infinities, NaNs, and rejection.
 The host exponential comparison is empirical test evidence.  The test suite
 also covers all four active lengths, maximum positions, mixed signs,
 equal scores, masks, invalid counts, and decimal command-line input.
+LayerNorm tests cover constant and nearly constant rows, affine parameters,
+and rejection of invalid words in each of the twelve argument positions.

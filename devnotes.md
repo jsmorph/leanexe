@@ -12692,3 +12692,55 @@ order.  Explicit add_le_add resolves the latter.  The resulting modules check
 in about two seconds each under the standard local runner limits.  No timeout
 or resource-limit exception occurred.  The aggregate source gate still has
 the previously diagnosed assoc_list cache mismatch.
+
+## 2026-09-16: Verified LayerNorm command-line checkpoint
+
+The width-four LayerNorm implementation now has total generated-WAT execution
+and successful finite output for all twelve binary64 arguments in [-4, 4].
+Its real reference uses population variance, epsilon 1/100000, four scales,
+and four biases.  Every output differs from that reference by at most
+1/1000000.  The [analysis](plans/layernorm-analysis.md) records the arithmetic
+tree and budgets derived before the binary64 proofs.  The operation tree
+centers once and uses pairwise sums.  The theorem concerns its own execution
+and the stated real formula.
+
+The source proof divides at average, centered square, variance, square root,
+quotient, and affine output.  The variance error is at most 1536 times 2^-52.
+The existing F64SqrtComposition lemma propagates the relative argument error.
+The real normalized magnitude bound avoids an extra inverse-variance factor
+when bounding division.  layerNorm_perturbed combines local roundoff with
+input, scale, and bias error and the endpoint standard-deviation bounds.
+The proof covers constant rows through positive epsilon.  The executable
+guard recognizes exactly the advertised finite intervals.
+
+Numerical proof revisions supplied a missing positivity premise to three
+restricted nlinarith calls and normalized the constant 8 squared in the
+variance bound.  The first composed execution check left argument-list length
+goals because the named stack list had not unfolded.  Unfolding that definition
+before the entry rule resolves them.  The execution base checks in about
+eight seconds, composed execution in eleven seconds, and numerical modules
+in one to three seconds.  FixedFrame and the existing arithmetic lemmas
+suffice.  Public axiom audits contain only propext, Classical.choice, and
+Quot.sound.  All Lean work used the standard local runner limits.
+
+The focused layer_norm gate and 96 native-bit-model versus Wasmtime vectors
+pass.  The vectors include constant and nearly constant rows, signed zeros,
+subnormals, affine parameters, and six invalid values in each of twelve
+argument positions.  The full numerical test also passes its 26 exponential
+and 31 softmax vectors, malformed JSON-field checks, and decimal-input
+equivalence.  Documentation, whitespace, and the JavaScript WASM-execution
+guard checks pass.
+
+The command tools/numeric-demo.js layernorm --values 0 1 2 3 returns
+[-1.3416354199689269, -0.447211806656309, 0.447211806656309, 1.3416354199689269].
+A constant row with biases [1, 2, 3, 4] returns those values.  The binary digest
+is b290d7d3931d40f81c97aaa9a156960e841280e28d10e618719eb0975d3ea76b.
+The registry now contains 52 completed source-driven cases.  Exact-byte
+packaging remains deferred.  Checkpoint ranges, GELU, affine maps, and block
+composition remain future work.
+
+The complete Runtime.Checks target passes with the new runtime pins.  The
+aggregate source gate passes its updated import inventory, then stops on the
+same assoc_list generated-cache mismatch before the aggregate proof build.
+Its tracked cache remains unchanged.  This checkpoint therefore records a
+successful focused LayerNorm gate and an incomplete repository aggregate.
