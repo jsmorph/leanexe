@@ -12455,3 +12455,13 @@ records their raw words, absolute bounds, and approximate widths.  Output
 tests cover layout, component order, truncation, failed status, nonfinite
 endpoints, and reversed endpoints.  The new mode has not run a simulation.
 Exact-byte proofs and independent package checking precede both grids.
+
+The observer's exact-byte development now has checked embedded bytes,
+balanced lookup, and decoding proofs for functions 0 through 63, including
+output packing and initialization.  Every body audit uses propext only.
+The complete byte-list equality first reached the standard heartbeat limit.
+Eight equalities aligned with the existing lookup tree reduce that proof to
+list composition.  Grouped decoding checks then reached their cumulative
+time limit, so the existing submodules now run as separate bounded targets.
+The remaining function bodies, section composition, validation, and
+independent package checking precede production data.
