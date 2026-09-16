@@ -3,23 +3,50 @@ import LeanExe.KernelCheck.Universe
 
 namespace LeanExe.KernelCheck
 
-/-- M0.4 inference. Context entries are types in the preceding context,
-ordered oldest first. Internal callers must validate structure and context. -/
-def inferCore (ctx : Array UInt64) (s : Result) (r : UInt64) : Result :=
-  if s.fuel == 0 then { s with status := 5 }
-  else
-    let s := { s with fuel := s.fuel - 1 }
-    let tag := nodeTag s.graph r
-    let a := nodeA s.graph r
-    if tag == 0 then
-      if a == 18446744073709551615 then { s with status := 2 }
-      else addNode s 0 (a + 1) 0
+/-- Inference over a validated graph and admitted context. Frames hold
+(term, phase, saved universe). Fuel counts all inference and shift frames;
+no recursive runtime calls are needed for nested binders. -/
+def inferCore (initialCtx : Array UInt64) (initial : Result) (r : UInt64) : Result := Id.run do
+  let mut s := initial
+  let mut ctx := initialCtx
+  let mut stack := #[r, 0, 0]
+  for _ in [:initial.fuel] do
+    if stack.isEmpty then return s
+    if s.fuel == 0 then return { s with status := 5 }
+    s := { s with fuel := s.fuel - 1 }
+    let saved := stack.back!
+    stack := stack.pop
+    let phase := stack.back!
+    stack := stack.pop
+    let term := stack.back!
+    stack := stack.pop
+    let tag := nodeTag s.graph term
+    let a := nodeA s.graph term
+    let b := nodeB s.graph term
+    if phase == 1 then
+      if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+      let u := nodeA s.graph s.root
+      ctx := ctx.push a
+      stack := stack.push term |>.push 2 |>.push u
+      stack := stack.push b |>.push 0 |>.push 0
+    else if phase == 2 then
+      if nodeTag s.graph s.root != 0 then return { s with status := 1 }
+      let v := nodeA s.graph s.root
+      ctx := ctx.pop
+      s := addNode s 0 (imaxLevel saved v) 0
+    else if tag == 0 then
+      if a == 18446744073709551615 then return { s with status := 2 }
+      s := addNode s 0 (a + 1) 0
     else if tag == 1 then
-      if a.toNat >= ctx.size then { s with status := 1 }
-      else
-        let stored := ctx[ctx.size - 1 - a.toNat]!
-        shiftCore s.graph stored 0 (a + 1) s.fuel
-    else { s with status := 3 }
+      if a.toNat >= ctx.size then return { s with status := 1 }
+      let stored := ctx[ctx.size - 1 - a.toNat]!
+      s := shiftCore s.graph stored 0 (a + 1) s.fuel
+      if s.status != 0 then return s
+    else if tag == 2 then
+      stack := stack.push term |>.push 1 |>.push 0
+      stack := stack.push a |>.push 0 |>.push 0
+    else return { s with status := 3 }
+  if stack.isEmpty then return s else return { s with status := 5 }
 
 /-- Validate assumptions in order before exposing any open judgment. -/
 def admitContext (g ctx : Array UInt64) (root : UInt64) (fuel : Nat) : Result := Id.run do
