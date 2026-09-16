@@ -13490,3 +13490,10 @@ values, giving quadratic allocation and execution costs.  The command
 limits execution to sixty seconds and adds no dependencies.  The initial
 sandboxed test failed to spawn cc.  Its approved retry and the final test
 both pass.  Documentation and whitespace checks pass.
+
+The PRNG documentation now includes a direct Wasmtime C-host invocation
+of the built artifact, with seed 42, count 5, and modulus 100.  The documented
+command prints [13, 91, 58, 64, 50].  The host decodes the returned array
+from WASM memory.  The user authorized later seed-controlled sampling from
+the top k model logits and kept PRNG correctness outside the formal proof
+scope.  The transformer plan records that follow-up.
