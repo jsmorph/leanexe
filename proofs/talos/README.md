@@ -76,14 +76,14 @@ proofs cover embedding lookup, normalization, attention, matrix-column
 access, context projection, and feed-forward contraction.  The enclosing
 model execution and checkpoint certification remain open.
 
-The internal exponential evaluator now has a checked [-16, 0] theorem
-with the same 1/400 absolute error and a positive lower bound of
-1/1000000000.  The [tail analysis](../../plans/exponential-tail-analysis.md)
-records the polynomial interval and three-squaring argument.  The
-exponential and softmax command-line input guards retain their original
-domains.
-
-The `exp_wide` case extends the exponential domain to [-8, 0] with proved absolute error at most 1/400 and output at least 1/100000.  Its generated-WAT execution, successful domain, rejection behavior, and command-line runner are complete.
+The `exp_wide` case covers [-8, 0] with proved absolute error at most
+1/300000 and output at least 1/100000.  Its generated-WAT execution,
+successful domain, rejection behavior, and command-line runner are complete.
+The internal evaluator has the same error bound on [-16, 0], with output
+at least 1/1000000000.  The
+[exponential analysis](../../plans/exponential-tail-analysis.md) records
+the signed Taylor remainder, polynomial bound, and roundoff composition.
+The exponential and softmax command-line guards retain their original domains.
 
 The [small exponential demonstration](../../data/numerical/README.md) adds
 the `exp_small` registration.  Its generated-WAT theorem covers every raw

@@ -13112,3 +13112,22 @@ It again stops at assoc_list because the newly generated program differs
 from its tracked cache.  It does not reach the aggregate proof-library
 build.  The focused tiny-model gate and its rebuilt numerical execution
 dependencies pass.
+
+Lean now checks the signed Taylor remainder, Bernstein polynomial identity,
+and eighth-power bound.  A polynomial perturbation lemma on [-2, 2]
+accounts for rounded division without requiring a division sign theorem.
+Coefficient and Horner roundoff give polynomial error at most 10^-10.
+Three squarings give error at most 15 times 10^-10 relative to the exact
+polynomial's eighth power.  The complete exponential error is at most
+1/300000 on [-16, 0].  The numerical proof checks in 3.9 seconds and uses
+only the standard logical axioms.  Arithmetic and compiled bytes are unchanged.
+
+The enclosing hidden-state execution proof still exhausts the simplifier
+after the value projection.  Naming intermediate rows reduced checking
+time from 173 to 114 seconds before that failure.  A frame congruence lemma
+did not resolve it.  A focused diagnostic now isolates the frame at the
+attention call before further proof changes.
+
+The focused exp_wide artifact check passes with the strengthened generated-WAT
+error theorem and unchanged binary.  Its axiom audit uses the standard logical
+axioms.  Documentation and whitespace checks pass.
