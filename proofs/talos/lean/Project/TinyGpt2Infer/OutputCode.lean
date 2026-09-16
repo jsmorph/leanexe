@@ -2,6 +2,7 @@ import Project.TinyGpt2Infer.Program
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayAllocate
 import Project.ProofKit.ArrayPush
+import Project.ProofKit.ArrayPushLayout
 
 namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.ProofKit

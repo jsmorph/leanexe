@@ -8,16 +8,9 @@ open Wasm Project.Runtime Project.ProofKit.Memory
 theorem releasedStore_bytes (store : Store Unit) (root head releases frees : UInt64)
     (hRoot : 48 ≤ root.toNat) (hRoot32 : root.toNat ≤ 4294967296) (address : Nat)
     (hOutside : address < root.toNat - 48 ∨ root.toNat ≤ address) :
-    (releasedStore store root head releases frees).mem.bytes address = store.mem.bytes address := by
-  have h8 : (8 : UInt64).toNat = 8 := rfl
-  have h40 : (40 : UInt64).toNat = 40 := rfl
-  have hAddress (offset : UInt64) (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :
-      (root - offset).toUInt32.toNat = root.toNat - offset.toNat := by
-    rw [UInt64.toNat_toUInt32, toNat_sub_of_le _ _ (by omega), Nat.mod_eq_of_lt (by omega)]
-  unfold releasedStore
-  dsimp only
-  rw [write64_bytes_outside _ _ _ (by rw [hAddress 8 (by decide) (by decide)]; omega),
-    write64_bytes_outside _ _ _ (by rw [hAddress 40 (by decide) (by decide)]; omega)]
+    (releasedStore store root head releases frees).mem.bytes address = store.mem.bytes address :=
+  Project.ProofKit.FixedArrayRelease.bytes_outside store root head releases frees
+    hRoot hRoot32 address hOutside
 
 theorem gridAt_releasedStore (store : Store Unit) (root head releases frees source : UInt64)
     (grid : Array Traversal.Cell) (hRoot : 48 ≤ root.toNat) (hRoot32 : root.toNat ≤ 4294967296)
@@ -37,36 +30,9 @@ theorem freeListAt_releasedStore (store : Store Unit) (root capacity releases fr
     (hList : FreeListAt store.mem nodes)
     (hSep : ∀ node ∈ nodes, regionsDisjoint ({ root, capacity } : FreeNode).region node.region) :
     FreeListAt (releasedStore store root (freeHead nodes) releases frees).mem
-      ({ root, capacity } :: nodes) := by
-  have h8 : (8 : UInt64).toNat = 8 := rfl
-  have h32 : (32 : UInt64).toNat = 32 := rfl
-  have h40 : (40 : UInt64).toNat = 40 := rfl
-  have hList40 := hList.frame_write64_disjoint (writer := { root, capacity })
-    (writeOffset := 40) (value := 0) hRoot hRoot32 (by decide) (by decide) hSep
-  have hList8 := hList40.frame_write64_disjoint (writer := { root, capacity })
-    (writeOffset := 8) (value := freeHead nodes) hRoot hRoot32 (by decide) (by decide) hSep
-  have hAddress (offset : UInt64) (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :
-      (root - offset).toUInt32.toNat = root.toNat - offset.toNat := by
-    rw [UInt64.toNat_toUInt32, toNat_sub_of_le _ _ (by omega), Nat.mod_eq_of_lt (by omega)]
-  change FreeListAt ((store.mem.write64 (root - 40).toUInt32 0).write64
-    (root - 8).toUInt32 (freeHead nodes)) ({ root, capacity } :: nodes)
-  refine .cons hRoot hRoot32 hFit ?_ ?_ ?_ hSep hList8
-  · change ((store.mem.write64 (root - 40).toUInt32 0).write64
-      (root - 8).toUInt32 (freeHead nodes)).read64 (root - 40).toUInt32 = 0
-    rw [read64_write64_disjoint _ _ _ _ (by
-      rw [hAddress 8 (by decide) (by decide), hAddress 40 (by decide) (by decide)]
-      omega)]
-    exact read64_write64 ..
-  · change ((store.mem.write64 (root - 40).toUInt32 0).write64
-      (root - 8).toUInt32 (freeHead nodes)).read64 (root - 32).toUInt32 = capacity
-    rw [read64_write64_disjoint _ _ _ _ (by
-      rw [hAddress 8 (by decide) (by decide), hAddress 32 (by decide) (by decide)]
-      omega)]
-    rw [read64_write64_disjoint _ _ _ _ (by
-      rw [hAddress 40 (by decide) (by decide), hAddress 32 (by decide) (by decide)]
-      omega)]
-    exact hCapacity
-  · exact read64_write64 ..
+      ({ root, capacity } :: nodes) :=
+  Project.ProofKit.FixedArrayRelease.freeListAt store root capacity releases frees
+    nodes hRoot hRoot32 hFit hCapacity hList hSep
 
 #print axioms releasedStore_bytes
 #print axioms gridAt_releasedStore
