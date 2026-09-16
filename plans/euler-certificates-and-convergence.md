@@ -19,7 +19,7 @@ R_i\in[M_{i,L}^{\mathrm{final}}-M_{i,U}^{\mathrm{initial}}-B_{i,U},\;
 M_{i,U}^{\mathrm{final}}-M_{i,L}^{\mathrm{initial}}-B_{i,L}].
 \]
 
-The maximum of the negative lower endpoint and the upper endpoint bounds the absolute net residual.  An additional certificate can enclose the existing sum of local error bounds before cancellation.  That extension requires evaluating update-error bounds across the cells as well as boundary-flux and ratio bounds.  The user has been asked to select net residual first or both forms together.  Work pending that answer covers shared interval and accumulation mathematics.
+The maximum of the negative lower endpoint and the upper endpoint bounds the absolute net residual.  The user selected the net residual certificate first.  A later assessment will determine whether to add the sum of local error bounds before cancellation.
 
 The existing `F64Outward` operations compute a nearest-rounded result and then its adjacent endpoint.  Their checked theorems establish enclosure, including underflow, and expose rejection for nonfinite endpoints.  A certificate must preserve this status information and account for rounding in its own accumulation.  Exact rational constants in the physical reference, including `2/5`, need enclosing constructions from exact integer words.
 
@@ -31,7 +31,7 @@ The binary64 time word and the sum of decoded timestep durations are separate qu
 - [x] Read the existing physical trace, step, row, outward-arithmetic, and error definitions.
 - [x] Research outward interval inclusion and accumulation, including dependency overestimation.
 - [x] Retrieve existing array-fold LTG guidance and identify applicable scalar support.
-- [ ] Resolve the certificate scope with the user.
+- [x] Resolve the certificate scope with the user: net conservation error first.
 - [x] Prove shared residual-enclosure and accumulation results.
 - [ ] Specify the executable certificate and its relation to the unchanged numerical recurrence.
 - [ ] Prove the scalar arithmetic, totals, boundary evaluation, accepted-step observer, and complete observer recurrence.
@@ -66,3 +66,5 @@ Begin after the completion investigation.  Identify a precise solution concept, 
 The source basis is `EulerReconstructed.PhysicalTrace`, `PhysicalStep`, `TraceBalance`, and `RatioResidual`, together with `ProofKit.F64OutwardAccepted`, `F64RoundingResidual`, and `F64ErrorPropagation`.  The retrieved `array-fold-prefix` and `fixed-array-fold-body` entries supply accumulator invariants and generated-region composition.  Their applicability to the new compiler output will be checked after the executable specification is fixed.
 
 The checked foundation comprises `ProofKit.RealBalanceEnclosure`, `ProofKit.F64OutwardAccumulation`, and `EulerReconstructed.PhysicalEnclosure`.  Their eight theorems cover real residual bounds, directed addition and subtraction, sequential rounded accumulation, rounded residual endpoints, and application to the existing Euler trace.  Every public axiom audit uses only `propext`, `Classical.choice`, and `Quot.sound`.  The executable observer and its artifact proof remain open.
+
+The scalar certificate implementation now has source soundness and generated-WASM execution proofs.  `ProofKit.F64Interval` provides checked addition, subtraction, multiplication by a decoded word, and division by a positive decoded word.  `EulerCertificate.Flux` composes them into pressure, physical flux, and Rusanov interface bounds.  `EulerCertificateFlux.Spec` proves exact output and componentwise enclosure whenever the corresponding status is zero.  Its 5,741-byte generated module reuses the existing outward arithmetic through a checked function-region renaming.  The focused source-artifact gate passes.  Grid totals, boundary accumulation, the accepted-step observer, and complete exact-byte verification remain open.
