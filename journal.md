@@ -22929,3 +22929,14 @@ The publication gates are reviewed source and notes, passing focused checks,
 standard-only audits, authored whitespace validation, an unchanged remote
 parent, exact staging, and post-push fetch and tree equality.  Preexisting
 untracked files and the research records remain local and preserved.
+
+Published the foundation checkpoint as
+c8d4e07f36dc8d77d2d6bc8fbf9c1d308f84365a on main.  Its sole parent is
+d942e3cbd91a78cefa8be7e45617b05110bf955d and its complete tree is
+9365b94188da0534069bb2765fdb06e56bbf0ed5, matching the reviewed staged
+tree.  The commit contains exactly the nine selected paths and passed
+the staged whitespace check.  Non-forced push succeeded.  A fresh fetch
+confirms HEAD = origin/main = FETCH_HEAD at that commit and the same
+tree.  Both worktree-versus-HEAD and index-versus-HEAD checks are clean.
+The complete untracked inventory still equals the pre-merge inventory.
+This entry is the single publication receipt for that checkpoint.
