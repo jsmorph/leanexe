@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: executable milestones M0.0–M0.9 complete on 2026-09-16. Formal correctness proofs are not yet established. New language features are paused to add source-level proof coverage. Work is committed and published on branch lean-kernel-checker after each increment.
+Status: executable milestones M0.0–M0.9 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -10,12 +10,12 @@ Review decision: start with M0.0, a single executable sort-typing rule intended 
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** prove sort typing and concrete universe operations against mathematical specifications, then binding/refinement obligations. M0.10–M0.11 are pending. Executable milestones do not imply formal correctness.
+- **Next task:** M0.10 checked lets, then M0.11 a real Lean export. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are explicitly outside current work. See [the proof ledger](../LeanExe/KernelCheck/PROOFS.md).
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
 - **First actual Lean export:** M0.11, using the already functioning checker.
 - **M1:** integration of the small checkpoints, not the first work unit.
 - **M2–M5:** longer-term targets to subdivide before implementation; no full-project schedule has been established.
-- **Current evidence:** each completed checkpoint has focused source checks, generated-WASM execution, and standard-Lean comparison; commands and counts are in the checker README and journal. No full-kernel checker or soundness theorem is claimed.
+- **Current evidence:** each completed checkpoint has focused source checks, generated-WASM execution, and standard-Lean comparison; commands and counts are in the checker README and journal. Ten universal source theorems now cover sort typing and concrete max/imax, with an axiom audit. No overall checker soundness or exact-WASM theorem is claimed.
 - **Current action scope:** the user authorized continued implementation, local Lean execution, and a commit and push after each increment on lean-kernel-checker. Preserve the existing roadmap and unrelated work.
 
 Read sections 1–2 for the goal and claim boundaries, section 5.0 for exact M0 checkpoints, and section 8 for the first-session procedure. Sections 3–4 and 6–10 retain the design constraints, coverage requirements, trust discussion, and pinned evidence needed later; they are not all prerequisites for M0.0.
@@ -43,6 +43,9 @@ Tenet is a reference implementation, compatibility oracle, and source of test id
 | Request for a plan a new session can use | Preserve background, architecture, risks, source references, commands, exit gates, and the exact next task in this document. |
 | Request for clean milestones and command-line artifacts that check something real | Every checkpoint delivers an executable rule check or kernel operation with concrete examples; later checkpoints check complete proofs and exported declarations. |
 | “M1 is far too big. Need M0.1, M0.2, ... First M0.0 should be feasible in a few hours.” | M0.0 is one scalar rule; M0.1–M0.11 grow incrementally. M1 is an integration target. The earlier large first milestone no longer governs the next session. |
+| “Commit there and push with each increment (starting with M0.0).” | Publish each tested/proved increment on lean-kernel-checker; preserve local commits and verify the fetched remote tree. |
+| “You are proving correctness as you go, yes?” | Tests had not established formal correctness. Add useful small source proofs and make coverage explicit; later clarification permits deferring larger source proofs. |
+| “Good, no WASM proofs now. It's also okay to defer some source-level proofs. We're still in PoC territory…” | Prioritize showing that LeanExe can execute the required checker operations. Keep P0/P1 proofs, defer larger source obligations, and resume M0.10/M0.11. No WASM proof work now. |
 | Request to contain everything discussed so far | This document consolidates the whole discussion; a new session should not need to recover earlier chat messages. |
 
 The user requirements above are firm. Names such as LeanExe.KernelCheck and leancheck-wasm, the .lxk file extension, the eventual byte protocol, storage representations, and exact later fixture selection are implementation proposals. Resolve them using the actual checkout and measurements. Do not let a provisional naming or architecture choice enlarge M0.0.
@@ -56,7 +59,7 @@ The project is technically plausible, with different confidence levels at differ
 - High confidence in a small independently executing checker for the dependent-function fragment, subject to the incremental leanexe compilation checks. M0.0 establishes the scalar execution path; it does not require an explicit-machine framework.
 - Moderate confidence in full pinned-version kernel coverage. The difficult work is conversion behavior, inductive validation/recursor synthesis, and fitting the implementation to leanexe's subset. This is substantial implementation work, not a mechanical port.
 - Unproven practicality for full Mathlib throughput and memory usage. Array copying, term lifetimes, and the available WASM memory model require measurement and may justify focused leanexe improvements.
-- A full formal soundness proof and exact-binary refinement theorem are separate research/verification workstreams. They are not prerequisites for releasing an honestly described executable checker.
+- Full checker soundness and exact-binary refinement remain separate substantial workstreams. The user expects correctness proofs as work progresses; source-level proof increments are now active, and tested executable milestones must not be called proved.
 
 The original plan delayed the first proof check behind a complete primitive layer and a storage bake-off. A subsequent revision still made the first executable too large by requiring dependent functions, conversion, export ingestion, and packaging together. The user explicitly rejected that granularity and asked for M0.0 to be feasible in a few hours. Start with one typing rule, add one operation or syntax form at a time, and retain a replaceable representation. Optimize only after an executable provides a workload. Add arbitrary-precision literal reductions and Unicode-literal semantics when milestones first need them. Earlier releases must report those missing features as unsupported, never silently truncate or reinterpret them.
 
@@ -99,7 +102,7 @@ Keep three claims separate:
 | The checking algorithm is sound | A formal connection from successful checking to specified typing and declaration judgments |
 | The distributed WASM executes that checking algorithm correctly | Exact-byte identity, decoding/validation evidence, and a behavioral/refinement theorem |
 
-The user explicitly requested the executable full checker. Formal soundness and exact-artifact verification are planned follow-on workstreams and architectural goals; they must not be reported as existing results or allowed to obscure executable progress. A compiler-correctness assumption or successful test corpus does not establish either theorem.
+The user requested the executable full checker and subsequently asked whether correctness was being proved as work progressed. The implementation had reached M0.9 with tests only. P0/P1 now establish universal source properties for the sort and concrete universe primitives. Graph, binding, inference, conversion, and exact-artifact proofs remain outstanding and have explicit small proof checkpoints. A compiler-correctness assumption or successful test corpus does not establish either source soundness or binary refinement.
 
 ### Initially out of scope
 
@@ -204,7 +207,7 @@ Fragments restrict checking rules as well as syntax. A failed early conversion p
 
 M0.0 is deliberately tiny. Target roughly two to four hours of implementation and focused checking on an already working leanexe checkout. This estimate excludes installing toolchains or repairing the execution environment. If basic compilation is blocked, record that blocker instead of silently expanding the milestone into toolchain work.
 
-Each subsequent checkpoint should add one kernel capability or one boundary adapter, with a focused command and test set. They are not all promised to fit the same two-to-four-hour window. If one requires multiple new subsystems, split it further before starting. Initial storage can be naive; no cache framework, compiler optimization, general exporter, or formal soundness proof is a prerequisite.
+Each subsequent checkpoint should add one kernel capability or one boundary adapter, with a focused command and test set. They are not all promised to fit the same two-to-four-hour window. If one requires multiple new subsystems, split it further before starting. Initial storage can be naive; no cache framework, compiler optimization, or general exporter is a prerequisite. Following the later correctness discussion, pair implementation changes with their scoped proof obligations; the user permits deferring larger source proofs while the PoC establishes feasibility.
 
 #### M0.0 — One rule: the type of a concrete sort
 
@@ -436,18 +439,32 @@ Profile before adding parallelism or direct .olean readers. Preserve the exact i
 
 **Feasibility:** scaling is the largest unresolved implementation risk. This milestone may need focused leanexe runtime/compiler improvements; the earlier artifacts remain useful if that takes longer.
 
-### Separate proof track — Verify the checker artifacts
+### Active proof track — Source refinement and exact artifacts
 
-Begin with independently specified judgments and simple invariants as M1 develops. Do not require a full type-theory soundness proof before shipping each executable milestone.
+This track now starts immediately, rather than waiting for M1. The user asked
+whether correctness was being proved as implementation progressed. The earlier
+milestones had only tests and source/WASM comparisons. The detailed
+[proof ledger](../LeanExe/KernelCheck/PROOFS.md) records the corrected status,
+precise obligations, and small proof increments.
 
-A principled sequence is:
+- **P0/P1 complete:** ten universal source theorems for sort acceptance,
+  rejection and overflow, and concrete max/imax operations and claim checks.
+  The specifications use unbounded natural numbers. Run `node test/kernel_proofs.js`;
+  its transitive axiom audit permits only propext, Classical.choice and Quot.sound.
+- **Deferred P2a:** node-address safety and validator entry checks under explicit ABI
+  representation bounds. **P2b:** full graph-to-syntax refinement.
+- **P3/P4:** scope, shifting and substitution invariants and their connection to
+  the actual graph operations; split model laws and implementation refinement.
+- **P5/P6:** admitted-context and inference-machine invariants, then acceptance
+  implies declarative typing for the implemented fragment.
+- **P7:** reducer correctness, typing preservation, and conversion-success soundness.
+- **Exact-WASM proofs:** explicitly deferred outside current work by the user.
 
-1. Prove soundness of the M1 fragment's checker against declarative typing judgments, including input representation and substitution invariants.
-2. Prove a behavioral/refinement theorem for the exact frozen M1 WASM artifact. A theorem about one accepted fixture is a preliminary demonstration; it is not soundness for all supported inputs.
-3. Extend the source/machine soundness arguments and exact-artifact evidence as inductives and other rules are added. Record theorem scope whenever coverage lags executable features.
-4. Assemble full pinned-theory success soundness and the exact-binary execution connection, relative to explicitly allowed axioms and stated host/model assumptions. Treat termination within bounds as a separate claim.
-
-Budget/cache/representation theorems can be developed without stopping runnable progress. Self-checking is an additional regression experiment, not a way to eliminate the logical bootstrap by assertion.
+A separate model theorem or one successful fixture does not establish checker
+soundness. A source theorem does not establish a WASM theorem. Keep both proof
+coverage and missing cases visible, and keep executable regression evidence as
+an additional gate. M0.10 and M0.11 are the active PoC sequence. Larger source proofs may
+be deferred explicitly; no WASM proofs are being attempted now. Self-checking cannot remove the logical bootstrap by assertion.
 
 ## 6. Native certificates and bootstrap trust
 
@@ -583,7 +600,10 @@ These links pin the inspected source state. Recheck current files when implement
 - [ ] M3: complete pinned-version kernel and Init closure.
 - [ ] M4: recheck a useful existing leanexe artifact proof package.
 - [ ] M5: complete pinned Mathlib closure with measured resource use.
-- [ ] Establish formal soundness and exact-WASM verification claims as separate results.
+- [x] P0/P1: universal source proofs for sort typing and concrete max/imax; ten public theorems pass the axiom audit.
+- [ ] P2a/P2b: address safety and full graph validation refinement.
+- [ ] P3–P7: binding, substitution, inference and conversion correctness.
+- [ ] Deferred beyond current PoC: exact-WASM verification, separate from source soundness.
 
 Implementation began on 2026-09-16 on branch kernel-checker-m0-0. Source and focused tests are present in the working tree; see the execution receipt below for actual validation status. No M0 checkpoint is complete until its runtime gate passes.
 
