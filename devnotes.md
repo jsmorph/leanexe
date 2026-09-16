@@ -12546,3 +12546,37 @@ explains the projection behavior.  These measurements establish no speed
 improvement.  A matched one-index profile is prepared and unexecuted.
 The export failure requires a separate diagnosis of name and slice
 parsing before the next proof attempt.
+
+## 2026-09-16: Small exponential command-line checkpoint
+
+The degree-six Taylor evaluator now has exact generated-WAT execution and
+a real-error theorem for every binary64 input in [-1, 0].  The executable
+guard recognizes that domain exactly, including signed zeros and subnormals.
+The result is finite and positive, both zeros return exactly one, and all
+other inputs reject with a zero payload.  The absolute error is at most
+1/4000, improving the initial 1/1000 target.
+
+Mathlib's Real.exp_bound supplies the real-polynomial remainder 1/4410.
+The shared F64Horner.step lemma propagates coefficient and operation errors
+through one multiply-add stage.  Six applications give 211 times 2^-52
+evaluation error, including underflow.  The source calls Talos's executable
+bit model, which the compiler recognizes as binary64 operations.  Each
+generated function has a terminating execution proof with store preservation.
+The [demonstration reference](data/numerical/README.md) records the theorem
+boundary and reproducible commands.
+
+Initial proof attempts exposed UInt64 order coercions and insufficient
+normalization of constant words.  Explicit toNat equalities and
+UInt64.toNat_ofNat resolve these without additional assumptions.  Horner
+composition uses one shared error lemma instead of repeated arithmetic
+derivations.  Every public axiom audit contains only propext, Classical.choice,
+and Quot.sound.
+
+The focused exp_small gate, twelve native-bit-model versus Wasmtime vectors,
+malformed-input checks, documentation checks, and whitespace checks pass.
+For input -1/2, Wasmtime returns word 3fe368b60b60b60c, approximately
+0.6065321180555556.  The runner checks the manifest's binary digest before
+execution.  Exact-byte packages remain deferred by user authorization.
+The historical aggregate gate remains deferred after its documented
+2026-09-07 timeout in existing CLOB dependencies.  This checkpoint makes
+no aggregate-test claim.  Domain extension to [-8, 0] and softmax follow.
