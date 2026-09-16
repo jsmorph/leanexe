@@ -12471,3 +12471,10 @@ reconstruction, flux evaluation, and the complete sweep.  The later
 separately bounded groups passed without proof edits or target warnings.
 Boundary observation, retry, the main controller, the exported solve,
 and runtime helpers remain before module decoding and validation.
+
+All 195 function bodies now have complete byte-decoding proofs, including
+the boundary observer, retry, outer loop, exported solve, and runtime
+functions.  The remaining body targets passed without proof edits or
+target warnings, and their audits contain only standard logical axioms.
+The type-section item checks are in progress.  Complete section parsing,
+validation, translation, and independent package checking remain open.

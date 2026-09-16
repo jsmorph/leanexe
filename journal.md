@@ -23544,3 +23544,18 @@ no proof edits.  All 160 completed body audits use standard logical axioms
 and have no target warnings.  Boundary observation, retry, the outer
 controller, the exported solve, and the four runtime functions remain
 before full module composition.
+
+The kernel and sweep checkpoint is pushed and fetched as
+2bb30026530169e1edb16746527cf18bbbea9779.  Functions 160 through 183
+now pass, including boundary observation, interval accumulation, trial,
+and complete retry.  The ten separately bounded targets passed without
+proof edits.  All 184 completed body audits use standard logical axioms
+and have no target warnings.  Eleven bodies remain before section
+composition: the outer loop, result projections, enclosing run, exported
+solve, and runtime helpers.
+
+All 195 function bodies now have complete byte-decoding proofs, including
+the outer controller, exported solve, and four runtime functions.  The
+last five bounded targets passed without edits.  The complete body audit
+contains standard logical axioms and no target warnings.  Section parsing,
+module validation, translation, and independent package checking remain.
