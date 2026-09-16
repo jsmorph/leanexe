@@ -6,6 +6,20 @@ Tiny Shakespeare and a command-line interface returning all 256 next-byte
 logits on 2026-09-16.  The checkpoint's numerical certificates and complete
 inference proof remain in progress.
 
+## Command-line inference
+
+```sh
+tools/tiny-gpt2.js --text 'To b'
+tools/tiny-gpt2.js --tokens 0 0 36 82
+```
+
+Each command accepts four bytes and returns all 256 next-byte logits in one
+WASM call.  JSON output contains decimal logits, raw binary64 words, input
+tokens, artifact hashes, and the current verification status.  The host
+checks the recorded checkpoint and module hashes before execution.
+The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
+C host.  The complete model proof remains in progress.
+
 ## Training record
 
 The corpus is [Tiny Shakespeare from char-rnn](https://github.com/karpathy/char-rnn/blob/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt),
@@ -39,6 +53,9 @@ The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
 model.  Maximum empirical differences from CPU PyTorch are approximately
 2.605 × 10^-5 for hidden coordinates and 3.542 × 10^-5 for selected logits.
+The complete inference entry also matches all 1,536 output words from six
+contexts against the native Talos bit model.  Its largest measured
+CPU PyTorch difference is 3.914 × 10^-5.
 
 ## Reproduction
 
@@ -56,4 +73,15 @@ sha256sum build/tiny-gpt2/tiny-shakespeare.txt
   --checkpoint data/tiny-gpt2-v1/checkpoint.json \
   --output build/tiny-gpt2/attention-audit.json
 node test/tiny_gpt2_body.js --checkpoint data/tiny-gpt2-v1/checkpoint.json
+```
+
+The [inference source](../../proofs/talos/lean/Project/TinyGpt2/Inference.lean)
+computes the final hidden row and appends one logit per vocabulary token.
+To reproduce the compiled module:
+
+```sh
+tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.TinyGpt2.Inference
+tools/leanrun --timeout 3m lake -d proofs/talos/lean env \
+  .lake/build/bin/lean-wasm compile --module Project.TinyGpt2.Inference \
+  --entry Project.TinyGpt2.infer --out build/tiny-gpt2/inference.wasm
 ```

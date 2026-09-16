@@ -29,7 +29,8 @@ def main():
         _, trace = model(torch.tensor(contexts), with_trace=True)
     cases = [{"tokens": tokens, "position": position,
               "reference": trace["norm_final"][i, position].tolist(),
-              "logits": trace["logits"][i, position, [0, 32, 65, 255]].tolist()}
+              "logits": trace["logits"][i, position, [0, 32, 65, 255]].tolist(),
+              "all_logits": trace["logits"][i, position].tolist() if position == 3 else None}
              for i, tokens in enumerate(contexts) for position in range(4)]
     record = {"scope": "Trained checkpoint test" if args.checkpoint else "Deterministic initialization test; no training", "seed": 17,
               "weights": words, "cases": cases}
