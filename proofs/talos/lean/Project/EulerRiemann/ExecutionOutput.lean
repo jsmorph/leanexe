@@ -22,21 +22,21 @@ theorem output_pack_words (n : Nat) (time status : UInt64) (grid : Array Travers
     Output.pack n time status grid = outputHeaderWords (UInt64.ofNat n) time status ++
       (outputMapResult false grid ++ outputMapResult true grid) := rfl
 
-theorem output_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
-    (source : FreeNode) (grid : Array Traversal.Cell) (n pageLimit : Nat) (time status : UInt64)
+theorem output_budget_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+    (source : FreeNode) (grid : Array Traversal.Cell) (n spare pageLimit : Nat) (time status : UInt64)
     (hHeap : heap.At initial) (hOwner : heap.Owns initial source grid) (hSize : grid.size ≤ 640000)
-    (hBudget : OutputBudget initial heap (outputBytes grid.size) pageLimit) :
+    (hBudget : OutputBudget initial heap (outputBytes grid.size + spare) pageLimit) :
     TerminatesWith env module 99 initial
       [.i64 source.root, .i64 source.root, .i64 status, .i64 time, .i64 (UInt64.ofNat n)]
       (fun final values => ∃ (finalHeap : Heap) (result : FreeNode),
         values = [.i64 result.root, .i64 result.root] ∧ finalHeap.At final ∧
-        finalHeap.OwnsWords final result (Output.pack n time status grid) ∧ final.mem.pages ≤ pageLimit) := by
+        finalHeap.OwnsWords final result (Output.pack n time status grid) ∧ OutputBudget final finalHeap spare pageLimit) := by
   refine TerminatesWith.of_wp_entry_for (f := func99Def) rfl ?_ (by decide)
   change wp module func99 _ initial (outputEntryFrame n time status source.root) env
   have hSplit : func99 = outputFieldsProgram ++ outputTailProgram :=
     (List.take_append_drop 185 func99).symm
   rw [hSplit]
-  apply output_fields_spec env initial heap (outputEntryFrame n time status source.root) source grid pageLimit
+  apply output_fields_spec env initial heap (outputEntryFrame n time status source.root) source grid spare pageLimit
     rfl rfl rfl (output_entry_scratch n time status source.root) rfl hHeap hOwner hSize hBudget
   intro current currentHeap fields frame hCurrentHeap hFields hCurrentBudget hParams hLocals hValues hScratch
     hOwnerLocal hPointerLocal hPreserved
@@ -46,24 +46,39 @@ theorem output_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   have hCount : (outputMapResult false grid ++ outputMapResult true grid).size = grid.size + grid.size := by
     simp [outputMapResult]
   have hTailBudget : OutputBudget current currentHeap
-      (8 * (outputMapResult false grid ++ outputMapResult true grid).size + 176) pageLimit := by
-    rw [hCount, show 8 * (grid.size + grid.size) + 176 = 16 * grid.size + 176 by omega]
+      (8 * (outputMapResult false grid ++ outputMapResult true grid).size + 176 + spare) pageLimit := by
+    rw [hCount, show 8 * (grid.size + grid.size) + 176 + spare = 16 * grid.size + 176 + spare by omega]
     exact hCurrentBudget
   rw [← List.append_nil outputTailProgram]
   apply output_tail_spec env current currentHeap frame fields
-    (outputMapResult false grid ++ outputMapResult true grid) (UInt64.ofNat n) time status pageLimit
+    (outputMapResult false grid ++ outputMapResult true grid) (UInt64.ofNat n) time status spare pageLimit
     hParams hLocals hValues hScratch hN hTime hStatus hOwnerLocal hPointerLocal hCurrentHeap hFields
     (by rw [hCount]; omega) hTailBudget
   intro final finalHeap result resultFrame hFinalHeap hResultOwner hFinalBudget hResultValues
   simp only [wp_nil]
-  refine ⟨finalHeap, result, ?_, hFinalHeap, ?_, hFinalBudget.pages⟩
+  refine ⟨finalHeap, result, ?_, hFinalHeap, ?_, hFinalBudget⟩
   · change resultFrame.values.take 2 ++ [] = [.i64 result.root, .i64 result.root]
     rw [hResultValues]
     rfl
   · simpa only [output_pack_words] using hResultOwner
 
+theorem output_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+    (source : FreeNode) (grid : Array Traversal.Cell) (n pageLimit : Nat) (time status : UInt64)
+    (hHeap : heap.At initial) (hOwner : heap.Owns initial source grid) (hSize : grid.size ≤ 640000)
+    (hBudget : OutputBudget initial heap (outputBytes grid.size) pageLimit) :
+    TerminatesWith env module 99 initial
+      [.i64 source.root, .i64 source.root, .i64 status, .i64 time, .i64 (UInt64.ofNat n)]
+      (fun final values => ∃ (finalHeap : Heap) (result : FreeNode),
+        values = [.i64 result.root, .i64 result.root] ∧ finalHeap.At final ∧
+        finalHeap.OwnsWords final result (Output.pack n time status grid) ∧ final.mem.pages ≤ pageLimit) := by
+  apply (output_budget_exact env initial heap source grid n 0 pageLimit time status hHeap hOwner hSize
+    (by simpa only [Nat.add_zero] using hBudget)).mono
+  rintro final values ⟨finalHeap, result, hValues, hFinalHeap, hResult, hFinalBudget⟩
+  exact ⟨finalHeap, result, hValues, hFinalHeap, hResult, hFinalBudget.pages⟩
+
 #print axioms output_entry_scratch
 #print axioms output_pack_words
+#print axioms output_budget_exact
 #print axioms output_exact
 
 end Project.EulerRiemann.Execution

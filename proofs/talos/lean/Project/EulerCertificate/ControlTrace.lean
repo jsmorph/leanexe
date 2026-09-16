@@ -29,7 +29,7 @@ theorem advance_trace {n : Nat} (hn : 0 < n) (hmax : n ≤ 800) (fuel trials : N
             (OutwardMaximum.gridUpper grid).value grid
           have hat : trial.status = 0 := by simpa only [trial, beq_iff_eq] using ha
           obtain ⟨hTime, hRatio, hAccepted, hGrid⟩ := retry_success _ _ _ _ _ _ _ hat
-          have hb := retry_valid hn hmax _ trials time _ grid hg hat
+          have hb := retry_boundary_valid hn hmax _ trials time _ grid hg hat
           have hnxt : Indexed n trial.grid := by
             rw [hGrid]
             exact Project.EulerReconstructed.Traversal.step_indexed n trials _ grid hg
