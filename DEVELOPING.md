@@ -38,7 +38,7 @@ The Linux `/proc` compatibility preload is not used on macOS.
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
 | `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and the source artifact and conformance gates check the selected executable. |
-| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `flock`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools.  Standard runner mode also requires `systemd-run`. |
+| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `flock`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools.  Standard Linux mode also requires installed leanrunner and its finite `leanrun.slice` profile. |
 
 The Talos revision is pinned in `proofs/talos/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  It accepts both the compact Cargo-style version line and the official release binary's additional well-formed commit/date metadata, while requiring the exact pinned numeric version.  The Wasmtime downloader checks both cached and downloaded archives before extraction and replaces a cached file only after its downloaded replacement passes verification.
 
@@ -55,8 +55,9 @@ These environment variables configure local executables and the Wasmtime downloa
 | `WASMTIME_C_API_SHA256` | Expected C API archive hash.  Required with an override that has no checked built-in hash. |
 | `LEANEXE_WASMTIME_HOST` | Compiled C host runner used by ABI tests. |
 | `LEAN_WASM_EXE` | `lean-wasm` executable used by Node tests. |
-| `tools/leanrun --timeout` | Time limit for one Lean, Lake, compiler, or verifier process.  The default is 900 seconds. |
-| `tools/leanrun --lock-timeout` | Time limit in seconds for acquiring the machine-wide Lean slot.  The default is 900. |
+| `tools/leanrun --timeout` | Execution limit after acquiring the shared slot.  The default is 900 seconds.  Standard mode accepts a positive integer with an optional `s`, `m`, `h`, or `d` suffix. |
+| `tools/leanrun --lock-timeout` | Local-mode lock-wait limit in seconds, default 900.  Standard Linux mode queues without a lock-wait timeout and rejects this option. |
+| `LEANRUN_RUNNER` | Installed Linux leanrunner executable.  Defaults to `$HOME/src/leanrunner/leanrun`. |
 | `LEANRUN_TOOLCHAIN` | Explicit Lean toolchain directory.  The default comes from the root `lean-toolchain` pin. |
 | `LEANRUN_LOCAL=1` | Explicitly user-authorized fallback when no systemd user scope exists.  It retains serialization, the pinned toolchain, one Lean thread, priority settings, and timeout, but not memory, swap, or CPU cgroup enforcement. |
 | `WASM_TOOLS` | `wasm-tools` executable used by WAT and Talos checks. |
@@ -64,13 +65,15 @@ These environment variables configure local executables and the Wasmtime downloa
 
 ## Lean Process Limits
 
-Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  In standard mode `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It always acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.
+Standard Linux mode delegates every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command to installed leanrunner.  The wrapper selects the pinned toolchain and fixed per-job limits.  Installed leanrunner verifies finite aggregate limits in `leanrun.slice`, acquires its shared one-job lock under `$XDG_RUNTIME_DIR/leanrun-locks`, and creates the resource-limited scope.  VQ uses the same installed runner and lock.  Queue waiting has no timeout.  Execution limits begin after lock acquisition.
 
 ```sh
 tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
-Standard mode enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and `LEAN_NUM_THREADS=1`.  `--timeout` bounds execution after lock acquisition, while `--lock-timeout` bounds the queue wait in seconds.  The corresponding `LEANRUN_TIMEOUT` and `LEANRUN_LOCK_TIMEOUT` environment variables remain available to repository drivers, but interactive commands use flags so `tools/leanrun` remains the stable approved prefix.  Stop if the user scope, lock, pinned toolchain, or required cgroup properties are unavailable.  Only after the user explicitly authorizes execution without the systemd cgroup may `LEANRUN_LOCAL=1` be used; it retains the lock, pinned toolchain, timeout, `LEAN_NUM_THREADS=1`, `nice`, and `ionice`, while clearly warning that the cgroup limits are absent.
+Standard mode enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `TasksMax=512`, `nice -n 10`, `ionice -c 3`, and `LEAN_NUM_THREADS=1`.  The installed local aggregate profile has 6 GiB memory high, 7 GiB memory maximum, 1 GiB swap, 200% CPU, and 1,024 tasks.  Nested commands verify their membership in `leanrun.slice` and the inherited per-job limits before execution.  `LEANRUN_TIMEOUT` remains available to repository drivers.  Interactive commands use `--timeout` so `tools/leanrun` remains the approved prefix.  Stop if the installed runner, user scope, lock, pinned toolchain, or required cgroup properties are unavailable.
+
+Explicitly authorized `LEANRUN_LOCAL=1` retains the separate legacy lock, pinned toolchain, execution timeout, one thread, and priority controls.  Its lock-wait limit defaults to 900 seconds and accepts `--lock-timeout` or `LEANRUN_LOCK_TIMEOUT`.  This mode reports the absence of CPU, memory, and swap cgroup enforcement.
 
 Set `LEANRUN_LOCAL=1` on a runner-calling repository driver and invoke that
 driver directly.  Do not place the driver beneath `tools/leanrun` or invoke

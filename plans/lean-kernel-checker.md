@@ -1,7 +1,7 @@
 # Full Lean Kernel Typechecker Implemented in LeanExe
 
 Prepared and consolidated: 2026-09-16  
-Status: executable milestones M0.0–M0.11 and M1.0–M1.1 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
+Status: executable milestones M0.0–M0.11 and M1.0–M1.2 complete on 2026-09-16. P0/P1 now prove source-level sort and concrete universe operations for all UInt64 inputs. Graph/binding/checker and exact-WASM correctness remain unproved. The user clarified that this remains a PoC: defer larger source proofs and do no WASM proof work now. Work is committed and published on branch lean-kernel-checker after each increment.
 
 Review decision: start with M0.0, a single executable sort-typing rule intended to fit a few hours with a working toolchain. Grow through M0.1, M0.2, and subsequent small checkpoints. M1 is an integration target, not the first implementation task. Every M0 checkpoint has a runnable WASM artifact and a precise, limited claim; real Lean export checking arrives at M0.11.
 
@@ -23,7 +23,7 @@ kernel correctness; both executions can share the same source bug.
 This is the consolidated handoff for the whole planning conversation. It preserves the final objective, the feasibility assessment, the user's corrections, the small executable checkpoints, and the longer-term architecture and verification discussion. Earlier proposals are historical where the latest M0 sequence supersedes them.
 
 - **Final product:** a full pinned-version Lean kernel typechecker implemented in leanexe's executable Lean subset and compiled to WASM.
-- **Next task:** M1.2: implement a checked symbolic-universe syntax table as a standalone executable slice. M0.0–M0.11 and M1.0–M1.1 are complete. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are outside current work.
+- **Next task:** M1.3: implement separately runnable level-parameter substitution with exact expected outputs. M0.0–M0.11 and M1.0–M1.2 are complete. P0/P1 source proofs are complete; larger source proofs are deferred, and WASM proofs are outside current work.
 - **First closed proof:** M0.6, using caller-supplied encoded syntax.
 - **First actual Lean export:** M0.11 complete: pinned lean4export output for implicationIdentity is accepted in WASM; a well-scoped corrupted body is rejected through the same path. No globals, universe parameters or axioms enter that package.
 - **M1:** integration of the small checkpoints, not the first work unit.
@@ -331,9 +331,9 @@ The completed M0 PoC reaches actual export checking. Use these small next steps:
 - **M1.1 — let exports (complete):** map `letE` records losslessly to the existing value/binder
   representation. Verify the raw fixture actually contains a let; accept it and
   reject a malformed or wrong-valued unused let through the same path.
-- **M1.2 — symbolic-level syntax:** add a checked level table and references for
-  zero, successor, parameter, max and imax. Deliver a syntax-validation artifact;
-  do not also implement general universe comparison in this increment.
+- **M1.2 — symbolic-level syntax (complete):** validate a three-word level table for
+  zero, successor, parameter, max, and imax.  All 35 valid/malformed cases pass
+  in WASM and native Lean.  Comparison and substitution remain later increments.
 - **M1.3 — level parameter substitution:** implement separately runnable,
   capture-free parameter instantiation with concrete expected outputs. Keep
   symbolic comparison and global declaration admission as subsequent increments.
@@ -498,7 +498,7 @@ precise obligations, and small proof increments.
 A separate model theorem or one successful fixture does not establish checker
 soundness. A source theorem does not establish a WASM theorem. Keep both proof
 coverage and missing cases visible, and keep executable regression evidence as
-an additional gate. M0.10, M0.11 and M1.0–M1.1 are complete; M1.2 is the next PoC increment. Larger source proofs may
+an additional gate. M0.10, M0.11 and M1.0–M1.2 are complete; M1.3 is the next PoC increment. Larger source proofs may
 be deferred explicitly; no WASM proofs are being attempted now. Self-checking cannot remove the logical bootstrap by assertion.
 
 ## 6. Native certificates and bootstrap trust
@@ -559,7 +559,7 @@ For M0.0 this is a short receipt, not a new reporting framework. A returned stat
 
 - Run every Lean/Lake/compiler invocation through tools/leanrun, with a reasonable timeout. Do not run Lean processes concurrently or bypass its shared lock.
 - Standard Linux mode enforces the repository's CPU, memory, swap, and scheduling limits. Read the current instructions for exact values and platform handling.
-- LEANRUN_LOCAL=1 requires explicit authorization for local execution without the standard cgroup controls. The user explicitly authorized direct/local Lean execution in this session on 2026-09-16. Use the existing runner in LEANRUN_LOCAL=1 mode to retain serialization, timeouts, and priority controls; no runner bypass is needed.
+- The current workstation uses standard Linux delegation to installed leanrunner.  Jobs queue on its shared lock and run under leanrun.slice.  Execution timeouts begin after admission.  The earlier container-local authorization in section 12 records that historical environment.  LEANRUN_LOCAL=1 still requires explicit authorization for the current environment.
 - Repository drivers that invoke the runner should be invoked as documented, without wrapping them in another runner and deadlocking the shared lock.
 - After a timeout, diagnose or divide the target before repeating it unchanged.
 - Follow current focused and aggregate test gates for the code actually changed. Keep compiler/runtime changes isolated enough to review and test independently.
@@ -632,6 +632,7 @@ These links pin the inspected source state. Recheck current files when implement
 - [x] M0.11: actual Lean proof export through the checker; raw export reproduction, exact graph, corrupt proof, exhaustion and 14 adapter failure cases pass.
 - [x] M1.0: actual composition export with two applications; raw reproduction, exact graph, scoped wrong-argument rejection, exhaustion and 19 adapter failure cases pass.
 - [x] M1.1: actual unused-let export; raw reproduction, remapped graph, scoped invalid-value rejection, exhaustion and 21 adapter failure cases pass.
+- [x] M1.2: standalone symbolic-level validation; 35 native/WASM cases cover forms, parameter bounds, malformed fields, invalid references, and unreachable records.
 - [ ] M1: command-line checking of actual dependent-function proofs and meaningful corruptions.
 - [ ] M2: independently checked induction/equality and arithmetic proofs.
 - [ ] M3: complete pinned-version kernel and Init closure.
@@ -764,7 +765,7 @@ order machines in LeanExe perform binding, dependent-function typing, beta/zeta
 conversion and an actual exported closed proof check. This does not establish
 full Lean compatibility, inductive/recursor support, symbolic universe handling,
 or large-library performance. The multi-megabyte artifact and naive graph copying
-are remaining scale concerns. M1.2 is the next small task, not a full-kernel port.
+are remaining scale concerns. M1.2 subsequently completed; M1.3 parameter substitution is the next small task.
 
 
 ### M1.0: exported applications
@@ -783,7 +784,7 @@ failure variants, and an import-free artifact. Its bytes and SHA-256 equal the
 M0.11 artifact above: the existing checker handles the larger example unchanged.
 Reproduce raw bytes with `node tools/kernel-export-fixture.js composition`.
 The identity export remains a regression gate; the aggregate command includes
-both exports. Source proof coverage is unchanged. M1.1 subsequently completed; continue with M1.2.
+both exports. Source proof coverage is unchanged. M1.1 and M1.2 subsequently completed; continue with M1.3.
 
 
 ### M1.1: exported lets
@@ -800,4 +801,28 @@ verdicts, exhaustion, twenty-one adapter failures and the import-free artifact.
 Reproduce with `node tools/kernel-export-fixture.js let`. Runtime commands use
 `checker-m1-1.wasm` with `let.ndjson` or `let-corrupt.ndjson` in the fixture
 directory. The kernel implementation and formal proof coverage are unchanged.
-M1.2 is next; do not pause for new proofs under the current priority.
+M1.2 subsequently completed; M1.3 is next under the current priority.
+
+### M1.2: symbolic-level validation
+
+`node test/kernel_levels.js` checks a standalone `validateLevels` artifact.
+The input is a separate three-word table with zero, successor, parameter, max,
+and imax tags, a parameter count, and a root ID.  Children must precede their
+parent, parameters must fit the declared range, and unused fields must be zero.
+Validation covers every record.  It accepts shared nodes and rejects malformed
+unreachable nodes.  All 35 inputs match explicit expected results in native
+Lean and Wasmtime.  Native source examples also check symbolic successor,
+Pi imax formation, and Type-product max formation.
+
+The artifact `.lake/build/kernel-check/checker-m1-2.wasm` is 4,348 bytes,
+SHA-256 `3179296d43118752ca30885e3dbd56540a311e7a568ebba759674316674e10fb`.
+The [checkpoint documentation](../LeanExe/KernelCheck/README.md#m12-symbolic-universe-syntax)
+records the table format and runtime commands.  Formal proof coverage remains
+P0/P1.  M1.3 parameter substitution is next.
+
+The user approved delegation of standard Linux execution to installed leanrunner
+and chose queue waiting without a timeout.  The repository wrapper supplies the
+pinned toolchain, one job and thread, and fixed per-job limits.  Installed
+leanrunner supplies the shared VQ lock and aggregate leanrun.slice limits.
+The current machine has those limits enforced; section 12's container-local
+setup is historical.  See the [development guide](../DEVELOPING.md#lean-process-limits).

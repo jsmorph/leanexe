@@ -21,11 +21,11 @@ The persistent source-driven case consists of the source program, its tests, one
 
 ## Resource Policy
 
-All four tools call `tools/leanrun` for every Lake, Lean, `lean-wasm`, and Talos verifier process.  In standard mode each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, `LEAN_NUM_THREADS=1`, and a stage-specific timeout.  The runner shares the same-user `../vq` lock, and the tools stop when they cannot acquire that lock or create the required user scope.
+All four tools call `tools/leanrun` for every Lake, Lean, `lean-wasm`, and Talos verifier process.  Standard Linux mode delegates to installed leanrunner.  Each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `TasksMax=512`, `nice -n 10`, `ionice -c 3`, `LEAN_NUM_THREADS=1`, and a stage-specific execution timeout.  Installed leanrunner queues on its shared VQ lock without a wait timeout and enforces the aggregate `leanrun.slice` limits.  The tools stop on runner or scope-creation failures.  [Developing LeanExe](../DEVELOPING.md#lean-process-limits) defines the runner setup.
 
 In a container without a systemd user scope, an explicit user-authorized
 `LEANRUN_LOCAL=1` on one of these tools keeps every child local and retains the
-pinned toolchain, shared lock, stage timeout, `LEAN_NUM_THREADS=1`, `nice`, and
+pinned toolchain, legacy local-mode lock, stage timeout, `LEAN_NUM_THREADS=1`, `nice`, and
 `ionice`.  The runner warns that the cgroup CPU, memory, and swap limits are
 not enforced.  The mode is never an automatic fallback.  Invoke the tool
 directly with the variable; do not wrap a runner-calling tool in

@@ -1,7 +1,7 @@
 # Correctness evidence and next proof milestones
 
 Executable milestones and formal proof coverage are different statuses.
-M0.0–M0.11 and M1.0–M1.1 have source tests and WASM/standard-Lean comparisons. They do **not**
+M0.0–M0.11 and M1.0–M1.2 have source tests and WASM/standard-Lean comparisons. They do **not**
 establish overall checker soundness or correctness of the emitted WASM.
 The user clarified the current priority: this is a PoC of what LeanExe can
 execute; some source proofs may be deferred, and there is no WASM proof work
@@ -35,6 +35,7 @@ be accepted. `imaxNat` separately states the impredicative zero-codomain rule.
 
 | Boundary | Current evidence | Required theorem |
 |---|---|---|
+| Symbolic-level validation | 35 valid/malformed table tests in native Lean and WASM | Successful validation decodes to an acyclic level expression with parameters in the declared range |
 | Graph validation and internal reads | Malformed-input and boundary tests | Successful validation implies every accessed record/reference is in bounds and decodes to an admitted acyclic term; internal word address calculations do not wrap within the ABI size bound |
 | Scope and shifting | Exact-result tests, including nested/shared binders | The graph operations refine binder-aware mathematical operations, including scope preservation and absence of capture |
 | Substitution | Exact-result tests with lifting/index adjustment | Graph instantiation refines capture-avoiding binder removal; establish substitution and lifting laws needed by typing |
