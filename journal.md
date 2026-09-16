@@ -22814,3 +22814,118 @@ whitespace diagnostics and accept the documented difference status.  No
 source change followed from that diagnostic mistake.  The final publication
 review selects 51 explicit files.  The fetched branch, FETCH_HEAD, and local
 HEAD all match ef8766e0831914d17fcc7db6773b272185d869fb before staging.
+
+## Euler continuation on main: certificate research
+
+The user authorized merging the completed branch into main, pushing it,
+and pursuing numerical certificates, successful completion, and continuum
+convergence in that order.  Fetched both branches and established that
+origin/main was 338 commits behind talosfp-euler with no divergent commits.
+The tracked worktree and index were clean.  Switched to main and merged
+with --ff-only, then pushed main without force.  A fresh fetch gives
+HEAD = origin/main = FETCH_HEAD =
+d942e3cbd91a78cefa8be7e45617b05110bf955d, with tree
+05fbb5ba16cdb99c03f6e910b25506f08e66aa85.  The complete untracked-file
+inventory agrees before and after the merge.  No state was removed and
+no Lean execution was needed for this fast-forward.
+
+Read the repository instructions, README, development instructions, local
+runner, operations plan, current roadmap, and leanrunner skill.  Continued
+on main with the standard single-process limits.  Read the physical trace,
+step, row, ratio-residual, real Rusanov flux, outward arithmetic, and rounding
+error proofs.  Several initial read-only lookups guessed nonexistent
+aggregate filenames.  Following the imports identified PhysicalTrace,
+PhysicalStep, OutwardFaceRowReference, OutwardFaceRowBalance, and
+RealRusanov as the relevant definitions.  No build failed during research.
+
+The exact physical balance identifies the accumulated signed residual as
+final total minus initial total minus accumulated physical boundary flux.
+Thus interval enclosures for those three aggregates give a certificate for
+the net residual.  Bounding the sum of local error magnitudes would require
+additional per-cell accounting.  Asked the user to choose net residual
+first or both bounds together, because that choice changes the claim and
+runtime work.  The answer remains pending.  Shared enclosure mathematics
+supports either choice and does not change the numerical recurrence.
+
+Read Sections 4 through 6 of Rump's 2010 Verification methods paper from
+the author's PDF.  The browser PDF fetch timed out.  Direct curl download
+succeeded and the PDF is preserved under
+tmp/euler-certificate-research-20260915-01.  Directed interval inclusion
+and accumulation match the existing checked F64Outward semantics.  The
+dependency examples support enclosing decoded trace aggregates rather
+than evolving interval-valued grid states.  The certificate must include
+rounding in its accumulators and enclose exact rational pressure constants.
+It must use the trace's decoded durations, which differ in meaning from
+the rounded final time word.
+
+Read the LTG forest and catalog and retrieved array-fold-prefix and
+fixed-array-fold-body.  Their checked prefix invariants and compiler-region
+composition may support later accumulator loops.  No scalar interval entry
+was found.  Compiler-derived evidence will be inspected once the executable
+specification is fixed.  No LTG performance improvement is claimed.
+
+Added the phase-13 plan and its documentation links, and recorded the
+authorized main workflow in the operations plan.  Drafted three shared
+real-arithmetic lemmas in RealBalanceEnclosure: residual interval bounds,
+absolute bounds from an interval, and their composition.  The proofs use
+only order reasoning and linear arithmetic.  They are awaiting their first
+Lean check.  No numerical solver or artifact file has changed.
+
+The first focused check ran through tools/leanrun with a three-minute
+timeout and 30-second lock wait: lake -d proofs/talos/lean --no-ansi build
+Project.ProofKit.RealBalanceEnclosure.  The target passed first in 1.2
+seconds.  All three audits report only propext, Classical.choice, and
+Quot.sound.  The proof has no local arithmetic expansion beyond its
+stated order inequalities.  No compiler or LTG change is indicated by
+this real-arithmetic check.
+
+Reviewed the existing outward-add generated execution proof and reconstructed
+solver scalar-region transfers before extending the arithmetic support.
+A guessed LeanExe example path and two guessed registry paths did not
+exist.  The registered entry in proofs/talos/cases.json instead compiles
+Project.EulerReconstructed.Control.solve directly.  The outward arithmetic
+definitions already serve as executable source.  The next draft adds
+theorems about those definitions, without adding another arithmetic model:
+addition and subtraction of directed bounds, and induction over sequential
+rounded accumulation.  PhysicalEnclosure applies the generic residual
+lemma to the existing physical_trace_balance and its defined residual.
+Both new modules await their first focused checks.
+
+Both modules passed their first check in the same bounded runner invocation.
+PhysicalEnclosure took 1.5 seconds.  The accumulation target's printed
+timing fell within the tool's truncated replay output, so no duration is
+reported for it.  Read each target's Lake trace directly to inspect its
+complete diagnostics and audits.  All four new theorem audits use only
+standard axioms.  The accumulation proof emitted one deprecation warning
+for Nat.lt.step.  Preserved its first source and Lake trace under the research
+directory, then changed that use to Nat.lt_succ_of_lt as Lean instructed.
+Added the direct two-subtraction residual theorem so that final certificate
+endpoint arithmetic also composes the checked outward operations.  This
+last addition and the warning correction await a focused check.
+
+The larger output consisted of cached dependency diagnostics, including
+old deprecation warnings and an unrelated CodeLib arithmetic-example audit
+using native_decide.  The public new theorem audits do not depend on that
+example's axiom.  No admitted result or new axiom was introduced.
+
+The corrected accumulation module and the new residual_sound theorem passed
+the focused three-minute check.  This invocation used Lake --quiet, which
+suppressed successful-target timing and informational output but still
+replayed dependency warnings.  The target's complete Lake trace has four
+standard-only axiom audits and no warnings.  Reviewed all three final proof
+files against the mathematical argument and updated the plan and notes.
+The eight checked theorems establish the shared foundation.  They do not
+compute production certificate values.  The observer specification still
+awaits the user's scope choice, and its execution and exact-byte proofs
+remain open.  No later agenda item was started.
+
+This checkpoint will publish nine explicit paths: journal.md, devnotes.md,
+plan.md, plans/README.md, plans/talosfp-euler-operations.md,
+plans/euler-certificates-and-convergence.md,
+proofs/talos/lean/Project/ProofKit/RealBalanceEnclosure.lean,
+proofs/talos/lean/Project/ProofKit/F64OutwardAccumulation.lean, and
+proofs/talos/lean/Project/EulerReconstructed/PhysicalEnclosure.lean.
+The publication gates are reviewed source and notes, passing focused checks,
+standard-only audits, authored whitespace validation, an unchanged remote
+parent, exact staging, and post-push fetch and tree equality.  Preexisting
+untracked files and the research records remain local and preserved.

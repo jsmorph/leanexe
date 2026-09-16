@@ -12349,3 +12349,24 @@ All changed PDF pages passed visual review.  The final build has no
 warnings, extracted metadata matches, and the archive PDF digest agrees
 with the submitted file.  The [review record](paper/euler-reconstructed-report/review.md)
 preserves the technical checks, editorial remarks, and corrections.
+
+## Euler certificates on main
+
+The completed Euler branch was fast-forwarded into main and pushed.
+The fetched main and local HEAD agree at
+d942e3cbd91a78cefa8be7e45617b05110bf955d.  Preexisting untracked files
+remain preserved.  The [continuation plan](plans/euler-certificates-and-convergence.md)
+pursues numerical certificates, successful completion, and continuum
+convergence in that order.
+
+The existing physical balance reduces a net conservation-error certificate
+to enclosing initial totals, final totals, and accumulated boundary fluxes.
+The choice between that certificate and additional local-error accounting
+is pending user confirmation.  Research covered the existing outward-rounding
+proofs, Rump's interval-inclusion argument, and LTG array-fold support.
+Eight foundation theorems now pass Lean: real residual bounds, directed
+addition and subtraction, sequential rounded accumulation, rounded residual
+endpoints, and application to the existing Euler trace.  Every audit uses
+only propext, Classical.choice, and Quot.sound.  All checks used the standard
+local tools/leanrun limits.  The executable observer and its exact-WASM
+proof remain open.  The solver and its completed artifact remain unchanged.
