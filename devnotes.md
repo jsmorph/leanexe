@@ -12598,3 +12598,47 @@ around -8.  All public proof audits use the three accepted logical axioms.
 At -8, Wasmtime returns 3f3611b84a764371, approximately
 0.00033674954689737804.  The historical aggregate-build deferral is unchanged.
 Softmax composition is next.
+
+## 2026-09-16: Verified softmax command-line checkpoint
+
+Softmax now has a complete generated-WAT execution theorem and numerical
+proof for one to four binary64 scores in [-4, 4].  The scalar ABI supplies
+a count and four score words.  The command-line host pads inactive inputs
+with zero.  The WASM entry checks all four words and the count, computes
+the active maximum, subtracts it, evaluates the extended exponential,
+sums two pairs, and divides active weights by the total.  Masked outputs
+are exactly positive zero.
+
+The real reference is standard exponential softmax of decoded binary64
+inputs.  shifted_reference proves invariance under subtraction of the
+selected maximum.  The subtraction proof uses relative error and binary64
+spacing at eight to preserve the exponential domain.  Each weight has
+absolute error at most 1/399.  The denominator lies in [49/50, 5].
+The final component error is at most 1/64, and the sum of decoded outputs
+differs from one by at most 32 times 2^-52.  Every active output is positive
+and finite.  Decimal parsing remains outside the theorem.
+
+The first execution proof used source-order arguments where Talos expects
+operand-stack order.  Reversing theorem argument stacks resolves that
+mismatch.  Later call composition exceeded both 200,000 and 2,000,000
+heartbeats.  A focused state trace identified unreduced List.set terms,
+list getters, and literal natural-number arithmetic inside nested local
+frames.  The shared FixedFrame tactic normalizes these expressions before
+applying the call theorem.  The composed execution target then passed in
+eight seconds.  Separate base-function proofs take about 34 seconds.  The
+numerical proof modules each check in a few seconds.  This investigation
+needed no compiler or arithmetic-semantic change.
+
+The focused softmax source-artifact gate, all 26 exponential and 31 softmax
+Wasmtime versus native-bit-model vectors, input validation, decimal-input
+equivalence, documentation checks, and whitespace checks pass.  Tests cover
+all active lengths, each maximum position, mixed signs, equal scores, signed
+zeros, subnormals, interval endpoints and adjacent words, NaNs, infinities,
+and invalid raw counts.  Public audits use only the accepted logical axioms.
+
+The command tools/numeric-demo.js softmax --scores 0 1 2 returns approximately
+[0.09003058303323568, 0.24472846855334776, 0.6652409484134166, 0].  The binary
+digest is 44e7632e97bbd4ddaf9a3f420ba727896afa4ded542178570e865965468ececd.
+Exact-byte packaging remains deferred.  The aggregate source-proof gate
+is the remaining repository check for this checkpoint.  LayerNorm
+sensitivity and checkpoint ranges remain the next numerical investigation.

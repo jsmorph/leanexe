@@ -133,3 +133,4 @@ import Project.EulerCertificateFlux.Spec
 import Project.EulerCertificate.Spec
 import Project.ExpSmall.Spec
 import Project.ExpWide.Spec
+import Project.Softmax.Spec

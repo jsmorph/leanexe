@@ -33,6 +33,27 @@
         "denominator": "400"
       },
       "theorem": "Project.ExpWide.Spec.expWide_real_error"
+    },
+    {
+      "name": "softmax",
+      "kind": "softmax",
+      "fields": [
+        "scores_bits"
+      ],
+      "case": "softmax",
+      "wasm": "proofs/talos/.generated/softmax/program.wasm",
+      "export": "softmax",
+      "domain": "One to four finite binary64 scores in [-4, 4]; remaining positions are masked and supplied as zero",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "64"
+      },
+      "normalizationErrorBound": {
+        "numerator": "1",
+        "denominator": "140737488355328"
+      },
+      "theorem": "Project.Softmax.Spec.softmax_real_error",
+      "sha256": "44e7632e97bbd4ddaf9a3f420ba727896afa4ded542178570e865965468ececd"
     }
   ]
 }

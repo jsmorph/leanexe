@@ -624,6 +624,20 @@
         "Project.ExpWide.Spec.expWide_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "softmax",
+      "annotations": true,
+      "module": "Project.Softmax.Model",
+      "entry": "Project.Softmax.softmax",
+      "sourceWorkspace": "proof",
+      "leanModule": "Softmax",
+      "specTarget": "Project.Softmax.Spec",
+      "behaviorTheorems": [
+        "Project.Softmax.Spec.softmax_exact",
+        "Project.Softmax.Spec.softmax_real_error"
+      ],
+      "complete": true
     }
   ]
 }
