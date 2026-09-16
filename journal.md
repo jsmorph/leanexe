@@ -23070,3 +23070,195 @@ additional axiom, or native-decision shortcut.  The checkpoint includes
 the checked scalar source, generated model, execution and enclosure
 proofs, registration, and updated plan.  Existing report and data files
 remain outside this commit.
+
+Published dcd8c99b9f225719ecba8209d3720b20481993e4 on main.
+HEAD, origin/main, and FETCH_HEAD agree after fetching main.  The tree is
+91ce456df09ea221ab97e48c4d251d8a7df95956 and its parent is
+93854cada220ebfcca6b4804fd83e1d376e8af72.  The tracked worktree and index
+were clean before starting the next source files.
+
+Reviewed physicalTotal, gridTotal, the two accepted sweep boundaries, and
+the existing array-fold arguments before writing the totals source.
+The accumulator holds four checked intervals.  Normalization divides each
+interval by smallNaturalBits n twice, reusing the proved exact conversion
+for n at most 800.  This computes the specified division by n squared
+without extending that conversion to n squared.  Added vector operations
+and a single cell fold.  Its semantic proof precedes compiler generation.
+
+The first vector proof check found an ambiguous unqualified get in the
+simplifier arguments, where Lean also considered MonadState.get.  The zero
+interval proof passed.  Preserved the failed draft and output, qualified
+the projection as Flux.get, and added a generic vector-fold inclusion
+lemma.  The totals specification applies that lemma and exact mesh-size
+conversion.  Its connection to the existing two-dimensional grid total
+is a separate next theorem.
+
+The vector specification passed in 1.1 seconds and the generic fold lemma
+in 923 milliseconds.  The first totals check needed explicit unfolding of
+the partially applied addCell function before rewriting Array.foldl to its
+list form.  Preserved that failure.  After the unfolding change, both total
+inclusion theorems passed in 950 milliseconds with standard axioms and no
+warnings.  Read Mathlib's finite-sum and product-index equivalence results
+to connect the flat fold to the existing two-dimensional physical total.
+
+The grid-total correspondence passed in 1.1 seconds after choosing the
+curried product-sum lemma and supplying the array index explicitly to
+getElem!_pos.  Both earlier drafts and their diagnostics are preserved.
+The normalized accumulator now encloses the physicalTotal expression used
+by the existing balance theorem.  Its public audits use standard axioms.
+
+Read the compiler's extractArrayFoldValueFrom implementation and the array
+manual before selecting the boundary iteration.  Array.foldl accepts an
+explicit stop index.  Folding the first n cells supplies their checked
+linear indices as line numbers and avoids a temporary boundary array.
+The source evaluator reconstructs the two face states, obtains the same
+selected speed from the existing flux routine, and encloses its real flux.
+This visits n lines per directional sweep.  Updated the totals callback to
+the documented direct-lambda form before compiler generation.  The totals
+proof still passes.  Boundary geometry and flux inclusion are next.
+
+Boundary face and line inclusion passed on the first check in 983
+milliseconds, with standard axioms and no warnings.  The padded-state
+geometry is definitionally equal to the existing reference.  The proof
+therefore uses the same reconstructed words and selected speed.  The
+prefix-sum proof now connects the first n indexed cells to all n grid
+lines, using the checked vector-fold inclusion theorem.
+
+The boundary sum required explicit normalization of function composition
+before applying List.map_map.  Supplying its function arguments alone did
+not match the lambda in the goal.  A specialized equality followed by
+Function.comp_def resolved that boundary.  The next diagnostic exposed an
+implicit argument to List.nodup_range.  After correcting it, BoundarySum
+and BoundaryStep passed under standard local limits.  The latter checked
+in 1.1 seconds.  Their audits contain only standard axioms.  Failed drafts
+remain in the research directory.  No timeout or resource failure occurred.
+
+The observer controller now evaluates the boundary contribution while the
+intermediate x-sweep grid is available, then releases that grid in the
+same position as the existing step.  The retry loop discards contributions
+from rejected trials.  The advance loop adds only accepted contributions.
+Projection proofs compare its grid, timestep, status, and time with the
+existing controller.  These proofs are the next check, followed by
+inclusion along the same accepted numerical trace.
+
+Controller projection passed in 1.3 seconds after replacing unfold with
+simp only to expose the condition beneath local bindings.  The retry
+boundary proof passed after using one explicit case split instead of an
+unsupported multi-target split.  The trace proof passed in 1.1 seconds
+after exposing the zero-fuel result.  It proves inclusion for an arbitrary
+valid initial accumulator along the same NumericalTrace.  Rejected trial
+contributions do not enter the accumulated term.
+
+Solve.run computes the initial total before advance, the final total after
+advance, and their difference minus the accepted boundary sum.  The source
+proof composes the existing physical_trace_balance with these three interval
+inclusions.  run_enclosure passed in 1.1 seconds.  Its first draft required
+reducing the conjunction in the supported-size condition and specializing
+the vector inclusion before rewriting one component.  OutputSpec passed in
+1.1 seconds after simplifying the array literal's size through its list
+representation.  The output theorem proves that the old solver words form
+the exact prefix, followed by four status/lower/upper triples.  Every public
+audit uses only standard axioms.  The failed drafts and available diagnostics
+are preserved in the research directory.
+
+Registered euler_certificate as incomplete and started compiler generation.
+Its generated execution, allocation, and exact-byte proofs remain open.
+The complete source observer uses two total-grid folds, one boundary fold
+per direction per accepted step, and twelve scalar accumulator words.
+The source proof alone does not establish the generated module's call count
+or memory behavior.  The compiler annotations and emitted code are the next
+evidence to inspect.
+
+The first compiler run rejected an explicit release of trial.grid in retry:
+the root came from a structure field.  This is the documented source release
+boundary in docs/spec.md and ReleaseCheck.lean.  The run ended with status 3
+after about 2.4 minutes, within the standard limits.  Its preceding resource
+sample showed one CPU and about 2.8 GiB resident memory.  The rejected source
+is preserved as Control-first-extraction.lean.
+
+Replaced the step wrapper with a trial function that keeps both allocated
+sweep grids and their releases in local scope.  Accepted trials return the
+next grid and its boundary contribution.  Rejected trials release their
+local grids and return an empty failure result for retry.  The compiler's
+ownership checker and numerical method remain unchanged.  The attempt_eq
+lemma compares this function with the existing numerical step.  The updated
+projection proof passes.  The boundary proof required reducing a True goal
+after simplification.  The trace and output proofs are being rechecked.
+
+The second generation succeeded: 47,772 bytes, SHA-256
+80adef532b06b0ef8fbddd1a6176e8fcea3ffe51c7088d05b8fddb3fc309e629,
+189 source functions and four runtime functions.  Source and absolute-bound
+corollaries passed.  The emitted solve calls run once, run calls advance
+once, and each trial calls two sweeps.  Totals each use one full-grid fold.
+Boundary.line called each face four times, and the boundary fold called
+line four times.  Explicit bindings now name the two face results and the
+line result before their vector projections.  Initial zero vectors also
+have explicit bindings.  The source proofs still pass.
+
+I started regeneration for those bindings before completing the release
+inspection.  That inspection found a second issue: rejected attempt results
+allocated an empty array, while retry retained no owner for its release.
+The release calls in retry handled its carried source root, not this empty
+result.  Preserved the generated binary and annotations and the source as
+Control-empty-trial.lean.  Changed attempt to Option Trial: successful
+results carry the owned grid and boundary vector, while failure returns
+none after releasing its local sweep grids.  This expresses failure without
+allocating a placeholder grid.  The running regeneration predates this
+change and cannot serve as the final artifact.  Updated source projection
+and enclosure checks will precede the next generation, whose allocation
+branches must be inspected before proof construction.
+
+The final Option Trial source proofs passed, including numerical projection,
+accepted trace inclusion, complete residual enclosure, absolute bounds, and
+the output prefix theorem.  The first Option proof used split on the match
+instead of its accepted-grid condition.  An explicit by_cases corrected that
+boundary.  I started final generation after seeing that proof diagnostic,
+contrary to the order recorded above.  The executable source had compiled,
+but its projection proof had not yet passed.  The subsequent focused build
+checked the corrected proofs and final generated Program and AnnotationMatches.
+A second focused build removed one unused simp argument and checked the four
+runtime pins.  Both builds passed under the standard local limits.
+
+The final observer is 45,644 bytes with SHA-256
+22696951ce81106990843e19494430292bdde35183058a34ff30133cc47bd981,
+191 source functions and four runtime functions.  The emitted attempt has no
+stores or memory growth outside its called sweeps.  A rejected x-sweep releases
+its middle grid.  A rejected y-sweep releases middle and next.  Success retains
+next and releases middle after computing the boundary contribution.  Each
+failure returns scalar zeros for none.  Retry allocates an empty grid only
+when it terminates with invalid-time or exhausted-fuel status.  These static
+observations determine the allocation proof obligations.  They do not discharge
+those obligations.
+
+Boundary.line now calls each face once.  Boundary.sum calls line once per
+iteration.  Totals.sum and Boundary.sum initialize one zero vector each.
+The final generation and the earlier rejected artifacts are preserved.
+The source-name comparison found 142 closed solver functions and 39 closed
+interval-flux functions whose instructions and metadata match after renaming
+call and nominal type indices.  The flux interface wrapper needs a new proof:
+its two physical and four component calls replace the previous fourteen calls.
+
+The retrieved array-fold-prefix lemmas apply to the abstract accumulator.
+The fixed-array-fold-body theorem loads one-word items, while these folds read
+seven-word cells and carry twelve interval words.  Its hypotheses therefore
+do not fit this artifact.  Compiler annotations check the loop boundaries,
+but their multiword-fold descriptors are null and supply no frame accessors.
+The existing seven-word scan loader provides a checked worked example for
+the remaining load proof.  Function-region equality checks precede the new
+scalar, fold, controller, and output execution proofs.
+
+Both function-region theorems passed: SolverRegion in 44 seconds and
+FluxRegion in 7.8 seconds.  Their audits use standard axioms.  These are
+checked equality and call-closure proofs, so the semantic transport theorem
+can reuse the earlier executions without a compiler-correctness assumption.
+The eight interval/physical/component transfers and the six-call interface
+proof passed.  The new interface theorem took 6.1 seconds.
+
+The vector operations passed after correcting the orientation proof.
+Its first draft stopped at the explicitly typed if instruction.  The second
+called guard_peel before reducing the generated function frame and reached
+400,000 heartbeats in 40 seconds.  Reducing func163Def first removed that
+elaboration boundary.  All seven vector theorems then passed in 29 seconds
+with standard axioms.  Both failed drafts are preserved.  No resource limit
+was raised.  The complete observer registration remains incomplete until
+the array folds, allocation, controller, output, and exact-byte gates pass.
