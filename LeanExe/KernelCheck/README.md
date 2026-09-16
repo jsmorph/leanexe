@@ -164,7 +164,31 @@ build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-5.was
 
 This returns a success packet whose inferred root is `Sort 0`.
 
+## M0.6: the first closed proof
+
+`node test/kernel_check.js` builds `checker-m0-6.wasm`. The entry is
+`checkProof graph proofRoot claimedTypeRoot fuel`. It validates the claimed
+type, infers the proof's type, and compares their structure with shared fuel.
+Lambdas check their annotations even if the bound variable is unused.
+No global declarations, universe parameters, axioms, or native Lean calls
+are involved in the generated checker.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-6.wasm checkProof i64 array-u64:0,0,0,1,0,0,1,1,0,2,1,2,2,0,3,3,1,1,3,0,5 i64:6 i64:4 i64:200
+```
+
+This returns 0 for `fun (p : Prop) (hp : p) => hp : ∀ p : Prop, p → p`.
+The 12-case corpus also checks Type identity, equal types represented by
+different IDs, a false `p → q` claim, wrong bodies, invalid annotations,
+invalid claimed types, malformed input, and exhaustion. Standard Lean checks
+the same observable results and the genuine identity theorems in the source.
+
+This fragment has Sort, bvar, Pi and lambda only. Structural comparison is
+sufficient for its well-typed types. Beta conversion, applications, lets,
+globals, inductives, and symbolic universes are still absent. When those
+forms arrive, missing conversion must be reported as inconclusive.
+
 ## Next checkpoint
 
-M0.6 adds lambda checking and the first closed proof. The complete handoff and later
+M0.7 adds capture-avoiding substitution as a separately runnable operation. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).
