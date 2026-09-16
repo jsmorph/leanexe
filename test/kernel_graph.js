@@ -11,7 +11,7 @@ const cases = [
   ["truncated", [0,0], 0, 4],
   ["root outside", [0,0,0], 1, 4],
   ["huge root", [0,0,0], 18446744073709551615n, 4],
-  ["unknown tag", [4,0,0], 0, 4],
+  ["unknown tag", [9,0,0], 0, 4],
   ["sort spare field", [0,0,1], 0, 4],
   ["bvar spare field", [1,0,1], 0, 4],
   ["self-cycle", [2,0,0], 0, 4],

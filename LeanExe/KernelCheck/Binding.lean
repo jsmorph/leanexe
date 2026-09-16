@@ -37,6 +37,9 @@ def checkScope (g : Array UInt64) (root depth fuel : UInt64) : UInt64 := Id.run 
       if d == 18446744073709551615 then return 2
       stack := stack.push (nodeB g r) |>.push (d + 1)
       stack := stack.push (nodeA g r) |>.push d
+    else if tag == 4 then
+      stack := stack.push (nodeB g r) |>.push d
+      stack := stack.push (nodeA g r) |>.push d
   if stack.isEmpty then return 0 else return 5
 
 /-- Internal operation on a validated graph. Frames are (root, cutoff, phase).
@@ -74,9 +77,11 @@ def shiftCore (g : Array UInt64) (root cutoff delta : UInt64) (fuel : Nat) : Res
         values := values.push s.root
       else values := values.push r
     else
-      if cut == 18446744073709551615 then return { s with status := 2 }
+      let binder := tag == 2 || tag == 3
+      if binder && cut == 18446744073709551615 then return { s with status := 2 }
+      let bodyCut := if binder then cut + 1 else cut
       stack := stack.push r |>.push cut |>.push 1
-      stack := stack.push b |>.push (cut + 1) |>.push 0
+      stack := stack.push b |>.push bodyCut |>.push 0
       stack := stack.push a |>.push cut |>.push 0
   if stack.isEmpty then return { s with root := values.back! }
   else return { s with status := 5 }

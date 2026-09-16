@@ -41,9 +41,11 @@ def instantiateCore (initial : Result) (root argument : UInt64) : Result := Id.r
         s := addNode s 1 (a - 1) 0
         values := values.push s.root
     else
-      if depth == 18446744073709551615 then return { s with status := 2 }
+      let binder := tag == 2 || tag == 3
+      if binder && depth == 18446744073709551615 then return { s with status := 2 }
+      let bodyDepth := if binder then depth + 1 else depth
       stack := stack.push r |>.push depth |>.push 1
-      stack := stack.push b |>.push (depth + 1) |>.push 0
+      stack := stack.push b |>.push bodyDepth |>.push 0
       stack := stack.push a |>.push depth |>.push 0
   if stack.isEmpty then return { s with root := values.back! }
   else return { s with status := 5 }
