@@ -12716,3 +12716,21 @@ The first runtime attempt exposed missing dynamic loader resolution for the
 Wasmtime C host in this environment. An explicit session-local C API library
 path fixed it; no repository runner or compiler change was needed.
 The documentation gate passed. M0.3 adds binding operations next.
+
+## 2026-09-16: Kernel checker M0.3
+
+Binding operations now use explicit stacks over the validated graph. A shared
+node is visited separately at each cutoff/depth; a binder affects its body
+but not its domain. Shifting appends new nodes, preserves internal variables,
+and checks addition and cutoff overflow. The returned graph is observable.
+Fuel counts total frames rather than recursion depth, bounding repeated DAG
+visits. Exhaustion (5) differs from out-of-scope (1), overflow (2), and malformed
+input (4). No typing judgment is claimed yet.
+
+The source guards and generated WASM pass 13 scope cases and 12 exact shift
+outputs against standard Lean and independently written expectations. Cases
+include nested binders, different cutoffs for one shared node, high-bit indices,
+zero shifts, and exact fuel boundaries. A record-update parsing diagnostic
+was resolved by naming the appended graph before constructing the result.
+No compiler changes were needed; documentation checks passed.
+M0.4, context admission and variable typing, is next.
