@@ -10,14 +10,16 @@ const host = require("./wasmtime_host");
 const root = path.resolve(__dirname, "..");
 const proofRoot = path.join(root, "proofs/talos/lean");
 const directory = path.join(root, "build/tiny-gpt2");
-const fixturePath = path.join(directory, "initialization.json");
+const checkpoint = process.argv.length === 4 && process.argv[2] === "--checkpoint" ? process.argv[3] : null;
+const fixturePath = path.join(directory, checkpoint ? "trained-fixture.json" : "initialization.json");
 const wasm = path.join(directory, "hidden.wasm");
 const headWasm = path.join(directory, "logit.wasm");
 
 function main() {
+  if (process.argv.length !== 2 && !checkpoint) throw new Error("usage: tiny_gpt2_body.js [--checkpoint PATH]");
   fs.mkdirSync(directory, { recursive: true });
   runChecked([path.join(root, ".venv-tiny-gpt2/bin/python"), "training/tiny-gpt2/fixture.py",
-    "--output", fixturePath], { cwd: root, encoding: "utf8" });
+    "--output", fixturePath, ...(checkpoint ? ["--checkpoint", checkpoint] : [])], { cwd: root, encoding: "utf8" });
   runChecked(["lake", "--log-level=error", "build", "Project.TinyGpt2.Model"],
     { cwd: proofRoot, encoding: "utf8" });
   runChecked(["lake", "env", path.join(root, ".lake/build/bin/lean-wasm"), "compile",
@@ -47,7 +49,7 @@ function main() {
       assert(Number.isFinite(value));
       const difference = Math.abs(value - c.reference[j]);
       maximumDifference = Math.max(maximumDifference, difference);
-      assert(difference < 0.01, `PyTorch initialization comparison differs at case ${i}, coordinate ${j}`);
+      assert(difference < 0.01, `PyTorch hidden-state comparison differs at case ${i}, coordinate ${j}`);
     });
     [0, 32, 65, 255].forEach((token, j) => {
       const output = host.callI64(headWasm, "logit",
@@ -63,7 +65,7 @@ function main() {
   });
   assert.deepEqual(outputs[0], outputs[4], "position zero depends on future tokens");
   assert.deepEqual(outputs[1], outputs[5], "position one depends on future tokens");
-  process.stdout.write(`Checked ${native.length} initialized model rows against the native bit model; ` +
+  process.stdout.write(`Checked ${native.length} ${checkpoint ? "trained" : "initialized"} model rows against the native bit model; ` +
     `maximum empirical PyTorch hidden/logit differences ${maximumDifference}/${maximumLogitDifference}\n`);
 }
 
