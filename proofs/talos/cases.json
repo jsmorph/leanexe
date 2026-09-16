@@ -666,6 +666,21 @@
         "Project.Gelu.Spec.gelu_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "tiny_gpt2_hidden",
+      "annotations": true,
+      "module": "Project.TinyGpt2.Model",
+      "entry": "Project.TinyGpt2.hidden",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Hidden",
+      "specTarget": "Project.TinyGpt2Hidden.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Hidden.Spec.loadRow_exact",
+        "Project.TinyGpt2Hidden.Spec.dot8_exact",
+        "Project.TinyGpt2Hidden.Spec.gelu_all_exact"
+      ],
+      "complete": false
     }
   ]
 }

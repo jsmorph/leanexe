@@ -1,0 +1,59 @@
+# Tiny GPT-2 checkpoint
+
+This checkpoint contains 2,488 binary64 parameters for the
+[agreed architecture](../../plans/tiny-transformer.md).  The user approved
+Tiny Shakespeare and a command-line interface returning all 256 next-byte
+logits on 2026-09-16.  The checkpoint's numerical certificates and complete
+inference proof remain in progress.
+
+## Training record
+
+The corpus is [Tiny Shakespeare from char-rnn](https://github.com/karpathy/char-rnn/blob/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt),
+at revision `6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e`.
+Its 1,115,394 bytes have SHA-256
+`86c4e6aa9db7c042ec79f339dcb96d42b0075e16b8fc2e86bf0ca57e2dc565ed`.
+Training uses the first 1,003,854 bytes.  Validation uses the remaining
+111,540 bytes, with five-byte windows confined to each split.
+
+CPU PyTorch 2.9.1 trained the model in binary64 for 4,000 Adam steps with
+seed 17, batch size 128, and learning rate 0.001.  Each loss estimate uses
+8,192 windows selected at uniform index intervals in its split.
+
+| Cross-entropy, natural logarithms | Initialization | Trained |
+|---------------------------------|----------------|---------|
+| Training | 5.571608828427468 | 2.694080450661182 |
+| Validation | 5.568786144189691 | 2.7068412114331264 |
+
+The [checkpoint](checkpoint.json) records raw weight words, tensor shapes,
+training settings, loss estimates, and sampled ranges.  Those ranges guide
+the proof investigation.  The proof must cover every accepted byte context.
+
+The [attention audit](attention-audit.json) enumerates all token pairs at
+distinct active key positions in CPU binary64 arithmetic.  It retains a
+context attaining each reported maximum.  Bytes `[0, 0, 36, 82]` give a
+spread of 12.117768731550278 in the second head at the final position.
+The existing softmax theorem covers spread at most eight, so its numerical
+domain requires extension for this checkpoint.
+
+The compiled body passes 24 context-position tests, including that witness.
+Every hidden-state word and 96 selected logits match the native Talos bit
+model.  Maximum empirical differences from CPU PyTorch are approximately
+2.605 × 10^-5 for hidden coordinates and 3.542 × 10^-5 for selected logits.
+
+## Reproduction
+
+The [training environment](../../training/tiny-gpt2/README.md) records the
+approved dependencies.  From the repository root:
+
+```sh
+curl --fail --silent --show-error --output build/tiny-gpt2/tiny-shakespeare.txt \
+  https://raw.githubusercontent.com/karpathy/char-rnn/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt
+sha256sum build/tiny-gpt2/tiny-shakespeare.txt
+.venv-tiny-gpt2/bin/python training/tiny-gpt2/train.py \
+  --corpus build/tiny-gpt2/tiny-shakespeare.txt \
+  --output build/tiny-gpt2/checkpoint.json
+.venv-tiny-gpt2/bin/python training/tiny-gpt2/attention_audit.py \
+  --checkpoint data/tiny-gpt2-v1/checkpoint.json \
+  --output build/tiny-gpt2/attention-audit.json
+node test/tiny_gpt2_body.js --checkpoint data/tiny-gpt2-v1/checkpoint.json
+```

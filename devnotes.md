@@ -12946,3 +12946,53 @@ magnitudes and adds the upstream value error after using exact real
 softmax normalization.  Its local dot rounding and score perturbation
 terms remain explicit.  These theorems have checked hypotheses.  Frozen
 checkpoint ranges and full-model execution are still required.
+
+## 2026-09-16: Hidden-state execution proof
+
+The next source-artifact case isolates the compiled hidden-state body.
+Its execution theorem will assume a represented 2,488-word input array,
+four byte tokens, and a position below four.  It will establish termination,
+exact output words, and unchanged store.  The weight values can be arbitrary
+raw words for this execution result.  Numerical finiteness and range
+certificates remain separate obligations for the trained checkpoint.
+This exact-execution work can proceed while the corpus and public output
+choice await confirmation.
+
+Function-region equality now transfers LayerNorm, softmax, and bounded
+GELU execution into the model module.  The global GELU branch also has an
+exact execution proof.  The checked array-load theorem supplies the four
+weight reads.  Natural-index overflow checks follow from the represented
+array's size bound.  Row addition, balanced dot products of widths two,
+four, and eight, activation, and attention-score execution now pass.
+The dot-product callers retain a floating-point operand below the next
+call's arguments.  The shared CallRemainder theorem preserves that operand.
+The model registration remains incomplete until the enclosing execution
+theorem passes.
+
+## 2026-09-16: First trained checkpoint
+
+The user approved Tiny Shakespeare and all 256 next-byte logits per
+inference call.  The [checkpoint record](data/tiny-gpt2-v1/README.md) pins
+the corpus revision and SHA-256.  Training completed 4,000 Adam steps with
+the recorded seed and settings.  Training loss fell from 5.5716 to 2.6941,
+and validation loss from 5.5688 to 2.7068.
+
+The preliminary attention audit enumerates all 256 token embeddings at
+each of four positions.  Its bounds permit active score spreads above
+eight, reaching 12.12 for the second head at position three.  The current
+softmax spread theorem therefore needs a larger domain or a sharper
+checkpoint bound.  The next audit will retain distinct key-position
+constraints and concrete witness contexts before choosing the required
+proof extension.
+
+The distinct-position audit confirms a context with spread 12.117768731550278:
+bytes [0, 0, 36, 82], second head, final position.  The retained audit
+recomputes each witness through the full CPU model.  Extending the
+existing arithmetic's numerical domain is now a required proof task.
+
+The trained-body test passes all 24 rows and 96 selected logits against
+the native Talos bit model.  Its maximum CPU PyTorch differences are
+0.000026041599038628682 for hidden coordinates and 0.000035410002036773136
+for selected logits.  The focused incomplete-case gate regenerates the
+15,423-byte hidden-state module without a cache difference and checks its
+completed component proofs.  The enclosing theorem remains open.
