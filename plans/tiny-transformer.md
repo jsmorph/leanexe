@@ -48,6 +48,9 @@ execution proof.  For attention composition, express the useful softmax
 domain through score spread.  Record cases where conservative estimates
 produce an uninformative logit bound, together with their causes.
 
+The [LayerNorm analysis](layernorm-analysis.md) records the pinned source
+audit, endpoint perturbation identity, and implementation sequence.
+
 Use existing ProofKit arithmetic bounds, including their underflow terms.
 Use the existing Wasmtime host and source-driven Talos registry.  Dependencies,
 toolchains, and compiler semantics remain pinned to the current checkout.
