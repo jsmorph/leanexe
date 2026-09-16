@@ -13071,3 +13071,44 @@ The trained inference test passes 24 hidden rows, 96 selected logits, and
 1,536 complete output logits against the native bit model.  Documentation
 and whitespace checks pass.  The full-model proof remains open, and the
 previous aggregate assoc_list cache failure is unchanged.
+
+The four- and eight-term matrix-column proofs now cover arbitrary offsets,
+row strides, and columns whose final index lies in the represented weight
+array.  Existing checked multiplication and array-load lemmas establish
+every intermediate arithmetic and memory bound.  Context selection and
+projection, feed-forward contraction, and token/position embeddings also
+pass.  These are raw-word execution theorems for arbitrary represented
+weights.  Checkpoint finiteness and numerical behavior remain separate.
+
+A shared constant-function theorem removes repeated proofs for layout
+offset functions.  The multiplication helper now also accepts the state
+after its zero comparison, preserving any earlier operand-stack values.
+Its first application exposed the distinction between the original control
+type annotation and the normalized annotation after symbolic execution.
+The existing checked control-type equality resolves that distinction.
+
+The embedding diagnostic also exposed unreduced natural-number tests such
+as 64 = 0 inside local-variable lookup.  Adding Nat.succ_ne_zero to the
+shared fixed-frame tactic resolves those tests.  The contraction proof's
+check time fell from 152 to 88 seconds, and the attention proof fell from
+25 to 14 seconds.  Embedding checks in 8.8 seconds.  The shared execution
+dependencies for LayerNorm, softmax, and GELU also rebuilt successfully.
+
+The focused hidden-state artifact gate passes for the new component
+theorems.  All printed axiom audits use the standard logical axioms.
+The unchanged module and existing runtime test evidence remain the
+execution subjects.  Documentation and whitespace checks pass.
+
+An independent analysis of numerical composition produced a sharper
+exponential estimate.  Bounding t*P6(-t) in the Bernstein basis retains
+the dependence between Taylor error and the eighth power.  Exact rational
+coefficient arithmetic gives a 64/24609375 exact-real error bound on
+[-16, 0], before floating-point errors.  The
+[exponential analysis](plans/exponential-tail-analysis.md) records the
+derivation and remaining formal checks.
+
+The aggregate source-artifact gate was run after the shared tactic change.
+It again stops at assoc_list because the newly generated program differs
+from its tracked cache.  It does not reach the aggregate proof-library
+build.  The focused tiny-model gate and its rebuilt numerical execution
+dependencies pass.
