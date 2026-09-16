@@ -13,6 +13,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.MemoryGrowth` | Checked page-delta arithmetic and execution of the allocator's memory-growth sequence within the runtime cap. |
 | `Project.ProofKit.MemoryEnsure` | Checked conditional growth to the larger of the current and requested page counts, preserving memory bytes and the local frame. |
 | `Project.ProofKit.Frame` | Local-frame extensionality, operand-stack replacement projections, and conversion from combined `Locals.get` facts to internal-local optional and indexed getters. |
+| `Project.ProofKit.FixedFrame` | Symbolic execution with concrete local-variable lists.  A single-instruction tactic separates long local-get, local-set, and constant sequences into bounded simplifications. |
 | `Project.ProofKit.ConstantFunction` | Exact execution and store preservation for a constant-returning function with one local in a module without imports. |
 | `Project.ProofKit.FuelGuard` | Short-circuit fuel and completion guards with exact store and frame preservation and arbitrary exit or body continuations. |
 | `Project.ProofKit.BlockLoop` | Empty-stack block/loop composition from a proved iteration, a decreasing natural measure, a completed-state predicate, and an arbitrary suffix continuation. |
@@ -23,6 +24,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.NatSub` | Saturating natural subtraction from staged operands, preserving the store and stack tail. |
 | `Project.ProofKit.F64Bounds` | Raw binary64 sign-clearing guards, including the proof that an accepted half-unit encoding is finite with modeled real magnitude at most one half. |
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |
+| `Project.ProofKit.RealNormBounds` | Dimension-parameterized squared-norm, dot-product, matrix, and bilinear bounds, plus invariance of a zero-sum dot product under constant coefficient shifts. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarFrame` | Adapts scalar statement execution and assignment evaluation to arbitrary Locals and result-assignment frames. |
 | `Project.ProofKit.ScalarConditional` | Executes scalar conditional expressions and assignments while retaining decoded control-type metadata. |
