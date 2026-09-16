@@ -132,3 +132,4 @@ import Project.EulerReconstructed.Spec
 import Project.EulerCertificateFlux.Spec
 import Project.EulerCertificate.Spec
 import Project.ExpSmall.Spec
+import Project.ExpWide.Spec
