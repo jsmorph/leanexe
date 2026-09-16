@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "proofBoundary": "Talos execution of the decoded generated WAT",
+  "demos": [
+    {
+      "name": "exp-small",
+      "case": "exp_small",
+      "wasm": "proofs/talos/.generated/exp_small/program.wasm",
+      "sha256": "331de6537d47522498fa593afd5a973422c89208c6585c6777c61dfe7f26e877",
+      "export": "expSmall",
+      "fields": ["x_bits"],
+      "domain": "Finite binary64 input in [-1, 0], including both signed zeros and subnormals",
+      "absoluteErrorBound": {"numerator": "1", "denominator": "4000"},
+      "theorem": "Project.ExpSmall.Spec.expSmall_real_error"
+    }
+  ]
+}

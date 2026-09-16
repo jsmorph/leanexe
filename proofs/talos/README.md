@@ -39,6 +39,14 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The [small exponential demonstration](../../data/numerical/README.md) adds
+the `exp_small` registration.  Its generated-WAT theorem covers every raw
+input, exact status and output, termination, and store preservation.
+Every binary64 input in [-1, 0] succeeds with a positive finite result and
+absolute error at most 1/4000.  Both signed zeros produce exact one.
+`Project.ExpSmall.Spec.expSmall_real_error` includes the coefficient,
+rounding, and analytic approximation bounds.  Exact-byte packaging is deferred.
+
 | Case | Lean source | Export | Theorem | Scope |
 |------|-------------|--------|---------|-------|
 | `gcd` | [`LeanExe.Examples.TalosGcd`](../../LeanExe/Examples/TalosGcd.lean) | `gcd` | `Gcd.Spec.gcd_correct` | For all `a b : UInt64`, the export returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`. |

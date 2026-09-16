@@ -89,7 +89,7 @@ datasets, figures, the claim-to-theorem table, and the final comparison.
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, forty-eight completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, forty-nine completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -764,7 +764,7 @@ has a command-line WASM demonstration and generated-WAT execution, success,
 and numerical-error proofs.  Frozen exact-byte packages are later release work.
 
 - [x] Reproduce the existing guarded Horner proof.
-- [ ] Release a bounded scalar exponential with a proved error bound.
+- [x] Release a bounded scalar exponential with a proved error bound.
 - [ ] Extend the exponential to the negative interval needed by softmax.
 - [ ] Release a masked, one-to-four-score softmax command-line demo.
 - [ ] Establish LayerNorm error propagation and investigate checkpoint ranges.
