@@ -36,6 +36,7 @@ The binary64 time word and the sum of decoded timestep durations are separate qu
 - [x] Specify the executable certificate and its relation to the unchanged numerical recurrence.
 - [x] Prove the scalar arithmetic, totals, boundary evaluation, accepted-step observer, and complete observer recurrence.
 - [ ] Inspect compiler output and reuse checked regions, fold guidance, and allocation theorems where their premises match.
+- [x] Prove exact generated execution and store preservation for grid totals, boundary reads, reconstructed face fluxes, the boundary fold, and physical timestep scaling.
 - [ ] Prove complete generated execution, allocation, exact output, and exact-byte behavior.  Run independent package checking and axiom audits.
 - [ ] Run and inspect the proved certificate at 192, then at 800, with the standard one-process runner limits.  Preserve both earlier datasets.
 - [ ] Publish the certificate values, meanings, widths, run measurements, and proof references.
