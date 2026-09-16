@@ -75,6 +75,13 @@ theorem activate_error (x : Row) (hx : ∀ j, Finite (rowWords x j)) (i : Fin 4)
   have h := Gelu.evaluateAll_error (rowWords x i) (hx i)
   fin_cases i <;> exact h
 
+theorem activate_error_bounded (x : Row) (hx : ∀ j, Finite (rowWords x j))
+    (hb : ∀ j, |decodeRow x j| ≤ 3) (i : Fin 4) :
+    Finite (rowWords (activate x) i) ∧
+      |decodeRow (activate x) i-Gelu.Real.gelu (decodeRow x i)| ≤ 1/80000 := by
+  have h := Gelu.evaluateAll_error_bounded (rowWords x i) (hx i) (hb i)
+  fin_cases i <;> exact h
+
 #print axioms norm_error
 #print axioms dotColumn8_error
 end Project.TinyGpt2

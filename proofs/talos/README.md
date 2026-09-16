@@ -40,7 +40,7 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 ## Current Proofs
 
 The [GELU component](lean/Project/Gelu/Spec.lean) proves total generated-WAT
-execution and finite output within 1/100 of the pinned tanh GELU formula
+execution and finite output within 1/80000 of the pinned tanh GELU formula
 on [-3, 3].  Its real perturbation bound is four times the input error.
 Checked function-region renaming transfers the existing exponential
 execution theorem into this module.  The
@@ -61,12 +61,12 @@ arguments or raw binary64 words.
 The `softmax` case proves exact terminating generated-WAT execution for all
 raw inputs, including rejection.  On one to four scores in [-4, 4], it
 proves positive finite active probabilities, exact masked zeros, component
-error at most 1/64 against real exponential softmax, and normalization error
+error at most 1/50000 against real exponential softmax, and normalization error
 at most 32 times 2^-52.  Its [command-line interface](../../data/numerical/README.md)
 accepts decimal scores or exact binary64 words.
 
 The softmax input-error theorem adds twice the maximum score error to the
-1/64 local bound.  Its internal computation also has a generated-WAT
+1/50000 local bound.  Its internal computation also has a generated-WAT
 numerical theorem for finite scores with active spread at most sixteen,
 without an absolute score bound.  The public demonstration retains its
 [-4, 4] input guard.  The [tiny model definition](lean/Project/TinyGpt2/Real.lean)

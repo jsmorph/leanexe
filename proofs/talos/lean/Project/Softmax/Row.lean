@@ -100,7 +100,7 @@ theorem row_weights_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
       (indexWord i < n → 1/1000000000 ≤ value (weight n (indexWord i) (s i) m)) ∧
       (¬indexWord i < n → weight n (indexWord i) (s i) m = 0) ∧
       0 ≤ realWeight n s m i ∧ realWeight n s m i ≤ 1 ∧
-      |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/399) ∧
+      |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/299000) ∧
     ∃ i, realWeight n s m i = 1 := by
   dsimp only
   constructor
@@ -131,7 +131,7 @@ theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
       (indexWord i < n → 1/1000000000 ≤ value (weight n (indexWord i) (s i) m)) ∧
       (¬indexWord i < n → weight n (indexWord i) (s i) m = 0) ∧
       0 ≤ realWeight n s m i ∧ realWeight n s m i ≤ 1 ∧
-      |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/399) ∧
+      |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/299000) ∧
     ∃ i, realWeight n s m i = 1 :=
   row_weights_spread n a b c d (valid_spread n a b c d h)
 

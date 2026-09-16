@@ -1,5 +1,5 @@
 import Project.Gelu.Argument
-import Project.ExpWide.Numerical
+import Project.ExpWide.Sharp
 import Project.Softmax.Order
 
 namespace Project.Gelu
@@ -10,15 +10,15 @@ set_option exponentiation.threshold 4096
 theorem exponential_error (a : UInt64) (hf : Finite a)
     (ha : 0 ≤ value a) (hu : value a ≤ 3) :
     let e := ExpWide.evaluate (F64Order.negativeAbsBits (argumentMagnitude a))
-    Finite e ∧ 1/100000 ≤ value e ∧ value e ≤ 2 ∧
-      |value e - Real.exp (-Real.argument (value a))| ≤ 27/10000 := by
+    Finite e ∧ 1/1000000000 ≤ value e ∧ value e ≤ 2 ∧
+      |value e - Real.exp (-Real.argument (value a))| ≤ 1/290000 := by
   have hz := negative_argument_error a hf ha hu
-  have he := ExpWide.evaluate_error _ hz.1 hz.2.1 hz.2.2.1
+  have he := ExpWide.evaluate_error_sharp _ hz.1 (by linarith [hz.2.1]) hz.2.2.1
   have hb := Real.argument_bounds (value a) ha hu
-  have hp := ExpWide.perturbed_exp (-Real.argument (value a)) _ (1/10000)
+  have hp := ExpWide.perturbed_exp (-Real.argument (value a)) _ (1/10000000000)
     (by linarith) hz.2.2.2 (by norm_num)
   have herr : |value (ExpWide.evaluate (F64Order.negativeAbsBits (argumentMagnitude a))) -
-      Real.exp (-Real.argument (value a))| ≤ 27/10000 :=
+      Real.exp (-Real.argument (value a))| ≤ 1/290000 :=
     (abs_sub_le _ _ _).trans ((add_le_add he.2.2 hp).trans (by norm_num))
   have hu1 : Real.exp (-Real.argument (value a)) ≤ 1 := by
     simpa using Real.exp_le_exp.mpr (by linarith : -Real.argument (value a) ≤ 0)
@@ -29,7 +29,7 @@ theorem denominator_error (a : UInt64) (hf : Finite a)
     let e := ExpWide.evaluate (F64Order.negativeAbsBits (argumentMagnitude a))
     let d := Wasm.IEEE64.add 0x3FF0000000000000 e
     Finite d ∧ 1 ≤ value d ∧
-      |value d - (1 + Real.exp (-Real.argument (value a)))| ≤ 1/350 := by
+      |value d - (1 + Real.exp (-Real.argument (value a)))| ≤ 1/280000 := by
   have he := exponential_error a hf ha hu
   have hv1 : value 0x3FF0000000000000 = 1 := by
     have h := abs_le.mp one_approximation.accuracy
@@ -41,22 +41,22 @@ theorem denominator_error (a : UInt64) (hf : Finite a)
   rw [hv1] at hh
   refine ⟨hh.1, ?_, ?_⟩
   · have h := (abs_le.mp hh.2).1
-    have heps : 3*arithmeticEpsilon < (1:ℝ)/100000 := by norm_num [arithmeticEpsilon]
+    have heps : 3*arithmeticEpsilon < (1:ℝ)/1000000000 := by norm_num [arithmeticEpsilon]
     linarith [he.2.1]
   · have h1 := abs_le.mp hh.2
     have h2 := abs_le.mp he.2.2.2
-    have heps : arithmeticEpsilon*3 + 27/10000 ≤ (1:ℝ)/350 := by norm_num [arithmeticEpsilon]
+    have heps : arithmeticEpsilon*3 + 1/290000 ≤ (1:ℝ)/280000 := by norm_num [arithmeticEpsilon]
     apply abs_le.mpr
     constructor <;> linarith
 
 theorem quotient_error (a d r : ℝ) (ha : |a| ≤ 3) (hd : 1 ≤ d) (hr : 1 ≤ r)
-    (he : |d-r| ≤ 1/350) : |a/d-a/r| ≤ 3/350 := by
+    (he : |d-r| ≤ 1/280000) : |a/d-a/r| ≤ 3/280000 := by
   have dp : 0 < d := by linarith
   have rp : 0 < r := by linarith
   have hid : a/d-a/r = a*(r-d)/(d*r) := by field_simp
   rw [hid, abs_div, abs_of_pos (mul_pos dp rp)]
   apply (div_le_iff₀ (mul_pos dp rp)).mpr
-  have hn : |a*(r-d)| ≤ 3*(1/350) := by
+  have hn : |a*(r-d)| ≤ 3*(1/280000) := by
     rw [abs_mul, abs_sub_comm r d]
     exact mul_le_mul ha he (abs_nonneg _) (by norm_num)
   have hdr : 1 ≤ d*r := by nlinarith [mul_nonneg (by linarith : 0 ≤ d-1) (by linarith : 0 ≤ r-1)]
@@ -65,12 +65,12 @@ theorem quotient_error (a d r : ℝ) (ha : |a| ≤ 3) (hd : 1 ≤ d) (hr : 1 ≤
 theorem positivePart_error (a : UInt64) (hf : Finite a)
     (ha : 0 ≤ value a) (hu : value a ≤ 3) :
     Finite (positivePart a) ∧ |value (positivePart a)| ≤ 4 ∧
-      |value (positivePart a) - Real.gelu (value a)| ≤ 9/1000 := by
+      |value (positivePart a) - Real.gelu (value a)| ≤ 1/90000 := by
   let d := Wasm.IEEE64.add 0x3FF0000000000000
     (ExpWide.evaluate (F64Order.negativeAbsBits (argumentMagnitude a)))
   let r := 1 + Real.exp (-Real.argument (value a))
   have hd := denominator_error a hf ha hu
-  change Finite d ∧ 1 ≤ value d ∧ |value d-r| ≤ 1/350 at hd
+  change Finite d ∧ 1 ≤ value d ∧ |value d-r| ≤ 1/280000 at hd
   have dp : 0 < value d := by linarith [hd.2.1]
   have d0 : Wasm.IEEE64.scaledMagnitude d ≠ 0 := by
     intro h
@@ -83,7 +83,7 @@ theorem positivePart_error (a : UInt64) (hf : Finite a)
   have hr : 1 ≤ r := by dsimp [r]; linarith [Real.exp_pos (-Real.argument (value a))]
   have he := quotient_error (value a) (value d) r (by rw [abs_of_nonneg ha]; exact hu)
     hd.2.1 hr hd.2.2
-  have herr : |value (positivePart a) - Real.gelu (value a)| ≤ 9/1000 := by
+  have herr : |value (positivePart a) - Real.gelu (value a)| ≤ 1/90000 := by
     rw [Real.gelu_logistic]
     exact (abs_sub_le _ _ _).trans ((add_le_add hq.2 he).trans (by norm_num [arithmeticEpsilon]))
   refine ⟨hq.1, ?_, herr⟩
@@ -91,7 +91,7 @@ theorem positivePart_error (a : UInt64) (hf : Finite a)
     ((Real.gelu_magnitude _).trans (by rw [abs_of_nonneg ha]; exact hu))).trans (by norm_num)
 
 theorem evaluate_error (x : UInt64) (hf : Finite x) (hx : |value x| ≤ 3) :
-    Finite (evaluate x) ∧ |value (evaluate x) - Real.gelu (value x)| ≤ 1/100 := by
+    Finite (evaluate x) ∧ |value (evaluate x) - Real.gelu (value x)| ≤ 1/80000 := by
   have hp := positivePart_error (F64Order.absBits x) (F64Order.absBits_finite x hf)
     (by rw [F64Order.absBits_value]; exact abs_nonneg _)
     (by rw [F64Order.absBits_value]; exact hx)
@@ -108,7 +108,7 @@ theorem evaluate_error (x : UInt64) (hf : Finite x) (hx : |value x| ≤ 3) :
       ((abs_sub _ _).trans (by rw [F64Order.absBits_value, abs_abs]; linarith [hp.2.1]))
     refine ⟨hsub.1, ?_⟩
     have he : |(value (positivePart (F64Order.absBits x))-value (F64Order.absBits x)) -
-        Real.gelu (value x)| ≤ 9/1000 := by
+        Real.gelu (value x)| ≤ 1/90000 := by
       rw [hv, Real.gelu_neg] at hp
       rw [hv]
       convert hp.2.2 using 1

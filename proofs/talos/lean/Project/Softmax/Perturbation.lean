@@ -22,7 +22,7 @@ theorem compute_spread_perturbed (n a b c d : UInt64) (h : SpreadValid n a b c d
     (target : Fin 4 → ℝ) (delta : ℝ) (hd : 0 ≤ delta)
     (he : ∀ j, |value (scores a b c d j)-target j| ≤ delta) (i : Fin 4) :
     |value (outputs (compute n a b c d) i)-Real.probability (visible n) target i| ≤
-      1/64+2*delta := by
+      1/50000+2*delta := by
   have hn := ((compute_numerical_spread n a b c d h).2.1 i).2.2.2.2
   exact (abs_sub_le _ _ _).trans
     (add_le_add hn (reference_perturbation n _ target delta h.1 hd he i))
@@ -31,14 +31,14 @@ theorem compute_perturbed (n a b c d : UInt64) (h : Valid n a b c d)
     (target : Fin 4 → ℝ) (delta : ℝ) (hd : 0 ≤ delta)
     (he : ∀ j, |value (scores a b c d j)-target j| ≤ delta) (i : Fin 4) :
     |value (outputs (compute n a b c d) i)-Real.probability (visible n) target i| ≤
-      1/64+2*delta :=
+      1/50000+2*delta :=
   compute_spread_perturbed n a b c d (valid_spread n a b c d h) target delta hd he i
 
 theorem softmax_perturbed (n a b c d : UInt64) (h : Valid n a b c d)
     (target : Fin 4 → ℝ) (delta : ℝ) (hd : 0 ≤ delta)
     (he : ∀ j, |value (scores a b c d j)-target j| ≤ delta) (i : Fin 4) :
     |value (outputs (softmax n a b c d) i)-Real.probability (visible n) target i| ≤
-      1/64+2*delta := by
+      1/50000+2*delta := by
   rw [softmax_success n a b c d h]
   exact compute_perturbed n a b c d h target delta hd he i
 

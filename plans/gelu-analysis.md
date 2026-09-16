@@ -28,10 +28,12 @@ argument error against the nonnegative real z(a).
 
 Add one to the exponential result and divide a by that sum.  For a negative
 input, subtract a from the quotient.  All operations use the existing
-binary64 semantics.  The initial numerical target is absolute error 1/100
-on [-3, 3].  The exponential contributes at most approximately 3/400 to
-this budget.  The proof must account for coefficient error, every rounded
-operation, and the negative-input subtraction.
+binary64 semantics.  The checked absolute error is at most 1/80000 on
+[-3, 3].  Mathlib's twenty-decimal bounds for pi bound the stored scale
+coefficient's error by 10^-15.  The cubic argument's computed error is at
+most 10^-10.  The exponential error is at most 1/290000 after argument
+perturbation, and denominator error is at most 1/280000.  Division and the
+negative-input subtraction complete the bound.
 
 The checkpoint range investigation will determine whether the feed-forward
 inputs fit this interval.  Wider inputs require a proved extension before
@@ -43,7 +45,9 @@ at least 100a.  The exact identity G(a)-a = -a/(1+exp(z(a))) then bounds
 the positive tail error by 1/100.  Symmetry gives the same bound for
 replacing the negative tail by zero.  This provides a possible proved
 extension to all finite inputs while retaining the tanh formula as the
-real reference.
+real reference.  Its global error bound remains 1/100.  A separate theorem
+gives the extended evaluator the sharper 1/80000 bound when its input lies
+in [-3, 3].
 
 Lean now checks both tail bounds and the extended evaluator's finite
 output and error bound.  Its generated execution remains model integration
