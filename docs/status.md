@@ -258,5 +258,8 @@ await the complete artifact proof.
 The observer's generated grid-total and boundary-contribution functions now
 have exact execution and store-preservation proofs.  The existing sweep,
 initialization, output, release, and scan proofs transfer through checked
-function-region equality.  The observer controller and complete allocation
-and output composition remain open.
+function-region equality.  The trial and retry functions now have complete
+execution proofs for success, rejection, invalid time, and fuel exhaustion.
+They prove exact interval results and preserve heap reservations and owned
+grids.  The outer time-step loop, final output, and exact-byte package remain
+open.

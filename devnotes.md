@@ -12415,3 +12415,13 @@ existing solver-region equality.  The complete boundary fold took 11 seconds,
 and its entry, return, and physical scaling took 14 seconds.  All audits use
 standard axioms.  The observer controller, complete allocation and output
 composition, and exact-byte package remain open.
+
+The trial and retry controller now have complete generated-function
+execution proofs.  The retry invariant records the expected interval vector,
+preserved source grids, and capacity reservations through accepted and
+rejected sweeps.  Checked compiler loop and guard equalities compose with
+the existing BlockLoop, FuelGuard, allocation, and ownership theorems.
+Success, invalid time, and fuel exhaustion return the specified sixteen
+words.  All audits use standard axioms.  The outer advance loop, final
+packing, entry function, and exact-byte package remain open.  The generated
+45,644-byte artifact and numerical source are unchanged.
