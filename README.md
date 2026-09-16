@@ -155,3 +155,6 @@ adds interval bounds for mass, both momenta, and energy.  Its source proofs
 connect the computed bounds to the existing conservation residual and
 prove that it preserves the solver's numerical output.  Complete observer
 WASM execution, allocation, and exact-byte proofs remain in progress.
+The generated totals and boundary-contribution functions have exact execution
+and store-preservation proofs.  Checked function-region equality reuses the
+previous sweep, initialization, output, and release proofs.

@@ -254,3 +254,9 @@ the existing solver words.  The complete observer's generated execution,
 allocation, and exact-byte proofs remain open.  The scalar interval-flux
 module already has checked generated execution.  New production runs
 await the complete artifact proof.
+
+The observer's generated grid-total and boundary-contribution functions now
+have exact execution and store-preservation proofs.  The existing sweep,
+initialization, output, release, and scan proofs transfer through checked
+function-region equality.  The observer controller and complete allocation
+and output composition remain open.
