@@ -13047,3 +13047,27 @@ All 175 numerical demonstration vectors still match the native Talos bit
 model.  The new theorem audits use only the standard logical axioms.
 Documentation and whitespace checks pass.  The recorded aggregate
 assoc_list cache mismatch remains open.
+
+## 2026-09-16: Four-byte proof before the 64-byte model
+
+The user approved completing the four-byte model's proof before extending
+the context to 64 bytes.  New sequence and softmax lemmas should use a
+length parameter where practical.  The larger model will retain the
+current width and heads, add positional weights, and require training
+and checkpoint certificates.
+
+The normalization and attention execution proofs compose the existing
+checked helpers.  Two attention attempts exhausted two million elaboration
+heartbeats at the first helper call.  The parameter frame still contained
+list reversals and concatenations, which prevented the fixed-frame tactic
+from reaching that call.  Reducing the parameter list before symbolic
+execution let the proof reach its final output equality in 27 seconds.
+The remaining equality identifies the named head probabilities with their
+definitions.  No compiler or arithmetic changes were required.
+
+The focused hidden-state gate passes with both new proofs and the unchanged
+15,423-byte module.  Their axiom audits contain the standard logical axioms.
+The trained inference test passes 24 hidden rows, 96 selected logits, and
+1,536 complete output logits against the native bit model.  Documentation
+and whitespace checks pass.  The full-model proof remains open, and the
+previous aggregate assoc_list cache failure is unchanged.

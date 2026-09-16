@@ -15,11 +15,17 @@ theorem subject.  Exact-byte packages are deferred to later releases, as
 authorized by the user.  The host input decoder and decimal display remain
 outside the numerical theorem.  Hexadecimal words preserve the canonical input.
 
-The eventual model has four byte-token positions, one pre-normalized block,
+The first model has four byte-token positions, one pre-normalized block,
 two attention heads of width two, model width four, and feed-forward width
 eight.  Audit parameter layout, biases, LayerNorm epsilon, and evaluation
 order before model integration.  The pinned TorchLean activation uses the
 tanh GELU formula.  Training is outside the inference proof.
+
+The user approved a proved 64-byte context as the subsequent target.
+Complete the four-byte model's execution, checkpoint ranges, and composed
+numerical bound first.  Parameterize new sequence and softmax lemmas by
+length where practical.  The larger model will require array-based context
+traversal, expanded positional embeddings, training, and new certificates.
 
 ## Component sequence
 

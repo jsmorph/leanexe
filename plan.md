@@ -772,4 +772,5 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [x] Complete bounded GELU and its input perturbation theorem.
 - [ ] Complete affine operations, attention, and a transformer block.
 - [ ] Train and export the tiny model, then prove its execution and logit bound.
+- [ ] Extend the proved model to a 64-byte context with a trained checkpoint.
 - [ ] Complete the final exact-byte package and weight identity evidence.

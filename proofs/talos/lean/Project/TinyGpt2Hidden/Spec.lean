@@ -1,1 +1,2 @@
-import Project.TinyGpt2Hidden.Scalar
+import Project.TinyGpt2Hidden.Normalization
+import Project.TinyGpt2Hidden.Attention

@@ -6,6 +6,8 @@ open Wasm Project.TinyGpt2 Project.ProofKit
 
 def rowResults (x : Row) : List Value := [.i64 x.x3, .i64 x.x2, .i64 x.x1, .i64 x.x0]
 
+@[simp] theorem rowResults_length (x : Row) : (rowResults x).length = 4 := rfl
+
 theorem loadRow_exact (env : HostEnv Unit) (initial : Store Unit)
     (owner pointer : UInt64) (weights : Array UInt64) (offset : Nat)
     (ha : UInt64Array.At initial pointer weights) (hb : offset+3 < weights.size) :
