@@ -37,6 +37,7 @@ import Project.EulerOutwardFlux.Program
 import Project.EulerOutwardFaceStep.Program
 import Project.EulerReconstructed.Program
 import Project.EulerCertificateFlux.Program
+import Project.EulerCertificate.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
 import Project.F64DotCheckedBits.Program
@@ -291,5 +292,10 @@ example : eraseTypeIdx Project.EulerCertificateFlux.func36Def = eraseTypeIdx all
 example : eraseTypeIdx Project.EulerCertificateFlux.func37Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.EulerCertificateFlux.func38Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.EulerCertificateFlux.func39Def = eraseTypeIdx (releaseFuncDef 39) := rfl
+
+example : eraseTypeIdx Project.EulerCertificate.func191Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.EulerCertificate.func192Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.EulerCertificate.func193Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.EulerCertificate.func194Def = eraseTypeIdx (releaseFuncDef 194) := rfl
 
 end Project.Runtime

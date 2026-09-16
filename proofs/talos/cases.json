@@ -544,6 +544,20 @@
         "Project.EulerCertificateFlux.Spec.interface_enclosure"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_certificate",
+      "annotations": true,
+      "module": "Project.EulerCertificate.Solve",
+      "entry": "Project.EulerCertificate.Solve.solve",
+      "sourceWorkspace": "proof",
+      "leanModule": "EulerCertificate",
+      "specTarget": "Project.EulerCertificate.Spec",
+      "behaviorTheorems": [
+        "Project.EulerCertificate.Spec.solve_exact",
+        "Project.EulerCertificate.Spec.solve_enclosure"
+      ],
+      "complete": false
     }
   ]
 }

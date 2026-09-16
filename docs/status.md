@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-15.  The source-driven registry contains forty-seven Talos cases, forty-seven complete.  The separate exact-artifact registry contains forty-two frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its forty-seven cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-15.  The source-driven registry contains forty-eight Talos cases, forty-seven complete.  The separate exact-artifact registry contains forty-two frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its forty-eight cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -9,7 +9,7 @@ This report describes the repository state on 2026-09-15.  The source-driven reg
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers forty-seven cases, forty-seven complete, and the proof tree tracks forty-seven corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
+| Source-driven proofs | `proofs/talos/cases.json` registers forty-eight cases, forty-seven complete, and the proof tree tracks forty-eight corresponding `Program.lean` caches.  Five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  The sixth proves exact generated-WAT execution of the fixed two-cell step: three guarded flux calls, eight accepted-status decisions, six conservative updates, the seven pure-model result words, and complete store preservation.  `Project.EulerRusanovStep.Spec` registers both `sodQuarterStepCheckedBits_exact` and `sodQuarterStepCheckedBits_wat_real`; the latter transfers the exact execution result into a decoded-real certificate.  All six numeric payload words are finite, both decoded cells are Euler-admissible, and the certificate records exact values, signed errors, and the physical balance residual.  Three further cases prove exact subtraction, division, and square root, with their bounded-domain numerical contracts.  The earlier 29 generated models matched; the conservative-side cache passes its focused regeneration check.  The 2026-09-07 aggregate hit its 20-minute limit while building existing CLOB dependencies without a theorem diagnostic; the remaining full-suite build is deferred while focused Euler checks continue. |
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers forty-two frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
@@ -243,5 +243,14 @@ states, intermediate sweep grids, and terminal arrays.  All eight manifest
 audits contain only the accepted logical axioms.  The outward speed and
 interface maximum helpers have exact-byte characteristic-speed bounds.
 The mesh CFL helper's exact-byte theorem bounds dt*n by the returned
-ratio and ratio*alpha by one half.  Integrating these helpers into the
-revised solver remains open.
+ratio and ratio*alpha by one half.  The revised solver includes these
+helpers and their accepted-trace proofs.
+
+The [net conservation-error observer](../plans/euler-certificates-and-convergence.md)
+has complete source proofs for totals, reconstructed boundary fluxes,
+accepted-step accumulation, numerical projection equality, and residual
+enclosure.  Its source output appends four status/lower/upper triples to
+the existing solver words.  The complete observer's generated execution,
+allocation, and exact-byte proofs remain open.  The scalar interval-flux
+module already has checked generated execution.  New production runs
+await the complete artifact proof.
