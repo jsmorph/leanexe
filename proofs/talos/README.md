@@ -501,8 +501,12 @@ reuse the checked sweep, initialization, output, release, and scan functions.
 cover successful sweeps, rejected trials, invalid time, and fuel exhaustion.
 Their postconditions include exact interval words, page bounds, heap
 reservations, and preservation of previously owned grids.  Every audit uses
-standard axioms.  The outer time-step loop, final output composition, and
-exact-byte package remain open.
+standard axioms.  [Outer-loop execution](lean/Project/EulerCertificate/ExecutionAdvanceTotal.lean)
+and [complete run execution](lean/Project/EulerCertificate/ExecutionRun.lean)
+now compose initialization, initial totals, the time-step loop, final totals,
+and the exact residual intervals.  Their resource bounds cover all status
+returns.  Final packing, the exported entry, and the exact-byte package remain
+open.
 
 ## Workflow Tools
 

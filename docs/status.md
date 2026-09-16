@@ -261,5 +261,6 @@ initialization, output, release, and scan proofs transfer through checked
 function-region equality.  The trial and retry functions now have complete
 execution proofs for success, rejection, invalid time, and fuel exhaustion.
 They prove exact interval results and preserve heap reservations and owned
-grids.  The outer time-step loop, final output, and exact-byte package remain
-open.
+grids.  The complete time-step loop and enclosing run also pass, including
+initialization, final totals, and the exact residual intervals.  Final packing,
+the exported entry, and the exact-byte package remain open.

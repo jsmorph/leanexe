@@ -12425,3 +12425,14 @@ Success, invalid time, and fuel exhaustion return the specified sixteen
 words.  All audits use standard axioms.  The outer advance loop, final
 packing, entry function, and exact-byte package remain open.  The generated
 45,644-byte artifact and numerical source are unchanged.
+
+The complete observer time-step loop and enclosing run now have generated
+execution proofs.  The run theorem composes initialization, initial totals,
+accepted-boundary accumulation, final totals, and the four residual intervals.
+The loop proves termination and preserves the page bound and heap reservations
+through every status return.  All public audits use standard axioms.
+Splitting the final arithmetic at generated call boundaries and applying
+list-update lemmas avoids expanding hundreds of local updates during
+elaboration.  Final packing needs the existing output proof to preserve an
+arbitrary spare allocation budget.  The exported entry and exact-byte
+package follow that proof.  Production data remain unchanged.
