@@ -59,7 +59,7 @@ The [real-valued model](../proofs/talos/lean/Project/TinyGpt2/Real.lean)
 defines every stage of the audited architecture.  Its causal-prefix
 theorem proves equal output at a position whenever the input prefixes
 through that position agree.  The softmax computation now accepts a
-proved active-score spread of at most eight in its internal numerical
+proved active-score spread of at most sixteen in its internal numerical
 theorem and propagates real score error with multiplier two.  Frozen
 checkpoint ranges and full-model execution remain open.
 

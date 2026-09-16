@@ -2,14 +2,14 @@
 
 The [trained checkpoint audit](../data/tiny-gpt2-v1/attention-audit.json)
 contains a context with active score spread 12.117768731550278 in CPU
-binary64 arithmetic.  The existing softmax proof covers spread at most
-eight.  The next proof will extend the same exponential arithmetic to
-[-16, 0], retaining its 1/400 absolute error bound.
+binary64 arithmetic.  The checked exponential extension covers [-16, 0],
+retaining its 1/400 absolute error bound.  The internal softmax theorem
+now covers spread at most sixteen.
 
 ## Derivation
 
 The existing evaluator divides its input by eight, evaluates the degree-six
-Taylor polynomial, and squares three times.  Its current theorem covers
+Taylor polynomial, and squares three times.  The earlier theorem covers
 [-8, 0].  For the remaining interval [-16, -8], rounded division produces
 a finite value y in [-2, -999/1000].  The lower endpoint follows from the
 binary64 successor gap at magnitude two.  The upper endpoint allows the
@@ -39,8 +39,8 @@ result with the existing theorem covers [-16, 0].
 
 ## Remaining checks
 
-- [ ] Check the Horner rounding bound for magnitude two.
-- [ ] Check the polynomial interval bounds and rounded division interval.
-- [ ] Check the three squarings and exponential tail bound.
-- [ ] Extend the internal softmax spread theorem to sixteen.
+- [x] Check the Horner rounding bound for magnitude two.
+- [x] Check the polynomial interval bounds and rounded division interval.
+- [x] Check the three squarings and exponential tail bound.
+- [x] Extend the internal softmax spread theorem to sixteen.
 - [ ] Certify the trained model's score spread within that domain.

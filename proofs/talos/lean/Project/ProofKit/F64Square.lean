@@ -5,6 +5,17 @@ open CodeLib.IEEE64 F64ArithmeticBounds
 
 set_option exponentiation.threshold 4096
 
+theorem interval (word : UInt64) (lower upper : ℝ) (hf : Finite word)
+    (hl : 0 ≤ lower) (hlo : lower ≤ value word) (hhi : value word ≤ upper) (hu : upper ≤ 1) :
+    Finite (Wasm.IEEE64.mul word word) ∧
+    lower^2-arithmeticEpsilon ≤ value (Wasm.IEEE64.mul word word) ∧
+    value (Wasm.IEEE64.mul word word) ≤ upper^2+arithmeticEpsilon := by
+  have hp : 0 ≤ value word := hl.trans hlo
+  have hs := mul_error word word hf hf 1 (by norm_num) (by norm_num)
+    (by rw [abs_of_nonneg (mul_self_nonneg _)]; nlinarith)
+  have he := abs_le.mp hs.2
+  exact ⟨hs.1, by nlinarith, by nlinarith⟩
+
 theorem approximation (word : UInt64) (exactValue error lower : ℝ)
     (hf : Finite word) (hv : 0 ≤ exactValue ∧ exactValue ≤ 1)
     (he : |value word - exactValue| ≤ error) (hb : error ≤ 1/100)

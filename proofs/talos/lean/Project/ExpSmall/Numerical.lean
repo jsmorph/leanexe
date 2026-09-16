@@ -1,6 +1,7 @@
 import Project.ExpSmall.Model
 import Project.ExpSmall.Real
 import Project.ProofKit.F64Horner
+import Project.ProofKit.F64HornerRadiusTwo
 
 namespace Project.ExpSmall
 open CodeLib.IEEE64 Project.ProofKit.F64Horner
@@ -52,6 +53,18 @@ theorem polynomial_roundoff (x : UInt64) (hx : Finite x) (bx : |value x| ≤ 1) 
   have h2 := step h3 coefficient2 hx bx (by norm_num)
   have h1 := step h2 coefficient1 hx bx (by norm_num)
   have h0 := step h1 coefficient1 hx bx (by norm_num)
+  refine ⟨h0.finite, ?_⟩
+  convert h0.accuracy using 1 <;> (try dsimp only [polynomial, polynomialReal]) <;> ring
+
+theorem polynomial_roundoff_two (x : UInt64) (hx : Finite x) (bx : |value x| ≤ 2) :
+    Finite (polynomial x) ∧
+      |value (polynomial x) - polynomialReal (value x)| ≤ 32509 * arithmeticEpsilon := by
+  have h5 := step_two coefficient6 coefficient5 hx bx (by norm_num) (by norm_num)
+  have h4 := step_two h5 coefficient4 hx bx (by norm_num) (by norm_num)
+  have h3 := step_two h4 coefficient3 hx bx (by norm_num) (by norm_num)
+  have h2 := step_two h3 coefficient2 hx bx (by norm_num) (by norm_num)
+  have h1 := step_two h2 coefficient1 hx bx (by norm_num) (by norm_num)
+  have h0 := step_two h1 coefficient1 hx bx (by norm_num) (by norm_num)
   refine ⟨h0.finite, ?_⟩
   convert h0.accuracy using 1 <;> (try dsimp only [polynomial, polynomialReal]) <;> ring
 

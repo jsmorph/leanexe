@@ -87,7 +87,7 @@ theorem quotient_error (w d r s : ℝ) (hd : 49/50 ≤ d) (hs : 1 ≤ s)
 theorem probability_roundoff (n i w d : UInt64)
     (hw : Finite w) (hd : Finite d) (bd : 49/50 ≤ value d ∧ value d ≤ 5)
     (bw : 0 ≤ value w ∧ value w ≤ 2)
-    (hl : i < n → 1/100000 ≤ value w) (hz : ¬i < n → w = 0) :
+    (hl : i < n → 1/1000000000 ≤ value w) (hz : ¬i < n → w = 0) :
     Finite (probability n i w d) ∧ 0 ≤ value (probability n i w d) ∧
     (i < n → 0 < value (probability n i w d)) ∧
     |value (probability n i w d) - value w/value d| ≤ 3*arithmeticEpsilon := by
@@ -101,12 +101,12 @@ theorem probability_roundoff (n i w d : UInt64)
       apply (div_le_iff₀ dp).mpr
       linarith [bd.1, bw.2]
     have hs := F64ArithmeticBounds.div_error w d hw hd d0 3 (by norm_num) (by norm_num) bq
-    have ql : (1/500000:ℝ) ≤ value w/value d := by
+    have ql : (1/5000000000:ℝ) ≤ value w/value d := by
       apply (le_div_iff₀ dp).mpr
       linarith [hl h, bd.2]
     have he := (abs_le.mp hs.2).1
     have hp : 0 < value (Wasm.IEEE64.div w d) := by
-      have ee : 3*arithmeticEpsilon < (1/500000:ℝ) := by norm_num [arithmeticEpsilon]
+      have ee : 3*arithmeticEpsilon < (1/5000000000:ℝ) := by norm_num [arithmeticEpsilon]
       linarith
     simp only [probability, if_pos h]
     exact ⟨hs.1, hp.le, fun _ => hp, by simpa [mul_comm] using hs.2⟩

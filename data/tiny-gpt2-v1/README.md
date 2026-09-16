@@ -46,8 +46,9 @@ The [attention audit](attention-audit.json) enumerates all token pairs at
 distinct active key positions in CPU binary64 arithmetic.  It retains a
 context attaining each reported maximum.  Bytes `[0, 0, 36, 82]` give a
 spread of 12.117768731550278 in the second head at the final position.
-The existing softmax theorem covers spread at most eight, so its numerical
-domain requires extension for this checkpoint.
+The internal softmax theorem now covers spread at most sixteen.  The
+checkpoint's [range proof](../../plans/tiny-model-range-analysis.md)
+must establish that domain for every accepted context.
 
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
