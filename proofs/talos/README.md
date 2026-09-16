@@ -496,8 +496,13 @@ have complete generated-function execution and store-preservation proofs,
 including their array folds, face reconstruction, and interval arithmetic.
 [Solver memory transfers](lean/Project/EulerCertificate/SolverMemory.lean)
 reuse the checked sweep, initialization, output, release, and scan functions.
-Every audit uses standard axioms.  The observer controller and its complete
-allocation and output composition remain open.
+[Trial execution](lean/Project/EulerCertificate/AttemptExecution.lean) and
+[retry execution](lean/Project/EulerCertificate/ExecutionRetryTotal.lean)
+cover successful sweeps, rejected trials, invalid time, and fuel exhaustion.
+Their postconditions include exact interval words, page bounds, heap
+reservations, and preservation of previously owned grids.  Every audit uses
+standard axioms.  The outer time-step loop, final output composition, and
+exact-byte package remain open.
 
 ## Workflow Tools
 

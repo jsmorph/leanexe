@@ -158,3 +158,6 @@ WASM execution, allocation, and exact-byte proofs remain in progress.
 The generated totals and boundary-contribution functions have exact execution
 and store-preservation proofs.  Checked function-region equality reuses the
 previous sweep, initialization, output, and release proofs.
+The trial and retry functions now have complete execution proofs, including
+all failure paths, exact interval results, and heap reservations.  The outer
+time-step loop, final output, and exact-byte package remain open.
