@@ -12361,8 +12361,8 @@ convergence in that order.
 
 The existing physical balance reduces a net conservation-error certificate
 to enclosing initial totals, final totals, and accumulated boundary fluxes.
-The choice between that certificate and additional local-error accounting
-is pending user confirmation.  Research covered the existing outward-rounding
+The user selected the net-error certificate first.  Research covered the
+existing outward-rounding
 proofs, Rump's interval-inclusion argument, and LTG array-fold support.
 Eight foundation theorems now pass Lean: real residual bounds, directed
 addition and subtraction, sequential rounded accumulation, rounded residual
@@ -12370,3 +12370,16 @@ endpoints, and application to the existing Euler trace.  Every audit uses
 only propext, Classical.choice, and Quot.sound.  All checks used the standard
 local tools/leanrun limits.  The executable observer and its exact-WASM
 proof remain open.  The solver and its completed artifact remain unchanged.
+
+The scalar certificate layer now has checked interval arithmetic, real
+pressure and Rusanov flux inclusion, and complete generated-WASM execution
+theorems.  The [interface specification](proofs/talos/lean/Project/EulerCertificateFlux/Spec.lean)
+states exact returned words, unchanged store, and componentwise real flux
+enclosure when the corresponding status is zero.  Its focused source-artifact
+gate passes for 5,741 bytes with SHA-256
+c36ce83eb401ec6d31e161583e1902957bb034b50cb425bdc411c0b1b1ff461a.
+Every audit uses standard axioms.  Compiler annotations identified the
+outward helpers reused through a checked function-region renaming.
+The [journal](journal.md) records proof failures, corrections, and the
+compiler's repeated component calls.  Grid totals, boundary accumulation,
+the observer recurrence, and its exact-byte proof are next.
