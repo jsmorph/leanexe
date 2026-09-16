@@ -27,7 +27,7 @@ theorem softmax_input_error (env : HostEnv Unit) (initial : Store Unit)
       [.i64 d, .i64 c, .i64 b, .i64 a, .i64 n]
       (fun final values => final = initial ∧ values = resultWords (softmax n a b c d) ∧
         ∀ i, |CodeLib.IEEE64.value (outputs (softmax n a b c d) i)-
-          Real.probability (visible n) target i| ≤ 1/64+2*delta) := by
+          Real.probability (visible n) target i| ≤ 1/50000+2*delta) := by
   refine TerminatesWith.mono (softmax_exact env initial n a b c d) ?_
   rintro final values ⟨rfl, rfl⟩
   exact ⟨rfl, rfl, softmax_perturbed n a b c d h target delta hd he⟩

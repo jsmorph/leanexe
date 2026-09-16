@@ -40,21 +40,21 @@ theorem total_roundoff (w : Fin 4 → UInt64)
 theorem denominator (w : Fin 4 → UInt64) (r : Fin 4 → ℝ)
     (hf : ∀ i, Finite (w i)) (hp : ∀ i, 0 ≤ value (w i))
     (hr : ∀ i, 0 ≤ r i ∧ r i ≤ 1)
-    (he : ∀ i, |value (w i)-r i| ≤ 1/399) (hone : ∃ i, r i = 1) :
+    (he : ∀ i, |value (w i)-r i| ≤ 1/299000) (hone : ∃ i, r i = 1) :
     let d := total (w 0) (w 1) (w 2) (w 3)
     Finite d ∧ 49/50 ≤ value d ∧ value d ≤ 5 ∧
-    |value d - ∑ i, r i| ≤ 1/90 ∧
+    |value d - ∑ i, r i| ≤ 1/74000 ∧
     |value d - ∑ i, value (w i)| ≤ 18*arithmeticEpsilon ∧
     1 ≤ ∑ i, r i := by
   have hb : ∀ i, 0 ≤ value (w i) ∧ value (w i) ≤ 2 := by
     intro i
     exact ⟨hp i, by have h := (abs_le.mp (he i)).2; linarith [(hr i).2]⟩
   have ht := total_roundoff w hf hb
-  have hsum : |(∑ i, value (w i)) - ∑ i, r i| ≤ 4/399 := by
+  have hsum : |(∑ i, value (w i)) - ∑ i, r i| ≤ 4/299000 := by
     rw [← Finset.sum_sub_distrib]
     exact (Finset.abs_sum_le_sum_abs _ _).trans
       ((Finset.sum_le_sum (fun i _ => he i)).trans (by norm_num))
-  have herror : |value (total (w 0) (w 1) (w 2) (w 3)) - ∑ i, r i| ≤ 1/90 :=
+  have herror : |value (total (w 0) (w 1) (w 2) (w 3)) - ∑ i, r i| ≤ 1/74000 :=
     (abs_sub_le _ _ _).trans ((add_le_add ht.2 hsum).trans (by norm_num [arithmeticEpsilon]))
   have hlo : 1 ≤ ∑ i, r i := by
     obtain ⟨i, hi⟩ := hone
@@ -66,17 +66,17 @@ theorem denominator (w : Fin 4 → UInt64) (r : Fin 4 → ℝ)
   exact ⟨ht.1, by linarith, by linarith, herror, ht.2, hlo⟩
 
 theorem quotient_error (w d r s : ℝ) (hd : 49/50 ≤ d) (hs : 1 ≤ s)
-    (hr : 0 ≤ r ∧ r ≤ 1) (hw : |w-r| ≤ 1/399) (he : |d-s| ≤ 1/90) :
-    |w/d-r/s| ≤ 1/70 := by
+    (hr : 0 ≤ r ∧ r ≤ 1) (hw : |w-r| ≤ 1/299000) (he : |d-s| ≤ 1/74000) :
+    |w/d-r/s| ≤ 1/58000 := by
   have dp : 0 < d := by linarith
   have sp : 0 < s := by linarith
   have hid : w/d-r/s = ((w-r)*s+r*(s-d))/(d*s) := by field_simp; ring
   rw [hid, abs_div, abs_of_pos (mul_pos dp sp)]
   apply (div_le_iff₀ (mul_pos dp sp)).mpr
-  have h1 : |(w-r)*s| ≤ (1/399)*s := by
+  have h1 : |(w-r)*s| ≤ (1/299000)*s := by
     rw [abs_mul, abs_of_pos sp]
     exact mul_le_mul_of_nonneg_right hw sp.le
-  have h2 : |r*(s-d)| ≤ 1/90 := by
+  have h2 : |r*(s-d)| ≤ 1/74000 := by
     rw [abs_mul, abs_of_nonneg hr.1, abs_sub_comm]
     have hh := mul_le_mul_of_nonneg_left he hr.1
     nlinarith [hr.2]

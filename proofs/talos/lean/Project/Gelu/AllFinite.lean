@@ -4,6 +4,11 @@ import Project.Gelu.GlobalPerturbation
 namespace Project.Gelu
 open CodeLib.IEEE64
 
+theorem evaluateAll_error_bounded (x : UInt64) (hf : Finite x) (hx : |value x| ≤ 3) :
+    Finite (evaluateAll x) ∧ |value (evaluateAll x)-Real.gelu (value x)| ≤ 1/80000 := by
+  rw [evaluateAll, ite_eq_left ((inDomain_iff x).mpr ⟨hf, hx⟩)]
+  exact evaluate_error x hf hx
+
 theorem evaluateAll_error (x : UInt64) (hf : Finite x) :
     Finite (evaluateAll x) ∧ |value (evaluateAll x)-Real.gelu (value x)| ≤ 1/100 := by
   unfold evaluateAll
@@ -28,7 +33,8 @@ theorem evaluateAll_error (x : UInt64) (hf : Finite x) :
       rw [hzero, zero_sub, abs_neg]
       exact Real.negative_tail _ (by linarith)
   · simp only [ite_true]
-    exact evaluate_error x hf ((inDomain_iff x).mp hd).2
+    have h := evaluate_error x hf ((inDomain_iff x).mp hd).2
+    exact ⟨h.1, h.2.trans (by norm_num)⟩
 
 theorem evaluateAll_perturbed (x : UInt64) (r error : ℝ) (hf : Finite x)
     (he : |value x-r| ≤ error) :
@@ -37,6 +43,14 @@ theorem evaluateAll_perturbed (x : UInt64) (r error : ℝ) (hf : Finite x)
   have hp := Real.gelu_lipschitz_global (value x) r
   exact (abs_sub_le _ _ _).trans (add_le_add hn.2 (hp.trans (by linarith)))
 
+theorem evaluateAll_perturbed_bounded (x : UInt64) (r error : ℝ) (hf : Finite x)
+    (hx : |value x| ≤ 3) (he : |value x-r| ≤ error) :
+    |value (evaluateAll x)-Real.gelu r| ≤ 1/80000+4*error := by
+  have hn := evaluateAll_error_bounded x hf hx
+  have hp := Real.gelu_lipschitz_global (value x) r
+  exact (abs_sub_le _ _ _).trans (add_le_add hn.2 (hp.trans (by linarith)))
+
 #print axioms evaluateAll_error
 #print axioms evaluateAll_perturbed
+#print axioms evaluateAll_perturbed_bounded
 end Project.Gelu

@@ -13131,3 +13131,31 @@ attention call before further proof changes.
 The focused exp_wide artifact check passes with the strengthened generated-WAT
 error theorem and unchanged binary.  Its axiom audit uses the standard logical
 axioms.  Documentation and whitespace checks pass.
+
+The sharper exponential bound propagates through the softmax proof to
+component error 1/50000.  Masked zeros, positive active probabilities,
+normalization error, and the score-perturbation multiplier are unchanged.
+The GELU proof now uses Mathlib's twenty-decimal pi bounds to certify the
+stored scale coefficient within 10^-15.  The computed cubic argument error
+is at most 10^-10, giving bounded-domain GELU error 1/80000.  Both numerical
+specifications and the model's attention-value composition compile.  The
+all-finite GELU theorem retains 1/100 because its tail approximation is
+unchanged.
+
+Replacing conditional list lookup with direct zero/successor rules reduced
+the contraction proof from 88 to 10 seconds and the failing hidden proof
+from 111 to 17 seconds.  The long value-result setup still exceeds the
+per-simplification step count.  A shared single-instruction frame tactic
+splits its 48 local-variable instructions into bounded simplifications.
+
+The softmax and GELU source-artifact checks pass with the stronger numerical
+specifications and unchanged binaries.  All 175 numerical demonstration
+vectors pass against the native bit model with the tighter empirical bounds.
+The bounded all-finite GELU and model activation theorems also compile.
+Their axiom audits use the standard logical axioms.  Documentation and
+whitespace checks pass.
+
+The hidden-state proof now reaches the high feed-forward bias loads.
+The 99-second attempt exposed four emitted overflow guards for the constant
+index 1140+4.  The proof now discharges those guards before applying the
+array-load theorem.

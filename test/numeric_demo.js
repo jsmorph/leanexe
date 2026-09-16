@@ -42,7 +42,7 @@ function checkGelu() {
     assert.equal(output.status, accepted ? 0 : 1);
     if (accepted) {
       const expected = x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x*x*x)))/2;
-      assert.ok(Math.abs(output.value-expected) <= 1/100);
+      assert.ok(Math.abs(output.value-expected) <= 1/80000);
     } else {
       assert.equal(output.bits, "0000000000000000");
       assert.equal(output.absolute_error_bound, undefined);
@@ -148,7 +148,7 @@ function checkSoftmax() {
       for (let i = 0; i < 4; ++i) {
         if (i < row.length) {
           assert.ok(output.probabilities[i] > 0);
-          assert.ok(Math.abs(output.probabilities[i] - exactWeights[i]/total) <= 1/64);
+          assert.ok(Math.abs(output.probabilities[i] - exactWeights[i]/total) <= 1/50000);
         } else {
           assert.equal(output.probabilities_bits[i], "0000000000000000");
         }
@@ -204,7 +204,7 @@ function main() {
     0xc020000000000000n, 0xc01fffffffffffffn, 0xc010000000000000n,
     0xbff0000000000000n, 0x8000000000000001n, 0x800fffffffffffffn,
     0xc020000000000001n, 1n, 0x3ff0000000000000n, 0x7ff0000000000000n,
-    0xfff0000000000000n, 0x7ff8000000000000n], 8, 1/400);
+    0xfff0000000000000n, 0x7ff8000000000000n], 8, 1/300000);
   for (const bad of [null, [], {}, { x_bits: 0 }, { x_bits: "0" },
     { x_bits: "gggggggggggggggg" }, { x_bits: "0000000000000000", extra: 0 }]) {
     assert.throws(() => runDemo("exp-small", bad));
