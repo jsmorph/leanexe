@@ -67,12 +67,19 @@ accepts decimal scores or exact binary64 words.
 
 The softmax input-error theorem adds twice the maximum score error to the
 1/64 local bound.  Its internal computation also has a generated-WAT
-numerical theorem for finite scores with active spread at most eight,
+numerical theorem for finite scores with active spread at most sixteen,
 without an absolute score bound.  The public demonstration retains its
 [-4, 4] input guard.  The [tiny model definition](lean/Project/TinyGpt2/Real.lean)
 and [causal-prefix theorem](lean/Project/TinyGpt2/Causality.lean) describe
 the complete real-valued architecture.  Model execution and checkpoint
 certification remain open.
+
+The internal exponential evaluator now has a checked [-16, 0] theorem
+with the same 1/400 absolute error and a positive lower bound of
+1/1000000000.  The [tail analysis](../../plans/exponential-tail-analysis.md)
+records the polynomial interval and three-squaring argument.  The
+exponential and softmax command-line input guards retain their original
+domains.
 
 The `exp_wide` case extends the exponential domain to [-8, 0] with proved absolute error at most 1/400 and output at least 1/100000.  Its generated-WAT execution, successful domain, rejection behavior, and command-line runner are complete.
 

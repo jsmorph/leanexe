@@ -13019,3 +13019,31 @@ The full-inference test matches 1,536 logits across six contexts against
 the native Talos bit model.  Maximum CPU PyTorch difference is
 0.000039139185227021756.  This completes the executable interface while
 the model execution and numerical proofs continue.
+
+The extended Horner, polynomial interval, division, and three-squaring
+proofs now check.  ExpWide.evaluate_error_sixteen preserves the 1/400
+absolute error and proves a positive lower bound of 1/1000000000 on
+[-16, 0].  A shared adjacent-word comparison supplies the exact binary64
+endpoint bounds.  The first tail check caught a tactic attempting to
+interpret a conjunction as an inequality.  Explicit scalar goals fixed it.
+
+The [model range analysis](plans/tiny-model-range-analysis.md) derives an
+attention spread bound using the centered query-key matrix product.
+Preliminary checkpoint calculations give bounds below 9.57 and 14.31 for
+the two heads.  Normalized-row norm bounds apply to every real embedding,
+so this argument can cover all byte contexts without enumerating them.
+The matrix-norm certificates and floating-point error terms remain to be
+checked.  The current softmax extension uses a spread limit of sixteen.
+
+The internal softmax numerical and perturbed-input theorems now pass for
+spread at most sixteen.  The normalization proof uses the wider domain's
+1/1000000000 lower weight bound, which still proves strictly positive
+active probabilities.  Component error remains 1/64, input perturbation
+multiplier two, and normalization error 32 times 2^-52.  Arithmetic and
+public guards are unchanged.
+
+The focused softmax source-artifact gate passes with the unchanged module.
+All 175 numerical demonstration vectors still match the native Talos bit
+model.  The new theorem audits use only the standard logical axioms.
+Documentation and whitespace checks pass.  The recorded aggregate
+assoc_list cache mismatch remains open.

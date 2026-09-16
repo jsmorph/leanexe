@@ -12,7 +12,7 @@ def Valid (n a b c d : UInt64) : Prop :=
 def SpreadValid (n a b c d : UInt64) : Prop :=
   0 < n ∧ n ≤ 4 ∧ (∀ i, Finite (scores a b c d i)) ∧
     ∀ i j, indexWord i < n → indexWord j < n →
-      |value (scores a b c d i)-value (scores a b c d j)| ≤ 8
+      |value (scores a b c d i)-value (scores a b c d j)| ≤ 16
 
 theorem valid_spread (n a b c d : UInt64) (h : Valid n a b c d) : SpreadValid n a b c d := by
   refine ⟨h.1, h.2.1, fun i => (h.2.2 i).1, ?_⟩
@@ -97,7 +97,7 @@ theorem row_weights_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
     let m := rowMaximum n a b c d
     (∀ i, Finite (weight n (indexWord i) (s i) m) ∧
       0 ≤ value (weight n (indexWord i) (s i) m) ∧
-      (indexWord i < n → 1/100000 ≤ value (weight n (indexWord i) (s i) m)) ∧
+      (indexWord i < n → 1/1000000000 ≤ value (weight n (indexWord i) (s i) m)) ∧
       (¬indexWord i < n → weight n (indexWord i) (s i) m = 0) ∧
       0 ≤ realWeight n s m i ∧ realWeight n s m i ≤ 1 ∧
       |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/399) ∧
@@ -108,7 +108,7 @@ theorem row_weights_spread (n a b c d : UInt64) (h : SpreadValid n a b c d) :
     obtain ⟨j, hj, hm⟩ := row_maximum_attained n a b c d h.1
     by_cases hi : indexWord i < n
     · have ho := row_maximum_ge n a b c d i hi
-      have hs := shifted_weight_spread _ _ (h.2.2.1 i)
+      have hs := shifted_weight_sixteen _ _ (h.2.2.1 i)
         (by rw [hm]; exact h.2.2.1 j) (by rw [hm]; exact h.2.2.2 i j hi hj) ho
       have hu : Real.exp (value (scores a b c d i)-value (rowMaximum n a b c d)) ≤ 1 := by
         simpa using Real.exp_le_exp.mpr (sub_nonpos.mpr ho)
@@ -128,7 +128,7 @@ theorem row_weights (n a b c d : UInt64) (h : Valid n a b c d) :
     let m := rowMaximum n a b c d
     (∀ i, Finite (weight n (indexWord i) (s i) m) ∧
       0 ≤ value (weight n (indexWord i) (s i) m) ∧
-      (indexWord i < n → 1/100000 ≤ value (weight n (indexWord i) (s i) m)) ∧
+      (indexWord i < n → 1/1000000000 ≤ value (weight n (indexWord i) (s i) m)) ∧
       (¬indexWord i < n → weight n (indexWord i) (s i) m = 0) ∧
       0 ≤ realWeight n s m i ∧ realWeight n s m i ≤ 1 ∧
       |value (weight n (indexWord i) (s i) m)-realWeight n s m i| ≤ 1/399) ∧
