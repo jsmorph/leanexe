@@ -12903,3 +12903,46 @@ model.  The real model and causal proof check in about one second each.
 Public axiom audits contain only the standard logical axioms.
 Documentation and whitespace checks pass.  The aggregate source gate
 remains blocked by the previously recorded assoc_list cache mismatch.
+
+## 2026-09-16: Tiny model arithmetic body
+
+The executable arithmetic will read a single runtime array of 2,488 raw
+weight words.  Shared width-four and width-eight row helpers retain the
+proved balanced dot-product order.  Fixed offsets identify tensors in the
+same input-by-output layout used by training.  Token and position lookup,
+projection, normalization, attention, feed-forward arithmetic, and the
+vocabulary head will use those shared helpers.  This representation uses
+existing array loads and scalar structures and requires no compiler change.
+
+The arithmetic body will compute a selected context position with the
+causal prefix mask.  Its mathematical subject is the real model already
+checked.  The final public result format and training corpus still await
+confirmation.  Compiling the internal body does not establish its numerical
+ranges or complete its execution proof.
+
+The internal hidden-state body compiles to WASM with the existing compiler.
+Attention divides each balanced two-coordinate dot product by the rounded
+binary64 square root of two.  The next numerical lemma will include that
+constant's error and the division rounding.  Its denominator and the exact
+square root both exceed one, so numerator error plus exact-numerator
+magnitude times denominator error bounds the quotient perturbation.
+
+The initialized model test passes sixteen context-position rows and four
+selected vocabulary logits per row.  Wasmtime agrees bit-for-bit with the
+native Talos evaluator.  The largest empirical PyTorch differences are
+3.8527548711364545e-6 for hidden coordinates and 5.483958235158459e-7 for
+logits.  Prefix-equal contexts agree at their first two positions, and
+hidden-state calls allocate only the host-supplied weight array.  The first
+test invocation encountered sandbox EPERM starting Python.  Its approved
+repeatable test prefix passed without changing the test.
+
+The source row lemmas connect runtime tensor indexing to the existing
+four- and eight-term dot proofs, LayerNorm, and global GELU.  A first
+width-eight conversion exhausted the default elaboration heartbeat budget.
+Separating the indexed-operation equalities into reusable lemmas reduced
+the row module to a 1.7-second check.  No runner timeout occurred.
+Attention value composition retains the sum of the individual value
+magnitudes and adds the upstream value error after using exact real
+softmax normalization.  Its local dot rounding and score perturbation
+terms remain explicit.  These theorems have checked hypotheses.  Frozen
+checkpoint ranges and full-model execution are still required.
