@@ -12704,3 +12704,15 @@ return unsupported (3). The focused source build and 98 WASM/standard-Lean
 comparisons passed, including incorrect claims and high-bit inputs.
 The M0.0 32-case regression and documentation gate also passed.
 No compiler changes were required. M0.2, validated term graphs, is next.
+
+## 2026-09-16: Kernel checker M0.2
+
+A three-word, zero-based DAG now encodes Sort, bvar, Pi, and lambda.
+The validator checks every record, canonical spare fields, root bounds, and
+strictly backward child references. Open variables remain structurally valid.
+The 17-case WASM/standard-Lean corpus passes, including unknown tags,
+truncation, huge IDs, self/forward edges, and invalid unreachable nodes.
+The first runtime attempt exposed missing dynamic loader resolution for the
+Wasmtime C host in this environment. An explicit session-local C API library
+path fixed it; no repository runner or compiler change was needed.
+The documentation gate passed. M0.3 adds binding operations next.

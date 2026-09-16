@@ -71,7 +71,34 @@ build/tools/wasmtime/current/wasmtime run --invoke checkLevelOp .lake/build/kern
 
 These return 0 and 1. No symbolic universe expressions are supported yet.
 
+## M0.2: validated term graphs
+
+`node test/kernel_graph.js` builds `checker-m0-2.wasm` and checks 17
+WASM/standard-Lean cases. Build the existing array host once with
+`tools/build-wasmtime-host.sh`. The entry is `validateGraph graph root`.
+
+Each zero-based node occupies three UInt64 words:
+
+| Tag | First payload | Second payload |
+|---|---|---|
+| 0: Sort | concrete universe level | 0 |
+| 1: bvar | de Bruijn index | 0 |
+| 2: Pi | domain node ID | body node ID |
+| 3: lambda | domain node ID | body node ID |
+
+Every child must precede its parent. The entire array is validated, including
+unreachable nodes; the root must exist. Result 0 means structurally valid;
+4 means malformed. An open bvar is structurally valid: scope and typing
+are separate operations.
+
+```sh
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-2.wasm validateGraph i64 array-u64:0,0,0 i64:0
+build/tools/leanexe-wasmtime-host call .lake/build/kernel-check/checker-m0-2.wasm validateGraph i64 array-u64:2,0,0 i64:0
+```
+
+These return 0 and 4 (the second graph contains a self-reference).
+
 ## Next checkpoint
 
-M0.2 adds validated term graphs. The complete handoff and later
+M0.3 adds binder scope and shifting. The complete handoff and later
 milestones are in [the kernel checker plan](../../plans/lean-kernel-checker.md).

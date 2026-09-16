@@ -4,7 +4,7 @@ The root [Development Plan](../plan.md) is the only active work queue.  This dir
 
 | Plan | Status | Scope |
 |------|--------|-------|
-| [Full Lean kernel checker](lean-kernel-checker.md) | M0.0 complete; M0.1 next | Build a full Lean kernel checker in LeanExe through small runnable checkpoints. |
+| [Full Lean kernel checker](lean-kernel-checker.md) | Active; see checkpoint status | Build a full Lean kernel checker in LeanExe through small runnable checkpoints. |
 | [Verified tiny transformer inference](tiny-transformer.md) | Active; expands phase 14 | Build runnable FP64 exponential and softmax components, then trained tiny-model inference with numerical bounds. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Completed experimental milestone; optional regression path | Records canonical final-module serialization and exact self-reproduction without blocking native compiler development. |
 | [Source-Theorem Transport](theorem-transport.md) | Deferred pending smaller compiler-theorem experiments | Connect a Lean source theorem through proof-grade IR semantics and verified lowering to a theorem about exact artifact bytes. |
