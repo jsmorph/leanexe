@@ -13344,3 +13344,39 @@ check in 2.4 seconds.  The generated hidden function's initialization checks
 equal to that representation in 2.9 seconds.  Its local-type list contains
 782 entries, plus six parameters.  The earlier count of 785 combined slots
 was incorrect.
+
+The functional-frame tactic now checks the first three embedding calls.
+Its initial invocation exposed an incorrect simplifier name, Nat.reduceEq,
+which I replaced with the documented Nat.reduceEqDiff.  The complete
+instrumented proof then reached its three-minute limit after eighteen
+helper calls.  Initial groups take four to eight seconds.  The groups
+preparing context projections take eighteen to twenty-three seconds.
+The representation alone has not improved the composition proof: it still
+retains the full chain of previous writes.  The next diagnostic separates
+tactic execution from prefix extraction and kernel checking.
+
+The phase diagnostic locates the dominant extraction cost in Lean's
+closure construction.  On the first three prefixes, tactic execution
+takes 0.1 to 0.2 seconds, closure construction takes 5.6 to 7.2 seconds,
+and kernel checking takes 0.4 to 0.6 seconds.  The pinned
+[closure implementation](https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2b50214762f91d/src/Lean/Meta/Closure.lean)
+explains that the default mode type-checks the term to identify dependent
+local definitions.  Selecting zetaDelta expands those definitions instead.
+The prefix tactic now uses that option.  Its branching, introduced-binder,
+and local-definition examples pass.
+
+With definition expansion, the list-frame diagnostic checks the first
+three calls in 1.2 seconds, including prefix extraction and kernel checks.
+Closure construction takes two milliseconds per prefix.  Lists are faster
+than the functional representation on this prefix.  A complete list-frame
+run will test the corrected extraction tactic before retaining additional
+frame machinery.
+
+An additional tactic test found that dependent continuation goals retained
+a temporary local variable after extraction.  The tactic now restores the
+metavariable context after closure construction and reconnects each pending
+goal to its new continuation goal.  The test chooses an existential witness
+in one goal and proves its equality in the next.  It passes, together with
+the earlier three examples.  The list-frame hidden proof has passed forty-two
+instruction groups with the corrected tactic.  The 48-instruction local
+transfer uses the existing six-instruction proof boundaries.
