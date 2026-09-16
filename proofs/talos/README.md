@@ -73,8 +73,12 @@ without an absolute score bound.  The public demonstration retains its
 and [causal-prefix theorem](lean/Project/TinyGpt2/Causality.lean) describe
 the complete real-valued architecture.  The model's component execution
 proofs cover embedding lookup, normalization, attention, matrix-column
-access, context projection, and feed-forward contraction.  The enclosing
-model execution and checkpoint certification remain open.
+access, context projection, and feed-forward contraction.  The
+[hidden-state theorem](lean/Project/TinyGpt2Hidden/Hidden.lean) now composes
+those results, proving termination, exact raw-bit model agreement, and
+store preservation for every four-byte input and represented weight array
+with at least 2,488 words.  The full vocabulary-output loop and composed
+checkpoint numerical certificate remain open.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

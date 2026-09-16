@@ -1,5 +1,1 @@
-import Project.TinyGpt2Hidden.Normalization
-import Project.TinyGpt2Hidden.Attention
-import Project.TinyGpt2Hidden.Projection
-import Project.TinyGpt2Hidden.Contract
-import Project.TinyGpt2Hidden.Embedding
+import Project.TinyGpt2Hidden.Hidden
