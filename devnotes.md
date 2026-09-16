@@ -12675,3 +12675,20 @@ and a final normalization after the block.  Its specification centers twice
 when computing variance.  That second centering vanishes over the reals but
 affects rounded evaluation, so the later implementation must state its
 operation tree.  No dependency or compiler change is required for this step.
+
+The shared RealNormalization identity and width-four LayerNorm.Real target
+now pass.  The latter checks the constant-row result, normalized magnitude
+at most two, centering contraction, endpoint distance bound, componentwise
+input perturbation, affine parameter perturbation, and the triangle bound
+that adds an implementation's local roundoff estimate.  The variance-floor
+corollary accepts a certified lower variance at each endpoint.  These are
+real-arithmetic results with symbolic positive epsilon.
+
+The first check found a simplifier list containing both directions of
+Finset.mul_sum.  Separating expansion from collection resolved the shared
+identity.  The second check found an unnecessary tactic after simp had
+closed a finite sum and an addition-inequality helper with the wrong operand
+order.  Explicit add_le_add resolves the latter.  The resulting modules check
+in about two seconds each under the standard local runner limits.  No timeout
+or resource-limit exception occurred.  The aggregate source gate still has
+the previously diagnosed assoc_list cache mismatch.
