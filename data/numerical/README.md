@@ -110,6 +110,11 @@ denominator, division, mask, and normalization bounds.  The registered
 `Project.Softmax.Spec.softmax_real_error` theorem connects the result to
 terminating generated-WAT execution with complete store preservation.
 
+`Project.Softmax.Spec.softmax_input_error` extends that execution theorem
+to perturbed input scores.  If each score differs from its real target by
+at most delta, each output differs from the target softmax by at most
+1/64 + 2*delta.  The target scores may be any real values.
+
 ## Small exponential
 
 `exp-small` accepts every binary64 input in [-1, 0], including signed zeros

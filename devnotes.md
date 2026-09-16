@@ -12861,3 +12861,45 @@ times its weight when every score perturbation is at most delta.  The
 quotient rule and nonnegative normalized weights then bound a probability's
 derivative by 2*delta.  The mean-value theorem gives a global component
 perturbation bound independent of the absolute score magnitudes.
+
+## 2026-09-16: Softmax perturbation and model definition
+
+The softmax proof follows the recorded interpolation argument.  A shared
+quotient-slope lemma bounds the derivative from nonnegative weights and
+a positive sum.  It proves component error at most twice the maximum
+score error for every nonempty finite mask.  The binary64 result adds its
+existing 1/64 local error.  Initial checks required the quotient-derivative
+import, explicit derivative conversion, and reduction of the zero UInt64
+mask index.  The real module checks in about one second.
+
+The next definition will express the agreed architecture directly over
+real vectors and input-by-output matrices.  Each position adds its token
+and position embeddings, applies pre-normalization and two causal heads,
+adds the attention residual, applies pre-normalized width-eight tanh GELU
+feed-forward arithmetic, adds that residual, and applies final
+normalization and the independent vocabulary head.  A prefix-equality
+proof will check that outputs through a position depend only on tokens
+through that position.  This gives the later executable model a precise
+mathematical subject before checkpoint-dependent range work.
+
+The complete real model and its causal-prefix theorem now pass.  The proof
+uses equality of visible softmax weights and exact zeros for future
+positions.  Shared real softmax lemmas also establish nonnegativity,
+normalization, and the convex weighted-value magnitude bound.  Initial
+checks found a missing finite-sum division import and function-equality
+simplification limits.  Rewriting division as multiplication and explicit
+function unfolding resolved them.
+
+The binary64 softmax computation now requires finite scores and active
+spread at most eight.  Its subtraction proof depends on the difference,
+so the same numerical budgets apply without bounding the common score
+offset.  The existing bounded public theorem follows from this more
+general result.  The internal computation's generated-WAT theorem and
+its perturbed-input theorem pass.  No operation or binary changed.
+
+The focused softmax artifact gate passes after the spread extension.
+All 175 numerical command-line vectors agree with the native Talos bit
+model.  The real model and causal proof check in about one second each.
+Public axiom audits contain only the standard logical axioms.
+Documentation and whitespace checks pass.  The aggregate source gate
+remains blocked by the previously recorded assoc_list cache mismatch.

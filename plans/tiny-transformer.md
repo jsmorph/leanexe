@@ -55,6 +55,14 @@ The [GELU analysis](gelu-analysis.md) records its logistic identity and
 binary64 error budget.  The [training implementation](../training/tiny-gpt2/README.md)
 uses the approved CPU PyTorch backend.
 
+The [real-valued model](../proofs/talos/lean/Project/TinyGpt2/Real.lean)
+defines every stage of the audited architecture.  Its causal-prefix
+theorem proves equal output at a position whenever the input prefixes
+through that position agree.  The softmax computation now accepts a
+proved active-score spread of at most eight in its internal numerical
+theorem and propagates real score error with multiplier two.  Frozen
+checkpoint ranges and full-model execution remain open.
+
 Use existing ProofKit arithmetic bounds, including their underflow terms.
 Use the existing Wasmtime host and source-driven Talos registry.  Dependencies,
 toolchains, and compiler semantics remain pinned to the current checkout.
