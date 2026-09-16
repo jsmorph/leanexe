@@ -12734,3 +12734,18 @@ zero shifts, and exact fuel boundaries. A record-update parsing diagnostic
 was resolved by naming the appended graph before constructing the result.
 No compiler changes were needed; documentation checks passed.
 M0.4, context admission and variable typing, is next.
+
+## 2026-09-16: Kernel checker M0.4
+
+Local contexts store type-node IDs oldest first, relative to each preceding
+context. Admission infers each annotation and requires a Sort before extending
+the context. Variable lookup raises the stored type by index + 1. The explicit
+A : Sort 1, x : A example returns bvar 1 for x's type, exposing the otherwise
+easy-to-miss lifting requirement. These remain judgments under local assumptions.
+
+All 14 exact WASM outputs match both standard Lean evaluation and independent
+expected graphs/statuses. Rejections cover unbound assumptions, using a proof
+as a type, invalid context IDs, out-of-scope variables and universe overflow;
+unsupported syntax and exhausted fuel remain distinct. The existing binding
+operation is reused directly. Source and documentation gates passed.
+M0.5 adds Pi formation next.
