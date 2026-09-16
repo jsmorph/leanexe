@@ -49,8 +49,11 @@ spread of 12.117768731550278 in the second head at the final position.
 The internal softmax theorem now covers spread at most sixteen.  The
 checkpoint's [range proof](../../plans/tiny-model-range-analysis.md)
 now establishes real score spread at most 103/7 for every accepted context.
-The binary64 roundoff margin remains open.  Lean also proves that all 2,488
-weights are finite with real magnitude at most four.
+The binary64 certificate adds normalization, projection, and score errors
+and proves computed spread at most sixteen.  Every byte embedding satisfies
+the first normalization domain.  Lean also proves that all 2,488 weights
+are finite with real magnitude at most four.  Attention residual,
+feed-forward, final-normalization, and complete logit certificates remain open.
 
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
@@ -68,7 +71,7 @@ against this checkpoint with:
 ```sh
 tools/tiny-gpt2-certificate.js --check
 tools/leanrun --timeout 3m lake -d proofs/talos/lean build \
-  Project.TinyGpt2.CheckpointBounds Project.TinyGpt2.CheckpointAttention
+  Project.TinyGpt2.CheckpointScore
 ```
 
 The [training environment](../../training/tiny-gpt2/README.md) records the

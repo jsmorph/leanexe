@@ -39,15 +39,22 @@ An exact certificate can use the shared rational bounds
 `||M||_F ≤ 12/5`, `||d||_2 ≤ 7/20`, and `sqrt(2) ≥ 7/5`.
 These imply a real spread bound of 103/7, below fifteen.  The certificate
 checks the squared matrix norms using the decoded checkpoint words.
-The binary64 proof must then add first-normalization, projection, and
-score errors and show the computed spread remains below sixteen.
+The binary64 certificate includes first-normalization, projection, and
+score errors.  Each computed score differs from the real score on its
+decoded embedding rows by at most 1/3000.  Adding twice this error to
+103/7 keeps the computed spread below sixteen.
 
 Lean checks the exact rational inequalities and transfers them to the
 model's real scores in the [checkpoint attention certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointAttention.lean).
 The [weight certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointBounds.lean)
 also proves that all 2,488 words are finite with real magnitude at most four.
 
-This argument covers all real embedding rows through the normalization
+The [binary64 score certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointScore.lean)
+combines these bounds.  The [embedding certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointEmbedding.lean)
+proves that every byte token at each accepted position produces a finite
+row within the first normalization domain.
+
+The real argument covers all embedding rows through the normalization
 identities.  It avoids enumerating four-token contexts while retaining the
 relationship between query and key coefficients.
 
@@ -56,6 +63,6 @@ relationship between query and key coefficients.
 - [x] Check the normalized-row sum and squared-norm facts.
 - [x] Check the bilinear and linear score-difference estimate.
 - [x] Check the checkpoint's exact rational matrix-norm bounds.
-- [ ] Include binary64 normalization, projection, and score errors.
+- [x] Include binary64 normalization, projection, and score errors.
 - [ ] Bound the attention residual and feed-forward stages.
 - [ ] Derive the complete logit error bound.
