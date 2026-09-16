@@ -3,6 +3,7 @@ import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayAllocate
 import Project.ProofKit.ArrayPush
 import Project.ProofKit.ArrayPushLayout
+import Project.ProofKit.FixedArrayResult
 
 namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.ProofKit
@@ -25,5 +26,9 @@ theorem output_allocation_shape : (outputBody.drop 67).take 15 =
 
 theorem output_copy_shape : (outputBody.drop 88).take 15 =
     FixedArrayCopy.prefixProgram 48 52 50 53 ++ UInt64Array.pushStoreProgram 52 49 54 := rfl
+
+theorem output_prepare_shape : (outputBody.drop 67).take 21 =
+    (outputBody.drop 67).take 15 ++ [.localGet 62, .localSet 52] ++
+      FixedArrayResult.lengthStoreLocalProgram 52 51 := rfl
 
 end Project.TinyGpt2Infer.Spec

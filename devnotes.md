@@ -13563,3 +13563,22 @@ generated-loop execution proof remains open.
 The focused tiny_gpt2_infer gate also passes with the complete memory
 composition imported by Spec.  Its axiom reports contain only the standard
 logical axioms.  Documentation and whitespace checks pass.
+
+The generated output-loop regions now have execution proofs for the logit
+call, capacity calculation, allocation and length initialization, conditional
+release, and checked counter increment.  The existing copy-and-append proof
+covers the remaining memory writes.  Frame lemmas preserve the checkpoint
+pointer, hidden row, original empty array, loop limit, and step.  A shared
+allocator-frame projection theorem preserves registers both before and after
+its six scratch registers.
+
+The stage checks take 1.3 to 2.9 seconds each.  Initial failures came from
+symbolic local-array updates and conditional continuations that the fixed-frame
+tactic does not simplify by default.  Explicit list-update identities and
+branch selection resolve those proof boundaries.  The counter proof derives
+absence of overflow from the vocabulary bound.  All accepted stage theorems
+report only standard logical axioms.  Composition into one iteration and the
+terminating vocabulary loop remains open.
+
+The focused tiny_gpt2_infer gate passes with these stages imported, including
+the regenerated-program comparison.  Documentation and whitespace checks pass.
