@@ -39,6 +39,8 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The `exp_wide` case extends the exponential domain to [-8, 0] with proved absolute error at most 1/400 and output at least 1/100000.  Its generated-WAT execution, successful domain, rejection behavior, and command-line runner are complete.
+
 The [small exponential demonstration](../../data/numerical/README.md) adds
 the `exp_small` registration.  Its generated-WAT theorem covers every raw
 input, exact status and output, termination, and store preservation.
