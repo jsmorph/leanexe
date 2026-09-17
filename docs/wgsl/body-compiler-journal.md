@@ -110,3 +110,20 @@ binder annotations, reserved constructor names, exception simplification and
 loop-invariant normalization; those proof errors were repaired before this
 checkpoint. Whole-shader integration is still in progress at this checkpoint;
 no claim of WebGPU driver verification or GPT-2 migration follows from it.
+
+The parser now retains statement syntax, and the mandatory compiler gate emits
+and audits `wgslExecutionCorrect : Statement.Implements ...` in addition to the
+parse and source-equality theorems. The whole-invocation semantics executes the
+u32 guard, scoped statements and checked final store. Coverage of the rounded
+8×8 grid and disjoint output addresses are also proved. No interleaved scheduler
+or external-driver conformance theorem is claimed for this new grammar.
+
+The integrated run in `build/wgsl/body-check-o6A1aP/summary.json` passed all nine
+source/parse/execution proof triples, rechecked the saved matrix proof in a
+fresh process, and executed all nine shaders on SwiftShader's Vulkan CPU.
+All 51 words matched the original Lean definitions under pure IEEE32 arithmetic.
+Eighteen negative cases rejected without creating a package. Four newly added
+cases check wrong loop increments, nonzero counter starts, assignment to the
+wrong accumulator and use of a local after its scope ended. The manifest is
+now version 2 and explicitly identifies `Statement.runShader` as the execution
+semantics. This result does not migrate the GPT-2 bundle's fixed templates.
