@@ -13700,3 +13700,42 @@ The inference gate passes with both feed-forward certificates included.
 Regenerated WAT agrees with the tracked program, and documentation and
 whitespace checks pass.  The existing aggregate cache mismatch remains
 the aggregate gate's recorded blocker.
+
+The shared LayerNorm analysis now accepts an explicit input magnitude
+bound from one through sixteen.  Centering, squaring, variance, square
+root, division, and the final affine operation expose their error budgets.
+The component bound is
+(160000000*B^2+64000*B+16000057)*2^-52.  At B = 16 it is below 1/100000.
+The earlier four-unit statements remain checked with their original
+1/1000000 final bound.  The generic arguments replace the fixed-bound
+derivations, with the earlier statements retained as specializations
+where applicable.
+
+The checkpoint's second residual satisfies the wider input domain.
+Its final normalization now has a checked local error bound of 1/100000.
+The complete hidden computation produces finite coordinates of magnitude
+at most seven.  The output certificate proves that all 256 logits are
+finite with magnitude at most 117 for every four-byte input.  These
+magnitude bounds establish every intermediate domain obligation.  The
+composed error against the real model remains open.
+
+The first generalization checks exposed unresolved numeral products in
+the old specializations and a denominator equality whose real-deviation
+definition needed unfolding before ring normalization.  A bound wrapper
+also used the wrong namespace for arithmeticEpsilon.  The final logit
+adapter needed the UInt64.ofNat conversion theorem rather than the numeral
+conversion theorem, and explicit unfolding of the bounded-word predicate.
+The corrected variance, denominator, quotient, and component modules check
+in 1.3 to 2.3 seconds.  The final normalization, hidden-state bound, and
+logit certificate check in 1.4 to 2.4 seconds with standard logical axioms.
+
+The user confirmed CPU PyTorch 2.9.1, the pinned Tiny Shakespeare corpus,
+all byte tokens, and all 256 output logits.  The 64-byte plan records those
+choices.  Training constraints on matrix norms or normalization scales
+remain a discussed option requiring a decision.
+
+The layer_norm and tiny_gpt2_infer proof gates pass, including generated
+program comparisons.  The checkpoint-word identity check passes for all
+2,488 words.  The CLI smoke test returns 256 logits with the unchanged
+artifact digest.  Documentation and whitespace checks pass.  The recorded
+assoc_list cache mismatch remains the aggregate gate blocker.

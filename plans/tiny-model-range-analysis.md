@@ -98,8 +98,23 @@ proves activation error at most 1/25000 and contraction error at most
 1/8000, relative to the real feed-forward computation on the decoded
 first residual.  Each contraction column has absolute coefficient sum
 at most three.  The second residual is finite with magnitude at most
-fourteen.  This conservative bound requires a wider domain for the final
-normalization theorem.  The inference implementation stays unchanged.
+fourteen.
+
+## Final normalization and output
+
+The shared LayerNorm proof now permits an input magnitude bound `B` from
+one through sixteen, retaining scale and bias bounds of four.  Its
+component error is at most
+`(160000000*B^2+64000*B+16000057)*2^-52`, which is below 1/100000 at
+`B = 16`.  The original four-unit theorem retains its 1/1000000 bound.
+
+The [final normalization certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointFinalNorm.lean)
+applies this result to the second residual.  The
+[output certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
+proves that every four-byte input produces finite hidden coordinates of
+magnitude at most seven and 256 finite logits of magnitude at most 117.
+All intermediate domain obligations are proved.  The complete error bound
+against the real model remains open.
 
 ## Remaining checks
 
@@ -110,5 +125,5 @@ normalization theorem.  The inference implementation stays unchanged.
 - [x] Bound the real attention residual.
 - [x] Include the attention-residual roundoff margin.
 - [x] Bound the feed-forward stages.
-- [ ] Extend the final normalization's numerical domain.
+- [x] Extend the final normalization's numerical domain.
 - [ ] Derive the complete logit error bound.
