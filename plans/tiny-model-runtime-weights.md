@@ -73,6 +73,16 @@ The proof accounts for centering error separately from the rounding of
 squares, averaging, the denominator, division, and the final affine map.
 It changes no numerical operation.
 
+The [runtime inference range theorem](../proofs/talos/lean/Project/TinyGpt2/RuntimeLogits.lean)
+proves that every accepted clipped array produces 256 finite source-model
+logits of magnitude at most 1,260 for every four-byte input.  The proof
+derives finite loaded parameters, bounds every intermediate operation,
+and uses the wider numerical components.  It requires no checkpoint facts.
+The shared affine bounds take the product magnitude as a parameter, and
+the normalization perturbation theorem retains an explicit denominator
+lower bound.  The composed error bound and combined checker execution
+remain open.
+
 ## Approved arithmetic
 
 The user approved a degree-eighteen Taylor polynomial for
