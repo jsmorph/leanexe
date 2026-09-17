@@ -252,3 +252,107 @@ conformance are still explicit boundaries. No new native evidence is claimed.
 Reviewed Dispatch, Launch, Output, ArtifactExecution and status documentation;
 diff whitespace and forbidden-proof-token checks pass. Publishing before
 starting the concrete binary32 interpretation in the existing Talos workspace.
+
+Dispatch checkpoint ca6775030492aa2beb504867c1ac942b79fb3cca published with
+parent 33cfa51a274dbef537f4312148b1ce862d06e46f and tree
+31c8621232057391cbb947d09c8127ee6c84c851; fetched exact identity and clean checks
+pass. Binary32 integration now begins inside Project.WGSL in the existing Talos
+workspace, preserving the compiler/dependency boundary. It reuses the pinned
+pure integer add/mul and dyadic rounder. A new fused operation forms the exact
+product-plus-accumulator numerator before rounding, with explicit exceptional
+and signed-zero cases. Kernel-checked edge vectors exercise fusion sensitivity,
+subnormals, ties, zero signs, overflow and NaNs. No dependency is added.
+
+Concrete Binary32 and all eleven edge theorems pass (950/940 ms), including
+negative-zero preservation and an exact fused result distinct from separate
+rounding. The numerical draft initially mixed Nat/Int bound inference and
+attempted concrete exponent simplification above the tactic's default threshold.
+A second draft reached recursion while rewriting the full dyadic expression.
+Both drafts/logs are retained. Isolated signed-magnitude transport over symbolic
+integers, separated the two closed signed-zero facts, and use algebraic power
+identities instead of increasing recursion, heartbeat or exponent thresholds.
+
+2026-09-16: binary32 numerical composition now passes. FusedError transports the
+shared dyadic-rounder bound through signed integers; AccumulationError proves
+finite intermediates and the 2*K*2^-23 absolute bound for every permitted separate
+or locally fused accumulation under DotDomain. ArtifactNumerical composes that
+bound with the exact artifact's dispatch theorem and proves a sufficient product
+budget of 1/(4K) for positive K up to 2^20. The first ArtifactNumerical run failed
+only because `ring` followed a `field_simp` that had already closed its goal.
+Retained that draft in task work/wgsl-artifact-numerical-first.lean and its failed
+log; removed the redundant tactic. The second focused build passes in 4.6s.
+Public audits contain only propext, Classical.choice and Quot.sound. Existing
+FusedError warnings about unevaluated large powers and one unused simp argument
+remain visible; no threshold was increased. Numerical input bounds are narrower
+than the native harness's test envelope. No runtime conformance follows from
+these arithmetic proofs.
+
+The user's immediate priority is simple server-side execution of generated WGSL.
+Installed the approved pinned Python runtime into build/wgsl/macos-venv-20260916;
+macOS additionally resolves rubicon-objc 0.5.6. Generate.lean emits the existing
+supported GEMM candidate to fresh artifact paths. The generated 3x5x2 shader in
+build/wgsl/macos-rectangular-20260916 is byte-identical to the captured rectangular
+source (SHA-256 6fc06d865910ef3e615a1e33757e011feb56461958212160b04bf52c8d447455).
+
+The initial installed macOS runtime exposed no adapters. Metal attempts are
+stopped at the user's instruction. The user rejected a browser route; an unused
+HTML smoke page remains in task outputs, and browser URL policy rejected its
+opening. It was not executed and is not runtime evidence. A Podman attempt,
+after explicit access approval, failed because macOS reported virtualization
+unavailable on this hardware (tmp/wgsl-podman-start-debug.log). Podman is not a
+requirement for CPU WGSL execution; that detour did not advance the kernel test.
+
+Found SwiftShader's native CPU Vulkan driver in the existing Chrome 152.0.7977.84
+installation. A direct Vulkan API check successfully created an instance and
+enumerated one CPU device, SwiftShader Device (LLVM 10.0.0), without launching
+Chrome. The standard pinned macOS wgpu-native binary lacks Vulkan. With explicit
+approval, installed checksum-pinned Rust 1.90.0 only under build/tools and built
+the already pinned native runtime at commit
+768f15f6ace8e4ec8e8720d5732b29e0b34250a8 using locked Cargo dependencies and one job.
+
+The first source build used the outer vulkan-portability feature but still
+exposed no adapter. Inspection showed that this pinned wgpu-native feature only
+enables wgc/vulkan, while wgpu-core's Apple build requires wgc/vulkan-portability.
+Enabled the core feature explicitly, without modifying upstream source. Also set
+the upstream WGPU_NATIVE_VERSION build variable to 27.0.4.0 so runtime identity
+is recorded correctly. Both earlier binaries, all failed reports and build logs
+remain under build/wgsl and tmp. The corrected build finished in 47.25s; the
+final library SHA-256 is
+e95dcf3e6b1a4c5915371d040c2fbef3853f56c97d0881f8c81814d506aeb422.
+
+The unchanged native harness then executed the newly generated rectangular
+shader on SwiftShader through Vulkan. All 15 output words exactly matched the
+separate-rounding reference; elapsed time was 0.728s. Three additional small
+1x1x2 cases passed the fusion-profile reference: fusion-sensitive arithmetic
+returned 00000000, signed-zero accumulation returned 00000000, and the subnormal
+case returned 00400001. The fusion case permits either separate or fused output;
+its observed zero does not demonstrate that the runtime fused the operation.
+No more native cases were needed for this checkpoint.
+
+Retained these four reports in test/wgsl/evidence/macos-swiftshader together with
+runtime.json, recording source/lock/driver/library/toolchain identities. Optional
+extension warnings (swapchain colorspace, memory budget, portability subset)
+remain in the reports; shader compilation, dispatch and readback succeeded.
+These records establish only the tested executions. Universal runtime profile
+conformance and independent artifact-package checking remain open.
+
+Added build-macos-cpu.sh with the exact successful build configuration and an
+installation check that reuses existing Rust components. Its checked repeat run
+completed with the same native hash and no source modification. run-macos-cpu.sh
+sets the native library and CPU driver for the existing harness; the wrapper was
+used for all four successful executions. Neither wrapper introduces a new
+shader executor. Report creation now rejects existing paths and uses exclusive
+creation so repeating a command cannot destroy previous evidence. A focused
+regression covers that preservation behavior. No system-wide tool installation,
+VM, browser process or remote execution is used by the successful path.
+
+Final checkpoint checks: all nine arithmetic/harness boundary tests pass in
+1.148s, including rejection of an existing evidence path. Shell syntax checks,
+the repeated setup command, the exact shader-byte comparison and git diff
+whitespace checks pass. The modified harness also repeats the rectangular CPU
+run successfully using a fresh report, preserving the original four captured
+reports. Reviewed the five binary32 proof modules, generator CLI, Mac setup/run
+scripts, evidence, preservation guard and status documentation. No sorry, admit,
+new axiom or native_decide occurs in the new Lean sources. The coherent checkpoint
+is ready for non-forced publication on wgsl; Wasm composition and independent
+package checking are not claimed complete.

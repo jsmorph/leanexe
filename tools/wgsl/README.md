@@ -6,6 +6,52 @@ The initial ABI is row-major binary32 A/B/C storage buffers and the `gemm_f32`
 entry point described by the generated JSON manifest. The harness accepts
 arbitrary supported binding indices/groups and two-dimensional workgroups.
 
+## Generate and run on this ARM Mac
+
+The checked local CPU route is `run.py → wgpu-native → Vulkan → SwiftShader`.
+It runs as a command-line process, without a browser, Metal or virtual machine.
+Generate the supported Lean GEMM candidate and run its exact emitted shader:
+
+```sh
+source tools/macos-env.sh
+tools/leanrun --timeout 60s lake env lean --run tools/wgsl/Generate.lean build/wgsl/my-gemm 3 5 2 separate
+tools/wgsl/run-macos-cpu.sh build/wgsl/my-gemm/kernel.wgsl build/wgsl/my-gemm/manifest.json \
+  --report build/wgsl/my-gemm/execution.json
+```
+
+Choose fresh artifact/report paths; previous results are retained. The generator
+uses the existing checked `gemmCandidate` interface and fixed GEMM template.
+The `3 5 2` arguments mean a 3×2 matrix times a 2×5 matrix.
+
+The installed defaults use the isolated environment
+`build/wgsl/macos-venv-20260916` and SwiftShader's libraries from the existing
+Chrome 152.0.7977.84 installation. Chrome itself is never launched. Override
+`LEANEXE_WGPU_PYTHON`, `LEANEXE_WGPU_NATIVE_LIB` or `LEANEXE_SWIFTSHADER_DIR`
+to select another installation explicitly. There is no automatic backend fallback.
+
+The standard wgpu-native macOS binary does not enable Vulkan. The optional
+`tools/wgsl/build-macos-cpu.sh` setup command installs checksum-pinned Rust 1.90.0
+inside `build/tools`, then builds wgpu-native commit
+`768f15f6ace8e4ec8e8720d5732b29e0b34250a8` with its locked dependencies and one
+build job. The pinned release needs **both** `vulkan-portability` and
+`wgc/vulkan-portability`; the outer feature alone fails to enable Vulkan in its
+core library. No upstream source modification is needed. This setup requires
+Apple command-line build tools already installed on the host.
+
+The approved Python environment uses the five versions in `requirements.txt`
+and macOS transitive dependency `rubicon-objc==0.5.6`. To prepare another isolated
+Python 3.14 environment, install that set there and select it with
+`LEANEXE_WGPU_PYTHON`. The setup script does not install Python or SwiftShader.
+
+Recorded [CPU execution evidence](../../test/wgsl/evidence/macos-swiftshader/)
+includes all 15 rectangular GEMM outputs plus fusion-sensitive, signed-zero and
+subnormal cases. Every checked word belongs to its manifest's reference relation.
+`runtime.json` identifies the source revision, build features, toolchain archives
+and actual native/driver library hashes. These runs do not prove universal
+runtime conformance to either restricted profile.
+
+## Other native environments
+
 Create an isolated environment, then install the pinned dependency set:
 
 ```sh
