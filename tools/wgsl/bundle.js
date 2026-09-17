@@ -12,7 +12,7 @@ const writeJson = (file, value) => write(file, JSON.stringify(value, null, 2) + 
 const digest = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const requireThat = (condition, message) => { if (!condition) throw new Error(message); };
 const hostNames = ["HostBinary.encoded", "HostBinary.interface", "HostMemory.upload_word",
-  "HostExecution.completes", "HostExecution.exact", "HostExecution.numerical"].map(name => `Project.WGSL.${name}`);
+  "HostExecution.completes", "HostExecution.exact", "HostExecution.numerical", "HostExecution.numerical_wide"].map(name => `Project.WGSL.${name}`);
 
 async function checkBundle(directory) {
   const checked = await checkPackage(directory);
@@ -32,11 +32,12 @@ async function checkBundle(directory) {
     write(proof, "import Project.WGSL.HostExecution\n" + fs.readFileSync(path.join(checked.attempt, "Proof.lean"), "utf8") +
       "\ndef checkedHostExact := @Project.WGSL.HostExecution.exact _ _ CheckedWGSLPackage.package\n" +
       "def checkedHostNumerical := @Project.WGSL.HostExecution.numerical _ _ CheckedWGSLPackage.package\n" +
-      "#print axioms checkedHostExact\n#print axioms checkedHostNumerical\n");
+      "def checkedHostNumericalWide := @Project.WGSL.HostExecution.numerical_wide _ _ CheckedWGSLPackage.package\n" +
+      "#print axioms checkedHostExact\n#print axioms checkedHostNumerical\n#print axioms checkedHostNumericalWide\n");
     const composed = await lean("compose this shader package with the Wasm host", ["lake", "-d", proofRoot, "env",
       "lean", "--run", proof, checked.shaderPath, checked.manifestPath], path.join(checked.attempt, "bundle-verify.log"));
-    const bundleAxioms = audit(composed, ["package", "artifact", "numerical", "exact"].map(n => `CheckedWGSLPackage.${n}`)
-      .concat(["checkedHostExact", "checkedHostNumerical"]));
+    const bundleAxioms = audit(composed, ["package", "artifact", "numerical", "numericalWide", "exact"].map(n => `CheckedWGSLPackage.${n}`)
+      .concat(["checkedHostExact", "checkedHostNumerical", "checkedHostNumericalWide"]));
     requireThat(fs.readFileSync(hostPath).equals(hostBytes) && fs.readFileSync(checked.shaderPath).equals(checked.shader) &&
       fs.readFileSync(checked.manifestPath).equals(checked.manifest), "bundle snapshot changed during checking");
     const receipt = { ...checked.receipt, hostSha256: digest(hostBytes), hostAxioms, bundleAxioms,

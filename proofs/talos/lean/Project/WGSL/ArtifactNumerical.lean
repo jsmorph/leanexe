@@ -1,4 +1,5 @@
 import Project.WGSL.AccumulationError
+import Project.WGSL.WideAccumulationError
 
 namespace Project.WGSL.Binary32
 
@@ -23,6 +24,23 @@ theorem artifact_numerical {source p} (artifact : DispatchArtifact source semant
   have numerical := dot_error domain computation (Nat.le_refl _)
   exact ⟨numerical.1, numerical.2.2⟩
 
+/-- Wider finite-domain numerical result for the exact parsed artifact. -/
+theorem artifact_numerical_wide {source p} (artifact : DispatchArtifact source semantics p)
+    (input : Dispatch.Input) (output : WordBuffer)
+    (hb : input.buffers.Valid artifact.kernel.ast.config)
+    (run : (Dispatch.model semantics).Exec p artifact.kernel input output)
+    {row col : Nat} (hr : row < artifact.kernel.ast.config.rows)
+    (hc : col < artifact.kernel.ast.config.cols) {accBudget productBudget : ℝ}
+    (domain : WideDotDomain artifact.kernel.ast.config input.buffers.a input.buffers.b row col accBudget productBudget) :
+    let word := output (row * artifact.kernel.ast.config.cols + col)
+    Finite word ∧
+      |value word - realDot artifact.kernel.ast.config input.buffers.a input.buffers.b
+        row col artifact.kernel.ast.config.inner| ≤
+          artifact.kernel.ast.config.inner * stepError accBudget productBudget := by
+  have computation := artifact.execution.corresponds input output hb run row col hr hc
+  have numerical := dot_error_wide domain computation (Nat.le_refl _)
+  exact ⟨numerical.1, numerical.2.2⟩
+
 /-- A simple sufficient range budget for up to 2^20 products: each exact
 product has magnitude at most 1/(4K), and every input has magnitude at most one.
 The main theorem also accepts other budgets through DotDomain. -/
@@ -44,6 +62,7 @@ theorem standard_budget (inner : Nat) (positive : 0 < inner) (small : inner ≤ 
     norm_num [arithmeticEpsilon]
     linarith
 
+#print axioms artifact_numerical_wide
 #print axioms artifact_numerical
 #print axioms standard_budget
 

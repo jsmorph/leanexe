@@ -6,6 +6,7 @@ import Project.WGSL.HostExecution
 #print axioms Project.WGSL.HostExecution.completes
 #print axioms Project.WGSL.HostExecution.exact
 #print axioms Project.WGSL.HostExecution.numerical
+#print axioms Project.WGSL.HostExecution.numerical_wide
 
 def main (args : List String) : IO Unit := do
   let [mode, path] := args | throw (IO.userError "expected --emit or --check and Wasm path")
