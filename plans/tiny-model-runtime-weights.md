@@ -107,8 +107,9 @@ The [wider GELU source theorem](../proofs/talos/lean/Project/GeluWide/Bounds.lea
 proves finite output for every finite input and absolute error at most
 200000u, below 4.45e-11.  Its tail error is at most 1e-18.  The core
 uses the new exponential and avoids cancellation in its negative branch.
-The input-perturbation theorem adds four times the input error.  Generated
-WAT execution and integration into inference remain in progress.
+The input-perturbation theorem adds four times the input error.  Its
+generated-WAT theorem proves exact output, rejection, termination, and
+complete store preservation.  Integration into inference remains in progress.
 
 ## Implementation sequence
 
