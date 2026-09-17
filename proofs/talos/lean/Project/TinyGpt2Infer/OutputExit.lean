@@ -6,9 +6,9 @@ open Wasm Project.TinyGpt2 Project.Clob Project.Runtime Project.ProofKit ArrayPu
 def outputExitProgram : Wasm.Program :=
   [.localGet 23, .localSet 42, .localGet 24, .localSet 43, .localGet 43, .localSet 44,
    .localGet 21, .constI64 0, .eqI64, .eqz,
-   .iff 0 0 [.localGet 21, .call 79] [], .localGet 44]
+   .iff 0 0 [.localGet 21, .call 82] [], .localGet 44]
 
-theorem output_exit_shape : func75.drop 90 = outputExitProgram := rfl
+theorem output_exit_shape : func78.drop 90 = outputExitProgram := rfl
 
 def outputExitFrame (frame : Locals) (output : UInt64) : Locals :=
   { params := frame.params,
@@ -29,7 +29,7 @@ theorem output_exit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Lo
     (Q : Assertion Unit)
     (hNext : Q (.Fallthrough (FixedArrayRelease.store initial empty head releases frees)
       (outputExitFrame frame output))) :
-    wp module (func75.drop 90) Q initial frame env := by
+    wp module (func78.drop 90) Q initial frame env := by
   have hCur := Frame.internal_getElem?_of_get frame 5 18 (.i64 output)
     hParams (by rw [hLocals]; decide) hCurrent
   have hOut := Frame.internal_getElem?_of_get frame 5 19 (.i64 output)

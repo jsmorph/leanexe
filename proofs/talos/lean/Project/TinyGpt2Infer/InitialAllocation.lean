@@ -22,7 +22,7 @@ theorem initial_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ previous : UInt64, wp module rest Q (OutputMemory.allocate initial start 0 allocations)
       (initialAllocatedFrame pointer t0 t1 t2 t3 x start previous) env) :
-    wp module ((func75.drop 52).take 15 ++ rest) Q initial
+    wp module ((func78.drop 52).take 15 ++ rest) Q initial
       (initialAllocationFrame pointer t0 t1 t2 t3 x 8 0 0 0 0 0) env := by
   have hWords := OutputMemory.allocation_words start 0 hFit
   have hPagesNeeded : FixedArrayBump.requiredPages (UInt64.ofNat (base start 0)) 8 ≤ initial.mem.pages := by

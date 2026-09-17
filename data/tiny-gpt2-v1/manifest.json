@@ -1,6 +1,6 @@
 {
   "format": "leanexe-tiny-gpt2-inference-v1",
-  "wasm_sha256": "336f7e80db383f7d4745f711c53a355d4074fced19d0d3bc37e4c4bd2b4c849a",
+  "wasm_sha256": "522a3bd4858ae264e791ff5504d3fccd618be418776d2aa68d03414c3d8bcda4",
   "checkpoint_sha256": "0fc8cfa63274c0125418957c2cb7c9599fcde0c6b621373a24ec641fad3e5d5a",
   "export": "infer",
   "context": 4,

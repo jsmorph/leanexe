@@ -31,7 +31,7 @@ def outputReleaseProgram : Wasm.Program :=
      .neI64,
      .iff 0 0 [
       .localGet 23,
-      .call 79
+      .call 82
      ] []
     ] [],
    .localGet 64,

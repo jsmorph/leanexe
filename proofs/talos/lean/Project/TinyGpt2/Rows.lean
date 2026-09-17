@@ -1,7 +1,7 @@
 import Project.TinyGpt2.Decoding
 import Project.Affine.Numerical
 import Project.LayerNorm.Bounds
-import Project.Gelu.AllFinite
+import Project.GeluWide.Bounds
 
 namespace Project.TinyGpt2
 open CodeLib.IEEE64 Project.ProofKit F64Horner
@@ -22,7 +22,7 @@ theorem expandRow_words (w : Array UInt64) (x : Row) (j : Fin 8) :
   fin_cases j <;> rfl
 
 theorem activateWide_words (x : WideRow) (j : Fin 8) :
-    wideWords ⟨activate x.low, activate x.high⟩ j = Gelu.evaluateAll (wideWords x j) := by
+    wideWords ⟨activate x.low, activate x.high⟩ j = GeluWide.evaluateAll (wideWords x j) := by
   fin_cases j <;> rfl
 
 theorem contractRow_words (w : Array UInt64) (x : WideRow) (j : Fin 4) :
@@ -107,16 +107,17 @@ theorem norm_error_bounded (w : Array UInt64) (offset : Nat) (x : Row) (bound : 
 
 theorem activate_error (x : Row) (hx : ∀ j, Finite (rowWords x j)) (i : Fin 4) :
     Finite (rowWords (activate x) i) ∧
-      |decodeRow (activate x) i-Gelu.Real.gelu (decodeRow x i)| ≤ 1/100 := by
-  have h := Gelu.evaluateAll_error (rowWords x i) (hx i)
+      |decodeRow (activate x) i-Gelu.Real.gelu (decodeRow x i)| ≤ 200000*arithmeticEpsilon := by
+  have h := GeluWide.evaluateAll_error (rowWords x i) (hx i)
   fin_cases i <;> exact h
 
 theorem activate_error_bounded (x : Row) (hx : ∀ j, Finite (rowWords x j))
     (hb : ∀ j, |decodeRow x j| ≤ 3) (i : Fin 4) :
     Finite (rowWords (activate x) i) ∧
       |decodeRow (activate x) i-Gelu.Real.gelu (decodeRow x i)| ≤ 1/80000 := by
-  have h := Gelu.evaluateAll_error_bounded (rowWords x i) (hx i) (hb i)
-  fin_cases i <;> exact h
+  have h := GeluWide.evaluateAll_error (rowWords x i) (hx i)
+  have he := h.2.trans (by norm_num [arithmeticEpsilon] : 200000*arithmeticEpsilon ≤ (1:ℝ)/80000)
+  fin_cases i <;> exact ⟨h.1, he⟩
 
 #print axioms norm_error
 #print axioms dotColumn8_error
