@@ -1,7 +1,7 @@
 import Project.TinyGpt2.Model
 import Project.Affine.Numerical
 import Project.Softmax.Perturbation
-import Project.Softmax.RealProperties
+import Project.Softmax.WeightedPerturbation
 
 namespace Project.TinyGpt2
 open CodeLib.IEEE64 Project.ProofKit F64Horner
@@ -37,32 +37,33 @@ theorem weightedValue_computed_error (p : Softmax.Result) (v : Fin 4 → UInt64)
 
 theorem weightedValue_perturbed (n a b c d : UInt64) (h : Softmax.SpreadValid n a b c d)
     (v : Fin 4 → UInt64) (hv : ∀ j, Affine.Bounded (v j) 16)
-    (targetScores targetValues : Fin 4 → ℝ) (scoreError valueError : ℝ)
-    (hs : 0 ≤ scoreError)
+    (targetScores targetValues : Fin 4 → ℝ) (scoreError valueError valueBound : ℝ)
+    (hs : 0 ≤ scoreError) (hb : 0 ≤ valueBound)
+    (hvBound : ∀ j, |value (v j)| ≤ valueBound)
     (hscore : ∀ j, |value (Softmax.scores a b c d j)-targetScores j| ≤ scoreError)
     (hvalue : ∀ j, |value (v j)-targetValues j| ≤ valueError) :
     let output := weightedValue (Softmax.compute n a b c d) (v 0) (v 1) (v 2) (v 3)
     Finite output ∧
       |value output-∑ j, Softmax.Real.probability (Softmax.visible n) targetScores j*targetValues j| ≤
-        1/10000000000+(∑ j, |value (v j)|)*(1/50000+2*scoreError)+valueError := by
+        12294*arithmeticEpsilon+(∑ j, |value (v j)|)/50000+
+          2*valueBound*scoreError+valueError := by
   let p := Softmax.outputs (Softmax.compute n a b c d)
-  let r := Softmax.Real.probability (Softmax.visible n) targetScores
+  let scores := fun j => value (Softmax.scores a b c d j)
+  let r := Softmax.Real.probability (Softmax.visible n) scores
   have hn := Affine.dot4_error p v (probability_output_bound n a b c d h) hv
-  have hp : ∀ j, |value (p j)-r j| ≤ 1/50000+2*scoreError :=
-    Softmax.compute_spread_perturbed n a b c d h targetScores scoreError hs hscore
+  have hp (j : Fin 4) : |value (p j)-r j| ≤ 1/50000 := by
+    have hh := ((Softmax.compute_numerical_spread n a b c d h).2.1 j).2.2.2.2
+    simpa only [Softmax.reference_eq_real] using hh
   have hd := Affine.Real.dot_perturbation (fun j => value (p j)) r (fun j => value (v j))
-    targetValues (fun _ => 1/50000+2*scoreError) (fun _ => valueError) hp hvalue
-  have hr : ∑ j, |r j| = 1 := by
-    have hrn (j : Fin 4) : 0 ≤ r j :=
-      Softmax.Real.probability_nonnegative (Softmax.visible n) targetScores j
-    simp_rw [abs_of_nonneg (hrn _)]
-    exact Softmax.Real.probability_sum (Softmax.visible n) targetScores
-      ⟨0, by change decide ((0 : UInt64) < n) = true; exact decide_eq_true h.1⟩
-  rw [Finset.sum_add_distrib, ← Finset.sum_mul, ← Finset.sum_mul, hr, one_mul] at hd
-  have herr := (abs_sub_le _ _ _).trans (add_le_add hn.accuracy hd)
-  refine ⟨hn.finite, ?_⟩
-  have hlocal : 12294*arithmeticEpsilon ≤ (1:ℝ)/10000000000 := by norm_num [arithmeticEpsilon]
-  exact herr.trans (by linarith)
+    (fun j => value (v j)) (fun _ => 1/50000) (fun _ => 0) hp (by simp)
+  simp only [mul_zero, add_zero, ← Finset.sum_mul] at hd
+  have ha := Softmax.Real.attention_perturbation (Softmax.visible n) scores targetScores
+    (fun j => value (v j)) targetValues scoreError valueError valueBound
+    ⟨0, by change decide ((0 : UInt64) < n) = true; exact decide_eq_true h.1⟩
+    hs hb hscore hvBound hvalue
+  have hlocal := (abs_sub_le _ _ _).trans (add_le_add hn.accuracy hd)
+  have hall := (abs_sub_le _ _ _).trans (add_le_add hlocal ha)
+  exact ⟨hn.finite, hall.trans (by ring_nf; rfl)⟩
 
 #print axioms weightedValue_perturbed
 end Project.TinyGpt2

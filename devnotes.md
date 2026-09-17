@@ -13834,3 +13834,26 @@ the standard logical axioms.  Generated-WAT checker correctness remains
 open.  A direct axiom-inspection command initially supplied a path relative
 to the proof workspace, but Lake's environment command retained the root
 working directory.  The repository-relative path resolved that diagnostic.
+
+The attention analysis now bounds the weighted result before composing
+later layers.  For any finite context, value magnitude M, score error d,
+and value error e give a real attention error of at most 2Md+e.  The total
+absolute probability change is at most 2d.  Normalizing nonnegative
+approximate exponential weights introduces weighted error at most 2Mr
+when each has relative error r and both sums are positive.  These theorems
+remove the context-length factor from these two contributions.  They leave
+the rounded sum, division, and dot-product errors to separate proofs.
+The four-byte attention theorem now uses the weighted perturbation result
+and retains its exact 12294 times 2^-52 dot-product error term.
+
+The new module checks in 2.3 seconds, and the four-byte adapter checks in
+2.2 seconds.  Axiom inspection reports only the standard logical axioms.
+Initial checks exposed a nonexistent finite-sum division lemma name and
+an ambiguous adjacent absolute-value and multiplication token.  Explicit
+sum multiplication and separate ring normalization resolved the endpoint
+equalities.  No timeout or resource-limit change was needed.
+
+The tiny_gpt2_infer gate passes after regenerating and comparing the
+compiler output.  The checkpoint finiteness theorem and complete
+generated-WAT inference theorem still check with the revised attention
+proof dependency.
