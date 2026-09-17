@@ -24,7 +24,8 @@ private def unsupported (kind : String) (e : Expr) : MetaM α :=
   throwError "WGSL: unsupported {kind}: {e}"
 
 /-- Unfold transparent helper definitions, beta redexes and typeclass syntax.
-Fuel prevents recursive helpers from being silently accepted or hanging. -/
+Fuel bounds expression traversal; Lean's heartbeat limit also applies to
+definitional reduction inside `whnf`. -/
 private partial def index (ctx : Context) (e : Expr) (fuel : Nat := 256) : MetaM Index := do
   if fuel == 0 then unsupported "index expression (normalization limit)" e
   let e := e.consumeMData
