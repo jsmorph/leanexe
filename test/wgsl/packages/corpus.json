@@ -1,0 +1,38 @@
+{
+  "status": "pass",
+  "results": [
+    {
+      "name": "scalar",
+      "status": "pass",
+      "verification": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/scalar/checks/check-TVvU1O/verification.json",
+      "execution": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/scalar/checks/check-TVvU1O/execution.json"
+    },
+    {
+      "name": "rectangular",
+      "status": "pass",
+      "verification": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/rectangular/checks/check-j2YFXC/verification.json",
+      "execution": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/rectangular/checks/check-j2YFXC/execution.json"
+    },
+    {
+      "name": "partial-workgroups",
+      "status": "pass",
+      "verification": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/partial-workgroups/checks/check-PO9UPQ/verification.json",
+      "execution": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/partial-workgroups/checks/check-PO9UPQ/execution.json"
+    },
+    {
+      "name": "wrong-store",
+      "status": "rejected",
+      "failure": "prepare independent proof failed; retained diagnostics: /Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/wrong-store/checks/check-RUsWv6/prepare.log"
+    },
+    {
+      "name": "wrong-dimension",
+      "status": "rejected",
+      "failure": "prepare independent proof failed; retained diagnostics: /Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/wrong-dimension/checks/check-WCeOB3/prepare.log"
+    },
+    {
+      "name": "extra-metadata",
+      "status": "rejected",
+      "failure": "manifest interpretation differs from the Lean-checked metadata (including extra fields)"
+    }
+  ]
+}

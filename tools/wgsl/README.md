@@ -6,7 +6,54 @@ The initial ABI is row-major binary32 A/B/C storage buffers and the `gemm_f32`
 entry point described by the generated JSON manifest. The harness accepts
 arbitrary supported binding indices/groups and two-dimensional workgroups.
 
-## Generate and run on this ARM Mac
+## Generate, independently verify, and run
+
+From the configured repository root, this single command generates the supported
+Lean GEMM candidate, checks its exact artifact package, and executes the checked
+input snapshot on the CPU:
+
+```sh
+source tools/macos-env.sh # configured ARM Mac only
+tools/artifact-proof.js wgsl-build build/wgsl/my-verified-gemm 3 5 2 separate
+```
+
+The output directory must be fresh. Each verification attempt under
+`build/wgsl/package-checks` retains its exact
+shader/manifest snapshots, generated proof, diagnostics, axiom audit and receipt.
+The native report records all input/output words and runtime configuration.
+
+Existing packages can be checked without the generator or runtime, or checked
+again and executed:
+
+```sh
+tools/artifact-proof.js wgsl-check test/wgsl/packages/rectangular
+tools/artifact-proof.js wgsl-run build/wgsl/my-verified-gemm
+tools/artifact-proof.js wgsl-corpus build/wgsl/my-verified-corpus
+```
+
+The six-case corpus is fixed in `tools/wgsl/corpus.json`: scalar, rectangular and
+partial-workgroup kernels, followed by rejection of a changed store, mismatched
+dimensions and extra metadata. It runs Lean checks sequentially through
+`tools/leanrun`; it does not run the unrelated project regression suite.
+
+The generator's output is not trusted. `Prepare.lean` reads the actual files and
+produces an untrusted proof draft. A separate Lean invocation kernel-checks the
+lexer result, parser result, resource bounds and every semantic manifest field.
+The reusable `Project.WGSL.Binary32.Package` then supplies dispatch termination,
+memory safety, GEMM correspondence, conditional numerical bounds and restricted
+exactness. Only the three standard logical axioms are accepted; native decision
+axioms and `sorryAx` are rejected.
+
+The file checker compares the embedded shader bytes and manifest bytes against
+the snapshots. JSON decoding and that filesystem comparison are checker
+operations, outside the kernel theorem; typed metadata agreement is proved.
+The runner's JSON interpretation must equal the checked metadata, including the
+complete field set. For execution, the gate passes its held shader/manifest text
+directly to `run.py --snapshot-stdin`, avoiding another filesystem read between
+verification and dispatch. The native report must identify that same input.
+Runtime conformance to the selected profile remains an explicit assumption.
+
+## Direct generation and execution on this ARM Mac
 
 The checked local CPU route is `run.py → wgpu-native → Vulkan → SwiftShader`.
 It runs as a command-line process, without a browser, Metal or virtual machine.

@@ -1,0 +1,885 @@
+{
+  "artifact": {
+    "byteLength": 653,
+    "path": "/Users/jamiestephens/src/leanexe/build/wgsl/verified-corpus-v1/partial-workgroups/checks/check-PO9UPQ/kernel.wgsl",
+    "sha256": "8a542a1e2cd3032436558c4d0e8cf87e018a6330d32e5c607f0aac0c39515cf4",
+    "text": "// leanexe WGSL GEMM v1; row-major f32 storage buffers\nconst M: u32 = 9u;\nconst N: u32 = 17u;\nconst K: u32 = 3u;\n\n@group(0) @binding(0) var<storage, read> a: array<f32>;\n@group(0) @binding(1) var<storage, read> b: array<f32>;\n@group(0) @binding(2) var<storage, read_write> c: array<f32>;\n\n@compute @workgroup_size(8, 8, 1)\nfn gemm_f32(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let col: u32 = gid.x;\n  let row: u32 = gid.y;\n  if (col >= N || row >= M) { return; }\n  var acc: f32 = 0.0f;\n  for (var k: u32 = 0u; k < K; k = k + 1u) {\n    let product: f32 = a[row * K + k] * b[k * N + col];\n    acc = acc + product;\n  }\n  c[row * N + col] = acc;\n}\n"
+  },
+  "check": {
+    "checkedElements": 153,
+    "failures": [],
+    "kind": "exact-profile-relation-membership",
+    "passed": true
+  },
+  "elapsedSeconds": 0.4399768749717623,
+  "evidenceKind": "tested-execution-only",
+  "executionConfiguration": {
+    "adapterFilter": "SwiftShader",
+    "backendFilter": "Vulkan",
+    "initialOutputWord": "7fc00001",
+    "pipelineConstants": {},
+    "timeoutSeconds": 30,
+    "workerPython": "/Users/jamiestephens/src/leanexe/build/wgsl/macos-venv-20260916/bin/python"
+  },
+  "formalArtifactProofEstablished": false,
+  "inputSource": {
+    "generator": "lcg-normal-signed-zero-v1",
+    "seed": 1
+  },
+  "inputs": {
+    "a": [
+      "00000000",
+      "408885db",
+      "be16017e",
+      "bff33ac5",
+      "3ff06d60",
+      "4098c13f",
+      "c0d6dd92",
+      "c0e25fc9",
+      "3fb8e694",
+      "bf25a0e3",
+      "3d9d90e6",
+      "3fa0f30d",
+      "c1377908",
+      "c0c148c7",
+      "3fadef7a",
+      "bf18b891",
+      "bfe318bc",
+      "00000000",
+      "c0bf0d4e",
+      "bd8db455",
+      "4147f9b0",
+      "3ec2c14f",
+      "3e8f3e62",
+      "3e222a59",
+      "3e3b8fe4",
+      "c00e19f3",
+      "c03816b6"
+    ],
+    "b": [
+      "00000000",
+      "be6da3aa",
+      "bdcfff01",
+      "41324c6c",
+      "3efbdcdb",
+      "409b6c7e",
+      "415ba9c5",
+      "3ff81060",
+      "40ee083f",
+      "c0757892",
+      "c1323ec9",
+      "41213994",
+      "c003d7e3",
+      "3e505be6",
+      "bf17420d",
+      "3eb37c08",
+      "c13f6fc7",
+      "80000000",
+      "c0647791",
+      "4155cbbc",
+      "bdd333eb",
+      "3e4b384e",
+      "404de355",
+      "c0445cb0",
+      "3f05c84f",
+      "be409962",
+      "3fe5c959",
+      "c004a2e4",
+      "405610f3",
+      "3fc9a1b6",
+      "c060ad9d",
+      "bf595258",
+      "c15f31d7",
+      "409f254a",
+      "80000000",
+      "40765f0c",
+      "bf7c8efb",
+      "c13d381e",
+      "3dd4c0e5",
+      "3f74fd00",
+      "3e2dcc5f",
+      "40f72e32",
+      "40c637e9",
+      "c087a034",
+      "be3ace03",
+      "c14b9b86",
+      "bf533d2d",
+      "bf6dfca8",
+      "3d97b7e7",
+      "40f8541a",
+      "bd9794b1"
+    ]
+  },
+  "manifest": {
+    "bindings": {
+      "a": 0,
+      "b": 1,
+      "c": 2,
+      "group": 0
+    },
+    "buffers": {
+      "a": {
+        "bytes": 108,
+        "elements": 27
+      },
+      "b": {
+        "bytes": 204,
+        "elements": 51
+      },
+      "c": {
+        "bytes": 612,
+        "elements": 153
+      }
+    },
+    "dimensions": {
+      "cols": 17,
+      "inner": 3,
+      "rows": 9
+    },
+    "dispatchWorkgroups": [
+      3,
+      2,
+      1
+    ],
+    "entryPoint": "gemm_f32",
+    "kernel": "gemm_f32",
+    "profile": {
+      "id": "leanexe-f32-rne-fusion-v1",
+      "revision": 1
+    },
+    "schemaVersion": 1,
+    "wgslRevision": "2026-08-17",
+    "workgroupSize": [
+      8,
+      8,
+      1
+    ]
+  },
+  "manifestSha256": "94d78d0d84a09fa4f81ae3cfc9e81be56f29ed80c7b3b73fc91b782d08e68c91",
+  "outputs": [
+    "00000000",
+    "c17cb3c7",
+    "42649c08",
+    "3fa56ef6",
+    "3f54db05",
+    "41595aa2",
+    "c151d5aa",
+    "3f8c8af4",
+    "bfdadc1b",
+    "41047a33",
+    "c10d0a50",
+    "418112b9",
+    "40daece5",
+    "c16d759e",
+    "c0687c8e",
+    "c2729a72",
+    "41a9d441",
+    "00000000",
+    "4141ca3f",
+    "41a4a8b3",
+    "c29ba533",
+    "bd875c30",
+    "3fb0d3a8",
+    "c1f853fd",
+    "4208b024",
+    "41714bc4",
+    "c119255e",
+    "41833eb7",
+    "c29338ff",
+    "403bce92",
+    "c136b1ee",
+    "bdf1fc40",
+    "4122d0e8",
+    "41fdcaf2",
+    "00000000",
+    "42017d70",
+    "c2be8a5d",
+    "c2b65b5f",
+    "c091d1ec",
+    "c257f380",
+    "c28c77b0",
+    "c0b1a600",
+    "c21eabc0",
+    "40ddceeb",
+    "42b26632",
+    "c2db683b",
+    "3fbf956d",
+    "41b10103",
+    "41214665",
+    "42d713df",
+    "42343250",
+    "00000000",
+    "4096e964",
+    "be164878",
+    "c1b0b4a0",
+    "be308227",
+    "bfd88577",
+    "c10e7b33",
+    "4107fc6e",
+    "403d8da4",
+    "c02d6bae",
+    "40da33a8",
+    "c1b21b34",
+    "3ed53a08",
+    "bfc90c0b",
+    "3ed1fa22",
+    "4107535a",
+    "41007d67",
+    "00000000",
+    "41eba250",
+    "c2a1c57e",
+    "c30f3b75",
+    "c0d65957",
+    "c293a6f3",
+    "c30aaaf5",
+    "c16e218c",
+    "c2977d1d",
+    "41db085b",
+    "430c0441",
+    "c3190b28",
+    "414fc9a8",
+    "418cdd17",
+    "41400e7d",
+    "42b59103",
+    "42d61f25",
+    "00000000",
+    "40cf1a3d",
+    "c1bd2c3b",
+    "c0cee0fc",
+    "bf2543a4",
+    "c109ae79",
+    "c02fca5a",
+    "c005550e",
+    "c08352d8",
+    "bf659cb8",
+    "41252a6a",
+    "c13f2148",
+    "bfc86d47",
+    "40c36d41",
+    "3fede726",
+    "41c45276",
+    "bfd7c870",
+    "00000000",
+    "4246fbe7",
+    "c14a60d3",
+    "c356557e",
+    "bfd37e3c",
+    "c18a141a",
+    "c29f4449",
+    "42a9df58",
+    "42041664",
+    "c1f193ef",
+    "4280c023",
+    "c35b70e5",
+    "3ff04698",
+    "c1497482",
+    "4090644e",
+    "42bfba2d",
+    "428c5487",
+    "00000000",
+    "bef46a6a",
+    "4062c919",
+    "40159392",
+    "3e84a799",
+    "40398ab2",
+    "408c80ce",
+    "4006d36e",
+    "40707fee",
+    "bfd05ecf",
+    "c09b14ac",
+    "40303879",
+    "bef27788",
+    "bf86a7b4",
+    "bee6aa82",
+    "c0229696",
+    "c04af9f4",
+    "00000000",
+    "c04c1b34",
+    "c1d6cbd0",
+    "421125b8",
+    "bf263b9a",
+    "c11017ea",
+    "410d6bcb",
+    "c1b8307a",
+    "c1804c23",
+    "40f0149a",
+    "40457c4e",
+    "41f82e19",
+    "bfc02f88",
+    "41281869",
+    "3fc822b7",
+    "410b7320",
+    "c150562f"
+  ],
+  "permittedOutputs": [
+    [
+      "00000000"
+    ],
+    [
+      "c17cb3c7"
+    ],
+    [
+      "42649c08"
+    ],
+    [
+      "3fa56ef6"
+    ],
+    [
+      "3f54db05"
+    ],
+    [
+      "41595aa2"
+    ],
+    [
+      "c151d5aa"
+    ],
+    [
+      "3f8c8af4"
+    ],
+    [
+      "bfdadc1b"
+    ],
+    [
+      "41047a33"
+    ],
+    [
+      "c10d0a50"
+    ],
+    [
+      "418112b9"
+    ],
+    [
+      "40daece5"
+    ],
+    [
+      "c16d759e"
+    ],
+    [
+      "c0687c8e"
+    ],
+    [
+      "c2729a72"
+    ],
+    [
+      "41a9d441"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "4141ca3f",
+      "4141ca40"
+    ],
+    [
+      "41a4a8b3"
+    ],
+    [
+      "c29ba533"
+    ],
+    [
+      "bd875c30",
+      "bd875c32"
+    ],
+    [
+      "3fb0d3a6",
+      "3fb0d3a8"
+    ],
+    [
+      "c1f853fd"
+    ],
+    [
+      "4208b024"
+    ],
+    [
+      "41714bc3",
+      "41714bc4"
+    ],
+    [
+      "c119255d",
+      "c119255e"
+    ],
+    [
+      "41833eb7"
+    ],
+    [
+      "c29338ff"
+    ],
+    [
+      "403bce92"
+    ],
+    [
+      "c136b1ee"
+    ],
+    [
+      "bdf1fc3f",
+      "bdf1fc40"
+    ],
+    [
+      "4122d0e6",
+      "4122d0e8"
+    ],
+    [
+      "41fdcaf0",
+      "41fdcaf2"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "42017d70"
+    ],
+    [
+      "c2be8a5d"
+    ],
+    [
+      "c2b65b5f"
+    ],
+    [
+      "c091d1ec"
+    ],
+    [
+      "c257f380"
+    ],
+    [
+      "c28c77b0"
+    ],
+    [
+      "c0b1a5ff",
+      "c0b1a600"
+    ],
+    [
+      "c21eabc0"
+    ],
+    [
+      "40ddceeb"
+    ],
+    [
+      "42b26631",
+      "42b26632"
+    ],
+    [
+      "c2db683b"
+    ],
+    [
+      "3fbf956d"
+    ],
+    [
+      "41b10103",
+      "41b10104"
+    ],
+    [
+      "41214664",
+      "41214665"
+    ],
+    [
+      "42d713de",
+      "42d713df"
+    ],
+    [
+      "42343250"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "4096e964",
+      "4096e965"
+    ],
+    [
+      "be164878",
+      "be16487b"
+    ],
+    [
+      "c1b0b4a0"
+    ],
+    [
+      "be308227"
+    ],
+    [
+      "bfd88577"
+    ],
+    [
+      "c10e7b33"
+    ],
+    [
+      "4107fc6d",
+      "4107fc6e"
+    ],
+    [
+      "403d8da3",
+      "403d8da4"
+    ],
+    [
+      "c02d6bae"
+    ],
+    [
+      "40da33a8"
+    ],
+    [
+      "c1b21b34"
+    ],
+    [
+      "3ed53a08"
+    ],
+    [
+      "bfc90c0b"
+    ],
+    [
+      "3ed1fa22"
+    ],
+    [
+      "4107535a"
+    ],
+    [
+      "41007d67"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "41eba250"
+    ],
+    [
+      "c2a1c57e"
+    ],
+    [
+      "c30f3b75"
+    ],
+    [
+      "c0d65957"
+    ],
+    [
+      "c293a6f3"
+    ],
+    [
+      "c30aaaf5"
+    ],
+    [
+      "c16e218c"
+    ],
+    [
+      "c2977d1d"
+    ],
+    [
+      "41db085b"
+    ],
+    [
+      "430c0441"
+    ],
+    [
+      "c3190b28"
+    ],
+    [
+      "414fc9a8"
+    ],
+    [
+      "418cdd16",
+      "418cdd17"
+    ],
+    [
+      "41400e7d"
+    ],
+    [
+      "42b59102",
+      "42b59103"
+    ],
+    [
+      "42d61f25",
+      "42d61f26"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "40cf1a3d"
+    ],
+    [
+      "c1bd2c3a",
+      "c1bd2c3b"
+    ],
+    [
+      "c0cee0fc"
+    ],
+    [
+      "bf2543a3",
+      "bf2543a4"
+    ],
+    [
+      "c109ae79"
+    ],
+    [
+      "c02fca5a"
+    ],
+    [
+      "c005550e"
+    ],
+    [
+      "c08352d8"
+    ],
+    [
+      "bf659cb6",
+      "bf659cb8"
+    ],
+    [
+      "41252a6a"
+    ],
+    [
+      "c13f2148"
+    ],
+    [
+      "bfc86d46",
+      "bfc86d47"
+    ],
+    [
+      "40c36d41"
+    ],
+    [
+      "3fede726"
+    ],
+    [
+      "41c45276"
+    ],
+    [
+      "bfd7c870"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "4246fbe7"
+    ],
+    [
+      "c14a60d3"
+    ],
+    [
+      "c356557e"
+    ],
+    [
+      "bfd37e3c"
+    ],
+    [
+      "c18a141a"
+    ],
+    [
+      "c29f4449"
+    ],
+    [
+      "42a9df58"
+    ],
+    [
+      "42041664"
+    ],
+    [
+      "c1f193ef"
+    ],
+    [
+      "4280c023"
+    ],
+    [
+      "c35b70e5",
+      "c35b70e6"
+    ],
+    [
+      "3ff04698",
+      "3ff0469a"
+    ],
+    [
+      "c1497482"
+    ],
+    [
+      "4090644e"
+    ],
+    [
+      "42bfba2c",
+      "42bfba2d"
+    ],
+    [
+      "428c5487"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "bef46a6a"
+    ],
+    [
+      "4062c919"
+    ],
+    [
+      "40159392"
+    ],
+    [
+      "3e84a799"
+    ],
+    [
+      "40398ab2"
+    ],
+    [
+      "408c80ce"
+    ],
+    [
+      "4006d36e"
+    ],
+    [
+      "40707fee"
+    ],
+    [
+      "bfd05ecf"
+    ],
+    [
+      "c09b14ac"
+    ],
+    [
+      "40303879"
+    ],
+    [
+      "bef27788"
+    ],
+    [
+      "bf86a7b3",
+      "bf86a7b4"
+    ],
+    [
+      "bee6aa82"
+    ],
+    [
+      "c0229696",
+      "c0229697"
+    ],
+    [
+      "c04af9f4"
+    ],
+    [
+      "00000000"
+    ],
+    [
+      "c04c1b34"
+    ],
+    [
+      "c1d6cbcf",
+      "c1d6cbd0"
+    ],
+    [
+      "421125b8"
+    ],
+    [
+      "bf263b9a"
+    ],
+    [
+      "c11017e9",
+      "c11017ea"
+    ],
+    [
+      "410d6bcb"
+    ],
+    [
+      "c1b83079",
+      "c1b8307a"
+    ],
+    [
+      "c1804c23"
+    ],
+    [
+      "40f0149a"
+    ],
+    [
+      "40457c4d",
+      "40457c4e"
+    ],
+    [
+      "41f82e19",
+      "41f82e1a"
+    ],
+    [
+      "bfc02f88"
+    ],
+    [
+      "41281869"
+    ],
+    [
+      "3fc822b7"
+    ],
+    [
+      "410b731f",
+      "410b7320"
+    ],
+    [
+      "c150562f"
+    ]
+  ],
+  "runtime": {
+    "adapter": {
+      "adapter_type": "CPU",
+      "architecture": "",
+      "backend_type": "Vulkan",
+      "description": "",
+      "device": "SwiftShader Device (LLVM 10.0.0)",
+      "device_id": 49374,
+      "stackgroup_max_size": 128,
+      "stackgroup_min_size": 4,
+      "vendor": "SwiftShader driver",
+      "vendor_id": 6880
+    },
+    "deviceLimits": {
+      "max-bind-groups": 4,
+      "max-bind-groups-plus-vertex-buffers": 0,
+      "max-bindings-per-bind-group": 1000,
+      "max-buffer-size": 4503599627370496,
+      "max-color-attachment-bytes-per-sample": 128,
+      "max-color-attachments": 8,
+      "max-compute-invocations-per-workgroup": 256,
+      "max-compute-workgroup-size-x": 256,
+      "max-compute-workgroup-size-y": 256,
+      "max-compute-workgroup-size-z": 64,
+      "max-compute-workgroup-storage-size": 32768,
+      "max-compute-workgroups-per-dimension": 65535,
+      "max-dynamic-storage-buffers-per-pipeline-layout": 4,
+      "max-dynamic-uniform-buffers-per-pipeline-layout": 8,
+      "max-inter-stage-shader-variables": 0,
+      "max-non-sampler-bindings": 1000000,
+      "max-push-constant-size": 128,
+      "max-sampled-textures-per-shader-stage": 200,
+      "max-samplers-per-shader-stage": 64,
+      "max-storage-buffer-binding-size": 1073741824,
+      "max-storage-buffers-per-shader-stage": 30,
+      "max-storage-textures-per-shader-stage": 16,
+      "max-texture-array-layers": 2048,
+      "max-texture-dimension-1d": 16384,
+      "max-texture-dimension-2d": 16384,
+      "max-texture-dimension-3d": 2048,
+      "max-uniform-buffer-binding-size": 65536,
+      "max-uniform-buffers-per-shader-stage": 15,
+      "max-vertex-attributes": 16,
+      "max-vertex-buffer-array-stride": 2048,
+      "max-vertex-buffers": 16,
+      "min-storage-buffer-offset-alignment": 256,
+      "min-uniform-buffer-offset-alignment": 256
+    },
+    "environment": {
+      "LIBGL_ALWAYS_SOFTWARE": null,
+      "MESA_LOADER_DRIVER_OVERRIDE": null,
+      "VK_DRIVER_FILES": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries/vk_swiftshader_icd.json",
+      "VK_ICD_FILENAMES": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries/vk_swiftshader_icd.json",
+      "WGPU_BACKEND_TYPE": "Vulkan",
+      "WGPU_LIB_PATH": "/Users/jamiestephens/src/leanexe/build/tools/wgpu-native-768f15f6-vulkan/target/release/libwgpu_native.dylib"
+    },
+    "platform": "macOS-26.3.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.3",
+    "pythonPackages": {
+      "cffi": "2.1.1",
+      "numpy": "2.5.3",
+      "pycparser": "3.0",
+      "rendercanvas": "2.7.2",
+      "wgpu": "0.31.1"
+    },
+    "wgpuNative": "27.0.4.0",
+    "wgpuNativeLibrarySha256": "e95dcf3e6b1a4c5915371d040c2fbef3853f56c97d0881f8c81814d506aeb422",
+    "wgpuPy": "0.31.1"
+  },
+  "runtimeAssumption": "Compiler, device, and execution system satisfy the recorded profile and shared semantics; testing does not establish this universally.",
+  "schemaVersion": 1,
+  "status": "pass",
+  "timestampUtc": "2026-09-17T04:17:09.513504+00:00",
+  "universalRuntimeConformanceEstablished": false,
+  "workerStderr": "Unable to find extension: VK_EXT_swapchain_colorspace\nVK_EXT_memory_budget is not available.\nMissing extensions: [\"VK_KHR_portability_subset\"]\n"
+}

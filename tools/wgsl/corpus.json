@@ -1,0 +1,12 @@
+{
+  "positive": [
+    { "name": "scalar", "dimensions": ["1", "1", "1", "separate"] },
+    { "name": "rectangular", "dimensions": ["3", "5", "2", "separate"] },
+    { "name": "partial-workgroups", "dimensions": ["9", "17", "3", "fusion"] }
+  ],
+  "negative": [
+    { "name": "wrong-store", "shaderReplace": ["c[row * N + col] = acc", "c[0u] = acc"], "failure": "prepare independent proof failed" },
+    { "name": "wrong-dimension", "manifestRows": 4, "failure": "prepare independent proof failed" },
+    { "name": "extra-metadata", "extraMetadata": true, "failure": "manifest interpretation differs" }
+  ]
+}

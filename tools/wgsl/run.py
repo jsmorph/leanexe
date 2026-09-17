@@ -185,7 +185,14 @@ def run(args):
               "formalArtifactProofEstablished": False,
               "runtimeAssumption": "Compiler, device, and execution system satisfy the recorded profile and shared semantics; testing does not establish this universally."}
     try:
-        data = args.artifact.read_bytes()
+        # The package gate can pass the exact bytes it has just checked over
+        # stdin, avoiding a second filesystem read between proof and dispatch.
+        snapshot = json.load(sys.stdin) if getattr(args, "snapshot_stdin", False) else None
+        if snapshot is not None and (not isinstance(snapshot, dict) or
+                set(snapshot) != {"artifactUtf8", "manifestUtf8"} or
+                any(type(value) is not str for value in snapshot.values())):
+            raise ValueError("invalid verified input snapshot")
+        data = snapshot["artifactUtf8"].encode("utf-8") if snapshot is not None else args.artifact.read_bytes()
         if len(data) > 1024 * 1024:
             raise ValueError("WGSL artifact exceeds one MiB limit")
         source = data.decode("utf-8")
@@ -193,7 +200,7 @@ def run(args):
             raise ValueError("WGSL source cannot contain NUL characters")
         report["artifact"] = {"path": str(args.artifact), "sha256": hashlib.sha256(data).hexdigest(),
                               "byteLength": len(data), "text": source}
-        manifest_bytes = args.manifest.read_bytes()
+        manifest_bytes = snapshot["manifestUtf8"].encode("utf-8") if snapshot is not None else args.manifest.read_bytes()
         manifest = json.loads(manifest_bytes)
         report["manifest"] = manifest
         report["manifestSha256"] = hashlib.sha256(manifest_bytes).hexdigest()
@@ -264,6 +271,8 @@ def main():
     parser.add_argument("manifest", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vectors", type=Path)
+    parser.add_argument("--snapshot-stdin", action="store_true",
+                        help="read exact shader/manifest text from the package gate over stdin")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--timeout", type=int, choices=range(1, 301), default=30, metavar="SECONDS")
     parser.add_argument("--python", default=sys.executable, help="Python with the pinned wgpu dependency installed")
