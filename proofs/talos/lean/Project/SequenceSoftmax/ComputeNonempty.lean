@@ -57,7 +57,7 @@ theorem compute_nonempty_exact (env : HostEnv Unit) (initial : Store Unit) (heap
     subst values
     change heap2.At second at hHeap2
     change heap2.OwnsWords second node2 (normalize weighted (total weighted)) at hOutput
-    have hTemp : heap2.OwnsWords second node1 weighted := hPreserved2 node1 weighted hWeights
+    have hTemp : heap2.OwnsWords second node1 weighted := hPreserved2.ownsWords hHeap2 hWeights
     have hRoot : mapRoot heap input.size ≠ 0 := by
       change node1.root ≠ 0
       have h48 := hTemp.buffer.rootBound
@@ -79,10 +79,9 @@ theorem compute_nonempty_exact (env : HostEnv Unit) (initial : Store Unit) (heap
     refine ⟨heap2.release node1, node2, rfl, hHeap3, ?_, ?_, hBudget3.released node1⟩
     · simpa only [compute, Array.isEmpty_iff_size_eq_zero, Nat.ne_of_gt hNonempty,
         ↓reduceIte] using hOutFinal
-    · intro saved words hSaved
-      have hSep := hSaved.allocation_disjoint need (fun h => (hBump1 h).1.le)
-      exact (hPreserved2 saved words (hPreserved1 saved words hSaved)).released node1
-        hTemp.buffer.rootBound (by have := hTemp.buffer.addressBound; omega) hSep
+    · exact (hPreserved1.trans hPreserved2).released node1 hTemp.buffer.rootBound
+        (by have := hTemp.buffer.addressBound; omega)
+        (fun _ _ h => h.allocated_disjoint need (fun h => (hBump1 h).1.le))
   · intro hEmpty
     omega
 
