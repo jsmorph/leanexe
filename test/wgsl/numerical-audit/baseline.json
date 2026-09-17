@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "scope": "diagnostic evidence, not a new formal theorem",
+  "wasmSha256": "d03534266e4171a07512566429763ba890506ba306a6073379d2433b395837a2",
+  "checks": {
+    "cases": 6,
+    "checkpointNativeLogits": 768,
+    "hiddenWords": 24,
+    "referenceDecimalPlaces": [
+      80,
+      120
+    ]
+  },
+  "results": [
+    {
+      "name": "checkpoint-lean",
+      "tokens": [
+        76,
+        101,
+        97,
+        110
+      ],
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "nativeHidden": [
+        -3.341547934630369,
+        4.132742105121773,
+        0.520421555351069,
+        -1.3125852821134791
+      ],
+      "idealEvenLogit": -4.688625075272067,
+      "precisionDifference": 4.1476779901085697e-78,
+      "hiddenError": 3.9104603585975415e-16,
+      "mixedError": 6.494864517205224e-7,
+      "denominators": {
+        "norm1": [
+          0.10508417788755578,
+          0.21449183418188372,
+          0.2195155142858785,
+          0.11909799449316508
+        ],
+        "norm2": 0.4370620057969284,
+        "normFinal": 0.26948286325143217
+      }
+    },
+    {
+      "name": "checkpoint-zeros",
+      "tokens": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "nativeHidden": [
+        1.2253175801836995,
+        1.8961387569948875,
+        1.2647503723045523,
+        -5.086548243950353
+      ],
+      "idealEvenLogit": -6.671121052354408,
+      "precisionDifference": 1.976999113115324e-77,
+      "hiddenError": 1.8610277629404406e-15,
+      "mixedError": 6.311271783224352e-7,
+      "denominators": {
+        "norm1": [
+          0.05986030106531994,
+          0.057095217736216175,
+          0.05177162401105096,
+          0.04764760168383607
+        ],
+        "norm2": 0.5024232944380184,
+        "normFinal": 0.17658907357771092
+      }
+    },
+    {
+      "name": "checkpoint-byte-edges",
+      "tokens": [
+        255,
+        128,
+        1,
+        0
+      ],
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "nativeHidden": [
+        0.822063399908332,
+        2.189141096690419,
+        1.4943355237457732,
+        -5.197301175882848
+      ],
+      "idealEvenLogit": -7.176607423167182,
+      "precisionDifference": 2.7171419232446826e-77,
+      "hiddenError": 1.3583216758870455e-15,
+      "mixedError": 7.610396710338827e-7,
+      "denominators": {
+        "norm1": [
+          0.05762671961862754,
+          0.05778151634385118,
+          0.042259193705604825,
+          0.04764760168383607
+        ],
+        "norm2": 0.49529672159335963,
+        "normFinal": 0.15376693543554212
+      }
+    },
+    {
+      "name": "adversarial-plus",
+      "tokens": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weightsSha256": "a09dfb8636c143db3fc20288fd77031cb3dfa9afe5fe16039dca89dee726778c",
+      "nativeHidden": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "idealEvenLogit": 59.92580537385506,
+      "precisionDifference": 1.256804718308491e-66,
+      "hiddenError": 3.7453628358659414,
+      "mixedError": 59.92580537385506,
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776602755376,
+        "normFinal": 0.009006959567394716
+      }
+    },
+    {
+      "name": "adversarial-minus",
+      "tokens": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weightsSha256": "fa1dc2fda6097a2cb97e83dd5eb191a31f1f5b733ef07fdd38e95881aeb6b314",
+      "nativeHidden": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "idealEvenLogit": -59.91959050362319,
+      "precisionDifference": 1.2574705275367675e-66,
+      "hiddenError": 3.7449744064764494,
+      "mixedError": 59.91959050362319,
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776602755376,
+        "normFinal": 0.009000323390755332
+      }
+    },
+    {
+      "name": "adversarial-zero",
+      "tokens": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "weightsSha256": "4c8eb5ac4c0aaddf1e68bf3f2963f8b6b7e2de1b15017867a01d1afe496f47e0",
+      "nativeHidden": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "idealEvenLogit": 0,
+      "precisionDifference": 0,
+      "hiddenError": 0,
+      "mixedError": 0,
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776601683794,
+        "normFinal": 0.0031622776601683794
+      }
+    }
+  ]
+}
