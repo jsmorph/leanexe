@@ -1,5 +1,12 @@
 # LeanEXE WGSL Backend Development Plan
 
+## Implementation status
+
+Development is underway on `wgsl`. See the [implementation record](docs/wgsl/README.md)
+and [journal](docs/wgsl/journal.md) for checked milestones, commands, limitations,
+and remaining proof obligations. The phases below remain the intended endpoint;
+the existence of an interface or a runtime test does not mark its proof complete.
+
 ## Purpose
 
 Extend LeanEXE with a narrow WGSL compute backend so that a verified Lean program can produce a heterogeneous artifact bundle consisting of:
