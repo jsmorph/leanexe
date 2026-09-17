@@ -7,8 +7,8 @@ from torch import nn
 class TinyGpt2(nn.Module):
     def __init__(self, context=4):
         super().__init__()
-        if context not in (4, 64):
-            raise ValueError("Context must be 4 or 64")
+        if context not in (4, 64, 128):
+            raise ValueError("Context must be 4, 64, or 128")
         self.context = context
         self.weights = nn.ParameterDict()
         for name, rows, columns in [

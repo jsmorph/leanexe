@@ -9,8 +9,9 @@ exponential softmax.  The transported proposal informed this plan.
 
 Use the existing binary64 compiler and Talos semantics.  A completed component
 includes caller-supplied command-line input, a WASM artifact, exact
-generated-WAT execution, successful execution throughout its advertised
-domain, and a real-arithmetic error bound.  Record the binary digest and the
+generated-WAT agreement with its Lean source, termination throughout its
+advertised domain, and memory guarantees.  The user deferred further
+real-arithmetic error bounds on 2026-09-17.  Record the binary digest and the
 theorem subject.  Exact-byte packages are deferred to later releases, as
 authorized by the user.  The host input decoder and decimal display remain
 outside the numerical theorem.  Hexadecimal words preserve the canonical input.
@@ -21,14 +22,16 @@ eight.  Audit parameter layout, biases, LayerNorm epsilon, and evaluation
 order before model integration.  The pinned TorchLean activation uses the
 tanh GELU formula.  Training is outside the inference proof.
 
-The user approved a proved 64-byte context as the subsequent target.
+The user selected a proved 128-byte context as the subsequent target,
+replacing the earlier 64-byte target.
 The training backend remains CPU PyTorch 2.9.1 in the repository-local
 environment.  The user approved the pinned Tiny Shakespeare corpus,
 all byte tokens, and all 256 next-token logits per inference call.
-Complete the four-byte model's execution, checkpoint ranges, and composed
-numerical bound first.  Parameterize new sequence and softmax lemmas by
-length where practical.  The larger model will require array-based context
-traversal, expanded positional embeddings, training, and new certificates.
+The four-byte model's exact source-equivalence theorem is complete.
+Parameterize new traversal proofs by length where practical.  The larger
+model requires array-based context traversal, expanded positional embeddings,
+training, and a checked proof for its compiled output.  Each proof must name
+the original Lean source function and the generated module.
 
 The user also authorized later seed-controlled sampling from the top k logits
 using the [Lean PRNG](../docs/prng.md).  PRNG correctness remains outside the
@@ -41,7 +44,11 @@ reuse one theorem when the checkpoint changes.  The
 [runtime-weight analysis](tiny-model-runtime-weights.md) records the
 revised proof sequence, cancellation test, and numerical-method proposal.
 
-## Component sequence
+## Completed numerical development
+
+The following domains record the earlier numerical work.  Further error-bound
+research is deferred.  Existing arithmetic definitions and execution proofs
+remain reusable in the 128-position source-equivalence proof.
 
 | Component | Initial domain | Required result |
 |-----------|----------------|-----------------|
@@ -63,11 +70,9 @@ Each completed component remains runnable during subsequent work.
 
 ## Numerical investigation
 
-Component theorems must propagate perturbed inputs.  Investigate LayerNorm
-sensitivity and checkpoint-specific range estimates before the full block's
-execution proof.  For attention composition, express the useful softmax
-domain through score spread.  Record cases where conservative estimates
-produce an uninformative logit bound, together with their causes.
+The earlier investigation covered perturbed inputs, LayerNorm sensitivity,
+checkpoint-specific ranges, and softmax score spread.  The records retain
+the coarse logit bounds and their causes.  Further numerical work is deferred.
 
 The [LayerNorm analysis](layernorm-analysis.md) records the pinned source
 audit, endpoint perturbation identity, and implementation sequence.
@@ -95,7 +100,6 @@ The [weight layout and arithmetic body](tiny-model-layout.md) record the
 runtime tensor representation, compiled initialization tests, and remaining
 model proof obligations.
 
-Use existing ProofKit arithmetic bounds, including their underflow terms.
 Use the existing Wasmtime host and source-driven Talos registry.  Dependencies,
 toolchains, and compiler semantics remain pinned to the current checkout.
 
@@ -106,30 +110,29 @@ toolchains, and compiler semantics remain pinned to the current checkout.
 - [TorchLean model configuration](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Examples/Models/Sequence/Gpt2.lean).
 - [TorchLean activation definitions](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Spec/Layers/Activation.lean).
 
-## 64-byte implementation
+## 128-byte implementation
 
-The 64-position model keeps width four, two heads of width two, and one
-block.  Its position table grows from 16 to 256 words, taking the total
-parameter count from 2,488 to 2,728.  The sequence representation becomes
-an array.  Nonempty prefixes through length 64 use their first positional
+The 128-position model keeps width four, two heads of width two, and one
+block.  Its position table grows from 16 to 512 words, taking the total
+parameter count from 2,488 to 2,984.  The sequence representation becomes
+an array.  Nonempty prefixes through length 128 use their first positional
 rows and return the final position's 256 logits.
 
 Sequence softmax uses a maximum pass, the existing negative exponential,
-a sum pass, and division.  The length-dependent proofs must cover those
-passes before model composition.  The numerical argument reuses shifted
-weight bounds and the normalization theorem over an arbitrary finite index
-type.  The sum and weighted accumulation need explicit rounding bounds
-for up to 64 terms.  Width-four projection, normalization, GELU, runtime
-weight checking, and vocabulary output retain their existing components.
+a sum pass, and division.  The execution proofs must establish that each
+pass computes its source definition and preserves the required memory.
+Width-four projection, normalization, GELU, runtime weight checking, and
+vocabulary output retain their existing arithmetic.  The source fixes
+binary64 rounding and accumulation order.
 
-Training exposes a context argument with default four and the additional
-64-position setting.  CPU tests check both parameter counts, causal prefix
-equality, and finite gradients.  The existing four-position checkpoint
-and artifact remain reproducible while the larger model develops.
+Training exposes context sizes four, 64, and 128.  CPU tests check parameter
+counts, causal-prefix equality, finite gradients, and input-length rejection.
+The existing four-position artifact and the intermediate
+[64-position checkpoint](../data/tiny-gpt2-64-v1/README.md) remain available.
 
-- [x] Parameterize the training model and check both context sizes.
-- [x] Train and export the [64-position checkpoint](../data/tiny-gpt2-64-v1/README.md) on pinned Tiny Shakespeare.
-- [ ] Prove length-dependent sum and sequence-softmax bounds.
-- [ ] Implement the array-based inference body and exact execution proofs.
-- [ ] Compose finite-output and numerical-error theorems for clipped runtime weights.
-- [ ] Publish the 64-byte CLI artifact and inference tests.
+- [x] Parameterize training and test the 128-position model.
+- [x] Train and export the [128-position checkpoint](../data/tiny-gpt2-128-v1/README.md) on pinned Tiny Shakespeare.
+- [ ] Implement array-based inference and compare WASM with the Lean source.
+- [ ] Prove exact execution of sequence traversal and softmax.
+- [ ] Compose checked inference, termination, and memory guarantees.
+- [ ] Publish the 128-byte CLI artifact with its checked proof.
