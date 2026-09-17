@@ -13967,3 +13967,37 @@ their caches.  The complete existing inference execution theorem and
 checkpoint finiteness proofs still check.  The new theorem axiom reports
 contain only propext, Classical.choice, and Quot.sound.  Documentation
 checks pass for all 136 maintained Markdown files.
+
+The user approved the degree-eighteen exponential, at most six halvings
+and squarings, the cutoff below minus 64, and GELU's cutoff eight with
+its negative logistic branch.  ExpNeg now contains the exponential source.
+The command-line inference artifact retains its prior arithmetic until
+these replacement components have their execution and numerical proofs.
+
+The first source used well-founded UInt64 recursion.  Lean elaborated it
+through a tuple-valued unary helper outside the compiler's accepted types.
+A structurally recursive Nat version then failed because it squared after
+its recursive call.  The implementation now has separate tail-recursive
+reduction and squaring passes.  Both preserve the proposed operation order
+and compile through the existing compiler.  No compiler change was needed.
+
+The exact degree-eighteen Taylor remainder is at most 1e-17 on [-1, 1],
+using Mathlib's Real.exp_bound with nineteen terms.  F64HornerScaled adds
+a Horner step whose arithmetic budgets follow the magnitudes of the
+accumulator and coefficient.  The nineteen coefficient checks use a local
+shared tactic and retain their distinct rational specifications.  The
+polynomial proof gives finite output and error at most 20u on [-1, 1],
+where u = 2^-52.  The coefficient module checks in 2.4 seconds and the
+polynomial module in 1.0 seconds.  The first shared-step check failed on
+a malformed calc block, which was corrected.  Axiom inspection reports
+only propext, Classical.choice, and Quot.sound.
+
+The exponential test compiles the source, compares all 34 WASM results
+with native evaluation of the Talos bit model, and tests signed zeros,
+subnormals, adjacent words at every reduction threshold and the tail
+cutoff, extreme finite inputs, positive inputs, infinities, and NaNs.
+All pass.  The largest empirical absolute difference from the host exp
+is 1.1102230246251565e-16.  An initial sandbox EPERM prevented the test
+from starting its runner.  The approved test prefix then passed with the
+standard Lean cgroup limits.  The full reduction, squaring, and generated
+execution proofs remain open.  No target timed out.
