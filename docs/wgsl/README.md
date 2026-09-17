@@ -62,9 +62,9 @@ and retains exact source/profile/configuration evidence. The first rectangular
 kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
-1. Expand the fixed execution corpus beyond the first rectangular artifact.
-2. Parse the actual WGSL text in Lean; validate the emitted subset independently
-   of the generator and manifest.
+1. Expand the fixed native execution corpus beyond the first rectangular artifact.
+2. Extend the narrow Lean parser checkpoint below with kernel-checked artifact
+   identities and operational/indexing theorems.
 3. Instantiate shared operational semantics and binary32 arithmetic; prove
    indexing, unique writes, successful termination, and execution correspondence.
 4. Prove GEMM numerical bounds and restricted exactness, then independently check
@@ -75,3 +75,29 @@ kernel passed on Mesa llvmpipe; failure probes are preserved under
 The existing pinned Talos dependency has pure binary32 operations and numerical
 lemmas. Reuse belongs in the existing proof workspace, preserving its dependency
 and license boundary rather than copying third-party source into the compiler.
+
+## Narrow artifact parser
+
+`LeanExe.WGSL.Lexer` and `LeanExe.WGSL.Parse` consume the actual WGSL
+text without consulting its manifest or rerendering generator output. The
+restricted AST has one fixed GEMM body form. Constants, binding identities,
+workgroup sizes, every body token and end-of-input are checked; the parsed
+configuration must satisfy the explicit resource envelope. This accepts the
+current emitted subset, not arbitrary equivalent WGSL programs.
+
+The lexer handles all seven WGSL line terminators, all eleven blankspaces,
+nested block comments and token separation. Null/BOM, malformed literals,
+unknown characters, altered accesses/control flow and trailing stores fail
+closed. The focused corpus includes the captured rectangular file, four
+generated configurations and adversarial source mutations. It passes both
+Lean evaluation and exact file-to-literal identity checks:
+
+```sh
+source tools/macos-env.sh # configured ARM Mac only
+tools/leanrun --timeout 120s lake build LeanExe.WGSL.ParseTest
+tools/leanrun --timeout 60s lake env lean --run LeanExe/WGSL/ParseTest.lean
+```
+
+These are parser regression checks. They do not yet constitute a WGSL
+execution, race-freedom, termination or numerical theorem. No new dependency
+is needed; the native Python harness and its Linux evidence are unchanged.
