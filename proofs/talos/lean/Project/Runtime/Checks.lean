@@ -6,6 +6,8 @@
 -/
 
 import Project.Runtime.Defs
+import Project.SequenceSoftmax.Program
+import Project.TinyGpt2Seq.Program
 import Project.TinyGpt2Checked.Program
 import Project.AppendBang.Program
 import Project.AssocList.Program
@@ -369,5 +371,15 @@ example : eraseTypeIdx Project.TinyGpt2Checked.func86Def = eraseTypeIdx allocFun
 example : eraseTypeIdx Project.TinyGpt2Checked.func87Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Checked.func88Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Checked.func89Def = eraseTypeIdx (releaseFuncDef 89) := rfl
+
+example : eraseTypeIdx Project.SequenceSoftmax.func12Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.SequenceSoftmax.func13Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.SequenceSoftmax.func14Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.SequenceSoftmax.func15Def = eraseTypeIdx (releaseFuncDef 15) := rfl
+
+example : eraseTypeIdx Project.TinyGpt2Seq.func79Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Seq.func80Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Seq.func81Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Seq.func82Def = eraseTypeIdx (releaseFuncDef 82) := rfl
 
 end Project.Runtime

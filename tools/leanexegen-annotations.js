@@ -1057,7 +1057,9 @@ function matchDirectCallRegion(program, function_, region) {
 function normalizeInstructions(instructions) {
   return instructions.map((instruction) => {
     const trimmed = instruction.endsWith(",") ? instruction.slice(0, -1) : instruction;
-    return trimmed.replace(/^\.constI64 ([0-9]+)$/, ".constI64 ($1 : UInt64)");
+    return trimmed
+      .replace(/^\.constI64 ([0-9]+)$/, ".constI64 ($1 : UInt64)")
+      .replace(/^\.(load64|store64) ([0-9]+)$/, ".$1 ($2 : UInt32)");
   });
 }
 
@@ -1158,11 +1160,19 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
   ];
   if (JSON.stringify(normalizeInstructions(selected)) !==
       JSON.stringify(normalizeInstructions(expected))) {
-    fail(`${region.id}: decoded instructions do not match the length-dispatch annotation`);
+    fail(`${region.id}: decoded instructions do not match the length-dispatch annotation: ` +
+      `expected ${JSON.stringify(expected)}, found ${JSON.stringify(selected)}`);
   }
   const booleanIfs = parameters.encoding === "le-unsigned-v1" ? [] :
     parameters.encoding === "eq-normalized-v1" ? [7, 10] : [7, 12, 15];
+  const booleanSignatures = new Set();
   for (const instructionIndex of booleanIfs) {
+    const index = region.location.startIndex + instructionIndex;
+    const source = resolveInstructionIntervalSource(body, region.location.listPath, index, index + 1);
+    const closing = source.trimEnd().split("\n").at(-1).trim();
+    if (/^\],?$/.test(closing)) booleanSignatures.add("[]");
+    else if (/^\] \[\] \[\.i64\],?$/.test(closing)) booleanSignatures.add("[.i64]");
+    else fail(`${region.id}: Boolean-normalization control types do not match`);
     for (const [field, value] of [["then", 1], ["else", 0]]) {
       const branch = resolveInstructionList(body, [
         ...region.location.listPath,
@@ -1176,6 +1186,9 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
         fail(`${region.id}: Boolean-normalization ${field} branch does not match`);
       }
     }
+  }
+  if (booleanSignatures.size > 1) {
+    fail(`${region.id}: Boolean-normalization control types differ between branches`);
   }
   const dispatchIndex = region.location.startIndex + selected.length - 1;
   const capacityPrefixes = [];
@@ -1207,6 +1220,7 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
     parameters,
     capacityPrefixes,
     branchPrograms,
+    booleanResults: [...booleanSignatures][0] ?? "[]",
     functionPrefixEligible,
     suffixSource: functionPrefixEligible
       ? resolveInstructionIntervalSource(
@@ -4853,7 +4867,7 @@ theorem ${name}_guard_tail_eq :
           declarations.push(`def ${name}_dispatch_program : Wasm.Program :=
   Project.ProofKit.FixedArrayLengthDispatch.${constructor}
     ${match.parameters.inputLocal} ${match.parameters.expectedSize}
-    ${branchArguments}
+    ${branchArguments}${match.booleanResults === "[.i64]" ? " [.i64]" : ""}
 
 def ${name}_suffix_program : Wasm.Program :=
   ${leanProgramLiteral(match.suffixSource)}
