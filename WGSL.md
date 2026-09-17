@@ -11,8 +11,9 @@ The current checkpoint includes a narrow Lean parser for the emitted GEMM
 subset, a kernel-checked parse of the captured rectangular shader, and general
 index/dispatch/u32 arithmetic lemmas. The invocation machine now has checked
 termination, safety and dot-product correspondence, packaged with the exact
-captured source. Full dispatch and concrete binary32 numerical composition
-are the next formal milestones.
+captured source. Full dispatch now has checked interleaving termination, memory
+safety, unique writes, launch coverage and observable output correspondence.
+Concrete binary32 numerical composition is the next formal milestone.
 
 ## Purpose
 
