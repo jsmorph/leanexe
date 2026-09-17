@@ -346,6 +346,11 @@ The theorem reads the source pointer, target pointer, prefix count, suffix count
 
 Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, and comparing that length with a fixed size.  `program` and `eqProgram` match the normalized inequality and equality encodings, while `leProgram` matches a direct unsigned upper-bound comparison.  Their corresponding specification theorems prove the length read, memory bound, encoded-size relation, any Boolean normalization, and final branch selection.
 
+The normalized encodings retain the Boolean branches' result-type list
+through the optional `booleanResults` parameter.  Generated annotations
+pass `[.i64]` when the decoded instructions contain that list.  The default
+is `[]` for earlier program terms.  The semantic proofs cover both forms.
+
 The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  Use `wp_fixed_array_length_dispatch inputLocal, expectedSize` for a normalized inequality recipe, `wp_fixed_array_length_eq_dispatch inputLocal, expectedSize` for equality, and `wp_fixed_array_length_le_dispatch inputLocal, maximumSize` for an unsigned upper bound; all three tactics infer the branch programs and remainder from the current goal.
 
 ```lean

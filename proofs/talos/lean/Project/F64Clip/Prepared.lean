@@ -33,24 +33,9 @@ theorem prepare_state (env : HostEnv Unit) (initial : Store Unit)
   have hSize : output.size ≤ w.size := by simp [output, prepare]; split <;> simp
   have hFit' : base.toNat+48+8*(output.size+1) ≤ 4294967296 := by omega
   have hMemory' : base.toNat+48+8*(output.size+1) ≤ initial.mem.pages*65536 := by omega
-  have hWords := clip_allocation_words base output.size hFit'
-  have hGlobals' := congrArg (fun st : Store Unit => st.globals) hWrites.1
-  have hPreparedGlobals := clip_initialize_globals initial base output.size allocations
-    retains releases frees hGlobals hFit' hMemory'
-  refine ⟨hValues, hOutput, hInput', hPages', ?_, ?_, ?_, ?_⟩
-  · rw [hGlobals']
-    exact hPreparedGlobals
-  · apply FreshFixedArrayAt.frame (base := base+48)
-      (by rw [hWords.2]; omega) (by rw [hWords.2]; omega) (Nat.le_refl _)
-      (fun address hAddress => hWrites.2.2 address (Or.inl hAddress))
-    exact clip_initialize_fresh initial base output.size allocations hFit'
-  · intro address hAddress
-    exact (hWrites.2.2 address (Or.inl (by rw [hWords.2]; omega))).trans
-      (clip_initialize_below initial base output.size allocations hFit' address hAddress)
-  · calc
-      final = { clipInitialize initial base output.size allocations with mem := final.mem } := hWrites.1
-      _ = { initial with mem := final.mem, globals := final.globals } := by
-        rw [clip_initialize_store initial base output.size allocations hFit' hMemory', hGlobals']
+  exact ⟨hValues, hOutput, hInput', hPages',
+    clip_result_state initial final base output.size allocations retains releases frees
+      hGlobals hFit' hMemory' hWrites⟩
 
 #print axioms prepare_state
 end Project.F64Clip.Spec

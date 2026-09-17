@@ -84,9 +84,15 @@ for (const source of proofSources) {
     throw new Error(`release identity omits ${source.relative}`);
   }
 }
-const programSources = proofSources.filter((source) => source.relative.endsWith("/Program.lean"));
-if (programSources.length !== 37) {
-  throw new Error(`release identity found ${programSources.length} cached Talos programs`);
+const programSources = proofSources
+  .map((source) => source.relative)
+  .filter((source) => source.endsWith("/Program.lean"))
+  .sort();
+const registeredPrograms = JSON.parse(fs.readFileSync(
+  path.join(repoRoot, "proofs/talos/cases.json"), "utf8",
+)).cases.map((item) => `proofs/talos/lean/Project/${item.leanModule}/Program.lean`).sort();
+if (JSON.stringify(programSources) !== JSON.stringify(registeredPrograms)) {
+  throw new Error("release identity's cached Talos programs differ from the case registry");
 }
 const localImports = localLeanImportClosure(repoRoot, [
   "proofs/talos/lean/Project.lean",
@@ -96,6 +102,7 @@ const expectedLocalImports = [
   "LeanExe/Examples/AsciiDigits.lean",
   "LeanExe/Examples/EulerRiemann/Grid.lean",
   "LeanExe/Examples/TalosAssocList.lean",
+  "LeanExe/Runtime.lean",
 ];
 if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {
   throw new Error("the artifact proof's root-package import closure changed");

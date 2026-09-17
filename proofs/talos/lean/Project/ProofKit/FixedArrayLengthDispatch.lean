@@ -1,4 +1,5 @@
 import Project.ProofKit.FixedArrayEqNode
+import Project.TalosCompat
 
 namespace Project.ProofKit.FixedArrayLengthDispatch
 
@@ -14,7 +15,7 @@ macro "wp_length_dispatch" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
       Nat.add_left_cancel_iff, Nat.add_lt_add_iff_left, $ts,*])
 
 def program (inputLocal expectedSize : Nat)
-    (invalidBranch validBranch : Wasm.Program) : Wasm.Program :=
+    (invalidBranch validBranch : Wasm.Program) (booleanResults : List ValueType := []) : Wasm.Program :=
   [
   .localGet 0,
   .localSet inputLocal,
@@ -27,7 +28,7 @@ def program (inputLocal expectedSize : Nat)
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] booleanResults,
   .constI64 0,
   .eqI64,
   .eqz,
@@ -36,14 +37,14 @@ def program (inputLocal expectedSize : Nat)
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] booleanResults,
   .constI64 1,
   .eqI64,
   .iff 0 1 [
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] booleanResults,
   .constI64 0,
   .eqI64,
   .eqz,
@@ -51,7 +52,7 @@ def program (inputLocal expectedSize : Nat)
   ]
 
 def eqProgram (inputLocal expectedSize : Nat)
-    (invalidBranch validBranch : Wasm.Program) : Wasm.Program :=
+    (invalidBranch validBranch : Wasm.Program) (booleanResults : List ValueType := []) : Wasm.Program :=
   [
   .localGet 0,
   .localSet inputLocal,
@@ -64,14 +65,14 @@ def eqProgram (inputLocal expectedSize : Nat)
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] booleanResults,
   .constI64 1,
   .eqI64,
   .iff 0 1 [
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] booleanResults,
   .constI64 0,
   .eqI64,
   .eqz,
@@ -132,9 +133,10 @@ theorem program_spec
     (hValid : input.size = expectedSize ->
       wp module_ validBranch
         (FixedArrayEqNode.branchPost module_ env rest Q) st
-        (branchFrame inputLocal frame inputPtr) env) :
+        (branchFrame inputLocal frame inputPtr) env)
+    (booleanResults : List ValueType := []) :
     wp module_
-      (program inputLocal expectedSize invalidBranch validBranch ++ rest)
+      (program inputLocal expectedSize invalidBranch validBranch booleanResults ++ rest)
       Q st frame env := by
   have hNotParam : ¬inputLocal < frame.params.length := by
     rw [hParams]
@@ -155,15 +157,19 @@ theorem program_spec
   rw [if_neg (Nat.not_lt.mpr hLengthBound)]
   rw [hInputAddress, hLengthRead]
   by_cases hSize : input.size = expectedSize
-  · refine wp_iff_cons rfl ?_
+  · try simp only [wp_iff_control_types]
+    refine wp_iff_cons rfl ?_
     rw [if_pos (by simp [hEncoded.mpr hSize])]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
     apply Wasm.wp.conseq
@@ -174,15 +180,19 @@ theorem program_spec
         cases depth <;> simpa [FixedArrayEqNode.branchPost] using hBranch
       all_goals simpa [FixedArrayEqNode.branchPost] using hBranch
     · simpa [branchFrame, hParams, hValues] using hValid hSize
-  · refine wp_iff_cons rfl ?_
+  · try simp only [wp_iff_control_types]
+    refine wp_iff_cons rfl ?_
     rw [if_neg (by simp [hEncoded, hSize])]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     apply Wasm.wp.conseq
@@ -215,9 +225,10 @@ theorem eqProgram_spec
     (hValid : input.size = expectedSize ->
       wp module_ validBranch
         (FixedArrayEqNode.branchPost module_ env rest Q) st
-        (branchFrame inputLocal frame inputPtr) env) :
+        (branchFrame inputLocal frame inputPtr) env)
+    (booleanResults : List ValueType := []) :
     wp module_
-      (eqProgram inputLocal expectedSize invalidBranch validBranch ++ rest)
+      (eqProgram inputLocal expectedSize invalidBranch validBranch booleanResults ++ rest)
       Q st frame env := by
   have hNotParam : ¬inputLocal < frame.params.length := by
     rw [hParams]
@@ -238,12 +249,15 @@ theorem eqProgram_spec
   rw [if_neg (Nat.not_lt.mpr hLengthBound)]
   rw [hInputAddress, hLengthRead]
   by_cases hSize : input.size = expectedSize
-  · refine wp_iff_cons rfl ?_
+  · try simp only [wp_iff_control_types]
+    refine wp_iff_cons rfl ?_
     rw [if_pos (by simp [hEncoded.mpr hSize])]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     apply Wasm.wp.conseq
@@ -254,12 +268,15 @@ theorem eqProgram_spec
         cases depth <;> simpa [FixedArrayEqNode.branchPost] using hBranch
       all_goals simpa [FixedArrayEqNode.branchPost] using hBranch
     · simpa [branchFrame, hParams, hValues] using hValid hSize
-  · refine wp_iff_cons rfl ?_
+  · try simp only [wp_iff_control_types]
+    refine wp_iff_cons rfl ?_
     rw [if_neg (by simp [hEncoded, hSize])]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
     wp_run
+    try simp only [wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
     apply Wasm.wp.conseq
@@ -343,27 +360,27 @@ theorem leProgram_spec
 macro "wp_fixed_array_length_dispatch " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
-      (program $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+      (program $inputLocal $expectedSize _ _ _ ++ _) _ _ _ _
      apply program_spec))
 
 macro "wp_fixed_array_length_dispatch_from " hInput:term
     " at " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
-      (program $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+      (program $inputLocal $expectedSize _ _ _ ++ _) _ _ _ _
      apply program_spec (hInput := $hInput)))
 
 macro "wp_fixed_array_length_eq_dispatch " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
-      (eqProgram $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+      (eqProgram $inputLocal $expectedSize _ _ _ ++ _) _ _ _ _
      apply eqProgram_spec))
 
 macro "wp_fixed_array_length_eq_dispatch_from " hInput:term
     " at " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
-      (eqProgram $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+      (eqProgram $inputLocal $expectedSize _ _ _ ++ _) _ _ _ _
      apply eqProgram_spec (hInput := $hInput)))
 
 macro "wp_fixed_array_length_le_dispatch " inputLocal:term ", " maximumSize:term : tactic =>

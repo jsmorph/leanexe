@@ -93,12 +93,12 @@ partial def compileTimeString?
       | .lit (.strVal value) => some value
       | .bvar index =>
           match lookupBinding locals index with
-          | .ok (.thunk savedLocals value) => compileTimeString? ctx savedLocals fuel value
+          | .ok (.thunk savedLocals inlineStack value) => compileTimeString? { ctx with inlineStack } savedLocals fuel value
           | _ => none
       | .letE _ type value body _ =>
           if containsBVar 0 body then
             if isStringType type then
-              compileTimeString? ctx (.thunk locals value :: locals) fuel body
+              compileTimeString? ctx (.thunk locals ctx.inlineStack value :: locals) fuel body
             else
               none
           else
@@ -1303,7 +1303,8 @@ partial def wrapValueLets (lets : List ValueLet) (value : ExtractedValue) :
     (fun item acc =>
       match item with
       | .expr slot expr => .letE slot expr acc
-      | .call slots index args => .letCall slots index args acc)
+      | .call slots index args => .letCall slots index args acc
+      | .locals lets => .letLocal lets acc)
     value
 
 def wrapExprLets (lets : List ValueLet) (expr : IRExpr) : IRExpr :=
@@ -1311,12 +1312,9 @@ def wrapExprLets (lets : List ValueLet) (expr : IRExpr) : IRExpr :=
     (fun item acc =>
       match item with
       | .expr slot value => .letE slot value acc
-      | .call slots index args => .letCall slots index args acc)
+      | .call slots index args => .letCall slots index args acc
+      | .locals lets => .letLets lets acc)
     expr
-
-def valueLetStmt : ValueLet → IRStmt
-  | .expr slot expr => .assign slot expr
-  | .call slots index args => .call slots index args
 
 partial def optionPartsWithLets (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × ExtractedValue) :=
@@ -2481,6 +2479,11 @@ mutual
     | item :: rest => .seq (localLetStmtOptimized item) (localLetStmtListOptimized rest)
 end
 
+def valueLetStmt : ValueLet → IRStmt
+  | .expr slot expr => .assign slot expr
+  | .call slots index args => .call slots index args
+  | .locals lets => localLetStmtListOptimized lets
+
 def exprReturnsLocalSlot (slot : Nat) : IRExpr → Bool
   | .local candidate => candidate == slot
   | .letE _ _ body => exprReturnsLocalSlot slot body
@@ -2677,6 +2680,7 @@ def ownerSourcesAfterValueLetForAlloc
       (summarizedCallResultOwnerSlots summaries index slots).foldl
         (fun acc slot => addOwnerSourceSlot acc slot [slot])
         (slots.foldl removeOwnerSourceSlot ownerSources)
+  | .locals lets => ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
 
 def ownerSourcesFromValueLetsForAlloc
     (summaries : Array (List Nat))

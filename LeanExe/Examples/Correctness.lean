@@ -3928,6 +3928,24 @@ def arrayStructurePushHelperRead : UInt64 :=
   | some point => structureParam point
   | none => 0
 
+def shiftPointHelper (point : Point) : Point :=
+  { x := point.x + 1, y := point.y + 2 }
+
+def addPointHelper (a b : Point) : Point :=
+  { x := a.x + b.x, y := a.y + b.y }
+
+def pointFromArrayHelper (values : Array UInt64) : Point :=
+  addPointHelper (makePointHelper values[0]!) (makePointHelper values[1]!)
+
+def arrayStructureNestedArgument : UInt64 :=
+  structureParam (addPointHelper (pointFromArrayHelper #[2, 5]) (makePointHelper 3))
+
+def arrayStructureNestedCallLoop (count : UInt64) : UInt64 := Id.run do
+  let mut points : Array Point := #[]
+  for i in [:count.toNat] do
+    points := points.push (shiftPointHelper (makePointHelper i.toUInt64))
+  return points.foldl (fun acc point => acc * 100 + structureParam point) 0
+
 def arrayStructurePopRead : UInt64 :=
   let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
   let b := a.pop

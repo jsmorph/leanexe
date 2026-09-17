@@ -1,8 +1,9 @@
 # Development Plan
 
 The user authorized the [tiny transformer development](plans/tiny-transformer.md)
-on 2026-09-16.  Its first implementation target is runnable, verified binary64
-exponential softmax.  Exact-byte packages are deferred to later releases.
+on 2026-09-16.  The current target is GPT-2/128 with a checked proof that
+the generated module computes its Lean source.  Further real-arithmetic
+error bounds and exact-byte packages are deferred.
 The Euler work remains at its recorded pause checkpoint.
 
 The active Euler work on `main` follows the [certificate, completion, and convergence plan](plans/euler-certificates-and-convergence.md), authorized on 2026-09-15.  Phase 13 pursues those items in that order.  The certificate observer has complete source and generated-WASM execution proofs.  Exact-byte verification precedes the new 192-grid and 800-grid runs.
@@ -758,28 +759,29 @@ The user authorized merging `talosfp-euler` into `main`, publishing it, and purs
 
 ## 14. Build verified tiny transformer inference
 
-The [detailed plan](plans/tiny-transformer.md) records the component domains,
-proof boundaries, and numerical research questions.  Each completed component
-has a command-line WASM demonstration and generated-WAT execution, success,
-and numerical-error proofs.  Frozen exact-byte packages are later release work.
+The [detailed plan](plans/tiny-transformer.md) records the source definitions,
+proof boundaries, and execution work.  Completion requires a command-line
+WASM demonstration and a checked source-equivalence theorem, including
+termination and memory guarantees.  Further numerical-error proofs and
+frozen exact-byte packages are deferred by the user's revised scope.
 
 - [x] Reproduce the existing guarded Horner proof.
 - [x] Release a bounded scalar exponential with a proved error bound.
 - [x] Extend the exponential to the negative interval needed by softmax.
 - [x] Release a masked, one-to-four-score softmax command-line demo.
 - [x] Establish LayerNorm execution, roundoff, and input and parameter error propagation.
-- [ ] Investigate checkpoint ranges and their effect on LayerNorm sensitivity.
+- [x] Investigate checkpoint ranges and their effect on LayerNorm sensitivity.
 - [x] Complete bounded GELU and its input perturbation theorem.
-- [ ] Complete affine operations, attention, and a transformer block.
+- [x] Complete affine operations, attention, and a transformer block.
 - [x] Train and export the four-byte model.
 - [x] Prove hidden-state execution and store preservation.
 - [x] Reuse the hidden-state proof in the full module and prove single-logit execution.
 - [x] Prove the full vocabulary-output loop.
 - [x] Complete inference entry, initial allocation, and final release.
 - [x] Complete checkpoint ranges and prove finite logits for every byte input.
-- [ ] Prove runtime weight validation and clipping for a bound parameter in [0, 10].
-- [ ] Extend the numerical components for arbitrary accepted weights.
-- [ ] Complete the composed logit error bound.
-- [ ] Extend the proved model to a 64-byte context with a trained checkpoint.
+- [x] Prove runtime weight validation and clipping for a bound parameter in [0, 10].
+- [x] Extend the numerical components for arbitrary accepted weights.
+- [x] Complete the composed logit error bound, whose uniform estimate remains coarse.
+- [ ] Extend source-equivalent inference to a 128-byte context with a trained checkpoint.
 - [ ] Add seed-controlled top-k sampling using the Lean PRNG, without PRNG proof work.
 - [ ] Complete the final exact-byte package and weight identity evidence.
