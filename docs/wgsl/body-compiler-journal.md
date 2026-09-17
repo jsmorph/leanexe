@@ -180,3 +180,24 @@ per token. The output text also matches. Evidence is in
 log beside it. This is a regression observation, not a full GPT-2 proof or a
 universal runtime-conformance result. Independent checks of the six installed
 shader texts are running separately from generation.
+
+The installed bundle independently passed
+`tools/artifact-proof.js wgsl-gpt2-check build/gpt2/bundle`; the receipt is
+`build/gpt2/shader-checks/check-dQN1GV/verification.json`. It checks all six
+existing shader texts against their Lean bodies and packed product roles,
+with four audited proof declarations per shader, and checks all fifty matrix
+assignments. The receipt explicitly leaves runtime conformance and complete
+model composition unestablished.
+
+After the helper-expansion and source-proof changes, the full bounded compiler
+corpus was repeated in `build/wgsl/body-check-TFeJqN`. All nine source/parse/
+execution triples pass, the saved matrix proof rechecks independently, all 51
+CPU output words match the original Lean reference, both operation mutations
+change output, and all eighteen negative cases reject without an emitted
+package. Native compilation also passes `-Wall -Wextra -Werror`; host syntax,
+shell syntax and 149 maintained Markdown files pass their checks.
+
+The browser archive was rebuilt and its six shaders and host were compared
+with the installed bundle. Browser inference was not rerun in this iteration;
+the actual completion test used the native CPU path. Generated shaders, Wasm,
+weights, proof fragments, reports, binaries and archives remain uncommitted.
