@@ -2,8 +2,32 @@
 
 This checkpoint has 128 byte-token positions, 2,984 binary64 parameters,
 model width four, two attention heads, feed-forward width eight, and one
-block.  The inference implementation and source-equivalence proof are
-in progress.
+block.  The WASM implementation produces text completions.  Its complete
+source-equivalence proof is paused.
+
+## Command-line generation
+
+```sh
+tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160 --seed 42
+```
+
+The command prints the prompt and generated text.  Sampling defaults to
+top 40 logits and temperature 0.8.  `--top-k 1` selects the highest logit.
+`--json` adds token IDs, checkpoint identity, and sampling settings.
+Omitting `--generate` returns all 256 logits as JSON.  Prompts contain
+one through 128 UTF-8 bytes.  Generation keeps the most recent 128 bytes
+and assigns them positions starting at zero for each inference call.
+
+The [recorded completions](completions.json) contain three 160-byte samples.
+They consist mostly of invented words and fragments.  All 480 sampled
+bytes match CPU PyTorch with the same random draws.  Across those steps,
+the largest absolute difference among 122,880 logits was
+2.3092638912203256e-14.  Each WASM sample took about 4.4 seconds on the
+development machine.  These are execution measurements.
+
+The [module manifest](manifest.json) records the 24,596-byte WASM artifact
+and its verification status.  Sampling uses the existing Lean SplitMix64
+WASM program.  The host applies temperature and computes sampling weights.
 
 ## Training record
 

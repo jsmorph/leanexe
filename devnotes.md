@@ -14824,10 +14824,32 @@ address bounds, byte preservation, and successive field writes for
 arbitrary element widths.  RowMemory instantiates these results at width
 four.  They reuse ArrayField's generated address arithmetic and the
 existing word-memory lemmas.  The final builds took 2.1, 1.6, and 1.4
-seconds, with propext and Quot.sound in the audits.  An initial index
+seconds, with propext, Classical.choice, and Quot.sound in the audits.  An initial index
 injectivity diagnostic required substituting the row-index equality
 before cancelling the field offset.  No timeout occurred.
 
 The user paused proof development to inspect GPT-2/128 text completions.
 The array helpers are checked, while the row loops and full inference
 composition remain open.
+
+### GPT-2/128 text generation
+
+The existing trained sequence artifact generated three 160-byte samples
+with top-k 40, temperature 0.8, and seeds 42 through 44.  They contain
+invented words, word fragments, and dialogue punctuation.  The standalone
+experiment took about 4.4 seconds per sample, keeping a rolling 128-byte
+window.  Re-evaluating every generated context in CPU PyTorch gave the
+same 480 sampled bytes using the same random draws.  The maximum absolute
+logit difference across 122,880 values was 2.3092638912203256e-14.
+
+The CLI now accepts --context 128 and --generate, with seed, top-k,
+temperature, and JSON options.  It runs the inference module in Wasmtime
+and obtains random draws from the existing Lean SplitMix64 WASM program.
+The tracked module and manifest identify the unfinished inference proof.
+The generation test passes three seeded completions, rolling-window
+behavior, text and JSON output, input rejection, and the four-byte entry.
+Initial Node launches of two new scripts failed with sandbox EPERM.
+The required command-prefix approvals were then granted and the runs passed.
+
+The user replaced the proof objective with pretrained GPT-2 124M inference.
+The tiny checkpoint and its completed generation command remain available.
