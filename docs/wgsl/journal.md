@@ -621,3 +621,31 @@ a 120s aggregate timeout; splitting at SoftmaxWide.Row, CheckpointScore and
 CheckpointAttentionValue completed the needed boundaries without raising proof
 limits. CheckpointFinalNorm and the residual prerequisites then passed.
 The parent origin/main remains at 8309cc9b, already merged.
+
+The head bridge theorem now reads the actual final Wasm memory word and proves
+it belongs to GptHead.Result. Its Inputs contract identifies the four converted
+hidden words and 1,024 converted weight words. Dot.congr_buffers is a small
+reusable lemma showing that only the accessed prefix coordinates matter.
+This avoids incorrectly requiring equality of unused buffer addresses.
+GptHeadHost checks in 3.9s with standard axioms. The first draft exposed an
+unreduced artifact projection and exhausted default heartbeats; making that
+boundary's buffer types explicit resolved it without increasing limits.
+
+FinishBinary independently proves exact parsing, validation and execution of
+the 61-byte binary64 bias-addition artifact. FinishCheck compares the supplied
+file to those exact proved bytes. The build took 4.7s; its saved-file check
+passes with standard axioms. Earlier constructor and tactic-import failures
+are retained. Promotion is an explicit input to this Wasm operation, not an
+unproved claim about a native conversion instruction.
+
+The local compiler executable was stale (September 7) and rejected the merged
+Wasm.IEEE64.add primitive after the first 60s compile attempt timed out. The
+split WAT diagnostic exposed that rejection. Rebuilding the extraction module
+and compiler resolved it; the current compiler emits the expected 16,006-byte
+hidden module, SHA-256 d03534266e4171a07512566429763ba890506ba306a6073379d2433b395837a2.
+Its exact binary proof is next. GptHeadGenerate successfully emits the selected
+Lean head candidate. Maintained-document and whitespace checks pass.
+The generated head package also passes a fresh independent shader gate at
+build/wgsl/package-checks/check-FIwx6w. This checks exact shader text, manifest
+agreement, both numerical domains and restricted exactness; it does not yet
+constitute execution of the full GPT bundle.
