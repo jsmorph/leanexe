@@ -132,7 +132,7 @@ The existing four-position artifact and the intermediate
 
 - [x] Parameterize training and test the 128-position model.
 - [x] Train and export the [128-position checkpoint](../data/tiny-gpt2-128-v1/README.md) on pinned Tiny Shakespeare.
-- [ ] Implement array-based inference and compare WASM with the Lean source.
+- [x] Implement array-based inference and compare WASM with the Lean source.
 - [ ] Prove exact execution of sequence traversal and softmax.
 - [ ] Compose checked inference, termination, and memory guarantees.
 - [ ] Publish the 128-byte CLI artifact with its checked proof.
