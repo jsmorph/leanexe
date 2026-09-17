@@ -24,8 +24,9 @@ correctness claim.
 The scalar semantics in the root library are currently parameters. The
 invocation model now establishes successful termination, dynamic-error absence
 and source-ordered dot-product correspondence under scalar totality and buffer
-size preconditions. A concrete binary32 interpretation, dispatch scheduling and
-numerical bounds remain separate obligations.
+size preconditions. The dispatch layer lifts this result to arbitrary
+interleavings and observable matrix outputs. A concrete binary32 interpretation
+and numerical bounds remain separate obligations.
 
 ## Profiles and trust boundary
 
@@ -64,13 +65,11 @@ kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
 1. Expand the fixed native execution corpus beyond the first rectangular artifact.
-2. Lift the checked invocation semantics to full dispatch scheduling, unique
-   writes and final buffer visibility.
-3. Instantiate binary32 arithmetic and prove execution correspondence under
+2. Instantiate binary32 arithmetic and prove execution correspondence under
    the selected numerical profile.
-4. Prove GEMM numerical bounds and restricted exactness, then independently check
+3. Prove GEMM numerical bounds and restricted exactness, then independently check
    the exact artifact package.
-5. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
+4. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
    integration before doing residency, tiling, and performance work.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
@@ -123,7 +122,18 @@ local fusion, proves profile refinement and conditional restricted exactness.
 
 `ArtifactExecution.lean` packages the captured source's parsing theorem with
 these invocation results. The source-ordered exactness theorem is conditional
-on the scalar interpretation. This does not yet establish concurrent dispatch
-correctness, a concrete binary32 error bound or runtime conformance. All public
-audits use standard logical axioms only. No new dependency is needed; the
-native harness and its Linux evidence are unchanged.
+on the scalar interpretation.
+
+`Dispatch.lean`, `Launch.lean` and `Output.lean` lift the model to arbitrary
+interleavings of a complete rounded-up launch. A sum of remaining work proves
+termination; launch enumeration proves unique coordinates, active-cell coverage
+and representable global IDs. Reachable writes are disjoint and their stores
+commute. Completion reconstructs the observable buffer from those stores and
+proves the dot-product relation at every active cell. The artifact package now
+includes this dispatch theorem and conditional restricted bit exactness.
+
+This is a macro-step semantics for the fixed parsed subset, with separate A/B/C
+storage objects and explicit runtime progress/conformance assumptions. It does
+not yet provide a concrete binary32 error bound or a Wasm/WebGPU binding theorem.
+All public audits use standard logical axioms only. No new dependency is needed;
+the native harness and its Linux evidence are unchanged.

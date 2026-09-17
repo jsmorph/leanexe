@@ -214,3 +214,41 @@ README and journal. Focused build and diff whitespace checks pass; no sorry,
 admit, new axiom or native-decide appears. No broad regression run is needed
 for these additive proof modules. Publishing this completed invocation layer
 before starting interleaved dispatch and concrete binary32 integration.
+
+Invocation checkpoint 33cfa51a274dbef537f4312148b1ce862d06e46f published with
+parent f29678c6f5cf759721fd2e385b2c231d6a5a4414 and tree
+6f8dd9b07fee908d5ae8618825ce408b1ab72f6e; fetched identity and clean checks pass.
+
+Dispatch now models arbitrary interleaving of invocation transitions. Its sum
+of remaining work decreases on every transition; progress plus scalar totality
+provides a completed schedule, while every reachable state preserves the Dot
+invariant. Disjoint-coordinate final writes have different addresses; stores
+at different addresses commute. After fixing an elaboration-order issue in the
+head invariant, the focused Dispatch build passes in 881 ms with standard-only
+audits. Its failed draft/log are retained. No scheduling fairness axiom is
+added: runtime progress, as distinct from arbitrary external stalling, remains
+part of the runtime-conformance boundary.
+
+Launch enumerates all global coordinates of the rounded-up dispatch, including
+padding. Candidate proofs cover uniqueness, active-cell coverage, u32 global
+coordinate range, total completion, error exclusion and a Dot store per cell.
+The initial check exposed implicit argument arity in Pairwise.imp and overly
+aggressive placeholder application; replaced these with explicit arguments.
+
+Launch and Output now pass. The second launch draft only needed explicit
+projection reduction in decode_injective; no larger proof budget was used.
+Output reconstructs completed stores and proves Dot at every active cell,
+then instantiates ExecutionTheorem with actual success/error/infinite-trace
+outcomes. Added reachable coordinate uniqueness and pairwise disjoint-write
+proofs, so the conflict claim applies to the enumerated launch rather than
+requiring distinct coordinates as an unchecked caller assertion.
+
+The final artifact build passes: Launch 886 ms, Output 883 ms,
+ArtifactExecution 887 ms. All public audits contain standard logical axioms
+only. The exact captured shader now carries dispatch termination, safety,
+output correspondence and conditional restricted exactness. Scalar totality,
+concrete arithmetic interpretation, storage-object realization and runtime
+conformance are still explicit boundaries. No new native evidence is claimed.
+Reviewed Dispatch, Launch, Output, ArtifactExecution and status documentation;
+diff whitespace and forbidden-proof-token checks pass. Publishing before
+starting the concrete binary32 interpretation in the existing Talos workspace.

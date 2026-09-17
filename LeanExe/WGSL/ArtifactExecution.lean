@@ -1,5 +1,6 @@
 import LeanExe.WGSL.RectangularArtifact
 import LeanExe.WGSL.Invocation
+import LeanExe.WGSL.Output
 
 namespace LeanExe.WGSL
 
@@ -44,5 +45,32 @@ theorem InvocationArtifact.exact {source s arithmetic} (artifact : InvocationArt
 
 #print axioms RectangularArtifact.invocationArtifact
 #print axioms InvocationArtifact.exact
+
+structure DispatchArtifact (source : String) (s : ScalarSemantics) (p : Profile) where
+  kernel : CheckedGemm
+  parsed : parseGemm source = .ok kernel.ast
+  execution : ExecutionTheorem (Dispatch.model s) p kernel
+    (fun input => input.buffers.Valid kernel.ast.config)
+    (Dispatch.Computation s p kernel.ast.config)
+
+def RectangularArtifact.dispatchArtifact {s p c} (hc : p.scalar c)
+    (he : p.evaluation .separate) (ht : ScalarTotal s c) :
+    DispatchArtifact RectangularArtifact.source s p where
+  kernel := RectangularArtifact.checked
+  parsed := RectangularArtifact.parsed
+  execution := Dispatch.execution _ hc he ht
+
+theorem DispatchArtifact.exact {source s arithmetic} (artifact : DispatchArtifact source s restricted)
+    (hs : SeparateInterpretation s arithmetic) (input : Dispatch.Input)
+    (hb : input.buffers.Valid artifact.kernel.ast.config) (output : WordBuffer)
+    (run : (Dispatch.model s).Exec restricted artifact.kernel input output)
+    {row col : Nat} (hr : row < artifact.kernel.ast.config.rows)
+    (hc : col < artifact.kernel.ast.config.cols) :
+    output (row * artifact.kernel.ast.config.cols + col) =
+      gemmCell arithmetic artifact.kernel.ast.config input.buffers.a input.buffers.b row col :=
+  (artifact.execution.corresponds input output hb run row col hr hc).restricted_exact hs
+
+#print axioms RectangularArtifact.dispatchArtifact
+#print axioms DispatchArtifact.exact
 
 end LeanExe.WGSL
