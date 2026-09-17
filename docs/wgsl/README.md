@@ -21,11 +21,11 @@ correctness claim.
   buffers. Validation bounds dimensions, storage sizes, binding identities,
   workgroup size, and dispatch counts.
 
-The scalar semantics in the root library are currently parameters. Neither a
-concrete binary32 interpretation nor artifact execution correctness follows from
-these parametric lemmas. The new index theorems establish bounds and unique
-addresses, but their connection to concurrent execution, termination and
-numerical behavior remains an explicit next obligation.
+The scalar semantics in the root library are currently parameters. The
+invocation model now establishes successful termination, dynamic-error absence
+and source-ordered dot-product correspondence under scalar totality and buffer
+size preconditions. A concrete binary32 interpretation, dispatch scheduling and
+numerical bounds remain separate obligations.
 
 ## Profiles and trust boundary
 
@@ -64,8 +64,8 @@ kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
 1. Expand the fixed native execution corpus beyond the first rectangular artifact.
-2. Instantiate operational semantics for the parsed body and connect the
-   checked indexing/dispatch lemmas to loads, stores, unique writes and termination.
+2. Lift the checked invocation semantics to full dispatch scheduling, unique
+   writes and final buffer visibility.
 3. Instantiate binary32 arithmetic and prove execution correspondence under
    the selected numerical profile.
 4. Prove GEMM numerical bounds and restricted exactness, then independently check
@@ -114,6 +114,16 @@ Validated dimensions imply bounded A/B/C indices and a nonwrapping loop
 increment. The rectangular artifact instantiates these access bounds.
 All public audits use no axioms or only standard logical axioms.
 
-These results do not yet constitute a complete WGSL execution, concurrent
-race-freedom, termination or numerical theorem. No new dependency is needed;
-the native Python harness and its Linux evidence are unchanged.
+`Invocation.lean` defines entry, loop, done and error states with explicit
+load/store bounds. A decreasing measure rules out every infinite transition
+sequence. A preserved invariant excludes dynamic errors and relates the
+accumulator and final store to `Dot`; scalar totality supplies successful
+execution. `Accumulate.lean` preserves `acc + product` operand order, models
+local fusion, proves profile refinement and conditional restricted exactness.
+
+`ArtifactExecution.lean` packages the captured source's parsing theorem with
+these invocation results. The source-ordered exactness theorem is conditional
+on the scalar interpretation. This does not yet establish concurrent dispatch
+correctness, a concrete binary32 error bound or runtime conformance. All public
+audits use standard logical axioms only. No new dependency is needed; the
+native harness and its Linux evidence are unchanged.
