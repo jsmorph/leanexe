@@ -16,6 +16,25 @@ theorem probability_output_bound (n a b c d : UInt64) (h : Softmax.SpreadValid n
   have he : 32*arithmeticEpsilon ≤ (1:ℝ) := by norm_num [arithmeticEpsilon]
   linarith
 
+theorem weightedValue_computed_error (p : Softmax.Result) (v : Fin 4 → UInt64)
+    (hp : ∀ i, Affine.Bounded (Softmax.outputs p i) 64)
+    (hv : ∀ i, Affine.Bounded (v i) 16)
+    (target : Fin 4 → ℝ) (mass error : ℝ)
+    (hn : ∀ i, 0 ≤ value (Softmax.outputs p i))
+    (hm : ∑ i, value (Softmax.outputs p i) ≤ mass)
+    (he : 0 ≤ error) (hvalue : ∀ i, |value (v i)-target i| ≤ error) :
+    Finite (weightedValue p (v 0) (v 1) (v 2) (v 3)) ∧
+      |value (weightedValue p (v 0) (v 1) (v 2) (v 3))-
+        ∑ i, value (Softmax.outputs p i)*target i| ≤
+          12294*arithmeticEpsilon+mass*error := by
+  have hd := Affine.dot4_error (Softmax.outputs p) v hp hv
+  have h := Affine.Real.dot_perturbation
+    (fun i => value (Softmax.outputs p i)) (fun i => value (Softmax.outputs p i))
+    (fun i => value (v i)) target (fun _ => 0) (fun _ => error) (by simp) hvalue
+  simp only [mul_zero, zero_add, abs_of_nonneg (hn _), ← Finset.sum_mul] at h
+  have ht := (abs_sub_le _ _ _).trans (add_le_add hd.accuracy h)
+  exact ⟨hd.finite, ht.trans (add_le_add_right (mul_le_mul_of_nonneg_right hm he) _)⟩
+
 theorem weightedValue_perturbed (n a b c d : UInt64) (h : Softmax.SpreadValid n a b c d)
     (v : Fin 4 → UInt64) (hv : ∀ j, Affine.Bounded (v j) 16)
     (targetScores targetValues : Fin 4 → ℝ) (scoreError valueError : ℝ)

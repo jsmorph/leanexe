@@ -8,6 +8,14 @@ open CodeLib.IEEE64 Project.ProofKit F64Horner
 
 set_option exponentiation.threshold 4096
 
+theorem project4_words (w : Array UInt64) (offset : Nat) (x : Row) (j : Fin 4) :
+    rowWords (project4 w offset x) j = dotColumn4 w offset 4 j.val x := by
+  fin_cases j <;> rfl
+
+theorem addRows_words (x y : Row) (j : Fin 4) :
+    rowWords (addRows x y) j = Wasm.IEEE64.add (rowWords x j) (rowWords y j) := by
+  fin_cases j <;> rfl
+
 theorem dotColumn4_model (w : Array UInt64) (offset width : Nat) (j : Fin width) (x : Row) :
     dotColumn4 w offset width j.val x =
       Affine.dot4 (rowWords x 0) (rowWords x 1) (rowWords x 2) (rowWords x 3)

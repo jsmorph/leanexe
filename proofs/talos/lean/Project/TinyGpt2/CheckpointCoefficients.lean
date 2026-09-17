@@ -28,6 +28,16 @@ theorem key_bound (i j : Fin 4) : |decodeMatrix words 1056 4 4 i j| ≤ 6/5 := b
     fin_cases i <;> fin_cases j <;> decide +kernel
   simpa [decodeMatrix] using F64Rational.magnitude _ _ h
 
+theorem value_bound (i j : Fin 4) : |decodeMatrix words 1072 4 4 i j| ≤ 6/5 := by
+  have h : |F64Rational.decode (matrixWords words 1072 4 4 i j)| ≤ 6/5 := by
+    fin_cases i <;> fin_cases j <;> decide +kernel
+  simpa [decodeMatrix] using F64Rational.magnitude _ _ h
+
+theorem attention_bound (i j : Fin 4) : |decodeMatrix words 1088 4 4 i j| ≤ 1 := by
+  have h : |F64Rational.decode (matrixWords words 1088 4 4 i j)| ≤ 1 := by
+    fin_cases i <;> fin_cases j <;> decide +kernel
+  simpa [decodeMatrix] using F64Rational.magnitude _ _ h
+
 theorem loaded_valid (offset : Nat) (ho : offset+3 < words.size) :
     LayerNorm.ValidRow (rowWords (loadRow words offset)) := by
   intro i
