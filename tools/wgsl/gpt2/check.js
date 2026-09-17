@@ -17,7 +17,10 @@ const shapes = [[768,2304],[768,768],[768,3072],[3072,768],[768,25129],[768,2512
 const roles = ["qkv", "attention", "expansion", "projection", "vocabularyLeft", "vocabularyRight"];
 const matrixTheorems = ["exact_from_dispatch", "vocabulary_left_layout", "vocabulary_right_layout",
   "vocabulary_from_dispatch", "vocabulary_exact", "layer_shape", "layer_matrix_injective",
-  "head_shapes", "fifty_matrices", "attention_input_range"].map(n => `Project.Gpt2.Matrix.${n}`);
+  "head_shapes", "fifty_matrices", "attention_input_range", "fusion_from_dispatch", "vocabulary_fusion_choices"]
+  .map(n => `Project.Gpt2.Matrix.${n}`).concat(
+    ["fusion_iff_choices", "separate_evaluate"].map(n => `Project.WGSL.ArithmeticChoice.${n}`),
+    ["separate_word", "fused_word", "both_admitted"].map(n => `ArithmeticRegression.${n}`));
 
 async function check(directory) {
   directory = path.resolve(directory);
@@ -36,7 +39,7 @@ async function check(directory) {
   const results = [];
   try {
     const proofRoot = path.join(root, "proofs/talos/lean");
-    await lean("GPT-2 matrix proof dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.Matrix"],
+    await lean("GPT-2 matrix proof dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.MatrixArithmetic"],
       path.join(attempt, "matrix-dependencies.log"));
     const matrixOutput = await lean("GPT-2 matrix layout and decomposition", ["lake", "-d", proofRoot, "env", "lean",
       "--run", path.join(__dirname, "CheckMatrix.lean"), path.join(attempt, "bundle-manifest.json")],
@@ -71,6 +74,7 @@ async function check(directory) {
       profile: "leanexe-f32-rne-separate-v1", numericalErrorTolerance: null,
       runtimeConformanceEstablished: false, modelCompositionEstablished: false,
       matrixAxioms, matrixAssignmentsChecked: 50, vocabularyDecompositionProved: true,
+      fusionAlternative: "Each output equals the Lean binary32 algorithm for some concrete per-step fused/separate choices",
       scope: "Shader word equality to Lean matrix products, packed layouts, vocabulary decomposition and matrix descriptor plan; no checkpoint contents, float conversions, Wasm, host schedule or driver proof",
       results });
     console.log(`GPT-2 WGSL fidelity: all six shaders verified; ${attempt}`);
@@ -85,7 +89,7 @@ async function layoutCorpus(directory) {
   fs.mkdirSync(path.dirname(directory), { recursive: true });
   fs.mkdirSync(directory);
   const proofRoot = path.join(root, "proofs/talos/lean");
-  await lean("GPT-2 matrix corpus dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.Matrix"],
+  await lean("GPT-2 matrix corpus dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.MatrixArithmetic"],
     path.join(directory, "dependencies.log"));
   const results = [];
   for (const item of require("./corpus.json").matrixPlan) {

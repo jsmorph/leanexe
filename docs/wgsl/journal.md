@@ -1191,3 +1191,42 @@ field. Those results are retained in build/gpt2/layout-corpus-v1.
 The legacy rectangular checker and the word-only partial-workgroup fusion
 checker both still pass after extending proof preparation. Documentation and
 whitespace checks also pass. Generated proofs and receipts remain ignored.
+
+## 2026-09-17 — Explicit floating-point choice sequences
+
+The source-ordered fusion relation now has an executable Lean word-level
+specification. ArithmeticChoice.evaluate takes a Boolean choice for each dot
+product step and computes either a rounded multiply followed by a rounded add,
+or one rounded FMA. The fusion_iff_choices theorem proves equivalence in both
+directions between this function's possible results and ColumnRun under the
+fusion profile. Choosing separate operations at every step is exactly the
+original columnAccum function. The argument quantifies over all UInt32 inputs,
+with no finite-value or magnitude restriction and no numerical tolerance.
+
+Matrix.fusion_from_dispatch applies that result to the parsed shader, and the
+vocabulary composition preserves an independent choice sequence for each
+output token. The gate checks the original separate-profile equality and this
+additional fusion interpretation separately. It does not infer runtime policy
+from manifest metadata or claim coverage of reassociation, flushing subnormals,
+or arbitrary browser exceptional-value behavior.
+
+The initial direct-conversion proofs reached a 120-second timeout; smaller
+isolated targets also reached their 30-second limits. Splitting out the simple
+branch-selection lemmas and using explicit rewrites stopped kernel conversion
+from expanding the IEEE implementations. A 20,000-heartbeat limit exposed the
+remaining conversion obligations. After replacing those reductions, the two
+main proof modules each built in about one second. Failed diagnostics remain
+under build/gpt2/choice-*.log. This was a proof-structure problem, not a change
+to the arithmetic specification or shaders. No LTG retrieval was used.
+
+The gate also proves a two-term example directly from the binary32 definitions:
+separate operations return 0x00000000, fused operations return 0xa8800000,
+and both words satisfy the modeled fusion relation. The arithmetic and layout
+declarations use only propext, Classical.choice, and Quot.sound.
+
+All six shader packages pass the extended gate in
+build/gpt2/shader-checks/check-02NPz0, including each specialized modelFusion
+theorem. The five-case matrix-routing corpus passes again with the arithmetic
+checks enabled, in build/gpt2/layout-corpus-fusion. Documentation checks pass
+146 maintained files; git diff --check passes. No generated artifacts or
+runtime shader changes are included in the source commit.
