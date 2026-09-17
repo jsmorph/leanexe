@@ -1,5 +1,9 @@
 # Verified tiny transformer inference
 
+The user paused this proof work on 2026-09-17 to develop
+[pretrained GPT-2 124M inference](gpt2-124m.md).  The four-byte proofs and
+tiny GPT-2/128 generation command remain available.
+
 This plan expands phase 14 of the [Development Plan](../plan.md).
 The user authorized implementation, frequent commits and pushes, and
 command-line demonstrations on 2026-09-16.  The first target is standard

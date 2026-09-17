@@ -125,9 +125,12 @@ normalization lower bounds as parameters.  Its unconditional error estimate
 is too coarse to certify precision.  The combined weight-checking and
 inference entry now has exact execution and numerical proofs.  The CLI accepts replacement checkpoints and a bound through the verified entry.
 
-The next target is GPT-2/128 with a checked proof that each generated module
-computes its Lean source, including termination and memory guarantees.
-Further real-arithmetic error bounds are deferred.
+The [tiny GPT-2/128 CLI](data/tiny-gpt2-128-v1/README.md) generates text
+with `tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160`.
+The user paused proof work to develop
+[pretrained GPT-2 124M inference](data/gpt2-124m/README.md) through LeanExe
+with a 128-token context.  Its CPU FP32 reference produces text completions.
+FP32 compiler support and packed tensor execution are the next steps.
 
 The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
 

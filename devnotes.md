@@ -14853,3 +14853,31 @@ The required command-prefix approvals were then granted and the runs passed.
 
 The user replaced the proof objective with pretrained GPT-2 124M inference.
 The tiny checkpoint and its completed generation command remain available.
+
+### Pretrained GPT-2 reference
+
+The user approved Transformers 4.57.6 and safetensors 0.7.0 with their
+dependencies in the existing PyTorch 2.9.1+cpu environment.  The dependency
+lock records the installed versions, and pip check passes.  The pinned
+openai-community/gpt2 revision is 607a30d783dfa663caf39e06633721c8d4cfcd7e.
+Its safetensors SHA-256 matches the published Git LFS pointer.  Loading
+the checkpoint confirms 124,439,808 learned parameters.  The file includes
+twelve legacy attention masks in addition to the learned tensors.
+
+Three CPU FP32 prompts generated coherent completions.  The story prompt
+generated 64 tokens in 3.8 seconds on one thread.  The durable reference
+command reproduces those tokens after resetting the seed immediately
+before generation.  Its fetch command also passes with the pinned files
+already present.  The command bounds prompt plus completion at 128 BPE
+tokens and records EOS, count, or context exhaustion as the stopping reason.
+
+The user also approved FP32 arithmetic and packed binary tensors for
+LeanExe/WASM.  The original model requires biased projections, tanh GELU,
+LayerNorm epsilon 1e-5, and a vocabulary projection tied to the input
+embedding.  The [original model source](https://github.com/openai/gpt-2/blob/master/src/model.py)
+and [tokenizer source](https://github.com/openai/gpt-2/blob/master/src/encoder.py)
+are the architecture references.  The new plan preserves external weights
+and starts with compiler primitives and a GPT-sized matrix multiplication.
+Array push and set currently copy their inputs, while array map allocates
+one result.  Indexed tensor construction and resident binary weight input
+need explicit implementation before the full model.  Proof work stays paused.
