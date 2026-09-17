@@ -757,3 +757,14 @@ and its extremely loose uniform bound, separately from the pending complete
 artifact-execution check. The maintained-document checker passes 137 files.
 The GPT runtime and gate drafts pass JavaScript syntax checks but are not
 published as an executed or verified bundle yet.
+
+The complete 16,006-byte hidden artifact is now parsed and validated, and its
+translated module is proved equal to the execution model. Type-section parsing
+takes 38s; function-type indices take 34s. Export-name parsing initially hit
+recursion limits in byte-array slicing. Eleven exact slice equalities, checked
+by kernel evaluation in 9.8s, give that parser a small reusable boundary; the
+export section then passes. Memory, globals and the composed code section pass.
+The full binary-to-execution-model theorem checks in 4.8s with only propext,
+Classical.choice and Quot.sound. Failed export drafts and logs are preserved.
+This establishes artifact identity and validity; the hidden execution theorem
+and complete native GPT bundle still need their final local checks.
