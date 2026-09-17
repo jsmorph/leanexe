@@ -1042,3 +1042,20 @@ Evidence remains in ignored build/demo-test-_tywjlgo. The first 32-byte run
 continues "To be, or not to be" with repeated "the", faithfully reflecting
 this tiny checkpoint's greedy predictions. The browser host-only JavaScript
 question was explained; browser bindings remain pending that clarification.
+
+The user approved browser host bindings. The static browser version now runs
+from localhost with model arithmetic, conversions and selection in Wasm/WGSL.
+Actual UI tests execute all eight references: all 32 hidden words match; the
+browser GPU returns 773 different head words out of 2,048, with matching final
+logit differences. These are reported, as the user accepts WebGPU semantic
+differences. The page produces the same 64-byte greedy repetition as native.
+The build creates a portable browser ZIP under ignored build/.
+
+The user then required a decent completion. Inspecting logits shows the trained
+width-four checkpoint has a greedy space/t/h/e cycle, with only about 0.13
+probability on t after a space. This is not stale output or failed dispatch.
+The model's recorded validation cross-entropy is 2.6916 nats. A larger trained
+checkpoint is being evaluated separately; a pending scope question distinguishes
+actual pretrained GPT-2 from a smaller Shakespeare transformer. No new checkpoint
+or generated artifact is committed. The original exact-reference tests remain
+unchanged so that the demonstration cannot hide altered model semantics.
