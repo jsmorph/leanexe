@@ -414,3 +414,35 @@ next step uses Talos's existing HostEnv/HostSpec and authoritative small-step
 host-call rule to connect the checked shader with an actual Wasm host artifact.
 The existing exact-binary decoder excludes imports, so that byte boundary must
 also be addressed before claiming the new Wasm artifact verified.
+
+The minimal host artifact is now 90 bytes: one imported gemm_f32 function,
+three i32 offsets, an exported run function, and exported memory. HostBinary
+checks its exact sections against the existing Wasm binary grammar and a narrow
+function-import grammar. The existing import-free decoder remains unchanged.
+Whole-file definitional decoding exhausted the default heartbeat budget, and
+the code-section parser reduction also exhausted it. The retained drafts/logs
+show both failures. Splitting into per-section proofs and constructing the four
+instruction encodings directly solved the proof boundary without changing any
+limit. The general Talos validator includes opaque partial computations, so no
+kernel reduction of that validator is claimed. The interface check, normative
+binary grammar, actual instruction execution, and external wasm-tools validation
+are checked separately.
+
+HostMemory proves byte upload correspondence, output readback correspondence,
+i32 address conversion without wrapping, and preservation outside the written
+region. This avoids importing native-decide bitvector round-trip evidence into
+the standard-only proof gate. HostExecution uses the authoritative small-step
+local.get, host-call and finish rules. Its contract explicitly requires the
+foreign runtime to execute the checked shader on snapshots and copy completed
+output back; it does not claim the Python/JavaScript/native driver is verified.
+Input regions may overlap because both uploads precede output copying. Resource
+caps and in-bounds, aligned addresses are explicit preconditions.
+
+The composed host theorems prove finite completion and final Wasm read32 equality
+for the separate profile, plus the conditional numerical bound for either
+profile. All public host/transfer/encoding results use only propext,
+Classical.choice and Quot.sound. HostCheck independently compared the actual
+wasm-tools-produced binary with the kernel-checked bytes and passed. Corrected
+proof-layout, existential-trace and projection-rewrite drafts remain available;
+the final focused build took 3.9s. The native Wasm-to-WebGPU runner remains the
+next step; this checkpoint makes no claim that it has already executed.
