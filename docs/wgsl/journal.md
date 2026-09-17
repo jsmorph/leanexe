@@ -711,3 +711,19 @@ arithmetic bound, not an output-magnitude shortcut. The uniform epsilon-floor
 instantiation is extremely loose (approximately 4.85e9 at the logits) and
 must not be presented as a tight numerical guarantee. Sharper denominator
 and parameter-specific propagation bounds remain a quality improvement.
+
+Function decoding now passes through index 55, in addition to function 74.
+The combined 24–35 target reached its 120s aggregate timeout after finishing
+most body dependencies; splitting the remaining targets completed them. The
+36–43 and 44–55 groups pass without source changes or increased proof limits.
+All these decoding proofs use only propext.
+
+Direct kernel evaluation validates function 74 successfully. A diagnostic
+attempt to synthesize Decidable for an Except result failed because that
+instance is unavailable; checking its Boolean success observation and the
+new ok_unit_of_isSome lemma avoids that unnecessary interface requirement.
+Whole-module kernel-evaluation diagnostics timed out at 60s, so validation
+and decoding remain split into explicit boundaries. Those attempts are
+retained. The shared decode_eq_of_comparison lemma is also checked and may
+support bounded Boolean decoder comparisons; it does not itself establish
+this complete module's parsing.
