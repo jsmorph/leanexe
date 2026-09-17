@@ -162,6 +162,10 @@ async function corpus(directory) {
 async function main(args) {
   const [command, directory, ...rest] = args;
   requireThat(directory, "expected a WGSL package directory");
+  if (command.startsWith("wgsl-gpt128-")) {
+    await require("./gpt128").main([command, directory, ...rest]);
+    return;
+  }
   if (command.startsWith("wgsl-float-")) {
     await require("./float").main([command, directory, ...rest]);
     return;

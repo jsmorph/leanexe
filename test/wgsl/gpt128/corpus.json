@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "verification": "gpt128-verification.json",
+  "checkedRawHeadWords": 1792,
+  "checkedLogits": 1792,
+  "results": [
+    {
+      "name": "one-byte",
+      "status": "pass",
+      "length": 1,
+      "evidence": "execution/one-byte.json",
+      "reference": "reference/one-byte.json"
+    },
+    {
+      "name": "four-bytes",
+      "status": "pass",
+      "length": 4,
+      "evidence": "execution/four-bytes.json",
+      "reference": "reference/four-bytes.json"
+    },
+    {
+      "name": "sixty-four",
+      "status": "pass",
+      "length": 64,
+      "evidence": "execution/sixty-four.json",
+      "reference": "reference/sixty-four.json"
+    },
+    {
+      "name": "full-context",
+      "status": "pass",
+      "length": 128,
+      "evidence": "execution/full-context.json",
+      "reference": "reference/full-context.json"
+    },
+    {
+      "name": "all-zero",
+      "status": "pass",
+      "length": 128,
+      "evidence": "execution/all-zero.json",
+      "reference": "reference/all-zero.json"
+    },
+    {
+      "name": "all-255",
+      "status": "pass",
+      "length": 128,
+      "evidence": "execution/all-255.json",
+      "reference": "reference/all-255.json"
+    },
+    {
+      "name": "clipped",
+      "status": "pass",
+      "length": 4,
+      "evidence": "execution/clipped.json",
+      "reference": "reference/clipped.json"
+    },
+    {
+      "name": "empty",
+      "status": "rejected"
+    },
+    {
+      "name": "too-long",
+      "status": "rejected"
+    },
+    {
+      "name": "above-byte",
+      "status": "rejected"
+    },
+    {
+      "name": "negative-byte",
+      "status": "rejected"
+    }
+  ],
+  "checkpoint": "../../../data/tiny-gpt2-128-v1/checkpoint.json",
+  "artifacts": {
+    "shader": "../gpt/kernel.wgsl",
+    "manifest": "../gpt/manifest.json",
+    "bridge": "../gpt/host.wasm",
+    "finish": "../gpt/finish.wasm"
+  },
+  "demo": {
+    "evidence": "execution/input.json",
+    "reference": "reference/input.json",
+    "prompt": "prompt.txt",
+    "bytes": 128
+  }
+}
