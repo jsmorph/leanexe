@@ -53,6 +53,59 @@ directly to `run.py --snapshot-stdin`, avoiding another filesystem read between
 verification and dispatch. The native report must identify that same input.
 Runtime conformance to the selected profile remains an explicit assumption.
 
+## Verified Wasm + WGSL bundle
+
+The complete GEMM path starts in a real Wasm function, dispatches the checked
+WGSL through native WebGPU, and copies the result back into Wasm memory:
+
+```sh
+source tools/macos-env.sh # configured ARM Mac only
+tools/artifact-proof.js wgsl-bundle-build build/wgsl/my-gemm-bundle 3 5 2 separate
+tools/artifact-proof.js wgsl-bundle-check build/wgsl/my-gemm-bundle
+tools/artifact-proof.js wgsl-bundle-run build/wgsl/my-gemm-bundle
+tools/artifact-proof.js wgsl-bundle-corpus build/wgsl/my-bundle-corpus
+```
+
+`wgsl-bundle-build` requires a fresh directory. `wgsl-bundle-check` independently
+checks an existing package without executing it; `wgsl-bundle-run` checks it
+again before execution. Each attempt retains the exact `host.wasm`, shader and
+manifest, `BundleProof.lean`, axiom reports, verification receipt and execution
+report. Existing receipts and supplied proof files are never used as authority.
+
+The 90-byte host exports `memory` and `run(aOffset, bOffset, cOffset)`. Its import
+is `leanexe.webgpu.gemm_f32(i32, i32, i32) -> i32`; zero means completed success.
+Offsets are unsigned byte addresses, aligned to four bytes. All three regions
+must fit in Wasm memory. Each buffer is capped at 16,384 words and each dispatch
+at 262,144 multiply/add iterations. Both inputs are copied before the result is
+written, so input/output regions may overlap. The default demonstration uses
+small dyadic inputs, compares every output, and checks all bytes outside C.
+
+The Lean checker proves the exact Wasm section encodings, including its function
+import; the standard Wasm engine also validates the module before instantiation.
+`HostExecution` composes the authoritative Wasm small-step rules with the
+independently checked WGSL package. The resulting theorems establish termination,
+final Wasm `read32` results, and the same conditional numerical bound as GEMM.
+The file-identity checks compare actual bytes with the checked constants. The
+runner instantiates those held bytes and passes the held shader text to the
+native worker over stdin.
+
+The theorem assumes `HostExecution.contract`: correct input snapshots, native
+dispatch conforming to the selected profile, completed readback, and the stated
+memory update. The JavaScript/Python adapter, Node's Wasm engine, shader compiler
+and native driver are outside the formal proof. Runtime tests exercise that
+boundary; they do not prove universal conformance. No additional dependency was
+introduced for the Wasm bridge.
+
+The bundle corpus uses the same three positive matrix shapes and rejects altered
+Wasm bytes before instantiation. Four small JavaScript tests exercise argument
+order, byte order, aliasing, invalid addresses and rejection before output writes:
+
+```sh
+node --test test/wgsl/host_test.js
+```
+
+Worked bundles and their retained reports live in `test/wgsl/bundles`.
+
 ## Direct generation and execution on this ARM Mac
 
 The checked local CPU route is `run.py → wgpu-native → Vulkan → SwiftShader`.

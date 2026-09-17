@@ -23,8 +23,10 @@ checked input snapshot directly to the native harness. Three matrix shapes and
 three rejection cases pass its fixed corpus. The exact Wasm GEMM bridge now has
 checked binary-section encodings, byte-transfer lemmas, and a small-step execution
 theorem composed with the shader's exactness and numerical results. The native
-bridge contract is explicit. Connecting the actual Wasm invocation to the CPU
-runner and adding the complete bundle gate is the next execution checkpoint.
+bridge contract is explicit. The complete bundle gate now verifies both artifacts
+before invoking the real Wasm function, executing its WGSL dispatch on the CPU,
+and checking the results in Wasm memory. This completes the immediate GEMM and
+host-composition plan. GPT integration and performance remain later roadmap work.
 
 ## Purpose
 
@@ -71,7 +73,7 @@ State the profile and runtime-conformance assumption in each artifact theorem.  
 
 ### Hints are not trust
 
-LeanEXE compiler annotations may guide kernel selection, WGSL lowering, tile dimensions, theorem selection, lemma instantiation, and verification tactics.
+LeanEXE compiler annotations may guide kernel selection, WGSL generation for supported kernels, tile dimensions, theorem selection, lemma instantiation, and verification tactics.
 
 Annotations remain proof hints rather than axioms. A bad hint may make generation or verification fail; it must never make an incorrect artifact provable.
 
@@ -82,9 +84,9 @@ A checked Lean definition may be annotated as a WGSL kernel candidate.
 ```text
 Lean specification / implementation
         |
-        +---- normal LeanEXE lowering ----> Wasm artifact
+        +---- LeanEXE Wasm compiler ------> Wasm artifact
         |
-        +---- WGSL kernel lowering -------> WGSL text artifact(s)
+        +---- supported WGSL generator ---> WGSL text artifact(s)
                                               |
                                               v
                                       parse artifact in Lean
@@ -278,13 +280,13 @@ For autoregressive GPT-2, dispatch and data-transfer overhead can dominate small
 
 ### Phase 0 — Profile and theorem definitions
 
-Define the supported profile policies, source-ordered and fused evaluation choices, and the execution relation.  State profile refinement, successful termination, numerical correctness, and restricted exactness as separate proof obligations.  Choose the first profiles and their input domains before kernel lowering.  Record the intended runtime-conformance assumptions.
+Define the supported profile policies, source-ordered and fused evaluation choices, and the execution relation.  State profile refinement, successful termination, numerical correctness, and restricted exactness as separate proof obligations.  Choose the first profiles and their input domains before emitting WGSL.  Record the intended runtime-conformance assumptions.
 
 ### Phase 1 — Minimal kernel generation
 
-Add a LeanEXE annotation or equivalent mechanism identifying a Lean definition for WGSL lowering.
+Add a LeanEXE annotation or equivalent mechanism selecting a supported Lean kernel definition for WGSL generation.
 
-Implement enough lowering to emit one extremely simple WGSL compute kernel. Establish the generation pipeline before requiring a complete proof.
+Implement a generator for one supported WGSL compute kernel. Establish the generation pipeline before requiring a complete proof.
 
 ### Phase 2 — Native headless execution
 
@@ -411,10 +413,10 @@ Useful for understanding ergonomic representations of GPU-oriented programs in L
 Important prior work for CUDA/OpenCL race, barrier, and concurrency verification. It helps identify proof obligations that arise in parallel kernels, but it does not supply the desired Lean artifact-level floating-point refinement pipeline. It is therefore background rather than a critical-path component.
 
 **SPIR-V formalization and verification work.**  
-Potentially relevant if LeanEXE later needs a lower-level portable GPU artifact. For V1, introducing SPIR-V adds another lowering boundary before the WGSL experiment has demonstrated value. Revisit it if WGSL's semantic latitude becomes limiting or a lower artifact boundary becomes strategically important.
+Potentially relevant if LeanEXE later needs a portable GPU binary format. For V1, introducing SPIR-V adds another translation and verification boundary before the WGSL experiment has demonstrated value. Revisit it if WGSL's semantic latitude becomes limiting or verifying that binary format becomes necessary.
 
 **PTX semantics and NVIDIA-specific verification.**  
-PTX is a plausible future backend if NVIDIA-specific semantics or performance control becomes important. It offers a lower-level target than WGSL but sacrifices WebGPU portability and does not by itself eliminate the PTX-to-machine-code boundary. It should not block the initial WGSL work.
+PTX is a plausible future backend if NVIDIA-specific semantics or performance control becomes important. It targets NVIDIA's instruction architecture, sacrifices WebGPU portability, and retains a PTX-to-machine-code translation boundary. It should not block the initial WGSL work.
 
 **Formal transformer/neural-network verification, including TorchLean-style work.**  
 Potentially useful for transformer specifications, tensor lemmas, and floating-point neural computation. This work generally addresses a different trust boundary from LeanEXE's concrete heterogeneous-artifact theorem, so it is background rather than an implementation dependency.
@@ -433,7 +435,7 @@ Prefer guidance and small audited adaptations over unnecessary dependencies, esp
 
 The first milestone combines generation, execution, and both proof layers:
 
-> A Lean matrix-multiplication definition is marked for WGSL lowering.  LeanEXE emits an FP32 WGSL artifact, and a native headless harness executes that artifact under a recorded configuration.  Lean parses and validates the artifact.  Under the stated profile and preconditions, proofs establish successful termination, absence of dynamic errors, and correspondence with the floating-point GEMM relation.  A numerical theorem bounds every permitted result against real matrix multiplication.  A restricted-profile theorem establishes exact output equality with a specified floating-point computation.
+> A supported Lean matrix-multiplication definition is selected for WGSL generation.  LeanEXE emits an FP32 WGSL artifact, and a native headless harness executes that artifact under a recorded configuration.  Lean parses and validates the artifact.  Under the stated profile and preconditions, proofs establish successful termination, absence of dynamic errors, and correspondence with the floating-point GEMM relation.  A numerical theorem bounds every permitted result against real matrix multiplication.  A restricted-profile theorem establishes exact output equality with a specified floating-point computation.
 
 The package records the profile definitions, theorem domains, runtime-conformance assumptions, and test evidence.  Runtime conformance and formal artifact correctness have separate evidence records.
 
