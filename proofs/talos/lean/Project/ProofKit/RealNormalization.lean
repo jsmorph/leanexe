@@ -54,6 +54,26 @@ theorem normalization_distance {n : ℕ} (x y : Fin n → ℝ) (r s epsilon dime
   rw [normalization_identity x y r s epsilon dimension (ne_of_gt hr) (ne_of_gt hs) hx hy]
   exact le_add_of_nonneg_right (by positivity)
 
+theorem normalization_component_error {n : ℕ} (x y : Fin n → ℝ)
+    (r s epsilon dimension lower error : ℝ)
+    (hr : 0 < r) (hs : 0 < s) (he : 0 ≤ epsilon) (hd : 0 ≤ dimension)
+    (hl : 0 < lower) (herr : 0 ≤ error) (hlr : lower ≤ r) (hls : lower ≤ s)
+    (hx : sumSquares x = dimension*(r^2-epsilon))
+    (hy : sumSquares y = dimension*(s^2-epsilon))
+    (hxy : squaredDistance x y ≤ error^2) (i : Fin n) :
+    |x i/r-y i/s| ≤ error/lower := by
+  have hn := normalization_distance x y r s epsilon dimension hr hs he hd hx hy
+  have hc := coordinate_square_le (fun j => x j/r-y j/s) i
+  have hp : lower^2 ≤ r*s := by
+    simpa only [pow_two] using mul_le_mul hlr hls hl.le hr.le
+  have hBound : lower^2*(x i/r-y i/s)^2 ≤ error^2 :=
+    (mul_le_mul_of_nonneg_right hp (sq_nonneg _)).trans
+      ((mul_le_mul_of_nonneg_left hc (mul_pos hr hs).le).trans (hn.trans hxy))
+  apply (le_div_iff₀ hl).mpr
+  apply (sq_le_sq₀ (mul_nonneg (abs_nonneg _) hl.le) herr).mp
+  nlinarith only [hBound, sq_abs (x i/r-y i/s)]
+
 #print axioms normalization_identity
 #print axioms normalization_distance
+#print axioms normalization_component_error
 end Project.ProofKit.RealNormalization
