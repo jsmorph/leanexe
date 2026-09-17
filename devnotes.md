@@ -14589,3 +14589,45 @@ completed with the approved corpus and backend.  Validation cross-entropy
 fell from 5.5597421815995585 to 2.691612944826216.  All 2,984 weights are
 finite, with maximum magnitude 2.3113755988772042.  The checkpoint hash is
 1e98ac0661cec2eed22473af75bb5ca2dac8bf1dd9a1788567981f57df4e6356.
+
+### Sequence inference and extraction
+
+The 128-position source accepts one through 128 byte tokens, uses the
+existing binary64 scalar helpers, and computes both attention heads over
+the supplied prefix.  Its sequence softmax subtracts the maximum, maps
+the existing exponential, folds the denominator from zero, and divides
+each weight by that denominator.  Weight validation and clipping retain
+the four-byte entry's policy.
+
+Compilation exposed two extraction failures.  Strict field materialization
+passed a grouped local binding to the structure flattener, which rejected
+the normalized-row array element.  ValueLet now preserves that binding
+group before flattening its result.  Deferred inline arguments also
+inherited the callee's inline stack, so a nested call to the same helper
+inside an argument looked recursive.  Thunks now retain and restore the
+caller's stack.  Reduced tests cover a structured helper result pushed
+inside a loop and a trapping array lookup inside a nested helper argument.
+
+The compiler build and core execution tests pass: 812 accepted cases,
+48 rejected cases, and 14 expected traps.  Ownership reports pass all
+28 cases.  The sequence test compares six inputs against native evaluation
+of the compiled Lean entry, covering lengths one, four, 64, and 128,
+including repeated zero and 255 tokens.  All 1,536 output words match
+WASM exactly.  Eight invalid-input cases return empty arrays.  The largest
+observed difference from the PyTorch reference is 9.325873406851315e-15.
+These are execution tests.  The sequence execution theorem remains open.
+
+The aggregate Node gate first found a stale count of 37 cached Talos
+programs.  The identity test now compares the complete cache path list
+with the registry and includes the current Runtime import.  It passes.
+The next aggregate failure is the existing release draft's stale input
+digest.  Its evidence is retained, and focused compiler tests continue.
+
+Reference-count tests pass 41 cases and seven leak-accounting cases.
+All ten WAT/binary round trips pass.  The focused tiny_gpt2_checked gate
+passes regeneration, annotation checks, and all registered theorems with
+the changed compiler.  Its generated module is unchanged.  Documentation
+checks pass for 136 maintained Markdown files.  The report-classification
+test could not start its Lean runner because the execution policy returned
+EPERM.  The subsequent approval request was interrupted.  That test has
+no result from this iteration.
