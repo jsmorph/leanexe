@@ -1,8 +1,8 @@
 import Project.TinyGpt2.Layout
 import Project.Affine.Model
 import Project.LayerNorm.Model
-import Project.Softmax.Model
-import Project.Gelu.Model
+import Project.SoftmaxWide.Model
+import Project.GeluWide.Model
 
 namespace Project.TinyGpt2
 
@@ -69,7 +69,7 @@ def contractRow (w : Array UInt64) (x : WideRow) : Row :=
     (loadRow w Layout.contractBias)
 
 def activate (x : Row) : Row :=
-  ⟨Gelu.evaluateAll x.x0, Gelu.evaluateAll x.x1, Gelu.evaluateAll x.x2, Gelu.evaluateAll x.x3⟩
+  ⟨GeluWide.evaluateAll x.x0, GeluWide.evaluateAll x.x1, GeluWide.evaluateAll x.x2, GeluWide.evaluateAll x.x3⟩
 
 def projectContext (w : Array UInt64) (offset : Nat) (x : Context) : Context :=
   ⟨project4 w offset x.r0, project4 w offset x.r1, project4 w offset x.r2, project4 w offset x.r3⟩
@@ -82,7 +82,7 @@ def attentionScore (q0 q1 k0 k1 : UInt64) : UInt64 :=
   Wasm.IEEE64.div (Affine.dot2 q0 q1 k0 k1) 0x3FF6A09E667F3BCD
 
 def headProbabilities (n q0 q1 : UInt64) (k0 k1 : Row) : Softmax.Result :=
-  Softmax.compute n (attentionScore q0 q1 k0.x0 k1.x0) (attentionScore q0 q1 k0.x1 k1.x1)
+  SoftmaxWide.compute n (attentionScore q0 q1 k0.x0 k1.x0) (attentionScore q0 q1 k0.x1 k1.x1)
     (attentionScore q0 q1 k0.x2 k1.x2) (attentionScore q0 q1 k0.x3 k1.x3)
 
 def weightedValue (p : Softmax.Result) (v0 v1 v2 v3 : UInt64) : UInt64 :=

@@ -33,7 +33,7 @@ def outputLogitProgram : Wasm.Program :=
    .localGet 32,
    .localGet 33,
    .localGet 34,
-   .call 74,
+   .call 77,
    .localSet 35]
 
 theorem output_logit_shape : (outputBody.drop 4).take 29 = outputLogitProgram := rfl

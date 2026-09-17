@@ -1,4 +1,5 @@
 import Project.SoftmaxWide.Row
+import Project.ProofKit.F64DivisionSign
 import Project.Softmax.Numerical
 import Project.Softmax.RoundedNormalization
 
@@ -92,6 +93,30 @@ theorem compute_numerical (n a b c d : UInt64) (h : Valid n a b c d) :
       exact (div_le_div_of_nonneg_right hd.2.2.2.1 dp.le).trans hsumerror
     exact (abs_sub_le _ _ _).trans ((add_le_add hdiff hnorm).trans (by ring_nf; rfl))
 
+theorem compute_nonnegative (n a b c d : UInt64) (h : Valid n a b c d) (i : Fin 4) :
+    0 ≤ value (outputs (compute n a b c d) i) := by
+  let w := computedWeights n a b c d
+  let r := realWeight n (scores a b c d) (rowMaximum n a b c d)
+  have hw := row_weights n a b c d h
+  have hd := denominator w r (fun i => (hw.1 i).1)
+    (fun i => ⟨(hw.1 i).2.1, (hw.1 i).2.2.1⟩)
+    (fun i => ⟨(hw.1 i).2.2.2.2.1, (hw.1 i).2.2.2.2.2.1⟩)
+    (fun i => (hw.1 i).2.2.2.2.2.2) hw.2
+  let den := denominatorWord n a b c d
+  have hden : 1/2 ≤ value den := hd.2.1
+  have dp : 0 < value den := by linarith
+  rw [compute_outputs]
+  by_cases hi : indexWord i < n
+  · simp only [probability, ite_eq_left hi]
+    apply F64DivBounds.div_nonnegative _ _ (hw.1 i).1 hd.1 (hw.1 i).2.1 dp
+    have hq : |value (w i)/value den| ≤ 4 := by
+      rw [abs_of_nonneg (div_nonneg (hw.1 i).2.1 dp.le)]
+      apply (div_le_iff₀ dp).mpr
+      have hwi : value (w i) ≤ 2 := (hw.1 i).2.2.1
+      linarith
+    exact hq.trans_lt (by norm_num)
+  · simp only [probability, ite_eq_right hi, ExpSmall.zero_value, le_refl]
+
 theorem compute_weighted_error (n a b c d : UInt64) (h : Valid n a b c d)
     (v : Fin 4 → ℝ) (bound : ℝ) (hb : 0 ≤ bound) (hv : ∀ i, |v i| ≤ bound) :
     |(∑ i, value (outputs (compute n a b c d) i)*v i)-
@@ -109,5 +134,6 @@ theorem compute_weighted_error (n a b c d : UInt64) (h : Valid n a b c d)
     _ ≤ _ := by simpa only [mul_comm] using mul_le_mul_of_nonneg_right (compute_numerical n a b c d h).2.1 hb
 
 #print axioms compute_numerical
+#print axioms compute_nonnegative
 #print axioms compute_weighted_error
 end Project.SoftmaxWide

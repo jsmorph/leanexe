@@ -354,14 +354,14 @@ example : eraseTypeIdx Project.GeluWide.func15Def = eraseTypeIdx resetFuncDef :=
 example : eraseTypeIdx Project.GeluWide.func16Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.GeluWide.func17Def = eraseTypeIdx (releaseFuncDef 17) := rfl
 
-example : eraseTypeIdx Project.TinyGpt2Hidden.func72Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Hidden.func73Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Hidden.func74Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Hidden.func75Def = eraseTypeIdx (releaseFuncDef 75) := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func75Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func76Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func77Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Hidden.func78Def = eraseTypeIdx (releaseFuncDef 78) := rfl
 
-example : eraseTypeIdx Project.TinyGpt2Infer.func76Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Infer.func77Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Infer.func78Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.TinyGpt2Infer.func79Def = eraseTypeIdx (releaseFuncDef 79) := rfl
+example : eraseTypeIdx Project.TinyGpt2Infer.func79Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Infer.func80Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Infer.func81Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Infer.func82Def = eraseTypeIdx (releaseFuncDef 82) := rfl
 
 end Project.Runtime
