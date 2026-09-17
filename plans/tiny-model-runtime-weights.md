@@ -61,6 +61,18 @@ arrays.  It preserves the input and page count when 48+8(n+1) reserved
 bytes fit after the input and the allocator free list is empty.  Accepted
 output has finite values equal to the real clamp and bounded by B.
 
+The [wider LayerNorm proof](../proofs/talos/lean/Project/LayerNorm/Wide.lean)
+uses input magnitude X and scale and bias magnitude B.  For X at least one,
+B in [0, 10], and 504X^2+1 below 2^1022, it proves finite output,
+magnitude at most 3B+(254B+2)u, and component error at most
+(16000BX+254B+2)u, where u = 2^-52.  At X = 200,000 and B = 10,
+the error bound is below 7.11e-6.  The
+[runtime-weight adapter](../proofs/talos/lean/Project/TinyGpt2/RuntimeNorm.lean)
+derives its parameter hypotheses from checker acceptance and clipping.
+The proof accounts for centering error separately from the rounding of
+squares, averaging, the denominator, division, and the final affine map.
+It changes no numerical operation.
+
 ## Proposed arithmetic
 
 The numerical prototype proposes a degree-eighteen Taylor polynomial for
@@ -91,6 +103,7 @@ await user confirmation.
 - [x] Prove the checker's generated-WAT execution and memory use.
 - [ ] Confirm and implement the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
+- [x] Prove LayerNorm's wider domain and runtime-weight error bound.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
 - [ ] Refine the composed bound, accounting for normalization sensitivity.
 - [ ] Prove the checked inference entry, including rejection and memory use.
