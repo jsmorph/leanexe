@@ -1,3 +1,4 @@
+import Project.WGSL.PrecisionModel
 import Project.ProofKit.F32DyadicReal
 import Project.ProofKit.F64ExactShift
 
@@ -5,15 +6,6 @@ namespace Project.WGSL.Precision
 open Project.ProofKit
 
 set_option exponentiation.threshold 4096
-
-/-- Pure conversion model for finite binary64 inputs, with one ties-to-even
-rounding and gradual underflow. Nonfinite inputs are outside this interface. -/
-def demote (a : UInt64) : UInt32 :=
-  Wasm.IEEE32.roundDyadicMagnitude (Wasm.IEEE64.sign a) (Wasm.IEEE64.scaledMagnitude a) 925
-
-/-- Pure conversion model for finite binary32 inputs. -/
-def promote (a : UInt32) : UInt64 :=
-  Wasm.IEEE64.roundScaledMagnitude (Wasm.IEEE32.sign a) (Wasm.IEEE32.scaledMagnitude a * 2^925)
 
 theorem input32_bound (a : UInt32) (ha : CodeLib.IEEE32.Finite a) :
     Wasm.IEEE32.scaledMagnitude a < 2^277 := by

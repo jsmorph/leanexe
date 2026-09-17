@@ -882,3 +882,13 @@ checkpoint and sequential-sum bounds. Its inference implementation/proofs are
 explicitly still in progress. Inspection showed no changes to the four-position
 ErrorBudget or CheckedBounds under audit. The report records the new parent
 state without substituting its distinct checkpoint into these measurements.
+
+Float-level verification development starts with an independent algorithm
+specification over UInt64/UInt32 words and typed vectors/matrices. It explicitly
+fixes balanced binary64 dots, sequential binary32 accumulation from positive
+zero, normalization arithmetic, causal masking, coefficient words, nonlinear
+branches and finite-input precision conversion. It does not import the GPT
+implementation model or a real-number specification. Pure conversion definitions
+were separated from their numerical theorems without changing the definitions.
+The specification and conversion model build successfully; correspondence and
+artifact integration are the next verification steps, not yet claimed here.
