@@ -2,7 +2,7 @@ import Lean
 
 namespace LeanExe.WGSL
 
-/-- The first lowering is a fixed, row-major `C = A * B` kernel. Dimensions
+/-- Configuration for the original fixed, row-major `C = A * B` template. Dimensions
 are specialized into the artifact; buffers contain IEEE binary32 words. -/
 structure GemmConfig where
   rows : Nat
@@ -104,11 +104,10 @@ def gemmCell (arithmetic : ScalarArithmetic) (config : GemmConfig)
 abbrev GemmImplementation := ScalarArithmetic → GemmConfig → WordBuffer →
   WordBuffer → Nat → Nat → UInt32
 
-/-- The deliberately narrow equivalent of a kernel annotation. A checked Lean
-declaration with this type selects GEMM lowering and carries a proof that its
-implementation is the supported source definition. This is not arbitrary Lean
-extraction. The witness constrains source selection; it does not prove anything
-about the emitted WGSL, which must be parsed and checked independently. -/
+/-- Selector for the original fixed GEMM template, with a proof of equality to
+`gemmCell`. Generation reads the configuration; it does not inspect or translate
+`implementation`. Artifact checks independently establish the emitted shader's
+meaning. The separate definition-body compiler is in `LeanExe.WGSL.Compile`. -/
 structure KernelCandidate where
   config : GemmConfig
   implementation : GemmImplementation

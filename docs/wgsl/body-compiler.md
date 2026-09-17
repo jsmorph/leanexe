@@ -49,24 +49,53 @@ computation comes from the definition body. Changing `arithmetic.add` to
 
 ## Verification status
 
-The compiler generates `entry.wgslBody` and checks
+The compiler independently parses the emitted shader text, generates
+`entry.wgslBody` from that parse, and checks
 `entry.wgslSourceCorrect : entry = entry.wgslBody.kernel` in Lean. This is a
-source-to-expression-tree equality for all arithmetic interpretations and all
-inputs, rather than a match against a fixed GEMM definition.
+source-to-parsed-computation equality for all arithmetic interpretations and
+all inputs. `entry.wgslShaderParsed` separately proves that the actual shader
+string parses to this computation. Both theorem dependency lists are audited.
 
-At this first implementation checkpoint, that equality does **not yet prove
-the emitted WGSL text** implements the expression tree. A separate independent
-shader parser and artifact check are being implemented. The old GEMM artifact
-checker does not accept this new grammar.
+The parser checks the complete structured grammar, including the edge guard,
+buffer declarations, operations, loop initialization/test/increment, scope and
+sole output store. Checking is synchronous: failures and forbidden proof
+axioms prevent file emission. The old GEMM artifact checker remains separate.
 
-Addition, multiplication, a 2×4 by 4×3 matrix multiplication and a mutation
-replacing the product with addition have been compiled and executed using
-native WebGPU on SwiftShader's Vulkan CPU device. All 24 output words matched
-execution of the original Lean definitions using pure `Wasm.IEEE32` arithmetic.
+Nine examples cover addition, multiplication, a 2×4 by 4×3 matrix
+multiplication, changing its product to addition, helper functions, changed
+indexing, nested folds, zero-iteration folds and a 1×768 by 768×3 product.
+All have passed both Lean
+proofs and executed using native WebGPU on SwiftShader's Vulkan CPU device.
+All 51 output words matched execution of the original Lean definitions using
+pure `Wasm.IEEE32` arithmetic.
 These are bounded tests, not universal runtime-conformance proofs. Python only
 allocates buffers, submits WGSL, reads results and compares words.
+
+Fourteen rejection cases cover unsupported definitions, invalid dimensions,
+buffer/index violations and altered shaders, including changed operations,
+loop count, initial accumulator, output indexing and a removed edge guard.
+Each rejection leaves no emitted package. The saved matrix proof also passed
+a fresh Lean check without invoking the compiler.
 
 The ordinary WGSL f32 implementation still requires an arithmetic-profile
 assumption for an exact IEEE32 correspondence on all inputs. A successful
 sample run does not prove that every driver preserves subnormals, NaN choices
 or separate multiply/add rounding.
+
+The remaining formal gaps are a general soundness proof for the executable
+index checker, generalized dispatch/memory proofs, and a refinement of the
+subset's model to a complete WGSL formal semantics. See the precise
+[source specification](lean-source-specification.md). The existing GPT-2
+bundle still uses the original GEMM templates; it has not been migrated.
+
+Run the bounded corpus on the configured Mac:
+
+```sh
+source tools/macos-env.sh
+node tools/wgsl/body-test.js
+```
+
+It retains source, generated proof fragments, failed diagnostics, shaders,
+Lean reference words and CPU execution reports under a fresh ignored build
+directory. Node runs the checks sequentially; Python provides WebGPU host
+bindings. Neither implements the tested numerical algorithm.
