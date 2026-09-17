@@ -25,7 +25,7 @@ theorem mean_magnitude (x : Real.Row) (bound : ℝ) (h : ∀ i, |x i| ≤ bound)
   linarith only [hs]
 
 theorem average_error (x : Fin 4 → UInt64) (bound : ℝ)
-    (hb : 1 ≤ bound) (hbmax : bound ≤ 256)
+    (hb : 1 ≤ bound) (hbmax : bound ≤ 4096)
     (hf : ∀ i, Finite (x i)) (hx : ∀ i, |value (x i)| ≤ bound) :
     Finite (average (x 0) (x 1) (x 2) (x 3)) ∧
     |value (average (x 0) (x 1) (x 2) (x 3))| ≤ 2 * bound ∧
@@ -71,26 +71,36 @@ theorem average_error (x : Fin 4 → UInt64) (bound : ℝ)
   have hh := mul_le_mul_of_nonneg_right he (by linarith : 0 ≤ bound)
   nlinarith only [hm, hh, hb]
 
-theorem centered_error (x : Fin 4 → UInt64)
-    (hf : ∀ i, Finite (x i)) (hx : ∀ i, |value (x i)| ≤ 4) (i : Fin 4) :
+theorem centered_error_bounded (x : Fin 4 → UInt64) (bound : ℝ)
+    (hb : 1 ≤ bound) (hbmax : bound ≤ 4096)
+    (hf : ∀ i, Finite (x i)) (hx : ∀ i, |value (x i)| ≤ bound) (i : Fin 4) :
     let c := Wasm.IEEE64.sub (x i) (average (x 0) (x 1) (x 2) (x 3))
-    Finite c ∧ |value c| ≤ 12 ∧
-      |value c - Real.centered (fun j => value (x j)) i| ≤ 32 * arithmeticEpsilon := by
-  have hm := average_error x 4 (by norm_num) (by norm_num) hf hx
-  have hs := F64ArithmeticBounds.sub_error _ _ (hf i) hm.1 12 (by norm_num) (by norm_num)
+    Finite c ∧ |value c| ≤ 3*bound ∧
+      |value c - Real.centered (fun j => value (x j)) i| ≤ 8*bound*arithmeticEpsilon := by
+  have hm := average_error x bound hb hbmax hf hx
+  have hs := F64ArithmeticBounds.sub_error _ _ (hf i) hm.1 (3*bound)
+    (by linarith) (by norm_num; linarith)
     ((abs_sub _ _).trans (by linarith [hx i, hm.2.1]))
-  have hc : |Real.centered (fun j => value (x j)) i| ≤ 8 := by
-    exact (abs_sub _ _).trans (by linarith [hx i, mean_magnitude _ 4 hx])
+  have hc : |Real.centered (fun j => value (x j)) i| ≤ 2*bound := by
+    exact (abs_sub _ _).trans (by linarith [hx i, mean_magnitude _ bound hx])
   have he : |value (Wasm.IEEE64.sub (x i) (average (x 0) (x 1) (x 2) (x 3))) -
-      Real.centered (fun j => value (x j)) i| ≤ 32 * arithmeticEpsilon := by
+      Real.centered (fun j => value (x j)) i| ≤ 8*bound*arithmeticEpsilon := by
     have h1 := abs_le.mp hs.2
     have h2 := abs_le.mp hm.2.2
     apply abs_le.mpr
     unfold Real.centered
     constructor <;> linarith
   refine ⟨hs.1, ?_, he⟩
-  exact (F64ArithmeticBounds.magnitude_of_error _ _ _ 8 he hc).trans
-    (by norm_num [arithmeticEpsilon])
+  apply (F64ArithmeticBounds.magnitude_of_error _ _ _ _ he hc).trans
+  have hu : 8*arithmeticEpsilon ≤ (1:ℝ) := by norm_num [arithmeticEpsilon]
+  nlinarith [mul_le_mul_of_nonneg_right hu (by linarith : 0 ≤ bound)]
+
+theorem centered_error (x : Fin 4 → UInt64)
+    (hf : ∀ i, Finite (x i)) (hx : ∀ i, |value (x i)| ≤ 4) (i : Fin 4) :
+    let c := Wasm.IEEE64.sub (x i) (average (x 0) (x 1) (x 2) (x 3))
+    Finite c ∧ |value c| ≤ 12 ∧
+      |value c - Real.centered (fun j => value (x j)) i| ≤ 32*arithmeticEpsilon := by
+  convert centered_error_bounded x 4 (by norm_num) (by norm_num) hf hx i using 1 <;> norm_num
 
 #print axioms average_error
 #print axioms centered_error

@@ -3,16 +3,32 @@ import Project.TinyGpt2.CenteredProjection
 namespace Project.TinyGpt2.Real
 open Project.ProofKit RealNormalization RealNormBounds
 
+theorem normalized_projection_deviation (p : NormParameters) (x w : Row) (a : ℝ)
+    (ha : 0 ≤ a)
+    (hw : sumSquares (centeredColumn (fun i => p.scale i*w i)) ≤ a^2) :
+    |(∑ i, norm p x i*w i)-(∑ i, p.bias i*w i)| ≤ 2*a := by
+  rw [normalized_projection, add_sub_cancel_right]
+  exact dot (LayerNorm.Real.normalized (1/100000) x)
+    (centeredColumn (fun i => p.scale i*w i)) 2 a (by norm_num) ha
+    (by convert LayerNorm.Real.normalized_sumSquares (1/100000) (by norm_num) x using 1 <;> norm_num) hw
+
+theorem normalized_affine_bound (p : NormParameters) (x w : Row) (bias a b : ℝ)
+    (ha : 0 ≤ a)
+    (hw : sumSquares (centeredColumn (fun i => p.scale i*w i)) ≤ a^2)
+    (hb : |(∑ i, p.bias i*w i)+bias| ≤ b) :
+    |(∑ i, norm p x i*w i)+bias| ≤ 2*a+b := by
+  have h := normalized_projection_deviation p x w a ha hw
+  have hid : (∑ i, norm p x i*w i)+bias =
+      ((∑ i, norm p x i*w i)-(∑ i, p.bias i*w i))+((∑ i, p.bias i*w i)+bias) := by ring
+  rw [hid]
+  exact (abs_add_le _ _).trans (add_le_add h hb)
+
 theorem normalized_projection_bound (p : NormParameters) (x w : Row) (a b : ℝ)
     (ha : 0 ≤ a)
     (hw : sumSquares (centeredColumn (fun i => p.scale i*w i)) ≤ a^2)
     (hb : |∑ i, p.bias i*w i| ≤ b) :
     |∑ i, norm p x i*w i| ≤ 2*a+b := by
-  rw [normalized_projection]
-  have hd := dot (LayerNorm.Real.normalized (1/100000) x)
-    (centeredColumn (fun i => p.scale i*w i)) 2 a (by norm_num) ha
-    (by convert LayerNorm.Real.normalized_sumSquares (1/100000) (by norm_num) x using 1 <;> norm_num) hw
-  exact (abs_add_le _ _).trans (add_le_add hd hb)
+  simpa only [add_zero] using normalized_affine_bound p x w 0 a b ha hw (by simpa using hb)
 
 noncomputable def headOutputColumn (v a : Matrix 4 4) (head : Fin 2) (j : Fin 4) : Row :=
   fun i => ∑ k, v i (coordinate head k)*a (coordinate head k) j

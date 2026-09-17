@@ -16,6 +16,20 @@ theorem addRows_words (x y : Row) (j : Fin 4) :
     rowWords (addRows x y) j = Wasm.IEEE64.add (rowWords x j) (rowWords y j) := by
   fin_cases j <;> rfl
 
+theorem expandRow_words (w : Array UInt64) (x : Row) (j : Fin 8) :
+    wideWords (expandRow w x) j =
+      Wasm.IEEE64.add (dotColumn4 w 1108 8 j.val x) w[1140+j.val]! := by
+  fin_cases j <;> rfl
+
+theorem activateWide_words (x : WideRow) (j : Fin 8) :
+    wideWords ⟨activate x.low, activate x.high⟩ j = Gelu.evaluateAll (wideWords x j) := by
+  fin_cases j <;> rfl
+
+theorem contractRow_words (w : Array UInt64) (x : WideRow) (j : Fin 4) :
+    rowWords (contractRow w x) j =
+      Wasm.IEEE64.add (dotColumn8 w 1148 4 j.val x) w[1180+j.val]! := by
+  fin_cases j <;> rfl
+
 theorem dotColumn4_model (w : Array UInt64) (offset width : Nat) (j : Fin width) (x : Row) :
     dotColumn4 w offset width j.val x =
       Affine.dot4 (rowWords x 0) (rowWords x 1) (rowWords x 2) (rowWords x 3)
