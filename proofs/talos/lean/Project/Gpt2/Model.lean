@@ -66,9 +66,9 @@ def gelu (x bias : Array UInt64) : Array UInt64 := Id.run do
   return out
 
 def rng (seed : UInt64) : UInt64 :=
-  let s := seed ^^^ (seed <<< 13)
-  let s := s ^^^ (s >>> 7)
-  s ^^^ (s <<< 17)
+  let s := seed ^^^ (seed >>> 12)
+  let s := s ^^^ (s <<< 25)
+  s ^^^ (s >>> 27)
 
 def minimumIndex (x : Array UInt64) : Nat := Id.run do
   let mut m := 0
@@ -96,7 +96,10 @@ def sample (logits params : Array UInt64) : Array UInt64 := Id.run do
   let weights := values.map fun v => ExpNeg.evaluate (div (sub v maximum) temperature)
   let total := SequenceSoftmax.total weights
   let seed := rng params[2]!
-  let uniform := sub ((0x3FF0000000000000 : UInt64) ||| (seed >>> 12)) 0x3FF0000000000000
+  -- xorshift64*: scramble the output so small initial seeds do not all select
+  -- the first top-k slot on their first draw. The unmultiplied state is kept.
+  let random := seed * 0x2545F4914F6CDD1D
+  let uniform := sub ((0x3FF0000000000000 : UInt64) ||| (random >>> 12)) 0x3FF0000000000000
   let target := mul uniform total
   let mut sum := 0
   let mut picked := indices[k-1]!

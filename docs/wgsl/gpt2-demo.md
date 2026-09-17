@@ -23,7 +23,7 @@ inference. Python's standard HTTP server serves static browser files only.
 
 Temperature defaults to 0.8, top-k to 40, and random seed to 42. Native
 `--temperature` accepts 0 (greedy), 0.7, 0.8, or 1. `--seed` accepts a positive
-32-bit integer. The reproducible xorshift sampler is implemented in Lean;
+32-bit integer. The reproducible xorshift64* sampler is implemented in Lean;
 its random sequence differs from PyTorch's sampler.
 
 The demo stops at 128 tokens including prompt and requested continuation.
@@ -43,6 +43,10 @@ Python environment uses `requirements-build.txt`; `GPT2_PYTHON` chooses the
 Python executable (default `python3.13`), and `GPT2_BUILD_PYTHON` can select an
 existing environment. Downloaded source files are pinned by revision and
 SHA-256. No downloaded executable model code is used.
+
+The build also creates `build/gpt2/gpt2-browser.zip`, a portable static bundle.
+Extract it and serve the extracted directory from localhost or HTTPS. The
+browser needs WebGPU, but no Lean, PyTorch, Node, or inference server.
 
 * `Project.Gpt2.Model.compute` compiles to Wasm. It performs embeddings,
   LayerNorm, attention scores and softmax, residual additions, tanh-GELU,
@@ -73,6 +77,29 @@ The initial native comparison on "The purpose of science is" matches the
 reference's top ten tokens. Across 50,257 logits, maximum absolute difference
 is 0.000091553 and mean absolute difference is 0.000033359. Both native and
 browser execution produce actual pretrained-model continuations.
+
+The tokenizer passes 50 independent reference cases including Unicode,
+contractions, punctuation, and mixed whitespace. A 24-step cached generation
+trace compares every logit at each step with a full-sequence reference using
+the same token prefixes. All greedy choices agree; maximum absolute difference
+over those 1,206,168 logits is 0.000183106. A near tie between " how" and " the"
+(0.000053406 apart) explains why a separate cached reference run can choose a
+different continuation. Whole-text equality is not a portable arithmetic test.
+
+A second, sampled 48-token continuation from "In a small village near the
+sea," matches between the native and browser runners. Comparison of all
+2,412,336 native logits with the independent reference gives maximum absolute
+error 0.000381470. All 48 sampler decisions also match an independent
+xorshift64*/top-k reference using the actual logit vectors.
+
+`tools/gpt2 test` checks attention at the final supported position 127 against
+an exact constructed result, rejects position 128, rejects four invalid CLI
+requests, and rejects a changed shader. Browser UI checks cover overlong-request
+rejection, Stop, and a fresh request after Stop.
+
+`--trace FILE` records each chosen token followed by its 50,257 binary64 logit
+words, little endian. The reference tool accepts `--trace FILE` to check each
+prefix without letting an early token difference invalidate later comparisons.
 
 The independent reference command uses PyTorch only for checking:
 

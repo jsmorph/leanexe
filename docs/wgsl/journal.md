@@ -1092,3 +1092,29 @@ final validation. New source is committed separately from all generated files.
 The parent branch concurrently added the same checkpoint and an independent
 CPU reference in fa676032. Its pinned checkpoint hashes agree with this demo.
 That reference is complementary to this branch's Wasm/WGSL runtime work.
+
+The tokenizer passes 50 reference cases after switching assembly to
+Array.append. The native runner now emits optional per-token binary traces.
+Across 24 cached generation steps, all greedy choices match the independent
+full-sequence reference on the same prefixes, and the maximum absolute error
+across 1,206,168 logits is 0.00018310546875. The apparent longer-text mismatch
+is a near tie: " how" and " the" differ by 0.00005340576171875, smaller than the
+observed numerical differences. This is why comparisons now preserve actual
+token prefixes rather than requiring complete generated strings to coincide.
+
+The browser generated 64 tokens in 45.9 seconds after loading, through 3,392
+actual WGSL dispatches. Its UI has prompt, token count, temperature, seed, and
+stop controls. The sampler is being updated to xorshift64* to scramble small
+initial seeds; plain xorshift selected the first top-k slot on the initial
+draw for small seeds. All execution evidence and the portable browser archive
+remain local, ignored artifacts.
+
+Final execution checks cover a second 48-token sampled continuation. Native
+and browser text agree. Every selected token matches an independent sampler
+reference, and the maximum absolute difference across its 2,412,336 logits is
+0.0003814697265625. The combined traces cover 72 generated steps. A constructed
+attention case at position 127 gives exactly 63.5 in every attended component;
+position 128 is rejected. Four invalid CLI requests and a changed shader are
+rejected. The browser rejects an overlong request, stops an active generation,
+and starts a new request with a fresh cache. The documentation check passes
+145 maintained files. The portable browser ZIP remains under ignored build/.
