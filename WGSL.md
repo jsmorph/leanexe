@@ -7,6 +7,11 @@ and [journal](docs/wgsl/journal.md) for checked milestones, commands, limitation
 and remaining proof obligations. The phases below remain the intended endpoint;
 the existence of an interface or a runtime test does not mark its proof complete.
 
+The current checkpoint includes a narrow Lean parser for the emitted GEMM
+subset, a kernel-checked parse of the captured rectangular shader, and general
+index/dispatch/u32 arithmetic lemmas. Operational execution and binary32
+numerical composition are the next formal milestones.
+
 ## Purpose
 
 Extend LeanEXE with a narrow WGSL compute backend so that a verified Lean program can produce a heterogeneous artifact bundle consisting of:
