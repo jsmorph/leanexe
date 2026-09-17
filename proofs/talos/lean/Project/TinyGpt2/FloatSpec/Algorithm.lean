@@ -97,16 +97,18 @@ def softmax (last : Fin 4) (scores : Vec 4) : Vec 4 :=
   let total := sum4 weights
   fun i => if i.val ≤ last.val then Wasm.IEEE64.div (weights i) total else 0
 
+def negativeMagnitude (x : UInt64) : UInt64 := (x &&& 0x7FFFFFFFFFFFFFFF) + 0x8000000000000000
+
 def gelu (x : UInt64) : UInt64 :=
   let magnitude := x &&& 0x7FFFFFFFFFFFFFFF
   if magnitude ≤ 0x4020000000000000 then
     let square := Wasm.IEEE64.mul magnitude magnitude
     let factor := Wasm.IEEE64.add (Wasm.IEEE64.mul square 0x3FA6E4E26D4801F7) 0x3FF0000000000000
     let argument := Wasm.IEEE64.mul (Wasm.IEEE64.mul factor magnitude) 0x3FF9884533D43651
-    let e := expNegative ((argument &&& 0x7FFFFFFFFFFFFFFF) ||| 0x8000000000000000)
+    let e := expNegative (negativeMagnitude argument)
     let divisor := Wasm.IEEE64.add 0x3FF0000000000000 e
     if x < 0x8000000000000000 then Wasm.IEEE64.div magnitude divisor
-    else Wasm.IEEE64.div (Wasm.IEEE64.mul (magnitude ||| 0x8000000000000000) e) divisor
+    else Wasm.IEEE64.div (Wasm.IEEE64.mul (negativeMagnitude magnitude) e) divisor
   else if x < 0x8000000000000000 then x else 0
 
 def embedding (p : Parameters) (tokens : Tokens) : Matrix 4 4 :=
