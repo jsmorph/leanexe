@@ -61,5 +61,6 @@ hidden function, and its single-logit function has a checked execution theorem.
 The [complete inference execution proof](../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean)
 now includes the vocabulary loop, allocation, and release.  It proves exact
 output, checkpoint preservation, and a fixed page count under its memory
-assumptions.  Remaining checkpoint ranges and the composed numerical logit
-bound remain open.
+assumptions.  Checkpoint range certificates establish finite hidden
+coordinates and logits for every four-byte input.  The composed numerical
+logit bound remains open.

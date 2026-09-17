@@ -89,8 +89,12 @@ page count under its memory reservation.  The
 composes function entry, initial allocation, the loop, and final release.
 It proves all 256 output words and checkpoint preservation for every four-byte
 input, assuming an empty initial free list, disjoint input storage, and the
-output memory reservation.  The composed checkpoint numerical certificate
-remains open.
+output memory reservation.  The
+[checkpoint output certificate](lean/Project/TinyGpt2/CheckpointLogits.lean)
+proves finite hidden coordinates and all 256 finite logits for every
+four-byte input.  Its intermediate range certificates cover every
+normalization, softmax, and GELU call.  The composed numerical error bound
+against the real model remains open.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

@@ -29,6 +29,22 @@ def NumericalResult (x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3 : UInt64) (r : Result) 
       (fun j => value (words g0 g1 g2 g3 j))
       (fun j => value (words b0 b1 b2 b3 j)) i| ≤ 1/1000000
 
+theorem compute_error_bounded (x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3 : UInt64)
+    (bound : ℝ) (hb1 : 1 ≤ bound) (hbmax : bound ≤ 16)
+    (hx : ∀ i, Finite (words x0 x1 x2 x3 i) ∧ |value (words x0 x1 x2 x3 i)| ≤ bound)
+    (hg : ValidRow (words g0 g1 g2 g3)) (hb : ValidRow (words b0 b1 b2 b3)) (i : Fin 4) :
+    let r := compute x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3
+    Finite (outputs r i) ∧
+      |value (outputs r i)-Real.layerNorm (1/100000)
+        (fun j => value (words x0 x1 x2 x3 j))
+        (fun j => value (words g0 g1 g2 g3 j))
+        (fun j => value (words b0 b1 b2 b3 j)) i| ≤
+          (160000000*bound^2+64000*bound+16000057)*arithmeticEpsilon := by
+  have hi := component_error_bounded (words x0 x1 x2 x3)
+    (words g0 g1 g2 g3 i) (words b0 b1 b2 b3 i) bound hb1 hbmax
+    (fun j => (hx j).1) (fun j => (hx j).2) (hg i).1 (hb i).1 (hg i).2 (hb i).2 i
+  fin_cases i <;> simpa [compute, outputs, words, centeredWords, Real.layerNorm] using hi
+
 theorem compute_numerical (x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3 : UInt64)
     (h : Valid x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3) :
     NumericalResult x0 x1 x2 x3 g0 g1 g2 g3 b0 b1 b2 b3
