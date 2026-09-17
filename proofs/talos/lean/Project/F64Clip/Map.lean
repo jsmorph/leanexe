@@ -48,13 +48,8 @@ def mapMeasure (w : Array UInt64) (_ : Store Unit) (frame : Locals) : Nat :=
   | _ => 0
 
 theorem map_address (root : UInt64) (index : Nat) :
-    UInt32.ofNat ((root+(UInt64.ofNat index*1+1)*8).toNat % 2^32) = wordAddress root (index+1) := by
-  have hOffset : (UInt64.ofNat index*1+1)*8 = UInt64.ofNat (8*(index+1)) := by
-    rw [UInt64.mul_one]
-    change (UInt64.ofNat index+UInt64.ofNat 1)*UInt64.ofNat 8 = _
-    rw [← UInt64.ofNat_add, ← UInt64.ofNat_mul, Nat.mul_comm (index+1) 8]
-  rw [hOffset]
-  exact (Memory.toUInt32_eq_ofNat _).symm
+    UInt32.ofNat ((root+(UInt64.ofNat index*1+1)*8).toNat % 2^32) = wordAddress root (index+1) :=
+  generatedElementAddress root index
 
 theorem map_step (env : HostEnv Unit) (initial : Store Unit) (count bound ptr root : UInt64)
     (w : Array UInt64) (tail : List Value) (hInput : UInt64Array.At initial ptr w)

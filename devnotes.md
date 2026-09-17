@@ -14671,3 +14671,32 @@ The identity test now checks all 62 registered caches, with 60 completed
 specifications.  Node annotation tests and the 136-file documentation
 check pass.  Sequence map execution, allocation, and complete inference
 composition remain open.
+
+### Sequence map proofs and allocation reuse
+
+The exponential-weight and normalization map loops now prove termination,
+exact output words, and writes confined to the output array.  Each proof
+tracks a completed output prefix and applies the shared traversal theorem.
+The exponential map uses the existing exact scalar call theorem.  The
+division map follows the generated binary64 instruction.  The loop proofs
+checked in 1.8 and 1.7 seconds before the memory-order generalization.
+
+The initial proofs required the input before the output.  That restriction
+would exclude a reused free block below the input, so both proofs now
+require disjoint ranges in either order.  They check in 1.8 and 2.4 seconds.
+The existing allocator theorem covers both free-list reuse and bump
+allocation.  Complete function proofs must retain both branches because
+GPT-2/128 frees and reuses intermediate arrays.
+
+The common generated element-address equality now lives in ArrayPrefix.
+The clipping proof uses it.  The clipping allocation and initialization
+lemmas also moved to UInt64ArrayAllocation and UInt64ArrayAllocationState,
+with aliases preserving existing theorem names.  These helpers retain
+their empty-free-list and existing-memory hypotheses.  F64Clip.Spec passes
+after the move.  The general heap and owned-word proofs from the Euler
+development provide allocation, preservation, and release facts for the
+sequence work without duplicating those proofs.
+
+The complete GPT-2/4 specification also passes after these shared-lemma
+changes.  Its entry, rejection, clipping, inference, and output modules
+rebuilt successfully.
