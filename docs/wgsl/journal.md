@@ -600,3 +600,24 @@ document checks and diff whitespace pass. The earlier failed cast/rounding
 drafts and diagnostics are preserved. Next is the four-term GPT projection:
 converted hidden coordinates, converted weights, binary32 GEMM, exact promotion,
 and binary64 bias, followed by its full hidden-state error composition.
+
+The four-term vocabulary head now has a checked specification. HeadNumerical
+uses the checkpoint's hidden bound 7 and coefficient/bias bound 4. Conversion
+error is bounded before multiplication; the wider dot domain uses accumulator
+budget 161 and product budget 40. The resulting dot error is at most 1/12000;
+exact binary32 promotion and binary64 bias addition give 1/10000 per logit.
+GptHead connects an independently parsed 1x256x4 shader dispatch to this relation
+and proves bit equality with the declared separate-operation mixed specification.
+GptHeadCheckpoint discharges the input bounds for all four-byte inputs and all
+256 vocabulary coordinates. Its full-real-model staging theorem explicitly
+requires hidden error E and gives 1/10000+16*E; that premise is not yet discharged.
+
+HeadNumerical checks in 3.7s, GptHead dispatch in 3.8s, and the checkpoint
+instantiation in 3.9s, all with only propext, Classical.choice and Quot.sound.
+The initial dispatch draft had a nested-structure indentation error and a
+free-variable decide call; the corrected proof uses direct size reflexivity.
+The failed draft and logs are retained. Cold checkpoint prerequisites reached
+a 120s aggregate timeout; splitting at SoftmaxWide.Row, CheckpointScore and
+CheckpointAttentionValue completed the needed boundaries without raising proof
+limits. CheckpointFinalNorm and the residual prerequisites then passed.
+The parent origin/main remains at 8309cc9b, already merged.

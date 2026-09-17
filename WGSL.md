@@ -29,7 +29,11 @@ and checking the results in Wasm memory. This completes the immediate GEMM and
 host-composition plan. GPT integration is in progress: finite precision-conversion
 models and wider binary32 accumulation bounds are checked, including gradual
 underflow and separate or fused evaluation. The independent package gate now
-checks both numerical domains through final Wasm memory. The complete GPT
+checks both numerical domains through final Wasm memory. The selected 1×256×4
+GPT vocabulary projection has checked dispatch correspondence and restricted
+exactness. Its conversion, accumulation, promotion and binary64 bias error is
+at most 0.0001 against the real head applied to the computed hidden row, for
+every four-byte checkpoint input. The complete GPT
 execution/error composition and subsequent performance work remain open.
 
 ## Purpose

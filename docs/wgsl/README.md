@@ -61,6 +61,15 @@ If using a repository-local toolchain, pass `--toolchain` to the runner or set
 
 ## Remaining gates
 
+`GptHead` selects the 1×256×4 vocabulary projection and connects independently
+parsed shader dispatch to its mixed-precision specification. `HeadNumerical`
+accounts for binary64-to-binary32 input conversions, separate or fused
+accumulation, exact promotion, and binary64 bias addition. `GptHeadCheckpoint`
+instantiates the 0.0001 head error for every four-byte input and every vocabulary
+coordinate. Its reference uses the computed binary64 hidden row. The theorem
+against real GPT still exposes the hidden-state error as a premise; completing
+that composition and connecting all actual Wasm artifacts remain required.
+
 The [native harness](../../tools/wgsl/README.md) now executes captured artifacts
 and retains exact source/profile/configuration evidence. The first rectangular
 kernel passed on Mesa llvmpipe; failure probes are preserved under
