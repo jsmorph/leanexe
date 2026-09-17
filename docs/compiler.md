@@ -26,6 +26,12 @@ The compiler runs extraction twice.  The first pass computes function summaries,
 
 An internal array result has separate owner and data-pointer slots.  When a helper call supplies an operand to an array primitive, expression extraction binds both returned slots before selecting the data pointer.  Nullary and applied calls use this same lowering.
 
+Deferred inline arguments retain the caller's local bindings and inline stack.
+Forcing an argument restores that stack, so another occurrence of the callee
+inside the argument does not count as recursive expansion of its body.
+Strict structured arguments preserve grouped local bindings once before
+flattening their result fields.
+
 ## IR and ownership
 
 `LeanExe.IR.Core` defines the first-order intermediate representation.  Its values cover supported scalars, arrays, byte arrays, flattened records and variants, and internal recursive pointers.  Its statements cover locals, arithmetic, conditions, calls, traps, allocation, loads, stores, releases, loops, folds, and multi-slot accumulator updates.

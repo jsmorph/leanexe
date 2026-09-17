@@ -98,7 +98,18 @@ The epsilon-floor formula evaluates to about 320.304 at B = 1, 1.733e7 at
 B = 2.5, and 2.934e14 at B = 10.  These estimates are too coarse to certify
 precision.  Repeated worst-case normalization sensitivity dominates the
 composition.  The formulas accept larger certified denominator lower bounds.
-A useful precision certificate and combined checker execution remain open.
+A useful precision certificate remains open.
+
+The combined entry compiles and passes 768 WASM logit comparisons and eight
+rejection tests.  Its source rejection and numerical theorems pass.  Checked
+function-region equality reuses the scalar checker, hidden-state, and logit
+execution proofs.  The internal preparation call now has a complete proof
+for its owner and data-pointer results.  The internal inference call now
+proves termination, all 256 logits, and input preservation under the same
+277,560-byte output reservation.  The enclosing entry proves exact output,
+termination, and memory preservation for every accepted or rejected input.
+Its numerical corollary compares accepted logits with the real model using
+clipped weights, with B and normalization floors as parameters.
 
 ## Approved arithmetic
 
@@ -163,6 +174,6 @@ integration into the inference artifact.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
 - [x] Prove the composed error bound with explicit normalization sensitivity.
 - [ ] Obtain a useful precision certificate from sharper numerical information.
-- [ ] Prove the checked inference entry, including rejection and memory use.
-- [ ] Expose checkpoint and bound arguments in the CLI and complete its tests.
+- [x] Prove the checked inference entry, including rejection and memory use.
+- [x] Expose checkpoint and bound arguments in the CLI and complete its tests.
 - [ ] Reuse the checker and numerical results for the 64-byte model.

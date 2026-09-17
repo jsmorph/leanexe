@@ -16,7 +16,7 @@ def load_checkpoint(path):
     record = json.loads(path.read_text())
     if record["format"] != "leanexe-tiny-gpt2-checkpoint-v1":
         raise ValueError("Unsupported checkpoint format")
-    model = TinyGpt2()
+    model = TinyGpt2(record["architecture"]["context"])
     if set(record["weights"]) != set(model.weights):
         raise ValueError("Checkpoint tensor names differ from the model")
     with torch.no_grad():

@@ -1031,8 +1031,9 @@ function testLengthDispatchAnnotationRecipes() {
     validateAnnotationDocument(document, wasm);
     const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
     validateProofRecipePlan(plan, document);
-    const bareConstants = program.replace(/\.constI64 \(([0-9]+) : UInt64\)/g,
-      ".constI64 $1");
+    const bareConstants = program
+      .replace(/\.constI64 \(([0-9]+) : UInt64\)/g, ".constI64 $1")
+      .replace(/\.(load64|store64) \(([0-9]+) : UInt32\)/g, ".$1 $2");
     assert(JSON.stringify(proofRecipePlan(document, bareConstants,
       ["strategy.arrays", "strategy.frames"])) === JSON.stringify(plan),
     `${encoding} matching depends on the integer printer spelling`);
@@ -1058,6 +1059,16 @@ function testLengthDispatchAnnotationRecipes() {
       namespace: "Example.Generated",
       programModule: "Example.Generated.Program",
     }, program).source;
+    if (!bounded) {
+      const typed = program.replace(/(\.constI64 \(0 : UInt64\)\n  \]),/g, "$1 [] [.i64],");
+      const typedSource = annotationMatchesSource(document, {
+        namespace: "Example.Generated", programModule: "Example.Generated.Program",
+      }, typed).source;
+      assert(typedSource.includes("_valid_branch_program [.i64]"),
+        `${encoding} omitted Boolean-normalization control types`);
+      expectFailure(() => proofRecipePlan(document, typed.replace("[] [.i64]", "[] [.i32]")),
+        /control types do not match/);
+    }
     assert(source.includes("import Project.ProofKit.FixedArrayLengthDispatch") &&
       source.includes("def function_0_length_dispatch_0_valid_branch_program") &&
       source.includes("def function_0_length_dispatch_0_invalid_branch_program") &&
@@ -1076,6 +1087,9 @@ function testLengthDispatchAnnotationRecipes() {
     const wrongSize = structuredClone(document);
     wrongSize.functions[0].regions[0].parameters.expectedSize = 15;
     expectFailure(() => proofRecipePlan(wrongSize, program), /do not match/);
+
+    const wrongOffset = bareConstants.replace(".load64 0,", ".load64 8,");
+    expectFailure(() => proofRecipePlan(document, wrongOffset), /do not match/);
 
     if (bounded) {
       const wrongComparison = program.replace(".leUI64,", ".ltUI64,");

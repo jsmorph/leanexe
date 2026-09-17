@@ -60,6 +60,7 @@ inductive StructuralBelow where
 inductive ValueLet where
   | expr (slot : Nat) (value : IRExpr)
   | call (slots : List Nat) (index : Nat) (args : List IRExpr)
+  | locals (lets : List LeanExe.IR.LocalLet)
   deriving BEq, Repr
 
 structure StrictSlots where
@@ -77,7 +78,7 @@ structure StrictArgs where
 inductive Binding where
   | slot (index : Nat)
   | value (value : ExtractedValue)
-  | thunk (locals : List Binding) (expr : Expr)
+  | thunk (locals : List Binding) (inlineStack : List Name) (expr : Expr)
   | structuralRec (functionName : Name) (arg : ExtractedValue)
   | structuralBelow (below : StructuralBelow)
   | wfRecursor (functionName : Name)

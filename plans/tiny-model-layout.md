@@ -37,7 +37,7 @@ proved tail bounds.  Each head divides its two-coordinate dot product by
 binary64 word 3ff6a09e667f3bcd, the rounded square root of two.  Its local
 score theorem includes constant and division errors.
 
-The hidden-state body compiles to a 15,423-byte WASM module.  The deterministic
+The initial hidden-state body compiled to a 15,423-byte WASM module.  The deterministic
 initialization test covers four contexts at all four output positions.
 Wasmtime and the native Talos evaluator agree on every hidden-state word
 and four selected vocabulary logits per position.  The test also checks
@@ -63,4 +63,7 @@ now includes the vocabulary loop, allocation, and release.  It proves exact
 output, checkpoint preservation, and a fixed page count under its memory
 assumptions.  Checkpoint range certificates establish finite hidden
 coordinates and logits for every four-byte input.  The composed numerical
-logit bound remains open.
+logit bound is proved, parameterized by the weight cap and normalization
+lower bounds.  Its unconditional estimate is too coarse to certify precision.
+The checked CLI accepts runtime weights and rejects or clips them through
+the proved entry.

@@ -764,6 +764,52 @@
         "Project.F64Clip.Spec.prepare_real"
       ],
       "complete": true
+    },
+    {
+      "name": "tiny_gpt2_checked",
+      "annotations": true,
+      "module": "Project.TinyGpt2.Checked",
+      "entry": "Project.TinyGpt2.inferChecked",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Checked",
+      "specTarget": "Project.TinyGpt2Checked.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Checked.Spec.hidden_exact",
+        "Project.TinyGpt2Checked.Spec.logit_exact",
+        "Project.TinyGpt2Checked.Spec.accepted_exact",
+        "Project.TinyGpt2Checked.Spec.prepare_exact",
+        "Project.TinyGpt2Checked.Spec.prepare_state",
+        "Project.TinyGpt2Checked.Spec.infer_exact",
+        "Project.TinyGpt2Checked.Spec.inferChecked_exact",
+        "Project.TinyGpt2Checked.Spec.inferChecked_real_error"
+      ],
+      "complete": true
+    },
+    {
+      "name": "sequence_softmax",
+      "annotations": true,
+      "module": "Project.SequenceSoftmax.Model",
+      "entry": "Project.SequenceSoftmax.compute",
+      "sourceWorkspace": "proof",
+      "leanModule": "SequenceSoftmax",
+      "specTarget": "Project.SequenceSoftmax.Spec",
+      "behaviorTheorems": [
+        "Project.SequenceSoftmax.Spec.compute_exact"
+      ],
+      "complete": false
+    },
+    {
+      "name": "tiny_gpt2_seq",
+      "annotations": true,
+      "module": "Project.TinyGpt2Seq.Inference",
+      "entry": "Project.TinyGpt2Seq.inferChecked",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Seq",
+      "specTarget": "Project.TinyGpt2Seq.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Seq.Spec.inferChecked_exact"
+      ],
+      "complete": false
     }
   ]
 }
