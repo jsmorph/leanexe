@@ -27,10 +27,13 @@ def prepareFrame (count bound ptr ok : UInt64) : Locals :=
     locals := [.i64 count, .i64 bound, .i64 0, .i64 ptr, .i64 ok] ++ List.replicate 19 (.i64 0)
     values := [] }
 
-def prepareResult (initial : Store Unit) (ptr root : UInt64)
+def prepareResult (initial : Store Unit) (ptr base allocations : UInt64)
     (input output : Array UInt64) : AssertionF Unit := fun final frame =>
-  frame.get 14 = some (.i64 root) ∧ frame.values = [] ∧
-  UInt64Array.At final root output ∧ UInt64Array.At final ptr input ∧ final.mem.pages = initial.mem.pages
+  frame.get 14 = some (.i64 (base+48)) ∧ frame.values = [] ∧
+  UInt64Array.At final (base+48) output ∧ UInt64Array.At final ptr input ∧
+  final.mem.pages = initial.mem.pages ∧
+  Memory.WritesRange (clipInitialize initial base output.size allocations) final
+    (base+48).toNat ((base+48).toNat+8*(output.size+1))
 
 def acceptAllocationFrame (count bound ptr : UInt64) (size : Nat)
     (need previous current capacity next result : UInt64) : Locals :=

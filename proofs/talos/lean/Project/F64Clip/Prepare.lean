@@ -19,7 +19,10 @@ theorem prepare_exact (env : HostEnv Unit) (initial : Store Unit)
     TerminatesWith env Project.F64Clip.module 6 initial [.i64 ptr, .i64 bound, .i64 count]
       (fun final values => values = [.i64 (base+48)] ∧
         UInt64Array.At final (base+48) (prepare count.toNat bound w) ∧
-        UInt64Array.At final ptr w ∧ final.mem.pages = initial.mem.pages) := by
+        UInt64Array.At final ptr w ∧ final.mem.pages = initial.mem.pages ∧
+        Memory.WritesRange
+          (clipInitialize initial base (prepare count.toNat bound w).size allocations) final
+          (base+48).toNat ((base+48).toNat+8*((prepare count.toNat bound w).size+1))) := by
   refine TerminatesWith.of_wp_entry_for (f := func6Def) rfl ?_ (by decide)
   change wp Project.F64Clip.module func6 _ initial
     (func6Def.toLocals [.i64 count, .i64 bound, .i64 ptr]) env
@@ -39,16 +42,18 @@ theorem prepare_exact (env : HostEnv Unit) (initial : Store Unit)
     simp [show (1 : UInt32) ≠ 0 by decide]
   · refine reject_program_spec env initial count bound ptr base w allocations retains releases frees
       hGlobals hInput hBefore (by omega) (by omega) hPages hCap _ [] ?_
-    rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages⟩
+    rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages, hWrites⟩
     simp [wp_simp, prepare, ha, hOutput, hPreserved, hFinalPages]
-    change (match frame.get 14 with | some v => v = .i64 (base+48) | none => False)
+    change (match frame.get 14 with | some v => v = .i64 (base+48) ∧ _ | none => False)
     rw [hRoot]
+    exact ⟨rfl, by simpa using hWrites⟩
   · refine accept_program_spec env initial count bound ptr base w allocations retains releases frees
       hGlobals hInput hBefore hFit hMemory hPages hCap _ [] ?_
-    rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages⟩
+    rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages, hWrites⟩
     simp [wp_simp, prepare, ha, hOutput, hPreserved, hFinalPages]
-    change (match frame.get 14 with | some v => v = .i64 (base+48) | none => False)
+    change (match frame.get 14 with | some v => v = .i64 (base+48) ∧ _ | none => False)
     rw [hRoot]
+    exact ⟨rfl, by simpa using hWrites⟩
 
 #print axioms prepare_exact
 end Project.F64Clip.Spec

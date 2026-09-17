@@ -60,6 +60,9 @@ proves generated-WAT termination and exact output for arbitrary runtime
 arrays.  It preserves the input and page count when 48+8(n+1) reserved
 bytes fit after the input and the allocator free list is empty.  Accepted
 output has finite values equal to the real clamp and bounded by B.
+The [allocation-state theorem](../proofs/talos/lean/Project/F64Clip/Prepared.lean)
+also exposes the final allocator counters, output ownership header,
+preserved memory below the allocation, and unchanged store fields.
 
 The [wider LayerNorm proof](../proofs/talos/lean/Project/LayerNorm/Wide.lean)
 uses input magnitude X and scale and bias magnitude B.  For X at least one,
