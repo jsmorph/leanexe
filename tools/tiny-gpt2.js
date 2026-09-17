@@ -29,42 +29,71 @@ function decimal(word) {
   return value;
 }
 
-function runInference(tokens) {
+function runInference(tokens, { checkpointPath, bound = 10 } = {}) {
   if (!Array.isArray(tokens) || tokens.length !== 4 ||
       tokens.some(token => !Number.isInteger(token) || token < 0 || token > 255)) {
     throw new Error("Input must contain exactly four byte tokens in [0, 255]");
   }
+  if (typeof bound !== "number" || !Number.isFinite(bound)) {
+    throw new Error("Bound must be a finite decimal number");
+  }
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, "manifest.json"), "utf8"));
-  checkedFile("inference.wasm", manifest.wasm_sha256);
-  const checkpoint = JSON.parse(checkedFile("checkpoint.json", manifest.checkpoint_sha256));
+  const artifact = manifest.checked;
+  checkedFile(artifact.file, artifact.sha256);
+  const checkpointBytes = checkpointPath ? fs.readFileSync(checkpointPath) :
+    checkedFile("checkpoint.json", manifest.checkpoint_sha256);
+  const checkpoint = JSON.parse(checkpointBytes);
   const words = names.flatMap(name => checkpoint.weights[name].bits.map(word => {
     if (!/^[0-9A-Fa-f]{16}$/.test(word)) throw new Error(`Invalid weight word in ${name}`);
     return BigInt(`0x${word}`).toString();
   }));
   if (words.length !== 2488) throw new Error("Checkpoint must contain 2,488 weights");
-  const output = runChecked([ensureHost(), "call", path.join(directory, "inference.wasm"),
-    "infer", "array-u64", `array-u64:${words.join(",")}`, ...tokens.map(i64Argument)],
+  const boundBytes = Buffer.alloc(8);
+  boundBytes.writeDoubleLE(bound);
+  const boundWord = boundBytes.readBigUInt64LE();
+  const output = runChecked([ensureHost(), "call", path.join(directory, artifact.file),
+    artifact.export, "array-u64", `array-u64:${words.join(",")}`, i64Argument(boundWord),
+    ...tokens.map(i64Argument)],
     { cwd: root, encoding: "utf8" }).stdout.trim();
-  if (!/^\[[0-9]+(?:, [0-9]+)*\]$/.test(output)) throw new Error("Invalid Wasmtime result array");
-  const logits = output.slice(1, -1).split(", ").map(BigInt);
-  if (logits.length !== 256 || logits.some(word => word > maxUInt64)) {
-    throw new Error("Inference must return 256 binary64 words");
+  if (!/^\[(?:[0-9]+(?:, [0-9]+)*)?\]$/.test(output)) throw new Error("Invalid Wasmtime result array");
+  const logits = output === "[]" ? [] : output.slice(1, -1).split(", ").map(BigInt);
+  if (![0, 256].includes(logits.length) || logits.some(word => word > maxUInt64)) {
+    throw new Error("Inference must return 256 binary64 words or an empty rejection result");
   }
-  return { tokens, logits_bits: logits.map(word => word.toString(16).padStart(16, "0")),
-    logits: logits.map(decimal), verification: manifest.verification,
-    wasm_sha256: manifest.wasm_sha256, checkpoint_sha256: manifest.checkpoint_sha256 };
+  return { tokens, accepted: logits.length === 256, bound,
+    bound_bits: boundWord.toString(16).padStart(16, "0"),
+    logits_bits: logits.map(word => word.toString(16).padStart(16, "0")),
+    logits: logits.map(decimal), verification: artifact.verification,
+    wasm_sha256: artifact.sha256,
+    checkpoint_sha256: crypto.createHash("sha256").update(checkpointBytes).digest("hex") };
 }
 
 function main(args) {
   let tokens;
-  if (args.length === 2 && args[0] === "--text") {
-    tokens = [...Buffer.from(args[1], "utf8")];
-  } else if (args.length === 5 && args[0] === "--tokens" && args.slice(1).every(x => /^\d+$/.test(x))) {
-    tokens = args.slice(1).map(Number);
-  } else {
-    throw new Error("usage: tools/tiny-gpt2.js --text TEXT (four UTF-8 bytes) | --tokens T0 T1 T2 T3");
+  const options = {};
+  const usage = "usage: tools/tiny-gpt2.js [--checkpoint FILE] [--bound B] " +
+    "--text TEXT (four UTF-8 bytes) | --tokens T0 T1 T2 T3";
+  if (args.length === 1 && args[0] === "--help") {
+    process.stdout.write(`${usage}\n`);
+    return;
   }
-  process.stdout.write(`${JSON.stringify(runInference(tokens))}\n`);
+  for (let i = 0; i < args.length; i++) {
+    const option = args[i];
+    if (option === "--text" && !tokens && i + 1 < args.length) {
+      tokens = [...Buffer.from(args[++i], "utf8")];
+    } else if (option === "--tokens" && !tokens && i + 4 < args.length &&
+        args.slice(i + 1, i + 5).every(x => /^\d+$/.test(x))) {
+      tokens = args.slice(i + 1, i + 5).map(Number);
+      i += 4;
+    } else if (option === "--checkpoint" && options.checkpointPath === undefined && i + 1 < args.length) {
+      options.checkpointPath = args[++i];
+    } else if (option === "--bound" && options.bound === undefined && i + 1 < args.length &&
+        /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(args[i + 1])) {
+      options.bound = Number(args[++i]);
+    } else throw new Error(usage);
+  }
+  if (!tokens) throw new Error(usage);
+  process.stdout.write(`${JSON.stringify(runInference(tokens, options))}\n`);
 }
 
 if (require.main === module) {

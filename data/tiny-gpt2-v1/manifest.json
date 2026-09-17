@@ -5,5 +5,11 @@
   "export": "infer",
   "context": 4,
   "vocabulary": 256,
-  "verification": "Generated-WAT exact execution and parameterized numerical error proved; unconditional error estimate is too coarse to certify precision"
+  "verification": "Generated-WAT exact execution and parameterized numerical error proved; unconditional error estimate is too coarse to certify precision",
+  "checked": {
+    "file": "checked-inference.wasm",
+    "sha256": "c095adafd6b3f01fd1ae279cbffc21682c1e3bd4f38aaa4b43ced09a2aa071d4",
+    "export": "inferChecked",
+    "verification": "Generated-WAT exact checked inference and parameterized numerical error proved; unconditional error estimate is too coarse to certify precision"
+  }
 }
