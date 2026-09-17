@@ -73,17 +73,17 @@ The proof accounts for centering error separately from the rounding of
 squares, averaging, the denominator, division, and the final affine map.
 It changes no numerical operation.
 
-## Proposed arithmetic
+## Approved arithmetic
 
-The numerical prototype proposes a degree-eighteen Taylor polynomial for
+The user approved a degree-eighteen Taylor polynomial for
 exp on [-1, 0].  Halve a negative argument until it lies in that interval,
 then square the result once per halving.  Arguments below -64 return zero,
 with real absolute error at most exp(-64).  The remaining arguments need
 at most six halvings and squarings.
 
-GELU would evaluate its logistic formula through magnitude eight.  Larger
+GELU will evaluate its logistic formula through magnitude eight.  Larger
 positive inputs return the input, and larger negative inputs return zero.
-The negative branch within the interval would use -a*e/(1+e), avoiding
+The negative branch within the interval will use -a*e/(1+e), avoiding
 subtraction of the two nearly equal positive quantities a/(1+e) and a.
 The real reference remains the audited tanh GELU formula.  Every tail,
 coefficient, and rounded operation requires a proved error bound.
@@ -91,8 +91,8 @@ coefficient, and rounded operation requires a proved error bound.
 The prototype's largest measured errors are 8.27e-17 across 276 exponential
 inputs and 1.11e-15 across 519 GELU inputs.  The cancellation-case logit
 error falls from about 383.216 to 9.33e-11 in the Python binary64 prototype.
-The production arithmetic has not changed.  The proposed numerical methods
-await user confirmation.
+The new implementation and proofs are in progress.  The command-line
+inference artifact still uses the previous arithmetic.
 
 ## Implementation sequence
 
@@ -101,7 +101,8 @@ await user confirmation.
 - [x] Prove real-model ranges and connect them to accepted clipped arrays.
 - [x] Prove generated-WAT scalar clipping and complete array validation.
 - [x] Prove the checker's generated-WAT execution and memory use.
-- [ ] Confirm and implement the revised numerical methods.
+- [x] Confirm the revised numerical methods.
+- [ ] Implement and verify the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
 - [x] Prove LayerNorm's wider domain and runtime-weight error bound.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
