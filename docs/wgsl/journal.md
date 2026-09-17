@@ -668,3 +668,26 @@ instruction lookup boundary is being prepared; failed drafts and logs remain.
 This checkpoint publishes only the checked modules. Unfinished generated proof
 modules remain untracked locally and are listed explicitly for the publication
 helper, rather than being included in a verified milestone prematurely.
+
+The large hidden-body failure was reproduced with a single unreachable
+instruction. Direct parsing of that instruction and its two-byte sequence
+passes; the failed cached theorem instead returned another deep lookup into
+the 1,937-instruction list. Literal branch results now check in 8s. The next
+boundary uses opaque eight-instruction suffix chunks, with a separate checked
+equality back to the complete cached AST. No recursion or heartbeat limits
+were increased. Failed linear, balanced, routed and first chunk drafts remain
+under the hidden-binary draft directory.
+
+Two reusable lemmas are checked: instructionAt_apply exposes a single parser
+instruction without unfolding its mutual-recursion fuel, with no axioms; and
+validateInstrs_eq_append composes validation of consecutive instruction lists,
+using only propext. The balanced instruction lookup itself is also checked
+with the existing instrListEqualFuel_sound theorem, using propext and Quot.sound.
+These supporting proofs and the now-checked first branch part are published
+separately from the unfinished whole-artifact proof.
+
+A fresh parent fetch found 26646de8, bc97edf8 and bf6fcc42. They add finite
+runtime-weight GPT results, a composed real-model error theorem, and exposed
+allocation state for the verified weight checker. The hidden-error theorem
+is directly relevant to the remaining mixed-precision composition; it will be
+merged and checked before being used.
