@@ -9,8 +9,10 @@ the existence of an interface or a runtime test does not mark its proof complete
 
 The current checkpoint includes a narrow Lean parser for the emitted GEMM
 subset, a kernel-checked parse of the captured rectangular shader, and general
-index/dispatch/u32 arithmetic lemmas. Operational execution and binary32
-numerical composition are the next formal milestones.
+index/dispatch/u32 arithmetic lemmas. The invocation machine now has checked
+termination, safety and dot-product correspondence, packaged with the exact
+captured source. Full dispatch and concrete binary32 numerical composition
+are the next formal milestones.
 
 ## Purpose
 
