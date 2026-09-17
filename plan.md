@@ -775,7 +775,11 @@ and numerical-error proofs.  Frozen exact-byte packages are later release work.
 - [x] Prove hidden-state execution and store preservation.
 - [x] Reuse the hidden-state proof in the full module and prove single-logit execution.
 - [x] Prove the full vocabulary-output loop.
-- [ ] Complete inference entry and exit, checkpoint ranges, and the composed logit bound.
+- [x] Complete inference entry, initial allocation, and final release.
+- [x] Complete checkpoint ranges and prove finite logits for every byte input.
+- [ ] Prove runtime weight validation and clipping for a bound parameter in [0, 10].
+- [ ] Extend the numerical components for arbitrary accepted weights.
+- [ ] Complete the composed logit error bound.
 - [ ] Extend the proved model to a 64-byte context with a trained checkpoint.
 - [ ] Add seed-controlled top-k sampling using the Lean PRNG, without PRNG proof work.
 - [ ] Complete the final exact-byte package and weight identity evidence.

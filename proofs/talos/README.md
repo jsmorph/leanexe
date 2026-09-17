@@ -39,6 +39,15 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves
+the complete generated-WAT checker.  It checks length, bound, and every
+weight's finiteness, then returns the clipped array or an empty array.
+Accepted output agrees exactly with the decoded real clamp and has finite
+values bounded by B.  The theorem preserves the input array and the page
+count under an empty-free-list allocator state and a reservation of
+48+8(n+1) bytes for an n-word input.  The rejection path needs 56 bytes.
+Source-level array proofs also establish idempotence.
+
 The [GELU component](lean/Project/Gelu/Spec.lean) proves total generated-WAT
 execution and finite output within 1/80000 of the pinned tanh GELU formula
 on [-3, 3].  Its real perturbation bound is four times the input error.
@@ -46,6 +55,15 @@ Checked function-region renaming transfers the existing exponential
 execution theorem into this module.  The
 [command-line demonstration](../../data/numerical/README.md) accepts a
 decimal value or raw binary64 word.
+
+The [wider GELU component](lean/Project/GeluWide/Spec.lean) accepts every
+finite binary64 input, with absolute error at most 200000 times 2^-52,
+below 4.45e-11.  It uses the new negative exponential through magnitude
+eight and a tail approximation with error at most 1e-18 beyond it.
+Its negative core evaluates -a*e/(1+e) to avoid cancellation.  The complete
+generated-WAT proof covers exact output, nonfinite rejection, termination,
+and store preservation.  Its input-perturbation multiplier remains four.
+The GPT-2 CLI still uses the earlier GELU while integration is in progress.
 
 The [LayerNorm component](lean/Project/LayerNorm/Spec.lean) proves total
 generated-WAT execution and absolute component error at most 1/1000000 for
@@ -64,6 +82,17 @@ proves positive finite active probabilities, exact masked zeros, component
 error at most 1/50000 against real exponential softmax, and normalization error
 at most 32 times 2^-52.  Its [command-line interface](../../data/numerical/README.md)
 accepts decimal scores or exact binary64 words.
+
+The [wider softmax computation](lean/Project/SoftmaxWide/Spec.lean) uses the
+new exponential for one to four active scores.  Its numerical hypothesis
+requires finite words and active score differences below 2^1023.  The sum
+of absolute probability errors is at most 10053 times 2^-52, below 2.24e-12.
+Normalization error is at most 52 times 2^-52.  The weighted-value theorem
+multiplies the probability error by the value-magnitude bound.  Its
+shared normalization theorem separates weight, sum, and division errors
+for any finite index type.  Exact generated-WAT execution preserves the
+complete store for every raw input.  The internal entry returns all four
+probabilities and status zero.  The GPT-2 CLI integration remains open.
 
 The softmax input-error theorem adds twice the maximum score error to the
 1/50000 local bound.  Its internal computation also has a generated-WAT
@@ -84,8 +113,28 @@ complete inference module.  Its
 execution and store preservation for every vocabulary token.  The
 [vocabulary-output loop](lean/Project/TinyGpt2Infer/OutputLoop.lean) proves
 termination, all 256 raw-bit logits, checkpoint preservation, and a fixed
-page count under its memory reservation.  Inference entry and exit and the
-composed checkpoint numerical certificate remain open.
+page count under its memory reservation.  The
+[complete inference theorem](lean/Project/TinyGpt2Infer/Inference.lean)
+composes function entry, initial allocation, the loop, and final release.
+It proves all 256 output words and checkpoint preservation for every four-byte
+input, assuming an empty initial free list, disjoint input storage, and the
+output memory reservation.  The
+[checkpoint output certificate](lean/Project/TinyGpt2/CheckpointLogits.lean)
+proves finite hidden coordinates and all 256 finite logits for every
+four-byte input.  Its intermediate range certificates cover every
+normalization, softmax, and GELU call.  The composed numerical error bound
+against the real model remains open.
+
+The [negative exponential](lean/Project/ExpNeg/Spec.lean) accepts every finite
+nonpositive binary64 input.  Its generated-WAT theorem proves termination,
+exact status and output, and store preservation for every raw input.
+Its degree-eighteen polynomial, exact halvings, and at most six squarings
+give relative error at most 4029 times 2^-52 on [-64, 0].  Below -64 it
+returns zero with absolute error at most 1e-27.  The exported numerical
+theorem combines these bounds.  The raw-word tests cover all reduction
+thresholds, signed zeros, subnormals, extreme finite inputs, and rejection.
+The GPT-2 artifact still uses the previous exponential while replacement
+GELU and attention proofs are in progress.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

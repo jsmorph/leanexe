@@ -13603,3 +13603,582 @@ terminal release, and the composed numerical theorem remain open.
 The focused tiny_gpt2_infer gate passes with the full loop imported.  Its
 axiom report contains only propext, Classical.choice, and Quot.sound.
 Documentation and whitespace checks pass.
+
+The complete inference function now has an exact execution theorem.  The
+proof composes hidden-state execution, initial empty-array allocation, the
+256-logit loop, and final release.  It preserves the represented checkpoint
+and every byte below the output heap, keeps the page count fixed, and leaves
+other store components unchanged.  Its hypotheses require byte-valued tokens,
+at least 2,488 represented weights below the output heap, an empty initial
+free list, and the output memory reservation.  Checked export lookup identifies
+function 75 as infer.  The output reservation is 277,560 bytes.  The CLI's
+initial weight allocation leaves heap top 24,056, so inference ends at 301,616,
+within the module's sixteen initial pages.
+
+The final release, hidden-call prefix, initial allocation, initial setup, and
+function composition build in 1.6 to 2.5 seconds.  Direct reduction of the
+initial register invariant exceeded the default heartbeat limit.  Simplifying
+the concrete frame once before constructing its fields resolved that failure.
+The length-store adapter needed an explicit zero-word identity.  A required-page
+formula initially used a different ceiling expression from the shared theorem.
+The accepted proof uses the theorem's expression and the reserved-memory bound.
+The complete execution theorem reports only standard logical axioms.
+
+The first gate check failed in the added symbolic reservation identity:
+simplification produced a proof exceeding the kernel's recursion limit.
+The ring normalizer checks that identity within the default limit.  The
+inference theorem had passed before this auxiliary addition and passes with
+the corrected identity.
+
+The source-driven registry now records fifty-five completed execution cases
+and imports the full inference proof into the aggregate target.  The CLI
+manifest distinguishes proved generated-WAT execution from the remaining
+composed numerical error bound.  Remaining checkpoint ranges, that bound,
+the 64-byte extension, and exact-byte packaging remain open.
+
+The completed tiny_gpt2_infer gate passes, including regenerated-program
+comparison and the registered inference theorem.  The command
+tools/tiny-gpt2.js --text 'To b' returns 256 logits and the updated verification
+status with the unchanged artifact digest.  Documentation and whitespace
+checks pass.  The earlier assoc_list cache mismatch still blocks the aggregate
+source-artifact gate.
+
+The checkpoint's computed first residual now has a magnitude bound of
+37/10 for every byte context and position.  The proof uses the computed
+probabilities' nonnegativity and mass bound, retaining the combined value
+and output matrix estimate.  A shared weighted-value lemma separates
+value roundoff from probability error.  The checkpoint attention-value
+error is at most 1/100000 relative to those computed probabilities and
+real normalized value projections.  The output projection and both
+residual additions preserve finiteness and fit the next LayerNorm's
+domain.  Embedding approximation now exposes its error for later
+composition with the real model.
+
+The initial weighted-value check selected the wrong side of addition in
+an order lemma.  The attention decoding check unfolded context indexing
+before its projection identities could apply.  A softmax mass goal also
+needed its sum expressed with the checkpoint probability definition.
+Explicit addition orientation and ordered structural rewrites resolve
+those failures.  The accepted attention and residual modules check in
+1.3 to 1.5 seconds after their dependencies.  Their axiom reports contain
+only standard logical axioms.  Feed-forward ranges, the final normalization
+domain, and the complete logit error bound remain open.
+
+The tiny_gpt2_infer gate passes with the new certificates imported,
+including the regenerated-program comparison.  The four-byte CLI smoke
+test returns the unchanged 256 logits and artifact digest.  Documentation
+and whitespace checks pass.  The recorded aggregate cache mismatch remains
+unresolved.
+
+The feed-forward range certificates now check.  Centered expansion
+coefficients bound each real preactivation by 299/100.  The computed
+expansion's error is at most 1/200000, so every GELU call satisfies the
+proved magnitude limit of three.  Combining GELU's local error and input
+sensitivity gives activation error at most 1/25000.  Each contraction
+column has absolute coefficient sum at most three, giving contraction
+error at most 1/8000 and a finite second residual with magnitude at most
+fourteen.  These local errors use the decoded computed first residual
+as input.  Propagation from the full real model remains open.
+
+The final LayerNorm needs a wider numerical input domain to consume this
+certificate.  The shared average theorem now permits bounds through
+4096, and the centering theorem takes an explicit input bound while
+preserving its original four-unit specialization.  The normalized
+projection lemma now exposes its centered deviation and handles an
+additional affine bias.  The inference algorithm and generated bytes
+have not changed.
+
+Initial checks needed rational-cast normalization, explicit unfolding of
+the bounded-word predicate, and a space between absolute-value delimiters
+and multiplication.  The generalized centering specialization also needed
+numeric normalization of its bound.  The checked expansion module takes
+about fifteen seconds, including its exact rational certificates.  The
+contraction module checks in 3.5 seconds.  Both report standard logical
+axioms only.
+
+The inference gate passes with both feed-forward certificates included.
+Regenerated WAT agrees with the tracked program, and documentation and
+whitespace checks pass.  The existing aggregate cache mismatch remains
+the aggregate gate's recorded blocker.
+
+The shared LayerNorm analysis now accepts an explicit input magnitude
+bound from one through sixteen.  Centering, squaring, variance, square
+root, division, and the final affine operation expose their error budgets.
+The component bound is
+(160000000*B^2+64000*B+16000057)*2^-52.  At B = 16 it is below 1/100000.
+The earlier four-unit statements remain checked with their original
+1/1000000 final bound.  The generic arguments replace the fixed-bound
+derivations, with the earlier statements retained as specializations
+where applicable.
+
+The checkpoint's second residual satisfies the wider input domain.
+Its final normalization now has a checked local error bound of 1/100000.
+The complete hidden computation produces finite coordinates of magnitude
+at most seven.  The output certificate proves that all 256 logits are
+finite with magnitude at most 117 for every four-byte input.  These
+magnitude bounds establish every intermediate domain obligation.  The
+composed error against the real model remains open.
+
+The first generalization checks exposed unresolved numeral products in
+the old specializations and a denominator equality whose real-deviation
+definition needed unfolding before ring normalization.  A bound wrapper
+also used the wrong namespace for arithmeticEpsilon.  The final logit
+adapter needed the UInt64.ofNat conversion theorem rather than the numeral
+conversion theorem, and explicit unfolding of the bounded-word predicate.
+The corrected variance, denominator, quotient, and component modules check
+in 1.3 to 2.3 seconds.  The final normalization, hidden-state bound, and
+logit certificate check in 1.4 to 2.4 seconds with standard logical axioms.
+
+The user confirmed CPU PyTorch 2.9.1, the pinned Tiny Shakespeare corpus,
+all byte tokens, and all 256 output logits.  The 64-byte plan records those
+choices.  Training constraints on matrix norms or normalization scales
+remain a discussed option requiring a decision.
+
+The layer_norm and tiny_gpt2_infer proof gates pass, including generated
+program comparisons.  The checkpoint-word identity check passes for all
+2,488 words.  The CLI smoke test returns 256 logits with the unchanged
+artifact digest.  Documentation and whitespace checks pass.  The recorded
+assoc_list cache mismatch remains the aggregate gate blocker.
+
+The user requires checkpoint-independent preprocessing and proofs.  The
+proposed parameter range is 0 <= B <= 10.  Finite weights are clipped to
+[-B, B], and the inference theorem refers to those clipped weights.  A NaN
+causes an empty output array.  Comparison with the supplied, unclipped
+model is deferred.  Infinity handling remains undecided.  These changes
+have not been implemented.
+
+Review of this proposal found an error in the preceding discussion of
+GELU.  The model calls evaluateAll, whose existing theorem covers every
+finite input with absolute error at most 1/100.  Magnitude three selects
+its sharper 1/80000 bound.  The
+[all-finite GELU proof](proofs/talos/lean/Project/Gelu/AllFinite.lean)
+and [model body](proofs/talos/lean/Project/TinyGpt2/Model.lean) establish
+that distinction.  Softmax still evaluates its polynomial beyond the
+proved shifted-score range when arbitrary bounded weights produce a
+larger score spread.  LayerNorm's current numerical theorem accepts input
+magnitudes through sixteen and scale and bias magnitudes through four.
+
+A numerical probe shows that the existing GELU tail approximation can
+cause a large final error under the proposed cap.  All weights are zero
+except expansion bias 1140 = 3.01, contraction row zero = [3, -3, 3, -3],
+contraction biases = [-c, c, -c, c] with c = 9.019430618323202,
+final normalization scales = [10, 10, 10, 10], and vocabulary column zero
+= [10, -10, 10, -10].  Every stored weight is finite with magnitude at
+most ten.  On bytes [0, 0, 0, 0], the current inference WASM returned logit
+zero 383.2155982715268.  An 80-digit Decimal calculation of the real tanh
+GELU formula on the decoded binary64 weights gave approximately
+-9.32404605210924e-11.  The other 255 WASM logits were zero.
+
+The contraction bias nearly cancels the real activation, leaving a
+reference residual coordinate near -7.37e-16.  The GELU tail branch
+returns 3.01, and its approximation error gives a computed residual
+coordinate near 0.01057.  Final LayerNorm amplifies that difference.
+This probe is numerical evidence, rather than a new Lean theorem.  It
+shows why a useful uniform error bound requires examining approximation
+accuracy and cancellation.  Enlarging range proofs alone leaves this
+example's error unchanged.  The existing trained checkpoint has maximum
+measured weight magnitude 2.516808310176425.
+
+Coarse real-arithmetic estimates from the cap give normalized magnitude
+at most 3B, query/key/value magnitude at most 12B^2, first-residual
+magnitude at most 48B^3+3B, and second-residual magnitude at most
+144B^3+8B^2+4B.  At B = 10 the residual bounds are 48,030 and 144,840.
+These calculations require binary64 error margins before they establish
+runtime domains.  The next numerical analysis should quantify the
+achievable error before committing to a useful uniform E(10), and should
+parameterize attention by context length for the subsequent 64-byte model.
+
+The user approved proceeding with the revised plan, including rejection
+of infinities alongside NaNs.  The retained numerical audit now records
+the cancellation case's raw weights and artifact hash, a Decimal reference,
+and separate GELU and softmax sensitivity coefficients.  At B = 10,
+the existing componentwise estimates amplify GELU error by about 2.02e7
+and a four-coordinate softmax error by about 3.93e18.  The latter gives
+an error contribution near 393 from a 1e-16 local budget.  These conservative
+coefficients identify an unresolved composition problem.  They are not
+the completed binary64 error theorem.
+
+A Python binary64 prototype uses degree-eighteen Taylor evaluation after
+at most six halvings, zero for exp arguments below -64, and a GELU tail
+threshold of eight.  Its negative GELU branch evaluates -a*e/(1+e).
+Across 276 exponential and 519 GELU samples, measured maximum absolute
+errors are 8.27e-17 and 1.11e-15.  The constructed logit error falls to
+9.33e-11.  The user has been asked to confirm these numerical methods
+before their implementation in Lean.  The production kernels are unchanged.
+
+The generic clipping source and its scalar and array theorems now check.
+Clipping returns the exact real clamp, preserves in-range finite words,
+and is idempotent.  The bound validator is equivalent to finiteness and
+a real value in [0, 10], including both signed zeros.  The array validator
+checks the expected length and every word's finiteness.  Accepted output
+has the required length and clipped values.  Any nonfinite word causes
+an empty array, and preparing an accepted output again preserves it.
+These are source-level results.  Generated-WAT execution remains open.
+
+Initial scalar checks required an explicit nonpositive numerator lemma.
+The bound proof also needed the Boolean conjunction simplification theorem
+and explicit conversion of unsigned comparisons to natural comparisons.
+The corrected scalar, bound, and array modules check in 1.1 to 1.2 seconds.
+Compiler diagnosis found that Array.all and Array.any lacked condition
+extraction despite having value extraction.  The source also needed direct
+lambda callbacks as required by the language specification.  The condition
+path now delegates these predicates to their existing value extraction,
+with three cases added to the core execution test.  Compiler build and
+execution testing are in progress.
+
+The compiler build and complete core execution suite pass: 808 accepted,
+48 rejected, and 14 trapped cases.  The standalone checker test passes
+fourteen WASM cases covering clipping, subnormals, signed zeros, invalid
+bounds, wrong lengths, infinities, and NaNs.  The array theorems use only
+the standard logical axioms.  Generated-WAT checker correctness remains
+open.  A direct axiom-inspection command initially supplied a path relative
+to the proof workspace, but Lake's environment command retained the root
+working directory.  The repository-relative path resolved that diagnostic.
+
+The attention analysis now bounds the weighted result before composing
+later layers.  For any finite context, value magnitude M, score error d,
+and value error e give a real attention error of at most 2Md+e.  The total
+absolute probability change is at most 2d.  Normalizing nonnegative
+approximate exponential weights introduces weighted error at most 2Mr
+when each has relative error r and both sums are positive.  These theorems
+remove the context-length factor from these two contributions.  They leave
+the rounded sum, division, and dot-product errors to separate proofs.
+The four-byte attention theorem now uses the weighted perturbation result
+and retains its exact 12294 times 2^-52 dot-product error term.
+
+The new module checks in 2.3 seconds, and the four-byte adapter checks in
+2.2 seconds.  Axiom inspection reports only the standard logical axioms.
+Initial checks exposed a nonexistent finite-sum division lemma name and
+an ambiguous adjacent absolute-value and multiplication token.  Explicit
+sum multiplication and separate ring normalization resolved the endpoint
+equalities.  No timeout or resource-limit change was needed.
+
+The tiny_gpt2_infer gate passes after regenerating and comparing the
+compiler output.  The checkpoint finiteness theorem and complete
+generated-WAT inference theorem still check with the revised attention
+proof dependency.
+
+The real-model bounds now quantify over an arbitrary nonnegative B.
+They cover embedding, normalization, projection, attention, both residuals,
+expansion, GELU, hidden state, and logits.  Score spread is at most
+288 sqrt(2) B^4, and real logits have magnitude at most 12B^2+B.
+The decoded-parameter proof checks every embedding, matrix, bias, and
+normalization offset against the 2,488-word layout.  Acceptance and
+clipping establish all its hypotheses for runtime arrays.  The source
+inference proof target imports these results without a checkpoint premise.
+Their floating-point counterparts still require rounding-error bounds.
+
+The complete range module checks in 1.7 seconds, and the decoder adapter
+in 1.3 seconds, using only standard logical axioms.  The score proof's
+first check required explicit embedding arguments in intermediate
+declarations, where Lean had no expected type to infer them.
+
+The f64_clip registration now retains the generated module and checked
+compiler-annotation matches.  Exact execution proofs cover absolute value,
+finiteness, bound validation, negative absolute value, scalar clipping,
+and the complete array validator.  Each preserves the store.  Scalar
+clipping's generated-WAT result also carries the finite real-clamp theorem.
+The registration remains incomplete pending output allocation and the map
+loop.  The source registry now has 56 cases and 55 completed specifications.
+
+The scan proof reuses FixedArrayTraversalInput for bounds-checked reads,
+BlockLoop for termination, and the scalar finiteness theorem for each word.
+Its invariant records a finite prefix and a decreasing remaining count.
+The scalar clipping proof uses ExactCall to preserve the lower operand
+stack across the second absolute-value call.  Initial checks exposed the
+missing typed-control compatibility import, reversed argument-stack order,
+and a size conversion that simplification expanded recursively.  Explicit
+argument order and the represented array's size bound resolved those proof
+obligations.  The scan checks in 3.7 seconds, the complete validator in
+3.4 seconds, and its specification in 1.6 seconds.  A focused gate run
+before the final size-conversion correction failed on that obligation.
+
+The corrected f64_clip target passes compiler regeneration, program-cache
+comparison, annotation checking, and its current specification.  All
+reported axioms are standard logical axioms.  The gate reports the case
+as incomplete because the full prepare entry remains open.
+
+The complete f64_clip generated-WAT entry now checks.  The map invariant
+records a clipped output prefix and a write range disjoint from the input.
+FixedArrayTraversalInput supplies safe reads, ExactCall handles the scalar
+clip call with the output address below its arguments, ArrayPrefix supplies
+writes and preservation, and BlockLoop supplies termination.  The accepted
+and rejected branches both use FixedArrayAllocateNone.  Allocation and the
+length store preserve the input and page count when the reservation fits.
+The full theorem reserves 48+8(n+1) bytes for n input words.  The rejected
+branch has its own 56-byte bound.  Both assume an empty allocator free list.
+
+The new execution modules contain 482 lines, including program shapes,
+frame definitions, memory facts, both branches, and the entry theorem.
+The map proof checks in 2.2 seconds, allocation memory in 1.5 seconds,
+accepted execution in 1.9 seconds, rejected execution in 1.5 seconds, and
+the entry in 2.0 seconds.  Initial checks exposed arithmetic over the
+variable-length frame tail, equivalent normalized address expressions,
+and explicit List.append terms that the fixed-frame simplifier did not
+reduce.  Arithmetic simplification and targeted list reduction resolved
+those obligations.  The first allocation-memory proof used Talos's native
+read-after-write lemma.  Axiom inspection identified that dependency, and
+the proof now uses ProofKit's kernel-checked Memory.read64_write64 theorem.
+No new axiom or resource-limit increase was needed.
+
+The f64_clip gate passes regeneration, cache comparison, annotations, and
+both registered entry theorems.  prepare_exact proves the source array
+result, input preservation, and a fixed page count.  prepare_real adds the
+accepted output length, finite elements, magnitude cap, and exact decoded
+clamp.  Their axiom reports contain only propext, Classical.choice, and
+Quot.sound.  The registration is complete, bringing the registry to 56
+completed cases.  The existing assoc_list aggregate-cache blocker remains.
+The production numerical kernels are unchanged while the proposed methods
+await confirmation.
+
+The LayerNorm numerical proof now retains the relation between the
+computed centered coordinates and their denominator.  For computed
+centered row c with energy S = sum(c_i^2), the variance error is bounded
+by 11u(S+1e-5), where u = 2^-52.  Adding the stored epsilon and taking the
+square root gives a relative denominator error of at most 61u.  Rounded
+normalization differs from the real normalization of c by at most 247u
+per component.  These estimates do not use a worst-case squared input
+bound in the denominator error.
+
+RealNormalization now provides a dimension-independent component lemma
+from its existing normalization-distance identity.  Averaging and
+centering accept an explicit overflow-range premise.  Scaled arithmetic
+lemmas retain multiplication and division underflow errors for bounds
+as small as the least normal value.  The earlier public lemmas retain
+their statements.  Applying the shared component lemma to computed and
+exact centered rows gives a centering contribution of 16000Xu.  Scale
+and bias bounds B in [0, 10] give total component error
+(16000BX+254B+2)u and output magnitude 3B+(254B+2)u.  The input range
+premise is X at least one and 504X^2+1 below 2^1022.
+
+At X = 200,000 and B = 10, the bound is 7.105428e-6.  At X = 4 and B = 4,
+it is 5.706946e-11.  The GPT-2 adapter derives finite, bounded normalization
+parameters from the generic clipping checker, without a checkpoint
+certificate.  The RMS module checks in 2.8 seconds, the wider component
+module in 2.0 seconds, and the runtime-weight adapter in 1.8 seconds.
+Initial checks required explicit finite-sum expressions and unfolding of
+the centered row at the sum comparison.  A denominator lower-bound proof
+also needed the existing definitional equality exposed before linear
+arithmetic.  No proof target timed out.  Focused gates are in progress.
+
+The layer_norm and tiny_gpt2_infer gates pass with the new numerical
+modules and runtime-weight adapter imported.  Regenerated programs match
+their caches.  The complete existing inference execution theorem and
+checkpoint finiteness proofs still check.  The new theorem axiom reports
+contain only propext, Classical.choice, and Quot.sound.  Documentation
+checks pass for all 136 maintained Markdown files.
+
+The user approved the degree-eighteen exponential, at most six halvings
+and squarings, the cutoff below minus 64, and GELU's cutoff eight with
+its negative logistic branch.  ExpNeg now contains the exponential source.
+The command-line inference artifact retains its prior arithmetic until
+these replacement components have their execution and numerical proofs.
+
+The first source used well-founded UInt64 recursion.  Lean elaborated it
+through a tuple-valued unary helper outside the compiler's accepted types.
+A structurally recursive Nat version then failed because it squared after
+its recursive call.  The implementation now has separate tail-recursive
+reduction and squaring passes.  Both preserve the proposed operation order
+and compile through the existing compiler.  No compiler change was needed.
+
+The exact degree-eighteen Taylor remainder is at most 1e-17 on [-1, 1],
+using Mathlib's Real.exp_bound with nineteen terms.  F64HornerScaled adds
+a Horner step whose arithmetic budgets follow the magnitudes of the
+accumulator and coefficient.  The nineteen coefficient checks use a local
+shared tactic and retain their distinct rational specifications.  The
+polynomial proof gives finite output and error at most 20u on [-1, 1],
+where u = 2^-52.  The coefficient module checks in 2.4 seconds and the
+polynomial module in 1.0 seconds.  The first shared-step check failed on
+a malformed calc block, which was corrected.  Axiom inspection reports
+only propext, Classical.choice, and Quot.sound.
+
+The exponential test compiles the source, compares all 34 WASM results
+with native evaluation of the Talos bit model, and tests signed zeros,
+subnormals, adjacent words at every reduction threshold and the tail
+cutoff, extreme finite inputs, positive inputs, infinities, and NaNs.
+All pass.  The largest empirical absolute difference from the host exp
+is 1.1102230246251565e-16.  An initial sandbox EPERM prevented the test
+from starting its runner.  The approved test prefix then passed with the
+standard Lean cgroup limits.  The full reduction, squaring, and generated
+execution proofs remain open.  No target timed out.
+
+F64ExactHalving now proves finite output, sign preservation, and exact
+real division by two for every finite binary64 input whose exponent field
+is at least two.  Its dyadic lemma exposes a shifted 53-bit significand
+and reuses exact round-shift and packing results.  The proof applies to
+both signs and to every halving used by ExpNeg.  Initial checks exposed
+an unreduced finite predicate, a missing Bool namespace, and a sign cast
+that required a separate integer equality.  The corrected module checks
+in 1.3 seconds without new axioms.
+
+The reduction proof now gives the exact scaling identity, a reduced
+argument in [-1, 0], and a count bounded by its initial fuel.  The shared
+F64RelativeSquare theorem bounds one rounded square of a positive real
+approximation.  Its underflow premise is explicit.  ExpNeg's iteration
+proof applies it through six stages, with error coefficient 63*2^stage-3.
+The coefficient reaches 4029 after six squarings.  The full source theorem
+proves finite positive output and relative error at most 4029u throughout
+[-64, 0].  Below minus 64 it proves zero output and absolute error at most
+exp(-64), with a checked upper bound 1e-27.  No halving error enters this
+bound.  Reduction checks in 1.2 seconds, squaring in 1.4 seconds, and the
+complete numerical module in 1.6 seconds.  All theorem dependencies use
+only the standard logical axioms.  No target timed out.
+
+The new exp_neg registry entry and generated Program cache are prepared
+for execution proofs.  The generated reduction and squaring use loops
+and preserve scalar state.  The reduction includes a checked increment
+for its Nat squaring count, requiring a no-overflow premise in the helper
+proof.  The public entry supplies fuel six and count zero.  Complete
+execution and the registration's completion flag remain open.
+
+The exp_neg generated-WAT proof now covers both scalar loops, the
+polynomial, the domain check, the evaluator, and the exported entry.
+BlockLoop supplies loop termination.  The reduction invariant preserves
+the source result and tracks the checked Nat counter increment.  Its
+helper accepts any fuel and counter whose sum is below 2^64.  The square
+helper accepts any count below 2^64.  The public entry uses six and zero.
+Both loops and the entry preserve the complete store.
+
+The first loop checks required explicit typed conditional steps, reversed
+WASM argument-stack order, and fixed-frame simplification.  The reduction
+proof initially allowed simplification with every hypothesis, which
+rewrote natural counters into encoded words inside its frame equations.
+The final local tactic takes only branch hypotheses.  Its eight scratch
+locals are represented by a finite function.  The square module checks
+in 2.9 seconds and the reduction module in 4.3 seconds.  They reuse the
+shared loop theorem and fixed-frame tactic without new loop infrastructure.
+
+The polynomial's straight-line execution check first reached the default
+simplifier recursion limit.  A direct definitional-equality attempt then
+reached Lean's 200,000-heartbeat limit.  Fixed-frame simplification and
+explicit normalization of floating-point wrappers and the result list
+resolved that equality.  The theorem retains a local maxRecDepth of 4096.
+The default heartbeat budget and all runner limits remain unchanged.
+The complete execution module checks in 5.5 seconds.  A signed WAT integer
+constant also needed its UInt64 equality supplied to the domain proof.
+
+The focused exp_neg gate passes regeneration, cache comparison,
+annotation checking, exact execution, and its exported numerical theorem.
+The accepted domain is exactly finite nonpositive words.  Rejected inputs
+return status one and a zero word.  Accepted inputs have nonnegative
+finite output and error at most 4029u*exp(x)+1e-27.  Every reported theorem
+uses only propext, Classical.choice, and Quot.sound.  The 34 runtime cases
+pass again against the native bit model.  Documentation checks pass.
+The registry now has 57 complete cases and 42 exact-byte packages.
+
+Runtime pins now include exp_neg's four generated runtime functions.
+This inventory check also found that the earlier f64_clip registration
+had omitted its four runtime pins.  They are added here.  The unrelated
+assoc_list regenerated-cache discrepancy remains the aggregate blocker.
+The complete runtime-pin module checks in 2.3 seconds.
+
+### Wider GELU arithmetic
+
+GeluWide implements the approved logistic core through magnitude eight,
+using the new exponential and a direct negative numerator.  Inputs beyond
+that interval return the positive input or zero.  Its public scalar entry
+rejects nonfinite words.  The source retains the existing polynomial
+argument and the same real tanh-GELU reference.
+
+The argument proof accounts for the binary64 coefficient and scale, then
+uses the shared arithmetic-approximation lemmas for each operation.  It
+bounds argument error by 440u and places the negative exponential input
+in [-51, 0].  The tail proof bounds both branches by 1e-18, using an
+explicit exponential lower bound.  These modules check in 1.8 and 1.4
+seconds respectively.  Initial argument checks exposed insufficient
+magnitude margins after rounding.  Each margin now includes the preceding
+operation's proved error.
+
+The shared division approximation now accepts any positive denominator
+lower bound and a bound on the reference quotient.  Its existing
+ge-one theorem follows as a specialization.  This avoids depending on
+the computed value 1+e being strictly above one when e is below one ulp.
+The GELU proof uses denominator lower bound one half.  Its core error
+is at most 200000u, about 4.45e-11, including argument perturbation,
+exponential approximation, addition, multiplication, and division.
+The numerical module checks in 1.8 seconds.  The first check reported a
+line-indentation parse error and an unnormalized absolute value.  Both
+were local proof errors.  No resource limit was reached.
+
+The all-finite theorem and global input-perturbation theorem check in
+1.2 seconds.  The domain equivalence needed the explicit F64Bounded
+import.  The axiom audit reports only propext, Classical.choice, and
+Quot.sound for all three exported numerical results.
+
+The generated-WAT GELU proof checks in 6.6 seconds.  Function-region
+renaming transfers the negative exponential's four reachable functions
+without repeating either loop proof or the polynomial proof.  The
+remaining scalar proofs use FixedFrame and the existing call rules.
+The complete entry preserves the store and returns the exact source
+bits for every raw input.  Its exported real theorem covers every finite
+input.  The focused gelu_wide gate passes regeneration, cache comparison,
+annotations, exact execution, and the numerical theorem.  The axiom
+reports contain only the standard logical axioms.
+
+The 46 runtime cases compare WASM with the native Talos bit model.
+They include signed zero, subnormals, adjacent words at both core
+boundaries, negative inputs susceptible to cancellation, extreme finite
+inputs, infinities, and NaNs.  Every bit-model comparison passes.  The
+largest measured absolute difference from the host exponential reference
+is 2.78e-17.  The first Node invocation failed with sandbox EPERM before
+starting Lean.  The approved invocation passes through the normal runner.
+The user also authorized related Node tests for continued development.
+
+The registry now contains 58 complete cases and 42 exact-byte packages.
+The four runtime-function pins include gelu_wide.  Integration into the
+GPT-2 source and its full numerical composition remain open.
+The runtime-pin module checks in 1.8 seconds, and all 136 maintained
+Markdown files pass the documentation check.
+
+### Wider softmax arithmetic
+
+SoftmaxWide changes the exponential weight calculation to ExpNeg and
+reuses the existing maximum, masked division, four-way sum, and result
+representation.  Its internal compute entry requires no new runtime
+format.  Its numerical hypothesis accepts one to four active scores,
+finite words, and active score differences below 2^1023, the proved
+subtraction overflow limit.
+
+The score-subtraction theorem proves nonpositive output and relative
+rounding error.  The weight theorem bounds the resulting exponential
+error by 5000u times the ideal weight plus 1e-27.  This bound is independent
+of the largest score gap within the finite subtraction range.  Near the
+tail threshold the proof uses relative exponential perturbation.  Beyond
+it the proof establishes the zero branch and the exponential tail bound.
+The weight module checks in 1.5 seconds.  A shared real exponential lemma
+supplies relative perturbation without an absolute input bound.
+
+The generic normalization theorem now separates weight error, sum
+rounding, and division rounding.  It bounds the sum of absolute
+probability errors and works over any finite index type.  The proof
+reuses the weighted normalization result and proves the common-denominator
+error identity.  Its first check found a missing big-operator field
+import and an extra tactic after a closed goal.  The corrected theorem
+checks in 1.2 seconds.  The four-score adapter proves a positive computed
+denominator, records the relative-plus-tail weight error sum, and reuses
+the existing three-addition rounding proof.  It checks in 1.7 seconds.
+
+The full four-score numerical theorem checks in 1.9 seconds.  It proves
+finite outputs, a sum of absolute probability errors at most 10053u,
+and normalization error at most 52u.  The weighted-value theorem adds
+no factor for the number of active positions.  The first check found
+an adjacent absolute-value delimiter and multiplication token.  Adding
+whitespace resolved that parse error.
+
+The complete generated-WAT theorem checks in 5.6 seconds.  Two checked
+function regions reuse the existing maximum, active-score selection,
+row maximum, total, division, and all new exponential functions.  Only
+the masked weight and final compute body need local execution proofs.
+The exported entry returns the exact source result and preserves the
+complete store for every raw input.  The numerical theorem carries its
+finite-score and safe-difference hypotheses.
+
+The softmax_wide proof gate passes regeneration, cache comparison,
+annotation checking, exact execution, and numerical behavior.  All new
+axiom reports contain only standard logical axioms.  The 35 runtime
+rows pass against the native Talos bit model, including all four masks,
+equal scores, signed zero, subnormals, large score gaps, and adjacent
+words at the exponential cutoff.  The largest measured probability
+difference from the host reference is 7.59e-19.  The first Node invocation
+hit the same sandbox process restriction.  The approved invocation passes.
+The source registry now has 59 complete cases and 42 exact-byte packages.

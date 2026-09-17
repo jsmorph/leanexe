@@ -8,6 +8,28 @@ open CodeLib.IEEE64 Project.ProofKit F64Horner
 
 set_option exponentiation.threshold 4096
 
+theorem project4_words (w : Array UInt64) (offset : Nat) (x : Row) (j : Fin 4) :
+    rowWords (project4 w offset x) j = dotColumn4 w offset 4 j.val x := by
+  fin_cases j <;> rfl
+
+theorem addRows_words (x y : Row) (j : Fin 4) :
+    rowWords (addRows x y) j = Wasm.IEEE64.add (rowWords x j) (rowWords y j) := by
+  fin_cases j <;> rfl
+
+theorem expandRow_words (w : Array UInt64) (x : Row) (j : Fin 8) :
+    wideWords (expandRow w x) j =
+      Wasm.IEEE64.add (dotColumn4 w 1108 8 j.val x) w[1140+j.val]! := by
+  fin_cases j <;> rfl
+
+theorem activateWide_words (x : WideRow) (j : Fin 8) :
+    wideWords ⟨activate x.low, activate x.high⟩ j = Gelu.evaluateAll (wideWords x j) := by
+  fin_cases j <;> rfl
+
+theorem contractRow_words (w : Array UInt64) (x : WideRow) (j : Fin 4) :
+    rowWords (contractRow w x) j =
+      Wasm.IEEE64.add (dotColumn8 w 1148 4 j.val x) w[1180+j.val]! := by
+  fin_cases j <;> rfl
+
 theorem dotColumn4_model (w : Array UInt64) (offset width : Nat) (j : Fin width) (x : Row) :
     dotColumn4 w offset width j.val x =
       Affine.dot4 (rowWords x 0) (rowWords x 1) (rowWords x 2) (rowWords x 3)
@@ -68,6 +90,20 @@ theorem norm_error (w : Array UInt64) (offset : Nat) (x : Row)
     g.x0 g.x1 g.x2 g.x3 b.x0 b.x1 b.x2 b.x3 ⟨hx, hg, hb⟩
   have hi := h.2 i
   fin_cases i <;> exact hi
+
+theorem norm_error_bounded (w : Array UInt64) (offset : Nat) (x : Row) (bound : ℝ)
+    (hb1 : 1 ≤ bound) (hbmax : bound ≤ 16)
+    (hx : ∀ i, Affine.Bounded (rowWords x i) bound)
+    (hg : LayerNorm.ValidRow (rowWords (loadRow w offset)))
+    (hb : LayerNorm.ValidRow (rowWords (loadRow w (offset+4)))) (i : Fin 4) :
+    Finite (rowWords (norm w offset x) i) ∧
+      |decodeRow (norm w offset x) i-Real.norm (decodeNorm w offset) (decodeRow x) i| ≤
+        (160000000*bound^2+64000*bound+16000057)*arithmeticEpsilon := by
+  let g := loadRow w offset
+  let b := loadRow w (offset+4)
+  have h := LayerNorm.compute_error_bounded x.x0 x.x1 x.x2 x.x3
+    g.x0 g.x1 g.x2 g.x3 b.x0 b.x1 b.x2 b.x3 bound hb1 hbmax hx hg hb i
+  fin_cases i <;> exact h
 
 theorem activate_error (x : Row) (hx : ∀ j, Finite (rowWords x j)) (i : Fin 4) :
     Finite (rowWords (activate x) i) ∧
