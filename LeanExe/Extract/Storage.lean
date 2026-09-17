@@ -251,8 +251,9 @@ partial def materializeStrictSlotsWith
   | .letCall slots index args body => do
       let result ← materializeStrictSlotsWith flatten body nextLocal
       .ok { result with lets := .call slots index args :: result.lets }
-  | .letLocal _ _ =>
-      .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
+  | .letLocal lets body => do
+      let result ← materializeStrictSlotsWith flatten body nextLocal
+      .ok { result with lets := .locals lets :: result.lets }
   | _ =>
       .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
 
