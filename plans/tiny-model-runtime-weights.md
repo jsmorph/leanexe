@@ -99,7 +99,9 @@ proves finite, positive output and relative error at most 4029u on [-64, 0].
 The shared exact-halving theorem removes reduction roundoff.  Repeated
 squaring carries relative error, including multiplication underflow.
 Below -64, the output is zero and its absolute error is at most exp(-64),
-which the proof bounds by 1e-27.  Generated-WAT execution proofs remain open.
+which the proof bounds by 1e-27.  The registered generated-WAT theorem
+proves exact output, rejection, termination, store preservation, and the
+combined numerical bound.
 
 ## Implementation sequence
 

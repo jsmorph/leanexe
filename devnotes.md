@@ -14030,3 +14030,44 @@ and preserve scalar state.  The reduction includes a checked increment
 for its Nat squaring count, requiring a no-overflow premise in the helper
 proof.  The public entry supplies fuel six and count zero.  Complete
 execution and the registration's completion flag remain open.
+
+The exp_neg generated-WAT proof now covers both scalar loops, the
+polynomial, the domain check, the evaluator, and the exported entry.
+BlockLoop supplies loop termination.  The reduction invariant preserves
+the source result and tracks the checked Nat counter increment.  Its
+helper accepts any fuel and counter whose sum is below 2^64.  The square
+helper accepts any count below 2^64.  The public entry uses six and zero.
+Both loops and the entry preserve the complete store.
+
+The first loop checks required explicit typed conditional steps, reversed
+WASM argument-stack order, and fixed-frame simplification.  The reduction
+proof initially allowed simplification with every hypothesis, which
+rewrote natural counters into encoded words inside its frame equations.
+The final local tactic takes only branch hypotheses.  Its eight scratch
+locals are represented by a finite function.  The square module checks
+in 2.9 seconds and the reduction module in 4.3 seconds.  They reuse the
+shared loop theorem and fixed-frame tactic without new loop infrastructure.
+
+The polynomial's straight-line execution check first reached the default
+simplifier recursion limit.  A direct definitional-equality attempt then
+reached Lean's 200,000-heartbeat limit.  Fixed-frame simplification and
+explicit normalization of floating-point wrappers and the result list
+resolved that equality.  The theorem retains a local maxRecDepth of 4096.
+The default heartbeat budget and all runner limits remain unchanged.
+The complete execution module checks in 5.5 seconds.  A signed WAT integer
+constant also needed its UInt64 equality supplied to the domain proof.
+
+The focused exp_neg gate passes regeneration, cache comparison,
+annotation checking, exact execution, and its exported numerical theorem.
+The accepted domain is exactly finite nonpositive words.  Rejected inputs
+return status one and a zero word.  Accepted inputs have nonnegative
+finite output and error at most 4029u*exp(x)+1e-27.  Every reported theorem
+uses only propext, Classical.choice, and Quot.sound.  The 34 runtime cases
+pass again against the native bit model.  Documentation checks pass.
+The registry now has 57 complete cases and 42 exact-byte packages.
+
+Runtime pins now include exp_neg's four generated runtime functions.
+This inventory check also found that the earlier f64_clip registration
+had omitted its four runtime pins.  They are added here.  The unrelated
+assoc_list regenerated-cache discrepancy remains the aggregate blocker.
+The complete runtime-pin module checks in 2.3 seconds.
