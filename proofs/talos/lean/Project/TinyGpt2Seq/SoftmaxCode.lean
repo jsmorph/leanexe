@@ -77,7 +77,7 @@ def SoftmaxPost (heap : Heap) (initial : Store Unit) (input : Array UInt64)
   ∃ resultHeap result,
     values = [.i64 result.root, .i64 result.root] ∧ resultHeap.At final ∧
     resultHeap.OwnsWords final result (SequenceSoftmax.compute input) ∧
-    (∀ source words, heap.OwnsWords initial source words → resultHeap.OwnsWords final source words) ∧
+    heap.Frame initial resultHeap final ∧
     OutputBudget final resultHeap remaining pageLimit module
 
 #print axioms softmax_shape
