@@ -937,3 +937,24 @@ A fresh parent check found main advanced to 6ba953cb with a trained 128-position
 checkpoint and revised source-equivalence plans. That commit changes training,
 data and documentation, not the four-position implementation or proof modules
 being checked here. It remains separate from this artifact comparison.
+
+The independent float package gate and ten-case corpus now pass. Six CPU
+executions cover all four positions, alternate checkpoint contexts, and both
+adversarial parameter arrays. All 24 hidden words, 1,536 raw binary32 head words
+and 1,536 final binary64 words match the independent checked reference. The
+four rejection cases fail for their specified reasons. The package theorem,
+interface checks, correspondence proofs, table evaluator and seven word examples
+pass the standard-axiom audit. Portable evidence is in test/wgsl/float-spec;
+full attempt diagnostics remain in check-sNdkJe and float-spec/corpus-v2.
+
+The accepted generated package proof is a small composition of the generic
+GptFloatArtifact theorem with the independently parsed shader's shape/profile
+equalities. There was no per-context proof synthesis or artifact regeneration.
+Runtime reference evaluation uses the proved table evaluator; native execution
+uses the existing SwiftShader CPU adapter through Vulkan. The focused numerical
+audit regression remains unchanged, including all six reports and 27 exact
+rational comparisons. The maintained-document check passes 141 files.
+The existing GptBundle module also rebuilds successfully in 4.1 seconds with
+standard logical axioms, confirming that the shared raw-word dispatch lemma
+preserves its previous theorem. JavaScript syntax checks and diff whitespace
+checks pass. No unrelated project regression suite was run.

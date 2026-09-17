@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "verification": "float-verification.json",
+  "checkedLogits": 1536,
+  "checkedRawHeadWords": 1536,
+  "results": [
+    {
+      "name": "lean",
+      "status": "pass",
+      "position": 3,
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "evidence": "execution/lean.json",
+      "reference": "reference/lean.json"
+    },
+    {
+      "name": "first-position",
+      "status": "pass",
+      "position": 0,
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "evidence": "execution/first-position.json",
+      "reference": "reference/first-position.json"
+    },
+    {
+      "name": "second-position",
+      "status": "pass",
+      "position": 1,
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "evidence": "execution/second-position.json",
+      "reference": "reference/second-position.json"
+    },
+    {
+      "name": "third-position",
+      "status": "pass",
+      "position": 2,
+      "weightsSha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "evidence": "execution/third-position.json",
+      "reference": "reference/third-position.json"
+    },
+    {
+      "name": "adversarial-plus",
+      "status": "pass",
+      "position": 3,
+      "weightsSha256": "a09dfb8636c143db3fc20288fd77031cb3dfa9afe5fe16039dca89dee726778c",
+      "evidence": "execution/adversarial-plus.json",
+      "reference": "reference/adversarial-plus.json"
+    },
+    {
+      "name": "adversarial-minus",
+      "status": "pass",
+      "position": 3,
+      "weightsSha256": "fa1dc2fda6097a2cb97e83dd5eb191a31f1f5b733ef07fdd38e95881aeb6b314",
+      "evidence": "execution/adversarial-minus.json",
+      "reference": "reference/adversarial-minus.json"
+    },
+    {
+      "name": "altered-hidden",
+      "status": "rejected",
+      "diagnostics": "rejections/altered-hidden.txt"
+    },
+    {
+      "name": "altered-finish",
+      "status": "rejected",
+      "diagnostics": "rejections/altered-finish.txt"
+    },
+    {
+      "name": "nonfinite-parameter",
+      "status": "rejected",
+      "diagnostics": "rejections/nonfinite-parameter.txt"
+    },
+    {
+      "name": "above-cap-parameter",
+      "status": "rejected",
+      "diagnostics": "rejections/above-cap-parameter.txt"
+    }
+  ],
+  "artifacts": "../gpt",
+  "checkedHiddenWords": 24
+}

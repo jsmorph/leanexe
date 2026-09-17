@@ -92,6 +92,27 @@ Native conversions and orchestration, Node's Wasm engine, and the native WebGPU
 implementation remain explicit conformance assumptions. The runtime tests do
 not establish those assumptions universally.
 
+## Floating-point algorithm contract
+
+The [float specification](../../docs/wgsl/float-specification.md) gives exact
+word equality with an independent typed algorithm, for runtime parameters,
+all four-byte contexts, and all four positions. The theorem has no real-valued
+reference or error tolerance. The executable harness retains the single
+finite-parameter magnitude cap of four.
+
+```sh
+tools/artifact-proof.js wgsl-float-check test/wgsl/gpt
+tools/artifact-proof.js wgsl-float-run test/wgsl/gpt 3 76 101 97 110
+tools/artifact-proof.js wgsl-float-corpus build/wgsl/my-float-corpus
+```
+
+The checker binds the exact artifact package to `GptFloatArtifact.artifact`.
+Execution compares the four hidden words, 256 raw binary32 head words and 256
+final binary64 words with the Lean reference. The fixed corpus includes six
+executions and four rejection checks; all Lean calls run sequentially.
+Native transfer, conversion and restricted-profile conformance remain explicit
+premises of the formal result.
+
 ## Resident GPT session and head measurements
 
 Repeated contexts can share one native process, immutable head weights and one

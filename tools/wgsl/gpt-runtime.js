@@ -14,11 +14,12 @@ const scratch = new DataView(new ArrayBuffer(8));
 function decode64(word) { scratch.setBigUint64(0, unsigned(word), true); return scratch.getFloat64(0, true); }
 function encode64(value) { scratch.setFloat64(0, value, true); return scratch.getBigUint64(0, true); }
 
-function execute(checked, tokens, reference, label, dispatch) {
+function execute(checked, tokens, reference, label, dispatch, position = 3) {
+  requireThat(Number.isInteger(position) && position >= 0 && position < 4, "invalid context position");
   requireThat(Array.isArray(tokens) && tokens.length === 4 &&
     tokens.every(t => Number.isInteger(t) && t >= 0 && t < 256), "expected four byte tokens");
   requireThat(/^[a-z0-9-]+$/.test(label), "invalid evidence label");
-  const report = { schemaVersion: 1, status: "error", tokens,
+  const report = { schemaVersion: 1, status: "error", tokens, position,
     hiddenSha256: digest(checked.hiddenBytes), shaderSha256: digest(checked.shader),
     bridgeSha256: digest(checked.hostBytes), finishSha256: digest(checked.finishBytes),
     weightsSha256: digest(checked.weightsBytes), profile: checked.metadata.profile,
@@ -39,7 +40,7 @@ function execute(checked, tokens, reference, label, dispatch) {
     new DataView(memory.buffer).setBigUint64(pointer, 2488n, true);
     new Uint8Array(memory.buffer, pointer + 8, checked.weightsBytes.length).set(checked.weightsBytes);
     const before = Buffer.from(new Uint8Array(memory.buffer));
-    const values = hidden.exports.hidden(BigInt(pointer), ...tokens.map(BigInt), 3n);
+    const values = hidden.exports.hidden(BigInt(pointer), ...tokens.map(BigInt), BigInt(position));
     requireThat(Array.isArray(values) && values.length === 4, "wrong hidden result shape");
     const hiddenWords = values.map(unsigned);
     requireThat(hiddenWords.every((word, i) => word.toString() === reference.hidden[i]), "hidden Wasm differs from pure Lean model");
@@ -63,6 +64,9 @@ function execute(checked, tokens, reference, label, dispatch) {
     const bridgeAfter = Buffer.from(bridgeMemory.buffer);
     requireThat(bridgeAfter.subarray(0, c).equals(bridgeBefore.subarray(0, c)) &&
       bridgeAfter.subarray(c + 1024).equals(bridgeBefore.subarray(c + 1024)), "bridge changed memory outside output");
+    const headWords = Array.from({ length: 256 }, (_, j) => view.getUint32(c + 4 * j, true).toString());
+    if (reference.headWords) requireThat(reference.headWords.length === 256 &&
+      headWords.every((word, j) => word === reference.headWords[j]), "raw head words differ from float specification");
     const headFinished = performance.now();
 
     const finish = new WebAssembly.Instance(new WebAssembly.Module(checked.finishBytes), {});
@@ -75,13 +79,13 @@ function execute(checked, tokens, reference, label, dispatch) {
     requireThat(Array.isArray(reference.logits) && reference.logits.length === 256 &&
       logits.every((word, j) => word.toString() === reference.logits[j]), "mixed logits differ from pure Lean model");
     requireThat(logits.every(word => Number.isFinite(decode64(word))), "nonfinite mixed logit");
-    Object.assign(report, { status: "pass", hidden: hiddenWords.map(String), logits: logits.map(String),
+    Object.assign(report, { status: "pass", hidden: hiddenWords.map(String), headWords, logits: logits.map(String),
       elapsedMs: { hidden: hiddenFinished - started, head: headFinished - hiddenFinished,
         finish: performance.now() - headFinished, total: performance.now() - started },
       residency,
       runtime: bridge.last.runtime, checkedElements: 256, hiddenMemoryPreserved: true,
       bridgeMemoryOutsideOutputPreserved: true, importedCalls: bridge.calls,
-      reference: "pure Lean integer binary64 hidden and binary32 separate head with explicit conversions" });
+      reference: reference.specification || "pure Lean integer binary64 hidden and binary32 separate head with explicit conversions" });
     return report;
   } catch (error) {
     report.error = error.message;
