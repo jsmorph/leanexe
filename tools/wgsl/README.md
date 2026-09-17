@@ -53,6 +53,45 @@ directly to `run.py --snapshot-stdin`, avoiding another filesystem read between
 verification and dispatch. The native report must identify that same input.
 Runtime conformance to the selected profile remains an explicit assumption.
 
+## Checkpoint GPT bundle
+
+The selected Lean vocabulary projection is a 1×256×4 binary32 GEMM. The
+checkpoint GPT path executes the hidden computation in Wasm, explicitly converts
+its four binary64 results and the head weights to binary32, dispatches that WGSL
+kernel, then executes the binary64 bias addition in a separate Wasm artifact.
+Only this supported projection is selected for WGSL generation.
+
+From a configured proof workspace:
+
+```sh
+tools/artifact-proof.js wgsl-gpt-build build/wgsl/my-gpt-bundle
+tools/artifact-proof.js wgsl-gpt-run build/wgsl/my-gpt-bundle 76 101 97 110
+tools/artifact-proof.js wgsl-gpt-check build/wgsl/my-gpt-bundle
+tools/artifact-proof.js wgsl-gpt-corpus build/wgsl/my-gpt-corpus
+```
+
+Build and corpus destinations must be fresh. The gate independently checks the
+actual shader and manifest, all three exact Wasm artifacts, and all 2,488
+checkpoint words. It binds that shader package to GptBundle.artifact and audits
+the proof dependencies against the three standard logical axioms. Existing
+receipts and supplied proof files cannot authorize execution. First-time proof
+builds can require staged dependency preparation; a build timeout is a failure,
+never permission to skip verification.
+
+The six-case GPT corpus checks all 256 logits for three byte-token inputs against
+Lean's integer floating-point model, then checks rejection of changed hidden
+Wasm, bias-addition Wasm, and checkpoint bytes. One verified input snapshot is
+shared by the three executions. Exact output comparison uses the separate
+binary32 profile; a driver that contracts multiply/add is not silently accepted.
+
+The theorem covers every four-byte input for this checkpoint. Its head-only
+error bound is 0.0001 against the real head applied to the computed binary64
+hidden row. The composed bound against the full real GPT model is approximately
+4.85e9 per logit: mathematically proved but too loose to certify useful precision.
+Native conversions and orchestration, Node's Wasm engine, and the native WebGPU
+implementation remain explicit conformance assumptions. The runtime tests do
+not establish those assumptions universally.
+
 ## Verified Wasm + WGSL bundle
 
 The complete GEMM path starts in a real Wasm function, dispatches the checked
