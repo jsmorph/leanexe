@@ -143,3 +143,4 @@ import Project.TinyGpt2Hidden.Spec
 import Project.TinyGpt2Infer.Spec
 import Project.F64Clip.Spec
 import Project.TinyGpt2Checked.Spec
+import Project.SequenceSoftmax.Spec
