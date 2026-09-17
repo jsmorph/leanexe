@@ -44,7 +44,11 @@ The sequence [sum](lean/Project/SequenceSoftmax/Total.lean) and
 [maximum](lean/Project/SequenceSoftmax/Maximum.lean) functions have exact
 terminating execution proofs with complete store preservation.  Checked
 function equality transfers the scalar maximum and exponential proofs.
-Array mapping, allocation, and complete inference composition remain open.
+The [exponential map](lean/Project/SequenceSoftmax/WeightsMap.lean) and
+[division map](lean/Project/SequenceSoftmax/NormalizeMap.lean) loops also
+have terminating exact-output proofs.  Their writes stay within the
+output array, preserving a disjoint input in either address order.
+Allocation, complete softmax calls, and inference composition remain open.
 
 The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves
 the complete generated-WAT checker.  It checks length, bound, and every
