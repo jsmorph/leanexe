@@ -89,6 +89,110 @@ def export_kernel(args):
     print(json.dumps(record))
 
 
+def export_block(args):
+    import torch
+
+    tokenizer, model = load_model(args.model_dir)
+    prompt = args.text or "Once upon a time, in a small village"
+    tokens = tokenizer.encode(prompt)
+    if not 1 <= len(tokens) <= 128:
+        raise ValueError("Block comparison requires 1 to 128 tokens")
+    block = model.transformer.h[0]
+    names = ["ln_1.weight", "ln_1.bias", "attn.c_attn.weight", "attn.c_attn.bias",
+             "attn.c_proj.weight", "attn.c_proj.bias", "ln_2.weight", "ln_2.bias",
+             "mlp.c_fc.weight", "mlp.c_fc.bias", "mlp.c_proj.weight", "mlp.c_proj.bias"]
+    output = args.model_dir / "block"
+    output.mkdir(exist_ok=True)
+    pack = lambda tensor: tensor.detach().contiguous().numpy().astype("<f4").tobytes()
+    offsets = {}
+    count = 0
+    with (output / "weights.bin").open("wb") as stream:
+        for name in names:
+            tensor = block.get_parameter(name)
+            offsets[name] = count
+            stream.write(pack(tensor))
+            count += tensor.numel()
+    with torch.inference_mode():
+        input_ = model.transformer.wte(torch.tensor(tokens)) + model.transformer.wpe(torch.arange(len(tokens)))
+        normalized = block.ln_1(input_)
+        qkv = block.attn.c_attn(normalized)
+        q, k, v = [x.reshape(len(tokens), 12, 64).transpose(0, 1) for x in qkv.split(768, dim=-1)]
+        scores = (q @ k.transpose(-1, -2)) / 8
+        mask = torch.ones(len(tokens), len(tokens), dtype=torch.bool).tril()
+        probabilities = scores.masked_fill(~mask, float("-inf")).softmax(dim=-1)
+        mixed = (probabilities @ v).transpose(0, 1).contiguous().reshape(len(tokens), 768)
+        projected = block.attn.c_proj(mixed)
+        residual = input_ + projected
+        normalized2 = block.ln_2(residual)
+        expanded = block.mlp.c_fc(normalized2)
+        activated = block.mlp.act(expanded)
+        projected2 = block.mlp.c_proj(activated)
+        result = residual + projected2
+        official = block(input_.unsqueeze(0))[0].squeeze(0)
+        torch.testing.assert_close(result, official, rtol=2e-5, atol=1e-5)
+    stages = dict(input=input_, normalized=normalized, qkv=qkv, mixed=mixed,
+                  projected=projected, residual=residual, normalized2=normalized2,
+                  expanded=expanded, activated=activated, projected2=projected2, output=result)
+    for name, tensor in stages.items():
+        (output / f"{name}.bin").write_bytes(pack(tensor))
+    record = {
+        "checkpoint_sha256": MANIFEST["files"]["model.safetensors"],
+        "prompt": prompt, "tokens": tokens, "rows": len(tokens),
+        "weight_words": count, "offsets_words": offsets,
+        "manual_official_max_abs_difference": (result - official).abs().max().item(),
+        "files": {name: digest(output / name) for name in
+                  ["weights.bin"] + [f"{name}.bin" for name in stages]},
+    }
+    (output / "manifest.json").write_text(json.dumps(record, indent=2) + "\n")
+    print(json.dumps(record))
+
+
+def export_model(args):
+    import torch
+
+    tokenizer, model = load_model(args.model_dir)
+    output = args.model_dir / "inference"
+    output.mkdir(exist_ok=True)
+    block_names = ["ln_1.weight", "ln_1.bias", "attn.c_attn.weight", "attn.c_attn.bias",
+                   "attn.c_proj.weight", "attn.c_proj.bias", "ln_2.weight", "ln_2.bias",
+                   "mlp.c_fc.weight", "mlp.c_fc.bias", "mlp.c_proj.weight", "mlp.c_proj.bias"]
+    names = ["wte.weight", "wpe.weight"] + [f"h.{i}.{name}" for i in range(12) for name in block_names] + ["ln_f.weight", "ln_f.bias"]
+    partial = output / "weights.bin.partial"
+    tensors = []
+    count = 0
+    with partial.open("wb") as stream:
+        for name in names:
+            tensor = model.transformer.get_parameter(name).detach().contiguous()
+            if not torch.isfinite(tensor).all():
+                raise ValueError(f"Non-finite checkpoint tensor: {name}")
+            tensors.append({"name": name, "shape": list(tensor.shape), "offset_words": count})
+            stream.write(tensor.numpy().astype("<f4", copy=False).tobytes())
+            count += tensor.numel()
+    if count != MANIFEST["parameters"]:
+        raise ValueError(f"Packed parameter count differs: {count}")
+    partial.replace(output / "weights.bin")
+    prompt = args.text or "Once upon a time, in a small village"
+    tokens = tokenizer.encode(prompt)
+    if not 1 <= len(tokens) <= 128:
+        raise ValueError("Inference comparison requires 1 to 128 tokens")
+    with torch.inference_mode():
+        logits = model(torch.tensor([tokens]), use_cache=False).logits[0, -1]
+    import struct
+    (output / "tokens.bin").write_bytes(struct.pack(f"<{len(tokens)}I", *tokens))
+    (output / "pytorch.bin").write_bytes(logits.numpy().astype("<f4", copy=False).tobytes())
+    record = {
+        "format": "leanexe-gpt2-f32-v1",
+        "checkpoint_sha256": MANIFEST["files"]["model.safetensors"],
+        "parameters": count, "tensors": tensors,
+        "prompt": prompt, "tokens": tokens,
+        "argmax": logits.argmax().item(),
+        "argmax_text": tokenizer.decode([logits.argmax().item()]),
+        "files": {name: digest(output / name) for name in ("weights.bin", "tokens.bin", "pytorch.bin")},
+    }
+    (output / "manifest.json").write_text(json.dumps(record, indent=2) + "\n")
+    print(json.dumps({key: value for key, value in record.items() if key != "tensors"}))
+
+
 def generate(args):
     import torch
     import transformers
@@ -127,7 +231,7 @@ def generate(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Run the pinned pretrained GPT-2 124M CPU reference")
-    parser.add_argument("command", choices=["fetch", "generate", "export-kernel"])
+    parser.add_argument("command", choices=["fetch", "generate", "export-kernel", "export-block", "export-model"])
     parser.add_argument("--model-dir", type=Path, default=ROOT / "build/gpt2-124m")
     parser.add_argument("--text")
     parser.add_argument("--max-new-tokens", type=int, default=64)
@@ -142,6 +246,12 @@ def main():
         return
     if args.command == "export-kernel":
         export_kernel(args)
+        return
+    if args.command == "export-block":
+        export_block(args)
+        return
+    if args.command == "export-model":
+        export_model(args)
         return
     if args.text is None:
         parser.error("generate requires --text")

@@ -1,0 +1,83 @@
+{
+  "checkpoint_sha256": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707",
+  "rows": 9,
+  "reports": [
+    {
+      "stage": "normalized",
+      "max_abs_difference": 2.384185791015625e-7,
+      "host_call_seconds": 0.038801584,
+      "allocations": 5,
+      "frees": 2
+    },
+    {
+      "stage": "qkv",
+      "max_abs_difference": 0.00000762939453125,
+      "host_call_seconds": 0.090707417,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "mixed",
+      "max_abs_difference": 8.344650268554688e-7,
+      "host_call_seconds": 0.03026025,
+      "allocations": 7,
+      "frees": 5
+    },
+    {
+      "stage": "projected",
+      "max_abs_difference": 0.00001239776611328125,
+      "host_call_seconds": 0.046629083,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "residual",
+      "max_abs_difference": 0.00001239776611328125,
+      "host_call_seconds": 0.027402625,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "normalized2",
+      "max_abs_difference": 0.000001430511474609375,
+      "host_call_seconds": 0.022684958,
+      "allocations": 5,
+      "frees": 2
+    },
+    {
+      "stage": "expanded",
+      "max_abs_difference": 0.000011920928955078125,
+      "host_call_seconds": 0.114099541,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "activated",
+      "max_abs_difference": 0.00001049041748046875,
+      "host_call_seconds": 0.032567833,
+      "allocations": 2,
+      "frees": 0
+    },
+    {
+      "stage": "projected2",
+      "max_abs_difference": 0.00026702880859375,
+      "host_call_seconds": 0.11934975,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "output",
+      "max_abs_difference": 0.00026702880859375,
+      "host_call_seconds": 0.019300209,
+      "allocations": 3,
+      "frees": 0
+    },
+    {
+      "stage": "block",
+      "max_abs_difference": 0.00026702880859375,
+      "host_call_seconds": 0.291381042,
+      "allocations": 21,
+      "frees": 18
+    }
+  ]
+}

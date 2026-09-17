@@ -55,6 +55,30 @@ checkpoint.  Reproduce it with:
 node test/packed.js --gpt2-kernel
 ```
 
+The complete first transformer block also runs in WASM.  For the nine-token
+story prompt, its output differs from PyTorch by at most
+0.00026702880859375 in absolute value.  The test compares all intermediate
+stages, then checks that the composed block matches the separately invoked
+WASM stages bit-for-bit.  Allocation counters show eighteen freed
+temporaries, with the two inputs and one output remaining.  The block call
+took 0.291 seconds.  The [block test record](block-test.json) contains each
+stage's measurement.  Reproduce it with:
+
+```sh
+node test/packed.js --gpt2-block
+```
+
+The full model returns all 50,257 next-token logits.  On the same nine-token
+prompt, its maximum absolute difference from PyTorch is 0.00009918212890625,
+and its RMS difference is 0.000040563035721151586.  Both select token 11,
+the comma, as the maximum.  The host call took 3.874 seconds.  Its 235
+allocations and 232 frees leave the weights, input tokens, and output.
+The [full inference test record](inference-test.json) identifies the run.
+
+```sh
+node test/packed.js --gpt2-inference
+```
+
 ## Sources
 
 The [pinned checkpoint](https://huggingface.co/openai-community/gpt2/tree/607a30d783dfa663caf39e06633721c8d4cfcd7e),
