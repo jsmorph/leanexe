@@ -114,6 +114,10 @@ schedule are incomplete, as explicitly allowed for this demo. Wasm validation,
 existing generic GEMM proofs, and finite reference tests do not establish an
 end-to-end correctness theorem for this package.
 
+The [WGSL verification workstream](gpt2-verification.md) checks the six delivered
+shaders directly against the Lean binary32 GEMM definition, independently of
+the deferred model/Wasm proofs and numerical error bounds.
+
 All generated artifacts, model weights, execution evidence, and native
 executables remain ignored under `build/gpt2/`. None are checked into Git.
 The native executable currently depends on the configured local Wasmtime and

@@ -16,8 +16,9 @@ private def readUTF8 (file : System.FilePath) : IO String := do
 /-- Produce an untrusted proof draft from the actual files. All reductions in
 the draft are rechecked by the kernel in a separate invocation. -/
 def main (args : List String) : IO Unit := do
-  let [shaderPath, manifestPath, outputPath] := args
-    | throw (IO.userError "usage: Prepare.lean KERNEL MANIFEST FRESH_PROOF_FILE")
+  let wordsOnly := args.length == 4 && args[3]! == "words"
+  let [shaderPath, manifestPath, outputPath] := if wordsOnly then args.take 3 else args
+    | throw (IO.userError "usage: Prepare.lean KERNEL MANIFEST FRESH_PROOF_FILE [words]")
   let source ← readUTF8 shaderPath
   let manifestSource ← readUTF8 manifestPath
   let metadata ← unwrap (decodeManifest manifestSource)
@@ -30,7 +31,7 @@ def main (args : List String) : IO Unit := do
   unless decide (metadata.Matches kernel.ast.config selected) do
     throw (IO.userError "manifest does not match parsed WGSL and supported profile")
   let text := String.intercalate "\n" [
-    "import Project.WGSL.Package",
+    if wordsOnly then "import Project.WGSL.ExecutionPackage" else "import Project.WGSL.Package",
     "namespace CheckedWGSLPackage",
     "open LeanExe.WGSL Project.WGSL.Binary32",
     "def source : String := " ++ reprStr source,
@@ -52,13 +53,13 @@ def main (args : List String) : IO Unit := do
     "  parsed := parsed",
     "  matched := by decide +kernel",
     "def artifact := package.artifact",
-    "def numerical := @Package.numerical source metadata package",
-    "def numericalWide := @Package.numerical_wide source metadata package",
+    if wordsOnly then "" else "def numerical := @Package.numerical source metadata package",
+    if wordsOnly then "" else "def numericalWide := @Package.numerical_wide source metadata package",
     "def exact := @Package.exact source metadata package",
     "#print axioms package",
     "#print axioms artifact",
-    "#print axioms numerical",
-    "#print axioms numericalWide",
+    if wordsOnly then "" else "#print axioms numerical",
+    if wordsOnly then "" else "#print axioms numericalWide",
     "#print axioms exact",
     "end CheckedWGSLPackage",
     "def main (args : List String) : IO Unit := do",
