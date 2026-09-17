@@ -14071,3 +14071,36 @@ This inventory check also found that the earlier f64_clip registration
 had omitted its four runtime pins.  They are added here.  The unrelated
 assoc_list regenerated-cache discrepancy remains the aggregate blocker.
 The complete runtime-pin module checks in 2.3 seconds.
+
+### Wider GELU arithmetic
+
+GeluWide implements the approved logistic core through magnitude eight,
+using the new exponential and a direct negative numerator.  Inputs beyond
+that interval return the positive input or zero.  Its public scalar entry
+rejects nonfinite words.  The source retains the existing polynomial
+argument and the same real tanh-GELU reference.
+
+The argument proof accounts for the binary64 coefficient and scale, then
+uses the shared arithmetic-approximation lemmas for each operation.  It
+bounds argument error by 440u and places the negative exponential input
+in [-51, 0].  The tail proof bounds both branches by 1e-18, using an
+explicit exponential lower bound.  These modules check in 1.8 and 1.4
+seconds respectively.  Initial argument checks exposed insufficient
+magnitude margins after rounding.  Each margin now includes the preceding
+operation's proved error.
+
+The shared division approximation now accepts any positive denominator
+lower bound and a bound on the reference quotient.  Its existing
+ge-one theorem follows as a specialization.  This avoids depending on
+the computed value 1+e being strictly above one when e is below one ulp.
+The GELU proof uses denominator lower bound one half.  Its core error
+is at most 200000u, about 4.45e-11, including argument perturbation,
+exponential approximation, addition, multiplication, and division.
+The numerical module checks in 1.8 seconds.  The first check reported a
+line-indentation parse error and an unnormalized absolute value.  Both
+were local proof errors.  No resource limit was reached.
+
+The all-finite theorem and global input-perturbation theorem check in
+1.2 seconds.  The domain equivalence needed the explicit F64Bounded
+import.  The axiom audit reports only propext, Classical.choice, and
+Quot.sound for all three exported numerical results.
