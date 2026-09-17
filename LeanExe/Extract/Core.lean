@@ -5318,6 +5318,9 @@ mutual
             extractOptionPredicateCondFrom ctx locals nextLocal expr false
         | (.const ``Option.all _, _) =>
             extractOptionPredicateCondFrom ctx locals nextLocal expr true
+        | (.const ``Array.any _, _) | (.const ``Array.all _, _) =>
+            let exprResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (boolCond exprResult.fst, exprResult.snd)
         | (.const ``Except.isOk _, args) =>
             match args.reverse, exceptPayloadType? ctx.env args with
             | exceptValue :: _, some _payloadTy =>

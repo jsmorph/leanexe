@@ -34,6 +34,13 @@ The user also authorized later seed-controlled sampling from the top k logits
 using the [Lean PRNG](../docs/prng.md).  PRNG correctness remains outside the
 formal proof scope.
 
+The user subsequently approved runtime weight validation and clipping,
+with a parameterized magnitude bound targeting [0, 10].  Nonfinite weights
+are rejected.  Numerical guarantees refer to the clipped weights and must
+reuse one theorem when the checkpoint changes.  The
+[runtime-weight analysis](tiny-model-runtime-weights.md) records the
+revised proof sequence, cancellation test, and numerical-method proposal.
+
 ## Component sequence
 
 | Component | Initial domain | Required result |
