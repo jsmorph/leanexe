@@ -14792,3 +14792,27 @@ source-function name requiring qualification and a conditional already
 reduced by the frame tactic.  No timeout occurred.  The proof preserves
 all previously owned word arrays and the caller's remaining byte budget.
 The complete GPT-2/128 inference theorem remains open.
+
+### Memory preservation for borrowed arrays
+
+The host's alloc_u64_array calls the generic allocator and writes length
+and data.  It does not install the internal fixed-array kind and stride.
+Requiring OwnsWords for public inputs would therefore exclude the host's
+representation.  Heap.Protects records a byte interval below the heap and
+disjoint from its free blocks.  Heap.Frame preserves those intervals,
+their bytes, and the existing memory pages across execution.
+
+The allocation proof covers free-list reuse and heap extension.  Writes
+inside the new allocation and release of a disjoint temporary preserve
+the frame.  Frame composition transfers raw UInt64Array.At predicates
+without requiring allocation metadata.  Internally owned arrays also
+transfer, using the final heap's validity for free-block header bounds.
+The first diagnostic identified that explicit validity premise.  The
+revised shared module checks in 1.7 seconds with propext and Quot.sound.
+
+The sequence maps and both complete softmax theorems now return the
+stronger frame property.  The sequence entry checks in 1.5 seconds and
+the GPT-2/128 internal entry in 1.4 seconds.  Their audits retain only the
+three standard logical axioms.  The focused sequence_softmax gate passes
+again with unchanged compiler output.  The public inference proof will
+use these frames for host weights and tokens.
