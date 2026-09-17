@@ -14247,3 +14247,124 @@ checks in 174 seconds with standard axioms.  Documentation checks pass
 for all 136 maintained Markdown files, and git diff --check is clean.
 The previously recorded assoc_list generation mismatch still blocks the
 aggregate gate.  This integration changed neither that source nor its cache.
+
+### Parameterized runtime arithmetic
+
+The balanced two-, four-, and eight-term dot-product proofs now accept a
+product-magnitude parameter P in [1, 2^40].  Their error bounds are
+(4P+1)u, (12P+6)u, and (32P+22)u, respectively.  The proof follows the
+source's balanced addition tree and reuses the binary64 multiplication
+and addition theorems.  It checks in 1.7 seconds.  Runtime column adapters
+set P from the input and weight bounds and check in 1.3 seconds.
+
+The wider LayerNorm adapter now propagates input error with an explicit
+positive denominator lower bound.  Its first check required unfolding
+the real-model and row-decoding definitions at the final transfer.  The
+corrected theorem checks in 1.1 seconds.  Runtime parameter lemmas derive
+finite loaded rows and matrices directly from accepted clipping.  They
+prove normalization and projection ranges for B in [0, 10].  Removing a
+redundant dsimp resolved their first diagnostic, and the module checks
+in 1.3 seconds.
+
+The wider attention-score proof carries the dot-product parameter through
+division by the rounded square root of two.  Its error is (16P+3)u, and
+it checks in 1.2 seconds.  The attention-value adapter uses nonnegative
+probabilities and their proved mass bound for the output magnitude.
+Its error against exact softmax of the decoded computed scores is
+(10077M+6)u for value magnitude M in [1, 2^30].  The first check found a
+reference-function argument mismatch: the reference accepts a score
+vector.  Runtime attention now has a finite-output bound of 1,250 from
+query, key, and value bounds of 1,249, independent of checkpoint values.
+
+The attention-value module checks in 2.2 seconds after an explicit
+real-number bound conversion at its final range theorem.  The residual
+proof likewise needed explicit conversions for sums of real numerals.
+The shared Bounded.weaken theorem now handles those transfers.  Residual
+composition checks in 1.1 seconds, and feed-forward composition in 1.5
+seconds.  The pure stage decomposition checks in 1.0 second.
+
+The complete runtime-weight source range theorem checks in 1.6 seconds.
+For every four-byte input and every accepted array clipped at B in
+[0, 10], all 256 logits are finite and have magnitude at most 1,260.
+The proved intermediate caps are 21 for embeddings, 31 for normalized
+rows, 1,249 for query/key/value projections, 1,250 for attention values,
+60,000 for the first residual, 1,260 for expansion, 1,261 for activation,
+and 100,910 for contraction.  The second residual fits the 200,000
+normalization input bound.  Every proof depends on finite clipped-weight
+bounds rather than checkpoint-specific certificates.  The combined
+numerical error and checker-to-inference execution proofs remain open.
+
+The inference gate passes with the runtime range theorem imported by its
+registered specification.  Regeneration preserves the published artifact
+bytes.  All runtime arithmetic and range audits report only standard
+logical axioms.  Documentation and whitespace checks pass.  The existing
+trained-model and cancellation tests remain applicable to these unchanged
+inference bytes.
+
+### Composed runtime error
+
+The generic error rules now propagate perturbed inputs through four- and
+eight-term columns, addition, attention scores, and weighted attention.
+They check in 2.3 seconds.  A tighter projection-magnitude theorem proves
+12B^2+1, preserving dependence on B in the score and value error budgets.
+Its positivity goal needed the arithmetic-epsilon definition unfolded.
+It checks in 1.2 seconds.
+
+The composed budget records B and three positive normalization lower
+bounds.  Each lower bound concerns both the decoded computed input and
+the corresponding real input.  The square root of the epsilon floor
+always satisfies these hypotheses.  Larger proved lower bounds can yield
+sharper error estimates.  No numerical quality claim follows from the
+budget definitions until the corresponding stage theorem passes.
+
+The budget module initially opened the wrong namespace for arithmeticEpsilon.
+Inspection of the pinned CodeLib source located it in CodeLib.IEEE64.Roundoff.
+The corrected module imports that definition directly.  The input theorem
+also needed UInt64.size reduced in a conversion bound and the named column
+budget unfolded at its result.  Embedding, first normalization, and
+query/key/value error composition now check in 1.2 seconds.  Attention
+composition checks in 2.2 seconds, and the first residual and second
+normalization in 1.5 seconds.  These theorems compare against the existing
+real model using arbitrary bounded runtime weights.
+
+Feed-forward error composition checks in 1.9 seconds, and the complete
+logit theorem in 1.3 seconds.  The generated-WAT corollary combines that
+result with exact execution, finite outputs, and the existing memory
+guarantees.  It checks in 1.8 seconds.  The registered tiny_gpt2_infer gate
+passes with this corollary, and every new audit reports only standard
+logical axioms.
+
+The unconditional budget is too coarse to certify useful precision.
+Using only the three square-root epsilon floors gives approximately
+320.30 at B=1, 1.7333e7 at B=2.5, and 2.9336e14 at B=10.  Repeated
+worst-case normalization sensitivity dominates the estimate.  The proof
+accepts stronger certified denominator lower bounds, but obtaining a
+useful precision certificate remains open.  Documentation now states
+that limitation explicitly.
+
+The inference artifact bytes remain unchanged, so the preceding native
+bit-model, PyTorch, and cancellation tests still apply.  Documentation
+checks pass for all 136 maintained Markdown files.  The next implementation
+step connects the proved weight preparation to the inference entry.
+
+### Checker allocation state
+
+The checker execution theorem now preserves the map loop's checked memory
+write range.  A derived theorem exposes the final allocator top, empty
+free list, incremented allocation count, unchanged retain/release/free
+counts, fresh output header, unchanged memory below the allocation, and
+all other store fields.  These facts are required to compose inference
+and release the temporary clipped array.  The accepted and rejected
+branches retain the same generated instructions.
+
+The strengthened branch proofs check in 2.0 and 1.6 seconds.  The enclosing
+proof needed its final frame match to retain the new memory assertion.
+It then checked in 2.0 seconds.  Allocation-state lemmas and the derived
+entry theorem each check in 1.3 seconds.  An extra tactic after a solved
+address goal caused one diagnostic and was removed.
+
+The f64_clip source-artifact gate passes with prepare_state registered.
+All audits report standard logical axioms.  The approved Node test passes
+all fourteen WASM clipping and rejection cases, including signed zero,
+subnormal bounds, extreme finite values, invalid shapes, and nonfinite
+inputs.  Documentation checks pass for 136 maintained Markdown files.

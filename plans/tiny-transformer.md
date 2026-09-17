@@ -82,8 +82,10 @@ through that position agree.  The wider softmax computation proves a sum
 of absolute probability errors of at most 10053 times 2^-52 for finite scores with active differences below
 2^1023.  Its real input-perturbation theorem has multiplier two.  Checkpoint
 range certificates prove finite hidden coordinates and all 256 finite
-logits for every four-byte input.  The composed numerical error bound
-remains open.
+logits for every four-byte input.  The composed numerical theorem now
+passes with B and normalization lower bounds as parameters.  Its
+unconditional estimate is too coarse to certify precision.  A useful
+precision guarantee and runtime checker integration remain open.
 The complete generated-WAT inference execution theorem passes, including
 termination, exact raw-bit output, checkpoint preservation, and its memory
 reservation.
