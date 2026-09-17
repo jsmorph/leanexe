@@ -568,3 +568,35 @@ journal records successful full generated-WAT gates (hidden semantic proof
 not a claim of a fresh complete local gate. Earlier 120-second hidden checks
 here were below that known semantic-proof duration; future integration checks
 will use the documented evidence and separately compiled dependencies.
+
+The conversion and wider accumulation composition now passes. F64ExactShift
+proves exact rounding of shifted significands; Precision uses it to prove exact
+finite binary32 promotion, including the sign, and uses the general dyadic
+rounder to bound binary64 demotion by 2^-24*abs(input)+2^-150 below magnitude
+2^127. F32DyadicReal is the shared real interpretation of that rounder.
+The definitions are pure integer conversion models; opaque native conversion
+externs are not substituted into their proof statements.
+
+The fixed precision-vectors corpus has 14 promotion and 21 demotion cases:
+both zeros, smallest and largest subnormals, normal boundaries, adjacent
+midpoint words, both ties-to-even directions, checkpoint magnitude bounds,
+and a large safe exponent. All 35 pure-model words and native CPU conversion
+words equal the recorded expected words. No new package or backend is involved.
+
+WideScalarError proves the per-update error for both modeled accumulation
+choices. WideAccumulationError establishes intermediate finiteness, magnitude
+and accumulated error using explicit product and accumulator budgets; it
+removes the old magnitude-at-most-one restriction. ArtifactNumerical, Package
+and HostExecution compose this result through the actual output memory read.
+All public audits use only the standard three axioms. The wider host build
+took 3.8s; the dot induction 3.6s; the conversion proof 2.7s.
+
+The independent generator/checker now instantiates and audits both numerical
+domains. A fresh check of the saved scalar bundle passes at
+build/wgsl/package-checks/check-K0hNvR, including exact shader text, exact
+Wasm bytes, both host numerical theorems and the separate-profile exactness
+result. No prior proof or receipt is trusted. JavaScript syntax, maintained
+document checks and diff whitespace pass. The earlier failed cast/rounding
+drafts and diagnostics are preserved. Next is the four-term GPT projection:
+converted hidden coordinates, converted weights, binary32 GEMM, exact promotion,
+and binary64 bias, followed by its full hidden-state error composition.

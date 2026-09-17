@@ -28,7 +28,7 @@ async function lean(stage, args, log) {
   return output;
 }
 
-function audit(output, names = ["package", "artifact", "numerical", "exact"].map(n => `CheckedWGSLPackage.${n}`)) {
+function audit(output, names = ["package", "artifact", "numerical", "numericalWide", "exact"].map(n => `CheckedWGSLPackage.${n}`)) {
   const expected = new Set(names);
   const checked = {};
   for (const match of output.matchAll(/'([^']+)' (?:depends on axioms:\s*\[([^\]]*)\]|does not depend on any axioms)/g)) {
@@ -76,6 +76,7 @@ async function checkPackage(directory) {
       claims: ["termination", "memory safety", "GEMM correspondence", "conditional numerical bound"],
       exactness: metadata.profile.id === "leanexe-f32-rne-separate-v1" ? "separate binary32 GEMM" : "not claimed for fusion profile",
       numericalDomain: "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
+      wideNumericalDomain: "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
       runtimeConformanceEstablished: false,
       boundary: "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement.",
     };

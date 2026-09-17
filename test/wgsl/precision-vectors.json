@@ -1,0 +1,181 @@
+{
+  "promote": [
+    {
+      "name": "positive zero",
+      "input": "00000000",
+      "expected": "0000000000000000"
+    },
+    {
+      "name": "negative zero",
+      "input": "80000000",
+      "expected": "8000000000000000"
+    },
+    {
+      "name": "least subnormal",
+      "input": "00000001",
+      "expected": "36a0000000000000"
+    },
+    {
+      "name": "largest subnormal",
+      "input": "007fffff",
+      "expected": "380fffffc0000000"
+    },
+    {
+      "name": "least normal",
+      "input": "00800000",
+      "expected": "3810000000000000"
+    },
+    {
+      "name": "next normal",
+      "input": "00800001",
+      "expected": "3810000020000000"
+    },
+    {
+      "name": "below one",
+      "input": "3f7fffff",
+      "expected": "3fefffffe0000000"
+    },
+    {
+      "name": "one",
+      "input": "3f800000",
+      "expected": "3ff0000000000000"
+    },
+    {
+      "name": "above one",
+      "input": "3f800001",
+      "expected": "3ff0000020000000"
+    },
+    {
+      "name": "head weight bound",
+      "input": "40800000",
+      "expected": "4010000000000000"
+    },
+    {
+      "name": "hidden bound",
+      "input": "40e00000",
+      "expected": "401c000000000000"
+    },
+    {
+      "name": "largest finite",
+      "input": "7f7fffff",
+      "expected": "47efffffe0000000"
+    },
+    {
+      "name": "negative least subnormal",
+      "input": "80000001",
+      "expected": "b6a0000000000000"
+    },
+    {
+      "name": "negative largest finite",
+      "input": "ff7fffff",
+      "expected": "c7efffffe0000000"
+    }
+  ],
+  "demote": [
+    {
+      "name": "positive zero",
+      "input": "0000000000000000",
+      "expected": "00000000"
+    },
+    {
+      "name": "negative zero",
+      "input": "8000000000000000",
+      "expected": "80000000"
+    },
+    {
+      "name": "least binary64 subnormal",
+      "input": "0000000000000001",
+      "expected": "00000000"
+    },
+    {
+      "name": "negative binary64 subnormal",
+      "input": "8000000000000001",
+      "expected": "80000000"
+    },
+    {
+      "name": "below subnormal midpoint",
+      "input": "368fffffffffffff",
+      "expected": "00000000"
+    },
+    {
+      "name": "subnormal midpoint even zero",
+      "input": "3690000000000000",
+      "expected": "00000000"
+    },
+    {
+      "name": "above subnormal midpoint",
+      "input": "3690000000000001",
+      "expected": "00000001"
+    },
+    {
+      "name": "subnormal midpoint even two",
+      "input": "36a8000000000000",
+      "expected": "00000002"
+    },
+    {
+      "name": "negative subnormal midpoint",
+      "input": "b690000000000000",
+      "expected": "80000000"
+    },
+    {
+      "name": "below normal midpoint",
+      "input": "380fffffdfffffff",
+      "expected": "007fffff"
+    },
+    {
+      "name": "normal midpoint even normal",
+      "input": "380fffffe0000000",
+      "expected": "00800000"
+    },
+    {
+      "name": "above normal midpoint",
+      "input": "380fffffe0000001",
+      "expected": "00800000"
+    },
+    {
+      "name": "below one midpoint",
+      "input": "3ff000000fffffff",
+      "expected": "3f800000"
+    },
+    {
+      "name": "one midpoint even one",
+      "input": "3ff0000010000000",
+      "expected": "3f800000"
+    },
+    {
+      "name": "above one midpoint",
+      "input": "3ff0000010000001",
+      "expected": "3f800001"
+    },
+    {
+      "name": "next midpoint even upper",
+      "input": "3ff0000030000000",
+      "expected": "3f800002"
+    },
+    {
+      "name": "negative one midpoint",
+      "input": "bff0000010000000",
+      "expected": "bf800000"
+    },
+    {
+      "name": "head weight bound",
+      "input": "4010000000000000",
+      "expected": "40800000"
+    },
+    {
+      "name": "hidden bound",
+      "input": "401c000000000000",
+      "expected": "40e00000"
+    },
+    {
+      "name": "large safe input",
+      "input": "47d0000000000000",
+      "expected": "7e800000"
+    },
+    {
+      "name": "below safe limit",
+      "input": "47dfffffffffffff",
+      "expected": "7f000000"
+    }
+  ]
+}

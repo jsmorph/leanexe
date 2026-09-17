@@ -80,8 +80,8 @@ conformance remains an explicit premise. The native demonstration invokes that
 Wasm function and checks the values it wrote back. Commands and worked bundles
 are documented in the [native harness](../../tools/wgsl/README.md).
 
-The broader roadmap still requires the parent branch's GPT work for
-mixed-precision GPT integration, followed by residency, tiling and performance.
+The parent's wider-arithmetic GPT inference is merged. Mixed-precision GPT
+integration is in progress, followed by residency, tiling and performance.
 The current GEMM bundle does not establish a complete GPT numerical theorem.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
@@ -117,6 +117,35 @@ whose parse is proved. Runtime profile conformance remains an assumption;
 the numerical theorem's input conditions remain distinct from the harness's
 broader finite-input test envelope. Independent artifact-package checking now
 passes, including the composed Wasm dispatch interface.
+
+## Wider numerical domain and precision conversions
+
+`WideDotDomain` replaces the small-input restriction with finite products,
+an accumulator budget `C`, and a product budget `P`. With `u = 2^-24` and
+`eta = 2^-150`, the per-update error is bounded by
+`E = u*(C + 2*P + u*P + eta) + eta`. Its explicit premises require
+`C + P + u*P + eta < 2^127` and `K*(P+E) <= C`.
+`dot_error_wide` proves finite intermediates and error at most `K*E`
+against real multiplication of the supplied binary32 inputs. This covers
+both modeled separate and locally fused evaluation. The package and Wasm
+host theorems now expose this domain alongside the original small domain;
+the independent checker audits both theorem instances.
+
+`Project.WGSL.Precision` defines pure finite-input conversion models.
+Promotion preserves every finite binary32 value and its sign exactly.
+Demotion uses one nearest/even rounding with gradual underflow; for finite
+binary64 inputs with magnitude below `2^127`, its error is at most
+`2^-24*abs(input) + 2^-150`. These are mathematical conversion models,
+not a proof of native conversion externs. Fourteen promotion and twenty-one
+demotion boundary vectors match both the pure model and native CPU conversion:
+
+```sh
+source tools/macos-env.sh # configured ARM Mac only
+node test/wgsl/precision_test.js
+```
+
+The remaining GPT composition must account for these conversion errors and
+for the binary64 stages. These lemmas alone do not establish that theorem.
 
 ## Narrow artifact parser
 

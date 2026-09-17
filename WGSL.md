@@ -26,7 +26,11 @@ theorem composed with the shader's exactness and numerical results. The native
 bridge contract is explicit. The complete bundle gate now verifies both artifacts
 before invoking the real Wasm function, executing its WGSL dispatch on the CPU,
 and checking the results in Wasm memory. This completes the immediate GEMM and
-host-composition plan. GPT integration and performance remain later roadmap work.
+host-composition plan. GPT integration is in progress: finite precision-conversion
+models and wider binary32 accumulation bounds are checked, including gradual
+underflow and separate or fused evaluation. The independent package gate now
+checks both numerical domains through final Wasm memory. The complete GPT
+execution/error composition and subsequent performance work remain open.
 
 ## Purpose
 
