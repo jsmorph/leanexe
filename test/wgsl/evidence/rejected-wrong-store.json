@@ -1,0 +1,342 @@
+{
+  "artifact": {
+    "byteLength": 653,
+    "path": "/tmp/leanexe-wgsl-probe/wrong.wgsl",
+    "sha256": "b428d019217e18e71f14f2f3b479e7fe87f1a2832862a8da6d2e049afd1ba5e0",
+    "text": "// leanexe WGSL GEMM v1; row-major f32 storage buffers\nconst M: u32 = 3u;\nconst N: u32 = 5u;\nconst K: u32 = 2u;\n\n@group(0) @binding(0) var<storage, read> a: array<f32>;\n@group(0) @binding(1) var<storage, read> b: array<f32>;\n@group(0) @binding(2) var<storage, read_write> c: array<f32>;\n\n@compute @workgroup_size(8, 8, 1)\nfn gemm_f32(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let col: u32 = gid.x;\n  let row: u32 = gid.y;\n  if (col >= N || row >= M) { return; }\n  var acc: f32 = 0.0f;\n  for (var k: u32 = 0u; k < K; k = k + 1u) {\n    let product: f32 = a[row * K + k] * b[k * N + col];\n    acc = acc + product;\n  }\n  c[row * N + col] = 0.0f;\n}\n"
+  },
+  "check": {
+    "checkedElements": 15,
+    "failures": [
+      {
+        "actual": "00000000",
+        "index": 0,
+        "permitted": [
+          "41a5c5cf"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 1,
+        "permitted": [
+          "426a4a18"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 2,
+        "permitted": [
+          "41044a68"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 3,
+        "permitted": [
+          "41fde1af"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 4,
+        "permitted": [
+          "c182e867"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 5,
+        "permitted": [
+          "c113abaa"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 6,
+        "permitted": [
+          "c1d06ef3"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 7,
+        "permitted": [
+          "c06abcbd"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 8,
+        "permitted": [
+          "c17c46ed"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 9,
+        "permitted": [
+          "40e6eb7a"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 10,
+        "permitted": [
+          "41b97b7c"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 11,
+        "permitted": [
+          "4282336f"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 12,
+        "permitted": [
+          "4110f79a"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 13,
+        "permitted": [
+          "4261c27e"
+        ]
+      },
+      {
+        "actual": "00000000",
+        "index": 14,
+        "permitted": [
+          "c18b148e"
+        ]
+      }
+    ],
+    "kind": "exact-profile-relation-membership",
+    "passed": false
+  },
+  "elapsedSeconds": 2.3607479539932683,
+  "evidenceKind": "tested-execution-only",
+  "executionConfiguration": {
+    "adapterFilter": "",
+    "backendFilter": "",
+    "initialOutputWord": "7fc00001",
+    "pipelineConstants": {},
+    "timeoutSeconds": 30,
+    "workerPython": "/tmp/leanexe-wgsl-venv/bin/python"
+  },
+  "formalArtifactProofEstablished": false,
+  "inputSource": {
+    "generator": "lcg-normal-signed-zero-v1",
+    "seed": 1
+  },
+  "inputs": {
+    "a": [
+      "00000000",
+      "408885db",
+      "be16017e",
+      "bff33ac5",
+      "3ff06d60",
+      "4098c13f"
+    ],
+    "b": [
+      "00000000",
+      "be6da3aa",
+      "bdcfff01",
+      "41324c6c",
+      "3efbdcdb",
+      "409b6c7e",
+      "415ba9c5",
+      "3ff81060",
+      "40ee083f",
+      "c0757892"
+    ]
+  },
+  "manifest": {
+    "bindings": {
+      "a": 0,
+      "b": 1,
+      "c": 2,
+      "group": 0
+    },
+    "buffers": {
+      "a": {
+        "bytes": 24,
+        "elements": 6
+      },
+      "b": {
+        "bytes": 40,
+        "elements": 10
+      },
+      "c": {
+        "bytes": 60,
+        "elements": 15
+      }
+    },
+    "dimensions": {
+      "cols": 5,
+      "inner": 2,
+      "rows": 3
+    },
+    "dispatchWorkgroups": [
+      1,
+      1,
+      1
+    ],
+    "entryPoint": "gemm_f32",
+    "kernel": "gemm_f32",
+    "profile": {
+      "id": "leanexe-f32-rne-separate-v1",
+      "revision": 1
+    },
+    "schemaVersion": 1,
+    "wgslRevision": "2026-08-17",
+    "workgroupSize": [
+      8,
+      8,
+      1
+    ]
+  },
+  "manifestSha256": "0caaf712d17d52086b2978cec3f1fd140860a5b0d12fa2592836d0f4e97452be",
+  "outputs": [
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000",
+    "00000000"
+  ],
+  "permittedOutputs": [
+    [
+      "41a5c5cf"
+    ],
+    [
+      "426a4a18"
+    ],
+    [
+      "41044a68"
+    ],
+    [
+      "41fde1af"
+    ],
+    [
+      "c182e867"
+    ],
+    [
+      "c113abaa"
+    ],
+    [
+      "c1d06ef3"
+    ],
+    [
+      "c06abcbd"
+    ],
+    [
+      "c17c46ed"
+    ],
+    [
+      "40e6eb7a"
+    ],
+    [
+      "41b97b7c"
+    ],
+    [
+      "4282336f"
+    ],
+    [
+      "4110f79a"
+    ],
+    [
+      "4261c27e"
+    ],
+    [
+      "c18b148e"
+    ]
+  ],
+  "runtime": {
+    "adapter": {
+      "adapter_type": "CPU",
+      "architecture": "",
+      "backend_type": "OpenGL",
+      "description": "4.6 (Core Profile) Mesa 26.2.2-arch1.1",
+      "device": "llvmpipe (LLVM 22.1.8, 256 bits)",
+      "device_id": 0,
+      "stackgroup_max_size": 128,
+      "stackgroup_min_size": 4,
+      "vendor": "",
+      "vendor_id": 65541
+    },
+    "deviceLimits": {
+      "max-bind-groups": 8,
+      "max-bind-groups-plus-vertex-buffers": 0,
+      "max-bindings-per-bind-group": 65535,
+      "max-buffer-size": 2147483647,
+      "max-color-attachment-bytes-per-sample": 128,
+      "max-color-attachments": 8,
+      "max-compute-invocations-per-workgroup": 1024,
+      "max-compute-workgroup-size-x": 1024,
+      "max-compute-workgroup-size-y": 1024,
+      "max-compute-workgroup-size-z": 1024,
+      "max-compute-workgroup-storage-size": 32768,
+      "max-compute-workgroups-per-dimension": 65535,
+      "max-dynamic-storage-buffers-per-pipeline-layout": 16,
+      "max-dynamic-uniform-buffers-per-pipeline-layout": 15,
+      "max-inter-stage-shader-variables": 0,
+      "max-non-sampler-bindings": 1000000,
+      "max-push-constant-size": 256,
+      "max-sampled-textures-per-shader-stage": 16,
+      "max-samplers-per-shader-stage": 16,
+      "max-storage-buffer-binding-size": 134217728,
+      "max-storage-buffers-per-shader-stage": 16,
+      "max-storage-textures-per-shader-stage": 32,
+      "max-texture-array-layers": 2048,
+      "max-texture-dimension-1d": 16384,
+      "max-texture-dimension-2d": 16384,
+      "max-texture-dimension-3d": 2048,
+      "max-uniform-buffer-binding-size": 65536,
+      "max-uniform-buffers-per-shader-stage": 15,
+      "max-vertex-attributes": 16,
+      "max-vertex-buffer-array-stride": 2048,
+      "max-vertex-buffers": 16,
+      "min-storage-buffer-offset-alignment": 32,
+      "min-uniform-buffer-offset-alignment": 32
+    },
+    "environment": {
+      "LIBGL_ALWAYS_SOFTWARE": null,
+      "MESA_LOADER_DRIVER_OVERRIDE": null,
+      "VK_DRIVER_FILES": null,
+      "VK_ICD_FILENAMES": null,
+      "WGPU_BACKEND_TYPE": null,
+      "WGPU_LIB_PATH": null
+    },
+    "platform": "Linux-7.2.3-arch1-3-x86_64-with-glibc2.44",
+    "python": "3.14.7",
+    "pythonPackages": {
+      "cffi": "2.1.1",
+      "numpy": "2.5.3",
+      "pycparser": "3.0",
+      "rendercanvas": "2.7.2",
+      "wgpu": "0.31.1"
+    },
+    "wgpuNative": "27.0.4.0",
+    "wgpuNativeLibrarySha256": "ae8cfdc91d436978762d75c56452b287368aff569daad68693de399731487f0b",
+    "wgpuPy": "0.31.1"
+  },
+  "runtimeAssumption": "Compiler, device, and execution system satisfy the recorded profile and shared semantics; testing does not establish this universally.",
+  "schemaVersion": 1,
+  "status": "mismatch",
+  "timestampUtc": "2026-09-17T00:25:15.906266+00:00",
+  "universalRuntimeConformanceEstablished": false,
+  "workerStderr": "Unable to find extension: VK_EXT_physical_device_drm\nNo windowing system present. Using surfaceless platform\nNo config found!\nNo config found!\nenumerate_adapters: Initialization of an object has failed\nenumerate_adapters: Initialization of an object has failed\n"
+}

@@ -57,8 +57,12 @@ If using a repository-local toolchain, pass `--toolchain` to the runner or set
 
 ## Remaining gates
 
-1. Emit a captured artifact, execute it natively, and retain profile/configuration
-   evidence with exact source identity.
+The [native harness](../../tools/wgsl/README.md) now executes captured artifacts
+and retains exact source/profile/configuration evidence. The first rectangular
+kernel passed on Mesa llvmpipe; failure probes are preserved under
+`test/wgsl/evidence`. These observations do not establish runtime conformance.
+
+1. Expand the fixed execution corpus beyond the first rectangular artifact.
 2. Parse the actual WGSL text in Lean; validate the emitted subset independently
    of the generator and manifest.
 3. Instantiate shared operational semantics and binary32 arithmetic; prove
