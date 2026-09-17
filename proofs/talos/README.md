@@ -84,8 +84,13 @@ complete inference module.  Its
 execution and store preservation for every vocabulary token.  The
 [vocabulary-output loop](lean/Project/TinyGpt2Infer/OutputLoop.lean) proves
 termination, all 256 raw-bit logits, checkpoint preservation, and a fixed
-page count under its memory reservation.  Inference entry and exit and the
-composed checkpoint numerical certificate remain open.
+page count under its memory reservation.  The
+[complete inference theorem](lean/Project/TinyGpt2Infer/Inference.lean)
+composes function entry, initial allocation, the loop, and final release.
+It proves all 256 output words and checkpoint preservation for every four-byte
+input, assuming an empty initial free list, disjoint input storage, and the
+output memory reservation.  The composed checkpoint numerical certificate
+remains open.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

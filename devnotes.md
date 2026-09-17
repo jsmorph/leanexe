@@ -13603,3 +13603,42 @@ terminal release, and the composed numerical theorem remain open.
 The focused tiny_gpt2_infer gate passes with the full loop imported.  Its
 axiom report contains only propext, Classical.choice, and Quot.sound.
 Documentation and whitespace checks pass.
+
+The complete inference function now has an exact execution theorem.  The
+proof composes hidden-state execution, initial empty-array allocation, the
+256-logit loop, and final release.  It preserves the represented checkpoint
+and every byte below the output heap, keeps the page count fixed, and leaves
+other store components unchanged.  Its hypotheses require byte-valued tokens,
+at least 2,488 represented weights below the output heap, an empty initial
+free list, and the output memory reservation.  Checked export lookup identifies
+function 75 as infer.  The output reservation is 277,560 bytes.  The CLI's
+initial weight allocation leaves heap top 24,056, so inference ends at 301,616,
+within the module's sixteen initial pages.
+
+The final release, hidden-call prefix, initial allocation, initial setup, and
+function composition build in 1.6 to 2.5 seconds.  Direct reduction of the
+initial register invariant exceeded the default heartbeat limit.  Simplifying
+the concrete frame once before constructing its fields resolved that failure.
+The length-store adapter needed an explicit zero-word identity.  A required-page
+formula initially used a different ceiling expression from the shared theorem.
+The accepted proof uses the theorem's expression and the reserved-memory bound.
+The complete execution theorem reports only standard logical axioms.
+
+The first gate check failed in the added symbolic reservation identity:
+simplification produced a proof exceeding the kernel's recursion limit.
+The ring normalizer checks that identity within the default limit.  The
+inference theorem had passed before this auxiliary addition and passes with
+the corrected identity.
+
+The source-driven registry now records fifty-five completed execution cases
+and imports the full inference proof into the aggregate target.  The CLI
+manifest distinguishes proved generated-WAT execution from the remaining
+composed numerical error bound.  Remaining checkpoint ranges, that bound,
+the 64-byte extension, and exact-byte packaging remain open.
+
+The completed tiny_gpt2_infer gate passes, including regenerated-program
+comparison and the registered inference theorem.  The command
+tools/tiny-gpt2.js --text 'To b' returns 256 logits and the updated verification
+status with the unchanged artifact digest.  Documentation and whitespace
+checks pass.  The earlier assoc_list cache mismatch still blocks the aggregate
+source-artifact gate.
