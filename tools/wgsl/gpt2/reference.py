@@ -15,6 +15,9 @@ parser.add_argument('--output',type=Path,default=Path('build/gpt2/reference.json
 parser.add_argument('--prompt',default='The purpose of science is')
 parser.add_argument('--logits',type=Path)
 parser.add_argument('--skip-tokenizer',action='store_true')
+parser.add_argument('--trace',type=Path)
+parser.add_argument('--temperature',type=float,default=0)
+parser.add_argument('--seed',type=int,default=42)
 args = parser.parse_args()
 torch.set_num_threads(2)
 tokenizer = GPT2Tokenizer.from_pretrained(args.source,local_files_only=True)
@@ -48,5 +51,42 @@ if args.logits:
         actualTop10=np.argsort(actual)[-10:][::-1].tolist())
     assert result['actualTop10'] == result['referenceTop10'], result
     assert error.max() < 0.005,result
+if args.trace:
+    records = np.fromfile(args.trace,dtype='<u8').reshape(-1,50258)
+    chosen = records[:,0].astype(np.int64)
+    actual = records[:,1:].copy().view('<f8')
+    sequence = torch.tensor([tokenizer.encode(args.prompt)+chosen[:-1].tolist()])
+    with torch.no_grad():
+        expected = model(sequence).logits[0,inputs.input_ids.shape[1]-1:].numpy().astype(np.float64)
+    error = abs(actual-expected)
+    result['trace'] = {'steps':len(chosen),'chosenTokens':chosen.tolist(),
+        'maximumErrorPerStep':error.max(axis=1).tolist(),
+        'actualGreedy':actual.argmax(axis=1).tolist(),'referenceGreedy':expected.argmax(axis=1).tolist(),
+        'decoded':tokenizer.decode(sequence[0].tolist()+[int(chosen[-1])])}
+    args.output.write_text(json.dumps(result,indent=2,ensure_ascii=False)+'\n')
+    print(json.dumps(result['trace'],indent=2),flush=True)
+    assert np.isfinite(actual).all() and error.max() < 0.005,result['trace']
+    state = args.seed
+    for i, row in enumerate(actual):
+        if args.temperature == 0:
+            selected = int(row.argmax())
+        else:
+            # Independent reference for the specified top-k ordering and RNG.
+            values, indices = row[:40].copy(), list(range(40))
+            minimum = int(values.argmin())
+            for token in range(40,len(row)):
+                if row[token] > values[minimum]:
+                    values[minimum] = row[token]; indices[minimum] = token
+                    minimum = int(values.argmin())
+            state ^= state >> 12
+            state = (state ^ (state << 25)) & ((1<<64)-1)
+            state ^= state >> 27
+            random_word = (state*0x2545F4914F6CDD1D) & ((1<<64)-1)
+            uniform = (random_word >> 12)/(1<<52)
+            weights = np.exp((values-values.max())/args.temperature)
+            target = uniform*weights.sum()
+            selected = indices[min(int(np.searchsorted(weights.cumsum(),target,side='right')),39)]
+        assert selected == int(chosen[i]),('sampler',i,selected,int(chosen[i]))
+    result['trace']['samplerChecks'] = len(chosen)
 args.output.write_text(json.dumps(result,indent=2,ensure_ascii=False)+'\n')
 print(json.dumps({k:v for k,v in result.items() if k!='tokenization'},indent=2,ensure_ascii=False))
