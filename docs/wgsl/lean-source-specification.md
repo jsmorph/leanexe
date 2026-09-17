@@ -39,8 +39,10 @@ Shader text is limited to 64 KiB and must be valid UTF-8.
 
 ## Accepted expression grammar
 
-The following grammar describes elaborated expressions, after supported
-transparent helper calls and beta redexes have been expanded:
+The following grammar describes elaborated expressions after transparent
+helper calls, beta redexes and other supported weak-head reductions. A source
+construct that computes away completely can therefore be accepted even if
+there is no runtime translation for that construct:
 
 ```text
 index := natural literal | row | col | enclosing fold index
@@ -74,7 +76,7 @@ indices. UInt32 integer arithmetic, even though it has the same storage type,
 is rejected. A custom typeclass instance cannot bypass the final checked
 equality to the original source.
 
-The subset does not include conditionals, general pattern matching, dynamic
+The subset does not directly translate conditionals, general pattern matching, dynamic
 loop counts, general recursion, dynamic allocation, arbitrary array methods,
 barriers, shared memory, atomics, subgroup operations or inter-invocation
 communication. Opaque/axiomatic helpers without a supported visible body
