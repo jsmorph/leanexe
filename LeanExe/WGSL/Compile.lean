@@ -91,6 +91,10 @@ private partial def expression (ctx : Context) (e : Expr) (fuel : Nat := 512) : 
     let .lit word ← index ctx args[0]! | unsupported "nonliteral word conversion" e
     if word > 4294967295 then throwError "WGSL: word literal must fit u32"
     return .lit (UInt32.ofNat word)
+  -- Expose one helper body before weak-head normalization can evaluate a
+  -- literal-count Source.fold into hundreds of nested arithmetic operations.
+  if let some reduced ← unfoldDefinition? e then
+    if reduced != e then return ← expression ctx reduced (fuel - 1)
   let reduced ← whnf e
   if reduced != e then expression ctx reduced (fuel - 1) else unsupported "word expression" e
 
