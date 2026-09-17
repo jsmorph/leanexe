@@ -42,6 +42,7 @@ import Project.ExpSmall.Program
 import Project.ExpWide.Program
 import Project.ExpNeg.Program
 import Project.Softmax.Program
+import Project.SoftmaxWide.Program
 import Project.LayerNorm.Program
 import Project.Gelu.Program
 import Project.GeluWide.Program
@@ -332,6 +333,11 @@ example : eraseTypeIdx Project.Softmax.func12Def = eraseTypeIdx allocFuncDef := 
 example : eraseTypeIdx Project.Softmax.func13Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Softmax.func14Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Softmax.func15Def = eraseTypeIdx (releaseFuncDef 15) := rfl
+
+example : eraseTypeIdx Project.SoftmaxWide.func13Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func14Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func15Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func16Def = eraseTypeIdx (releaseFuncDef 16) := rfl
 
 example : eraseTypeIdx Project.LayerNorm.func7Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.LayerNorm.func8Def = eraseTypeIdx resetFuncDef := rfl

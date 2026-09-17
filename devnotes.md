@@ -14129,3 +14129,56 @@ The four runtime-function pins include gelu_wide.  Integration into the
 GPT-2 source and its full numerical composition remain open.
 The runtime-pin module checks in 1.8 seconds, and all 136 maintained
 Markdown files pass the documentation check.
+
+### Wider softmax arithmetic
+
+SoftmaxWide changes the exponential weight calculation to ExpNeg and
+reuses the existing maximum, masked division, four-way sum, and result
+representation.  Its internal compute entry requires no new runtime
+format.  Its numerical hypothesis accepts one to four active scores,
+finite words, and active score differences below 2^1023, the proved
+subtraction overflow limit.
+
+The score-subtraction theorem proves nonpositive output and relative
+rounding error.  The weight theorem bounds the resulting exponential
+error by 5000u times the ideal weight plus 1e-27.  This bound is independent
+of the largest score gap within the finite subtraction range.  Near the
+tail threshold the proof uses relative exponential perturbation.  Beyond
+it the proof establishes the zero branch and the exponential tail bound.
+The weight module checks in 1.5 seconds.  A shared real exponential lemma
+supplies relative perturbation without an absolute input bound.
+
+The generic normalization theorem now separates weight error, sum
+rounding, and division rounding.  It bounds the sum of absolute
+probability errors and works over any finite index type.  The proof
+reuses the weighted normalization result and proves the common-denominator
+error identity.  Its first check found a missing big-operator field
+import and an extra tactic after a closed goal.  The corrected theorem
+checks in 1.2 seconds.  The four-score adapter proves a positive computed
+denominator, records the relative-plus-tail weight error sum, and reuses
+the existing three-addition rounding proof.  It checks in 1.7 seconds.
+
+The full four-score numerical theorem checks in 1.9 seconds.  It proves
+finite outputs, a sum of absolute probability errors at most 10053u,
+and normalization error at most 52u.  The weighted-value theorem adds
+no factor for the number of active positions.  The first check found
+an adjacent absolute-value delimiter and multiplication token.  Adding
+whitespace resolved that parse error.
+
+The complete generated-WAT theorem checks in 5.6 seconds.  Two checked
+function regions reuse the existing maximum, active-score selection,
+row maximum, total, division, and all new exponential functions.  Only
+the masked weight and final compute body need local execution proofs.
+The exported entry returns the exact source result and preserves the
+complete store for every raw input.  The numerical theorem carries its
+finite-score and safe-difference hypotheses.
+
+The softmax_wide proof gate passes regeneration, cache comparison,
+annotation checking, exact execution, and numerical behavior.  All new
+axiom reports contain only standard logical axioms.  The 35 runtime
+rows pass against the native Talos bit model, including all four masks,
+equal scores, signed zero, subnormals, large score gaps, and adjacent
+words at the exponential cutoff.  The largest measured probability
+difference from the host reference is 7.59e-19.  The first Node invocation
+hit the same sandbox process restriction.  The approved invocation passes.
+The source registry now has 59 complete cases and 42 exact-byte packages.
