@@ -395,6 +395,9 @@ async function main() {
       "       artifact-proof.js wgsl-bundle-build <fresh-directory> <rows> <cols> <inner> separate|fusion",
       "       artifact-proof.js wgsl-bundle-check|wgsl-bundle-run <bundle-directory>",
       "       artifact-proof.js wgsl-bundle-corpus <fresh-directory>",
+      "       artifact-proof.js wgsl-gpt-build|wgsl-gpt-corpus <fresh-directory>",
+      "       artifact-proof.js wgsl-gpt-check <bundle-directory>",
+      "       artifact-proof.js wgsl-gpt-run <bundle-directory> <t0> <t1> <t2> <t3>",
     ].join("\n"));
   }
   const inputPath = path.resolve(process.argv[3]);

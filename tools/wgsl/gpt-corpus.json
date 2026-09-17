@@ -1,0 +1,12 @@
+{
+  "positive": [
+    { "name": "lean", "tokens": [76, 101, 97, 110] },
+    { "name": "zeros", "tokens": [0, 0, 0, 0] },
+    { "name": "byte-edges", "tokens": [255, 128, 1, 0] }
+  ],
+  "negative": [
+    { "name": "altered-hidden", "file": "hidden.wasm", "offset": 0, "xor": 1, "failure": "hidden Wasm bytes differ" },
+    { "name": "altered-finish", "file": "finish.wasm", "offset": 0, "xor": 1, "failure": "finish Wasm bytes differ" },
+    { "name": "altered-weights", "file": "weights.bin", "offset": 0, "xor": 1, "failure": "weights differ" }
+  ]
+}

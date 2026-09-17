@@ -222,3 +222,19 @@ This is a macro-step semantics for the fixed parsed subset, with separate A/B/C
 storage objects and explicit runtime progress/conformance assumptions. The
 concrete binary32 error bound and Wasm binding theorems above compose through
 this model. All public audits use standard logical axioms only.
+
+## Complete checkpoint GPT artifact bundle
+
+The independent GPT gate and six-case CPU corpus pass. The portable artifacts
+and execution evidence are in [test/wgsl/gpt](../../test/wgsl/gpt). The selected
+1×256×4 Lean GEMM definition produces the WGSL vocabulary projection. Three
+exact Wasm binaries cover the hidden computation, dispatch bridge and binary64
+bias addition; all have kernel-checked artifact and execution theorems.
+
+GptBundle.artifact composes those results for every four-byte checkpoint input,
+with explicit native conversion/transfer and runtime assumptions. Under the
+restricted profile it gives exact mixed-precision outputs and the full real-model
+bound described above. The uniform bound is approximately 4.85e9, so the theorem
+is not a tight numerical accuracy certificate. The actual native corpus checks
+768 output words against Lean's model and rejects altered hidden, finish and
+checkpoint files. Commands are documented in [the harness guide](../../tools/wgsl/README.md).
