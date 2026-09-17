@@ -103,9 +103,9 @@ A useful precision certificate and combined checker execution remain open.
 The combined entry compiles and passes 768 WASM logit comparisons and eight
 rejection tests.  Its source rejection and numerical theorems pass.  Checked
 function-region equality reuses the scalar checker, hidden-state, and logit
-execution proofs.  Internal array helpers carry owner and data-pointer slots,
-so the preparation call and final output loop need proofs for that calling
-convention.  The combined execution theorem remains open.
+execution proofs.  The internal preparation call now has a complete proof
+for its owner and data-pointer results.  The internal output loop and
+combined execution theorem remain open.
 
 ## Approved arithmetic
 
