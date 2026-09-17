@@ -38,6 +38,20 @@ Exported-weight verification remains open.
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The inference proof must establish its own ranges and error bounds.
 
+The [runtime-weight analysis](../../plans/tiny-model-runtime-weights.md)
+records the clipping proposal and numerical sensitivity investigation.
+Its standard-library audit reproduces the constructed cancellation case
+against the current WASM artifact and evaluates proposed exp/GELU arithmetic:
+
+```sh
+python3 training/tiny-gpt2/numerical_audit.py \
+  --output data/tiny-gpt2-v1/numerical-audit.json
+```
+
+The output records raw test weights, the module hash, an 80-digit reference,
+sampled approximation errors, and conservative sensitivity terms at context
+lengths four and sixty-four.  These calculations guide the formal proof.
+
 `node test/tiny_gpt2_body.js` compares sixteen initialized model rows with
 the compiled hidden-state and vocabulary-head bodies.  Wasmtime agrees
 bit-for-bit with the native Talos evaluator.  The
