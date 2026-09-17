@@ -108,7 +108,16 @@ theorem clipping_exact {env : Wasm.HostEnv α} {initial : Wasm.Store α}
     Wasm.TerminatesWith env module (i+2) initial args post :=
   Project.FunctionRegion.terminatesWith clippingRegion i hi h
 
+theorem releaseRegion : Shift Project.SequenceSoftmax.module module
+    (fun _ => 82) (fun _ => 82) (fun i => i = 15) := by
+  refine ⟨rfl, rfl, rfl, ?_⟩
+  rintro i rfl
+  refine ⟨_, rfl, rfl, ?_⟩
+  prove_portable
+  all_goals rfl
+
 #print axioms shared_exact
 #print axioms sequence_exact
 #print axioms clipping_exact
+#print axioms releaseRegion
 end Project.TinyGpt2Seq
