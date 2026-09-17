@@ -25,10 +25,6 @@ def main (args : List String) : IO Unit := do
   let [directory] := args | throw (IO.userError "usage: Vectors.lean OUTPUT_DIRECTORY")
   let directory : System.FilePath := directory
   IO.FS.createDirAll directory
-  for (name, entry, shape) in [
-      ("add", add, Source.Shape.mk 2 3 6 6),
-      ("multiply", multiply, Source.Shape.mk 2 3 6 6),
-      ("matmul", matmul, Source.Shape.mk 2 3 8 12),
-      ("sumProducts", sumProducts, Source.Shape.mk 2 3 8 12)] do
+  for (name, entry, shape) in cases do
     IO.FS.writeFile (directory / s!"{name}.json") (vectors entry shape).pretty
     IO.println s!"Computed original Lean definition: {name}"

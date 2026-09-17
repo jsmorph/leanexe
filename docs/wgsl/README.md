@@ -4,6 +4,12 @@ The [development plan](../../WGSL.md) targets independently verified Wasm/WGSL
 bundles. This directory records implementation progress, not a completed GPU
 correctness claim.
 
+The [body compiler](body-compiler.md) translates elaborated Lean expressions
+using the grammar in the [source specification](lean-source-specification.md).
+It is separate from the [original fixed GEMM template](gemm-template-interface.md)
+still used by the GPT-2 bundle. See the [development journal](body-compiler-journal.md)
+for successful checks and retained failures.
+
 The [floating-point specification](float-specification.md) gives the exact
 counterpart of “the artifact computes the Lean function,” and an independent
 typed float algorithm for the complete GPT path. Its output contract is word
