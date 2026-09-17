@@ -14757,3 +14757,20 @@ propext, Classical.choice, and Quot.sound.  The 3,851-byte generated module
 has SHA-256 7bdbd8540c977914030e757c76982e4bf8f851f66f3c32ef515bae6263971b7f.
 The identity and documentation tests pass.  The registry now has 61
 completed specifications among 62 cases.  GPT-2/128 remains incomplete.
+
+### GPT-2/128 helper proof reuse
+
+Comparison of compiler source-name annotations and generated instruction
+streams identified 41 shared functions from TinyGpt2Hidden.  A closed
+function-region theorem now checks their parameter, local, instruction,
+result, and renamed-call equality inside the GPT-2/128 module.  Separate
+regions cover the eleven sequence-softmax helpers and all seven functions
+of the existing internal weight checker, including prepare.  The three
+regions cover 50 distinct functions and check in 15 seconds.
+
+The exported sequence-softmax entry returns one pointer.  GPT-2/128 calls
+an internal version with owner and data arguments and two returned
+pointers.  Its enclosing call therefore needs its own execution proof.
+The two maps, maximum, and sum transfer directly.  The proof will compose
+those results with the internal call's frame and release instructions.
+No change to source arithmetic or allocation behavior is needed.
