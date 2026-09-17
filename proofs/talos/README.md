@@ -48,7 +48,11 @@ The [exponential map](lean/Project/SequenceSoftmax/WeightsMap.lean) and
 [division map](lean/Project/SequenceSoftmax/NormalizeMap.lean) loops also
 have terminating exact-output proofs.  Their writes stay within the
 output array, preserving a disjoint input in either address order.
-Allocation, complete softmax calls, and inference composition remain open.
+The complete [weight](lean/Project/SequenceSoftmax/Weights.lean) and
+[normalization](lean/Project/SequenceSoftmax/Normalize.lean) functions now
+include allocation, initialization, and return.  Their ownership theorems
+preserve every previously owned array and account for memory use.
+Complete softmax and inference composition remain open.
 
 The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves
 the complete generated-WAT checker.  It checks length, bound, and every
