@@ -2487,6 +2487,24 @@ mutual
                               (.byteArray (.local ownerSlot) slicePtr sliceLen)))))),
                     stopSlot + 1)
             | _ => .error "unsupported ByteArray.extract application"
+        | (.const ``LeanExe.Packed.generateUInt32LE _, args) =>
+            match args with
+            | [size, generator] =>
+                let sizeResult ← extractExprFrom ctx locals nextLocal size
+                let lenSlot := sizeResult.snd
+                let indexSlot := lenSlot + 1
+                let body ←
+                  match collectLambdas generator 1 with
+                  | some body => .ok body
+                  | none => .error "packed generation requires a direct lambda"
+                let bodyResult ← extractExprFrom ctx (.slot indexSlot :: locals) (indexSlot + 1) body
+                let ptrSlot := bodyResult.snd
+                .ok
+                  (.letE lenSlot (.u64Bin .natMul sizeResult.fst (.u64 4))
+                    (.letE ptrSlot (.byteArrayGenerate32Ptr (.local lenSlot) indexSlot bodyResult.fst)
+                      (.byteArray (.local ptrSlot) (.local ptrSlot) (.local lenSlot))),
+                    ptrSlot + 1)
+            | _ => .error "unsupported packed generator application"
         | (.const ``ByteArray.push _, args) =>
             match args.reverse with
             | value :: array :: _ =>
@@ -4595,7 +4613,7 @@ mutual
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 value, nextLocal)
                 | none => extractExprFrom ctx locals nextLocal arg
-            | (.const ``UInt32.ofNat _, [arg]) =>
+            | (.const ``UInt32.ofNat _, [arg]) | (.const ``Nat.toUInt32 _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 (value % (2 ^ 32)), nextLocal)
                 | none =>
@@ -4752,7 +4770,16 @@ mutual
       (primitive : Name)
       (args : List Expr) :
       Except String (IRExpr × Nat) := do
-    if f64SqrtPrimitiveName primitive then
+    if primitive == ``LeanExe.Packed.getUInt32LE! then
+      match args with
+      | [bytes, offset] =>
+          let bytesResult ← extractValueFrom ctx locals nextLocal bytes
+          let parts ← byteArrayPartsWithLets bytesResult.fst
+          let offsetResult ← extractExprFrom ctx locals bytesResult.snd offset
+          .ok (wrapExprLets parts.fst
+            (.byteArrayLoad32 parts.snd.fst parts.snd.snd offsetResult.fst), offsetResult.snd)
+      | _ => .error "packed UInt32 read requires a byte array and byte offset"
+    else if f64SqrtPrimitiveName primitive then
       match args with
       | [value] =>
           let result ← extractExprFrom ctx locals nextLocal value

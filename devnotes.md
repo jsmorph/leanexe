@@ -14915,3 +14915,38 @@ test also passes.  The root library, scalar compiler certificates, and
 image codec/integration tests build successfully.  The required existing
 Talos gate reaches the previously recorded assoc_list generated-cache
 mismatch and stops.  No proof source or tracked artifact cache was changed.
+
+### Packed tensors and pretrained projection
+
+The user directed development away from release bookkeeping and confirmed
+the approvals for reference dependencies, FP32, packed tensors, and the
+degree-eighteen exponential with GELU tails at magnitude eight.  Further
+release-record investigation is deferred.  The existing tiny-model
+arithmetic already implements the approved numerical methods.  The new
+FP32 model will use those methods at its declared precision.
+
+LeanExe.Packed adds little-endian UInt32 reads at byte offsets and indexed
+generation into one four-byte-per-word allocation.  Generation checks byte
+count overflow, supports captured values and loops, and records fresh
+ownership for automatic release.  Its read lowers to a bounds-checked
+i32.load, including unaligned offsets.  The Wasmtime host accepts binary
+files as ByteArray arguments.  A missing Nat.toUInt32 extraction case
+appeared in the first generator test.  It now shares UInt32.ofNat lowering.
+
+The packed test passes native Lean comparisons, empty and unaligned reads,
+bounds and multiplication-overflow traps, binary input paths with spaces,
+empty generation, one-allocation construction, nested loops, FP32 mapping,
+and release of a generated temporary.  The native test needed explicit
+JSON output and its Lean import because Lean's pretty printer wraps lists.
+
+The first GPT-2 attention projection uses the pinned checkpoint's
+768-by-2304 matrix, bias, and normalized first-token embedding.  All 2,304
+WASM outputs match a serial FP32 PyTorch accumulation bit-for-bit.  The
+maximum absolute difference from standard PyTorch matrix multiplication
+is 2.6226043701171875e-6.  The host call took 0.03369425 seconds, including
+module startup and two binary input loads.  Allocation counters report the
+two inputs and one packed output.  The test records hashes and measurements
+under build/gpt2-124m/kernel, with its result retained in the data directory.
+
+The root library build, thirteen-case WAT/binary round-trip gate, and
+documentation checks pass with packed storage enabled.

@@ -131,6 +131,17 @@ The compiler also recognizes Talos's `Wasm.IEEE64.add`, `sub`, `mul`, `div`, and
 
 ## Terms and Control Flow
 
+The `LeanExe.Packed` operations provide four-byte little-endian words in
+`ByteArray` storage.  `getUInt32LE!` returns a `UInt32` from a byte offset
+and traps unless all four bytes lie within the array.  The offset need
+not be aligned.  `generateUInt32LE` accepts a bounded word count and a
+direct `Nat → UInt32` lambda, allocates one byte array, and stores each
+result in index order.  The checked byte count is four times the word
+count.  Empty generation evaluates no lambda body.  Allocation and
+ownership follow the existing byte-array rules.  These operations have
+native Lean and Wasmtime tests.  The scalar IR evaluator excludes their
+heap operations.
+
 The accepted term language is first-order.  It includes variables, local `let`, direct calls to accepted helpers, numeric literals, constructors, projections, `if`, dependent `if` with erased proof binders, pattern matching, pure `Id`, `Option`, and `Except` `do` notation in the accepted shapes below, `for` loops over `ByteArray`, fixed-width `Array`, and `Std.Legacy.Range` in accepted monads, `while` loops that elaborate through `Lean.Loop` in accepted monads, and a restricted fuel-recursive loop shape.  Lean's `PUnit` sequencing value uses the same runtime representation as `Unit`, which lets checked `do`-notation assignment sequencing compile without exposing `PUnit` in the public ABI.  The subset excludes higher-order arguments, closures, polymorphic runtime values, type-class-driven runtime dispatch, opaque executable constants, and arbitrary recursors.
 
 Local `let` bindings preserve Lean evaluation behavior for lazy internal values.  A demanded field, branch, or projection extracts only the value needed by the result.  This matters for products, options, structures, byte-producing helpers, and branch-selected values whose unused components may contain trapping expressions.

@@ -9,6 +9,7 @@ import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
 import LeanExe.Float64
 import LeanExe.Float32
+import LeanExe.Packed
 import LeanExe.Examples.ArraySemantics
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.AsciiStringPrograms
@@ -17,6 +18,7 @@ import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
 import LeanExe.Examples.Float64Bits
 import LeanExe.Examples.Float32Bits
+import LeanExe.Examples.Packed
 import LeanExe.Examples.EulerRusanov
 import LeanExe.Examples.EulerRusanovStep
 import LeanExe.Examples.IntMap

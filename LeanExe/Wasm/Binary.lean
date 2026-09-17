@@ -331,6 +331,11 @@ mutual
     | .byteArrayGet ptr len index =>
         .byteArrayGet (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset index)
+    | .byteArrayLoad32 ptr len index =>
+        .byteArrayLoad32 (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        .byteArrayGenerate32Ptr (shiftExprCalls offset len) indexSlot (shiftExprCalls offset body)
     | .byteArrayPushPtr ptr len value =>
         .byteArrayPushPtr (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset value)
@@ -850,6 +855,10 @@ mutual
     | .arrayReverseSlots _ _ array => 6 + max 6 (exprScratch array)
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
+    | .byteArrayLoad32 ptr len index =>
+        3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
+    | .byteArrayGenerate32Ptr len _ body =>
+        2 + max 6 (max (exprScratch len) (exprScratch body))
     | .byteArrayPushPtr ptr len value =>
         6 + max 6 (max (exprScratch ptr) (max (exprScratch len) (exprScratch value)))
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
@@ -1967,6 +1976,42 @@ mutual
       ([Instr.iff true (localGet ptrLocal ++ localGet indexLocal ++ [Instr.addI64] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U) (some ([Instr.unreachable]))])
 
+  partial def emitByteArrayLoad32
+      (emitValue : Nat → Expr → List Instr)
+      (scratch : Nat) (ptr len offset : Expr) : List Instr :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let offsetLocal := scratch + 2
+    let childScratch := scratch + 3
+    emitValue childScratch ptr ++ localSet ptrLocal ++
+      emitValue childScratch len ++ localSet lenLocal ++
+      emitValue childScratch offset ++ localSet offsetLocal ++
+      localGet offsetLocal ++ localGet lenLocal ++ i64LeU ++
+      [Instr.iff true
+        (localGet lenLocal ++ localGet offsetLocal ++ [Instr.subI64] ++ i64Const 4 ++ i64GeU ++
+          [Instr.iff true
+            (localGet ptrLocal ++ localGet offsetLocal ++ [Instr.addI64, Instr.wrapI64,
+              Instr.load32, Instr.extendUI32]) (some [Instr.unreachable])])
+        (some [Instr.unreachable])]
+
+  partial def emitByteArrayGenerate32Ptr
+      (emitValue : Nat → Expr → List Instr)
+      (scratch : Nat) (byteLen : Expr) (indexSlot : Nat) (body : Expr) : List Instr :=
+    let lenLocal := scratch
+    let ptrLocal := scratch + 1
+    let childScratch := scratch + 2
+    emitValue childScratch byteLen ++ localSet lenLocal ++
+      rcAllocRawObject childScratch (localGet lenLocal) ++ localSet ptrLocal ++
+      i64Const 0 ++ localSet indexSlot ++
+      [Instr.block [Instr.loop
+        (localGet indexSlot ++ i64Const 4 ++ [Instr.mulI64] ++
+          localGet lenLocal ++ i64GeU ++ [Instr.brIf 1] ++
+          localGet ptrLocal ++ localGet indexSlot ++ i64Const 4 ++
+          [Instr.mulI64, Instr.addI64, Instr.wrapI64] ++
+          emitValue childScratch body ++ [Instr.wrapI64, Instr.store32] ++
+          localGet indexSlot ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexSlot ++
+          [Instr.br 0])]] ++ localGet ptrLocal
+
   partial def emitByteArrayPushPtr (scratch : Nat) (ptr len value : Expr) : List Instr :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -2687,6 +2732,9 @@ mutual
         emitArraySwapIfInBoundsSlots scratch width childMask array left right
     | .arrayReverseSlots width childMask array => emitArrayReverseSlots scratch width childMask array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
+    | .byteArrayLoad32 ptr len offset => emitByteArrayLoad32 emitExpr scratch ptr len offset
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        emitByteArrayGenerate32Ptr emitExpr scratch len indexSlot body
     | .byteArrayPushPtr ptr len value => emitByteArrayPushPtr scratch ptr len value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
         emitByteArrayAppendPtr scratch leftPtr leftLen rightPtr rightLen
@@ -2870,6 +2918,10 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .release ptr =>
       emitExprWithReleaseFallback releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
+  | .byteArrayLoad32 ptr len offset =>
+      emitByteArrayLoad32 (emitExprWithReleaseFallback releaseIndex) scratch ptr len offset
+  | .byteArrayGenerate32Ptr len indexSlot body =>
+      emitByteArrayGenerate32Ptr (emitExprWithReleaseFallback releaseIndex) scratch len indexSlot body
   | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
       emitArrayMapSlots (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex)
         scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets
