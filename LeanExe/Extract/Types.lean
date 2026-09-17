@@ -1180,7 +1180,8 @@ partial def normalizeClassEvidenceExpr
       let normalize := normalizeClassEvidenceExpr env fuel
       let unfoldApplication (name : Name) (levels : List Level) (args : List Expr)
           (fallback : Expr) : Expr :=
-        if isEvidenceProjectionFunction env name || classEvidenceApplication? env fallback then
+        if name == ``ForIn.forIn then fallback
+        else if isEvidenceProjectionFunction env name || classEvidenceApplication? env fallback then
           match env.find? name with
           | some info =>
               match info.value? with
