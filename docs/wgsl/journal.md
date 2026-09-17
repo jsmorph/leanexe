@@ -768,3 +768,12 @@ The full binary-to-execution-model theorem checks in 4.8s with only propext,
 Classical.choice and Quot.sound. Failed export drafts and logs are preserved.
 This establishes artifact identity and validity; the hidden execution theorem
 and complete native GPT bundle still need their final local checks.
+
+The isolated HiddenCode build reached its 60s limit. Separating the equality
+from the definitions showed the data declarations alone also exceeded that
+bound. Seven small definition modules now check in 8.6–22s each, retaining
+the same tail definitions and public names; program_eq checks in 3.8s. The
+reusable Composition macro also checks independently. This split preserves
+the original source and failed logs and adds no proof axioms or limit changes.
+The final hidden execution theorem is now being checked with these prepared
+dependencies. Parent main remains at the already merged bf6fcc42.
