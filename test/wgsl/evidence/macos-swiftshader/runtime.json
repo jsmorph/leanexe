@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Native headless WGSL execution on the SwiftShader CPU device; empirical evidence only.",
+  "wgpuNative": {
+    "repository": "https://github.com/gfx-rs/wgpu-native",
+    "revision": "768f15f6ace8e4ec8e8720d5732b29e0b34250a8",
+    "version": "27.0.4.0",
+    "sourceStatus": "",
+    "submodules": "b35641f4a3c62aa86a0b3c983d163bc0fe36026d examples/vendor/glfw (3.4-17-gb35641f4)\n bac520839ff5ed2e2b648ed540bd9ec45edbccbc ffi/webgpu-headers (bac5208)",
+    "cargoLockSha256": "9f548515cee1b2859c0f075f990cc33b2d4724c781283b848b6c341fb9117c14",
+    "features": [
+      "wgsl",
+      "vulkan-portability",
+      "wgc/vulkan-portability"
+    ],
+    "defaultFeatures": false,
+    "build": "release --locked",
+    "cargoBuildJobs": 1,
+    "librarySha256": "e95dcf3e6b1a4c5915371d040c2fbef3853f56c97d0881f8c81814d506aeb422"
+  },
+  "toolchain": {
+    "rust": "1.90.0",
+    "target": "aarch64-apple-darwin",
+    "archives": {
+      "rustc": "89551c0ba1cc6d0312aebc4a6cafe4497223217ea8e87c81f6afbe127dfaeeb6",
+      "cargo": "17a4410a27bf7dad4765f3809265c225f25f8b009da3d4b76cd0927acdae04b5",
+      "rust-std": "c36777aec17d617f85f94b7cb87bdd4270eeca30ef38c6f686809d163c881609"
+    }
+  },
+  "swiftShader": {
+    "source": "Existing Google Chrome 152.0.7977.84 distribution",
+    "directory": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries",
+    "files": {
+      "libvulkan.dylib": "31c014c1033b74a6f3467bf143216af25d5d6e15c5b5c669bec57f0d6918ed3a",
+      "libvk_swiftshader.dylib": "1925ba590d014dde2cff3f623d9335bd3159c7dbbce71b07cf6cdd87a81db1a2",
+      "vk_swiftshader_icd.json": "d717d915e31e7c27948b80b36ab34e2d897888114c5c7d0af835f93eb53e58f5"
+    }
+  },
+  "pythonPackages": {
+    "cffi": "2.1.1",
+    "numpy": "2.5.3",
+    "pycparser": "3.0",
+    "rendercanvas": "2.7.2",
+    "wgpu": "0.31.1",
+    "rubicon-objc": "0.5.6"
+  },
+  "reports": [
+    "rectangular.json",
+    "fusion.json",
+    "signed-zero.json",
+    "subnormal.json"
+  ]
+}

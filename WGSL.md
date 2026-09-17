@@ -13,7 +13,12 @@ index/dispatch/u32 arithmetic lemmas. The invocation machine now has checked
 termination, safety and dot-product correspondence, packaged with the exact
 captured source. Full dispatch now has checked interleaving termination, memory
 safety, unique writes, launch coverage and observable output correspondence.
-Concrete binary32 numerical composition is the next formal milestone.
+The existing Talos proof workspace now supplies concrete binary32 arithmetic,
+restricted exactness, and a composed GEMM error bound under explicit finite-input
+and magnitude conditions. The generated rectangular shader also runs headlessly
+on this ARM Mac's SwiftShader CPU device; all 15 output words match the reference.
+See [native execution instructions](tools/wgsl/README.md). Independent artifact
+package checking and the Wasm host/bundle composition remain open.
 
 ## Purpose
 

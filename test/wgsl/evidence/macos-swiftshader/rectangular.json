@@ -1,0 +1,236 @@
+{
+  "artifact": {
+    "byteLength": 652,
+    "path": "build/wgsl/macos-rectangular-20260916/kernel.wgsl",
+    "sha256": "6fc06d865910ef3e615a1e33757e011feb56461958212160b04bf52c8d447455",
+    "text": "// leanexe WGSL GEMM v1; row-major f32 storage buffers\nconst M: u32 = 3u;\nconst N: u32 = 5u;\nconst K: u32 = 2u;\n\n@group(0) @binding(0) var<storage, read> a: array<f32>;\n@group(0) @binding(1) var<storage, read> b: array<f32>;\n@group(0) @binding(2) var<storage, read_write> c: array<f32>;\n\n@compute @workgroup_size(8, 8, 1)\nfn gemm_f32(@builtin(global_invocation_id) gid: vec3<u32>) {\n  let col: u32 = gid.x;\n  let row: u32 = gid.y;\n  if (col >= N || row >= M) { return; }\n  var acc: f32 = 0.0f;\n  for (var k: u32 = 0u; k < K; k = k + 1u) {\n    let product: f32 = a[row * K + k] * b[k * N + col];\n    acc = acc + product;\n  }\n  c[row * N + col] = acc;\n}\n"
+  },
+  "check": {
+    "checkedElements": 15,
+    "failures": [],
+    "kind": "exact-profile-relation-membership",
+    "passed": true
+  },
+  "elapsedSeconds": 0.7278575410600752,
+  "evidenceKind": "tested-execution-only",
+  "executionConfiguration": {
+    "adapterFilter": "SwiftShader",
+    "backendFilter": "Vulkan",
+    "initialOutputWord": "7fc00001",
+    "pipelineConstants": {},
+    "timeoutSeconds": 30,
+    "workerPython": "/Users/jamiestephens/src/leanexe/build/wgsl/macos-venv-20260916/bin/python"
+  },
+  "formalArtifactProofEstablished": false,
+  "inputSource": {
+    "generator": "lcg-normal-signed-zero-v1",
+    "seed": 1
+  },
+  "inputs": {
+    "a": [
+      "00000000",
+      "408885db",
+      "be16017e",
+      "bff33ac5",
+      "3ff06d60",
+      "4098c13f"
+    ],
+    "b": [
+      "00000000",
+      "be6da3aa",
+      "bdcfff01",
+      "41324c6c",
+      "3efbdcdb",
+      "409b6c7e",
+      "415ba9c5",
+      "3ff81060",
+      "40ee083f",
+      "c0757892"
+    ]
+  },
+  "manifest": {
+    "bindings": {
+      "a": 0,
+      "b": 1,
+      "c": 2,
+      "group": 0
+    },
+    "buffers": {
+      "a": {
+        "bytes": 24,
+        "elements": 6
+      },
+      "b": {
+        "bytes": 40,
+        "elements": 10
+      },
+      "c": {
+        "bytes": 60,
+        "elements": 15
+      }
+    },
+    "dimensions": {
+      "cols": 5,
+      "inner": 2,
+      "rows": 3
+    },
+    "dispatchWorkgroups": [
+      1,
+      1,
+      1
+    ],
+    "entryPoint": "gemm_f32",
+    "kernel": "gemm_f32",
+    "profile": {
+      "id": "leanexe-f32-rne-separate-v1",
+      "revision": 1
+    },
+    "schemaVersion": 1,
+    "wgslRevision": "2026-08-17",
+    "workgroupSize": [
+      8,
+      8,
+      1
+    ]
+  },
+  "manifestSha256": "0caaf712d17d52086b2978cec3f1fd140860a5b0d12fa2592836d0f4e97452be",
+  "outputs": [
+    "41a5c5cf",
+    "426a4a18",
+    "41044a68",
+    "41fde1af",
+    "c182e867",
+    "c113abaa",
+    "c1d06ef3",
+    "c06abcbd",
+    "c17c46ed",
+    "40e6eb7a",
+    "41b97b7c",
+    "4282336f",
+    "4110f79a",
+    "4261c27e",
+    "c18b148e"
+  ],
+  "permittedOutputs": [
+    [
+      "41a5c5cf"
+    ],
+    [
+      "426a4a18"
+    ],
+    [
+      "41044a68"
+    ],
+    [
+      "41fde1af"
+    ],
+    [
+      "c182e867"
+    ],
+    [
+      "c113abaa"
+    ],
+    [
+      "c1d06ef3"
+    ],
+    [
+      "c06abcbd"
+    ],
+    [
+      "c17c46ed"
+    ],
+    [
+      "40e6eb7a"
+    ],
+    [
+      "41b97b7c"
+    ],
+    [
+      "4282336f"
+    ],
+    [
+      "4110f79a"
+    ],
+    [
+      "4261c27e"
+    ],
+    [
+      "c18b148e"
+    ]
+  ],
+  "runtime": {
+    "adapter": {
+      "adapter_type": "CPU",
+      "architecture": "",
+      "backend_type": "Vulkan",
+      "description": "",
+      "device": "SwiftShader Device (LLVM 10.0.0)",
+      "device_id": 49374,
+      "stackgroup_max_size": 128,
+      "stackgroup_min_size": 4,
+      "vendor": "SwiftShader driver",
+      "vendor_id": 6880
+    },
+    "deviceLimits": {
+      "max-bind-groups": 4,
+      "max-bind-groups-plus-vertex-buffers": 0,
+      "max-bindings-per-bind-group": 1000,
+      "max-buffer-size": 4503599627370496,
+      "max-color-attachment-bytes-per-sample": 128,
+      "max-color-attachments": 8,
+      "max-compute-invocations-per-workgroup": 256,
+      "max-compute-workgroup-size-x": 256,
+      "max-compute-workgroup-size-y": 256,
+      "max-compute-workgroup-size-z": 64,
+      "max-compute-workgroup-storage-size": 32768,
+      "max-compute-workgroups-per-dimension": 65535,
+      "max-dynamic-storage-buffers-per-pipeline-layout": 4,
+      "max-dynamic-uniform-buffers-per-pipeline-layout": 8,
+      "max-inter-stage-shader-variables": 0,
+      "max-non-sampler-bindings": 1000000,
+      "max-push-constant-size": 128,
+      "max-sampled-textures-per-shader-stage": 200,
+      "max-samplers-per-shader-stage": 64,
+      "max-storage-buffer-binding-size": 1073741824,
+      "max-storage-buffers-per-shader-stage": 30,
+      "max-storage-textures-per-shader-stage": 16,
+      "max-texture-array-layers": 2048,
+      "max-texture-dimension-1d": 16384,
+      "max-texture-dimension-2d": 16384,
+      "max-texture-dimension-3d": 2048,
+      "max-uniform-buffer-binding-size": 65536,
+      "max-uniform-buffers-per-shader-stage": 15,
+      "max-vertex-attributes": 16,
+      "max-vertex-buffer-array-stride": 2048,
+      "max-vertex-buffers": 16,
+      "min-storage-buffer-offset-alignment": 256,
+      "min-uniform-buffer-offset-alignment": 256
+    },
+    "environment": {
+      "LIBGL_ALWAYS_SOFTWARE": null,
+      "MESA_LOADER_DRIVER_OVERRIDE": null,
+      "VK_DRIVER_FILES": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries/vk_swiftshader_icd.json",
+      "VK_ICD_FILENAMES": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries/vk_swiftshader_icd.json",
+      "WGPU_BACKEND_TYPE": "Vulkan",
+      "WGPU_LIB_PATH": "/Users/jamiestephens/src/leanexe/build/tools/wgpu-native-768f15f6-vulkan/target/release/libwgpu_native.dylib"
+    },
+    "platform": "macOS-26.3.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.3",
+    "pythonPackages": {
+      "cffi": "2.1.1",
+      "numpy": "2.5.3",
+      "pycparser": "3.0",
+      "rendercanvas": "2.7.2",
+      "wgpu": "0.31.1"
+    },
+    "wgpuNative": "27.0.4.0",
+    "wgpuNativeLibrarySha256": "e95dcf3e6b1a4c5915371d040c2fbef3853f56c97d0881f8c81814d506aeb422",
+    "wgpuPy": "0.31.1"
+  },
+  "runtimeAssumption": "Compiler, device, and execution system satisfy the recorded profile and shared semantics; testing does not establish this universally.",
+  "schemaVersion": 1,
+  "status": "pass",
+  "timestampUtc": "2026-09-17T03:46:37.041948+00:00",
+  "universalRuntimeConformanceEstablished": false,
+  "workerStderr": "Unable to find extension: VK_EXT_swapchain_colorspace\nVK_EXT_memory_budget is not available.\nMissing extensions: [\"VK_KHR_portability_subset\"]\n"
+}

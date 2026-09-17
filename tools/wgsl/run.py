@@ -174,6 +174,10 @@ def execute_dispatch(device, job, wgpu):
 
 
 def run(args):
+    if args.report.exists() or args.report.is_symlink():
+        print(json.dumps({"status": "error", "report": str(args.report),
+                          "error": "report already exists; choose a fresh evidence path"}))
+        return 1
     started = time.monotonic()
     report = {"schemaVersion": 1, "status": "error",
               "timestampUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -236,7 +240,13 @@ def run(args):
         report["error"] = f"{type(error).__name__}: {error}"
     report["elapsedSeconds"] = time.monotonic() - started
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    # Exclusive creation also protects evidence created while the worker ran.
+    try:
+        with args.report.open("x") as output:
+            output.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    except OSError as error:
+        print(json.dumps({"status": "error", "report": str(args.report), "error": str(error)}))
+        return 1
     print(json.dumps({"status": report["status"], "report": str(args.report), "error": report.get("error")}))
     return 0 if report["status"] == "pass" else 1
 
