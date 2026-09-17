@@ -1351,9 +1351,13 @@ def floatUnaryPrimitive? (name : Name) : Option LeanExe.IR.FloatUnaryOp :=
   else if name == ``LeanExe.Float32.ofFloat64Bits then some .f64ToF32Bits
   else none
 
+def packedPrimitiveName (name : Name) : Bool :=
+  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE
+
 def compilerPrimitiveName (name : Name) : Bool :=
   (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name ||
-    (f32BinaryPrimitive? name).isSome || (floatUnaryPrimitive? name).isSome
+    (f32BinaryPrimitive? name).isSome || (floatUnaryPrimitive? name).isSome ||
+    packedPrimitiveName name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda

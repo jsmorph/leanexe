@@ -38,6 +38,7 @@ cases=(
   "LeanExe.Examples.Float64Bits LeanExe.Examples.Float64Bits.mulThenAddBits"
   "LeanExe.Examples.Float32Bits LeanExe.Examples.Float32Bits.sqrtDivBits"
   "LeanExe.Examples.Float32Bits LeanExe.Examples.Float32Bits.roundTripBits"
+  "LeanExe.Examples.Packed LeanExe.Examples.Packed.shifted"
   "LeanExe.Examples.JsonTypedDecode LeanExe.Examples.JsonTypedDecode.transform"
 )
 

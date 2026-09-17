@@ -163,6 +163,8 @@ def knownExternal? (name : Name) : Option Classification :=
   let root := rootString name
   if effectRoots.contains root then
     some { status := "rejected", reason := "unsupported effect dependency" }
+  else if LeanExe.Extract.Core.packedPrimitiveName name then
+    some { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
   else if LeanExe.Extract.Core.compilerPrimitiveName name then
     some {
       status := "implemented"
@@ -256,7 +258,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,
       ``Nat.toUInt64, ``UInt8.ofNat, ``UInt8.toNat, ``UInt8.toUInt32, ``UInt8.toUInt64,
-      ``UInt32.ofNat, ``UInt32.toNat, ``UInt32.toUInt8, ``UInt32.toUInt64].contains name then
+      ``UInt32.ofNat, ``Nat.toUInt32, ``UInt32.toNat, ``UInt32.toUInt8, ``UInt32.toUInt64].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
       ``HAnd.hAnd, ``HOr.hOr, ``HXor.hXor, ``Min.min, ``Max.max,
@@ -283,7 +285,9 @@ def knownExternal? (name : Name) : Option Classification :=
     none
 
 def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) : Classification :=
-  if LeanExe.Extract.Core.compilerPrimitiveName info.name then
+  if LeanExe.Extract.Core.packedPrimitiveName info.name then
+    { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
+  else if LeanExe.Extract.Core.compilerPrimitiveName info.name then
     {
       status := "implemented"
       reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? info.name).isSome ||

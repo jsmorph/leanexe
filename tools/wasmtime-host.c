@@ -390,6 +390,18 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     *out_count = 2;
     return true;
   }
+  if (strncmp(spec, "bytes-file:", 11) == 0) {
+    size_t len = 0;
+    uint8_t *bytes = read_file(spec + 11, &len);
+    uint64_t ptr = alloc_bytes(runtime, bytes, len);
+    free(bytes);
+    out[0].kind = WASMTIME_I64;
+    out[0].of.i64 = (int64_t)ptr;
+    out[1].kind = WASMTIME_I64;
+    out[1].of.i64 = (int64_t)len;
+    *out_count = 2;
+    return true;
+  }
   if (strncmp(spec, "array-u64:", 10) == 0) {
     U64List values = parse_u64_list(spec + 10);
     uint64_t ptr = alloc_u64_array(runtime, values);
@@ -1003,7 +1015,7 @@ static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
           "<i64|bytes|array-u64|slots:N> "
-          "[i64:N|bytes:HEX|array-u64:N,N ...]\n");
+          "[i64:N|bytes:HEX|bytes-file:PATH|array-u64:N,N ...]\n");
   exit(1);
 }
 
