@@ -14001,3 +14001,32 @@ is 1.1102230246251565e-16.  An initial sandbox EPERM prevented the test
 from starting its runner.  The approved test prefix then passed with the
 standard Lean cgroup limits.  The full reduction, squaring, and generated
 execution proofs remain open.  No target timed out.
+
+F64ExactHalving now proves finite output, sign preservation, and exact
+real division by two for every finite binary64 input whose exponent field
+is at least two.  Its dyadic lemma exposes a shifted 53-bit significand
+and reuses exact round-shift and packing results.  The proof applies to
+both signs and to every halving used by ExpNeg.  Initial checks exposed
+an unreduced finite predicate, a missing Bool namespace, and a sign cast
+that required a separate integer equality.  The corrected module checks
+in 1.3 seconds without new axioms.
+
+The reduction proof now gives the exact scaling identity, a reduced
+argument in [-1, 0], and a count bounded by its initial fuel.  The shared
+F64RelativeSquare theorem bounds one rounded square of a positive real
+approximation.  Its underflow premise is explicit.  ExpNeg's iteration
+proof applies it through six stages, with error coefficient 63*2^stage-3.
+The coefficient reaches 4029 after six squarings.  The full source theorem
+proves finite positive output and relative error at most 4029u throughout
+[-64, 0].  Below minus 64 it proves zero output and absolute error at most
+exp(-64), with a checked upper bound 1e-27.  No halving error enters this
+bound.  Reduction checks in 1.2 seconds, squaring in 1.4 seconds, and the
+complete numerical module in 1.6 seconds.  All theorem dependencies use
+only the standard logical axioms.  No target timed out.
+
+The new exp_neg registry entry and generated Program cache are prepared
+for execution proofs.  The generated reduction and squaring use loops
+and preserve scalar state.  The reduction includes a checked increment
+for its Nat squaring count, requiring a no-overflow premise in the helper
+proof.  The public entry supplies fuel six and count zero.  Complete
+execution and the registration's completion flag remain open.
