@@ -4,7 +4,7 @@ The root [Development Plan](../plan.md) is the only active work queue.  This dir
 
 | Plan | Status | Scope |
 |------|--------|-------|
-| [Pretrained GPT-2 through LeanExe](gpt2-124m.md) | Active | Run the pretrained 124M model through LeanExe/WASM with FP32 and a 128-token context. |
+| [Pretrained GPT-2 through LeanExe](gpt2-124m.md) | Implementation complete; proof work paused | Pretrained 124M FP32 text generation in WASM, with resident weights, cached attention, and tests through 128 tokens. |
 | [Verified tiny transformer inference](tiny-transformer.md) | Proof work paused | Retains four-byte proofs, shared numerical components, and tiny GPT-2/128 text generation. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Completed experimental milestone; optional regression path | Records canonical final-module serialization and exact self-reproduction without blocking native compiler development. |
 | [Source-Theorem Transport](theorem-transport.md) | Deferred pending smaller compiler-theorem experiments | Connect a Lean source theorem through proof-grade IR semantics and verified lowering to a theorem about exact artifact bytes. |
