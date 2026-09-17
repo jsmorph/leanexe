@@ -1,9 +1,11 @@
 # Development Plan
 
-The user authorized the [tiny transformer development](plans/tiny-transformer.md)
-on 2026-09-16.  The current target is GPT-2/128 with a checked proof that
-the generated module computes its Lean source.  Further real-arithmetic
-error bounds and exact-byte packages are deferred.
+The current target is [pretrained GPT-2 124M through LeanExe](plans/gpt2-124m.md)
+with a 128-token context.  The user paused proof development on 2026-09-17
+and approved FP32 arithmetic and packed binary tensors.  The CPU reference
+already produces text completions.  The earlier
+[tiny transformer development](plans/tiny-transformer.md) retains the
+four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.
 
 The active Euler work on `main` follows the [certificate, completion, and convergence plan](plans/euler-certificates-and-convergence.md), authorized on 2026-09-15.  Phase 13 pursues those items in that order.  The certificate observer has complete source and generated-WASM execution proofs.  Exact-byte verification precedes the new 192-grid and 800-grid runs.

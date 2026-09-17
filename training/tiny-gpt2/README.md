@@ -50,8 +50,8 @@ from 5.5676 to 2.6964.
 The [128-position checkpoint](../../data/tiny-gpt2-128-v1/README.md) has
 validation cross-entropy 2.6916 after the same number of training steps.
 The four-byte CLI now has checkpoint-independent checking, exact execution,
-and numerical-error theorems.  The current target is exact source-equivalent
-inference for 128 positions.  Further numerical-error proofs are deferred.
+and numerical-error theorems.  Proof work is paused while development
+proceeds to [pretrained GPT-2 124M inference](../../data/gpt2-124m/README.md).
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The source-equivalence proof takes the Lean computation as its specification.
 
@@ -75,9 +75,10 @@ bit-for-bit with the native Talos evaluator.  The
 [model layout record](../../plans/tiny-model-layout.md) gives the measured
 PyTorch differences and proof status.
 
-PyTorch reports that optional NumPy integration is unavailable in this
-environment.  The training and export code uses tensor operations and
-standard-library binary packing.
+The training and export code uses tensor operations and standard-library
+binary packing.  The shared environment now also contains the approved
+pretrained-model dependencies, including NumPy, pinned in
+`training/gpt2/requirements.txt`.
 
 The [pinned TorchLean architecture](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/API/Models/CausalTransformer/Architecture.lean)
 and [attention implementation](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Runtime/Autograd/Model/Layers/Attention.lean)
