@@ -175,5 +175,5 @@ integration into the inference artifact.
 - [x] Prove the composed error bound with explicit normalization sensitivity.
 - [ ] Obtain a useful precision certificate from sharper numerical information.
 - [x] Prove the checked inference entry, including rejection and memory use.
-- [ ] Expose checkpoint and bound arguments in the CLI and complete its tests.
+- [x] Expose checkpoint and bound arguments in the CLI and complete its tests.
 - [ ] Reuse the checker and numerical results for the 64-byte model.
