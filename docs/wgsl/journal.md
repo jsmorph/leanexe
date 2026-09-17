@@ -691,3 +691,23 @@ runtime-weight GPT results, a composed real-model error theorem, and exposed
 allocation state for the verified weight checker. The hidden-error theorem
 is directly relevant to the remaining mixed-precision composition; it will be
 merged and checked before being used.
+
+The opaque suffix chunks check all 1,937 instructions of hidden function 74.
+Each sixteen-certificate module takes about 9–10s, with 5.2s for the final
+part. The final AST equality uses the existing checked Boolean equality
+procedure. A first simp-based composition exceeded recursion depth; explicit
+congrArg composition passes in 4.7s with propext and Quot.sound. The complete
+function's decoding is established; other module decoding and validation
+obligations remain separate.
+
+Merged parent main through bf6fcc42 without conflicts. RuntimeResidual and
+NumericalLogits rebuild successfully with standard axioms. GptNumerical now
+uses inputHidden_accuracy to discharge the formerly explicit hidden-error
+premise. Both its floor-parameterized full-real-GPT theorem and its uniform
+all-four-byte-input theorem check in 3.9s, using only propext, Classical.choice
+and Quot.sound. The head contributes 1/10000; hidden propagation contributes
+16*ErrorBudget.hidden(4, floor1, floor2, floorFinal). This is a composed
+arithmetic bound, not an output-magnitude shortcut. The uniform epsilon-floor
+instantiation is extremely loose (approximately 4.85e9 at the logits) and
+must not be presented as a tight numerical guarantee. Sharper denominator
+and parameter-specific propagation bounds remain a quality improvement.

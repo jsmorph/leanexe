@@ -741,7 +741,8 @@
       "behaviorTheorems": [
         "Project.TinyGpt2Infer.Spec.hidden_exact",
         "Project.TinyGpt2Infer.Spec.logit_exact",
-        "Project.TinyGpt2Infer.Spec.infer_exact"
+        "Project.TinyGpt2Infer.Spec.infer_exact",
+        "Project.TinyGpt2Infer.Spec.infer_real_error"
       ],
       "complete": true
     },
@@ -759,6 +760,7 @@
         "Project.F64Clip.Spec.accepted_exact",
         "Project.F64Clip.Spec.clip_real",
         "Project.F64Clip.Spec.prepare_exact",
+        "Project.F64Clip.Spec.prepare_state",
         "Project.F64Clip.Spec.prepare_real"
       ],
       "complete": true

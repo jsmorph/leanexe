@@ -5,7 +5,9 @@ This checkpoint contains 2,488 binary64 parameters for the
 Tiny Shakespeare and a command-line interface returning all 256 next-byte
 logits on 2026-09-16.  The complete generated-WAT execution proof passes.
 Checkpoint certificates establish finite outputs for every four-byte input.
-The composed numerical error bound remains in progress.
+The composed numerical theorem is proved.  Its unconditional error estimate
+is too coarse to certify precision.  Runtime weight-checker integration
+remains in progress.
 
 ## Command-line inference
 
@@ -29,8 +31,10 @@ fixed page count.  It assumes a represented weight array of at least 2,488
 words, an empty initial free list, weights below the output heap, and enough
 reserved memory.  Output construction requires 277,560 bytes.  With the CLI's
 weight array allocated first, its final heap top is 301,616, within the
-module's sixteen initial pages.  The composed numerical certificate remains
-open.  The host and exact-byte package remain outside this execution theorem.
+module's sixteen initial pages.  The
+[numerical execution theorem](../../proofs/talos/lean/Project/TinyGpt2Infer/Numerical.lean)
+adds finite outputs and the composed error bound.  The host and exact-byte
+package remain outside this execution theorem.
 
 ## Training record
 
@@ -70,8 +74,7 @@ component magnitude at most 18/5, and the computed residual is bounded by
 37/10.  The feed-forward and final-normalization domains are proved.
 The [output certificate](../../proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
 proves finite hidden coordinates of magnitude at most seven and finite
-logits of magnitude at most 117 for every four-byte input.  The composed
-error bound against the real model remains open.
+logits of magnitude at most 117 for every four-byte input.
 
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
@@ -84,8 +87,16 @@ CPU PyTorch difference is 7.994 × 10^-15.
 The artifact uses the verified degree-eighteen negative exponential and
 wider GELU.  The [cancellation audit](numerical-audit.json) now measures
 absolute logit error 9.325 × 10^-11 against its 80-digit reference, down
-from 383.216 with the previous arithmetic.  This measurement does not
-establish the pending uniform logit error bound.
+from 383.216 with the previous arithmetic.
+
+The [composed source theorem](../../proofs/talos/lean/Project/TinyGpt2/NumericalLogits.lean)
+compares all 256 logits with the existing real model.  It accepts weight
+cap B in [0, 10] and positive lower bounds for the three normalization
+stages, covering both decoded computed inputs and real inputs.  The square
+root of the epsilon floor always qualifies.  With B = 10 and those floors,
+the error formula evaluates to approximately 2.934 × 10^14.  That estimate
+is too coarse to certify precision.  Larger certified normalization lower
+bounds can sharpen the formula.  This theorem requires no checkpoint facts.
 
 ## Reproduction
 
