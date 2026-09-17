@@ -14631,3 +14631,43 @@ checks pass for 136 maintained Markdown files.  The report-classification
 test could not start its Lean runner because the execution policy returned
 EPERM.  The subsequent approval request was interrupted.  That test has
 no result from this iteration.
+
+### Sequence fold proofs and annotations
+
+Sequence softmax and GPT-2/128 now have generated execution models and
+incomplete registry entries.  The new sum and maximum loop proofs cover
+arbitrary represented arrays and preserve the complete store.  Maximum
+requires a nonempty array because its source reads the first element.
+Both proofs use the shared traversal and terminating block-loop theorems.
+The existing ArrayFold lemmas connect each loop update to the source fold
+without numerical assumptions.  The first sum and maximum proofs checked in
+2.1 and 2.0 seconds.  Checked function-region equality transfers the
+existing scalar maximum and exponential proofs.
+
+The first sum entry proof stopped on the memory-load condition after
+the frame tactic had already processed both length reads.  Simplifying
+the represented-array facts at that boundary resolved it.  The maximum
+proof needed the generated function's eighteenth local and normalized
+address arithmetic.  No elaboration timeout occurred.
+
+Artifact preparation exposed a stale annotation parser assumption:
+Talos prints load and store offsets as bare numerals, while the matcher
+expected an explicit UInt32 annotation.  The matcher now normalizes both
+spellings and rejects a changed offset.  The subsequent Lean check found
+that dispatch generation dropped the Boolean branches' result-type lists.
+The shared dispatch programs and semantic proofs now accept those lists
+as parameters, with the existing empty-list default.  The generator
+checks and preserves the printed types.  Node tests cover both spellings,
+both equality encodings, and rejection of a changed result type.
+The dispatch theorem and its existing singleton-wrapper client pass.
+
+Review found that the draft prefix lemma duplicated ArrayFold declarations
+in the shared Array module.  Both loop proofs now use the existing
+declarations, and the duplicate draft was removed.
+
+The revised sum and maximum proofs pass in 1.8 and 2.0 seconds.
+Both generated annotation modules and the expanded runtime checks pass.
+The identity test now checks all 62 registered caches, with 60 completed
+specifications.  Node annotation tests and the 136-file documentation
+check pass.  Sequence map execution, allocation, and complete inference
+composition remain open.
