@@ -33,7 +33,8 @@ theorem inferChecked_real_error (env : HostEnv Unit) (initial : Store Unit)
         final = { initial with mem := final.mem, globals := final.globals } ∧
         ∀ j : Fin 256, Affine.Bounded output[j.val]! 1260 ∧
           |value output[j.val]!-Real.logits (parameters (F64Clip.prepare Layout.size bound weights)) tokens 3 j| ≤
-            ErrorBudget.logits (value bound) lower1 lower2 lowerFinal) := by
+            min (ErrorBudget.logits (value bound) lower1 lower2 lowerFinal)
+              (1260+12*(value bound)^2+value bound)) := by
   refine TerminatesWith.mono (inferChecked_exact env initial pointer bound
     (tokenWords tokens 0) (tokenWords tokens 1) (tokenWords tokens 2) (tokenWords tokens 3)
     base weights allocations retains releases frees hGlobals hInput hBefore hFit hMemory hPages hCap) ?_
@@ -41,6 +42,9 @@ theorem inferChecked_real_error (env : HostEnv Unit) (initial : Store Unit)
   refine ⟨root, hv, ho, hw, hp, hbytes, hstore, ?_⟩
   intro j
   refine ⟨inferChecked_bounded weights bound tokens ha j, ?_⟩
+  apply le_min
+  swap
+  · exact inferChecked_error_magnitude weights bound tokens ha j
   rw [inferChecked_accept weights bound tokens ha]
   have hb := ((F64Clip.accepted_iff Layout.size bound weights).mp ha).2.1
   exact infer_accuracy _ (value bound) lower1 lower2 lowerFinal hb.2.1 hb.2.2

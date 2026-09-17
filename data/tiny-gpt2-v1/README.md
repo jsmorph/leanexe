@@ -109,9 +109,14 @@ compares all 256 logits with the existing real model.  It accepts weight
 cap B in [0, 10] and positive lower bounds for the three normalization
 stages, covering both decoded computed inputs and real inputs.  The square
 root of the epsilon floor always qualifies.  With B = 10 and those floors,
-the error formula evaluates to approximately 2.934 × 10^14.  That estimate
-is too coarse to certify precision.  Larger certified normalization lower
-bounds can sharpen the formula.  This theorem requires no checkpoint facts.
+the composed error formula evaluates to approximately 2.934 × 10^14.
+The [checked execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
+takes the minimum of that formula and the magnitude bound
+1,260 + 12B² + B.  At B = 10, this proves absolute error at most 2,470
+for each logit.  This bound is too coarse to certify precision.  Larger
+certified normalization lower bounds can sharpen the composed formula.
+These theorems require no checkpoint facts and compare against real
+arithmetic using the clipped weights.
 
 ## Reproduction
 
