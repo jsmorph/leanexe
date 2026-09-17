@@ -105,6 +105,17 @@ four-byte input.  Its intermediate range certificates cover every
 normalization, softmax, and GELU call.  The composed numerical error bound
 against the real model remains open.
 
+The [negative exponential](lean/Project/ExpNeg/Spec.lean) accepts every finite
+nonpositive binary64 input.  Its generated-WAT theorem proves termination,
+exact status and output, and store preservation for every raw input.
+Its degree-eighteen polynomial, exact halvings, and at most six squarings
+give relative error at most 4029 times 2^-52 on [-64, 0].  Below -64 it
+returns zero with absolute error at most 1e-27.  The exported numerical
+theorem combines these bounds.  The raw-word tests cover all reduction
+thresholds, signed zeros, subnormals, extreme finite inputs, and rejection.
+The GPT-2 artifact still uses the previous exponential while replacement
+GELU and attention proofs are in progress.
+
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,
 successful domain, rejection behavior, and command-line runner are complete.
