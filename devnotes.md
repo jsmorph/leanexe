@@ -14368,3 +14368,306 @@ All audits report standard logical axioms.  The approved Node test passes
 all fourteen WASM clipping and rejection cases, including signed zero,
 subnormal bounds, extreme finite values, invalid shapes, and nonfinite
 inputs.  Documentation checks pass for 136 maintained Markdown files.
+
+### Combined checked entry
+
+The new inferChecked source rejects out-of-range byte tokens, runs the
+clipping checker, and calls inference only for the accepted 2,488-word
+result.  Rejection returns an empty array.  Its generated module has
+19,397 bytes.  Source proofs establish accepted output equality, invalid
+weight and token rejection, finite logits, and the composed real-error
+bound against clipped weights.  These check in 2.5 seconds.  The first
+check found an argument-order error and a simplification that unfolded
+the layout size before using the acceptance hypothesis.  Both are fixed.
+
+The generated functions expose an ABI boundary: internal array parameters
+and results carry owner and data-pointer slots, while public entries
+expose only data pointers.  The existing public prepare and infer execution
+theorems therefore cannot transfer by function-index renaming.  Checked
+renaming does transfer all 78 numerical functions, including hidden and
+logit, and the six scalar checker functions.  The region proof checks in
+18 seconds and the component adapters in 1.9 seconds.  Every audit reports
+standard logical axioms.  Internal preparation, the output loop, and the
+enclosing entry remain open.
+
+The ownership report confirms that prepare returns a fresh array.  The
+inference helper's fold result lacks a fresh-result summary, so the compiler
+retains the temporary clipped weights until the caller resets the arena.
+The combined entry emits no temporary-weight release.  Its memory proof
+must account for that allocation.  Compiler ownership changes are outside
+this implementation step.
+
+The Node test passes 768 bit-for-bit logit comparisons at clipping bounds
+10, 1, and 0, plus eight rejection cases covering shape, nonfinite input,
+invalid bound, and all four token positions.  The initial invocation failed
+with EPERM while spawning the Lean runner.  The approved rerun passed.
+The focused source-artifact gate regenerates the same module, checks its
+annotations, and builds the partial specification.  The registry records
+this case as incomplete.  The existing assoc_list mismatch still blocks
+the aggregate source gate.  Documentation checks pass for all 136 files.
+
+### Internal clipping execution
+
+The internal preparation proof now covers its four arguments and two
+result words, including arbitrary input owner values.  The scalar region
+proof reuses validation and clipping.  The map, allocation, and branch
+proofs account for the internal frame slots and use the existing traversal,
+allocation, prefix, and memory-write lemmas.  The map checks in 3.2 seconds,
+the instruction decomposition in 4.4 seconds, and accepted and rejected
+branches in 1.8 and 1.5 seconds.  The enclosing proof needed explicit
+handling of the two returned frame slots and then checked in 2.1 seconds.
+
+Allocation-state derivation now lives in the shared clip_result_state
+theorem.  Both public and internal checker theorems use it to expose the
+allocator top, counters, output ownership header, and preserved memory.
+The combined internal execution and state module checks in 3.8 seconds,
+and the refactored public state proof in 1.5 seconds.  All audits report
+standard logical axioms.  These proof changes preserve both generated
+artifacts and their preceding WASM test results.
+
+The focused combined-entry gate passes regeneration, annotations, and
+the partial specification with internal preparation registered.  The
+combined entry remains incomplete until the internal inference and enclosing
+entry proofs pass.  Documentation and whitespace checks pass.
+
+The standalone f64_clip gate also passes after the shared state refactor.
+
+### Internal inference execution
+
+The internal inference theorem now proves termination, all 256 raw-bit
+logits, and input preservation.  Its parameters and result include owner
+slots.  The output loop uses the existing allocation, copying, release,
+array-prefix, and memory-layout proofs.  The allocation execution theorem
+now accepts the module and scratch-local start, so both inference calling
+conventions use the same proof.  That shared theorem checks in 1.7 seconds.
+
+The internal frame and instruction proofs account for one additional
+parameter and one additional result local.  Logit execution checks in
+3.5 seconds, capacity in 1.7 seconds, allocation and initialization in
+1.3 seconds each, copying in 2.5 seconds, release in 2.6 seconds, and
+append composition in 1.4 seconds.  Two missed local-index substitutions
+and one obsolete audit name produced diagnostics during frame adaptation.
+Those errors are fixed.  The proof reuses the existing memory model rather
+than introducing a second heap representation.
+
+Iteration composition checks in 2.7 seconds, its guard in 1.6 seconds,
+and the terminating loop in 1.3 seconds.  Entry and initial allocation
+check in 2.2 and 1.3 seconds.  Initial setup first exposed one stale local
+index in the length-store decomposition, then checked in 3.2 seconds.
+The two-word return checks in 1.7 seconds, and the complete internal
+inference theorem in 1.4 seconds.  Audits report standard logical axioms.
+The enclosing checked entry remains open.  These changes preserve the
+compiled source and artifact bytes.
+
+The checked-entry partial-specification gate passes with internal inference
+registered.  The existing tiny_gpt2_infer gate passes after the shared
+allocation refactor.  Documentation checks pass for all 136 maintained
+Markdown files.  An initial documentation command used a nonexistent test
+filename.  The documented tools/check-docs.js command passed.
+
+### Checked inference export
+
+The enclosing export now has an exact execution theorem for arbitrary
+represented weight arrays, bounds, and token words.  Invalid tokens return
+an allocated empty array.  Valid tokens run preparation, then either return
+its empty rejection result or execute all 256 logits.  The proof preserves
+the supplied weights, page count, memory below the initial allocation top,
+and other store fields.  Its conservative reservation includes
+48+8(n+1) bytes for preparation and 277,560 bytes for inference.  For
+2,488 weights that totals 297,520 bytes after the supplied input.
+
+Token-guard execution checks in 7.2 seconds, empty-result allocation in
+1.8 seconds, accepted-branch composition in 2.5 seconds, and the exported
+theorem in 1.7 seconds.  Branch proofs use explicit instruction boundaries
+to avoid reducing generated region lookups inside the execution tactic.
+The initial guard attempt incorrectly equated block continuation handling
+with sequential composition.  The corrected lemma retains the generated
+conditional before branch composition.  Length-read simplification also
+needed the represented-array address equality before default arithmetic
+normalization.  A store equality with self-referencing updated fields
+caused simplifier recursion and is now applied directly.
+
+The numerical corollary checks in 1.4 seconds.  It retains B and the three
+normalization floors as parameters, proves finite logits bounded by 1,260,
+and compares them with the real model using clipped weights.  All audits
+report standard logical axioms.  The uniform error estimate remains too
+coarse to certify precision.  The completed case is registered, and the
+CLI integration is next.
+
+The focused tiny_gpt2_checked source-artifact gate passes regeneration,
+annotation checks, the completed specification, and all registered theorem
+audits.  Documentation checks pass for 136 maintained Markdown files.
+The registry now has sixty completed source-driven cases and forty-two
+exact-byte packages.  The existing aggregate assoc_list mismatch remains.
+
+### Runtime-weight CLI
+
+The CLI now calls the proved inferChecked export and accepts --checkpoint
+and --bound, with B=10 by default.  It reports acceptance, the bound's raw
+word, and the supplied checkpoint hash.  Rejected numerical inputs return
+empty logit arrays.  The published checked artifact has 19,397 bytes and
+SHA-256 c095adafd6b3f01fd1ae279cbffc21682c1e3bd4f38aaa4b43ced09a2aa071d4.
+The earlier raw inference artifact remains available for arithmetic tests.
+
+The approved Node test passes 768 bit-for-bit clipped logit comparisons,
+eight WASM rejection cases, and five CLI cases.  The CLI cases cover the
+default checkpoint, explicit checkpoint and bound, negative-zero bound,
+out-of-range bound, and a nonfinite replacement weight.  The documented
+B=3 command also succeeds with 256 logits.  Documentation checks pass for
+136 maintained Markdown files.  No new dependency was added.
+
+Four-byte exact execution and the composed numerical theorem are complete,
+including runtime-weight checking.  The current unconditional estimate
+still cannot certify useful precision.  The next model step is the approved
+64-byte extension, beginning with sequence traversal and softmax arithmetic.
+
+### Uniform logit error magnitude cap
+
+The runtime-weight execution theorem now bounds each absolute logit error
+by the minimum of the composed numerical budget and 1,260+12B²+B.
+The latter follows from the proved computed-logit magnitude bound 1,260
+and real-logit bound 12B²+B.  At the default B=10, the minimum gives
+2,470.  This remains too coarse to certify useful precision.  The reference
+uses clipped weights, and the proof requires no checkpoint-specific facts.
+The focused source and execution-corollary builds passed in 2.6 and
+1.6 seconds, with standard logical axioms.  The artifact is unchanged.
+
+The focused tiny_gpt2_checked gate passes artifact regeneration, annotation
+checks, and the strengthened numerical theorem.  Documentation checks pass
+for all 136 maintained Markdown files.
+
+### 64-position training
+
+The training model now accepts context sizes four and 64 and nonempty
+prefixes within the selected size.  The position table supplies the first
+rows for a shorter prefix.  CPU tests passed both parameter counts and
+output shapes, causal-prefix equality at tolerance 1e-12, and finite
+gradients.  The default four-position configuration is unchanged.
+
+The deterministic 64-position run finished 4,000 Adam steps on the pinned
+Tiny Shakespeare corpus.  Validation cross-entropy fell from
+5.567620995482236 to 2.696367581735353.  All 2,728 exported weights are
+finite, with maximum magnitude 2.7499298233598095.  The published checkpoint
+has SHA-256 af60facd001d370103c85be793f61585fd290131662a86175f166b5967fd83ff.
+Its inference proofs remain open.  The optional NumPy warning does not
+affect this tensor-based training and standard-library export.
+
+### Length-dependent binary64 accumulation
+
+The shared F64SequentialSum proof bounds the absolute rounding error of
+a left-associated sum of n finite words of magnitude at most M by
+n(L+1)(M+1) times 2^-52, where
+n≤L.  Its hypotheses bound L(L+1) times 2^-52 by one and
+(L+1)(M+1) below 2^1023.  The proof establishes finite intermediate
+sums and has list and array forms.  For 64 exponential weights bounded
+by two, it gives absolute accumulation error at most 12,480 times
+2^-52.  Exponential approximation and division errors remain separate
+obligations for sequence softmax.
+
+The induction's first algebraic conversion left an unchanged goal that
+the ring tactic rejected.  An explicit equality for the next error budget
+resolved that boundary.  The induction checks in 1.9 seconds, and the
+zero-initial and array corollaries in 1.0 seconds.  The length parameter
+keeps the accumulation lemma applicable beyond the 64-position model.
+
+### Source-equivalent GPT-2/128
+
+The user selected a checked proof for each compilation and changed the next
+context size to 128.  Further real-arithmetic error bounds are deferred.
+The four-byte inferChecked_exact theorem already names the compiled Lean
+function and proves exact returned words, termination, input preservation,
+and its memory conditions.  The 128-position theorem will use the same
+statement form, with an array of byte tokens and runtime weights.
+
+The source retains binary64 operations, the existing exponential and GELU
+definitions, and weight checking and clipping.  Its position table has
+512 words and the complete checkpoint has 2,984 words.  The training model
+and loader now accept context 128.  CPU tests passed parameter counts,
+output shapes, causal prefixes, finite gradients, and invalid-length
+rejection for contexts four, 64, and 128.  The 4,000-step training run
+completed with the approved corpus and backend.  Validation cross-entropy
+fell from 5.5597421815995585 to 2.691612944826216.  All 2,984 weights are
+finite, with maximum magnitude 2.3113755988772042.  The checkpoint hash is
+1e98ac0661cec2eed22473af75bb5ca2dac8bf1dd9a1788567981f57df4e6356.
+
+### Sequence inference and extraction
+
+The 128-position source accepts one through 128 byte tokens, uses the
+existing binary64 scalar helpers, and computes both attention heads over
+the supplied prefix.  Its sequence softmax subtracts the maximum, maps
+the existing exponential, folds the denominator from zero, and divides
+each weight by that denominator.  Weight validation and clipping retain
+the four-byte entry's policy.
+
+Compilation exposed two extraction failures.  Strict field materialization
+passed a grouped local binding to the structure flattener, which rejected
+the normalized-row array element.  ValueLet now preserves that binding
+group before flattening its result.  Deferred inline arguments also
+inherited the callee's inline stack, so a nested call to the same helper
+inside an argument looked recursive.  Thunks now retain and restore the
+caller's stack.  Reduced tests cover a structured helper result pushed
+inside a loop and a trapping array lookup inside a nested helper argument.
+
+The compiler build and core execution tests pass: 812 accepted cases,
+48 rejected cases, and 14 expected traps.  Ownership reports pass all
+28 cases.  The sequence test compares six inputs against native evaluation
+of the compiled Lean entry, covering lengths one, four, 64, and 128,
+including repeated zero and 255 tokens.  All 1,536 output words match
+WASM exactly.  Eight invalid-input cases return empty arrays.  The largest
+observed difference from the PyTorch reference is 9.325873406851315e-15.
+These are execution tests.  The sequence execution theorem remains open.
+
+The aggregate Node gate first found a stale count of 37 cached Talos
+programs.  The identity test now compares the complete cache path list
+with the registry and includes the current Runtime import.  It passes.
+The next aggregate failure is the existing release draft's stale input
+digest.  Its evidence is retained, and focused compiler tests continue.
+
+Reference-count tests pass 41 cases and seven leak-accounting cases.
+All ten WAT/binary round trips pass.  The focused tiny_gpt2_checked gate
+passes regeneration, annotation checks, and all registered theorems with
+the changed compiler.  Its generated module is unchanged.  Documentation
+checks pass for 136 maintained Markdown files.  The report-classification
+test could not start its Lean runner because the execution policy returned
+EPERM.  The subsequent approval request was interrupted.  That test has
+no result from this iteration.
+
+### Sequence fold proofs and annotations
+
+Sequence softmax and GPT-2/128 now have generated execution models and
+incomplete registry entries.  The new sum and maximum loop proofs cover
+arbitrary represented arrays and preserve the complete store.  Maximum
+requires a nonempty array because its source reads the first element.
+Both proofs use the shared traversal and terminating block-loop theorems.
+The existing ArrayFold lemmas connect each loop update to the source fold
+without numerical assumptions.  The first sum and maximum proofs checked in
+2.1 and 2.0 seconds.  Checked function-region equality transfers the
+existing scalar maximum and exponential proofs.
+
+The first sum entry proof stopped on the memory-load condition after
+the frame tactic had already processed both length reads.  Simplifying
+the represented-array facts at that boundary resolved it.  The maximum
+proof needed the generated function's eighteenth local and normalized
+address arithmetic.  No elaboration timeout occurred.
+
+Artifact preparation exposed a stale annotation parser assumption:
+Talos prints load and store offsets as bare numerals, while the matcher
+expected an explicit UInt32 annotation.  The matcher now normalizes both
+spellings and rejects a changed offset.  The subsequent Lean check found
+that dispatch generation dropped the Boolean branches' result-type lists.
+The shared dispatch programs and semantic proofs now accept those lists
+as parameters, with the existing empty-list default.  The generator
+checks and preserves the printed types.  Node tests cover both spellings,
+both equality encodings, and rejection of a changed result type.
+The dispatch theorem and its existing singleton-wrapper client pass.
+
+Review found that the draft prefix lemma duplicated ArrayFold declarations
+in the shared Array module.  Both loop proofs now use the existing
+declarations, and the duplicate draft was removed.
+
+The revised sum and maximum proofs pass in 1.8 and 2.0 seconds.
+Both generated annotation modules and the expanded runtime checks pass.
+The identity test now checks all 62 registered caches, with 60 completed
+specifications.  Node annotation tests and the 136-file documentation
+check pass.  Sequence map execution, allocation, and complete inference
+composition remain open.

@@ -5,11 +5,14 @@ from torch import nn
 
 
 class TinyGpt2(nn.Module):
-    def __init__(self):
+    def __init__(self, context=4):
         super().__init__()
+        if context not in (4, 64, 128):
+            raise ValueError("Context must be 4, 64, or 128")
+        self.context = context
         self.weights = nn.ParameterDict()
         for name, rows, columns in [
-            ("token", 256, 4), ("position", 4, 4),
+            ("token", 256, 4), ("position", context, 4),
             ("query", 4, 4), ("key", 4, 4), ("value", 4, 4),
             ("attention", 4, 4), ("expand", 4, 8), ("contract", 8, 4),
             ("head", 4, 256),
@@ -38,23 +41,23 @@ class TinyGpt2(nn.Module):
 
     def forward(self, tokens, with_trace=False):
         batch, length = tokens.shape
-        if length != 4:
-            raise ValueError("The model requires four byte tokens")
+        if not 1 <= length <= self.context:
+            raise ValueError(f"The model requires 1 to {self.context} byte tokens")
         trace = {}
-        x = self.weights["token"][tokens] + self.weights["position"]
+        x = self.weights["token"][tokens] + self.weights["position"][:length]
         trace["embedding"] = x
         normalized = self.norm(x, "norm1", trace)
         projections = []
         for name in ("query", "key", "value"):
-            projected = (normalized @ self.weights[name]).reshape(batch, 4, 2, 2).transpose(1, 2)
+            projected = (normalized @ self.weights[name]).reshape(batch, length, 2, 2).transpose(1, 2)
             projections.append(projected)
             trace[name] = projected
         query, key, value = projections
         scores = (query @ key.transpose(-1, -2)) / math.sqrt(2)
         trace["scores"] = scores
-        mask = torch.ones(4, 4, dtype=torch.bool).triu(1)
+        mask = torch.ones(length, length, dtype=torch.bool).triu(1)
         probability = torch.softmax(scores.masked_fill(mask, -torch.inf), dim=-1)
-        attended = (probability @ value).transpose(1, 2).reshape(batch, 4, 4)
+        attended = (probability @ value).transpose(1, 2).reshape(batch, length, 4)
         trace["attended"] = attended
         x = x + self.affine(attended, "attention")
         trace["residual1"] = x

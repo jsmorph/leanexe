@@ -377,7 +377,7 @@ mutual
               | none =>
                   return ← extractForInStepBody ctx (.recursor :: locals) nextLocal resultTy letBody
             else if isStringType type then
-              return ← extractForInStepBody ctx (.thunk locals value :: locals) nextLocal resultTy letBody
+              return ← extractForInStepBody ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal resultTy letBody
             else
               match value.consumeMData with
               | .lam _ _ _ _ =>
@@ -1028,7 +1028,7 @@ mutual
         match ← lookupBinding locals index with
         | .slot slot => .ok (.scalar (.local slot), nextLocal)
         | .value value => .ok (value, nextLocal)
-        | .thunk savedLocals value => extractValueFrom ctx savedLocals nextLocal value
+        | .thunk savedLocals inlineStack value => extractValueFrom { ctx with inlineStack } savedLocals nextLocal value
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
         | .structuralBelow _ => .error "structural recursion below value used as a value"
         | .wfRecursor _ => .error "well-founded recursion handle used as a value"
@@ -1047,7 +1047,7 @@ mutual
           | none =>
               extractValueFrom ctx (.recursor :: locals) nextLocal body
         else if isStringType type then
-          extractValueFrom ctx (.thunk locals value :: locals) nextLocal body
+          extractValueFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
           | .lam _ _ _ _ =>
@@ -3486,7 +3486,7 @@ mutual
         match collectLambdas value specialization.sig.params.length with
         | some body => .ok body
         | none => .error s!"definition body does not match function arity: {name}"
-      let argBindings := specialization.runtimeArgs.reverse.map (fun arg => Binding.thunk locals arg)
+      let argBindings := specialization.runtimeArgs.reverse.map (fun arg => Binding.thunk locals ctx.inlineStack arg)
       let inlineCtx := { ctx with inlineStack := name :: ctx.inlineStack }
       let result ←
         match extractValueFrom inlineCtx (argBindings ++ locals) nextLocal body with
@@ -3537,8 +3537,8 @@ mutual
             match scalarValue value with
             | .ok expr => .ok (expr, nextLocal)
             | .error message => .error s!"{message} while extracting bvar {index}"
-        | .thunk savedLocals value =>
-            let valueResult ← extractValueFrom ctx savedLocals nextLocal value
+        | .thunk savedLocals inlineStack value =>
+            let valueResult ← extractValueFrom { ctx with inlineStack } savedLocals nextLocal value
             .ok (← scalarValue valueResult.fst, valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
         | .structuralBelow _ => .error "structural recursion below value used as a value"
@@ -3558,7 +3558,7 @@ mutual
           | none =>
               extractExprFrom ctx (.recursor :: locals) nextLocal body
         else if isStringType type then
-          extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
+          extractExprFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
           | .lam _ _ _ _ =>
@@ -3568,7 +3568,7 @@ mutual
               match typeAtom? ctx.env type with
               | some ty =>
                   if supportedLocalType ty then
-                    extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
+                    extractExprFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
                   else
                     .error s!"unsupported let-bound type: {type}"
               | none => .error s!"unsupported let-bound type: {type}"
@@ -5095,8 +5095,8 @@ mutual
         match ← lookupBinding locals index with
         | .slot slot => .ok (boolCond (.local slot), nextLocal)
         | .value value => .ok (boolCond (← scalarValue value), nextLocal)
-        | .thunk savedLocals value =>
-            let valueResult ← extractValueFrom ctx savedLocals nextLocal value
+        | .thunk savedLocals inlineStack value =>
+            let valueResult ← extractValueFrom { ctx with inlineStack } savedLocals nextLocal value
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a condition"
         | .structuralBelow _ => .error "structural recursion below value used as a condition"
@@ -5107,7 +5107,7 @@ mutual
         if !containsBVar 0 body then
           extractCondFrom ctx (.recursor :: locals) nextLocal body
         else if isStringType type then
-          extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
+          extractCondFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
           | .lam _ _ _ _ =>
@@ -5117,7 +5117,7 @@ mutual
               match typeAtom? ctx.env type with
               | some ty =>
                   if supportedLocalType ty then
-                    extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
+                    extractCondFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
                   else
                     .error s!"unsupported let-bound type: {type}"
               | none => .error s!"unsupported let-bound type: {type}"
@@ -6827,7 +6827,7 @@ mutual
               extractNatTailStepStmt lower (.recursor :: locals) (recursorIndex + 1) nextLocal body
         else if isStringType type then
           extractNatTailStepStmt lower
-            (.thunk locals value :: locals)
+            (.thunk locals lower.extractCtx.inlineStack value :: locals)
             (recursorIndex + 1)
             nextLocal
             body
