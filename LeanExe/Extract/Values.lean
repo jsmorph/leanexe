@@ -1950,6 +1950,7 @@ mutual
       (summaries : Array (List Nat))
       (ownerSources : List (Nat × List Nat)) :
       IRExpr → Option (List Nat)
+    | .u64 0 => some []
     | .local slot => ownerSourceSlots? ownerSources slot
     | .letE slot value body =>
         let nextSources :=
@@ -2730,13 +2731,22 @@ def ownedChildMaskForStrictSlotsWithSummaries
     Nat :=
   ownedChildMaskForSlotsWithLetsWithSummaries summaries childMask slots.lets slots.slots
 
-def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat
-  | .expr slot expr => if exprReturnsOwnedNonrecursiveHeapObject expr then [slot] else []
+def localLetCreatedNonrecursiveHeapSlots (ctx : Context) (ownedLocals : List Nat) :
+    LeanExe.IR.LocalLet → List Nat
+  | .expr _ (.local _) => []
+  | .expr slot expr =>
+      if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals expr then [slot] else []
   | .slots slots values =>
       (slots.zip values).filterMap fun item =>
-        if exprReturnsOwnedNonrecursiveHeapObject item.snd then some item.fst else none
+        match item.snd with
+        | .local _ => none
+        | expr =>
+            if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals expr then some item.fst else none
   | .call slots index _ => callResultNonrecursiveReleaseOwnerSlots ctx index slots
   | .branch _ _ _ => []
+
+def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat :=
+  localLetCreatedNonrecursiveHeapSlots ctx []
 
 mutual
   partial def transferredOwnerSlotsFromValues
@@ -3115,6 +3125,13 @@ def foldAssignReleasedSlots
     List Nat :=
   addLiveSlots (exprListReleasedSlots values)
     (addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots done))
+
+def localLetsOwnedNonrecursiveHeapSlots (ctx : Context)
+    (lets : List LeanExe.IR.LocalLet) (initial : List Nat := []) : List Nat :=
+  (lets.foldl (fun (known, created) localLet =>
+    (ownedHeapLocalsAfterLocalLet ctx.freshResultOwnerOffsets known localLet,
+     addLiveSlots created (localLetCreatedNonrecursiveHeapSlots ctx known localLet)))
+    (initial, [])).snd
 
 def foldAccumulatorReleaseOffsets
     (summaries : Array (List Nat))
@@ -4130,7 +4147,7 @@ partial def materializeResultValue
           (stmtReleasedSlots bodyStmt)
       let returnedOwnerSlots :=
         localLetsResultOwnerLocalSlotsWithLater ctx (valueResultOwnerLocalSlots ctx body) kept
-      let ownerSlots := kept.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
+      let ownerSlots := localLetsOwnedNonrecursiveHeapSlots ctx kept (ownerSources.map Prod.fst)
       .ok (appendDistinctReleases stmt
         (ownerSlots.filter fun slot =>
           releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&

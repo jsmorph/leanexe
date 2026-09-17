@@ -152,9 +152,37 @@ function testGpt2Inference() {
   assert.equal(stats.allocs - stats.frees, 3n, "weights, tokens, and logits remain allocated");
 }
 
+function testGpt2Completions() {
+  const records = [];
+  for (const [text, count, seed, topK] of [
+    ["Once upon a time, in a small village", 64, 42, 40],
+    ["The purpose of science is", 32, 7, 40],
+    ["The capital of France is", 16, 42, 1],
+  ]) {
+    const record = JSON.parse(run(["tools/gpt2", "--text", text, "--generate", String(count),
+      "--seed", String(seed), "--top-k", String(topK), "--json"]));
+    assert.equal(record.kv_cache, true);
+    assert.equal(record.allocations - record.frees, 2);
+    if (records.length === 0) {
+      const original = JSON.parse(fs.readFileSync("data/gpt2-124m/wasm-completion-uncached.json"));
+      assert.deepEqual(record.generated_tokens.slice(0, 16), original.generated_tokens,
+        "cached sampling preserves the first full-prefix completion");
+    }
+    if (topK === 1) {
+      const reference = JSON.parse(run([".venv-tiny-gpt2/bin/python", "training/gpt2/reference.py",
+        "generate", "--text", text, "--max-new-tokens", String(count), "--top-k", "1", "--json"]));
+      assert.deepEqual(record.generated_tokens, reference.generated_tokens, "greedy WASM and PyTorch text match");
+      record.pytorch_greedy_tokens_exact = true;
+    }
+    records.push(record);
+    fs.writeFileSync("build/gpt2-124m/wasm-completions.json", JSON.stringify(records, null, 2) + "\n");
+    process.stdout.write(JSON.stringify(record) + "\n");
+  }
+}
+
 function main() {
-  assert.ok(process.argv.slice(2).every(arg => ["--gpt2-kernel", "--gpt2-block", "--gpt2-inference"].includes(arg)),
-    "usage: packed.js [--gpt2-kernel] [--gpt2-block] [--gpt2-inference]");
+  assert.ok(process.argv.slice(2).every(arg => ["--gpt2-kernel", "--gpt2-block", "--gpt2-inference", "--gpt2-cached", "--gpt2-completions"].includes(arg)),
+    "usage: packed.js [--gpt2-kernel] [--gpt2-block] [--gpt2-inference] [--gpt2-cached] [--gpt2-completions]");
   run(["lake", "build", "lean-wasm", moduleName]);
   run(["tools/build-wasmtime-host.sh"]);
   fs.mkdirSync("tmp", { recursive: true });
@@ -162,7 +190,7 @@ function main() {
   const modules = {};
   for (const entry of ["readWord", "makeWords", "shifted", "generateRead",
     "generateStats", "temporarySum", "generateSum", "generatedWithCall",
-    "repeatedOwnedSum", "repeatedBorrowedSum"]) {
+    "repeatedOwnedSum", "repeatedBorrowedSum", "repeatedPairSum", "publicPair"]) {
     modules[entry] = path.join(output, `${entry}.wasm`);
     run([compiler, "compile", "--module", moduleName, "--entry", `${moduleName}.${entry}`,
       "--out", modules[entry]]);
@@ -229,12 +257,29 @@ function main() {
     assert.equal(loop.frees, loop.allocs, "release the helper's final owned loop result");
     nativeExpressions.push(`(${moduleName}.repeatedOwnedSum ${count}).toNat`);
     expectedNative.push(17 + count);
+    const pair = host.callStats(modules.repeatedPairSum, "repeatedPairSum", "i64",
+      [host.byteArray(Buffer.from([3, 0, 0, 0])), host.i64(count)]);
+    const pairSum = count === 0 ? 20 : 34 + 2 * count;
+    assert.equal(pair.result, String(pairSum));
+    assert.equal(pair.allocs, BigInt(3 + 3 * count), "evaluate both loop results together once");
+    assert.equal(pair.frees, pair.allocs - 1n, "release both arrays and preserve the borrowed input");
+    nativeExpressions.push(`(${moduleName}.repeatedPairSum (ByteArray.mk #[3, 0, 0, 0]) ${count}).toNat`);
+    expectedNative.push(pairSum);
   }
   const borrowed = host.callStats(modules.repeatedBorrowedSum, "repeatedBorrowedSum", "i64",
     [host.byteArray(Buffer.from([7, 0, 0, 0])), host.i64(0)]);
   assert.equal(borrowed.result, "7");
   assert.equal(borrowed.allocs, 1n);
   assert.equal(borrowed.frees, 0n, "a zero-iteration borrowed loop result belongs to the caller");
+  const pairStats = host.callStats(modules.publicPair, "publicPair", "slots:4");
+  assert.equal(pairStats.allocs, 10n, "construct each public result field once");
+  assert.equal(pairStats.frees, 8n, "preserve both public result owners");
+  const pairValues = host.script(modules.publicPair, [], "publicPair", 4,
+    ["read-memory result:0 result:1", "read-memory result:2 result:3"]);
+  assert.deepEqual(pairValues.memoryChunks.map(chunk => [...Buffer.from(chunk.bytes)]),
+    [[19, 0, 0, 0], [4, 0, 0, 0, 19, 0, 0, 0, 20, 0, 0, 0]]);
+  for (const [index, size] of [[0, 4], [2, 12]])
+    run([host.ensureHost(), "release-reuse", modules.publicPair, "publicPair", "4", String(index), String(size)]);
   const input = Buffer.alloc(12);
   [0, 1, 2].forEach((x, i) => input.writeFloatLE(x, i * 4));
   const shifted = Buffer.from(host.callBytes(modules.shifted, "shifted",
@@ -260,6 +305,9 @@ function main() {
   if (process.argv.includes("--gpt2-kernel")) testGpt2Kernel();
   if (process.argv.includes("--gpt2-block")) testGpt2Block();
   if (process.argv.includes("--gpt2-inference")) testGpt2Inference();
+  if (process.argv.includes("--gpt2-cached"))
+    runChecked([".venv-tiny-gpt2/bin/python", "training/gpt2/test_wasm.py"], { stdio: "inherit", timeout: 300000 });
+  if (process.argv.includes("--gpt2-completions")) testGpt2Completions();
 }
 
 try { main(); } catch (error) { console.error(error.stack); process.exitCode = 1; }

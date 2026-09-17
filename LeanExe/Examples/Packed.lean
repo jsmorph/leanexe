@@ -69,4 +69,30 @@ def repeatedBorrowedSum (initial : ByteArray) (count : Nat) : UInt64 :=
   let bytes := repeatedBorrowed initial count
   (LeanExe.Packed.getUInt32LE! bytes 0).toUInt64
 
+def incrementPair (bytes : ByteArray) : ByteArray × ByteArray :=
+  (incremented bytes, incremented bytes)
+
+def repeatedPair (initial : ByteArray) (count : Nat) : ByteArray × ByteArray := Id.run do
+  let mut left := makeWords 1 17
+  let mut right := ByteArray.empty
+  for _ in [:count] do
+    let next := incrementPair left
+    left := next.1
+    right := right ++ next.2
+  return (left, initial ++ right)
+
+def repeatedPairSum (initial : ByteArray) (count : Nat) : UInt64 :=
+  let result := repeatedPair initial count
+  (LeanExe.Packed.getUInt32LE! result.1 0).toUInt64 +
+    (LeanExe.Packed.getUInt32LE! result.2 (result.2.size - 4)).toUInt64
+
+structure WordPair where
+  first : ByteArray
+  second : ByteArray
+
+def publicPair : WordPair :=
+  let initial := makeWords 1 3
+  let result := repeatedPair initial 2
+  { first := result.1, second := incremented result.2 }
+
 end LeanExe.Examples.Packed
