@@ -915,3 +915,25 @@ and restricted-profile runtime conformance remain explicit premises. The shared
 head bridge proof now exposes the raw Dot result before bias addition, avoiding
 an inference of raw-word equality from a potentially non-injective final add.
 The artifact module checked in 3.8 seconds with standard logical axioms only.
+
+The float contract now has seven kernel-checked word examples covering signed
+zero, preserved subnormals, balanced versus sequential accumulation, the
+exponential cutoff and canonical NaN arithmetic. Export-name checks also bind
+the hidden and finish interfaces to the proved function indices. Public axiom
+audits still contain only the three standard logical axioms.
+
+Direct evaluation of the function-valued independent algorithm reached the
+120-second reference limit. A first function-returning cache was proved equal
+but still reached a 60-second diagnostic limit: returning a function did not
+establish the intended sharing during compiled evaluation. The accepted
+evaluator returns concrete array tables at each intermediate stage and proves
+their lookup function equals the original specification. Its proof checked in
+249ms, and a standalone checkpoint reference evaluation completed successfully.
+The failed diagnostics remain under build/wgsl/float-spec and the original
+package attempt check-ol7hQT. No artifact or algorithm bits changed to make the
+reference run. The focused exact-word execution corpus is the remaining gate.
+
+A fresh parent check found main advanced to 6ba953cb with a trained 128-position
+checkpoint and revised source-equivalence plans. That commit changes training,
+data and documentation, not the four-position implementation or proof modules
+being checked here. It remains separate from this artifact comparison.
