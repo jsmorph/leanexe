@@ -13787,3 +13787,50 @@ These calculations require binary64 error margins before they establish
 runtime domains.  The next numerical analysis should quantify the
 achievable error before committing to a useful uniform E(10), and should
 parameterize attention by context length for the subsequent 64-byte model.
+
+The user approved proceeding with the revised plan, including rejection
+of infinities alongside NaNs.  The retained numerical audit now records
+the cancellation case's raw weights and artifact hash, a Decimal reference,
+and separate GELU and softmax sensitivity coefficients.  At B = 10,
+the existing componentwise estimates amplify GELU error by about 2.02e7
+and a four-coordinate softmax error by about 3.93e18.  The latter gives
+an error contribution near 393 from a 1e-16 local budget.  These conservative
+coefficients identify an unresolved composition problem.  They are not
+the completed binary64 error theorem.
+
+A Python binary64 prototype uses degree-eighteen Taylor evaluation after
+at most six halvings, zero for exp arguments below -64, and a GELU tail
+threshold of eight.  Its negative GELU branch evaluates -a*e/(1+e).
+Across 276 exponential and 519 GELU samples, measured maximum absolute
+errors are 8.27e-17 and 1.11e-15.  The constructed logit error falls to
+9.33e-11.  The user has been asked to confirm these numerical methods
+before their implementation in Lean.  The production kernels are unchanged.
+
+The generic clipping source and its scalar and array theorems now check.
+Clipping returns the exact real clamp, preserves in-range finite words,
+and is idempotent.  The bound validator is equivalent to finiteness and
+a real value in [0, 10], including both signed zeros.  The array validator
+checks the expected length and every word's finiteness.  Accepted output
+has the required length and clipped values.  Any nonfinite word causes
+an empty array, and preparing an accepted output again preserves it.
+These are source-level results.  Generated-WAT execution remains open.
+
+Initial scalar checks required an explicit nonpositive numerator lemma.
+The bound proof also needed the Boolean conjunction simplification theorem
+and explicit conversion of unsigned comparisons to natural comparisons.
+The corrected scalar, bound, and array modules check in 1.1 to 1.2 seconds.
+Compiler diagnosis found that Array.all and Array.any lacked condition
+extraction despite having value extraction.  The source also needed direct
+lambda callbacks as required by the language specification.  The condition
+path now delegates these predicates to their existing value extraction,
+with three cases added to the core execution test.  Compiler build and
+execution testing are in progress.
+
+The compiler build and complete core execution suite pass: 808 accepted,
+48 rejected, and 14 trapped cases.  The standalone checker test passes
+fourteen WASM cases covering clipping, subnormals, signed zeros, invalid
+bounds, wrong lengths, infinities, and NaNs.  The array theorems use only
+the standard logical axioms.  Generated-WAT checker correctness remains
+open.  A direct axiom-inspection command initially supplied a path relative
+to the proof workspace, but Lake's environment command retained the root
+working directory.  The repository-relative path resolved that diagnostic.

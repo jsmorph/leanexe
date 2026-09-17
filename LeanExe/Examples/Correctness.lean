@@ -3791,6 +3791,10 @@ def arrayAnyEmptySkipsPredicateTrap : Bool :=
 def arrayAllScalars : Bool :=
   (#[2, 4, 6] : Array UInt64).all (fun value => value % 2 == 0)
 
+def arrayPredicateConditions (limit : UInt64) : UInt64 :=
+  if (#[1, 2, 3] : Array UInt64).all (fun value => value < limit) &&
+      (#[1, 2, 3] : Array UInt64).any (fun value => value+1 == limit) then 7 else 9
+
 def arrayAllWindowTrue : Bool :=
   (#[1, 2, 4] : Array UInt64).all (fun value => value % 2 == 0) 1 3
 
