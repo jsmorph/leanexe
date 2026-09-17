@@ -56,6 +56,15 @@ execution theorem into this module.  The
 [command-line demonstration](../../data/numerical/README.md) accepts a
 decimal value or raw binary64 word.
 
+The [wider GELU component](lean/Project/GeluWide/Spec.lean) accepts every
+finite binary64 input, with absolute error at most 200000 times 2^-52,
+below 4.45e-11.  It uses the new negative exponential through magnitude
+eight and a tail approximation with error at most 1e-18 beyond it.
+Its negative core evaluates -a*e/(1+e) to avoid cancellation.  The complete
+generated-WAT proof covers exact output, nonfinite rejection, termination,
+and store preservation.  Its input-perturbation multiplier remains four.
+The GPT-2 CLI still uses the earlier GELU while integration is in progress.
+
 The [LayerNorm component](lean/Project/LayerNorm/Spec.lean) proves total
 generated-WAT execution and absolute component error at most 1/1000000 for
 four inputs, four scales, and four biases in [-4, 4].  The real epsilon is

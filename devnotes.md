@@ -14104,3 +14104,28 @@ The all-finite theorem and global input-perturbation theorem check in
 1.2 seconds.  The domain equivalence needed the explicit F64Bounded
 import.  The axiom audit reports only propext, Classical.choice, and
 Quot.sound for all three exported numerical results.
+
+The generated-WAT GELU proof checks in 6.6 seconds.  Function-region
+renaming transfers the negative exponential's four reachable functions
+without repeating either loop proof or the polynomial proof.  The
+remaining scalar proofs use FixedFrame and the existing call rules.
+The complete entry preserves the store and returns the exact source
+bits for every raw input.  Its exported real theorem covers every finite
+input.  The focused gelu_wide gate passes regeneration, cache comparison,
+annotations, exact execution, and the numerical theorem.  The axiom
+reports contain only the standard logical axioms.
+
+The 46 runtime cases compare WASM with the native Talos bit model.
+They include signed zero, subnormals, adjacent words at both core
+boundaries, negative inputs susceptible to cancellation, extreme finite
+inputs, infinities, and NaNs.  Every bit-model comparison passes.  The
+largest measured absolute difference from the host exponential reference
+is 2.78e-17.  The first Node invocation failed with sandbox EPERM before
+starting Lean.  The approved invocation passes through the normal runner.
+The user also authorized related Node tests for continued development.
+
+The registry now contains 58 complete cases and 42 exact-byte packages.
+The four runtime-function pins include gelu_wide.  Integration into the
+GPT-2 source and its full numerical composition remain open.
+The runtime-pin module checks in 1.8 seconds, and all 136 maintained
+Markdown files pass the documentation check.

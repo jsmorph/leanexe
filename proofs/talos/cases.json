@@ -682,6 +682,20 @@
       "complete": true
     },
     {
+      "name": "gelu_wide",
+      "annotations": true,
+      "module": "Project.GeluWide.Model",
+      "entry": "Project.GeluWide.geluWide",
+      "sourceWorkspace": "proof",
+      "leanModule": "GeluWide",
+      "specTarget": "Project.GeluWide.Spec",
+      "behaviorTheorems": [
+        "Project.GeluWide.Spec.geluWide_exact",
+        "Project.GeluWide.Spec.geluWide_real_error"
+      ],
+      "complete": true
+    },
+    {
       "name": "tiny_gpt2_hidden",
       "annotations": true,
       "module": "Project.TinyGpt2.Model",
