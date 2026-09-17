@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "scope": "existing formal-bound recurrence evaluated numerically; improved real ranges are mathematical derivations in the report",
+  "B": 4,
+  "arithmeticEpsilon": 2.220446049250313e-16,
+  "normalizationFloor": 0.0031622776601683794,
+  "stages": [
+    {
+      "name": "embedding",
+      "local": 1.9984014443252818e-15,
+      "total": 1.9984014443252818e-15,
+      "contributions": {
+        "embedding": 1.9984014443252818e-15
+      }
+    },
+    {
+      "name": "norm1",
+      "local": 2.9865399042705576e-10,
+      "total": 3.037095906218062e-10,
+      "contributions": {
+        "norm1": 2.9865399042705576e-10,
+        "embedding": 5.055600194750449e-12
+      }
+    },
+    {
+      "name": "projection",
+      "local": 3.3439917501709715e-13,
+      "total": 4.859687849123916e-9,
+      "contributions": {
+        "projection": 3.3439917501709715e-13,
+        "norm1": 4.778463846832892e-9,
+        "embedding": 8.088960311600718e-11
+      }
+    },
+    {
+      "name": "score",
+      "local": 1.3233569795545463e-10,
+      "total": 0.000003742091979523371,
+      "contributions": {
+        "score": 1.3233569795545463e-10,
+        "projection": 2.574873647631648e-10,
+        "norm1": 0.000003679417162061327,
+        "embedding": 6.228499439932553e-8
+      }
+    },
+    {
+      "name": "attended",
+      "local": 4.3184722464673087e-10,
+      "total": 0.001444452795631095,
+      "contributions": {
+        "attended": 4.3184722464673087e-10,
+        "score": 5.108157941080549e-8,
+        "projection": 9.939045719775663e-8,
+        "norm1": 0.001420259803019519,
+        "embedding": 0.00002404208872774277
+      }
+    },
+    {
+      "name": "residual1",
+      "local": 3.554445626718916e-11,
+      "total": 0.023111244765643975,
+      "contributions": {
+        "residual1": 3.554445626718916e-11,
+        "embedding": 0.0003846734196458827,
+        "attended": 6.909555594347694e-9,
+        "score": 8.173052705728878e-7,
+        "projection": 0.0000015902473151641061,
+        "norm1": 0.022724156848312305
+      }
+    },
+    {
+      "name": "norm2",
+      "local": 8.52651508953528e-7,
+      "total": 58.467339269514966,
+      "contributions": {
+        "norm2": 8.52651508953528e-7,
+        "residual1": 8.992115199725138e-8,
+        "embedding": 0.9731553291254007,
+        "attended": 0.000017479946638157727,
+        "score": 0.0020676369589364123,
+        "projection": 0.004023042847108957,
+        "norm1": 57.48807483806422
+      }
+    },
+    {
+      "name": "expanded",
+      "local": 6.139533326177116e-13,
+      "total": 935.4774283122401,
+      "contributions": {
+        "expanded": 6.139533326177116e-13,
+        "norm2": 0.000013642424143256449,
+        "residual1": 0.000001438738431956022,
+        "embedding": 15.570485266006411,
+        "attended": 0.00027967914621052363,
+        "score": 0.0330821913429826,
+        "projection": 0.06436868555374331,
+        "norm1": 919.8091974090275
+      }
+    },
+    {
+      "name": "activated",
+      "local": 4.440892098500626e-11,
+      "total": 3741.9097132490047,
+      "contributions": {
+        "activated": 4.440892098500626e-11,
+        "expanded": 2.4558133304708463e-12,
+        "norm2": 0.000054569696573025794,
+        "residual1": 0.000005754953727824088,
+        "embedding": 62.281941064025645,
+        "attended": 0.0011187165848420945,
+        "score": 0.1323287653719304,
+        "projection": 0.25747474221497324,
+        "norm1": 3679.23678963611
+      }
+    },
+    {
+      "name": "contracted",
+      "local": 5.825806503878539e-11,
+      "total": 119741.1108239682,
+      "contributions": {
+        "contracted": 5.825806503878539e-11,
+        "activated": 1.4210854715202004e-9,
+        "expanded": 7.858602657506708e-11,
+        "norm2": 0.0017462302903368254,
+        "residual1": 0.00018415851929037082,
+        "embedding": 1993.0221140488206,
+        "attended": 0.035798930714947025,
+        "score": 4.2345204919017725,
+        "projection": 8.239191750879144,
+        "norm1": 117735.57726835553
+      }
+    },
+    {
+      "name": "residual2",
+      "local": 3.572919737848679e-11,
+      "total": 119741.13393521302,
+      "contributions": {
+        "residual2": 3.572919737848679e-11,
+        "residual1": 0.00018415855483482708,
+        "embedding": 1993.0224987222402,
+        "attended": 0.03579893762450262,
+        "score": 4.234521309207043,
+        "projection": 8.239193341126459,
+        "norm1": 117735.59999251238,
+        "contracted": 5.825806503878539e-11,
+        "activated": 1.4210854715202004e-9,
+        "expanded": 7.858602657506708e-11,
+        "norm2": 0.0017462302903368254
+      }
+    },
+    {
+      "name": "hidden",
+      "local": 0.0000028421711690818086,
+      "total": 302923770.2772459,
+      "contributions": {
+        "hidden": 0.0000028421711690818086,
+        "residual2": 9.03885141485883e-8,
+        "residual1": 0.4658883871064537,
+        "embedding": 5041992.419137842,
+        "attended": 90.56494456618071,
+        "score": 10712.585710089912,
+        "projection": 20843.693632361814,
+        "norm1": 297850126.1302738,
+        "contracted": 1.4738254207743e-7,
+        "activated": 0.0000035950934718225417,
+        "expanded": 1.9880866899178654e-7,
+        "norm2": 4.417652029313189
+      }
+    },
+    {
+      "name": "mixed",
+      "local": 0.0001,
+      "total": 4846780324.436034,
+      "contributions": {
+        "mixed": 0.0001,
+        "hidden": 0.00004547473870530894,
+        "residual2": 0.000001446216226377413,
+        "residual1": 7.454214193703259,
+        "embedding": 80671878.70620547,
+        "attended": 1449.0391130588914,
+        "score": 171401.3713614386,
+        "projection": 333499.098117789,
+        "norm1": 4765602018.084381,
+        "contracted": 0.00000235812067323888,
+        "activated": 0.000057521495549160666,
+        "expanded": 0.0000031809387038685846,
+        "norm2": 70.68243246901102
+      }
+    }
+  ],
+  "sources": [
+    {
+      "name": "norm1",
+      "contribution": 4765602018.084381,
+      "fraction": 0.9832510860988735
+    },
+    {
+      "name": "embedding",
+      "contribution": 80671878.70620547,
+      "fraction": 0.01664442646585027
+    },
+    {
+      "name": "projection",
+      "contribution": 333499.098117789,
+      "fraction": 0.00006880837912879713
+    },
+    {
+      "name": "score",
+      "contribution": 171401.3713614386,
+      "fraction": 0.00003536396533122897
+    },
+    {
+      "name": "attended",
+      "contribution": 1449.0391130588914,
+      "fraction": 2.989694221859539e-7
+    },
+    {
+      "name": "norm2",
+      "contribution": 70.68243246901102,
+      "fraction": 1.4583378601388448e-8
+    },
+    {
+      "name": "residual1",
+      "contribution": 7.454214193703259,
+      "fraction": 1.5379723640704973e-9
+    },
+    {
+      "name": "mixed",
+      "contribution": 0.0001,
+      "fraction": 2.0632253435508426e-14
+    },
+    {
+      "name": "activated",
+      "contribution": 0.000057521495549160666,
+      "fraction": 1.1867980741597527e-14
+    },
+    {
+      "name": "hidden",
+      "contribution": 0.00004547473870530894,
+      "fraction": 9.382463338814582e-15
+    },
+    {
+      "name": "expanded",
+      "contribution": 0.0000031809387038685846,
+      "fraction": 6.562993350103432e-16
+    },
+    {
+      "name": "contracted",
+      "contribution": 0.00000235812067323888,
+      "fraction": 4.865334336177632e-16
+    },
+    {
+      "name": "residual2",
+      "contribution": 0.000001446216226377413,
+      "fraction": 2.9838699705163404e-16
+    }
+  ],
+  "derivedRealRanges": {
+    "embedding": 8,
+    "normalizedL1": 32,
+    "normalizedCoordinate": 10.928203230275509,
+    "projection": 128,
+    "score": 23170.47500592079,
+    "attended": 128,
+    "residual1": 2060,
+    "expanded": 132,
+    "residual2": 6288,
+    "logit": 132
+  },
+  "derivedNormalizationLipschitz": 1897.3665961010277,
+  "existingNormalizationLipschitz": 2529.8221281347032,
+  "parentMainMagnitudeCap": 1456
+}

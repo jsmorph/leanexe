@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "scope": "pointwise diagnostic at ideal real intermediates; no uniform upper bound",
+  "referenceDecimalPlaces": 100,
+  "perturbations": [
+    "1e-30",
+    "1e-32"
+  ],
+  "checkpointFirstNormalizationMinimum": {
+    "value": 0.030145028881567823,
+    "where": {
+      "token": 55,
+      "position": 3
+    }
+  },
+  "results": [
+    {
+      "name": "checkpoint-lean",
+      "sensitivities": [
+        {
+          "stage": "embedding",
+          "infinityToInfinityJacobianNorm": 70.37548834796927,
+          "relativeStepDifference": 6.204957698283604e-60
+        },
+        {
+          "stage": "scores",
+          "infinityToInfinityJacobianNorm": 1.470559799264054,
+          "relativeStepDifference": 1.195868822118009e-62
+        },
+        {
+          "stage": "residual1",
+          "infinityToInfinityJacobianNorm": 37.40091673489479,
+          "relativeStepDifference": 1.8811938420564468e-60
+        },
+        {
+          "stage": "residual2",
+          "infinityToInfinityJacobianNorm": 27.274844296643877,
+          "relativeStepDifference": 6.1551569048061425e-62
+        },
+        {
+          "stage": "hidden",
+          "infinityToInfinityJacobianNorm": 3.21826866870506,
+          "relativeStepDifference": 0
+        }
+      ]
+    },
+    {
+      "name": "adversarial-plus",
+      "sensitivities": [
+        {
+          "stage": "embedding",
+          "infinityToInfinityJacobianNorm": 266273013094285760,
+          "relativeStepDifference": 1.2032776595057713e-28
+        },
+        {
+          "stage": "scores",
+          "infinityToInfinityJacobianNorm": 145338077069.6889,
+          "relativeStepDifference": 3.5857731837164317e-41
+        },
+        {
+          "stage": "residual1",
+          "infinityToInfinityJacobianNorm": 283864851.0831312,
+          "relativeStepDifference": 1.3678775947851524e-46
+        },
+        {
+          "stage": "residual2",
+          "infinityToInfinityJacobianNorm": 875.88146164387,
+          "relativeStepDifference": 1.1491023340391854e-56
+        },
+        {
+          "stage": "hidden",
+          "infinityToInfinityJacobianNorm": 16,
+          "relativeStepDifference": 0
+        }
+      ]
+    },
+    {
+      "name": "adversarial-minus",
+      "sensitivities": [
+        {
+          "stage": "embedding",
+          "infinityToInfinityJacobianNorm": 266414075282233300,
+          "relativeStepDifference": 1.2024757770750542e-28
+        },
+        {
+          "stage": "scores",
+          "infinityToInfinityJacobianNorm": 145415072131.6567,
+          "relativeStepDifference": 3.5833835702354173e-41
+        },
+        {
+          "stage": "residual1",
+          "infinityToInfinityJacobianNorm": 284015232.81543624,
+          "relativeStepDifference": 1.3669660204681832e-46
+        },
+        {
+          "stage": "residual2",
+          "infinityToInfinityJacobianNorm": 877.8203222631556,
+          "relativeStepDifference": 1.1489186028090147e-56
+        },
+        {
+          "stage": "hidden",
+          "infinityToInfinityJacobianNorm": 16,
+          "relativeStepDifference": 0
+        }
+      ]
+    },
+    {
+      "name": "adversarial-zero",
+      "sensitivities": [
+        {
+          "stage": "embedding",
+          "infinityToInfinityJacobianNorm": 6147475465676971000,
+          "relativeStepDifference": 2.882224484508153e-28
+        },
+        {
+          "stage": "scores",
+          "infinityToInfinityJacobianNorm": 3355436785009.454,
+          "relativeStepDifference": 8.589042757186987e-41
+        },
+        {
+          "stage": "residual1",
+          "infinityToInfinityJacobianNorm": 6553620238.577024,
+          "relativeStepDifference": 3.2764925567406484e-46
+        },
+        {
+          "stage": "residual2",
+          "infinityToInfinityJacobianNorm": 20238.577025077626,
+          "relativeStepDifference": 9.374062499999991e-57
+        },
+        {
+          "stage": "hidden",
+          "infinityToInfinityJacobianNorm": 16,
+          "relativeStepDifference": 0
+        }
+      ]
+    }
+  ]
+}
