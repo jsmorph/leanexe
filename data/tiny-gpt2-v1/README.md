@@ -3,8 +3,9 @@
 This checkpoint contains 2,488 binary64 parameters for the
 [agreed architecture](../../plans/tiny-transformer.md).  The user approved
 Tiny Shakespeare and a command-line interface returning all 256 next-byte
-logits on 2026-09-16.  The checkpoint's numerical certificates and complete
-inference proof remain in progress.
+logits on 2026-09-16.  The complete generated-WAT execution proof passes.
+The remaining checkpoint ranges and composed numerical error bound remain
+in progress.
 
 ## Command-line inference
 
@@ -21,12 +22,15 @@ The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
 C host.  The separate 15,423-byte hidden-state module has a
 [proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
 exact agreement with the raw-bit model, and store preservation for every
-four-byte input.  The full module's hidden function and single-logit function
-also have execution proofs.  Its
-[output loop](../../proofs/talos/lean/Project/TinyGpt2Infer/OutputLoop.lean)
+four-byte input.  The
+[complete inference theorem](../../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean)
 proves termination, all 256 raw-bit logits, checkpoint preservation, and a
-fixed page count under its memory reservation.  Function entry and exit and
-the composed numerical certificate remain open.
+fixed page count.  It assumes a represented weight array of at least 2,488
+words, an empty initial free list, weights below the output heap, and enough
+reserved memory.  Output construction requires 277,560 bytes.  With the CLI's
+weight array allocated first, its final heap top is 301,616, within the
+module's sixteen initial pages.  The composed numerical certificate remains
+open.  The host and exact-byte package remain outside this execution theorem.
 
 ## Training record
 

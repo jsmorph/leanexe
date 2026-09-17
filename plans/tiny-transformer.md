@@ -71,7 +71,10 @@ theorem proves equal output at a position whenever the input prefixes
 through that position agree.  The softmax computation now accepts a
 proved active-score spread of at most sixteen in its internal numerical
 theorem and propagates real score error with multiplier two.  Frozen
-checkpoint ranges and full-model execution remain open.
+checkpoint ranges and the composed numerical error bound remain open.
+The complete generated-WAT inference execution theorem passes, including
+termination, exact raw-bit output, checkpoint preservation, and its memory
+reservation.
 
 The [weight layout and arithmetic body](tiny-model-layout.md) record the
 runtime tensor representation, compiled initialization tests, and remaining

@@ -698,9 +698,10 @@
       "specTarget": "Project.TinyGpt2Infer.Spec",
       "behaviorTheorems": [
         "Project.TinyGpt2Infer.Spec.hidden_exact",
-        "Project.TinyGpt2Infer.Spec.logit_exact"
+        "Project.TinyGpt2Infer.Spec.logit_exact",
+        "Project.TinyGpt2Infer.Spec.infer_exact"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

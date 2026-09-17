@@ -137,3 +137,4 @@ import Project.Softmax.Spec
 import Project.LayerNorm.Spec
 import Project.Gelu.Spec
 import Project.TinyGpt2Hidden.Spec
+import Project.TinyGpt2Infer.Spec
