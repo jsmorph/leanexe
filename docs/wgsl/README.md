@@ -255,3 +255,13 @@ nonlinear WGSL operations and shared-memory tiling are not justified by this
 head's measurements. Physical-GPU conformance testing is outside the user's
 explicit CPU-only scope; tighter full-model numerical bounds remain research
 work. These limitations do not change the checked artifact/entry-point proofs.
+
+## Numerical audit
+
+The [three numerical audits](numerical-audit.md) now distinguish real-model
+sensitivity, fresh implementation rounding and overestimation in the existing
+proof. They include a strict counterexample to uniformly tiny error for the
+current evaluation order, sharper mathematically derived bounds, stage traces
+checked against Lean, and binary64 algorithm prototypes. No replacement Wasm
+or WGSL artifact is supplied by those prototypes. The report states separately
+which facts are Lean-checked, analytically derived or numerically observed.

@@ -850,3 +850,35 @@ loses 2^-55; later large errors occur even where fresh local error is zero.
 These are finite executions of existing definitions, not new universal theorems.
 No Wasm or WGSL bytes changed. Sequential runner logs are retained under
 `build/wgsl/numerical-audit`; portable traces and stage reports are checked in.
+
+The three numerical audits are complete. Exact-real sensitivity, fresh rounding
+and proof slack are reported separately, retaining the single cap B=4. The
+strict counterexample concerns the existing evaluation order, not every
+algorithm for the real model. Pointwise finite differences converge under two
+step sizes and show a large contrast between the checkpoint and the constructed
+parameter family. That contrast is diagnostic, not a universal guarantee.
+
+Component-preserving centering repairs the first loss but leaves cancellation
+in nearly uniform weighted attention. A second binary64 prototype computes the
+small weighted deviation with expm1. Across twelve fixed cases its binary64
+logit error is below 5.7e-15; its mixed error remains below 1.24e-6. It calls
+native Math.expm1 and is deliberately kept outside the production compiler and
+artifact pipeline. Neither prototype has a universal accuracy proof. Existing
+checkpoint errors sometimes increase by a few ulps, so it is not described as
+an improvement on every input.
+
+Recomputing the unchanged proof recurrence attributes 98.3251% of its 4.85e9
+allowance to the first normalization's local allowance and its later propagation.
+The report derives sharper normalization, attention and GELU constants and a
+shared-head range cap below 128.000046, without claiming these are already new
+Lean theorems. Parent main at 9fb277da was inspected: its checked runtime-weight
+inference and 1456 cap remain separate from the unchanged artifacts measured
+here. All new evidence is reproducible with the focused audit driver; no broad
+project regression, new native dependency, Metal setup or Wasm generation was
+needed.
+
+A final remote check found main advanced to 529a5e85 with a trained 64-position
+checkpoint and sequential-sum bounds. Its inference implementation/proofs are
+explicitly still in progress. Inspection showed no changes to the four-position
+ErrorBudget or CheckedBounds under audit. The report records the new parent
+state without substituting its distinct checkpoint into these measurements.
