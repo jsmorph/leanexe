@@ -840,3 +840,13 @@ are separated by approximately 119.8454. The mathematical lower-bound argument
 and exact rational checks are retained separately from execution evidence;
 they are not presented as a new Lean theorem. This establishes reproducible
 inputs for the three requested audits without generating a new artifact.
+
+The numerical audit now records every intermediate stage for six contexts.
+A diagnostic Lean executable calls the existing pure floating-point definitions;
+all 3,888 resulting words agree with the JavaScript transcription. The stage
+report distinguishes fresh local rounding/approximation from error inherited
+from previous stages. For the signed adversaries, the first embedding addition
+loses 2^-55; later large errors occur even where fresh local error is zero.
+These are finite executions of existing definitions, not new universal theorems.
+No Wasm or WGSL bytes changed. Sequential runner logs are retained under
+`build/wgsl/numerical-audit`; portable traces and stage reports are checked in.
