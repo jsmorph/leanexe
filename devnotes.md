@@ -13857,3 +13857,18 @@ The tiny_gpt2_infer gate passes after regenerating and comparing the
 compiler output.  The checkpoint finiteness theorem and complete
 generated-WAT inference theorem still check with the revised attention
 proof dependency.
+
+The real-model bounds now quantify over an arbitrary nonnegative B.
+They cover embedding, normalization, projection, attention, both residuals,
+expansion, GELU, hidden state, and logits.  Score spread is at most
+288 sqrt(2) B^4, and real logits have magnitude at most 12B^2+B.
+The decoded-parameter proof checks every embedding, matrix, bias, and
+normalization offset against the 2,488-word layout.  Acceptance and
+clipping establish all its hypotheses for runtime arrays.  The source
+inference proof target imports these results without a checkpoint premise.
+Their floating-point counterparts still require rounding-error bounds.
+
+The complete range module checks in 1.7 seconds, and the decoder adapter
+in 1.3 seconds, using only standard logical axioms.  The score proof's
+first check required explicit embedding arguments in intermediate
+declarations, where Lean had no expected type to infer them.

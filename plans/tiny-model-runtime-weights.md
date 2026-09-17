@@ -24,6 +24,13 @@ attention probabilities summing to one give first-residual magnitude
 second-residual magnitude 144B^3+8B^2+4B.  At B = 10, the residual bounds
 are 48,030 and 144,840.  Runtime proofs must include rounding margins.
 
+The [parameterized range proofs](../proofs/talos/lean/Project/TinyGpt2/WeightBounds.lean)
+establish these real-model bounds for every nonnegative B.  They also
+bound score spread by 288 sqrt(2) B^4 and every real logit by 12B^2+B.
+The [clipped-parameter theorem](../proofs/talos/lean/Project/TinyGpt2/ClippedParameters.lean)
+connects every accepted runtime array to those hypotheses through all
+2,488 parameter offsets.
+
 Let L = sqrt(1/100000) and N = 2B/L.  The existing real perturbation
 theorems give the following contributions when other stages are exact:
 
@@ -73,6 +80,7 @@ await user confirmation.
 
 - [x] Preserve the cancellation case and calculate preliminary sensitivity terms.
 - [x] Prove the parameterized scalar clipping operation and array checker at source level.
+- [x] Prove real-model ranges and connect them to accepted clipped arrays.
 - [ ] Prove the checker's generated-WAT execution and memory use.
 - [ ] Confirm and implement the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
