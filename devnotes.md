@@ -14950,3 +14950,51 @@ under build/gpt2-124m/kernel, with its result retained in the data directory.
 
 The root library build, thirteen-case WAT/binary round-trip gate, and
 documentation checks pass with packed storage enabled.
+
+### First pretrained transformer block
+
+The FP32 model now implements LayerNorm, causal twelve-head attention,
+biased projections, residual additions, and the approved exponential/GELU
+methods.  The reference exporter records all first-block intermediate
+tensors and checks its manual composition against Transformers' block.
+The WASM test feeds each stage's output into the next stage and also runs
+the complete composed Lean block.
+
+The first compilation exposed evidence normalization in the inliner.
+rowInvStd compiled as a function, but inlining it with a potentially
+trapping mean argument expanded ForIn.forIn into the proof-indexed iterator
+implementation.  The extractor recognizes the ForIn interface.  Evidence
+normalization now preserves that interface.  A reduced packed-generator
+test calls a loop helper with a packed-read argument and passes both native
+Lean and Wasmtime comparisons.
+
+All first-block stages pass the declared comparison tolerance of
+1e-4 + 2e-5 times the reference magnitude.  The maximum absolute difference
+is 0.00026702880859375, in the feed-forward projection and final output.
+The composed block matches separate WASM stage calls bit-for-bit.  Its
+nine-token host call took 0.291381042 seconds.  Twenty-one allocations and
+eighteen frees leave only two borrowed host inputs and the output.  These
+are execution measurements for the pinned checkpoint and prompt.
+
+### Full pretrained inference and loop ownership
+
+The complete model loads 497,759,232 bytes of packed FP32 parameters and
+returns 50,257 logits for one to 128 BPE token IDs.  The nine-token story
+prompt matches PyTorch with maximum absolute difference
+0.00009918212890625 and RMS difference 0.000040563035721151586.  Both choose
+token 11.  The measured call took 3.873877877 seconds, including host
+startup and input loading.  Formal proof work remains paused.
+
+The first run passed every logit comparison but retained the final hidden
+buffer.  Helper ownership summaries omitted loop results.  Inferring
+freshness from the loop's release annotations was insufficient because
+the first extraction pass precedes those annotations.  The analysis now
+checks the initial value and body result with the current helper summaries.
+
+A reduced zero-iteration test exposed a second error: result materialization
+released the initial owner even when the loop returned that owner.  Internal
+helper cleanup now compares temporary owners with returned owner slots
+before releasing them.  Tests cover zero, one, and four iterations, with
+all fresh allocations freed, and a borrowed zero-iteration input that stays
+owned by its caller.  Native Lean and WASM results agree.  The full model's
+235 allocations and 232 frees leave exactly the two inputs and one output.

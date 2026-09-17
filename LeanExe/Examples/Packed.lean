@@ -35,4 +35,38 @@ def generateSum (size : Nat) (offset : UInt32) : ByteArray :=
       value := value + n.toUInt32
     return value
 
+def repeatedAdd (size : Nat) (value : UInt32) : UInt32 := Id.run do
+  let mut total : UInt32 := 0
+  for _ in [:size] do
+    total := total + value
+  return total
+
+def generatedWithCall (size : Nat) (bytes : ByteArray) : ByteArray :=
+  LeanExe.Packed.generateUInt32LE size fun index =>
+    repeatedAdd index (LeanExe.Packed.getUInt32LE! bytes 0)
+
+def incremented (bytes : ByteArray) : ByteArray :=
+  LeanExe.Packed.generateUInt32LE (bytes.size / 4) fun index =>
+    LeanExe.Packed.getUInt32LE! bytes (index * 4) + 1
+
+def repeatedOwned (count : Nat) : ByteArray := Id.run do
+  let mut bytes := makeWords 4 17
+  for _ in [:count] do
+    bytes := incremented bytes
+  return bytes
+
+def repeatedOwnedSum (count : Nat) : UInt64 :=
+  let bytes := repeatedOwned count
+  (LeanExe.Packed.getUInt32LE! bytes 0).toUInt64
+
+def repeatedBorrowed (initial : ByteArray) (count : Nat) : ByteArray := Id.run do
+  let mut bytes := initial
+  for _ in [:count] do
+    bytes := incremented bytes
+  return bytes
+
+def repeatedBorrowedSum (initial : ByteArray) (count : Nat) : UInt64 :=
+  let bytes := repeatedBorrowed initial count
+  (LeanExe.Packed.getUInt32LE! bytes 0).toUInt64
+
 end LeanExe.Examples.Packed
