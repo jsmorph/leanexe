@@ -130,7 +130,8 @@ with `tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160`.
 The user paused proof work to develop
 [pretrained GPT-2 124M inference](data/gpt2-124m/README.md) through LeanExe
 with a 128-token context.  Its CPU FP32 reference produces text completions.
-FP32 compiler support and packed tensor execution are the next steps.
+The compiler now supports FP32 arithmetic and FP32/FP64 conversions.
+Packed tensor execution is the next step.
 
 The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
 

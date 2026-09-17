@@ -4758,7 +4758,13 @@ mutual
           let result ← extractExprFrom ctx locals nextLocal value
           .ok (.f64SqrtBits result.fst, result.snd)
       | _ => .error s!"floating-point square root requires exactly one argument: {primitive}"
-    else if let some op := f64BinaryPrimitive? primitive then
+    else if let some op := floatUnaryPrimitive? primitive then
+      match args with
+      | [value] =>
+          let result ← extractExprFrom ctx locals nextLocal value
+          .ok (.floatUnary op result.fst, result.snd)
+      | _ => .error s!"floating-point unary intrinsic requires exactly one argument: {primitive}"
+    else if let some op := (f64BinaryPrimitive? primitive).orElse fun _ => f32BinaryPrimitive? primitive then
       match args with
       | [left, right] =>
           let leftResult ← extractExprFrom ctx locals nextLocal left

@@ -723,6 +723,7 @@ mutual
     | .trap => []
     | .u64 _ => []
     | .f64SqrtBits value => exprUsedSlots value
+    | .floatUnary _ value => exprUsedSlots value
     | .u64Bin _ left right =>
         addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
     | .ite cond thenValue elseValue =>
@@ -2747,6 +2748,7 @@ mutual
     | .release ptr =>
         addLiveSlots (exprUsedSlots ptr) (exprReleaseTargetSlots ptr)
     | .f64SqrtBits value => exprReleasedSlots value
+    | .floatUnary _ value => exprReleasedSlots value
     | .u64Bin _ left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
     | .ite cond thenValue elseValue =>
         addLiveSlots (condReleasedSlots cond)
@@ -3572,6 +3574,7 @@ partial def exprSpineOwnedTemps (ownedLocals : List Nat) : IRExpr → List Nat
           !released.contains slot && !exprReturnsLocalSlot slot body)
         (exprSpineOwnedTemps ownedLocals body)
   | .f64SqrtBits value => exprSpineOwnedTemps ownedLocals value
+  | .floatUnary _ value => exprSpineOwnedTemps ownedLocals value
   | .u64Bin _ left right =>
       addLiveSlots (exprSpineOwnedTemps ownedLocals left)
         (exprSpineOwnedTemps ownedLocals right)
@@ -3642,6 +3645,8 @@ mutual
       IRExpr → IRExpr
     | .f64SqrtBits value =>
         .f64SqrtBits (refreshOwnerMasksExprForAlloc summaries ownerSources value)
+    | .floatUnary op value =>
+        .floatUnary op (refreshOwnerMasksExprForAlloc summaries ownerSources value)
     | .u64Bin op left right =>
         .u64Bin op
           (refreshOwnerMasksExprForAlloc summaries ownerSources left)

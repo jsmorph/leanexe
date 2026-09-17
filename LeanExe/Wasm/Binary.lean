@@ -246,6 +246,7 @@ mutual
     | .trap => .trap
     | .u64 value => .u64 value
     | .f64SqrtBits value => .f64SqrtBits (shiftExprCalls offset value)
+    | .floatUnary op value => .floatUnary op (shiftExprCalls offset value)
     | .u64Bin op left right =>
         .u64Bin op (shiftExprCalls offset left) (shiftExprCalls offset right)
     | .ite cond thenValue elseValue =>
@@ -464,6 +465,22 @@ def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .f64MulBits => [Instr.mulF64]
   | .f64SubBits => [Instr.subF64]
   | .f64DivBits => [Instr.divF64]
+  | .f32AddBits => [Instr.addF32]
+  | .f32SubBits => [Instr.subF32]
+  | .f32MulBits => [Instr.mulF32]
+  | .f32DivBits => [Instr.divF32]
+
+def emitFloatUnary : LeanExe.IR.FloatUnaryOp → List Instr
+  | .f32SqrtBits =>
+      [.wrapI64, .f32ReinterpretI32, .sqrtF32, .i32ReinterpretF32, .extendUI32]
+  | .f32ToF64Bits =>
+      [.wrapI64, .f32ReinterpretI32, .f64PromoteF32, .i64ReinterpretF64]
+  | .f64ToF32Bits =>
+      [.f64ReinterpretI64, .f32DemoteF64, .i32ReinterpretF32, .extendUI32]
+
+def isF32Binary : LeanExe.IR.U64Op → Bool
+  | .f32AddBits | .f32SubBits | .f32MulBits | .f32DivBits => true
+  | _ => false
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
@@ -746,6 +763,7 @@ mutual
     | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
     | .f64SqrtBits value => exprScratch value
+    | .floatUnary _ value => exprScratch value
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
@@ -2612,7 +2630,14 @@ mutual
     | .f64SqrtBits value =>
         emitExpr scratch value ++
           [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
-    | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
+    | .floatUnary op value => emitExpr scratch value ++ emitFloatUnary op
+    | .u64Bin op left right =>
+        if isF32Binary op then
+          emitExpr scratch left ++ [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+            emitExpr scratch right ++ [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+            emitU64Op op ++ [Instr.i32ReinterpretF32, Instr.extendUI32]
+        else
+          emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ([Instr.iff true (emitExpr scratch thenValue) (some (emitExpr scratch elseValue))])
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
@@ -2818,9 +2843,18 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .f64SqrtBits value =>
       emitExprWithReleaseFallback releaseIndex scratch value ++
         [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
+  | .floatUnary op value =>
+      emitExprWithReleaseFallback releaseIndex scratch value ++ emitFloatUnary op
   | .u64Bin op left right =>
-      emitExprWithReleaseFallback releaseIndex scratch left ++
-        emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
+      if isF32Binary op then
+        emitExprWithReleaseFallback releaseIndex scratch left ++
+          [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+          emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+          emitU64Op op ++ [Instr.i32ReinterpretF32, Instr.extendUI32]
+      else
+        emitExprWithReleaseFallback releaseIndex scratch left ++
+          emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
   | .ite cond thenValue elseValue =>
       emitCondWithReleaseFallback releaseIndex scratch cond ++ ([Instr.iff true (emitExprWithReleaseFallback releaseIndex scratch thenValue) (some (emitExprWithReleaseFallback releaseIndex scratch elseValue))])
   | .letE slot value body =>
