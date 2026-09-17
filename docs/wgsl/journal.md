@@ -828,3 +828,15 @@ artifact theorem, native execution, residency, batching/workgroup experiments
 and documented decisions about additional operations. Physical-GPU conformance
 and tighter full-model accuracy bounds remain clearly identified research
 extensions, not claims supplied by these CPU results.
+
+The numerical audit begins from the unchanged artifacts at 59f57a59 and the
+research notes at 385b05d3. A parent fetch found checked runtime-weight
+inference and the coarse magnitude cap in 9fb277da. Six diagnostic cases now
+compare a source-order JavaScript transcription against the existing hidden
+Wasm, and compare its real target at 80 and 120 decimal places. All 24 hidden
+words and all 768 recorded checkpoint mixed logits match. The opposite-sign
+adversarial embeddings both round to the same constant row; their real logits
+are separated by approximately 119.8454. The mathematical lower-bound argument
+and exact rational checks are retained separately from execution evidence;
+they are not presented as a new Lean theorem. This establishes reproducible
+inputs for the three requested audits without generating a new artifact.
