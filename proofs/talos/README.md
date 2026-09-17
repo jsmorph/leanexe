@@ -63,7 +63,7 @@ eight and a tail approximation with error at most 1e-18 beyond it.
 Its negative core evaluates -a*e/(1+e) to avoid cancellation.  The complete
 generated-WAT proof covers exact output, nonfinite rejection, termination,
 and store preservation.  Its input-perturbation multiplier remains four.
-The GPT-2 CLI still uses the earlier GELU while integration is in progress.
+The GPT-2 CLI artifact and its execution proof use this implementation.
 
 The [LayerNorm component](lean/Project/LayerNorm/Spec.lean) proves total
 generated-WAT execution and absolute component error at most 1/1000000 for
@@ -135,6 +135,15 @@ now prove the composed error bound, parameterized by B and the three
 normalization lower bounds.  The epsilon-floor instantiation is unconditional
 and too coarse to certify precision.  At B = 10 its formula evaluates to
 approximately 2.934e14.  The checker-to-inference execution proof remains open.
+
+The [combined checked entry](lean/Project/TinyGpt2/Checked.lean) now compiles.
+Its [source proofs](lean/Project/TinyGpt2/CheckedBounds.lean) cover rejection,
+finite accepted logits, and the composed error bound against clipped weights.
+Checked function-region equality transfers the hidden-state, single-logit,
+validation, and scalar clipping execution proofs.  The internal array
+preparation and inference calls have additional owner slots and still need
+execution proofs.  The registration remains incomplete.  WASM tests compare
+768 logits at B = 10, 1, and 0 and check eight rejection cases.
 
 The [negative exponential](lean/Project/ExpNeg/Spec.lean) accepts every finite
 nonpositive binary64 input.  Its generated-WAT theorem proves termination,

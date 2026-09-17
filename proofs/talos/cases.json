@@ -764,6 +764,21 @@
         "Project.F64Clip.Spec.prepare_real"
       ],
       "complete": true
+    },
+    {
+      "name": "tiny_gpt2_checked",
+      "annotations": true,
+      "module": "Project.TinyGpt2.Checked",
+      "entry": "Project.TinyGpt2.inferChecked",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Checked",
+      "specTarget": "Project.TinyGpt2Checked.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Checked.Spec.hidden_exact",
+        "Project.TinyGpt2Checked.Spec.logit_exact",
+        "Project.TinyGpt2Checked.Spec.accepted_exact"
+      ],
+      "complete": false
     }
   ]
 }
