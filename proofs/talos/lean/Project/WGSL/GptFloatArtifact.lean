@@ -7,6 +7,14 @@ namespace Project.WGSL.GptFloatArtifact
 open Wasm LeanExe.WGSL Project.TinyGpt2 Project.ProofKit
 open FloatSpec.Correspondence
 
+theorem hidden_interface :
+    (Project.TinyGpt2Hidden.Artifact.Cache.raw.exports.any fun entry =>
+      entry.name.text == "hidden" && entry.desc == .func 74) = true := by decide +kernel
+
+theorem finish_interface :
+    (FinishBinary.raw.exports.any fun entry =>
+      entry.name.text == "finish" && entry.desc == .func 0) = true := by decide +kernel
+
 /-- Native uploads identify words in the typed specification. The contract
 says nothing about a real-valued approximation or an error tolerance. -/
 def Inputs (p : FloatSpec.Parameters) (h : FloatSpec.Vec 4)
@@ -136,6 +144,8 @@ theorem artifact {source metadata} (package : Binary32.Package source metadata)
   ⟨hidden_artifact env hiddenState pointer w tokens last weights size,
     completes package shape profile w tokens last env conforms st a b c ready inputs⟩
 
+#print axioms hidden_interface
+#print axioms finish_interface
 #print axioms hidden_artifact
 #print axioms completes
 #print axioms artifact
