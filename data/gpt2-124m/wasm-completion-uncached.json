@@ -1,0 +1,22 @@
+{
+  "runtime": "LeanExe/WASM FP32, Wasmtime",
+  "model": "openai-community/gpt2",
+  "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+  "parameters": 124439808,
+  "weights_sha256": "6c12f993878ad39ba4aa3b0ab58a7466f5a62651cda94464dab438339008ba1d",
+  "wasm_sha256": "6a368a3c2ffc7b0afb311444b99951b0aeaf7b73be46f6d191f527623c118b7c",
+  "context_limit": 128,
+  "prompt": "Once upon a time, in a small village",
+  "prompt_tokens": [7454, 2402, 257, 640, 11, 287, 257, 1402, 7404],
+  "generated_tokens": [1444, 367, 2724, 333, 13, 383, 7404, 318, 257, 1049, 1033, 40054, 286, 2330, 6450, 290],
+  "completion": " called Hukur. The village is a great expanse of white sand and",
+  "text": "Once upon a time, in a small village called Hukur. The village is a great expanse of white sand and",
+  "seed": 42,
+  "top_k": 40,
+  "temperature": 0.8,
+  "stop_reason": "length",
+  "seconds": 93.09486704398296,
+  "wasm_memory_bytes": 514654208,
+  "allocations": 3730,
+  "frees": 3728
+}

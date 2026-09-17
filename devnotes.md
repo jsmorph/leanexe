@@ -14998,3 +14998,31 @@ before releasing them.  Tests cover zero, one, and four iterations, with
 all fresh allocations freed, and a borrowed zero-iteration input that stays
 owned by its caller.  Native Lean and WASM results agree.  The full model's
 235 allocations and 232 frees leave exactly the two inputs and one output.
+
+### Resident pretrained text generation
+
+The thirteen-case WAT/binary comparison passes after the loop-ownership
+changes.  Commit 2d4198a0 records the complete model and is pushed.
+
+The host now has a persistent session mode that accepts repeated export
+calls, binary file inputs, memory reads, allocation counters, and memory
+size queries.  It flushes each response for interactive clients.  A test
+uses a binary file path containing spaces, performs two reads with different
+arguments, and frees the input.  Existing single-call script behavior stays
+available.
+
+tools/gpt2 compiles the Lean model through the runner, checks the packed
+checkpoint and tokenizer hashes, and generates text with resident weights.
+Its Python client handles tokenization and top-k probabilities.  Random
+draws come from the existing Lean SplitMix64 WASM program.  All model
+arithmetic executes in the generated model module.  The sandbox blocked
+the new driver's systemd user-bus access.  The GPT-2 driver prefix is now
+approved for subsequent runs.
+
+The first sixteen-token completion was " called Hukur. The village is a
+great expanse of white sand and" after the nine-token story prompt.
+Generation took 93.09486704398296 seconds and used 514,654,208 bytes of WASM
+linear memory.  After the final result was read and freed, 3,730 allocations
+and 3,728 frees left the resident weights and token buffer.  Prefix
+recomputation dominates runtime.  A per-position, per-layer key/value cache
+is the next implementation step.

@@ -831,9 +831,9 @@ static void print_memory_range(Runtime *runtime, uint64_t ptr, uint64_t len) {
   printf("\n");
 }
 
-static void command_script(Runtime *runtime, int argc, char **argv) {
+static void command_script(Runtime *runtime, int argc, char **argv, bool session) {
   if (argc != 0) {
-    die("usage: script <module.wasm>");
+    die("usage: script|session <module.wasm>");
   }
   (void)argv;
   uint64_t ids[4096];
@@ -849,6 +849,9 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
   char line[16384];
   while (fgets(line, sizeof(line), stdin) != NULL) {
     size_t len = strlen(line);
+    if (len == sizeof(line) - 1 && line[len - 1] != '\n') {
+      die("script command is too long");
+    }
     while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
       line[--len] = 0;
     }
@@ -870,6 +873,20 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
         die("allocation id is too large");
       }
       ids[id] = call_alloc(runtime, parse_u64(size_text));
+    } else if (strcmp(command, "bytes-file") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *path = strtok(NULL, "");
+      if (id_text == NULL || path == NULL) {
+        die("bytes-file requires id and path");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      size_t byte_len = 0;
+      uint8_t *bytes = read_file(path, &byte_len);
+      ids[id] = alloc_bytes(runtime, bytes, byte_len);
+      free(bytes);
     } else if (strcmp(command, "bytes") == 0) {
       char *id_text = strtok(NULL, " ");
       char *hex = strtok(NULL, " ");
@@ -937,7 +954,7 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
         }
         value = ids[id];
       } else {
-        value = parse_u64(value_text);
+        value = resolve_script_value(value_text, results, nresults, vars);
       }
       args[nargs].kind = WASMTIME_I64;
       args[nargs].of.i64 = (int64_t)value;
@@ -952,7 +969,7 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
       if (dump_text != NULL && parse_u64(dump_text) != 0) {
         die("full memory dump is unsupported; use read-memory");
       }
-      if (called) {
+      if (called && !session) {
         die("script may call only one export");
       }
       nresults = (size_t)parse_u64(nresults_text);
@@ -961,6 +978,7 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
       }
       wasmtime_func_t func = get_func(runtime, func_name);
       invoke_func(runtime, &func, args, nargs, results, nresults);
+      nargs = 0;
       called = true;
       printf("results");
       for (size_t i = 0; i < nresults; i++) {
@@ -997,6 +1015,13 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
       uint64_t ptr = resolve_script_value(ptr_text, results, nresults, vars);
       uint64_t len = resolve_script_value(len_text, results, nresults, vars);
       print_memory_range(runtime, ptr, len);
+    } else if (strcmp(command, "stats") == 0) {
+      print_stats(runtime);
+    } else if (strcmp(command, "memory-size") == 0) {
+      if (!runtime->has_memory) {
+        die("missing memory export");
+      }
+      printf("memory-size %zu\n", wasmtime_memory_data_size(runtime->context, &runtime->memory));
     } else if (strcmp(command, "done") == 0) {
       if (!called) {
         die("done requires a prior call");
@@ -1005,6 +1030,12 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
     } else {
       die("unknown script command");
     }
+    if (session && fflush(stdout) != 0) {
+      die("cannot flush session output");
+    }
+  }
+  if (ferror(stdin)) {
+    die("cannot read script input");
   }
   if (!called) {
     die("script ended before call");
@@ -1058,9 +1089,9 @@ int main(int argc, char **argv) {
   } else if (strcmp(argv[1], "allocator-grows") == 0) {
     init_runtime(&runtime, argv[2]);
     command_allocator_grows(&runtime, argc - 3, argv + 3);
-  } else if (strcmp(argv[1], "script") == 0) {
+  } else if (strcmp(argv[1], "script") == 0 || strcmp(argv[1], "session") == 0) {
     init_runtime(&runtime, argv[2]);
-    command_script(&runtime, argc - 3, argv + 3);
+    command_script(&runtime, argc - 3, argv + 3, strcmp(argv[1], "session") == 0);
   } else {
     usage();
   }
