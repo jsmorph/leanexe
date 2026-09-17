@@ -90,3 +90,23 @@ source-operation mutation pairs and the independent matrix-proof recheck.
 This run exercised the committed compiler and the complete updated driver;
 the subsequent edits only clarify normalization behavior and record this
 result. The documentation checker passed for all 149 maintained Markdown files.
+
+## 2026-09-17: statement execution proof
+
+Added a statement AST which retains immutable bindings, scoped loop bodies,
+initializer references and continuations. Added an interpreter with checked
+local reads, finite input buffer extents, wrapping u32 index operations, and
+explicit loop condition/counter/accumulator transitions. Exhausting an active
+loop's iteration budget is an error. The new `Code.run_eq` theorem proves that
+validated statement programs return the corresponding source-model value;
+it covers arbitrary nesting and all scalar arithmetic interpretations.
+
+`Index.bound_le` proves the existing interval computation bounds every accepted
+index. `Index.word_eq` proves its u32 evaluation equals the natural evaluation.
+The statement proof uses these facts for checked buffer loads. These modules
+passed `tools/leanrun --timeout 60s lake build LeanExe.WGSL.StatementProof` as
+part of the larger invocation build. Diagnostic iterations exposed missing
+binder annotations, reserved constructor names, exception simplification and
+loop-invariant normalization; those proof errors were repaired before this
+checkpoint. Whole-shader integration is still in progress at this checkpoint;
+no claim of WebGPU driver verification or GPT-2 migration follows from it.
