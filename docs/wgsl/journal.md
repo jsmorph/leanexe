@@ -1059,3 +1059,15 @@ checkpoint is being evaluated separately; a pending scope question distinguishes
 actual pretrained GPT-2 from a smaller Shakespeare transformer. No new checkpoint
 or generated artifact is committed. The original exact-reference tests remain
 unchanged so that the demonstration cannot hide altered model semantics.
+
+An independent quality check loads the original 2,984-parameter checkpoint into
+the repository's PyTorch training implementation, without executing downloaded
+model code. It produces the same 64-byte "the the the" greedy continuation.
+That isolates this repetition from Wasm code generation and WebGPU execution.
+A published ~10.7M-parameter Shakespeare checkpoint improves word structure in
+a separate reference experiment but still repeats under greedy decoding; it
+must not be presented as general-purpose GPT-2. The user has been asked to
+choose actual pretrained GPT-2 or the smaller Shakespeare target before that
+substantial model/implementation expansion. All downloads and reference outputs
+remain ignored under build/gpt128-quality. The documentation checker passes
+143 maintained files.
