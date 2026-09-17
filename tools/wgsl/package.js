@@ -41,7 +41,7 @@ function audit(output, names = ["package", "artifact", "numerical", "numericalWi
   return checked;
 }
 
-async function checkPackage(directory) {
+async function checkPackage(directory, { wordsOnly = false } = {}) {
   directory = path.resolve(directory);
   const checks = path.join(root, "build/wgsl/package-checks");
   fs.mkdirSync(checks, { recursive: true });
@@ -55,13 +55,14 @@ async function checkPackage(directory) {
     const proof = path.join(attempt, "Proof.lean");
     write(shaderPath, shader);
     write(manifestPath, manifest);
-    await lean("shared proof dependencies", ["lake", "-d", proofRoot, "build", "Project.WGSL.Package"],
+    await lean("shared proof dependencies", ["lake", "-d", proofRoot, "build",
+      wordsOnly ? "Project.WGSL.ExecutionPackage" : "Project.WGSL.Package"],
       path.join(attempt, "dependencies.log"));
     await lean("prepare independent proof", ["lake", "env", "lean", "--run",
-      path.join(__dirname, "Prepare.lean"), shaderPath, manifestPath, proof], path.join(attempt, "prepare.log"));
+      path.join(__dirname, "Prepare.lean"), shaderPath, manifestPath, proof, ...(wordsOnly ? ["words"] : [])], path.join(attempt, "prepare.log"));
     const output = await lean("kernel and exact file checks", ["lake", "-d", proofRoot, "env", "lean",
       "--run", proof, shaderPath, manifestPath], path.join(attempt, "verify.log"));
-    const axioms = audit(output);
+    const axioms = wordsOnly ? audit(output, ["package", "artifact", "exact"].map(n => `CheckedWGSLPackage.${n}`)) : audit(output);
     const bindings = output.split("\n").filter(line => line.startsWith("WGSL_PACKAGE_BINDING "));
     requireThat(bindings.length === 1, "missing or duplicate checked manifest binding");
     const metadata = JSON.parse(bindings[0].slice("WGSL_PACKAGE_BINDING ".length));
@@ -73,10 +74,12 @@ async function checkPackage(directory) {
       schemaVersion: 1, status: "pass", shaderSha256: digest(shader), manifestSha256: digest(manifest),
       proofSha256: digest(fs.readFileSync(proof)), profile: metadata.profile, axioms,
       subject: "Exact embedded WGSL source with parsed configuration and matched manifest fields",
-      claims: ["termination", "memory safety", "GEMM correspondence", "conditional numerical bound"],
+      claims: ["termination", "memory safety", "GEMM correspondence", ...(wordsOnly ? [] : ["conditional numerical bound"])],
       exactness: metadata.profile.id === "leanexe-f32-rne-separate-v1" ? "separate binary32 GEMM" : "not claimed for fusion profile",
-      numericalDomain: "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
-      wideNumericalDomain: "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
+      ...(wordsOnly ? { wordSemanticsOnly: true, realReferenceRequired: false, numericalErrorTolerance: null } : {
+        numericalDomain: "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
+        wideNumericalDomain: "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
+      }),
       runtimeConformanceEstablished: false,
       boundary: "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement.",
     };
@@ -126,7 +129,7 @@ async function generate(directory, dimensions) {
   return directory;
 }
 
-async function corpus(directory) {
+async function corpus(directory, { wordsOnly = false } = {}) {
   directory = path.resolve(directory);
   fs.mkdirSync(path.dirname(directory), { recursive: true });
   fs.mkdirSync(directory);
@@ -135,8 +138,8 @@ async function corpus(directory) {
   for (const item of cases.positive) {
     const selected = path.join(directory, item.name);
     await generate(selected, item.dimensions);
-    const checked = await checkPackage(selected);
-    const execution = executeChecked(checked);
+    const checked = await checkPackage(selected, { wordsOnly });
+    const execution = wordsOnly ? null : executeChecked(checked);
     results.push({ name: item.name, status: "pass", verification: path.join(checked.attempt, "verification.json"), execution });
   }
   const base = path.join(directory, "rectangular");
@@ -151,7 +154,7 @@ async function corpus(directory) {
     write(path.join(selected, "kernel.wgsl"), shader);
     writeJson(path.join(selected, "manifest.json"), manifest);
     let failure;
-    try { await checkPackage(selected); } catch (error) { failure = error.message; }
+    try { await checkPackage(selected, { wordsOnly }); } catch (error) { failure = error.message; }
     requireThat(failure && failure.includes(item.failure), `negative case ${item.name} did not fail as expected: ${failure}`);
     results.push({ name: item.name, status: "rejected", failure });
   }
@@ -162,6 +165,14 @@ async function corpus(directory) {
 async function main(args) {
   const [command, directory, ...rest] = args;
   requireThat(directory, "expected a WGSL package directory");
+  if (command === "wgsl-gpt2-check") {
+    requireThat(rest.length === 0, "unexpected arguments");
+    return require("./gpt2/check").check(directory);
+  }
+  if (command === "wgsl-word-check") {
+    requireThat(rest.length === 0, "unexpected arguments");
+    return checkPackage(directory, { wordsOnly: true });
+  }
   if (command.startsWith("wgsl-gpt128-")) {
     await require("./gpt128").main([command, directory, ...rest]);
     return;
@@ -174,9 +185,9 @@ async function main(args) {
     await require("./gpt").main([command, directory, ...rest]);
   } else if (command.startsWith("wgsl-bundle-")) {
     return require("./bundle").main(args);
-  } else if (command === "wgsl-corpus") {
+  } else if (command === "wgsl-corpus" || command === "wgsl-word-corpus") {
     requireThat(rest.length === 0, "unexpected arguments");
-    await corpus(directory);
+    await corpus(directory, { wordsOnly: command === "wgsl-word-corpus" });
   } else if (command === "wgsl-build") {
     await generate(directory, rest);
     executeChecked(await checkPackage(directory));

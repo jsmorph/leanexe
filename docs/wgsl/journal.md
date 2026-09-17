@@ -1118,3 +1118,42 @@ position 128 is rejected. Four invalid CLI requests and a changed shader are
 rejected. The browser rejects an overlong request, stops an active generation,
 and starts a new request with a fresh cache. The documentation check passes
 145 maintained files. The portable browser ZIP remains under ignored build/.
+
+## 2026-09-17 — WGSL fidelity certificates for the delivered GPT-2 shaders
+
+The verification workstream now focuses on WGSL fidelity to the Lean
+floating-point algorithm, without numerical bounds or new general Wasm proof
+work. The existing package theorem already contained the needed word equality;
+its module and command also included numerical certificates. Extracting
+ExecutionPackage preserves the existing declarations while allowing the new
+wgsl-word-check command to check parsing, dispatch, and exact word semantics
+without those certificates. The legacy rectangular package still passes its
+original five-declaration axiom audit after the split.
+
+The new wgsl-gpt2-check command checked the six shader files already delivered
+in build/gpt2/bundle. It held their bytes, checked their identity against the
+demo manifest, and submitted each to the independent parser and Lean kernel.
+It did not regenerate any of those artifacts. All six passed, including the
+two vocabulary projections with 25,129 and 25,128 columns. The retained run is
+build/gpt2/shader-checks/check-3rfCyz. Its individual proofs use the shared
+dispatch theorem and Package.exact; no shape-specific proof repair or LTG
+retrieval was needed. Each package, artifact, and equality declaration depends
+only on propext, Classical.choice, and Quot.sound. The generated proof still
+has the existing harmless defProp linter warning for its exact theorem alias.
+
+The claim is exact equality to gemmCell Binary32.arithmetic under the separate
+multiply/add profile, for all correctly sized input buffers. No weight bound
+or error tolerance is a premise. Runtime conformance to that profile remains
+an assumption; browser execution can make other arithmetic choices. The next
+proofs must connect the actual GPU-call layouts and weight-buffer assignments
+to the named Lean matrix operations, including joining the two vocabulary
+outputs. The complete model, Wasm, and controller are not certified by this
+shader check. Source changes are committed independently of every generated
+shader, proof, receipt, weight file, and browser archive.
+
+The word-only corpus passes its three positive cases (scalar, rectangular,
+and partial workgroups with the fusion profile) and rejects a changed output
+index, inconsistent dimensions, and extra metadata. These checks execute no
+GPU runtime. The fixed corpus and retained failures are under
+build/wgsl/word-corpus-gpt2-fidelity. The documentation check passes 146
+maintained files, and git diff --check passes.
