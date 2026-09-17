@@ -6,6 +6,32 @@ attention heads, a 3,072-wide feed-forward layer, and 50,257 vocabulary
 entries.  The reference limits the prompt and completion together to
 128 tokens.  The checkpoint retains its original 1,024 positional rows.
 
+## Run WASM inference
+
+From the repository root:
+
+```sh
+tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
+```
+
+The command compiles the Lean model, keeps its packed weights in one
+Wasmtime instance, and prints the prompt and completion.  The original
+tokenizer handles text.  Model arithmetic runs in WASM.  Top-k sampling
+uses the Lean SplitMix64 WASM generator for random draws and Python for
+the sampling probabilities.  Defaults are top-k 40, temperature 0.8, and
+seed 42.  Use `--top-k 1` for greedy decoding and `--json` for token IDs,
+timing, allocation counts, and the stopping condition.
+
+Generation stops at the requested count, end-of-text, or 128 total tokens.
+`--logits PATH` saves the final evaluated context's 50,257 logits as
+little-endian FP32 words.  Those logits select the last generated token.
+The command currently recomputes the prefix at each step.  A key/value
+cache is in development.  The [first WASM completion](wasm-completion-uncached.json)
+generated sixteen tokens in 93 seconds and used 514,654,208 bytes of WASM
+linear memory.  It continued the example prompt with:
+
+> called Hukur. The village is a great expanse of white sand and
+
 ## Run the reference
 
 The approved environment already contains PyTorch 2.9.1+cpu.  Install the
@@ -37,7 +63,7 @@ runs.  The first prompt continued:
 > , there was a man named Miho who had been raised by his mother and father, and it was for his father to send him to the capital and teach him the law.
 
 That run generated 64 tokens in 3.8 seconds using one CPU thread.
-LeanExe/WASM execution of this model is the current development target.
+LeanExe/WASM execution now generates text from the same checkpoint.
 The user approved FP32 arithmetic and packed binary tensors and paused
 proof development.  The [implementation plan](../../plans/gpt2-124m.md)
 records the remaining work.

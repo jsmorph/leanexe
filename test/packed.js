@@ -182,6 +182,16 @@ function main() {
   fs.writeFileSync(file, bytes);
   assert.equal(host.callI64(modules.readWord, "readWord", [`bytes-file:${file}`, host.i64(1)]),
     BigInt(bytes.readUInt32LE(1)));
+  const session = runChecked([host.ensureHost(), "session", modules.readWord], {
+    encoding: "utf8", input: [
+      `bytes-file 0 ${file}`,
+      "arg-ptr 0", `arg-u64 ${bytes.length}`, "arg-u64 0", "call readWord 1",
+      "arg-ptr 0", `arg-u64 ${bytes.length}`, "arg-u64 1", "call readWord 1",
+      "arg-ptr 0", "call release 0", "stats", "done", "",
+    ].join("\n"),
+  }).stdout.trim().split("\n");
+  assert.deepEqual(session, [`results ${bytes.readUInt32LE(0)}`, `results ${bytes.readUInt32LE(1)}`,
+    "results", "stats 1 0 1 1"]);
   for (const [input, offset] of [[Buffer.alloc(0), 0], [Buffer.alloc(3), 0],
     [bytes, bytes.length - 3], [bytes, (1n << 64n) - 1n]]) {
     const result = spawnResult([host.ensureHost(), "call", modules.readWord, "readWord", "i64",
