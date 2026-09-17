@@ -105,3 +105,31 @@ toolchains, and compiler semantics remain pinned to the current checkout.
 - [Guarded Horner proof](../proofs/talos/lean/Project/F64Horner2CheckedBits/README.md).
 - [TorchLean model configuration](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Examples/Models/Sequence/Gpt2.lean).
 - [TorchLean activation definitions](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Spec/Layers/Activation.lean).
+
+## 64-byte implementation
+
+The 64-position model keeps width four, two heads of width two, and one
+block.  Its position table grows from 16 to 256 words, taking the total
+parameter count from 2,488 to 2,728.  The sequence representation becomes
+an array.  Nonempty prefixes through length 64 use their first positional
+rows and return the final position's 256 logits.
+
+Sequence softmax uses a maximum pass, the existing negative exponential,
+a sum pass, and division.  The length-dependent proofs must cover those
+passes before model composition.  The numerical argument reuses shifted
+weight bounds and the normalization theorem over an arbitrary finite index
+type.  The sum and weighted accumulation need explicit rounding bounds
+for up to 64 terms.  Width-four projection, normalization, GELU, runtime
+weight checking, and vocabulary output retain their existing components.
+
+Training exposes a context argument with default four and the additional
+64-position setting.  CPU tests check both parameter counts, causal prefix
+equality, and finite gradients.  The existing four-position checkpoint
+and artifact remain reproducible while the larger model develops.
+
+- [x] Parameterize the training model and check both context sizes.
+- [x] Train and export the [64-position checkpoint](../data/tiny-gpt2-64-v1/README.md) on pinned Tiny Shakespeare.
+- [ ] Prove length-dependent sum and sequence-softmax bounds.
+- [ ] Implement the array-based inference body and exact execution proofs.
+- [ ] Compose finite-output and numerical-error theorems for clipped runtime weights.
+- [ ] Publish the 64-byte CLI artifact and inference tests.
