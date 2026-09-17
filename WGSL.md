@@ -1,5 +1,14 @@
 # LeanEXE WGSL Backend Development Plan
 
+## Current verification focus
+
+The active work is [WGSL artifact fidelity for pretrained GPT-2](docs/wgsl/gpt2-verification.md):
+prove that the six delivered shaders execute their selected Lean matrix-product
+definitions over floating-point words, then verify the GPU-call interfaces and
+state the supported runtime arithmetic choices precisely. Numerical error bounds
+and general Wasm/controller proof development are outside this workstream.
+The older numerical milestones below are retained as development history.
+
 ## Implementation status
 
 Development is underway on `wgsl`. See the [implementation record](docs/wgsl/README.md)

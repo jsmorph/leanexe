@@ -1,5 +1,20 @@
 # Native WGSL test harness
 
+The current fidelity-only path is documented in
+[the GPT-2 WGSL verification plan](../../docs/wgsl/gpt2-verification.md):
+
+```sh
+tools/artifact-proof.js wgsl-word-check test/wgsl/packages/rectangular
+tools/artifact-proof.js wgsl-gpt2-check build/gpt2/bundle
+tools/artifact-proof.js wgsl-word-corpus build/wgsl/my-word-corpus
+```
+
+These commands check floating-point-word correspondence without the numerical
+bound certificates. The second checks all six delivered GPT-2 shader texts;
+it does not claim complete model, Wasm, or native-driver correctness. The third
+checks three shader shapes and three changed-artifact rejections without
+executing a GPU runtime.
+
 `run.py` executes the exact UTF-8 WGSL file with wgpu-native through pinned
 wgpu-py. It needs no browser and prefers a CPU adapter when one is available.
 The initial ABI is row-major binary32 A/B/C storage buffers and the `gemm_f32`
