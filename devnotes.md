@@ -13930,3 +13930,40 @@ Quot.sound.  The registration is complete, bringing the registry to 56
 completed cases.  The existing assoc_list aggregate-cache blocker remains.
 The production numerical kernels are unchanged while the proposed methods
 await confirmation.
+
+The LayerNorm numerical proof now retains the relation between the
+computed centered coordinates and their denominator.  For computed
+centered row c with energy S = sum(c_i^2), the variance error is bounded
+by 11u(S+1e-5), where u = 2^-52.  Adding the stored epsilon and taking the
+square root gives a relative denominator error of at most 61u.  Rounded
+normalization differs from the real normalization of c by at most 247u
+per component.  These estimates do not use a worst-case squared input
+bound in the denominator error.
+
+RealNormalization now provides a dimension-independent component lemma
+from its existing normalization-distance identity.  Averaging and
+centering accept an explicit overflow-range premise.  Scaled arithmetic
+lemmas retain multiplication and division underflow errors for bounds
+as small as the least normal value.  The earlier public lemmas retain
+their statements.  Applying the shared component lemma to computed and
+exact centered rows gives a centering contribution of 16000Xu.  Scale
+and bias bounds B in [0, 10] give total component error
+(16000BX+254B+2)u and output magnitude 3B+(254B+2)u.  The input range
+premise is X at least one and 504X^2+1 below 2^1022.
+
+At X = 200,000 and B = 10, the bound is 7.105428e-6.  At X = 4 and B = 4,
+it is 5.706946e-11.  The GPT-2 adapter derives finite, bounded normalization
+parameters from the generic clipping checker, without a checkpoint
+certificate.  The RMS module checks in 2.8 seconds, the wider component
+module in 2.0 seconds, and the runtime-weight adapter in 1.8 seconds.
+Initial checks required explicit finite-sum expressions and unfolding of
+the centered row at the sum comparison.  A denominator lower-bound proof
+also needed the existing definitional equality exposed before linear
+arithmetic.  No proof target timed out.  Focused gates are in progress.
+
+The layer_norm and tiny_gpt2_infer gates pass with the new numerical
+modules and runtime-weight adapter imported.  Regenerated programs match
+their caches.  The complete existing inference execution theorem and
+checkpoint finiteness proofs still check.  The new theorem axiom reports
+contain only propext, Classical.choice, and Quot.sound.  Documentation
+checks pass for all 136 maintained Markdown files.
