@@ -727,3 +727,13 @@ and decoding remain split into explicit boundaries. Those attempts are
 retained. The shared decode_eq_of_comparison lemma is also checked and may
 support bounded Boolean decoder comparisons; it does not itself establish
 this complete module's parsing.
+
+Decoding now passes through function 67. Function 57 reproduced the deep
+cached-result lookup failure, so the function-74 suffix representation was
+applied to it and prepared for the remaining large bodies. Its five parts
+check in roughly 8–10s each, and the final body equality/composition takes
+4.1s with propext and Quot.sound. The following four-function wrapper reached
+an aggregate 90s timeout after those dependencies finished; independent
+function modules complete it without increasing proof limits. Functions 60–67
+and their body dependencies also pass. A fresh parent fetch found no commits
+beyond the already merged bf6fcc42.
