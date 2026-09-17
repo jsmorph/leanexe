@@ -40,7 +40,12 @@ does not certify useful precision. The complete GPT artifact-execution bundle is
 exact hidden Wasm, dispatch bridge, WGSL head, bias-addition Wasm and checkpoint
 bytes. Its CPU corpus matches all 768 logits for three inputs and rejects three
 changed-artifact cases. Native runtime/conversion conformance is explicit.
-Performance work remains open.
+The requested server-side CPU scope is complete. A resident multi-input GPT
+session reuses one native process, one weight upload and one pipeline while
+checking every output. Five independently verified kernel candidates cover
+residency, three-row batching and workgroup choices; all 84,480 output
+checks (including warmups) pass. See [performance measurements and scope](docs/wgsl/performance.md).
+Physical-GPU conformance and tighter full-model bounds remain future research.
 
 ## Purpose
 
