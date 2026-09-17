@@ -82,11 +82,27 @@ the profile. The existing fusion profile permits a separate or fused update
 at each accumulation step; it does not cover general reassociation, alternate
 subnormal policies, or all WebGPU exceptional-value behavior.
 
-For broader browser support, define the supported choices in Lean and prove
-that each modeled shader execution is an execution admitted by the Lean
-algorithm. Fixing those choices gives an exact result; allowing several gives
-a relation over permitted word results. Neither result is an error-bound
-theorem. Do not infer runtime conformance from one successful model completion.
+`ArithmeticChoice.evaluate` is now an explicit Lean binary32 algorithm with
+one Boolean choice per accumulation step: a fused multiply-add, or a multiply
+followed by an add. `fusion_iff_choices` proves that its possible word results
+are exactly the results admitted by the fusion profile. Choosing separate
+operations throughout gives the original `columnAccum` function exactly.
+
+`Matrix.fusion_from_dispatch` connects a parsed shader to that algorithm.
+For each output word, there is a concrete choice sequence that produces exactly
+that word. Different output invocations may use different sequences. The
+vocabulary split preserves this correspondence too. The separate-profile
+theorem and fusion theorem are checked independently for each shader; neither
+asserts which policy a physical GPU selects.
+
+The checker includes a two-term example with different exact answers: separate
+operations give `0x00000000`; fused operations give `0xa8800000`. Both belong
+to the modeled fusion profile, each through its explicit Lean computation.
+
+General reassociation and other subnormal/exceptional-value policies remain
+outside these v1 profiles. Extending those policies would require additional
+Lean semantics and proofs. No result here is an error-bound theorem or a claim
+of conformance by an arbitrary browser GPU.
 
 Connecting certificates to runtime file loading was removed from the agenda
 at the user's request. Work remains focused on the computations, layouts, and

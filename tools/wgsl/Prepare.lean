@@ -38,7 +38,7 @@ def main (args : List String) : IO Unit := do
   unless decide (metadata.Matches kernel.ast.config selected) do
     throw (IO.userError "manifest does not match parsed WGSL and supported profile")
   let text := String.intercalate "\n" [
-    if gpt2Shader.isSome then "import Project.Gpt2.Matrix"
+    if gpt2Shader.isSome then "import Project.Gpt2.MatrixArithmetic"
       else if wordsOnly then "import Project.WGSL.ExecutionPackage" else "import Project.WGSL.Package",
     "namespace CheckedWGSLPackage",
     "open LeanExe.WGSL Project.WGSL.Binary32",
@@ -71,7 +71,8 @@ def main (args : List String) : IO Unit := do
         "theorem modelShape : package.kernel.ast.config = modelShader.config := by decide +kernel",
         "def modelRun := @Project.Gpt2.Matrix.from_dispatch source metadata package modelShader modelShape",
         "def modelExact := @Project.Gpt2.Matrix.exact_from_dispatch source metadata package modelShader modelShape (by rfl)",
-        "#print axioms modelShape", "#print axioms modelRun", "#print axioms modelExact"],
+        "def modelFusion := @Project.Gpt2.Matrix.fusion_from_dispatch source metadata package modelShader modelShape",
+        "#print axioms modelShape", "#print axioms modelRun", "#print axioms modelExact", "#print axioms modelFusion"],
     "#print axioms package",
     "#print axioms artifact",
     if wordsOnly then "" else "#print axioms numerical",
