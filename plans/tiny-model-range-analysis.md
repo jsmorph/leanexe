@@ -84,6 +84,23 @@ The two residual additions preserve finiteness and the margin below the
 next LayerNorm's magnitude limit of four.  This range argument precedes
 the separate propagation of score and softmax errors to the real model.
 
+## Feed-forward stages
+
+The [expansion certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointFeedForward.lean)
+combines the second normalization's scale with each expansion column.
+Its centered coefficient norm is at most 5/4, and its combined bias has
+magnitude at most 49/100.  Every real expanded coordinate therefore has
+magnitude at most 299/100.  The computed expansion has absolute error at
+most 1/200000 and stays within GELU's proved interval of [-3, 3].
+
+The [contraction certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointContract.lean)
+proves activation error at most 1/25000 and contraction error at most
+1/8000, relative to the real feed-forward computation on the decoded
+first residual.  Each contraction column has absolute coefficient sum
+at most three.  The second residual is finite with magnitude at most
+fourteen.  This conservative bound requires a wider domain for the final
+normalization theorem.  The inference implementation stays unchanged.
+
 ## Remaining checks
 
 - [x] Check the normalized-row sum and squared-norm facts.
@@ -92,5 +109,6 @@ the separate propagation of score and softmax errors to the real model.
 - [x] Include binary64 normalization, projection, and score errors.
 - [x] Bound the real attention residual.
 - [x] Include the attention-residual roundoff margin.
-- [ ] Bound the feed-forward stages.
+- [x] Bound the feed-forward stages.
+- [ ] Extend the final normalization's numerical domain.
 - [ ] Derive the complete logit error bound.
