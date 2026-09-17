@@ -6,35 +6,50 @@ Tiny Shakespeare and a command-line interface returning all 256 next-byte
 logits on 2026-09-16.  The complete generated-WAT execution proof passes.
 Checkpoint certificates establish finite outputs for every four-byte input.
 The composed numerical theorem is proved.  Its unconditional error estimate
-is too coarse to certify precision.  Runtime weight-checker integration
-remains in progress.
+is too coarse to certify precision.  The CLI uses the proved runtime
+weight checker and accepts replacement checkpoints without new proofs.
 
 ## Command-line inference
 
 ```sh
 tools/tiny-gpt2.js --text 'To b'
 tools/tiny-gpt2.js --tokens 0 0 36 82
+tools/tiny-gpt2.js --checkpoint data/tiny-gpt2-v1/checkpoint.json --bound 3 --text 'To b'
 ```
 
 Each command accepts four bytes and returns all 256 next-byte logits in one
-WASM call.  JSON output contains decimal logits, raw binary64 words, input
-tokens, artifact hashes, and the current verification status.  The host
-checks the recorded checkpoint and module hashes before execution.
-The 17,371-byte [module](inference.wasm) runs through the existing Wasmtime
-C host.  The separate 16,006-byte hidden-state module has a
-[proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
-exact agreement with the raw-bit model, and store preservation for every
-four-byte input.  The
-[complete inference theorem](../../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean)
-proves termination, all 256 raw-bit logits, checkpoint preservation, and a
-fixed page count.  It assumes a represented weight array of at least 2,488
-words, an empty initial free list, weights below the output heap, and enough
-reserved memory.  Output construction requires 277,560 bytes.  With the CLI's
-weight array allocated first, its final heap top is 301,616, within the
-module's sixteen initial pages.  The
-[numerical execution theorem](../../proofs/talos/lean/Project/TinyGpt2Infer/Numerical.lean)
-adds finite outputs and the composed error bound.  The host and exact-byte
-package remain outside this execution theorem.
+WASM call.  The bound defaults to 10.  The entry rejects nonfinite weights,
+invalid weight counts, and bounds outside [0, 10].  It clips finite weights
+to [-B, B].  Both signed-zero bounds are accepted.  Numerical guarantees
+refer to the real model using the clipped weights.
+
+JSON output contains `accepted`, decimal logits, raw binary64 words, input
+tokens, the bound and its exact word, artifact hashes, and verification
+status.  Rejection returns `accepted: false` and empty logit arrays.  The
+CLI checks checkpoint syntax and the 2,488-word count before the WASM call.
+Custom files use the same named tensor `bits` arrays as the
+[checkpoint](checkpoint.json).  Replacing their values requires no new
+inference proof.  The CLI checks the published module hash and the default
+checkpoint hash, and reports the hash of every supplied checkpoint.
+
+The 19,397-byte [checked module](checked-inference.wasm) runs through the
+existing Wasmtime C host.  Its
+[execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Entry.lean)
+proves termination, exact output, input preservation, and a fixed page
+count for both acceptance and rejection.  It assumes represented input,
+an empty initial free list, input below the allocation top, and enough
+reserved memory.  For n supplied words, the conservative reservation is
+48+8(n+1)+277,560 bytes.  The CLI's 2,488-word input gives a final heap top
+of 321,576, within the module's sixteen initial pages.  Temporary clipped
+weights remain in the arena until its reset.
+
+The [numerical execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
+adds finite logits of magnitude at most 1,260 and the composed error bound
+for every accepted weight array and four-byte context.  It retains B and
+three normalization lower bounds as parameters.  The host and exact-byte
+package remain outside this theorem.  The earlier 17,371-byte
+[raw inference module](inference.wasm) remains available for arithmetic
+comparisons, with its [execution proof](../../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean).
 
 ## Training record
 
@@ -123,15 +138,17 @@ sha256sum build/tiny-gpt2/tiny-shakespeare.txt
   --checkpoint data/tiny-gpt2-v1/checkpoint.json \
   --output build/tiny-gpt2/attention-audit.json
 node test/tiny_gpt2_body.js --checkpoint data/tiny-gpt2-v1/checkpoint.json
+node test/tiny_gpt2_checked.js
 ```
 
 The [inference source](../../proofs/talos/lean/Project/TinyGpt2/Inference.lean)
 computes the final hidden row and appends one logit per vocabulary token.
-To reproduce the compiled module:
+The checked wrapper validates and clips weights before calling that body.
+To reproduce the CLI module:
 
 ```sh
-tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.TinyGpt2.Inference
+tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.TinyGpt2.Checked
 tools/leanrun --timeout 3m lake -d proofs/talos/lean env \
-  .lake/build/bin/lean-wasm compile --module Project.TinyGpt2.Inference \
-  --entry Project.TinyGpt2.infer --out build/tiny-gpt2/inference.wasm
+  .lake/build/bin/lean-wasm compile --module Project.TinyGpt2.Checked \
+  --entry Project.TinyGpt2.inferChecked --out build/tiny-gpt2/checked-inference.wasm
 ```

@@ -14499,3 +14499,24 @@ annotation checks, the completed specification, and all registered theorem
 audits.  Documentation checks pass for 136 maintained Markdown files.
 The registry now has sixty completed source-driven cases and forty-two
 exact-byte packages.  The existing aggregate assoc_list mismatch remains.
+
+### Runtime-weight CLI
+
+The CLI now calls the proved inferChecked export and accepts --checkpoint
+and --bound, with B=10 by default.  It reports acceptance, the bound's raw
+word, and the supplied checkpoint hash.  Rejected numerical inputs return
+empty logit arrays.  The published checked artifact has 19,397 bytes and
+SHA-256 c095adafd6b3f01fd1ae279cbffc21682c1e3bd4f38aaa4b43ced09a2aa071d4.
+The earlier raw inference artifact remains available for arithmetic tests.
+
+The approved Node test passes 768 bit-for-bit clipped logit comparisons,
+eight WASM rejection cases, and five CLI cases.  The CLI cases cover the
+default checkpoint, explicit checkpoint and bound, negative-zero bound,
+out-of-range bound, and a nonfinite replacement weight.  The documented
+B=3 command also succeeds with 256 logits.  Documentation checks pass for
+136 maintained Markdown files.  No new dependency was added.
+
+Four-byte exact execution and the composed numerical theorem are complete,
+including runtime-weight checking.  The current unconditional estimate
+still cannot certify useful precision.  The next model step is the approved
+64-byte extension, beginning with sequence traversal and softmax arithmetic.
