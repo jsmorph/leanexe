@@ -59,7 +59,7 @@ async function checkPackage(directory, { wordsOnly = false, gpt2Shader = null } 
     write(shaderPath, shader);
     write(manifestPath, manifest);
     await lean("shared proof dependencies", ["lake", "-d", proofRoot, "build",
-      gpt2Shader !== null ? "Project.Gpt2.Matrix" : wordsOnly ? "Project.WGSL.ExecutionPackage" : "Project.WGSL.Package"],
+      gpt2Shader !== null ? "Project.Gpt2.MatrixArithmetic" : wordsOnly ? "Project.WGSL.ExecutionPackage" : "Project.WGSL.Package"],
       path.join(attempt, "dependencies.log"));
     await lean("prepare independent proof", ["lake", "env", "lean", "--run",
       path.join(__dirname, "Prepare.lean"), shaderPath, manifestPath, proof,
@@ -67,7 +67,7 @@ async function checkPackage(directory, { wordsOnly = false, gpt2Shader = null } 
     const output = await lean("kernel and exact file checks", ["lake", "-d", proofRoot, "env", "lean",
       "--run", proof, shaderPath, manifestPath], path.join(attempt, "verify.log"));
     const axioms = wordsOnly ? audit(output, ["package", "artifact", "exact",
-      ...(gpt2Shader !== null ? ["modelShape", "modelRun", "modelExact"] : [])]
+      ...(gpt2Shader !== null ? ["modelShape", "modelRun", "modelExact", "modelFusion"] : [])]
       .map(n => `CheckedWGSLPackage.${n}`)) : audit(output);
     const bindings = output.split("\n").filter(line => line.startsWith("WGSL_PACKAGE_BINDING "));
     requireThat(bindings.length === 1, "missing or duplicate checked manifest binding");
@@ -88,7 +88,9 @@ async function checkPackage(directory, { wordsOnly = false, gpt2Shader = null } 
       }),
       runtimeConformanceEstablished: false,
       ...(gpt2Shader !== null ? { gpt2Shader, modelProduct: "Project.Gpt2.Matrix.product",
-        modelInputLayout: "Project.WGSL.MatrixView.packed" } : {}),
+        modelInputLayout: "Project.WGSL.MatrixView.packed",
+        fusionAlternative: { profile: "leanexe-f32-rne-fusion-v1",
+          claim: "Each output equals ArithmeticChoice.evaluate for a concrete per-step choice sequence" } } : {}),
       boundary: "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement.",
     };
     writeJson(path.join(attempt, "verification.json"), receipt);
