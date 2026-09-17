@@ -20,7 +20,11 @@ on this ARM Mac's SwiftShader CPU device; all 15 output words match the referenc
 See [generation, independent verification and execution instructions](tools/wgsl/README.md).
 The one-command pipeline now checks the exact shader package and passes the
 checked input snapshot directly to the native harness. Three matrix shapes and
-three rejection cases pass its fixed corpus. Wasm host/bundle composition is next.
+three rejection cases pass its fixed corpus. The exact Wasm GEMM bridge now has
+checked binary-section encodings, byte-transfer lemmas, and a small-step execution
+theorem composed with the shader's exactness and numerical results. The native
+bridge contract is explicit. Connecting the actual Wasm invocation to the CPU
+runner and adding the complete bundle gate is the next execution checkpoint.
 
 ## Purpose
 
