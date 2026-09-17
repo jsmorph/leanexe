@@ -46,6 +46,9 @@ nonempty inputs, both allocation paths, and temporary-array release.
 The byte budget is `2*(48+8*(n+1))`, or 2,160 bytes for 128 scores.
 A supplied page limit bounds the resulting memory.  The proof composes
 the exact maximum, exponential map, sum, and division map results.
+The [internal GPT-2/128 softmax theorem](lean/Project/TinyGpt2Seq/Softmax.lean)
+checks the owner/data calling interface and the release function in the
+larger module, with the same output and memory guarantees.
 GPT-2/128 sequence traversal and complete inference composition remain open.
 
 The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves

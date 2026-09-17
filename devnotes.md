@@ -14774,3 +14774,21 @@ pointers.  Its enclosing call therefore needs its own execution proof.
 The two maps, maximum, and sum transfer directly.  The proof will compose
 those results with the internal call's frame and release instructions.
 No change to source arithmetic or allocation behavior is needed.
+
+### Internal GPT-2/128 softmax
+
+The internal softmax function now has checked execution proofs for both
+branches.  The nonempty branch transports the maximum, map, sum, and
+normalization proofs through the checked function regions.  A separate
+region checks the runtime release function.  The empty branch reuses
+the allocation and initialization lemmas and returns both ABI pointers.
+OutputBudget.transfer carries the reservation between modules with equal
+memory caps.
+
+The nonempty proof checked in 2.4 seconds, the empty proof in 3.7 seconds,
+and their combined theorem in 1.6 seconds.  Its audit contains only
+propext, Classical.choice, and Quot.sound.  Diagnostics identified a
+source-function name requiring qualification and a conditional already
+reduced by the frame tactic.  No timeout occurred.  The proof preserves
+all previously owned word arrays and the caller's remaining byte budget.
+The complete GPT-2/128 inference theorem remains open.
