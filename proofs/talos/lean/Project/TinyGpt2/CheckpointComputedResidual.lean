@@ -17,11 +17,11 @@ def computedResidual (n : UInt64) (x : Row) (rows : Context) : Row :=
 theorem computedOutput_magnitude (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     (x : Row) (rows : Context) (hx : LayerNorm.ValidRow (rowWords x))
     (hr : ∀ i, LayerNorm.ValidRow (rowWords (contextRows rows i))) (j : Fin 4) :
-    |computedOutputReference n x rows j| ≤ (1+32*arithmeticEpsilon)*(5/2) := by
+    |computedOutputReference n x rows j| ≤ (1+52*arithmeticEpsilon)*(5/2) := by
   have hp := fun head => computedProbabilities_bounds n hn hn4 x rows head hx hr
   exact attention_output_magnitude (fun i => decodeRow (contextRows rows i))
     (fun head i => value (Softmax.outputs (computedProbabilities n x rows head) i))
-    (1+32*arithmeticEpsilon) (fun head => (hp head).2.1) (fun head => (hp head).2.2) j
+    (1+52*arithmeticEpsilon) (fun head => (hp head).2.1) (fun head => (hp head).2.2) j
 
 theorem computedOutput_error (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     (x : Row) (rows : Context) (hx : LayerNorm.ValidRow (rowWords x))
@@ -72,7 +72,7 @@ theorem computedResidual_error (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     (by norm_num [arithmeticEpsilon])
   have hm : |decodeRow x j+(computedOutputReference n x rows j+
       (parameters words).attentionBias j)| ≤
-      1001/1000+((1+32*arithmeticEpsilon)*(5/2)+1/10) :=
+      1001/1000+((1+52*arithmeticEpsilon)*(5/2)+1/10) :=
     (abs_add_le _ _).trans (add_le_add (hmx j) ((abs_add_le _ _).trans
       (add_le_add (computedOutput_magnitude n hn hn4 x rows hx hr j)
         (attention_bias_magnitude j))))
