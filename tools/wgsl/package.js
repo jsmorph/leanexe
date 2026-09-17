@@ -41,7 +41,10 @@ function audit(output, names = ["package", "artifact", "numerical", "numericalWi
   return checked;
 }
 
-async function checkPackage(directory, { wordsOnly = false } = {}) {
+async function checkPackage(directory, { wordsOnly = false, gpt2Shader = null } = {}) {
+  requireThat(gpt2Shader === null || (wordsOnly &&
+    ["qkv", "attention", "expansion", "projection", "vocabularyLeft", "vocabularyRight"].includes(gpt2Shader)),
+    "invalid GPT-2 shader proof request");
   directory = path.resolve(directory);
   const checks = path.join(root, "build/wgsl/package-checks");
   fs.mkdirSync(checks, { recursive: true });
@@ -56,13 +59,16 @@ async function checkPackage(directory, { wordsOnly = false } = {}) {
     write(shaderPath, shader);
     write(manifestPath, manifest);
     await lean("shared proof dependencies", ["lake", "-d", proofRoot, "build",
-      wordsOnly ? "Project.WGSL.ExecutionPackage" : "Project.WGSL.Package"],
+      gpt2Shader !== null ? "Project.Gpt2.Matrix" : wordsOnly ? "Project.WGSL.ExecutionPackage" : "Project.WGSL.Package"],
       path.join(attempt, "dependencies.log"));
     await lean("prepare independent proof", ["lake", "env", "lean", "--run",
-      path.join(__dirname, "Prepare.lean"), shaderPath, manifestPath, proof, ...(wordsOnly ? ["words"] : [])], path.join(attempt, "prepare.log"));
+      path.join(__dirname, "Prepare.lean"), shaderPath, manifestPath, proof,
+      ...(gpt2Shader !== null ? ["gpt2", gpt2Shader] : wordsOnly ? ["words"] : [])], path.join(attempt, "prepare.log"));
     const output = await lean("kernel and exact file checks", ["lake", "-d", proofRoot, "env", "lean",
       "--run", proof, shaderPath, manifestPath], path.join(attempt, "verify.log"));
-    const axioms = wordsOnly ? audit(output, ["package", "artifact", "exact"].map(n => `CheckedWGSLPackage.${n}`)) : audit(output);
+    const axioms = wordsOnly ? audit(output, ["package", "artifact", "exact",
+      ...(gpt2Shader !== null ? ["modelShape", "modelRun", "modelExact"] : [])]
+      .map(n => `CheckedWGSLPackage.${n}`)) : audit(output);
     const bindings = output.split("\n").filter(line => line.startsWith("WGSL_PACKAGE_BINDING "));
     requireThat(bindings.length === 1, "missing or duplicate checked manifest binding");
     const metadata = JSON.parse(bindings[0].slice("WGSL_PACKAGE_BINDING ".length));
@@ -81,6 +87,8 @@ async function checkPackage(directory, { wordsOnly = false } = {}) {
         wideNumericalDomain: "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
       }),
       runtimeConformanceEstablished: false,
+      ...(gpt2Shader !== null ? { gpt2Shader, modelProduct: "Project.Gpt2.Matrix.product",
+        modelInputLayout: "Project.WGSL.MatrixView.packed" } : {}),
       boundary: "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement.",
     };
     writeJson(path.join(attempt, "verification.json"), receipt);
@@ -168,6 +176,10 @@ async function main(args) {
   if (command === "wgsl-gpt2-check") {
     requireThat(rest.length === 0, "unexpected arguments");
     return require("./gpt2/check").check(directory);
+  }
+  if (command === "wgsl-gpt2-layout-corpus") {
+    requireThat(rest.length === 0, "unexpected arguments");
+    return require("./gpt2/check").layoutCorpus(directory);
   }
   if (command === "wgsl-word-check") {
     requireThat(rest.length === 0, "unexpected arguments");
