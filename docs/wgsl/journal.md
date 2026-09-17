@@ -32,3 +32,35 @@ Read the pinned WGSL floating-point rules before choosing the candidate runtime
 profiles. The existing Talos dependency already has a pure integer `IEEE32`
 model and binary32 error lemmas; this is a better reuse candidate than a new
 parallel arithmetic implementation. Its source remains in the dependency.
+
+## 2026-09-16 — Native execution and adversarial parsing review
+
+The checked generator emitted the captured 3-by-5-by-2 kernel under
+`test/wgsl/artifacts/rectangular`. A pinned wgpu-py 0.31.1 / wgpu-native 27.0.4.0
+harness executed the exact source on Mesa 26.2.2 llvmpipe through native OpenGL.
+All fifteen output words matched the restricted separate-operation profile.
+The machine had no accessible physical GPU or software Vulkan ICD; the native
+OpenGL software adapter supplied the initial execution path without system
+package changes. Reports retain adapter details, library hash, exact source,
+manifest, inputs, results, permitted outputs, and driver diagnostics.
+
+Eight dependency-free tests passed for exact rational nearest-even arithmetic,
+subnormals, signed zeros, fusion-sensitive examples, rectangular indexing,
+manifest validation, serialization, failure evidence, and child timeout. Wrong
+stores and malformed WGSL produced the expected native mismatch/error; their
+reports are preserved alongside the successful execution.
+
+Independent parser review caught a serious mismatch in line-comment handling.
+The initial lexer stopped comments only at LF, while WGSL also treats CR and five
+other characters as line terminators. A CR-hidden second output store parsed as
+the original program in the first lexer but executed on llvmpipe and overwrote
+the result with zero. The native failing report is preserved as
+`test/wgsl/evidence/rejected-hidden-cr-store.json`. The lexer now uses all seven
+specified line terminators, and tests inject the extra store after each one.
+This failure demonstrates why native negative tests and independent parser
+review are necessary before accepting any artifact theorem.
+
+The first profile/generator milestone was committed and pushed as `9498db70`.
+The binary32 model's existing pinned dependency was fetched and its import-free
+`Interpreter.Wasm.IEEE32` module built successfully. No foreign source was copied
+into the root library. Artifact execution and numerical theorems remain pending.

@@ -1,0 +1,9 @@
+# Reproduces the checked Linux x86_64 / CPython 3.14 native execution environment.
+# Hashes identify PyPI release wheels; other platforms use requirements.txt.
+--only-binary=:all:
+--require-hashes
+wgpu==0.31.1 --hash=sha256:8fb5748265fe8a3042ddbc40c2ac55718ef34880311ed088ba728ba59592aa6a
+cffi==2.1.1 --hash=sha256:b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96
+pycparser==3.0 --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
+rendercanvas==2.7.2 --hash=sha256:0d98ca3f59fdf90c2601b6162f239d3beeced64d27d44bacb15c4253b21c4784
+numpy==2.5.3 --hash=sha256:b0521d0f4aebb6e06189451025fa17a913287b13c03d5fe05c017333b654ea5b
