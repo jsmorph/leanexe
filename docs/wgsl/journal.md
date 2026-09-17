@@ -178,3 +178,39 @@ Reviewed checkpoint paths: Parse.lean, ParseTest.lean, Index.lean,
 RectangularArtifact.lean, WGSL.md, docs/wgsl/README.md and this journal.
 Focused checks and git diff --check pass. Intended publication:
 “Prove WGSL artifact parsing and GEMM index safety”.
+
+2026-09-16: continuing the complete WGSL plan at the user's request. Previous
+checkpoint f29678c6f5cf759721fd2e385b2c231d6a5a4414 was pushed with parent
+3db4791f95801fd17609b43cff1439cfebdd1c6d and tree
+d576673b61475d380c00586b7e3def5a8aa6d0d5; exact publication checks passed.
+
+Added candidate accumulator and invocation semantics. Accumulate preserves the
+parsed `acc + product` operand order explicitly, with local fusion as a separate
+profile choice. Dot is independent of the control-flow machine. Invocation
+steps include entry guards, checked loads, loop progress, final stores and
+explicit dynamic-error states. The candidate invariant links reachable loop
+states to Dot; a decreasing natural measure excludes infinite transitions.
+Disjoint buffer objects are explicit in the model and remain a host-binding
+precondition. No native runtime claim is inferred. First focused build follows.
+
+The first invocation build exposed missing explicit binder types in Invariant;
+the second exposed a core-vs-Mathlib induction name and elaboration order for
+the initial-state invariant. Retained both failed drafts and logs, supplied the
+explicit entry state and used core Nat.strongRecOn. No resource limits changed.
+The third build passes in 976 ms. Invocation no-infinite-transition, safety,
+existence and ExecutionTheorem audits use propext/Quot.sound only; restricted
+accumulator and Dot exactness use no axioms. Failures are not accepted audits.
+
+Added an artifact package connecting the exact captured source parse with this
+invocation theorem. Its restricted exactness theorem remains conditional on a
+concrete scalar interpretation; this is the next numerical integration boundary.
+Full dispatch scheduling and native profile conformance remain separate.
+
+Artifact invocation build passes in 879 ms after removing a redundant tactic
+following a congruence step that had already solved the value equality. The
+failed draft remains in task work/. Both artifact audits contain only standard
+logical axioms. Reviewed Accumulate, Invocation, ArtifactExecution, WGSL.md,
+README and journal. Focused build and diff whitespace checks pass; no sorry,
+admit, new axiom or native-decide appears. No broad regression run is needed
+for these additive proof modules. Publishing this completed invocation layer
+before starting interleaved dispatch and concrete binary32 integration.
