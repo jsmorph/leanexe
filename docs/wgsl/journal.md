@@ -737,3 +737,23 @@ an aggregate 90s timeout after those dependencies finished; independent
 function modules complete it without increasing proof limits. Functions 60–67
 and their body dependencies also pass. A fresh parent fetch found no commits
 beyond the already merged bf6fcc42.
+
+All 79 function bodies now have independent decoding proofs. The final large
+bodies use the same suffix-boundary construction as functions 57 and 74;
+function 69's twelve parts take approximately 8–10s each. A grouped command
+again exhausted its aggregate timeout after completing its body dependencies;
+splitting the small wrapper functions completes the group. The final 72–75
+and 76–78 groups pass with propext and, for AST suffix equalities, Quot.sound.
+
+All 79 function validations also pass. Kernel evaluation of the Boolean
+success result checks each four-function group in less than one second,
+using only propext. The combined raw-module validation takes 12s and also
+uses only propext. Its unnecessary dependency on binary decoding was moved
+to the translation module, keeping validation and decoding distinct. The
+module section decoding is the remaining binary-parser obligation.
+
+Documentation now records the completed full-model arithmetic composition
+and its extremely loose uniform bound, separately from the pending complete
+artifact-execution check. The maintained-document checker passes 137 files.
+The GPT runtime and gate drafts pass JavaScript syntax checks but are not
+published as an executed or verified bundle yet.
