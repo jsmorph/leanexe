@@ -1,0 +1,11 @@
+{
+  "repetitions": 9,
+  "warmupRounds": 2,
+  "candidates": [
+    { "name": "single-8x8", "rows": 1, "workgroup": [8, 8] },
+    { "name": "single-32x1", "rows": 1, "workgroup": [32, 1] },
+    { "name": "single-64x1", "rows": 1, "workgroup": [64, 1] },
+    { "name": "batch-32x1", "rows": 3, "workgroup": [32, 1] },
+    { "name": "batch-64x1", "rows": 3, "workgroup": [64, 1] }
+  ]
+}

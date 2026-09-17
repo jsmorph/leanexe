@@ -13,6 +13,10 @@ function nativeDispatch(checked, inputs, logPath) {
   const job = { wgsl: checked.shader.toString("utf8"), manifest: checked.metadata, inputs,
     backend: process.env.WGPU_BACKEND_TYPE || "Vulkan",
     adapter: process.env.LEANEXE_WGPU_ADAPTER || (process.platform === "darwin" ? "SwiftShader" : "llvmpipe") };
+  return nativeJob(job, logPath);
+}
+
+function nativeJob(job, logPath) {
   const command = process.platform === "darwin" ? path.join(__dirname, "run-macos-cpu.sh") :
     (process.env.LEANEXE_WGPU_PYTHON || "python3");
   const args = process.platform === "darwin" ? ["--worker"] : [path.join(__dirname, "run.py"), "--worker"];
@@ -66,4 +70,4 @@ function instantiate(hostBytes, metadata, dispatch) {
   return { instance, get calls() { return calls; }, get last() { return last; } };
 }
 
-module.exports = { instantiate, nativeDispatch };
+module.exports = { instantiate, nativeDispatch, nativeJob };

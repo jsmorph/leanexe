@@ -238,3 +238,20 @@ bound described above. The uniform bound is approximately 4.85e9, so the theorem
 is not a tight numerical accuracy certificate. The actual native corpus checks
 768 output words against Lean's model and rejects altered hidden, finish and
 checkpoint files. Commands are documented in [the harness guide](../../tools/wgsl/README.md).
+
+## CPU agenda completion
+
+The requested server-side CPU agenda is complete. The resident GPT session
+passes all 768 logit checks with one native process, one weight buffer and one
+pipeline, rejects a changed Wasm weight snapshot, and shuts down cleanly. Its
+startup and warm execution timings are recorded separately. Five independently
+verified head candidates also complete the residency, batching and workgroup
+experiments; all 84,480 output checks (including warmups) match the separate binary32 reference.
+
+See [performance measurements and decisions](performance.md) for reproducible
+commands, portable evidence, timing boundaries and the distinction between the
+complete one-row GPT theorem and the generic batched-GEMM theorem. Additional
+nonlinear WGSL operations and shared-memory tiling are not justified by this
+head's measurements. Physical-GPU conformance testing is outside the user's
+explicit CPU-only scope; tighter full-model numerical bounds remain research
+work. These limitations do not change the checked artifact/entry-point proofs.

@@ -92,6 +92,30 @@ Native conversions and orchestration, Node's Wasm engine, and the native WebGPU
 implementation remain explicit conformance assumptions. The runtime tests do
 not establish those assumptions universally.
 
+## Resident GPT session and head measurements
+
+Repeated contexts can share one native process, immutable head weights and one
+pipeline while retaining the same verified Wasm imports and output contract:
+
+```sh
+tools/artifact-proof.js wgsl-gpt-session test/wgsl/gpt 76 101 97 110 0 0 0 0 255 128 1 0
+tools/artifact-proof.js wgsl-gpt-benchmark test/wgsl/gpt build/wgsl/my-head-benchmark
+```
+
+The session accepts one to sixteen groups of four byte tokens. The bundle is
+independently verified once, every output is compared with Lean's model, and
+native shutdown completes before success. A changed Wasm weight snapshot is
+rejected before resident dispatch. Native startup time is recorded separately
+from warm context timings; verification and reference generation are excluded
+from those timings.
+
+The benchmark checks five generated GEMM candidates, comparing pipeline/weight
+recreation with residency and three one-row dispatches with one three-row
+kernel. Every candidate has its own independent artifact check. The fixed
+configuration has two warmup rounds and nine measured rounds, with all outputs
+checked. See [measurements and decisions](../../docs/wgsl/performance.md) for the
+CPU-only scope, exact timing boundaries and retained artifacts.
+
 ## Verified Wasm + WGSL bundle
 
 The complete GEMM path starts in a real Wasm function, dispatches the checked
