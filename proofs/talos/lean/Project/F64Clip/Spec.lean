@@ -1,5 +1,5 @@
 import Project.F64Clip.Array
-import Project.F64Clip.Prepare
+import Project.F64Clip.Prepared
 import Project.F64Clip.AnnotationMatches
 
 namespace Project.F64Clip.Spec
@@ -40,7 +40,7 @@ theorem prepare_real (env : HostEnv Unit) (initial : Store Unit)
         Project.ProofKit.UInt64Array.At final ptr w ∧ final.mem.pages = initial.mem.pages) := by
   refine TerminatesWith.mono (prepare_exact env initial count bound ptr base w
     allocations retains releases frees hGlobals hInput hBefore hFit hMemory hPages hCap) ?_
-  rintro final values ⟨hValues, hOutput, hPreserved, hFinalPages⟩
+  rintro final values ⟨hValues, hOutput, hPreserved, hFinalPages, _⟩
   exact ⟨prepare count.toNat bound w, hValues, hOutput, prepare_size count.toNat bound w ha,
     prepare_element count.toNat bound w ha, hPreserved, hFinalPages⟩
 

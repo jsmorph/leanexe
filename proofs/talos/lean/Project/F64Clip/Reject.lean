@@ -15,7 +15,7 @@ theorem reject_program_spec (env : HostEnv Unit) (initial : Store Unit)
     (hPages : initial.mem.pages ≤ 65536)
     (hCap : initial.mem.pages ≤ initial.memoryCap Project.F64Clip.module 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ final frame, prepareResult initial ptr (base+48) w #[] final frame →
+    (hNext : ∀ final frame, prepareResult initial ptr base allocations w #[] final frame →
       wp Project.F64Clip.module rest Q final frame env) :
     wp Project.F64Clip.module (rejectProgram ++ rest) Q initial (prepareFrame count bound ptr 0) env := by
   have hFit' : base.toNat+48+8*(0+1) ≤ 4294967296 := by omega
@@ -59,7 +59,7 @@ theorem reject_program_spec (env : HostEnv Unit) (initial : Store Unit)
       omega
     · wp_fixed_frame [FixedArrayResult.finishProgram, List.cons_append, List.nil_append]
       apply hNext
-      exact ⟨rfl, rfl, hOutput, hInitializedInput, hInitializedPages⟩
+      exact ⟨rfl, rfl, hOutput, hInitializedInput, hInitializedPages, WritesRange.refl ..⟩
 
 #print axioms reject_program_spec
 end Project.F64Clip.Spec
