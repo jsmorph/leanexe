@@ -626,6 +626,20 @@
       "complete": true
     },
     {
+      "name": "exp_neg",
+      "annotations": true,
+      "module": "Project.ExpNeg.Model",
+      "entry": "Project.ExpNeg.expNeg",
+      "sourceWorkspace": "proof",
+      "leanModule": "ExpNeg",
+      "specTarget": "Project.ExpNeg.Spec",
+      "behaviorTheorems": [
+        "Project.ExpNeg.Spec.expNeg_exact",
+        "Project.ExpNeg.Spec.expNeg_real_error"
+      ],
+      "complete": true
+    },
+    {
       "name": "softmax",
       "annotations": true,
       "module": "Project.Softmax.Model",
@@ -636,6 +650,20 @@
       "behaviorTheorems": [
         "Project.Softmax.Spec.softmax_exact",
         "Project.Softmax.Spec.softmax_real_error"
+      ],
+      "complete": true
+    },
+    {
+      "name": "softmax_wide",
+      "annotations": true,
+      "module": "Project.SoftmaxWide.Model",
+      "entry": "Project.SoftmaxWide.compute",
+      "sourceWorkspace": "proof",
+      "leanModule": "SoftmaxWide",
+      "specTarget": "Project.SoftmaxWide.Spec",
+      "behaviorTheorems": [
+        "Project.SoftmaxWide.Spec.compute_exact",
+        "Project.SoftmaxWide.Spec.compute_real_error"
       ],
       "complete": true
     },
@@ -664,6 +692,20 @@
       "behaviorTheorems": [
         "Project.Gelu.Spec.gelu_exact",
         "Project.Gelu.Spec.gelu_real_error"
+      ],
+      "complete": true
+    },
+    {
+      "name": "gelu_wide",
+      "annotations": true,
+      "module": "Project.GeluWide.Model",
+      "entry": "Project.GeluWide.geluWide",
+      "sourceWorkspace": "proof",
+      "leanModule": "GeluWide",
+      "specTarget": "Project.GeluWide.Spec",
+      "behaviorTheorems": [
+        "Project.GeluWide.Spec.geluWide_exact",
+        "Project.GeluWide.Spec.geluWide_real_error"
       ],
       "complete": true
     },
@@ -698,9 +740,28 @@
       "specTarget": "Project.TinyGpt2Infer.Spec",
       "behaviorTheorems": [
         "Project.TinyGpt2Infer.Spec.hidden_exact",
-        "Project.TinyGpt2Infer.Spec.logit_exact"
+        "Project.TinyGpt2Infer.Spec.logit_exact",
+        "Project.TinyGpt2Infer.Spec.infer_exact"
       ],
-      "complete": false
+      "complete": true
+    },
+    {
+      "name": "f64_clip",
+      "annotations": true,
+      "module": "Project.F64Clip.Model",
+      "entry": "Project.F64Clip.prepare",
+      "sourceWorkspace": "proof",
+      "leanModule": "F64Clip",
+      "specTarget": "Project.F64Clip.Spec",
+      "behaviorTheorems": [
+        "Project.F64Clip.Spec.clip_exact",
+        "Project.F64Clip.Spec.validBound_exact",
+        "Project.F64Clip.Spec.accepted_exact",
+        "Project.F64Clip.Spec.clip_real",
+        "Project.F64Clip.Spec.prepare_exact",
+        "Project.F64Clip.Spec.prepare_real"
+      ],
+      "complete": true
     }
   ]
 }

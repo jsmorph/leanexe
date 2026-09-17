@@ -32,9 +32,12 @@ theorem embedding_word_bounded (i : Nat) (hi : i < 1040) :
     norm_num
   simpa only [hv, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 1/2)] using h
 
-theorem embedding_valid (token position : UInt64)
-    (ht : token.toNat < 256) (hp : position.toNat < 4) :
-    LayerNorm.ValidRow (rowWords (embedding words token position)) := by
+theorem embedding_error (token position : UInt64)
+    (ht : token.toNat < 256) (hp : position.toNat < 4) (i : Fin 4) :
+    Approximation (rowWords (embedding words token position) i)
+      (decodeRow (loadRow words (4*token.toNat)) i+
+        decodeRow (loadRow words (1024+4*position.toNat)) i)
+      (1001/1000) (128*arithmeticEpsilon) := by
   have htrow (i : Fin 4) :
       Finite (rowWords (loadRow words (4*token.toNat)) i) ∧
         |decodeRow (loadRow words (4*token.toNat)) i| ≤ 1/2 := by
@@ -45,16 +48,22 @@ theorem embedding_valid (token position : UInt64)
         |decodeRow (loadRow words (1024+4*position.toNat)) i| ≤ 1/2 := by
     simpa only [decodeRow, loadRow_words] using
       embedding_word_bounded (1024+4*position.toNat+i.val) (by omega)
-  intro i
   have he := addRows_error (loadRow words (4*token.toNat))
     (loadRow words (1024+4*position.toNat))
     (fun j => ⟨(htrow j).1, (htrow j).2.trans (by norm_num)⟩)
     (fun j => ⟨(hprow j).1, (hprow j).2.trans (by norm_num)⟩) i
   have hs := (abs_add_le _ _).trans (add_le_add (htrow i).2 (hprow i).2)
   have hm := F64ArithmeticBounds.magnitude_of_error _ _ _ _ he.accuracy hs
-  change Finite (rowWords (addRows _ _) i) ∧ |value (rowWords (addRows _ _) i)| ≤ 4
   simpa only [embedding, Layout.token, Layout.position, Nat.zero_add] using
-    And.intro he.finite (hm.trans (by norm_num [arithmeticEpsilon]))
+    (show Approximation _ _ (1001/1000) (128*arithmeticEpsilon) from
+      ⟨he.finite, hm.trans (by norm_num [arithmeticEpsilon]), he.accuracy⟩)
+
+theorem embedding_valid (token position : UInt64)
+    (ht : token.toNat < 256) (hp : position.toNat < 4) :
+    LayerNorm.ValidRow (rowWords (embedding words token position)) := by
+  intro i
+  have h := embedding_error token position ht hp i
+  exact ⟨h.finite, h.magnitude.trans (by norm_num)⟩
 
 #print axioms embedding_valid
 end Project.TinyGpt2.Checkpoint

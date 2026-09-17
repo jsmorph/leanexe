@@ -3,8 +3,9 @@
 This checkpoint contains 2,488 binary64 parameters for the
 [agreed architecture](../../plans/tiny-transformer.md).  The user approved
 Tiny Shakespeare and a command-line interface returning all 256 next-byte
-logits on 2026-09-16.  The checkpoint's numerical certificates and complete
-inference proof remain in progress.
+logits on 2026-09-16.  The complete generated-WAT execution proof passes.
+Checkpoint certificates establish finite outputs for every four-byte input.
+The composed numerical error bound remains in progress.
 
 ## Command-line inference
 
@@ -21,12 +22,15 @@ The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
 C host.  The separate 15,423-byte hidden-state module has a
 [proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
 exact agreement with the raw-bit model, and store preservation for every
-four-byte input.  The full module's hidden function and single-logit function
-also have execution proofs.  Its
-[output loop](../../proofs/talos/lean/Project/TinyGpt2Infer/OutputLoop.lean)
+four-byte input.  The
+[complete inference theorem](../../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean)
 proves termination, all 256 raw-bit logits, checkpoint preservation, and a
-fixed page count under its memory reservation.  Function entry and exit and
-the composed numerical certificate remain open.
+fixed page count.  It assumes a represented weight array of at least 2,488
+words, an empty initial free list, weights below the output heap, and enough
+reserved memory.  Output construction requires 277,560 bytes.  With the CLI's
+weight array allocated first, its final heap top is 301,616, within the
+module's sixteen initial pages.  The composed numerical certificate remains
+open.  The host and exact-byte package remain outside this execution theorem.
 
 ## Training record
 
@@ -61,8 +65,12 @@ The binary64 certificate adds normalization, projection, and score errors
 and proves computed spread at most sixteen.  Every byte embedding satisfies
 the first normalization domain.  Lean also proves that all 2,488 weights
 are finite with real magnitude at most four.  The real first residual has
-component magnitude at most 18/5.  Its binary64 margin, feed-forward and
-final-normalization domains, and complete logit certificate remain open.
+component magnitude at most 18/5, and the computed residual is bounded by
+37/10.  The feed-forward and final-normalization domains are proved.
+The [output certificate](../../proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
+proves finite hidden coordinates of magnitude at most seven and finite
+logits of magnitude at most 117 for every four-byte input.  The composed
+error bound against the real model remains open.
 
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
@@ -80,7 +88,7 @@ against this checkpoint with:
 ```sh
 tools/tiny-gpt2-certificate.js --check
 tools/leanrun --timeout 3m lake -d proofs/talos/lean build \
-  Project.TinyGpt2.CheckpointScore Project.TinyGpt2.CheckpointResidual
+  Project.TinyGpt2.CheckpointLogits
 ```
 
 The [training environment](../../training/tiny-gpt2/README.md) records the

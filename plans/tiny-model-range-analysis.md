@@ -73,8 +73,48 @@ coordinates.  Exact rational checks give these bounds:
 Nonnegative attention weights with sum at most `mass` give output-projection
 magnitude at most `(5/2)*mass`.  Real softmax weights sum to one.  Adding
 embedding magnitude at most one and output bias magnitude at most 1/10
-bounds every real first-residual component by 18/5.  The binary64 margin
-for this residual remains open.
+bounds every real first-residual component by 18/5.
+
+The [computed residual certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointComputedResidual.lean)
+proves a binary64 magnitude bound of 37/10 for every four-byte context and
+accepted position.  Computed probabilities are nonnegative and have sum
+at most `1+32*2^-52`.  The value and output projection proofs retain these
+probabilities while accounting for normalization and arithmetic errors.
+The two residual additions preserve finiteness and the margin below the
+next LayerNorm's magnitude limit of four.  This range argument precedes
+the separate propagation of score and softmax errors to the real model.
+
+## Feed-forward stages
+
+The [expansion certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointFeedForward.lean)
+combines the second normalization's scale with each expansion column.
+Its centered coefficient norm is at most 5/4, and its combined bias has
+magnitude at most 49/100.  Every real expanded coordinate therefore has
+magnitude at most 299/100.  The computed expansion has absolute error at
+most 1/200000 and stays within GELU's proved interval of [-3, 3].
+
+The [contraction certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointContract.lean)
+proves activation error at most 1/25000 and contraction error at most
+1/8000, relative to the real feed-forward computation on the decoded
+first residual.  Each contraction column has absolute coefficient sum
+at most three.  The second residual is finite with magnitude at most
+fourteen.
+
+## Final normalization and output
+
+The shared LayerNorm proof now permits an input magnitude bound `B` from
+one through sixteen, retaining scale and bias bounds of four.  Its
+component error is at most
+`(160000000*B^2+64000*B+16000057)*2^-52`, which is below 1/100000 at
+`B = 16`.  The original four-unit theorem retains its 1/1000000 bound.
+
+The [final normalization certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointFinalNorm.lean)
+applies this result to the second residual.  The
+[output certificate](../proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
+proves that every four-byte input produces finite hidden coordinates of
+magnitude at most seven and 256 finite logits of magnitude at most 117.
+All intermediate domain obligations are proved.  The complete error bound
+against the real model remains open.
 
 ## Remaining checks
 
@@ -83,6 +123,7 @@ for this residual remains open.
 - [x] Check the checkpoint's exact rational matrix-norm bounds.
 - [x] Include binary64 normalization, projection, and score errors.
 - [x] Bound the real attention residual.
-- [ ] Include the attention-residual roundoff margin.
-- [ ] Bound the feed-forward stages.
+- [x] Include the attention-residual roundoff margin.
+- [x] Bound the feed-forward stages.
+- [x] Extend the final normalization's numerical domain.
 - [ ] Derive the complete logit error bound.

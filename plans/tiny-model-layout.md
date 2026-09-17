@@ -58,5 +58,9 @@ now proves termination, exact raw-bit model agreement, and store preservation
 for all four-byte inputs and represented weight arrays of at least 2,488 words.
 The complete inference module reuses this composition proof for its internal
 hidden function, and its single-logit function has a checked execution theorem.
-The vocabulary-output loop, remaining checkpoint ranges, and composed logit
-theorem remain open.
+The [complete inference execution proof](../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean)
+now includes the vocabulary loop, allocation, and release.  It proves exact
+output, checkpoint preservation, and a fixed page count under its memory
+assumptions.  Checkpoint range certificates establish finite hidden
+coordinates and logits for every four-byte input.  The composed numerical
+logit bound remains open.
