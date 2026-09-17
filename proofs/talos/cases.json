@@ -654,6 +654,20 @@
       "complete": true
     },
     {
+      "name": "softmax_wide",
+      "annotations": true,
+      "module": "Project.SoftmaxWide.Model",
+      "entry": "Project.SoftmaxWide.compute",
+      "sourceWorkspace": "proof",
+      "leanModule": "SoftmaxWide",
+      "specTarget": "Project.SoftmaxWide.Spec",
+      "behaviorTheorems": [
+        "Project.SoftmaxWide.Spec.compute_exact",
+        "Project.SoftmaxWide.Spec.compute_real_error"
+      ],
+      "complete": true
+    },
+    {
       "name": "layer_norm",
       "annotations": true,
       "module": "Project.LayerNorm.Model",

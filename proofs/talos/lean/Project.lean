@@ -135,6 +135,7 @@ import Project.ExpSmall.Spec
 import Project.ExpWide.Spec
 import Project.ExpNeg.Spec
 import Project.Softmax.Spec
+import Project.SoftmaxWide.Spec
 import Project.LayerNorm.Spec
 import Project.Gelu.Spec
 import Project.GeluWide.Spec
