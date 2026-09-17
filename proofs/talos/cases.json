@@ -784,6 +784,32 @@
         "Project.TinyGpt2Checked.Spec.inferChecked_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "sequence_softmax",
+      "annotations": true,
+      "module": "Project.SequenceSoftmax.Model",
+      "entry": "Project.SequenceSoftmax.compute",
+      "sourceWorkspace": "proof",
+      "leanModule": "SequenceSoftmax",
+      "specTarget": "Project.SequenceSoftmax.Spec",
+      "behaviorTheorems": [
+        "Project.SequenceSoftmax.Spec.compute_exact"
+      ],
+      "complete": false
+    },
+    {
+      "name": "tiny_gpt2_seq",
+      "annotations": true,
+      "module": "Project.TinyGpt2Seq.Inference",
+      "entry": "Project.TinyGpt2Seq.inferChecked",
+      "sourceWorkspace": "proof",
+      "leanModule": "TinyGpt2Seq",
+      "specTarget": "Project.TinyGpt2Seq.Spec",
+      "behaviorTheorems": [
+        "Project.TinyGpt2Seq.Spec.inferChecked_exact"
+      ],
+      "complete": false
     }
   ]
 }
