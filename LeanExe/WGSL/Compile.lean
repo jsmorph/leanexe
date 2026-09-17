@@ -1,4 +1,5 @@
 import LeanExe.WGSL.BodyEmit
+import LeanExe.WGSL.BodyParse
 import Lean
 
 namespace LeanExe.WGSL.Source
@@ -32,6 +33,11 @@ private partial def index (ctx : Context) (e : Expr) (fuel : Nat := 256) : MetaM
   if let some n := slot ctx.indices e then return .local n
   if let .lit (.natVal n) := e then return .lit n
   let args := e.getAppArgs
+  if (e.isAppOfArity ``HAdd.hAdd 6 || e.isAppOfArity ``HMul.hMul 6) &&
+      args[0]! == mkConst ``Nat && args[1]! == mkConst ``Nat && args[2]! == mkConst ``Nat then
+    let a ← index ctx args[4]! (fuel - 1)
+    let b ← index ctx args[5]! (fuel - 1)
+    return if e.isAppOf ``HAdd.hAdd then .add a b else .mul a b
   if e.isAppOfArity ``Nat.add 2 then
     return .add (← index ctx args[0]! (fuel - 1)) (← index ctx args[1]! (fuel - 1))
   if e.isAppOfArity ``Nat.mul 2 then
@@ -102,14 +108,33 @@ private def extract (name : Name) : MetaM Source.Term := do
 equality. Output is written only after that check succeeds. -/
 syntax (name := compileWGSL) "#compile_wgsl " ident num num num num str : command
 
-@[command_elab compileWGSL] def elabCompileWGSL : CommandElab := fun stx => do
-  let `(command| #compile_wgsl $entry:ident $rows:num $cols:num $a:num $b:num $directory:str) := stx
-    | throwUnsupportedSyntax
+private def compileDefinition (entry : TSyntax `ident) (rows cols a b : TSyntax `num)
+    (directory : TSyntax `str) (existing : Option System.FilePath := none) : CommandElabM Unit :=
+  withScope (fun scope => {scope with opts := maxRecDepth.set (Lean.Elab.async.set scope.opts false) 16384}) do
+  let output : System.FilePath := directory.getString
+  if ← output.pathExists then throwError "WGSL: output directory already exists: {output}"
   let name ← liftTermElabM <| Lean.Elab.realizeGlobalConstNoOverloadWithInfo entry
   let shape : Shape := ⟨rows.getNat, cols.getNat, a.getNat, b.getNat⟩
-  let body ← liftTermElabM <| extract name
-  match validate shape body with
+  let extracted ← liftTermElabM <| extract name
+  match validate shape extracted with
   | .error message => throwError "WGSL: {message}"
+  | .ok () => pure ()
+  let shader ← match existing with
+    | none => pure (emit shape extracted)
+    | some path => do
+        let bytes ← liftIO (IO.FS.readBinFile path)
+        if bytes.size > 65536 then throwError "WGSL: shader exceeds 64 KiB check limit"
+        let some text := String.fromUTF8? bytes | throwError "WGSL: shader is not valid UTF-8"
+        pure text
+  if shader.toUTF8.size > 65536 then throwError "WGSL: shader exceeds 64 KiB check limit"
+  let parsed ← match Source.parse shader with
+    | .ok parsed => pure parsed
+    | .error message => throwError "WGSL: emitted shader failed independent parsing: {message}"
+  unless parsed.rows == shape.rows && parsed.cols == shape.cols do
+    throwError "WGSL: emitted shader changed output dimensions"
+  let body := parsed.body
+  match validate shape body with
+  | .error message => throwError "WGSL: parsed shader failed validation: {message}"
   | .ok () => pure ()
   let bodyText := s!"({body.lean} : LeanExe.WGSL.Source.Term)"
   let bodySyntax ← match Parser.runParserCategory (← getEnv) `term bodyText with
@@ -117,21 +142,69 @@ syntax (name := compileWGSL) "#compile_wgsl " ident num num num num str : comman
     | .error message => throwError "WGSL internal expression serialization error: {message}"
   let bodyName := mkIdent (name ++ `wgslBody)
   let proofName := mkIdent (name ++ `wgslSourceCorrect)
+  let parseName := mkIdent (name ++ `wgslShaderParsed)
+  let tokensName := mkIdent (name ++ `wgslTokens)
+  let lexedName := mkIdent (name ++ `wgslLexed)
+  let tokensParsedName := mkIdent (name ++ `wgslTokensParsed)
+  let ts ← match tokenize shader with
+    | .ok ts => pure ts
+    | .error message => throwError "WGSL: {message}"
+  let tokensSyntax ← match Parser.runParserCategory (← getEnv) `term (reprStr ts) with
+    | .ok parsed => pure parsed
+    | .error message => throwError "WGSL: {message}"
+  let tokensTerm : TSyntax `term := ⟨tokensSyntax⟩
   let bodyTerm : TSyntax `term := ⟨bodySyntax⟩
   elabCommand (← `(def $bodyName : Source.Term := $bodyTerm))
   elabCommand (← `(theorem $proofName : $entry = Source.Term.kernel $bodyName := by rfl))
   if (← get).messages.hasErrors then throwError "WGSL: source equality did not pass Lean checking"
-  let output : System.FilePath := directory.getString
-  if ← output.pathExists then throwError "WGSL: output directory already exists: {output}"
+  let shaderLiteral := Syntax.mkStrLit shader
+  elabCommand (← `(def $tokensName : List String := $tokensTerm))
+  elabCommand (← `(theorem $lexedName : tokenize $shaderLiteral = Except.ok $tokensName :=
+    Source.ok_of_toOption _ _ (by decide +kernel)))
+  elabCommand (← `(theorem $tokensParsedName : Source.parseTokens $tokensName =
+    Except.ok (Source.Parsed.mk $rows $cols $bodyName) :=
+    Source.ok_of_toOption _ _ (by decide +kernel)))
+  elabCommand (← `(theorem $parseName : Source.parse $shaderLiteral =
+    Except.ok (Source.Parsed.mk $rows $cols $bodyName) :=
+    Source.parse_of_tokens _ _ _ $lexedName $tokensParsedName))
+  if (← get).messages.hasErrors then throwError "WGSL: source equality did not pass Lean checking"
+  for declaration in [proofName.getId, parseName.getId] do
+    let axioms ← Lean.collectAxioms declaration
+    for axiomName in axioms do
+      unless [``propext, ``Classical.choice, ``Quot.sound].contains axiomName do
+        throwError "WGSL: proof {declaration} depends on forbidden axiom {axiomName}"
   liftIO <| IO.FS.createDirAll output
-  liftIO <| IO.FS.writeFile (output / "kernel.wgsl") (emit shape body)
+  liftIO <| IO.FS.writeFile (output / "kernel.wgsl") shader
   liftIO <| IO.FS.writeFile (output / "manifest.json") <| (Lean.Json.mkObj [
     ("schemaVersion", toJson (1 : Nat)), ("kind", toJson "lean-body-wgsl"),
     ("sourceDeclaration", toJson name.toString), ("entryPoint", toJson "lean_kernel"),
     ("shape", toJson shape), ("workgroupSize", toJson ([8,8,1] : List Nat)),
-    ("sourceEqualityChecked", toJson true), ("shaderSemanticsProved", toJson false)]).pretty
+    ("sourceEqualityChecked", toJson true), ("shaderParseChecked", toJson true),
+    ("proofScope", toJson "parsed shader computation equals the Lean definition; arithmetic interpretation is explicit"),
+    ("universalRuntimeConformanceEstablished", toJson false)]).pretty
   liftIO <| IO.FS.writeFile (output / "source-equality.lean.txt")
-    s!"def {bodyName.getId} : LeanExe.WGSL.Source.Term := {body.lean}\ntheorem {proofName.getId} : {name} = LeanExe.WGSL.Source.Term.kernel {bodyName.getId} := by rfl\n"
-  logInfo m!"WGSL: compiled body of {name}; source equality checked; wrote {output}"
+    (String.intercalate "\n" [
+      "set_option maxRecDepth 16384",
+      s!"def {bodyName.getId} : LeanExe.WGSL.Source.Term := {body.lean}",
+      s!"theorem {proofName.getId} : {name} = LeanExe.WGSL.Source.Term.kernel {bodyName.getId} := by rfl",
+      s!"def {tokensName.getId} : List String := {reprStr ts}",
+      s!"theorem {lexedName.getId} : LeanExe.WGSL.tokenize {reprStr shader} = Except.ok {tokensName.getId} := LeanExe.WGSL.Source.ok_of_toOption _ _ (by decide +kernel)",
+      s!"theorem {tokensParsedName.getId} : LeanExe.WGSL.Source.parseTokens {tokensName.getId} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {bodyName.getId}) := LeanExe.WGSL.Source.ok_of_toOption _ _ (by decide +kernel)",
+      s!"theorem {parseName.getId} : LeanExe.WGSL.Source.parse {reprStr shader} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {bodyName.getId}) := LeanExe.WGSL.Source.parse_of_tokens _ _ _ {lexedName.getId} {tokensParsedName.getId}", ""])
+  logInfo m!"WGSL: compiled body of {name}; shader parse and source equality checked; wrote {output}"
+
+@[command_elab compileWGSL] def elabCompileWGSL : CommandElab := fun stx => do
+  let `(command| #compile_wgsl $entry:ident $rows:num $cols:num $a:num $b:num $directory:str) := stx
+    | throwUnsupportedSyntax
+  compileDefinition entry rows cols a b directory
+
+/-- Check an existing shader against a source definition using the same
+parser and kernel proof gate. Used also for adversarial artifact tests. -/
+syntax (name := checkWGSL) "#check_wgsl " ident num num num num str str : command
+
+@[command_elab checkWGSL] def elabCheckWGSL : CommandElab := fun stx => do
+  let `(command| #check_wgsl $entry:ident $rows:num $cols:num $a:num $b:num $shader:str $directory:str) := stx
+    | throwUnsupportedSyntax
+  compileDefinition entry rows cols a b directory (some shader.getString)
 
 end LeanExe.WGSL.Source

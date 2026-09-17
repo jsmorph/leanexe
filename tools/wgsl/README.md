@@ -1,5 +1,24 @@
 # Native WGSL test harness
 
+`LeanExe.WGSL.Compile` translates restricted Lean definition bodies to WGSL;
+see the [source specification](../../docs/wgsl/lean-source-specification.md)
+and [usage guide](../../docs/wgsl/body-compiler.md). `Generate.lean` remains the
+[original fixed GEMM template generator](../../docs/wgsl/gemm-template-interface.md)
+used by the existing GPT-2 bundle.
+
+The body compiler has a separate bounded test command, using the configured
+native CPU runtime and no browser:
+
+```sh
+source tools/macos-env.sh
+node tools/wgsl/body-test.js
+```
+
+It generates all outputs under a fresh ignored `build/wgsl/body-check-*`
+directory, checks source/shader proofs, obtains reference words by evaluating
+the original Lean definitions with pure IEEE32 arithmetic, dispatches WGSL on
+SwiftShader Vulkan, and exercises rejection cases.
+
 The current fidelity-only path is documented in
 [the GPT-2 WGSL verification plan](../../docs/wgsl/gpt2-verification.md):
 

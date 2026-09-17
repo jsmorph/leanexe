@@ -1,5 +1,12 @@
 # LeanEXE WGSL Backend Development Plan
 
+There are two distinct implementations. The original GPT-2/GEMM path uses a
+[fixed template](docs/wgsl/gemm-template-interface.md). The new
+[body compiler](docs/wgsl/body-compiler.md) translates a restricted Lean
+definition's expressions to WGSL. Its accepted definitions and proof boundary
+are specified in the [source specification](docs/wgsl/lean-source-specification.md).
+The existing GPT-2 bundle has not been migrated to the new compiler.
+
 ## Current verification focus
 
 The active work is [WGSL artifact fidelity for pretrained GPT-2](docs/wgsl/gpt2-verification.md):

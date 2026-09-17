@@ -26,3 +26,59 @@ Intermediate shaders, vectors and execution reports are ignored under
 This checkpoint does not claim a proof about emitted text or arbitrary WebGPU
 devices. The next check will parse actual emitted WGSL independently and make
 the source equality refer to that parsed computation.
+
+## Independent shader checking
+
+Added a separate token parser for the structured WGSL grammar. It checks the
+declarations, edge guard, local scopes, arithmetic, complete fold control and
+final output store. The source equality now refers to the computation obtained
+by parsing the actual emitted shader, not the emitter's input tree.
+
+The first proof attempt failed because `Except` did not supply the required
+decidable equality. That attempt also exposed a gating bug: default asynchronous
+Lean elaboration could report a theorem error after the command had already
+written its output. The failed drafts remain under `build/wgsl/body-v2/`; they
+are not accepted evidence. The compiler now checks synchronously, rejects any
+reported error, and audits all theorem axioms before creating the output
+directory. Negative artifact tests confirm no package is written on failure.
+
+A direct `rfl` reduction of the entire shader parser reached recursion and
+heartbeat limits. Raising the recursion allowance alone did not solve it.
+The fix was a reusable composition lemma joining separately checked lexer and
+token-parser reductions, using `decide +kernel` as in the existing artifact
+workflow. No native-computation axiom is used. The eight-case combined run
+still reached its 90-second process limit, so the driver now checks each case
+in a separate bounded invocation and stops on the first failure. Failed
+evidence remains under `body-check-nnruHL` and `body-check-2G6dB3`.
+
+`build/wgsl/body-check-dYiQRh/summary.json` records eight passing source and
+actual-shader proofs, 48 matching CPU WebGPU output words, two operation-mutation
+pairs and twelve rejection cases. `additional-checks.json` in that same
+directory records two more rejections (changed loop count and initial word)
+and an independent check of the saved matrix proof in a fresh Lean process,
+without invoking the compiler. Those two rejections and the independent check
+are included in the repeatable driver. The eight positive cases include
+transparent helpers, transposed indexing, nested folds and a zero-iteration
+fold with a nonzero initial word.
+
+Source-equality proofs use `propext`; shader-parse proofs use only `propext`,
+`Classical.choice` and `Quot.sound`. The implementation rejects other axiom
+dependencies, including `sorryAx`. Native device conformance, the formal
+soundness of the index checker and generalized memory/dispatch proofs remain
+outside these established claims, as specified in the source contract.
+
+## 768-term accumulation and final checks
+
+Added `matmul768`, a 1×768 by 768×3 multiplication whose body uses the same
+general `Source.fold` operation. Both source-equality and actual-shader parse
+proofs passed, and all three CPU WebGPU words matched the original definition
+under pure IEEE32 arithmetic. Evidence is in `build/wgsl/body-768/`. Combined
+with the earlier corpus this is nine definitions and 51 matching output words.
+The repeatable corpus now includes this case as well.
+
+After the successful corpus, source-equality failure was made an immediate
+stop before spending time on shader-parse proofs. The compiler also checks
+output-directory freshness before proof work and applies the existing 64 KiB
+UTF-8 artifact-check limit. The 768-term case exercised this final successful
+path; focused rejection checks cover the earlier stop. No unrelated regression
+suite was run and no generated shader, proof, vector or log was committed.
