@@ -1,0 +1,9 @@
+{
+  "matrixPlan": [
+    { "name": "complete-plan", "accept": true },
+    { "name": "wrong-shader", "matrix": 0, "shape": 1 },
+    { "name": "duplicate-buffer", "matrix": 1, "file": "matrix-00.bin" },
+    { "name": "missing-head-half", "dropLast": true },
+    { "name": "extra-descriptor-field", "matrix": 49, "extra": true }
+  ]
+}

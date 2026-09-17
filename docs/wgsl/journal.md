@@ -1157,3 +1157,37 @@ index, inconsistent dimensions, and extra metadata. These checks execute no
 GPU runtime. The fixed corpus and retained failures are under
 build/wgsl/word-corpus-gpt2-fidelity. The documentation check passes 146
 maintained files, and git diff --check passes.
+
+## 2026-09-17 — GPT-2 matrix products and vocabulary decomposition
+
+Removed certificate-to-runtime-file-loading work from the agenda at the user's
+request. The new MatrixView abstraction separates a logical matrix coordinate
+from its packed row-major address. Its proof connects the parsed shader's
+execution to a source-ordered column computation over UInt32 words. A generic
+column-slice theorem then joins adjacent products without changing any scalar
+operation or its operand order. This avoids proving the same dot-product
+argument separately for the two vocabulary dimensions.
+
+Project.Gpt2.Matrix specializes the abstraction to all six shader roles.
+The vocabulary theorem proves the transposed embedding addresses and joins
+25,129 and 25,128 outputs into the full 50,257-way product. The relational
+theorem preserves permitted per-step fusion; its separate-profile corollary
+gives exact word equality. Layer numbering is injective, covers 48 slots,
+and is followed by the two vocabulary slots. The actual manifest's fifty
+descriptors pass comparison with this Lean plan. These statements begin and
+end at the binary32 interface; they do not certify checkpoint packing, float
+conversion, or the complete C/JavaScript controller.
+
+The first draft needed a record indentation correction, explicit simplification
+of one shader configuration, and normalization of natural-number multiplication
+in the slot-numbering proof. No timeout or LTG retrieval was involved. Shared
+layout lemmas now carry the proof; all six independently prepared artifact
+proofs specialize the same product theorem with a checked shape equality.
+The successful run is build/gpt2/shader-checks/check-7zM4y1. Its new matrix and
+artifact declarations use only propext, Classical.choice, and Quot.sound.
+The fixed routing corpus accepts the complete plan and rejects a wrong shader,
+a duplicated buffer name, a missing vocabulary half, and an extra descriptor
+field. Those results are retained in build/gpt2/layout-corpus-v1.
+The legacy rectangular checker and the word-only partial-workgroup fusion
+checker both still pass after extending proof preparation. Documentation and
+whitespace checks also pass. Generated proofs and receipts remain ignored.

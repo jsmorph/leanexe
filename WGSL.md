@@ -4,8 +4,8 @@
 
 The active work is [WGSL artifact fidelity for pretrained GPT-2](docs/wgsl/gpt2-verification.md):
 prove that the six delivered shaders execute their selected Lean matrix-product
-definitions over floating-point words, then verify the GPU-call interfaces and
-state the supported runtime arithmetic choices precisely. Numerical error bounds
+definitions over floating-point words, verify the matrix layouts and split
+vocabulary computation, and state the arithmetic choices precisely. Numerical error bounds
 and general Wasm/controller proof development are outside this workstream.
 The older numerical milestones below are retained as development history.
 

@@ -394,6 +394,7 @@ async function main() {
       "       artifact-proof.js wgsl-word-check <package-directory>",
       "       artifact-proof.js wgsl-word-corpus <fresh-directory>",
       "       artifact-proof.js wgsl-gpt2-check <gpt2-demo-directory>",
+      "       artifact-proof.js wgsl-gpt2-layout-corpus <fresh-directory>",
       "       artifact-proof.js wgsl-corpus <fresh-directory>",
       "       artifact-proof.js wgsl-bundle-build <fresh-directory> <rows> <cols> <inner> separate|fusion",
       "       artifact-proof.js wgsl-bundle-check|wgsl-bundle-run <bundle-directory>",
