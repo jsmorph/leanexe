@@ -2,9 +2,9 @@
 
 The native C host runs the generated transformer Wasm and vocabulary WGSL
 end to end on SwiftShader CPU WebGPU. The user authorized execution with
-incomplete proofs for this demo. The browser page layout is present; its
-host bindings await confirmation that JavaScript may perform API calls,
-file loading, byte transfer and UI updates only.
+incomplete proofs for this demo. The browser also runs locally through WebGPU. JavaScript performs only API
+calls, file loading, byte transfer and UI updates; the user approved that
+boundary explicitly.
 
 All model computation is intended to execute in Wasm and WGSL. The transformer
 entry is compiled directly from `Project.TinyGpt2Seq.hidden`. The existing
@@ -22,6 +22,7 @@ Vulkan CPU driver and Lean toolchain:
 tools/gpt128 build
 tools/gpt128 run --prompt "To be, or not to be" --generate 64
 tools/gpt128 test
+tools/gpt128 serve
 ```
 
 `build` compiles the current Lean-to-Wasm compiler before using it. An older
@@ -43,6 +44,21 @@ The native executable checks the SHA-256 identities embedded at build time for
 all five execution inputs before instantiation. The test-only weight override
 is explicit (`--test-weights FILE`) and is used for the retained clipped-weight
 reference case. Wasmtime fuel and memory limits bound each invocation.
+
+## Browser bundle
+
+`tools/gpt128 serve` serves the built package at `http://localhost:8765/`.
+The build also creates `build/gpt128-demo/browser.zip`, a self-contained static
+bundle. Extract it and serve it from localhost or HTTPS; no Lean installation
+or model server is needed. The native executable currently uses the configured
+local Wasmtime and wgpu-native shared libraries.
+
+The browser was exercised through its actual page controls. It generated 64
+bytes locally and ran all eight retained comparisons. All 32 transformer state
+words matched. Its GPU returned 773 different projection words out of 2,048,
+with corresponding final-logit differences, which the UI reports as arithmetic
+differences rather than claiming exact-profile conformance. Greedy output for
+the demonstrated prompt still matched the native runner.
 
 ## Artifact and proof status
 
