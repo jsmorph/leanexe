@@ -39,13 +39,14 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
-The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) has
-generated-WAT proofs for scalar clipping and the complete array validator.
-The validator checks length, bound, and finiteness, returning the exact
-source Boolean and preserving the store.  Scalar clipping agrees exactly
-with the decoded real clamp.  Source-level array proofs establish rejection,
-length, bounded output, and idempotence.  The registered case remains
-incomplete while allocation and the clipping map loop await execution proofs.
+The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves
+the complete generated-WAT checker.  It checks length, bound, and every
+weight's finiteness, then returns the clipped array or an empty array.
+Accepted output agrees exactly with the decoded real clamp and has finite
+values bounded by B.  The theorem preserves the input array and the page
+count under an empty-free-list allocator state and a reservation of
+48+8(n+1) bytes for an n-word input.  The rejection path needs 56 bytes.
+Source-level array proofs also establish idempotence.
 
 The [GELU component](lean/Project/Gelu/Spec.lean) proves total generated-WAT
 execution and finite output within 1/80000 of the pinned tanh GELU formula
