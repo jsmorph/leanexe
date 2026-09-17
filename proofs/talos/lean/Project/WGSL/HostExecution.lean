@@ -135,8 +135,38 @@ theorem numerical {source metadata} (package : Package source metadata)
   rw [download_word st.mem c buffer (elements := package.kernel.ast.config.elementsC) (Index.linear_lt hr hc)]
   exact package.numerical _ _ (input_valid ..) run hr hc domain
 
+theorem numerical_wide {source metadata} (package : Package source metadata)
+    (env : HostEnv Unit) (conforms : env.Satisfies HostBinary.module (spec package))
+    (st : Store Unit) (a b c : UInt32) (ready : Ready package.kernel.ast.config st.mem a b c) :
+    HostBinary.Encodes ∧ TerminatesWith (initial env st a b c) (fun values store =>
+      values = [.i32 0] ∧
+      ∀ row col, row < package.kernel.ast.config.rows → col < package.kernel.ast.config.cols →
+      ∀ accBudget productBudget : ℝ, WideDotDomain package.kernel.ast.config
+        (input package.kernel.ast.config st.mem a b).buffers.a
+        (input package.kernel.ast.config st.mem a b).buffers.b row col accBudget productBudget →
+      let result := store.wasm.mem.read32
+        (UInt32.ofNat (c.toNat + 4 * (row * package.kernel.ast.config.cols + col)))
+      Finite result ∧ |value result - realDot package.kernel.ast.config
+        (input package.kernel.ast.config st.mem a b).buffers.a
+        (input package.kernel.ast.config st.mem a b).buffers.b row col package.kernel.ast.config.inner| ≤
+          package.kernel.ast.config.inner * stepError accBudget productBudget) := by
+  refine ⟨HostBinary.encoded, ?_⟩
+  obtain ⟨buffer, run, terminates⟩ := completes package env conforms st a b c ready
+  apply terminates.mono
+  intro values store result
+  rcases result with ⟨hv, hs⟩
+  refine ⟨hv, ?_⟩
+  intro row col hr hc accBudget productBudget domain
+  rw [hs]
+  change Finite ((download st.mem c.toNat (4 * package.kernel.ast.config.elementsC) buffer).read32 _) ∧ _
+  rw [word_address (download st.mem c.toNat (4 * package.kernel.ast.config.elementsC) buffer)
+    c ready.2.2.1 (Index.linear_lt hr hc)]
+  rw [download_word st.mem c buffer (elements := package.kernel.ast.config.elementsC) (Index.linear_lt hr hc)]
+  exact package.numerical_wide _ _ (input_valid ..) run hr hc domain
+
 #print axioms completes
 #print axioms exact
+#print axioms numerical_wide
 #print axioms numerical
 
 end Project.WGSL.HostExecution
