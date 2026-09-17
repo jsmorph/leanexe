@@ -1,9 +1,12 @@
 # Development Plan
 
-The current target is [pretrained GPT-2 124M through LeanExe](plans/gpt2-124m.md)
-with a 128-token context.  The user paused proof development on 2026-09-17
-and approved FP32 arithmetic and packed binary tensors.  The CPU reference
-already produces text completions.  The earlier
+The [pretrained GPT-2 124M implementation](plans/gpt2-124m.md) now generates
+text through LeanExe/WASM with FP32, packed binary tensors, resident weights,
+and cached attention.  Tests compare every logit at context lengths one
+through 128 with PyTorch.  Run it with
+`tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
+The user paused proof development on 2026-09-17.  That pause remains in
+effect.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.

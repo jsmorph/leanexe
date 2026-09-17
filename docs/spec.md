@@ -67,6 +67,15 @@ For `Array.foldl`, `Array.foldr`, `Array.foldlM`, `ByteArray.foldl`, `ByteArray.
 
 Liveness pruning treats a materialized multi-slot fold result as one atomic local assignment.  If any result slot from that fold remains live, the compiler keeps the whole fold assignment and assigns every slot once, preserving sharing for tagged or structured results whose later code reads only the tag or one payload field.
 
+Id binds materialize fold results before their continuation uses individual
+fields.  For-in cleanup releases fresh nonrecursive temporaries after
+computing the next accumulator and stopping condition, protecting returned
+owner slots.  Fold emitters preserve release operations inside their bodies.
+For plain exported functions with heap results, extraction materializes the
+internal result with its owner slots before projecting the public ABI.
+This preserves shared evaluation and returned owners when a structure
+contains several byte arrays.
+
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `LeanExe.Runtime.retainCount`, `LeanExe.Runtime.releaseCount`, and `LeanExe.Runtime.freeCount`, each of type `UInt64`.  A compiled `LeanExe.Runtime.release value` consumes one owned reference to the value's nonzero root and returns `freeCount` after the operation.  An array whose owner is `0`, including a borrowed public or WASI-adapter array, causes no counter or memory change and returns the current `freeCount`.
 
 For a nonzero root, release validates the allocation header, increments `releaseCount`, and decrements the root reference count.  A remaining reference count ends the operation without freeing memory.  A count that reaches zero increments `freeCount`, recursively releases every marked child owner, and adds the root block to the free list; an invalid root or a root whose count is already zero traps.

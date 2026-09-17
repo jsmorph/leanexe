@@ -8,15 +8,16 @@ entries.  The reference limits the prompt and completion together to
 
 ## Run WASM inference
 
-From the repository root:
+The [reference setup](#run-the-reference) installs the dependencies and
+downloads the checkpoint.  From the repository root:
 
 ```sh
 tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
 ```
 
-The command compiles the Lean model, keeps its packed weights in one
-Wasmtime instance, and prints the prompt and completion.  The original
-tokenizer handles text.  Model arithmetic runs in WASM.  Top-k sampling
+The command compiles the Lean model, keeps its packed weights and attention
+cache in one Wasmtime instance, and prints the prompt and completion.
+The original tokenizer handles text.  Model arithmetic runs in WASM.  Top-k sampling
 uses the Lean SplitMix64 WASM generator for random draws and Python for
 the sampling probabilities.  Defaults are top-k 40, temperature 0.8, and
 seed 42.  Use `--top-k 1` for greedy decoding and `--json` for token IDs,
@@ -25,12 +26,17 @@ timing, allocation counts, and the stopping condition.
 Generation stops at the requested count, end-of-text, or 128 total tokens.
 `--logits PATH` saves the final evaluated context's 50,257 logits as
 little-endian FP32 words.  Those logits select the last generated token.
-The command currently recomputes the prefix at each step.  A key/value
-cache is in development.  The [first WASM completion](wasm-completion-uncached.json)
+The default uses cached keys and values for prior tokens.  `--full`
+recomputes the prefix for comparison.  The [first WASM completion](wasm-completion-uncached.json)
 generated sixteen tokens in 93 seconds and used 514,654,208 bytes of WASM
 linear memory.  It continued the example prompt with:
 
 > called Hukur. The village is a great expanse of white sand and
+
+The [cached completions](wasm-completions.json) record three runs.  The
+story prompt generated 64 tokens in 35.4 seconds, with the same first
+sixteen tokens as the earlier full-prefix run.  A sixteen-token greedy
+completion matches PyTorch's token sequence exactly.
 
 ## Run the reference
 
@@ -66,7 +72,7 @@ That run generated 64 tokens in 3.8 seconds using one CPU thread.
 LeanExe/WASM execution now generates text from the same checkpoint.
 The user approved FP32 arithmetic and packed binary tensors and paused
 proof development.  The [implementation plan](../../plans/gpt2-124m.md)
-records the remaining work.
+records the completed implementation steps.
 
 The first attention projection runs through LeanExe/WASM with the
 pretrained 768 × 2,304 matrix and bias.  Its 2,304 FP32 outputs match a
@@ -104,6 +110,32 @@ The [full inference test record](inference-test.json) identifies the run.
 ```sh
 node test/packed.js --gpt2-inference
 ```
+
+The [cached inference test](cached-test.json) compares 6,432,896 logits
+against PyTorch across all prefix lengths from one to 128 tokens.  The
+maximum absolute difference is 0.0014495849609375.  Every comparison passes
+the test tolerance of 0.002 + 0.0001 times the reference magnitude.  Cached
+and full-prefix WASM logits match bit-for-bit for the nine-token prompt.
+The test also checks cache reset, the position limit, invalid token IDs,
+invalid cache lengths, and incorrect weight lengths.  These are execution
+measurements for the recorded checkpoint and token sequence.  Formal
+proof development remains paused.
+
+The 128-position test took 63.2 seconds and reached 1,107,361,792 bytes of
+WASM linear memory.  After each call, only the weights and current cache
+remain allocated.  The allocator reuses whole freed blocks.  Growing cache
+buffers leave smaller blocks on the free list, which accounts for the
+difference between the linear-memory size and live tensor storage.
+The final key/value cache contains 9,437,184 bytes.
+
+```sh
+node test/packed.js --gpt2-cached
+node test/packed.js --gpt2-completions
+```
+
+The [cached Lean model](../../LeanExe/Models/Gpt2/Cached.lean) defines the
+token step.  The [command-line client](../../training/gpt2/wasm.py) keeps the
+WASM instance resident and releases each superseded cache and logit buffer.
 
 ## Sources
 

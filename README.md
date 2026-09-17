@@ -137,8 +137,9 @@ PyTorch bit-for-bit.  All twelve blocks and the tied vocabulary projection
 now run in WASM.  The nine-token reference prompt's 50,257 logits differ
 from PyTorch by at most 0.0000992.  Run pretrained WASM text generation with
 `tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
-The weights stay resident.  Prefix recomputation currently makes generation
-slow.  A key/value cache is the next step.
+Weights and cached attention keys and values stay resident.  Tests compare
+6,432,896 logits with PyTorch across context lengths one through 128 and
+check cleanup after each call.  Formal proof development remains paused.
 
 The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
 

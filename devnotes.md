@@ -15026,3 +15026,64 @@ linear memory.  After the final result was read and freed, 3,730 allocations
 and 3,728 frees left the resident weights and token buffer.  Prefix
 recomputation dominates runtime.  A per-position, per-layer key/value cache
 is the next implementation step.
+
+### Cached pretrained inference
+
+The cached Lean entry accepts packed weights, the prior key/value cache,
+one token ID, and its position.  It returns an updated cache and all 50,257
+logits.  Cache words follow position, layer, key/value, and channel order.
+The entry rejects incorrect weight and cache lengths, token IDs outside
+the vocabulary, and positions at or beyond 128.  The command defaults to
+cached execution.  --full retains the full-prefix comparison path.
+
+Cache integration exposed compiler errors that the single-array model
+result did not exercise.  Id bind substituted an aggregate loop expression
+into each field use, causing five executions of the twelve-layer loop.
+It now materializes the fold result once.  Per-iteration temporary cleanup
+was absent.  The new cleanup protects the next accumulator's owners and
+releases other fresh nonrecursive buffers.  Fold emitters also needed the
+release-aware expression and binding callbacks already used by array map.
+Without those callbacks, a release in a fold body emitted a trap.
+
+The final accumulated updates buffer needed ownership tracking across
+local bindings, including a null initial owner.  The collector now follows
+those bindings.  A reduced test transforms a pair of loop results and
+checks zero, one, and four iterations, allocation counts, and preserved
+borrowed input.  An earlier version of that diagnostic also allocated a
+prefix inside an append expression and exposed an additional nested
+temporary leak.  The retained reduced test uses a borrowed prefix, matching
+the cache operation.  The nested-temporary case still needs a focused test
+after the subsequent return-materialization changes.
+
+The public cached result exposed two more errors: an owned returned cache
+was freed after its owner slot disappeared during ABI projection, and an
+inline logit-producing call ran separately for the pointer and length.
+Plain exported heap results now materialize their internal slots first,
+then project the ABI.  A reduced public-structure test checks exact
+allocation counts, both byte-array contents, and successful release and
+reuse of each returned allocation.
+
+Cached inference passed all 6,432,896 PyTorch logit comparisons over prefix
+lengths one through 128.  The maximum absolute difference was
+0.0014495849609375.  Cached and full-prefix WASM logits match bit-for-bit
+at nine tokens.  Cache replay is exact, and invalid weight lengths, token
+IDs, cache lengths, and position 128 return empty results.  The run took
+63.23945640499005 seconds.  Its 33,025 allocations and 33,023 frees leave
+the resident weights and final 9,437,184-byte cache.  Linear memory reached
+1,107,361,792 bytes because the allocator retains whole free blocks while
+successive cache buffers grow.  The data directory preserves the record.
+
+The cached CLI produced three recorded completions.  The story prompt
+generated 64 tokens in 35.38210839199019 seconds and used 692,387,840 bytes
+of linear memory.  Its first sixteen tokens match the earlier uncached
+sample exactly.  The science prompt generated 32 tokens in 17.679409634001786
+seconds.  The sixteen-token greedy France completion matches PyTorch's
+token IDs exactly and took 9.866739504999714 seconds.  Each run leaves only
+the resident weights and current cache after its logits are read and freed.
+
+Final checks pass: the packed ownership and host-session tests, sixty-four
+FP32 Lean/IR/Wasmtime cases, the existing FP64 execution tests, thirteen
+WAT/binary comparisons, scalar compiler certificates, and image codec and
+integration targets.  The documentation checker accepts 137 maintained
+Markdown files.  Release bookkeeping and the paused model proof work were
+not resumed.
