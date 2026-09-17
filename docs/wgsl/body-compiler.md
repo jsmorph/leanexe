@@ -20,7 +20,7 @@ open LeanExe.WGSL LeanExe.WGSL.Source
 The four numbers are output rows, output columns, A elements and B elements.
 The directory must not already exist. Run Lean through `tools/leanrun`, as
 required by the repository instructions. The command checks the source
-equality in Lean before writing any output files.
+equality and statement execution theorem in Lean before writing any output files.
 
 ## Supported definitions
 
@@ -49,12 +49,20 @@ computation comes from the definition body. Changing `arithmetic.add` to
 
 ## Verification status
 
-The compiler independently parses the emitted shader text, generates
-`entry.wgslBody` from that parse, and checks
-`entry.wgslSourceCorrect : entry = entry.wgslBody.kernel` in Lean. This is a
-source-to-parsed-computation equality for all arithmetic interpretations and
-all inputs. `entry.wgslShaderParsed` separately proves that the actual shader
-string parses to this computation. Both theorem dependency lists are audited.
+The compiler independently parses the emitted shader text into `entry.wgslCode`,
+which retains bindings and scoped loops. `entry.wgslShaderParsed` proves this
+parse. `entry.wgslSourceCorrect` proves that its source interpretation equals
+the supplied Lean definition. `entry.wgslExecutionCorrect` proves that execution
+of those statements, the guard and the store returns the source value at the
+correct address, for every invocation and input with adequate buffer lengths.
+All three theorem dependency lists are audited before file emission.
+
+The shared execution proof covers local lookup, checked reads, u32 indices,
+accumulator updates, counter tests/increments, lexical scope and the checked
+output store. It proves successful bounded execution, excluding all modeled
+errors, rather than assuming success. The bound checker now has general
+soundness and u32 correspondence proofs. Dispatch coverage and distinct output
+addresses have separate shared proofs.
 
 The parser checks the complete structured grammar, including the edge guard,
 buffer declarations, operations, loop initialization/test/increment, scope and
@@ -64,16 +72,17 @@ axioms prevent file emission. The old GEMM artifact checker remains separate.
 Nine examples cover addition, multiplication, a 2×4 by 4×3 matrix
 multiplication, changing its product to addition, helper functions, changed
 indexing, nested folds, zero-iteration folds and a 1×768 by 768×3 product.
-All have passed both Lean
+All have passed the three Lean
 proofs and executed using native WebGPU on SwiftShader's Vulkan CPU device.
 All 51 output words matched execution of the original Lean definitions using
 pure `Wasm.IEEE32` arithmetic.
 These are bounded tests, not universal runtime-conformance proofs. Python only
 allocates buffers, submits WGSL, reads results and compares words.
 
-Fourteen rejection cases cover unsupported definitions, invalid dimensions,
+Eighteen rejection cases cover unsupported definitions, invalid dimensions,
 buffer/index violations and altered shaders, including changed operations,
-loop count, initial accumulator, output indexing and a removed edge guard.
+loop count, initial accumulator, output indexing, a removed edge guard,
+incorrect counter increments, accumulator assignments and escaped locals.
 Each rejection leaves no emitted package. The saved matrix proof also passed
 a fresh Lean check without invoking the compiler.
 
@@ -82,9 +91,10 @@ assumption for an exact IEEE32 correspondence on all inputs. A successful
 sample run does not prove that every driver preserves subnormals, NaN choices
 or separate multiply/add rounding.
 
-The remaining formal gaps are a general soundness proof for the executable
-index checker, generalized dispatch/memory proofs, and a refinement of the
-subset's model to a complete WGSL formal semantics. See the precise
+The remaining boundaries are a refinement of this subset semantics to a
+complete formal WGSL semantics, external runtime conformance, and a general
+interleaved GPU scheduler model for this new grammar. The proof uses the same
+explicit scalar arithmetic on the source and statement sides. See the precise
 [source specification](lean-source-specification.md). The existing GPT-2
 bundle still uses the original GEMM templates; it has not been migrated.
 
