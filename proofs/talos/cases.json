@@ -779,9 +779,11 @@
         "Project.TinyGpt2Checked.Spec.accepted_exact",
         "Project.TinyGpt2Checked.Spec.prepare_exact",
         "Project.TinyGpt2Checked.Spec.prepare_state",
-        "Project.TinyGpt2Checked.Spec.infer_exact"
+        "Project.TinyGpt2Checked.Spec.infer_exact",
+        "Project.TinyGpt2Checked.Spec.inferChecked_exact",
+        "Project.TinyGpt2Checked.Spec.inferChecked_real_error"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }
