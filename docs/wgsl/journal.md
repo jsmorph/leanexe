@@ -495,3 +495,40 @@ the worked artifact is sufficient for a fresh package check. Final review
 moved the bundle rejection case into the same checked corpus configuration as
 the positive shapes; its mutation bytes and expected rejection match the
 retained corpus attempt. No additional Lean or runtime test scope was added.
+
+## 2026-09-17 — Full-roadmap continuation and parent integration
+
+The user's instruction now explicitly covers the entire WGSL agenda, including
+mixed-precision GPT integration and the subsequent performance stage. The
+completed GEMM bundle is a checkpoint, not the completion of this request.
+Fetched main at 9f2317890ab72e89483b81e32213efb91945d146 and prepared a conflict-free
+merge preserving both branch histories. The parent brings complete tiny-model
+inference execution, checkpoint output bounds, runtime weight preparation,
+wider LayerNorm, and the negative exponential / wider GELU / wider softmax
+component results. Its composed real-model GPT numerical theorem remains open.
+
+The first selected GPT operation is the 4-by-256 vocabulary projection of the
+last hidden row. Binary64 hidden-state computation and bias addition remain
+explicit in the mixed-precision specification. Binary64-to-binary32 conversion,
+source-ordered binary32 GEMM, and exact binary32-to-binary64 conversion each
+need their own proof boundary. The existing small-input GEMM error domain is
+insufficient for checkpoint hidden values bounded by seven and weights bounded
+by four. General binary32 packing and dyadic-rounding lemmas are being prepared
+before using the projection in a new artifact. Native Float conversion externs
+are opaque in the pinned interpreter and are not a numerical proof.
+
+The aggregate inference dependency build reached its 180-second limit without
+an error. A second, narrower inference execution build also exhausted its
+120-second aggregate budget while building dependencies. Split subsequent
+checks into softmax, projection, contraction, and hidden-state composition;
+the first three pass with only the standard three axioms. The failed aggregate
+logs and all completed dependency artifacts are retained. No timeout or
+heartbeat limits have been increased, and no unrelated regression suite is run.
+
+The hidden-state check also exhausted its 120-second aggregate budget after
+spending 69 seconds compiling HiddenCode and completing the composition macro
+module. No error was reported; the final hidden theorem was not rechecked to
+completion in this attempt. This merge checkpoint records successful softmax,
+projection and contraction execution checks, not a new full-inference proof
+run. The imported source and its parent history are unchanged. Subsequent work
+will use smaller theorem boundaries where this composition is required.

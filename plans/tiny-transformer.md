@@ -22,6 +22,9 @@ order before model integration.  The pinned TorchLean activation uses the
 tanh GELU formula.  Training is outside the inference proof.
 
 The user approved a proved 64-byte context as the subsequent target.
+The training backend remains CPU PyTorch 2.9.1 in the repository-local
+environment.  The user approved the pinned Tiny Shakespeare corpus,
+all byte tokens, and all 256 next-token logits per inference call.
 Complete the four-byte model's execution, checkpoint ranges, and composed
 numerical bound first.  Parameterize new sequence and softmax lemmas by
 length where practical.  The larger model will require array-based context
@@ -30,6 +33,13 @@ traversal, expanded positional embeddings, training, and new certificates.
 The user also authorized later seed-controlled sampling from the top k logits
 using the [Lean PRNG](../docs/prng.md).  PRNG correctness remains outside the
 formal proof scope.
+
+The user subsequently approved runtime weight validation and clipping,
+with a parameterized magnitude bound targeting [0, 10].  Nonfinite weights
+are rejected.  Numerical guarantees refer to the clipped weights and must
+reuse one theorem when the checkpoint changes.  The
+[runtime-weight analysis](tiny-model-runtime-weights.md) records the
+revised proof sequence, cancellation test, and numerical-method proposal.
 
 ## Component sequence
 
@@ -70,8 +80,13 @@ defines every stage of the audited architecture.  Its causal-prefix
 theorem proves equal output at a position whenever the input prefixes
 through that position agree.  The softmax computation now accepts a
 proved active-score spread of at most sixteen in its internal numerical
-theorem and propagates real score error with multiplier two.  Frozen
-checkpoint ranges and full-model execution remain open.
+theorem and propagates real score error with multiplier two.  Checkpoint
+range certificates prove finite hidden coordinates and all 256 finite
+logits for every four-byte input.  The composed numerical error bound
+remains open.
+The complete generated-WAT inference execution theorem passes, including
+termination, exact raw-bit output, checkpoint preservation, and its memory
+reservation.
 
 The [weight layout and arithmetic body](tiny-model-layout.md) record the
 runtime tensor representation, compiled initialization tests, and remaining

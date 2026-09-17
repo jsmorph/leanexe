@@ -5,5 +5,5 @@
   "export": "infer",
   "context": 4,
   "vocabulary": 256,
-  "verification": "Complete model proof in progress"
+  "verification": "Generated-WAT exact execution proved; composed numerical error bound in progress"
 }

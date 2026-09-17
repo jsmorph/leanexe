@@ -1,0 +1,81 @@
+{
+  "format": "leanexe-tiny-gpt2-numerical-audit-v1",
+  "bound": 10.0,
+  "wasm_sha256": "336f7e80db383f7d4745f711c53a355d4074fced19d0d3bc37e4c4bd2b4c849a",
+  "reference": "80-digit Decimal tanh-GELU formula on decoded binary64 weights",
+  "cancellation_case": {
+    "tokens": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "nonzero_weight_words": {
+      "1140": "4008147ae147ae14",
+      "1148": "4008000000000000",
+      "1149": "c008000000000000",
+      "1150": "4008000000000000",
+      "1151": "c008000000000000",
+      "1180": "c02209f2cf5c7a7a",
+      "1181": "402209f2cf5c7a7a",
+      "1182": "c02209f2cf5c7a7a",
+      "1183": "402209f2cf5c7a7a",
+      "1184": "4024000000000000",
+      "1440": "c024000000000000",
+      "1696": "4024000000000000",
+      "1952": "c024000000000000",
+      "2480": "4024000000000000",
+      "2481": "4024000000000000",
+      "2482": "4024000000000000",
+      "2483": "4024000000000000"
+    },
+    "reference_residual": "-7.371305633241558406648334546848447043342875669729552571853755962E-16",
+    "reference_logit": "-9.3240460521092436205656471029634187829837222948502002267235908897453050189351252E-11",
+    "wasm_logit": 383.2155982715268,
+    "wasm_absolute_error": "383.21559827162004146023003177989652866341244668782983722294850200226723590889745",
+    "native_exp_logit": 0.0,
+    "native_exp_absolute_error": "9.3240460521092436205656471029634187829837222948502002267235908897453050189351252E-11",
+    "proposed_logit": 0.0,
+    "proposed_absolute_error": "9.3240460521092436205656471029634187829837222948502002267235908897453050189351252E-11"
+  },
+  "approximation_samples": {
+    "status": "Proposed arithmetic, evaluated in Python binary64; numerical measurements",
+    "exp_points": 276,
+    "exp_maximum_error": "8.260823354782691139694487691791846127711647777459039903882347446E-17",
+    "exp_witness": -0.9999999999999999,
+    "gelu_points": 519,
+    "gelu_maximum_error": "1.1026461861720466484808807469543798756551690214440024684448082759E-15",
+    "gelu_witness": 6.84375
+  },
+  "sensitivity_scope": "Conservative real perturbation estimates. Binary64 roundoff is omitted. These are numerical calculations, not Lean certificates.",
+  "sensitivity": [
+    {
+      "context_length": 4,
+      "normalized_magnitude": "30",
+      "projection_magnitude": "1200",
+      "score_spread": "4072935.0596345137405488635257239304662806550010856104507488376454133095379708682",
+      "first_residual_magnitude": "48030",
+      "expansion_magnitude": "1210",
+      "second_residual_magnitude": "144840",
+      "real_logit_magnitude": "1210",
+      "gelu_local_error_multiplier": "20238577.025077627724792918684369398615805152891681387691888031057872604407291125",
+      "softmax_coordinate_error_multiplier": "3932160048572584860.1863065395030048424865566779323669400353304605312745388942504",
+      "gelu_contribution_at_error_0_01": "202385.77025077627724792918684369398615805152891681387691888031057872604407291125",
+      "softmax_contribution_at_error_1e_16": "393.21600485725848601863065395030048424865566779323669400353304605312745388942504"
+    },
+    {
+      "context_length": 64,
+      "normalized_magnitude": "30",
+      "projection_magnitude": "1200",
+      "score_spread": "4072935.0596345137405488635257239304662806550010856104507488376454133095379708682",
+      "first_residual_magnitude": "48030",
+      "expansion_magnitude": "1210",
+      "second_residual_magnitude": "144840",
+      "real_logit_magnitude": "1210",
+      "gelu_local_error_multiplier": "20238577.025077627724792918684369398615805152891681387691888031057872604407291125",
+      "softmax_coordinate_error_multiplier": "62914560777161357762.980904632048077479784906846917871040565287368500392622308008",
+      "gelu_contribution_at_error_0_01": "202385.77025077627724792918684369398615805152891681387691888031057872604407291125",
+      "softmax_contribution_at_error_1e_16": "6291.4560777161357762980904632048077479784906846917871040565287368500392622308008"
+    }
+  ]
+}

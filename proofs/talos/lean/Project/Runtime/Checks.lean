@@ -40,13 +40,17 @@ import Project.EulerCertificateFlux.Program
 import Project.EulerCertificate.Program
 import Project.ExpSmall.Program
 import Project.ExpWide.Program
+import Project.ExpNeg.Program
 import Project.Softmax.Program
+import Project.SoftmaxWide.Program
 import Project.LayerNorm.Program
 import Project.Gelu.Program
+import Project.GeluWide.Program
 import Project.TinyGpt2Hidden.Program
 import Project.TinyGpt2Infer.Program
 import Project.FoldSum.Program
 import Project.F64Dot2CheckedBits.Program
+import Project.F64Clip.Program
 import Project.F64DotCheckedBits.Program
 import Project.F64Horner2CheckedBits.Program
 import Project.F64MulBits.Program
@@ -108,6 +112,11 @@ example : eraseTypeIdx Project.F64Dot2CheckedBits.func2Def = eraseTypeIdx allocF
 example : eraseTypeIdx Project.F64Dot2CheckedBits.func3Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.F64Dot2CheckedBits.func4Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.F64Dot2CheckedBits.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.F64Clip.func7Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.F64Clip.func8Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.F64Clip.func9Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.F64Clip.func10Def = eraseTypeIdx (releaseFuncDef 10) := rfl
 
 example : eraseTypeIdx Project.F64Horner2CheckedBits.func2Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.F64Horner2CheckedBits.func3Def = eraseTypeIdx resetFuncDef := rfl
@@ -315,10 +324,20 @@ example : eraseTypeIdx Project.ExpWide.func5Def = eraseTypeIdx resetFuncDef := r
 example : eraseTypeIdx Project.ExpWide.func6Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.ExpWide.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
 
+example : eraseTypeIdx Project.ExpNeg.func8Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ExpNeg.func9Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ExpNeg.func10Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ExpNeg.func11Def = eraseTypeIdx (releaseFuncDef 11) := rfl
+
 example : eraseTypeIdx Project.Softmax.func12Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.Softmax.func13Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Softmax.func14Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Softmax.func15Def = eraseTypeIdx (releaseFuncDef 15) := rfl
+
+example : eraseTypeIdx Project.SoftmaxWide.func13Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func14Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func15Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.SoftmaxWide.func16Def = eraseTypeIdx (releaseFuncDef 16) := rfl
 
 example : eraseTypeIdx Project.LayerNorm.func7Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.LayerNorm.func8Def = eraseTypeIdx resetFuncDef := rfl
@@ -329,6 +348,11 @@ example : eraseTypeIdx Project.Gelu.func9Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func10Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func11Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Gelu.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
+
+example : eraseTypeIdx Project.GeluWide.func14Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.GeluWide.func15Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.GeluWide.func16Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.GeluWide.func17Def = eraseTypeIdx (releaseFuncDef 17) := rfl
 
 example : eraseTypeIdx Project.TinyGpt2Hidden.func72Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Hidden.func73Def = eraseTypeIdx resetFuncDef := rfl
