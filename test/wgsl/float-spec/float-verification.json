@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "subject": "Artifact implements the independent floating-point word algorithm",
+  "specification": "Project.TinyGpt2.FloatSpec.logits:v1",
+  "theorem": "Project.WGSL.GptFloatArtifact.artifact",
+  "specificationSources": {
+    "proofs/talos/lean/Project/TinyGpt2/FloatSpec/Algorithm.lean": "91181d91ec24ffc9336391ee475ce2db1b3cba31c8e44225da7a0679de46e723",
+    "proofs/talos/lean/Project/WGSL/PrecisionModel.lean": "667d420889ef984b15185b69c30ecb08606ee70b9fb47d4166a795d02a15517e"
+  },
+  "shaderSha256": "1b65d91e06689223846b9737830d4a09b1425779bd996b65a2ec6675abad8067",
+  "manifestSha256": "a787f77fcf453389a4bd743e38e1e2f66ef59bb66f6cbadafdedf9245741aac8",
+  "bridgeSha256": "b376f17fcfc2fcbd170d907de11380ca63bc6206a8f199e97870179d81ec2acf",
+  "artifacts": {
+    "hidden.wasm": {
+      "sha256": "d03534266e4171a07512566429763ba890506ba306a6073379d2433b395837a2",
+      "bytes": 16006
+    },
+    "finish.wasm": {
+      "sha256": "8fe05c8c9b298f1598df23b4608b18a51b9adfc0b4e17245339b47ebaa2aa56d",
+      "bytes": 61
+    },
+    "weights.bin": {
+      "sha256": "229eeb877292325c6343079aad6e8543ef569c1b5a4d510debd95d8677689060",
+      "bytes": 19904
+    }
+  },
+  "proofSha256": "72a48bbb94a3514f964762d42a0c5ad6bb69cd2adf40c799876ef96ac5f41542",
+  "axioms": {
+    "Project.TinyGpt2.FloatSpec.Correspondence.hidden_eq": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.Correspondence.logits_eq": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.Evaluation.hidden_eq": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.GptFloatArtifact.hidden_interface": [],
+    "Project.WGSL.GptFloatArtifact.finish_interface": [],
+    "Project.WGSL.GptFloatArtifact.hidden_artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.GptFloatArtifact.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.negative_zero": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.head_zero_sign": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.head_subnormals": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.balanced_order": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.sequential_differs": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.exponential_cutoff": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2.FloatSpec.ContractTests.canonical_nan": [
+      "propext",
+      "Quot.sound"
+    ]
+  },
+  "compositionAxioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedFloatShape": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedFloatProfile": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedFloatExecution": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "claims": [
+    "hidden Wasm decode, validation and exact words",
+    "hidden memory preservation",
+    "bridge termination",
+    "raw binary32 output words equal the specification",
+    "finish Wasm decode, validation and exact binary64 words"
+  ],
+  "theoremDomain": "Runtime parameter arrays of at least 2488 words; every four-byte context and every position 0–3; explicit memory/transfer and runtime premises",
+  "harnessDomain": "Exactly 2488 finite binary64 parameter words with sign-cleared encoding <= 0x4010000000000000",
+  "profile": {
+    "id": "leanexe-f32-rne-separate-v1",
+    "revision": 1
+  },
+  "realReferenceRequired": false,
+  "numericalErrorTolerance": null,
+  "runtimeConformanceEstablished": false,
+  "boundary": "Formal Wasm uses the pinned IEEE word model, including its canonical NaNs. Finite conversion and separate-profile native execution/transfer must match the stated word semantics. JavaScript/native engines are not verified here.",
+  "baseBundleReceipt": "bundle-verification.json"
+}

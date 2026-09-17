@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "shaderSha256": "1b65d91e06689223846b9737830d4a09b1425779bd996b65a2ec6675abad8067",
+  "manifestSha256": "a787f77fcf453389a4bd743e38e1e2f66ef59bb66f6cbadafdedf9245741aac8",
+  "proofSha256": "8bb347c52af7d62c952c446acfa6e07e725c2957550db835fb743ea53f9759f0",
+  "profile": {
+    "id": "leanexe-f32-rne-separate-v1",
+    "revision": 1
+  },
+  "axioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "subject": "Exact Wasm bridge bytes and exact WGSL shader package, with composed memory-result theorems",
+  "claims": [
+    "termination",
+    "memory safety",
+    "GEMM correspondence",
+    "conditional numerical bound",
+    "Wasm small-step termination",
+    "input byte transfer",
+    "output memory correspondence",
+    "memory preserved outside C (separate-profile theorem)"
+  ],
+  "exactness": "separate binary32 GEMM",
+  "numericalDomain": "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
+  "wideNumericalDomain": "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
+  "runtimeConformanceEstablished": false,
+  "boundary": "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement.",
+  "hostSha256": "b376f17fcfc2fcbd170d907de11380ca63bc6206a8f199e97870179d81ec2acf",
+  "hostAxioms": {
+    "Project.WGSL.HostBinary.encoded": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.HostBinary.interface": [
+      "propext"
+    ],
+    "Project.WGSL.HostMemory.upload_word": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.WGSL.HostExecution.completes": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.HostExecution.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.HostExecution.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.HostExecution.numerical_wide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "bundleAxioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedHostExact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedHostNumerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedHostNumericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "bundleProofSha256": "9a8464ab2103226131bb2414435fa711f2149f5d3d77b834d7d3bf4c54f833cd",
+  "hostPrecondition": "HostExecution.Ready: aligned in-bounds regions and bounded matrix sizes",
+  "runtimeContract": "HostExecution.contract: exact input byte snapshots, conforming WGSL dispatch and completed readback",
+  "hostImplementationVerified": false
+}
