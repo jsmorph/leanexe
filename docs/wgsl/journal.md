@@ -979,3 +979,28 @@ bridge/finish theorem pass with standard logical axioms; the final module checks
 in 3.9 seconds. The exact function and theorem are shared across all sequence
 lengths and runtime parameters. Native Lean evaluation and transfer remain
 explicit execution boundaries. The runtime gate/corpus is the next check.
+
+The GPT2/128 gate and corpus pass in check-hTFGw7. Seven cases include lengths
+one, four, 64 and 128, full-length zero/255 contexts, and clipping at 0.5. All
+1,792 raw head words and 1,792 final logits match Lean; four invalid token-domain
+cases are rejected. The checker validates all required reference fields and
+compares native promotion words explicitly. No new Wasm or shader is generated.
+
+Parent main advanced to bd6f58dc during the run. Its sequence map execution
+proofs and shared allocation lemmas were merged in f50ddf39. A second complete
+head package check and execution in check-d7rBqu uses a readable 128-byte prompt
+ending "outrageous fortune". All 256 head and final words match; space is the
+highest-scoring next byte. Both verification receipts are identical, including
+all recorded model source hashes. The older GptFloatArtifact also builds after
+the parent merge, with standard logical axioms. The maintained-document checker
+passes 142 files.
+
+The accepted proof reuses dispatch correspondence and exact finishing lemmas;
+its only layout-specific work is the head buffer mapping. It does not attempt
+to recreate the parent's unfinished sequence allocation/hidden-Wasm proofs.
+The small input review checks the changed matrix/bias offsets, UTF-8 byte limits,
+bounds, malformed tensor shapes/counts and malformed parameter words. Portable
+evidence in test/wgsl/gpt128 retains all eight native runs and complete Lean
+reference values. The maximum observed mixed-versus-binary64 difference is
+1.0703345028062472e-6, recorded as an observation only. The executable command
+and documentation identify the Lean hidden stage and incomplete full-Wasm proof.

@@ -113,6 +113,22 @@ executions and four rejection checks; all Lean calls run sequentially.
 Native transfer, conversion and restricted-profile conformance remain explicit
 premises of the formal result.
 
+## GPT2/128
+
+The [128-byte runner](../../docs/wgsl/gpt128.md) uses the parent Lean hidden
+computation and the verified bridge/WGSL/finish stages. It validates checkpoint
+architecture and tensor shapes, preserves the parent's clipping policy, and
+checks every head and final output word against the mixed-precision Lean function.
+
+```sh
+tools/artifact-proof.js wgsl-gpt128-run data/tiny-gpt2-128-v1/checkpoint.json --text "To be, or not to be"
+tools/artifact-proof.js wgsl-gpt128-corpus build/wgsl/my-gpt128-corpus
+```
+
+The optional `--bound B` precedes `--text` or `--tokens` and defaults to ten.
+The complete hidden-Wasm execution proof remains unfinished; this command
+evaluates the hidden computation directly in Lean and does not execute that Wasm.
+
 ## Resident GPT session and head measurements
 
 Repeated contexts can share one native process, immutable head weights and one

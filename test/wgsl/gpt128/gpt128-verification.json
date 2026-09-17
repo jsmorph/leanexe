@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "specification": "Project.TinyGpt2Seq.Mixed.inferChecked:v1",
+  "theorem": "Project.WGSL.GptSequence.completes",
+  "formalScope": "Exact Wasm bridge, parsed WGSL projection, and finish Wasm; given the Lean sequence hidden row and stated transfer/runtime premises",
+  "hiddenBackend": "Lean evaluation of Project.TinyGpt2Seq.hidden",
+  "hiddenWasmExecuted": false,
+  "completePipelineArtifactProof": false,
+  "runtimeConformanceEstablished": false,
+  "contextDomain": "1–128 byte tokens",
+  "parameterPolicy": "Parent F64Clip.prepare: 2984 finite words, clipped to caller bound in [0,10]",
+  "checkpointSha256": "1e98ac0661cec2eed22473af75bb5ca2dac8bf1dd9a1788567981f57df4e6356",
+  "weightsSha256": "6c52fa88f37e30be0123a5b5e96ff4423b3518bf53199cbd12a6953285a54e53",
+  "shaderSha256": "1b65d91e06689223846b9737830d4a09b1425779bd996b65a2ec6675abad8067",
+  "bridgeSha256": "b376f17fcfc2fcbd170d907de11380ca63bc6206a8f199e97870179d81ec2acf",
+  "finishSha256": "8fe05c8c9b298f1598df23b4608b18a51b9adfc0b4e17245339b47ebaa2aa56d",
+  "manifestSha256": "a787f77fcf453389a4bd743e38e1e2f66ef59bb66f6cbadafdedf9245741aac8",
+  "proofSha256": "4a7d2c1751ec92a05417330942c96af920b86a0cf28de7c23430d30a619f7944",
+  "modelSources": {
+    "Project/TinyGpt2Seq/Model.lean": "761d9c2233fb4ec316c802de7404c1951dc15599d02c47bd9ec2015b78812e34",
+    "Project/TinyGpt2Seq/Layout.lean": "e1043f83eb35e5bbab748aa3f9326baa787aa3d98179a789a30ab45372f7ba14",
+    "Project/TinyGpt2Seq/Inference.lean": "13a2a406d91ea163184ff2e1dbb53809a0fb545ac291ba10cb000e008397a54a",
+    "Project/TinyGpt2Seq/Mixed.lean": "a0b6c7c722c1a8ced6f7a0fad4cd10de485e6771c52aacd296762c1249cf98d4",
+    "Project/SequenceSoftmax/Model.lean": "0498e9b35c96535f061ab68522fdf55f2785bddbddc2cd08ec96b43f63b083b1",
+    "Project/TinyGpt2/Model.lean": "4c595aabda94f0e78dc1a93c281758da7878af14e53ce3def087a527c69001f3",
+    "Project/TinyGpt2/FloatSpec/Algorithm.lean": "91181d91ec24ffc9336391ee475ce2db1b3cba31c8e44225da7a0679de46e723",
+    "Project/WGSL/PrecisionModel.lean": "667d420889ef984b15185b69c30ecb08606ee70b9fb47d4166a795d02a15517e",
+    "Project/F64Clip/Model.lean": "7ad1b2aefa0bfa7ce748709bfee655e041e91d99412784f232e2de68d93b4361"
+  },
+  "axioms": {
+    "Project.WGSL.GptSequence.finish_interface": [],
+    "Project.WGSL.GptSequence.headWord_eq": [
+      "propext",
+      "Quot.sound"
+    ],
+    "Project.WGSL.GptSequence.dispatch_word": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.GptSequence.completes": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.WGSL.FinishBinary.artifact_exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2Seq.Mixed.infer_word": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Project.TinyGpt2Seq.Mixed.checked_word": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "compositionAxioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedSequenceShape": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedSequenceProfile": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checkedSequenceExecution": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "profile": {
+    "id": "leanexe-f32-rne-separate-v1",
+    "revision": 1
+  },
+  "realReferenceRequired": false,
+  "baseBundleReceipt": "bundle-verification.json"
+}

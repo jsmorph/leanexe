@@ -1,0 +1,23 @@
+/Users/jamiestephens/src/leanexe/build/wgsl/package-checks/check-d7rBqu/Gpt128PackageProof.lean:56:0: warning: Definition `numerical` is a proposition; use `theorem` instead of `def`
+
+Note: This linter can be disabled with `set_option linter.defProp false`
+/Users/jamiestephens/src/leanexe/build/wgsl/package-checks/check-d7rBqu/Gpt128PackageProof.lean:57:0: warning: Definition `numericalWide` is a proposition; use `theorem` instead of `def`
+
+Note: This linter can be disabled with `set_option linter.defProp false`
+/Users/jamiestephens/src/leanexe/build/wgsl/package-checks/check-d7rBqu/Gpt128PackageProof.lean:58:0: warning: Definition `exact` is a proposition; use `theorem` instead of `def`
+
+Note: This linter can be disabled with `set_option linter.defProp false`
+'CheckedWGSLPackage.package' depends on axioms: [propext, Classical.choice, Quot.sound]
+'CheckedWGSLPackage.artifact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'CheckedWGSLPackage.numerical' depends on axioms: [propext, Classical.choice, Quot.sound]
+'CheckedWGSLPackage.numericalWide' depends on axioms: [propext, Classical.choice, Quot.sound]
+'CheckedWGSLPackage.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+/Users/jamiestephens/src/leanexe/build/wgsl/package-checks/check-d7rBqu/Gpt128PackageProof.lean:81:0: warning: Definition `checkedSequenceExecution` is a proposition; use `theorem` instead of `def`
+
+Note: This linter can be disabled with `set_option linter.defProp false`
+'checkedSequenceShape' depends on axioms: [propext, Classical.choice, Quot.sound]
+'checkedSequenceProfile' depends on axioms: [propext, Classical.choice, Quot.sound]
+'checkedSequenceExecution' depends on axioms: [propext, Classical.choice, Quot.sound]
+WGSL_PACKAGE_BINDING {"bindings":{"a":0,"b":1,"c":2,"group":0},"buffers":{"a":{"bytes":16,"elements":4},"b":{"bytes":4096,"elements":1024},"c":{"bytes":1024,"elements":256}},"dimensions":{"cols":256,"inner":4,"rows":1},"dispatchWorkgroups":[32,1,1],"entryPoint":"gemm_f32","kernel":"gemm_f32","profile":{"id":"leanexe-f32-rne-separate-v1","revision":1},"schemaVersion":1,"wgslRevision":"2026-08-17","workgroupSize":[8,8,1]}
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable

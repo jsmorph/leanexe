@@ -1,0 +1,10 @@
+'Project.WGSL.GptSequence.finish_interface' does not depend on any axioms
+'Project.WGSL.GptSequence.headWord_eq' depends on axioms: [propext, Quot.sound]
+'Project.WGSL.GptSequence.dispatch_word' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.GptSequence.completes' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.FinishBinary.artifact_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.TinyGpt2Seq.Mixed.infer_word' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.TinyGpt2Seq.Mixed.checked_word' depends on axioms: [propext, Classical.choice, Quot.sound]
+WGSL_GPT128_FINISH_VERIFIED
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
