@@ -7,6 +7,10 @@ command=${1:-help}
 if [ "$#" -gt 0 ]; then shift; fi
 case "$command" in
  build) exec "$root/tools/wgsl/gpt2/build.sh" "$@" ;;
+ test)
+  cd "$root"
+  if [ "$(uname -s)" = Darwin ]; then . tools/macos-env.sh; fi
+  exec python3 tools/wgsl/gpt2/test.py ;;
  serve)
   [ -f "$bundle/index.html" ] || { echo 'Run tools/gpt2 build first' >&2; exit 1; }
   printf 'Open http://localhost:8766/\n'
@@ -22,5 +26,5 @@ case "$command" in
    export DYLD_LIBRARY_PATH VK_ICD_FILENAMES VK_DRIVER_FILES
   fi
   exec "$bundle/gpt2" "$bundle" "$@" ;;
- *) printf 'tools/gpt2 build\ntools/gpt2 run --prompt "The purpose of science is" --generate 64\ntools/gpt2 serve\n' ;;
+ *) printf 'tools/gpt2 build\ntools/gpt2 run --prompt "The purpose of science is" --generate 64\ntools/gpt2 serve\ntools/gpt2 test\n' ;;
 esac

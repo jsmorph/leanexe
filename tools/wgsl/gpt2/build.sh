@@ -29,14 +29,9 @@ for shape in 2304:768 768:768 3072:768 768:3072 25129:768 25128:768; do
   index=$((index+1))
 done
 python3 tools/wgsl/gpt2/manifest.py "$out"
-c_api=${WASMTIME_C_API:-"$root/build/tools/wasmtime/wasmtime-v44.0.0-x86_64-linux-c-api"}
-wgpu=${LEANEXE_WGPU_SOURCE:-"$root/build/tools/wgpu-native-768f15f6-vulkan"}
-crypto="-lcrypto"
-if [ "$(uname -s)" = Darwin ]; then crypto=""; fi
-cc -std=c11 -O2 -Wall -Wextra -Werror -I"$c_api/include" -I"$wgpu/ffi" -I"$wgpu/ffi/webgpu-headers" -I"$out" \
-  tools/wgsl/gpt2/native.c -L"$c_api/lib" -lwasmtime -Wl,-rpath,"$c_api/lib" \
-  -L"$wgpu/target/release" -lwgpu_native -Wl,-rpath,"$wgpu/target/release" $crypto -o "$out/gpt2"
+tools/wgsl/gpt2/compile-native.sh
 for name in index.html app.js host.js; do
   if [ -f "tools/wgsl/gpt2/$name" ]; then cp "tools/wgsl/gpt2/$name" "$out/$name"; fi
 done
+python3 tools/wgsl/gpt2/archive.py "$out"
 printf 'Built %s\n' "$out"

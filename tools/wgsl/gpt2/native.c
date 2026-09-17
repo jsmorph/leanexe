@@ -165,7 +165,7 @@ static Words forward(Runtime *r,GPU *g,Words *cache,size_t token,size_t position
 static size_t number(const char *s,size_t maximum){char *end=NULL;need(*s>='0'&&*s<='9',"invalid integer");unsigned long long n=strtoull(s,&end,10);need(end&&*end==0&&n<=maximum,"integer out of range");return (size_t)n;}
 int main(int argc,char **argv){
   need(argc>=4,"usage: gpt2 BUNDLE --prompt TEXT [--generate 64] [--temperature 0|0.7|0.8|1] [--seed 42] [--logits FILE] [--tokenize TEXT]");
-  const char *prompt=NULL,*logits_path=NULL;size_t count=64;uint64_t sampling[3]={0x3FE999999999999A,40,42};bool only_tokens=false;
+  const char *prompt=NULL,*logits_path=NULL,*trace_path=NULL;size_t count=64;uint64_t sampling[3]={0x3FE999999999999A,40,42};bool only_tokens=false;
   for(int i=2;i<argc;i++){
     need(i+1<argc,"missing option value");const char *option=argv[i],*v=argv[++i];
     if(!strcmp(option,"--prompt")||!strcmp(option,"--tokenize")){need(!prompt,"duplicate prompt");prompt=v;only_tokens=!strcmp(option,"--tokenize");}
@@ -174,7 +174,8 @@ int main(int argc,char **argv){
     else if(!strcmp(option,"--temperature")){
       if(!strcmp(v,"0"))sampling[0]=0;else if(!strcmp(v,"0.7"))sampling[0]=0x3FE6666666666666;
       else if(!strcmp(v,"0.8"))sampling[0]=0x3FE999999999999A;else if(!strcmp(v,"1"))sampling[0]=0x3FF0000000000000;else need(false,"temperature must be 0, 0.7, 0.8 or 1");
-    }else if(!strcmp(option,"--logits")){need(!logits_path,"duplicate logits path");logits_path=v;}else need(false,"unknown option");
+    }else if(!strcmp(option,"--logits")){need(!logits_path,"duplicate logits path");logits_path=v;}
+    else if(!strcmp(option,"--trace")){need(!trace_path,"duplicate trace path");trace_path=v;}else need(false,"unknown option");
   }
   need(prompt&&strlen(prompt)>0&&strlen(prompt)<=16384,"prompt must contain 1..16384 UTF-8 bytes");Runtime r;init_runtime(&r,argv[1]);
   Words bytes={allocate(strlen(prompt)*8),strlen(prompt)};for(size_t i=0;i<bytes.size;i++)bytes.data[i]=(unsigned char)prompt[i];
@@ -185,12 +186,15 @@ int main(int argc,char **argv){
   Words logits={0};for(size_t i=0;i<tokens.size;i++){logits=forward(&r,&g,cache,tokens.data[i],i,i+1==tokens.size);fprintf(stderr,"\rPrompt %zu/%zu",i+1,tokens.size);}fputc('\n',stderr);
   if(logits_path){FILE *f=fopen(logits_path,"wb");need(f!=NULL,"cannot write logits");need(fwrite(logits.data,8,logits.size,f)==logits.size,"write logits");fclose(f);}
   fwrite(prompt,1,strlen(prompt),stdout);fflush(stdout);
+  FILE *trace=NULL;if(trace_path){trace=fopen(trace_path,"wb");need(trace!=NULL,"cannot write trace");}
   for(size_t step=0;step<count;step++){
-    Words picked=compute(&r,5,logits,(Words){0},(Words){sampling,3},0,2);free(logits.data);logits=(Words){0};uint64_t token=picked.data[0];sampling[2]=picked.data[1];free(picked.data);need(token<50257,"sampled token range");if(token==50256)break;
+    Words picked=compute(&r,5,logits,(Words){0},(Words){sampling,3},0,2);uint64_t token=picked.data[0];sampling[2]=picked.data[1];free(picked.data);need(token<50257,"sampled token range");
+    if(trace){need(fwrite(&token,8,1,trace)==1&&fwrite(logits.data,8,logits.size,trace)==logits.size,"write trace");}
+    free(logits.data);logits=(Words){0};if(token==50256)break;
     Words text=tokenize(&r,1,(Words){&token,1});for(size_t i=0;i<text.size;i++){need(text.data[i]<256,"decoded byte range");fputc((int)text.data[i],stdout);}free(text.data);fflush(stdout);
     if(step+1<count)logits=forward(&r,&g,cache,token,tokens.size+step,true);
   }
-  putchar('\n');free(logits.data);free(tokens.data);for(size_t i=0;i<12;i++)free(cache[i].data);
+  putchar('\n');if(trace)fclose(trace);free(logits.data);free(tokens.data);for(size_t i=0;i<12;i++)free(cache[i].data);
   for(size_t i=0;i<50;i++){wgpuBindGroupRelease(g.groups[i]);wgpuBufferRelease(g.weights[i]);}for(size_t i=0;i<6;i++)wgpuComputePipelineRelease(g.pipelines[i]);
   wgpuBufferRelease(g.a);wgpuBufferRelease(g.c);wgpuBufferRelease(g.read);wgpuQueueRelease(g.queue);wgpuDeviceRelease(g.device);wgpuAdapterRelease(g.adapter);wgpuInstanceRelease(g.instance);
   free(r.table.data);free(r.params.data);wasmtime_store_delete(r.store);wasm_engine_delete(r.engine);return 0;
