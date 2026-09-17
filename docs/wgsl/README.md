@@ -21,12 +21,14 @@ correctness claim.
   buffers. Validation bounds dimensions, storage sizes, binding identities,
   workgroup size, and dispatch counts.
 
-The scalar semantics in the root library are currently parameters. The
+The scalar semantics in the root library are parameters. The
 invocation model now establishes successful termination, dynamic-error absence
 and source-ordered dot-product correspondence under scalar totality and buffer
 size preconditions. The dispatch layer lifts this result to arbitrary
-interleavings and observable matrix outputs. A concrete binary32 interpretation
-and numerical bounds remain separate obligations.
+interleavings and observable matrix outputs. `Project.WGSL.Binary32` in the
+existing Talos proof workspace supplies a concrete interpretation and restricted
+exactness for the captured rectangular shader. `ArtifactNumerical` composes the
+dispatch theorem with a binary32 accumulation bound.
 
 ## Profiles and trust boundary
 
@@ -65,16 +67,44 @@ kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
 1. Expand the fixed native execution corpus beyond the first rectangular artifact.
-2. Instantiate binary32 arithmetic and prove execution correspondence under
-   the selected numerical profile.
-3. Prove GEMM numerical bounds and restricted exactness, then independently check
-   the exact artifact package.
-4. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
+2. Independently check the exact artifact package with the concrete binary32
+   interpretation, numerical bound and restricted exactness now proved.
+3. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
    integration before doing residency, tiling, and performance work.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
 lemmas. Reuse belongs in the existing proof workspace, preserving its dependency
 and license boundary rather than copying third-party source into the compiler.
+
+## Concrete binary32 checkpoint
+
+`proofs/talos/lean/Project/WGSL` reuses Talos addition, multiplication and dyadic
+rounding, adds a single-rounding fused multiply-add, and checks eleven arithmetic
+edge cases by kernel reduction. The public theorem audits use only
+`propext`, `Classical.choice` and `Quot.sound`.
+
+`artifact_numerical` proves finite outputs and an absolute error at most
+`2 * K * 2^-23` per cell against real matrix multiplication, for either modeled
+separate or locally fused accumulation. Its `DotDomain` requires finite inputs
+of magnitude at most one, a bound on every exact product, and enough remaining
+range for every iteration. `standard_budget` supplies a sufficient product
+budget of `1/(4K)` when `0 < K ≤ 2^20`. The proof establishes intermediate
+finiteness; it does not assume it. `rectangular_exact` additionally gives bitwise
+agreement with the specified separate binary32 computation under that profile.
+
+```sh
+source tools/macos-env.sh # configured ARM Mac only
+tools/leanrun --timeout 120s lake -d proofs/talos/lean build Project.WGSL.ArtifactNumerical Project.WGSL.Binary32Test
+```
+
+Native [SwiftShader CPU evidence](../../test/wgsl/evidence/macos-swiftshader/)
+records successful rectangular, fusion-sensitive, signed-zero and subnormal
+runs through the existing command-line harness. The rectangular shader emitted
+by `tools/wgsl/Generate.lean` is byte-for-byte identical to the captured source
+whose parse is proved. Runtime profile conformance remains an assumption;
+the numerical theorem's input conditions remain distinct from the harness's
+broader finite-input test envelope. The next integration boundary is independent
+artifact-package checking, followed by the Wasm dispatch interface.
 
 ## Narrow artifact parser
 

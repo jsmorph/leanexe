@@ -92,6 +92,18 @@ class ReferenceTests(unittest.TestCase):
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_existing_evidence_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "report.json"
+            original = b'{"status":"pass","previous":"execution"}\n'
+            report.write_bytes(original)
+            result = subprocess.run([sys.executable, str(ROOT / "tools/wgsl/run.py"),
+                                     "/nonexistent/shader", "/nonexistent/manifest",
+                                     "--report", str(report)], capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("report already exists", result.stdout)
+            self.assertEqual(report.read_bytes(), original)
+
     def test_manifest_rejections(self):
         self.assertEqual(harness.validate_manifest(manifest()), (2, 3, 4))
         mutations = [lambda m: m["profile"].update(revision=2),
