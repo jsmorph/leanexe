@@ -13642,3 +13642,30 @@ tools/tiny-gpt2.js --text 'To b' returns 256 logits and the updated verification
 status with the unchanged artifact digest.  Documentation and whitespace
 checks pass.  The earlier assoc_list cache mismatch still blocks the aggregate
 source-artifact gate.
+
+The checkpoint's computed first residual now has a magnitude bound of
+37/10 for every byte context and position.  The proof uses the computed
+probabilities' nonnegativity and mass bound, retaining the combined value
+and output matrix estimate.  A shared weighted-value lemma separates
+value roundoff from probability error.  The checkpoint attention-value
+error is at most 1/100000 relative to those computed probabilities and
+real normalized value projections.  The output projection and both
+residual additions preserve finiteness and fit the next LayerNorm's
+domain.  Embedding approximation now exposes its error for later
+composition with the real model.
+
+The initial weighted-value check selected the wrong side of addition in
+an order lemma.  The attention decoding check unfolded context indexing
+before its projection identities could apply.  A softmax mass goal also
+needed its sum expressed with the checkpoint probability definition.
+Explicit addition orientation and ordered structural rewrites resolve
+those failures.  The accepted attention and residual modules check in
+1.3 to 1.5 seconds after their dependencies.  Their axiom reports contain
+only standard logical axioms.  Feed-forward ranges, the final normalization
+domain, and the complete logit error bound remain open.
+
+The tiny_gpt2_infer gate passes with the new certificates imported,
+including the regenerated-program comparison.  The four-byte CLI smoke
+test returns the unchanged 256 logits and artifact digest.  Documentation
+and whitespace checks pass.  The recorded aggregate cache mismatch remains
+unresolved.
