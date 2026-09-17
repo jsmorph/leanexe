@@ -16,9 +16,14 @@ private def readUTF8 (file : System.FilePath) : IO String := do
 /-- Produce an untrusted proof draft from the actual files. All reductions in
 the draft are rechecked by the kernel in a separate invocation. -/
 def main (args : List String) : IO Unit := do
-  let wordsOnly := args.length == 4 && args[3]! == "words"
-  let [shaderPath, manifestPath, outputPath] := if wordsOnly then args.take 3 else args
-    | throw (IO.userError "usage: Prepare.lean KERNEL MANIFEST FRESH_PROOF_FILE [words]")
+  let (shaderPath, manifestPath, outputPath, wordsOnly, gpt2Shader) ← match args with
+    | [a, b, c] => pure (a, b, c, false, none)
+    | [a, b, c, "words"] => pure (a, b, c, true, none)
+    | [a, b, c, "gpt2", shader] =>
+        if ["qkv", "attention", "expansion", "projection", "vocabularyLeft", "vocabularyRight"].contains shader then
+          pure (a, b, c, true, some shader)
+        else throw (IO.userError "unknown GPT-2 shader role")
+    | _ => throw (IO.userError "usage: Prepare.lean KERNEL MANIFEST FRESH_PROOF_FILE [words | gpt2 ROLE]")
   let source ← readUTF8 shaderPath
   let manifestSource ← readUTF8 manifestPath
   let metadata ← unwrap (decodeManifest manifestSource)
@@ -28,10 +33,13 @@ def main (args : List String) : IO Unit := do
     else if metadata.profile.id == fusionProfileId then pure "fusion"
     else throw (IO.userError "unsupported profile")
   let selected := if tag == "separate" then ProfileTag.separate else ProfileTag.fusion
+  if gpt2Shader.isSome && tag != "separate" then
+    throw (IO.userError "GPT-2 exact product requires the separate profile")
   unless decide (metadata.Matches kernel.ast.config selected) do
     throw (IO.userError "manifest does not match parsed WGSL and supported profile")
   let text := String.intercalate "\n" [
-    if wordsOnly then "import Project.WGSL.ExecutionPackage" else "import Project.WGSL.Package",
+    if gpt2Shader.isSome then "import Project.Gpt2.Matrix"
+      else if wordsOnly then "import Project.WGSL.ExecutionPackage" else "import Project.WGSL.Package",
     "namespace CheckedWGSLPackage",
     "open LeanExe.WGSL Project.WGSL.Binary32",
     "def source : String := " ++ reprStr source,
@@ -56,6 +64,14 @@ def main (args : List String) : IO Unit := do
     if wordsOnly then "" else "def numerical := @Package.numerical source metadata package",
     if wordsOnly then "" else "def numericalWide := @Package.numerical_wide source metadata package",
     "def exact := @Package.exact source metadata package",
+    match gpt2Shader with
+    | none => ""
+    | some shader => String.intercalate "\n" [
+        "def modelShader : Project.Gpt2.Matrix.Shader := ." ++ shader,
+        "theorem modelShape : package.kernel.ast.config = modelShader.config := by decide +kernel",
+        "def modelRun := @Project.Gpt2.Matrix.from_dispatch source metadata package modelShader modelShape",
+        "def modelExact := @Project.Gpt2.Matrix.exact_from_dispatch source metadata package modelShader modelShape (by rfl)",
+        "#print axioms modelShape", "#print axioms modelRun", "#print axioms modelExact"],
     "#print axioms package",
     "#print axioms artifact",
     if wordsOnly then "" else "#print axioms numerical",

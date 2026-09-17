@@ -1,7 +1,7 @@
 # WGSL artifact fidelity for pretrained GPT-2
 
-This branch's verification work concerns the WGSL artifacts and their GPU-call
-interface. The specification is the selected Lean matrix-product algorithm
+This branch's verification work concerns the WGSL computations and matrix
+layouts. The specification is the selected Lean matrix-product algorithm
 over floating-point words. Real-number accuracy bounds, a new GPT controller,
 and general Wasm proof development are outside this workstream.
 
@@ -46,15 +46,33 @@ checked package, dispatch artifact, and equality theorem use only `propext`,
 `Classical.choice`, and `Quot.sound`; none uses `sorryAx` or a native-computation
 axiom. This completes the first stage under the stated arithmetic profile.
 
-## 2. Prove the GPU-call interface and matrix decomposition
+## 2. Connect the products and matrix decomposition
 
-Connect these six kernel results to named Lean matrix operations at each call
-site. Prove the row-major packed layouts and input/output slices, and prove
-that joining the two vocabulary outputs is the full Lean vocabulary product.
-State resident-buffer immutability, input snapshots, completed dispatch, and
-readback as an explicit host interface. Check the actual fifty weight-buffer
-assignments against that interface. This does not require rewriting or proving
-the complete model controller on this branch.
+`Project.Gpt2.Matrix.product` specifies the six dense products as source-ordered
+binary32 dot products. `MatrixView.packed_at` proves the row-major indexing
+formula, and `MatrixView.from_dispatch` connects the checked shader execution
+to those matrix coordinates. Every shader certificate now specializes this
+connection to its named GPT-2 role and proves exact output words under the
+separate profile.
+
+`vocabulary_from_dispatch` proves that joining the 25,129-column and
+25,128-column outputs computes all 50,257 vocabulary products against the
+transposed token embedding. The proof preserves the complete order of each
+dot product, including permitted fusion choices. `vocabulary_exact` specializes
+this to exact output-word equality with the Lean vocabulary function. There is
+no reassociation of additions and no numerical approximation in this split.
+
+`layer_shape`, `layer_matrix_injective`, `head_shapes`, and `fifty_matrices`
+prove the four-per-layer numbering, absence of overlapping layer assignments,
+and coverage of all fifty matrix slots. The checker compares the demo's fifty
+matrix descriptors with this Lean plan. The attention input slice is also
+defined and its range proved: words 1,536 through 2,303 of the attention result.
+
+The inputs here are the binary32 words presented to WGSL; the outputs are the
+binary32 words before conversion back to binary64. The proofs quantify over
+arbitrary matrix words. They do not establish checkpoint provenance, correctness
+of the Python packer or C/JavaScript controller, or the Wasm float conversions.
+The descriptor comparison checks matrix routing metadata, not matrix contents.
 
 ## 3. Make the arithmetic profile explicit
 
@@ -70,15 +88,7 @@ algorithm. Fixing those choices gives an exact result; allowing several gives
 a relation over permitted word results. Neither result is an error-bound
 theorem. Do not infer runtime conformance from one successful model completion.
 
-## 4. Bind checking to execution
-
-Connect the word-level checker to the native/browser launch path so the shader
-text and dispatch metadata used by execution are the held, checked inputs.
-Keep driver/compiler conformance separate from artifact correctness. Focused
-bit-pattern tests should exercise rounding, fusion, subnormals, indexing, and
-rejection of changed artifacts. They are regression evidence for the remaining
-runtime assumptions, not a substitute for the Lean proofs.
-
-The first deliverable is complete: six shader certificates. Later deliverables cover
-their GPU-call interfaces and a precisely stated browser arithmetic contract.
-Complete GPT-2/Wasm composition remains a separate workstream.
+Connecting certificates to runtime file loading was removed from the agenda
+at the user's request. Work remains focused on the computations, layouts, and
+explicit arithmetic semantics. Complete GPT-2/Wasm composition remains a
+separate workstream.

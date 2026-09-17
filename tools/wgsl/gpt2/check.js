@@ -7,13 +7,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
-const { checkPackage } = require("../package");
+const { checkPackage, lean, audit } = require("../package");
 const root = path.resolve(__dirname, "../../..");
 const hash = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const need = (ok, message) => { if (!ok) throw Error(message); };
 const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n", { flag: "wx" });
 const shapes = [[768,2304],[768,768],[768,3072],[3072,768],[768,25129],[768,25128]]
   .map(([inner,cols], i) => ({ inner, cols, shader: `kernel-${i}.wgsl` }));
+const roles = ["qkv", "attention", "expansion", "projection", "vocabularyLeft", "vocabularyRight"];
+const matrixTheorems = ["exact_from_dispatch", "vocabulary_left_layout", "vocabulary_right_layout",
+  "vocabulary_from_dispatch", "vocabulary_exact", "layer_shape", "layer_matrix_injective",
+  "head_shapes", "fifty_matrices", "attention_input_range"].map(n => `Project.Gpt2.Matrix.${n}`);
 
 async function check(directory) {
   directory = path.resolve(directory);
@@ -31,6 +35,14 @@ async function check(directory) {
   fs.writeFileSync(path.join(attempt, "bundle-manifest.json"), manifestBytes, { flag: "wx" });
   const results = [];
   try {
+    const proofRoot = path.join(root, "proofs/talos/lean");
+    await lean("GPT-2 matrix proof dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.Matrix"],
+      path.join(attempt, "matrix-dependencies.log"));
+    const matrixOutput = await lean("GPT-2 matrix layout and decomposition", ["lake", "-d", proofRoot, "env", "lean",
+      "--run", path.join(__dirname, "CheckMatrix.lean"), path.join(attempt, "bundle-manifest.json")],
+      path.join(attempt, "matrix-verify.log"));
+    const matrixAxioms = audit(matrixOutput, matrixTheorems);
+    need(matrixOutput.split("\n").filter(s => s === "GPT2_MATRIX_PLAN 50").length === 1, "missing checked matrix plan");
     for (const [index, shape] of shapes.entries()) {
       const selected = path.join(attempt, String(index));
       fs.mkdirSync(selected);
@@ -46,9 +58,9 @@ async function check(directory) {
           .map(([name,elements]) => [name, { elements, bytes: elements*4 }])),
         workgroupSize: [8,8,1], dispatchWorkgroups: [Math.ceil(shape.cols/8),1,1],
       });
-      const checked = await checkPackage(selected, { wordsOnly: true });
+      const checked = await checkPackage(selected, { wordsOnly: true, gpt2Shader: roles[index] });
       need(checked.shader.equals(snapshots[index]), "proof identified different shader bytes");
-      results.push({ shader: shape.shader, dimensions: checked.metadata.dimensions,
+      results.push({ shader: shape.shader, role: roles[index], dimensions: checked.metadata.dimensions,
         shaderSha256: checked.receipt.shaderSha256, verification: path.join(checked.attempt, "verification.json") });
     }
     need(fs.readFileSync(path.join(directory, "manifest.json")).equals(manifestBytes), "bundle manifest changed during checking");
@@ -58,7 +70,8 @@ async function check(directory) {
       subject: "Six delivered GPT-2 WGSL shaders implement the selected Lean binary32 GEMM",
       profile: "leanexe-f32-rne-separate-v1", numericalErrorTolerance: null,
       runtimeConformanceEstablished: false, modelCompositionEstablished: false,
-      scope: "Shader parsing, dimensions, binding ABI, dispatch safety and word equality; no weights, Wasm, host schedule or driver proof",
+      matrixAxioms, matrixAssignmentsChecked: 50, vocabularyDecompositionProved: true,
+      scope: "Shader word equality to Lean matrix products, packed layouts, vocabulary decomposition and matrix descriptor plan; no checkpoint contents, float conversions, Wasm, host schedule or driver proof",
       results });
     console.log(`GPT-2 WGSL fidelity: all six shaders verified; ${attempt}`);
     return { attempt, results };
@@ -67,4 +80,35 @@ async function check(directory) {
     throw error;
   }
 }
-module.exports = { check };
+async function layoutCorpus(directory) {
+  directory = path.resolve(directory);
+  fs.mkdirSync(path.dirname(directory), { recursive: true });
+  fs.mkdirSync(directory);
+  const proofRoot = path.join(root, "proofs/talos/lean");
+  await lean("GPT-2 matrix corpus dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.Matrix"],
+    path.join(directory, "dependencies.log"));
+  const results = [];
+  for (const item of require("./corpus.json").matrixPlan) {
+    const matrices = Array.from({ length: 50 }, (_, i) => ({
+      file: `matrix-${String(i).padStart(2, "0")}.bin`, shape: i < 48 ? i % 4 : i - 44 }));
+    if (item.shape !== undefined) matrices[item.matrix].shape = item.shape;
+    if (item.file !== undefined) matrices[item.matrix].file = item.file;
+    if (item.extra) matrices[item.matrix].unchecked = true;
+    if (item.dropLast) matrices.pop();
+    const manifest = path.join(directory, `${item.name}.json`), log = path.join(directory, `${item.name}.log`);
+    write(manifest, { matrices });
+    let failure;
+    try {
+      const output = await lean(`GPT-2 matrix corpus ${item.name}`, ["lake", "-d", proofRoot, "env", "lean",
+        "--run", path.join(__dirname, "CheckMatrix.lean"), manifest], log);
+      audit(output, matrixTheorems);
+    } catch (error) { failure = error.message; }
+    if (item.accept) need(!failure, `${item.name}: ${failure}`);
+    else need(failure && fs.readFileSync(log, "utf8").includes("GPT-2 matrix assignments differ"),
+      `${item.name} did not reject the changed plan as expected`);
+    results.push({ name: item.name, status: item.accept ? "pass" : "rejected" });
+  }
+  write(path.join(directory, "corpus.json"), { status: "pass", results });
+  console.log(`GPT-2 matrix corpus passed: ${results.length} cases; ${directory}`);
+}
+module.exports = { check, layoutCorpus };
