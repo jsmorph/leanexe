@@ -49,6 +49,9 @@ the exact maximum, exponential map, sum, and division map results.
 The [internal GPT-2/128 softmax theorem](lean/Project/TinyGpt2Seq/Softmax.lean)
 checks the owner/data calling interface and the release function in the
 larger module, with the same output and memory guarantees.
+Both proofs preserve every byte range below the input heap that is
+disjoint from its free blocks.  This includes borrowed host arrays and
+arrays with wider elements.
 GPT-2/128 sequence traversal and complete inference composition remain open.
 
 The runtime-weight [clipping case](lean/Project/F64Clip/Spec.lean) proves

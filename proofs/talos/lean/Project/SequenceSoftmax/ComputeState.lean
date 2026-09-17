@@ -10,7 +10,7 @@ def ComputePost (heap : Heap) (initial : Store Unit) (input : Array UInt64)
   ∃ resultHeap result,
     values = [.i64 result.root] ∧ resultHeap.At final ∧
     resultHeap.OwnsWords final result (compute input) ∧
-    (∀ source words, heap.OwnsWords initial source words → resultHeap.OwnsWords final source words) ∧
+    heap.Frame initial resultHeap final ∧
     OutputBudget final resultHeap remaining pageLimit module
 
 end Project.SequenceSoftmax.Spec
