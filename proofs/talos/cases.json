@@ -702,6 +702,22 @@
         "Project.TinyGpt2Infer.Spec.infer_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "f64_clip",
+      "annotations": true,
+      "module": "Project.F64Clip.Model",
+      "entry": "Project.F64Clip.prepare",
+      "sourceWorkspace": "proof",
+      "leanModule": "F64Clip",
+      "specTarget": "Project.F64Clip.Spec",
+      "behaviorTheorems": [
+        "Project.F64Clip.Spec.clip_exact",
+        "Project.F64Clip.Spec.validBound_exact",
+        "Project.F64Clip.Spec.accepted_exact",
+        "Project.F64Clip.Spec.clip_real"
+      ],
+      "complete": false
     }
   ]
 }

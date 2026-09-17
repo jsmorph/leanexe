@@ -81,6 +81,7 @@ await user confirmation.
 - [x] Preserve the cancellation case and calculate preliminary sensitivity terms.
 - [x] Prove the parameterized scalar clipping operation and array checker at source level.
 - [x] Prove real-model ranges and connect them to accepted clipped arrays.
+- [x] Prove generated-WAT scalar clipping and complete array validation.
 - [ ] Prove the checker's generated-WAT execution and memory use.
 - [ ] Confirm and implement the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
