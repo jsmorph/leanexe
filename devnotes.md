@@ -14405,3 +14405,29 @@ The focused source-artifact gate regenerates the same module, checks its
 annotations, and builds the partial specification.  The registry records
 this case as incomplete.  The existing assoc_list mismatch still blocks
 the aggregate source gate.  Documentation checks pass for all 136 files.
+
+### Internal clipping execution
+
+The internal preparation proof now covers its four arguments and two
+result words, including arbitrary input owner values.  The scalar region
+proof reuses validation and clipping.  The map, allocation, and branch
+proofs account for the internal frame slots and use the existing traversal,
+allocation, prefix, and memory-write lemmas.  The map checks in 3.2 seconds,
+the instruction decomposition in 4.4 seconds, and accepted and rejected
+branches in 1.8 and 1.5 seconds.  The enclosing proof needed explicit
+handling of the two returned frame slots and then checked in 2.1 seconds.
+
+Allocation-state derivation now lives in the shared clip_result_state
+theorem.  Both public and internal checker theorems use it to expose the
+allocator top, counters, output ownership header, and preserved memory.
+The combined internal execution and state module checks in 3.8 seconds,
+and the refactored public state proof in 1.5 seconds.  All audits report
+standard logical axioms.  These proof changes preserve both generated
+artifacts and their preceding WASM test results.
+
+The focused combined-entry gate passes regeneration, annotations, and
+the partial specification with internal preparation registered.  The
+combined entry remains incomplete until the internal inference and enclosing
+entry proofs pass.  Documentation and whitespace checks pass.
+
+The standalone f64_clip gate also passes after the shared state refactor.
