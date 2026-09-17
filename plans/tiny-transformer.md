@@ -85,7 +85,7 @@ range certificates prove finite hidden coordinates and all 256 finite
 logits for every four-byte input.  The composed numerical theorem now
 passes with B and normalization lower bounds as parameters.  Its
 unconditional estimate is too coarse to certify precision.  A useful
-precision guarantee and runtime checker integration remain open.
+precision guarantee and CLI integration of runtime weights remain open.
 The complete generated-WAT inference execution theorem passes, including
 termination, exact raw-bit output, checkpoint preservation, and its memory
 reservation.

@@ -14464,3 +14464,38 @@ registered.  The existing tiny_gpt2_infer gate passes after the shared
 allocation refactor.  Documentation checks pass for all 136 maintained
 Markdown files.  An initial documentation command used a nonexistent test
 filename.  The documented tools/check-docs.js command passed.
+
+### Checked inference export
+
+The enclosing export now has an exact execution theorem for arbitrary
+represented weight arrays, bounds, and token words.  Invalid tokens return
+an allocated empty array.  Valid tokens run preparation, then either return
+its empty rejection result or execute all 256 logits.  The proof preserves
+the supplied weights, page count, memory below the initial allocation top,
+and other store fields.  Its conservative reservation includes
+48+8(n+1) bytes for preparation and 277,560 bytes for inference.  For
+2,488 weights that totals 297,520 bytes after the supplied input.
+
+Token-guard execution checks in 7.2 seconds, empty-result allocation in
+1.8 seconds, accepted-branch composition in 2.5 seconds, and the exported
+theorem in 1.7 seconds.  Branch proofs use explicit instruction boundaries
+to avoid reducing generated region lookups inside the execution tactic.
+The initial guard attempt incorrectly equated block continuation handling
+with sequential composition.  The corrected lemma retains the generated
+conditional before branch composition.  Length-read simplification also
+needed the represented-array address equality before default arithmetic
+normalization.  A store equality with self-referencing updated fields
+caused simplifier recursion and is now applied directly.
+
+The numerical corollary checks in 1.4 seconds.  It retains B and the three
+normalization floors as parameters, proves finite logits bounded by 1,260,
+and compares them with the real model using clipped weights.  All audits
+report standard logical axioms.  The uniform error estimate remains too
+coarse to certify precision.  The completed case is registered, and the
+CLI integration is next.
+
+The focused tiny_gpt2_checked source-artifact gate passes regeneration,
+annotation checks, the completed specification, and all registered theorem
+audits.  Documentation checks pass for 136 maintained Markdown files.
+The registry now has sixty completed source-driven cases and forty-two
+exact-byte packages.  The existing aggregate assoc_list mismatch remains.
