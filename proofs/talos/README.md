@@ -123,15 +123,18 @@ output memory reservation.  The
 [checkpoint output certificate](lean/Project/TinyGpt2/CheckpointLogits.lean)
 proves finite hidden coordinates and all 256 finite logits for every
 four-byte input.  Its intermediate range certificates cover every
-normalization, softmax, and GELU call.  The composed numerical error bound
-against the real model remains open.
+normalization, softmax, and GELU call.
 
 The [runtime-weight source theorem](lean/Project/TinyGpt2/RuntimeLogits.lean)
 proves finite logits of magnitude at most 1,260 for every four-byte input
 and every accepted clipped weight array with B in [0, 10].  It proves
 the intermediate binary64 ranges without checkpoint-specific facts.
-The combined numerical error bound and the checker-to-inference execution
-proof remain open.
+The [numerical source theorem](lean/Project/TinyGpt2/NumericalLogits.lean)
+and [generated-WAT numerical theorem](lean/Project/TinyGpt2Infer/Numerical.lean)
+now prove the composed error bound, parameterized by B and the three
+normalization lower bounds.  The epsilon-floor instantiation is unconditional
+and too coarse to certify precision.  At B = 10 its formula evaluates to
+approximately 2.934e14.  The checker-to-inference execution proof remains open.
 
 The [negative exponential](lean/Project/ExpNeg/Spec.lean) accepts every finite
 nonpositive binary64 input.  Its generated-WAT theorem proves termination,

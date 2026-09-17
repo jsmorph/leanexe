@@ -14300,3 +14300,49 @@ bytes.  All runtime arithmetic and range audits report only standard
 logical axioms.  Documentation and whitespace checks pass.  The existing
 trained-model and cancellation tests remain applicable to these unchanged
 inference bytes.
+
+### Composed runtime error
+
+The generic error rules now propagate perturbed inputs through four- and
+eight-term columns, addition, attention scores, and weighted attention.
+They check in 2.3 seconds.  A tighter projection-magnitude theorem proves
+12B^2+1, preserving dependence on B in the score and value error budgets.
+Its positivity goal needed the arithmetic-epsilon definition unfolded.
+It checks in 1.2 seconds.
+
+The composed budget records B and three positive normalization lower
+bounds.  Each lower bound concerns both the decoded computed input and
+the corresponding real input.  The square root of the epsilon floor
+always satisfies these hypotheses.  Larger proved lower bounds can yield
+sharper error estimates.  No numerical quality claim follows from the
+budget definitions until the corresponding stage theorem passes.
+
+The budget module initially opened the wrong namespace for arithmeticEpsilon.
+Inspection of the pinned CodeLib source located it in CodeLib.IEEE64.Roundoff.
+The corrected module imports that definition directly.  The input theorem
+also needed UInt64.size reduced in a conversion bound and the named column
+budget unfolded at its result.  Embedding, first normalization, and
+query/key/value error composition now check in 1.2 seconds.  Attention
+composition checks in 2.2 seconds, and the first residual and second
+normalization in 1.5 seconds.  These theorems compare against the existing
+real model using arbitrary bounded runtime weights.
+
+Feed-forward error composition checks in 1.9 seconds, and the complete
+logit theorem in 1.3 seconds.  The generated-WAT corollary combines that
+result with exact execution, finite outputs, and the existing memory
+guarantees.  It checks in 1.8 seconds.  The registered tiny_gpt2_infer gate
+passes with this corollary, and every new audit reports only standard
+logical axioms.
+
+The unconditional budget is too coarse to certify useful precision.
+Using only the three square-root epsilon floors gives approximately
+320.30 at B=1, 1.7333e7 at B=2.5, and 2.9336e14 at B=10.  Repeated
+worst-case normalization sensitivity dominates the estimate.  The proof
+accepts stronger certified denominator lower bounds, but obtaining a
+useful precision certificate remains open.  Documentation now states
+that limitation explicitly.
+
+The inference artifact bytes remain unchanged, so the preceding native
+bit-model, PyTorch, and cancellation tests still apply.  Documentation
+checks pass for all 136 maintained Markdown files.  The next implementation
+step connects the proved weight preparation to the inference entry.
