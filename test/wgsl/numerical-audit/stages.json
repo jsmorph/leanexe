@@ -1,0 +1,972 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "scope": "finite-case diagnostic; local error uses computed predecessors, total error uses the ideal complete model",
+  "referenceDecimalPlaces": 120,
+  "checks": {
+    "cases": 6,
+    "leanWords": 3888
+  },
+  "results": [
+    {
+      "name": "checkpoint-lean",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 2.7755575615628914e-17,
+          "computedMagnitude": 0.33095109449625926,
+          "idealMagnitude": 0.3309510944962592
+        },
+        {
+          "name": "norm1",
+          "localError": 3.5221456268831187e-16,
+          "totalError": 3.5404458600478204e-16,
+          "computedMagnitude": 2.007073654558348,
+          "idealMagnitude": 2.0070736545583476
+        },
+        {
+          "name": "query",
+          "localError": 1.4728971951783927e-16,
+          "totalError": 2.8141918221638044e-16,
+          "computedMagnitude": 2.3047674066721924,
+          "idealMagnitude": 2.3047674066721924
+        },
+        {
+          "name": "keys",
+          "localError": 3.9875416641449013e-16,
+          "totalError": 5.090131589564861e-16,
+          "computedMagnitude": 2.5155192231675385,
+          "idealMagnitude": 2.515519223167538
+        },
+        {
+          "name": "values",
+          "localError": 2.0381478151887812e-16,
+          "totalError": 3.150909531953496e-16,
+          "computedMagnitude": 1.918840380489861,
+          "idealMagnitude": 1.9188403804898608
+        },
+        {
+          "name": "scores",
+          "localError": 4.0232325564040547e-16,
+          "totalError": 2.817836652885717e-16,
+          "computedMagnitude": 3.256963617081548,
+          "idealMagnitude": 3.256963617081548
+        },
+        {
+          "name": "probability",
+          "localError": 4.9399816692276267e-17,
+          "totalError": 8.660569058571951e-17,
+          "computedMagnitude": 0.4715480835329789,
+          "idealMagnitude": 0.47154808353297883
+        },
+        {
+          "name": "attended",
+          "localError": 8.232942338139624e-17,
+          "totalError": 1.0358572800978886e-16,
+          "computedMagnitude": 1.4750630802665363,
+          "idealMagnitude": 1.4750630802665365
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 6.128704891799186e-17,
+          "totalError": 1.1599215433884569e-16,
+          "computedMagnitude": 0.9356341078757964,
+          "idealMagnitude": 0.9356341078757965
+        },
+        {
+          "name": "attention",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 1.1599215433884569e-16,
+          "computedMagnitude": 0.9959552334581369,
+          "idealMagnitude": 0.995955233458137
+        },
+        {
+          "name": "residual1",
+          "localError": 1.1102230246251565e-16,
+          "totalError": 1.1599215433884569e-16,
+          "computedMagnitude": 1.1651908511168725,
+          "idealMagnitude": 1.1651908511168725
+        },
+        {
+          "name": "norm2",
+          "localError": 7.167815118366021e-17,
+          "totalError": 1.3038906201450527e-16,
+          "computedMagnitude": 1.9155336647766084,
+          "idealMagnitude": 1.9155336647766084
+        },
+        {
+          "name": "expanded",
+          "localError": 1.6652743040477176e-16,
+          "totalError": 2.4780035953898977e-16,
+          "computedMagnitude": 2.3337621227054774,
+          "idealMagnitude": 2.3337621227054774
+        },
+        {
+          "name": "activated",
+          "localError": 1.2671729571386361e-16,
+          "totalError": 1.0590597104134054e-16,
+          "computedMagnitude": 1.496256720695608,
+          "idealMagnitude": 1.496256720695608
+        },
+        {
+          "name": "contractProjection",
+          "localError": 4.2187905442593593e-17,
+          "totalError": 3.963704296266021e-17,
+          "computedMagnitude": 0.29852855554276714,
+          "idealMagnitude": 0.29852855554276714
+        },
+        {
+          "name": "contracted",
+          "localError": 2.0816681711721688e-17,
+          "totalError": 6.045372467438189e-17,
+          "computedMagnitude": 0.3168040922731154,
+          "idealMagnitude": 0.31680409227311546
+        },
+        {
+          "name": "residual2",
+          "localError": 5.551115123125783e-17,
+          "totalError": 1.5526276490180568e-16,
+          "computedMagnitude": 0.8890511119033335,
+          "idealMagnitude": 0.8890511119033335
+        },
+        {
+          "name": "hidden",
+          "localError": 3.091337973606625e-16,
+          "totalError": 3.9104603585975415e-16,
+          "computedMagnitude": 4.132742105121773,
+          "idealMagnitude": 4.132742105121773
+        },
+        {
+          "name": "head64",
+          "localError": 1.43947369412154e-15,
+          "totalError": 1.6467799918946294e-15,
+          "computedMagnitude": 7.099783626437556,
+          "idealMagnitude": 7.099783626437556
+        },
+        {
+          "name": "mixed",
+          "localError": 6.494864521136847e-7,
+          "totalError": 6.494864517205224e-7,
+          "computedMagnitude": 7.09978369866322,
+          "idealMagnitude": 7.099783626437556
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          0.10508417788755578,
+          0.21449183418188372,
+          0.2195155142858785,
+          0.11909799449316508
+        ],
+        "norm2": 0.4370620057969284,
+        "normFinal": 0.26948286325143217
+      },
+      "logitRange": [
+        -7.099783626437556,
+        5.589702052518767
+      ],
+      "topTwoGap": 1.124917717047433
+    },
+    {
+      "name": "checkpoint-zeros",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 5.204170427930422e-18,
+          "totalError": 5.204170427930422e-18,
+          "computedMagnitude": 0.09420021950702216,
+          "idealMagnitude": 0.09420021950702216
+        },
+        {
+          "name": "norm1",
+          "localError": 1.6522936787494509e-16,
+          "totalError": 1.960525403016124e-16,
+          "computedMagnitude": 1.5804757195080434,
+          "idealMagnitude": 1.5804757195080437
+        },
+        {
+          "name": "query",
+          "localError": 9.031517101722643e-17,
+          "totalError": 1.1820857343086323e-16,
+          "computedMagnitude": 1.9180825368329186,
+          "idealMagnitude": 1.9180825368329184
+        },
+        {
+          "name": "keys",
+          "localError": 1.558989545875802e-16,
+          "totalError": 2.251924522817767e-16,
+          "computedMagnitude": 1.7070648416491316,
+          "idealMagnitude": 1.7070648416491314
+        },
+        {
+          "name": "values",
+          "localError": 2.878404985934677e-16,
+          "totalError": 2.346132088099578e-16,
+          "computedMagnitude": 1.4406539230339752,
+          "idealMagnitude": 1.4406539230339757
+        },
+        {
+          "name": "scores",
+          "localError": 3.132631438900293e-16,
+          "totalError": 2.3895338124316447e-16,
+          "computedMagnitude": 2.266329198810928,
+          "idealMagnitude": 2.2663291988109284
+        },
+        {
+          "name": "probability",
+          "localError": 3.7827889956139026e-17,
+          "totalError": 6.505913441279993e-17,
+          "computedMagnitude": 0.26805510518922837,
+          "idealMagnitude": 0.26805510518922837
+        },
+        {
+          "name": "attended",
+          "localError": 3.562498647123387e-17,
+          "totalError": 9.304369865048203e-17,
+          "computedMagnitude": 1.4361582203365613,
+          "idealMagnitude": 1.4361582203365615
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 1.0138965133260639e-16,
+          "totalError": 2.1805243564934126e-16,
+          "computedMagnitude": 0.8669935653660498,
+          "idealMagnitude": 0.8669935653660499
+        },
+        {
+          "name": "attention",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 2.041746478415268e-16,
+          "computedMagnitude": 0.9273146909483903,
+          "idealMagnitude": 0.9273146909483905
+        },
+        {
+          "name": "residual1",
+          "localError": 4.1633363423443376e-17,
+          "totalError": 1.8335796612980512e-16,
+          "computedMagnitude": 0.9982863097983812,
+          "idealMagnitude": 0.9982863097983813
+        },
+        {
+          "name": "norm2",
+          "localError": 2.238545196204519e-16,
+          "totalError": 1.707859377040726e-16,
+          "computedMagnitude": 1.7478587776657974,
+          "idealMagnitude": 1.7478587776657974
+        },
+        {
+          "name": "expanded",
+          "localError": 1.7353180571234564e-16,
+          "totalError": 2.44024619130523e-16,
+          "computedMagnitude": 2.7063611006848296,
+          "idealMagnitude": 2.7063611006848296
+        },
+        {
+          "name": "activated",
+          "localError": 1.5665030880242546e-16,
+          "totalError": 2.2537870055908146e-16,
+          "computedMagnitude": 1.1281685906912942,
+          "idealMagnitude": 1.128168590691294
+        },
+        {
+          "name": "contractProjection",
+          "localError": 4.7424822624693366e-17,
+          "totalError": 1.2500874927649808e-16,
+          "computedMagnitude": 0.7158940621056861,
+          "idealMagnitude": 0.715894062105686
+        },
+        {
+          "name": "contracted",
+          "localError": 3.469446951953614e-17,
+          "totalError": 1.3712687597366273e-16,
+          "computedMagnitude": 0.7580191502186712,
+          "idealMagnitude": 0.7580191502186711
+        },
+        {
+          "name": "residual2",
+          "localError": 2.0816681711721688e-17,
+          "totalError": 3.153056093102104e-16,
+          "computedMagnitude": 0.32902448712650956,
+          "idealMagnitude": 0.3290244871265096
+        },
+        {
+          "name": "hidden",
+          "localError": 1.683529174877651e-16,
+          "totalError": 1.8610277629404406e-15,
+          "computedMagnitude": 5.086548243950353,
+          "idealMagnitude": 5.086548243950354
+        },
+        {
+          "name": "head64",
+          "localError": 1.370882787201185e-15,
+          "totalError": 3.67299407242235e-15,
+          "computedMagnitude": 7.3173945705916426,
+          "idealMagnitude": 7.317394570591646
+        },
+        {
+          "name": "mixed",
+          "localError": 6.311271803082894e-7,
+          "totalError": 6.311271783224352e-7,
+          "computedMagnitude": 7.3173948334973575,
+          "idealMagnitude": 7.317394570591646
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          0.05986030106531994,
+          0.057095217736216175,
+          0.05177162401105096,
+          0.04764760168383607
+        ],
+        "norm2": 0.5024232944380184,
+        "normFinal": 0.17658907357771092
+      },
+      "logitRange": [
+        -7.317394570591646,
+        5.327544899036556
+      ],
+      "topTwoGap": 0.018589951036230623
+    },
+    {
+      "name": "checkpoint-byte-edges",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 5.204170427930422e-18,
+          "totalError": 5.204170427930422e-18,
+          "computedMagnitude": 0.08934082742523691,
+          "idealMagnitude": 0.08934082742523691
+        },
+        {
+          "name": "norm1",
+          "localError": 1.562738216296476e-16,
+          "totalError": 1.5794433645379126e-16,
+          "computedMagnitude": 1.5578628815524775,
+          "idealMagnitude": 1.5578628815524775
+        },
+        {
+          "name": "query",
+          "localError": 9.031517101722643e-17,
+          "totalError": 1.1820857343086323e-16,
+          "computedMagnitude": 1.9180825368329186,
+          "idealMagnitude": 1.9180825368329184
+        },
+        {
+          "name": "keys",
+          "localError": 2.0242403497422689e-16,
+          "totalError": 1.5384565451796915e-16,
+          "computedMagnitude": 1.7389233038243859,
+          "idealMagnitude": 1.7389233038243859
+        },
+        {
+          "name": "values",
+          "localError": 2.878404985934677e-16,
+          "totalError": 2.346132088099578e-16,
+          "computedMagnitude": 1.578115013638169,
+          "idealMagnitude": 1.578115013638169
+        },
+        {
+          "name": "scores",
+          "localError": 2.882429653475652e-16,
+          "totalError": 1.7770647256247751e-16,
+          "computedMagnitude": 2.266329198810928,
+          "idealMagnitude": 2.2663291988109284
+        },
+        {
+          "name": "probability",
+          "localError": 2.1253235486547605e-17,
+          "totalError": 3.813280743039694e-17,
+          "computedMagnitude": 0.3655721412689217,
+          "idealMagnitude": 0.36557214126892174
+        },
+        {
+          "name": "attended",
+          "localError": 2.0664180467617404e-16,
+          "totalError": 2.1318801791168171e-16,
+          "computedMagnitude": 1.4187682292486048,
+          "idealMagnitude": 1.418768229248605
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 4.2536906974909165e-17,
+          "totalError": 3.056643270885309e-16,
+          "computedMagnitude": 0.9132052021223903,
+          "idealMagnitude": 0.9132052021223904
+        },
+        {
+          "name": "attention",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 2.917865392807165e-16,
+          "computedMagnitude": 0.9735263277047308,
+          "idealMagnitude": 0.9735263277047309
+        },
+        {
+          "name": "residual1",
+          "localError": 4.1633363423443376e-17,
+          "totalError": 2.709698575689948e-16,
+          "computedMagnitude": 1.0444979465547217,
+          "idealMagnitude": 1.0444979465547217
+        },
+        {
+          "name": "norm2",
+          "localError": 1.0590796186864552e-16,
+          "totalError": 3.9016406325572763e-16,
+          "computedMagnitude": 1.7660009301872146,
+          "idealMagnitude": 1.7660009301872144
+        },
+        {
+          "name": "expanded",
+          "localError": 7.947482027522353e-17,
+          "totalError": 2.877553416912685e-16,
+          "computedMagnitude": 2.670775437458467,
+          "idealMagnitude": 2.6707754374584676
+        },
+        {
+          "name": "activated",
+          "localError": 1.180169368255436e-16,
+          "totalError": 2.2915517510693083e-16,
+          "computedMagnitude": 1.1635490683285281,
+          "idealMagnitude": 1.1635490683285281
+        },
+        {
+          "name": "contractProjection",
+          "localError": 7.76330888655294e-17,
+          "totalError": 1.8883357901359156e-16,
+          "computedMagnitude": 0.6982779289864579,
+          "idealMagnitude": 0.698277928986458
+        },
+        {
+          "name": "contracted",
+          "localError": 3.469446951953614e-17,
+          "totalError": 2.02711366821406e-16,
+          "computedMagnitude": 0.740403017099443,
+          "idealMagnitude": 0.7404030170994431
+        },
+        {
+          "name": "residual2",
+          "localError": 2.0816681711721688e-17,
+          "totalError": 2.829640760271068e-16,
+          "computedMagnitude": 0.3296196781312205,
+          "idealMagnitude": 0.3296196781312205
+        },
+        {
+          "name": "hidden",
+          "localError": 5.936099801814066e-16,
+          "totalError": 1.3583216758870455e-15,
+          "computedMagnitude": 5.197301175882848,
+          "idealMagnitude": 5.197301175882849
+        },
+        {
+          "name": "head64",
+          "localError": 1.5327964234562898e-15,
+          "totalError": 3.4178272279228715e-15,
+          "computedMagnitude": 7.893419195549071,
+          "idealMagnitude": 7.893419195549074
+        },
+        {
+          "name": "mixed",
+          "localError": 7.610396731095762e-7,
+          "totalError": 7.610396710338827e-7,
+          "computedMagnitude": 7.893418888978315,
+          "idealMagnitude": 7.893419195549074
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          0.05762671961862754,
+          0.05778151634385118,
+          0.042259193705604825,
+          0.04764760168383607
+        ],
+        "norm2": 0.49529672159335963,
+        "normFinal": 0.15376693543554212
+      },
+      "logitRange": [
+        -7.893419195549074,
+        5.64950058621282
+      ],
+      "topTwoGap": 0.0943255042071165
+    },
+    {
+      "name": "adversarial-plus",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 2.7755575615628914e-17,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1
+        },
+        {
+          "name": "norm1",
+          "localError": 2.4319761807401244e-16,
+          "totalError": 3.5108334685767013e-14,
+          "computedMagnitude": 3.999980000149999,
+          "idealMagnitude": 3.999980000149999
+        },
+        {
+          "name": "query",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 0,
+          "idealMagnitude": 5.617333549722722e-13
+        },
+        {
+          "name": "keys",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "values",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "scores",
+          "localError": 0,
+          "totalError": 5.084204524891343e-11,
+          "computedMagnitude": 0,
+          "idealMagnitude": 5.084204524891343e-11
+        },
+        {
+          "name": "probability",
+          "localError": 0,
+          "totalError": 1.2710511312389888e-11,
+          "computedMagnitude": 0.25,
+          "idealMagnitude": 0.25000000001271055
+        },
+        {
+          "name": "attended",
+          "localError": 0,
+          "totalError": 1.627077746637743e-9,
+          "computedMagnitude": 0,
+          "idealMagnitude": 1.627077746637743e-9
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 0,
+          "totalError": 2.603324394620389e-8,
+          "computedMagnitude": 0,
+          "idealMagnitude": 2.603324394620389e-8
+        },
+        {
+          "name": "attention",
+          "localError": 0,
+          "totalError": 2.603324394620389e-8,
+          "computedMagnitude": 0,
+          "idealMagnitude": 2.603324394620389e-8
+        },
+        {
+          "name": "residual1",
+          "localError": 0,
+          "totalError": 2.6033243973959465e-8,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1.000000026033244
+        },
+        {
+          "name": "norm2",
+          "localError": 0,
+          "totalError": 0.00003292973833511016,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.00003292973833511016
+        },
+        {
+          "name": "expanded",
+          "localError": 0,
+          "totalError": 0.0005268758133617626,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.0005268758133617626
+        },
+        {
+          "name": "activated",
+          "localError": 0,
+          "totalError": 0.0002635486523038395,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.0002635486523038395
+        },
+        {
+          "name": "contractProjection",
+          "localError": 0,
+          "totalError": 0.008433556873722863,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.008433556873722863
+        },
+        {
+          "name": "contracted",
+          "localError": 0,
+          "totalError": 0.008433556873722863,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.008433556873722863
+        },
+        {
+          "name": "residual2",
+          "localError": 0,
+          "totalError": 0.008433582906966837,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1.0084335829069668
+        },
+        {
+          "name": "hidden",
+          "localError": 0,
+          "totalError": 3.7453628358659414,
+          "computedMagnitude": 0,
+          "idealMagnitude": 3.7453628358659414
+        },
+        {
+          "name": "head64",
+          "localError": 0,
+          "totalError": 59.92580537385506,
+          "computedMagnitude": 0,
+          "idealMagnitude": 59.92580537385506
+        },
+        {
+          "name": "mixed",
+          "localError": 0,
+          "totalError": 59.92580537385506,
+          "computedMagnitude": 0,
+          "idealMagnitude": 59.92580537385506
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776602755376,
+        "normFinal": 0.009006959567394716
+      },
+      "logitRange": [
+        -59.92580537385506,
+        59.92580537385506
+      ],
+      "topTwoGap": 0
+    },
+    {
+      "name": "adversarial-minus",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 2.7755575615628914e-17,
+          "totalError": 2.7755575615628914e-17,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1
+        },
+        {
+          "name": "norm1",
+          "localError": 2.4319761807401244e-16,
+          "totalError": 3.5108334685767013e-14,
+          "computedMagnitude": 3.999980000149999,
+          "idealMagnitude": 3.999980000149999
+        },
+        {
+          "name": "query",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 0,
+          "idealMagnitude": 5.617333549722722e-13
+        },
+        {
+          "name": "keys",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "values",
+          "localError": 0,
+          "totalError": 5.617333549722722e-13,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "scores",
+          "localError": 0,
+          "totalError": 5.084204524891343e-11,
+          "computedMagnitude": 0,
+          "idealMagnitude": 5.084204524891343e-11
+        },
+        {
+          "name": "probability",
+          "localError": 0,
+          "totalError": 1.2710511312389888e-11,
+          "computedMagnitude": 0.25,
+          "idealMagnitude": 0.25000000001271055
+        },
+        {
+          "name": "attended",
+          "localError": 0,
+          "totalError": 1.627077746637743e-9,
+          "computedMagnitude": 0,
+          "idealMagnitude": 1.627077746637743e-9
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 0,
+          "totalError": 2.603324394620389e-8,
+          "computedMagnitude": 0,
+          "idealMagnitude": 2.603324394620389e-8
+        },
+        {
+          "name": "attention",
+          "localError": 0,
+          "totalError": 2.603324394620389e-8,
+          "computedMagnitude": 0,
+          "idealMagnitude": 2.603324394620389e-8
+        },
+        {
+          "name": "residual1",
+          "localError": 0,
+          "totalError": 2.6033243973959465e-8,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1.000000026033244
+        },
+        {
+          "name": "norm2",
+          "localError": 0,
+          "totalError": 0.00003292973833511016,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.00003292973833511016
+        },
+        {
+          "name": "expanded",
+          "localError": 0,
+          "totalError": 0.0005268758133617626,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.0005268758133617626
+        },
+        {
+          "name": "activated",
+          "localError": 0,
+          "totalError": 0.0002633271610579231,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.0002633271610579231
+        },
+        {
+          "name": "contractProjection",
+          "localError": 0,
+          "totalError": 0.00842646915385354,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.00842646915385354
+        },
+        {
+          "name": "contracted",
+          "localError": 0,
+          "totalError": 0.00842646915385354,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0.00842646915385354
+        },
+        {
+          "name": "residual2",
+          "localError": 0,
+          "totalError": 0.008426495187097514,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1.0084264951870976
+        },
+        {
+          "name": "hidden",
+          "localError": 0,
+          "totalError": 3.7449744064764494,
+          "computedMagnitude": 0,
+          "idealMagnitude": 3.7449744064764494
+        },
+        {
+          "name": "head64",
+          "localError": 0,
+          "totalError": 59.91959050362319,
+          "computedMagnitude": 0,
+          "idealMagnitude": 59.91959050362319
+        },
+        {
+          "name": "mixed",
+          "localError": 0,
+          "totalError": 59.91959050362319,
+          "computedMagnitude": 0,
+          "idealMagnitude": 59.91959050362319
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776602755376,
+        "normFinal": 0.009000323390755332
+      },
+      "logitRange": [
+        -59.91959050362319,
+        59.91959050362319
+      ],
+      "topTwoGap": 0
+    },
+    {
+      "name": "adversarial-zero",
+      "stages": [
+        {
+          "name": "embedding",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1
+        },
+        {
+          "name": "norm1",
+          "localError": 2.4319761807401244e-16,
+          "totalError": 2.4319761807401244e-16,
+          "computedMagnitude": 3.999980000149999,
+          "idealMagnitude": 3.999980000149999
+        },
+        {
+          "name": "query",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "keys",
+          "localError": 0,
+          "totalError": 3.891161889184199e-15,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "values",
+          "localError": 0,
+          "totalError": 3.891161889184199e-15,
+          "computedMagnitude": 63.999680002399984,
+          "idealMagnitude": 63.999680002399984
+        },
+        {
+          "name": "scores",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "probability",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0.25,
+          "idealMagnitude": 0.25
+        },
+        {
+          "name": "attended",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "attentionProjection",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "attention",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "residual1",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1
+        },
+        {
+          "name": "norm2",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "expanded",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "activated",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "contractProjection",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "contracted",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "residual2",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 1,
+          "idealMagnitude": 1
+        },
+        {
+          "name": "hidden",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "head64",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        },
+        {
+          "name": "mixed",
+          "localError": 0,
+          "totalError": 0,
+          "computedMagnitude": 0,
+          "idealMagnitude": 0
+        }
+      ],
+      "denominators": {
+        "norm1": [
+          1.0000049999875,
+          1.0000049999875,
+          0.0031622776601683794,
+          0.0031622776601683794
+        ],
+        "norm2": 0.0031622776601683794,
+        "normFinal": 0.0031622776601683794
+      },
+      "logitRange": [
+        0,
+        0
+      ],
+      "topTwoGap": 0
+    }
+  ]
+}
