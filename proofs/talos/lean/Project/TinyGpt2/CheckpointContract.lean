@@ -22,12 +22,12 @@ theorem computedActivated_error (x : Row) (hx : LayerNorm.ValidRow (rowWords x))
     Approximation (wideWords (computedActivated x) j)
       (Gelu.Real.gelu (expandedReference (decodeRow x) j)) (31/10) (1/25000) := by
   have he := computedExpand_error x hx j
-  have hg := Gelu.evaluateAll_error_bounded _ he.finite he.magnitude
-  have hp := Gelu.evaluateAll_perturbed_bounded _ _ _ he.finite he.magnitude he.accuracy
+  have hg := GeluWide.evaluateAll_error _ he.finite
+  have hp := GeluWide.evaluateAll_perturbed _ _ _ he.finite he.accuracy
   have hm := F64ArithmeticBounds.magnitude_of_error _ _ _ _ hg.2
     ((Gelu.Real.gelu_magnitude _).trans he.magnitude)
   simp only [computedActivated, activateWide_words]
-  exact ⟨hg.1, hm.trans (by norm_num), hp.trans (by norm_num)⟩
+  exact ⟨hg.1, hm.trans (by norm_num [arithmeticEpsilon]), hp.trans (by norm_num [arithmeticEpsilon])⟩
 
 theorem contract_column_sum (j : Fin 4) : (∑ i, |decodeMatrix words 1148 8 4 i j|) ≤ 3 := by
   have h : (∑ i : Fin 8, |F64Rational.decode (matrixWords words 1148 8 4 i j)|) ≤ (3:ℚ) := by

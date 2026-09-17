@@ -9,7 +9,7 @@ def initialSetupMoves : Wasm.Program :=
    .constI64 0, .localSet 45, .constI64 256, .localSet 46, .constI64 1, .localSet 47,
    .localGet 21, .localSet 23, .localGet 22, .localSet 24, .constI64 0, .localSet 66]
 
-theorem initial_setup_shape : (func75.drop 67).take 22 =
+theorem initial_setup_shape : (func78.drop 67).take 22 =
     [.localGet 54, .localSet 45] ++ FixedArrayResult.lengthStoreProgram 45 0 ++ initialSetupMoves := rfl
 
 def initialReadyFrame (pointer t0 t1 t2 t3 : UInt64) (x : Row) (start : Nat)
@@ -37,7 +37,7 @@ theorem initial_setup_spec (env : HostEnv Unit) (initial : Store Unit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module rest Q (OutputMemory.prepare initial start 0 allocations)
       (initialReadyFrame pointer t0 t1 t2 t3 x start previous) env) :
-    wp module ((func75.drop 67).take 22 ++ rest) Q (OutputMemory.allocate initial start 0 allocations)
+    wp module ((func78.drop 67).take 22 ++ rest) Q (OutputMemory.allocate initial start 0 allocations)
       (initialAllocatedFrame pointer t0 t1 t2 t3 x start previous) env := by
   have hNode := node_toNat start 0 hFit
   have hBound : (node start 0).root.toUInt32.toNat + 8 ≤

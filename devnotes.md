@@ -14182,3 +14182,68 @@ words at the exponential cutoff.  The largest measured probability
 difference from the host reference is 7.59e-19.  The first Node invocation
 hit the same sandbox process restriction.  The approved invocation passes.
 The source registry now has 59 complete cases and 42 exact-byte packages.
+
+### GPT-2 arithmetic integration
+
+The GPT-2 source now calls SoftmaxWide.compute and GeluWide.evaluateAll.
+Both hidden-state and full-inference artifacts regenerate.  Compiler
+annotations identify each source declaration's function index before
+and after the change.  The proof edits use that mapping for function
+references, direct calls, and type indices.  The new helpers add three
+net functions: hidden moves from 71 to 74, and infer from 75 to 78.
+Array layouts, model dimensions, and allocation operations are unchanged.
+
+The hidden component proof now transfers the complete wider softmax
+region and the wider GELU evaluator through checked renaming.  It checks
+in 6.3 seconds.  GELU's all-finite execution theorem removes the previous
+local proof of its tail branches from the inference component module.
+A shared division-sign theorem also proves nonnegative rounded quotients,
+including signed-zero numerators.  This supports the existing checkpoint
+attention bounds.  The scalar module checks in 1.4 seconds.  The softmax
+nonnegativity adapter needed explicit local denominator and weight bounds
+for linear arithmetic, then checked in 2.1 seconds.
+
+The first integration build reached its 300-second limit while rebuilding
+execution and numerical dependencies.  It reported a hidden-body call
+mismatch caused by stale function indices in the shared composition
+macro.  The indices now match the regenerated annotations, including
+the transfer calls and the hidden component range.  Subsequent checks
+use focused targets before the complete inference gate.  The generated
+hidden instruction decomposition checked in 104 seconds.  The existing
+row, projection, GELU, and attention numerical adapters also checked.
+
+The next two-target diagnostic used an insufficient 120-second limit.
+The hidden code cache completed in 97 seconds, but the semantic proof
+could not finish within the remaining budget.  A focused 120-second
+semantic check also timed out.  The earlier journal records successful
+hidden proofs at 179–183 seconds.  I should have used those measurements
+when selecting the limits.  Before another check, the shared composition
+now uses ten named layout-constant lemmas in place of 36 repeated
+whole-module constant proofs.  Both inference artifacts reuse these
+lemmas through the checked component region.
+
+The full tiny_gpt2_infer gate passes regeneration, tracked-code comparison,
+annotation checks, and the complete execution theorem.  Its hidden proof
+checks in 180 seconds, and final inference composition in 1.5 seconds.
+The layout lemmas check in 2.5 seconds.  Checkpoint finite-output certificates
+and allocator pins pass.  Every reported theorem uses standard logical
+axioms.  The named layout proofs remove repeated derivations but do not
+reduce the dominant hidden-state proof time in this measurement.
+
+The CLI now uses the 17,371-byte module with SHA-256
+522a3bd4858ae264e791ff5504d3fccd618be418776d2aa68d03414c3d8bcda4.
+The hidden module has 16,006 bytes.  The trained Node test passes all 24
+hidden rows, 96 selected logits, and 1,536 full-inference logits against
+the native Talos bit model.  Maximum empirical PyTorch differences are
+5.995204332975845e-15, 1.1546319456101628e-14, and 7.993605777301127e-15,
+respectively.  The approved Node invocation ran without another permission
+request.  The cancellation audit now records WASM output zero and absolute
+error 9.324046052109244e-11 against the 80-digit reference.  The previous
+artifact's measured error was 383.216.  The composed uniform numerical
+bound remains open.
+
+The standalone tiny_gpt2_hidden gate also passes.  Its enclosing theorem
+checks in 174 seconds with standard axioms.  Documentation checks pass
+for all 136 maintained Markdown files, and git diff --check is clean.
+The previously recorded assoc_list generation mismatch still blocks the
+aggregate gate.  This integration changed neither that source nor its cache.

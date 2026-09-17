@@ -557,3 +557,14 @@ Re-fetched the parent: main advanced to
 GELU and softmax into the actual GPT inference artifact and execution theorem.
 The parent still records the complete real-model error composition as open.
 This change will be merged separately; no concurrent parent files are edited.
+
+Published the binary32 foundation as 7a7540cfd368d1c32effa43f14ffdc5b40f25cce.
+Merged parent 8309cc9bf88d69553fb4aa81bd4f09fe809e94d4 without conflicts.
+The updated Model target passes locally, and the checked CLI executes its
+17,371-byte Wasm artifact on the four bytes "Lean", returning 256 finite logits.
+Maintained-document checks and staged whitespace checks pass. The parent's
+journal records successful full generated-WAT gates (hidden semantic proof
+174–180 seconds) and 1,656 trained hidden/logit checks. Those are parent results,
+not a claim of a fresh complete local gate. Earlier 120-second hidden checks
+here were below that known semantic-proof duration; future integration checks
+will use the documented evidence and separately compiled dependencies.
