@@ -162,3 +162,21 @@ because Lean theorem headers cannot infer a placeholder type from the proof
 body. The fourth product proof remains a checked proposition-valued definition
 with a style warning; it is audited exactly like the three named theorems.
 Neither failed attempt was installed into the demo bundle.
+
+`build/gpt2/body-generation-v5/results.json` now records six successful body
+compilations, with four audited proof declarations each: source equality,
+actual-text parsing, statement execution, and the existing GPT-2 packed product.
+The sizes include the 3,072-term projection and both 25,129/25,128-column heads.
+The new build path uses these Lean definitions instead of `Generate.lean`.
+Both hosts select the `lean_kernel` entry point from the new bundle metadata.
+
+The local bundle was updated only after all six generation checks passed; its
+previous template files were retained under `build/gpt2/template-backup-before-body`.
+The rebuilt native runner executed `The purpose of science is` with 24 greedy
+output tokens on SwiftShader's Vulkan CPU. The complete 9,649,536-byte trace
+matches the previous trace exactly: 24 token IDs and 50,257 binary64 logit words
+per token. The output text also matches. Evidence is in
+`build/gpt2/body-execution-comparison.json`, with the trace, completion and run
+log beside it. This is a regression observation, not a full GPT-2 proof or a
+universal runtime-conformance result. Independent checks of the six installed
+shader texts are running separately from generation.

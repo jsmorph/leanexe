@@ -16,6 +16,9 @@
 #include <openssl/sha.h>
 #endif
 #include "artifacts.h"
+#ifndef WGSL_ENTRY_POINT
+#define WGSL_ENTRY_POINT "gemm_f32"
+#endif
 
 enum { F64=160000000, F32=161000000, WIDTH=768, CACHE_WORDS=196608 };
 typedef struct { uint8_t *data; size_t size; } Bytes;
@@ -121,7 +124,7 @@ static void init_gpu(GPU *g,const char *dir){
     char name[40];snprintf(name,sizeof name,"kernel-%zu.wgsl",s);Bytes shader=artifact(dir,name);
     WGPUShaderSourceWGSL source={.chain={.sType=WGPUSType_ShaderSourceWGSL},.code={(char *)shader.data,shader.size}};
     WGPUShaderModule module=wgpuDeviceCreateShaderModule(g->device,&(WGPUShaderModuleDescriptor){.nextInChain=&source.chain});need(module!=NULL,"WGSL module");
-    g->pipelines[s]=wgpuDeviceCreateComputePipeline(g->device,&(WGPUComputePipelineDescriptor){.compute={.module=module,.entryPoint={"gemm_f32",WGPU_STRLEN}}});need(g->pipelines[s]!=NULL,"WGSL pipeline");wgpuShaderModuleRelease(module);free(shader.data);
+    g->pipelines[s]=wgpuDeviceCreateComputePipeline(g->device,&(WGPUComputePipelineDescriptor){.compute={.module=module,.entryPoint={WGSL_ENTRY_POINT,WGPU_STRLEN}}});need(g->pipelines[s]!=NULL,"WGSL pipeline");wgpuShaderModuleRelease(module);free(shader.data);
   }
   for(size_t m=0;m<50;m++){
     char name[40];snprintf(name,sizeof name,"matrix-%02zu.bin",m);Bytes weight=artifact(dir,name);size_t s=shape(m);need(weight.size==4*inner[s]*cols[s],"matrix dimensions");

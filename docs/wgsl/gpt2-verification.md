@@ -5,6 +5,41 @@ layouts. The specification is the selected Lean matrix-product algorithm
 over floating-point words. Real-number accuracy bounds, a new GPT controller,
 and general Wasm proof development are outside this workstream.
 
+## Body-compiled shaders
+
+New GPT-2 builds compile the six definitions in `LeanExe.WGSL.Gpt2` through
+`#compile_wgsl`. Each definition calls `dense`; the compiler opens that helper,
+reads its fold callback and translates its arithmetic and buffer indices.
+The builder no longer invokes the fixed GEMM template generator. The generated
+entry point is `lean_kernel`, selected by both the native and browser hosts.
+
+Each compilation checks three theorems: the actual shader parses into the
+recorded statement program, its source interpretation equals the named Lean
+definition, and its execution returns that value at the correct address without
+modeled errors. `Project.Gpt2.BodyCompile.from_body_shader` supplies a fourth
+checked connection to the existing packed GPT-2 matrix product under concrete
+binary32 arithmetic. All four dependency lists are audited. Generated shaders,
+proof fragments and logs remain under ignored `build/`.
+
+`wgsl-gpt2-check` recognizes the bundle's `shaderCompiler: lean-body-wgsl`
+declaration and checks its six existing shader texts with `#check_wgsl`, then
+checks their connection to the packed matrix specification. It also retains
+the fifty-matrix routing-plan check. Older bundles without that declaration
+continue through the original template-artifact checker described below.
+
+This new path uses the [body compiler's statement execution semantics](body-compiler.md),
+including u32 indices, checked reads/stores, bounded loops and lexical scope.
+Its arithmetic is source ordered and separate. It does not inherit the old
+template path's fusion theorem or general interleaved-dispatch theorem merely
+because the algorithms agree. Shared geometric theorems prove dispatch coverage
+and disjoint output addresses. Runtime conformance and complete model/Wasm/host
+composition remain outside these certificates.
+
+## Original template-artifact verification record
+
+The following sections describe the older bundle and its separately developed
+proofs. They do not claim that its shader text was compiled from a Lean body.
+
 ## 1. Check the six delivered shaders
 
 ```sh

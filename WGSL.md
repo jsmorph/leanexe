@@ -5,14 +5,16 @@ There are two distinct implementations. The original GPT-2/GEMM path uses a
 [body compiler](docs/wgsl/body-compiler.md) translates a restricted Lean
 definition's expressions to WGSL. Its accepted definitions and proof boundary
 are specified in the [source specification](docs/wgsl/lean-source-specification.md).
-The existing GPT-2 bundle has not been migrated to the new compiler.
+New GPT-2 builds compile their six dense-product definitions through the body
+compiler. Older bundles retain the original template-artifact checker.
 
 ## Current verification focus
 
 The current implementation work is the [restricted Lean body compiler](docs/wgsl/body-compiler.md),
 including a checked connection from parsed statement execution to its Lean
-source. The original [WGSL artifact fidelity work for pretrained GPT-2](docs/wgsl/gpt2-verification.md)
-uses fixed GEMM templates. Its objective remains to
+source. The [WGSL artifact fidelity work for pretrained GPT-2](docs/wgsl/gpt2-verification.md)
+now connects those compiled definitions to the existing packed matrix specification.
+Its objective remains to
 prove that the six delivered shaders execute their selected Lean matrix-product
 definitions over floating-point words, verify the matrix layouts and split
 vocabulary computation, and state the arithmetic choices precisely. Numerical error bounds
