@@ -1,0 +1,12 @@
+{
+  "format": "leanexe-tiny-gpt2-inference-v1",
+  "context": 128,
+  "vocabulary": 256,
+  "checkpoint_sha256": "1e98ac0661cec2eed22473af75bb5ca2dac8bf1dd9a1788567981f57df4e6356",
+  "checked": {
+    "file": "inference.wasm",
+    "sha256": "f6c50a349b27ea17e5b0b453c29c6cd33e6c57d667674d82846fcb7fa5e8de73",
+    "export": "inferChecked",
+    "verification": "Execution tests pass against the Lean source and PyTorch; complete generated-WAT proof pending"
+  }
+}

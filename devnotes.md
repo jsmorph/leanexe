@@ -14774,3 +14774,110 @@ pointers.  Its enclosing call therefore needs its own execution proof.
 The two maps, maximum, and sum transfer directly.  The proof will compose
 those results with the internal call's frame and release instructions.
 No change to source arithmetic or allocation behavior is needed.
+
+### Internal GPT-2/128 softmax
+
+The internal softmax function now has checked execution proofs for both
+branches.  The nonempty branch transports the maximum, map, sum, and
+normalization proofs through the checked function regions.  A separate
+region checks the runtime release function.  The empty branch reuses
+the allocation and initialization lemmas and returns both ABI pointers.
+OutputBudget.transfer carries the reservation between modules with equal
+memory caps.
+
+The nonempty proof checked in 2.4 seconds, the empty proof in 3.7 seconds,
+and their combined theorem in 1.6 seconds.  Its audit contains only
+propext, Classical.choice, and Quot.sound.  Diagnostics identified a
+source-function name requiring qualification and a conditional already
+reduced by the frame tactic.  No timeout occurred.  The proof preserves
+all previously owned word arrays and the caller's remaining byte budget.
+The complete GPT-2/128 inference theorem remains open.
+
+### Memory preservation for borrowed arrays
+
+The host's alloc_u64_array calls the generic allocator and writes length
+and data.  It does not install the internal fixed-array kind and stride.
+Requiring OwnsWords for public inputs would therefore exclude the host's
+representation.  Heap.Protects records a byte interval below the heap and
+disjoint from its free blocks.  Heap.Frame preserves those intervals,
+their bytes, and the existing memory pages across execution.
+
+The allocation proof covers free-list reuse and heap extension.  Writes
+inside the new allocation and release of a disjoint temporary preserve
+the frame.  Frame composition transfers raw UInt64Array.At predicates
+without requiring allocation metadata.  Internally owned arrays also
+transfer, using the final heap's validity for free-block header bounds.
+The first diagnostic identified that explicit validity premise.  The
+revised shared module checks in 1.7 seconds with propext and Quot.sound.
+
+The sequence maps and both complete softmax theorems now return the
+stronger frame property.  The sequence entry checks in 1.5 seconds and
+the GPT-2/128 internal entry in 1.4 seconds.  Their audits retain only the
+three standard logical axioms.  The focused sequence_softmax gate passes
+again with unchanged compiler output.  The public inference proof will
+use these frames for host weights and tokens.
+
+### Fixed-width array proof checkpoint
+
+FixedWidthArray and FixedWidthArrayPrefix now provide field reads,
+address bounds, byte preservation, and successive field writes for
+arbitrary element widths.  RowMemory instantiates these results at width
+four.  They reuse ArrayField's generated address arithmetic and the
+existing word-memory lemmas.  The final builds took 2.1, 1.6, and 1.4
+seconds, with propext, Classical.choice, and Quot.sound in the audits.  An initial index
+injectivity diagnostic required substituting the row-index equality
+before cancelling the field offset.  No timeout occurred.
+
+The user paused proof development to inspect GPT-2/128 text completions.
+The array helpers are checked, while the row loops and full inference
+composition remain open.
+
+### GPT-2/128 text generation
+
+The existing trained sequence artifact generated three 160-byte samples
+with top-k 40, temperature 0.8, and seeds 42 through 44.  They contain
+invented words, word fragments, and dialogue punctuation.  The standalone
+experiment took about 4.4 seconds per sample, keeping a rolling 128-byte
+window.  Re-evaluating every generated context in CPU PyTorch gave the
+same 480 sampled bytes using the same random draws.  The maximum absolute
+logit difference across 122,880 values was 2.3092638912203256e-14.
+
+The CLI now accepts --context 128 and --generate, with seed, top-k,
+temperature, and JSON options.  It runs the inference module in Wasmtime
+and obtains random draws from the existing Lean SplitMix64 WASM program.
+The tracked module and manifest identify the unfinished inference proof.
+The generation test passes three seeded completions, rolling-window
+behavior, text and JSON output, input rejection, and the four-byte entry.
+Initial Node launches of two new scripts failed with sandbox EPERM.
+The required command-prefix approvals were then granted and the runs passed.
+
+The user replaced the proof objective with pretrained GPT-2 124M inference.
+The tiny checkpoint and its completed generation command remain available.
+
+### Pretrained GPT-2 reference
+
+The user approved Transformers 4.57.6 and safetensors 0.7.0 with their
+dependencies in the existing PyTorch 2.9.1+cpu environment.  The dependency
+lock records the installed versions, and pip check passes.  The pinned
+openai-community/gpt2 revision is 607a30d783dfa663caf39e06633721c8d4cfcd7e.
+Its safetensors SHA-256 matches the published Git LFS pointer.  Loading
+the checkpoint confirms 124,439,808 learned parameters.  The file includes
+twelve legacy attention masks in addition to the learned tensors.
+
+Three CPU FP32 prompts generated coherent completions.  The story prompt
+generated 64 tokens in 3.8 seconds on one thread.  The durable reference
+command reproduces those tokens after resetting the seed immediately
+before generation.  Its fetch command also passes with the pinned files
+already present.  The command bounds prompt plus completion at 128 BPE
+tokens and records EOS, count, or context exhaustion as the stopping reason.
+
+The user also approved FP32 arithmetic and packed binary tensors for
+LeanExe/WASM.  The original model requires biased projections, tanh GELU,
+LayerNorm epsilon 1e-5, and a vocabulary projection tied to the input
+embedding.  The [original model source](https://github.com/openai/gpt-2/blob/master/src/model.py)
+and [tokenizer source](https://github.com/openai/gpt-2/blob/master/src/encoder.py)
+are the architecture references.  The new plan preserves external weights
+and starts with compiler primitives and a GPT-sized matrix multiplication.
+Array push and set currently copy their inputs, while array map allocates
+one result.  Indexed tensor construction and resident binary weight input
+need explicit implementation before the full model.  Proof work stays paused.

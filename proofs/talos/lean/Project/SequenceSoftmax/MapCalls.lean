@@ -11,8 +11,7 @@ def MapPost (heap : Heap) (initial : Store Unit) (output : Array UInt64)
   (heap.allocate (mapCapacity output.size)).At final ∧
   (heap.allocate (mapCapacity output.size)).OwnsWords final
     (allocatedNode heap.top (mapCapacity output.size) heap.nodes) output ∧
-  (∀ source input, heap.OwnsWords initial source input →
-    (heap.allocate (mapCapacity output.size)).OwnsWords final source input) ∧
+  heap.Frame initial (heap.allocate (mapCapacity output.size)) final ∧
   OutputBudget final (heap.allocate (mapCapacity output.size)) remaining pageLimit module
 
 theorem weights_owned (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)

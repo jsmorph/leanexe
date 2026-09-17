@@ -1,5 +1,6 @@
 import Project.SequenceSoftmax.Allocation
 import Project.EulerRiemann.OutputBudget
+import Project.EulerRiemann.HeapFrame
 
 namespace Project.SequenceSoftmax.Spec
 open Wasm Project.Runtime Project.ProofKit Project.EulerRiemann.Execution
@@ -17,15 +18,13 @@ theorem map_state (heap : Heap) (initial final : Store Unit) (output : Array UIn
     (heap.allocate (mapCapacity output.size)).At final ∧
     (heap.allocate (mapCapacity output.size)).OwnsWords final
       (allocatedNode heap.top (mapCapacity output.size) heap.nodes) output ∧
-    (∀ source input, heap.OwnsWords initial source input →
-      (heap.allocate (mapCapacity output.size)).OwnsWords final source input) ∧
+    heap.Frame initial (heap.allocate (mapCapacity output.size)) final ∧
     final.mem.pages ≤ pageLimit ∧
     (∀ m index, final.memoryCap m index = initial.memoryCap m index) := by
   obtain ⟨hFinalHeap, hOwner⟩ := heap.finishWords initial final (mapCapacity output.size) output
     hHeap (by omega) (fun h => (hBump h).1) hWrites hOutput
   refine ⟨hFinalHeap, hOwner, ?_, ?_, ?_⟩
-  · intro source input hSource
-    exact hSource.arrayWritten (mapCapacity output.size) 1 output.size hHeap
+  · exact heap.frame_arrayWritten initial final (mapCapacity output.size) 1 output.size hHeap
       (by omega) (fun h => (hBump h).1.le) hWrites
   · rw [hWrites.2.1]
     exact heap.allocateArrayStore_pages_bound initial (mapCapacity output.size) 1 pageLimit
@@ -46,8 +45,7 @@ theorem map_finish (module_ : Wasm.Module) (heap : Heap) (initial final : Store 
     (heap.allocate (mapCapacity output.size)).At final ∧
     (heap.allocate (mapCapacity output.size)).OwnsWords final
       (allocatedNode heap.top (mapCapacity output.size) heap.nodes) output ∧
-    (∀ source input, heap.OwnsWords initial source input →
-      (heap.allocate (mapCapacity output.size)).OwnsWords final source input) ∧
+    heap.Frame initial (heap.allocate (mapCapacity output.size)) final ∧
     OutputBudget final (heap.allocate (mapCapacity output.size)) remaining pageLimit module_ := by
   have hAddress := hBudget.addressBound
   have hMemory := hBudget.heapPages

@@ -1,5 +1,9 @@
 # Verified tiny transformer inference
 
+The user paused this proof work on 2026-09-17 to develop
+[pretrained GPT-2 124M inference](gpt2-124m.md).  The four-byte proofs and
+tiny GPT-2/128 generation command remain available.
+
 This plan expands phase 14 of the [Development Plan](../plan.md).
 The user authorized implementation, frequent commits and pushes, and
 command-line demonstrations on 2026-09-16.  The first target is standard
@@ -135,7 +139,9 @@ through 128 match all 1,536 Lean output words, and eight rejection cases
 return empty arrays.  Sequence softmax now has a complete exact execution
 theorem covering empty and nonempty input, allocation, output ownership,
 preservation of other live arrays, and temporary-array release.  Its
-worst-case allocation budget is 2,160 bytes for 128 scores.  The remaining
+worst-case allocation budget is 2,160 bytes for 128 scores.  The internal
+softmax call in GPT-2/128 also has a checked proof covering its owner/data
+interface and release.  The remaining
 inference proofs cover row traversal and composition through the exported
 weight-checking entry.
 
@@ -143,6 +149,7 @@ weight-checking entry.
 - [x] Train and export the [128-position checkpoint](../data/tiny-gpt2-128-v1/README.md) on pinned Tiny Shakespeare.
 - [x] Implement array-based inference and compare WASM with the Lean source.
 - [x] Prove exact execution, termination, and memory guarantees for sequence softmax.
+- [x] Prove the internal softmax call in the GPT-2/128 module.
 - [ ] Prove the sequence row traversals.
 - [ ] Compose checked inference, termination, and memory guarantees.
 - [ ] Publish the 128-byte CLI artifact with its checked proof.
