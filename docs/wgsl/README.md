@@ -23,8 +23,9 @@ correctness claim.
 
 The scalar semantics in the root library are currently parameters. Neither a
 concrete binary32 interpretation nor artifact execution correctness follows from
-these parametric lemmas. Config validation is a generation check, not yet an
-indexing, race-freedom, or termination theorem.
+these parametric lemmas. The new index theorems establish bounds and unique
+addresses, but their connection to concurrent execution, termination and
+numerical behavior remains an explicit next obligation.
 
 ## Profiles and trust boundary
 
@@ -63,10 +64,10 @@ kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
 1. Expand the fixed native execution corpus beyond the first rectangular artifact.
-2. Extend the narrow Lean parser checkpoint below with kernel-checked artifact
-   identities and operational/indexing theorems.
-3. Instantiate shared operational semantics and binary32 arithmetic; prove
-   indexing, unique writes, successful termination, and execution correspondence.
+2. Instantiate operational semantics for the parsed body and connect the
+   checked indexing/dispatch lemmas to loads, stores, unique writes and termination.
+3. Instantiate binary32 arithmetic and prove execution correspondence under
+   the selected numerical profile.
 4. Prove GEMM numerical bounds and restricted exactness, then independently check
    the exact artifact package.
 5. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
@@ -98,6 +99,21 @@ tools/leanrun --timeout 120s lake build LeanExe.WGSL.ParseTest
 tools/leanrun --timeout 60s lake env lean --run LeanExe/WGSL/ParseTest.lean
 ```
 
-These are parser regression checks. They do not yet constitute a WGSL
-execution, race-freedom, termination or numerical theorem. No new dependency
-is needed; the native Python harness and its Linux evidence are unchanged.
+The corpus is regression evidence. In addition,
+[RectangularArtifact.lean](../../LeanExe/WGSL/RectangularArtifact.lean)
+proves that the exact captured text tokenizes and parses to the recorded AST.
+Its two reductions use kernel-mode decide, not native-decide witnesses, and
+compose through a reusable token-parser lemma. The file gate compares raw
+bytes against the proved source's UTF-8 encoding. The source literal and
+candidate token list are both explicit theorem inputs.
+
+[Index.lean](../../LeanExe/WGSL/Index.lean) proves general row-major bounds,
+unique active output addresses, coverage of each coordinate by the rounded-up
+dispatch, exact u32 access arithmetic, and progress of the loop measure.
+Validated dimensions imply bounded A/B/C indices and a nonwrapping loop
+increment. The rectangular artifact instantiates these access bounds.
+All public audits use no axioms or only standard logical axioms.
+
+These results do not yet constitute a complete WGSL execution, concurrent
+race-freedom, termination or numerical theorem. No new dependency is needed;
+the native Python harness and its Linux evidence are unchanged.

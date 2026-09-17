@@ -107,3 +107,74 @@ No timeout or resource-limit increase occurred. No new dependency, Python
 execution, native runtime-conformance claim or GPU correctness claim was
 introduced. Reviewed checkpoint paths: Lexer.lean, Parse.lean, ParseTest.lean,
 docs/wgsl/README.md and this journal. All changes are scoped to WGSL.
+
+Parser checkpoint3db4791f95801fd17609b43cff1439cfebdd1c6d was pushed
+with parenta6b7b53f510a7402234fc642848876cf70892655 and tree
+b3389637a5dade3f966ced14b641aa4fd9beaf45. Non-forced GitHub publication,
+fetch, exact tree/index/worktree and local CAS checks passed; clean.
+
+Added Index.lean with row-major bounds/injectivity, rounded-up dispatch
+coverage, exact u32 access arithmetic, validated cell/loop bounds and a
+decreasing loop measure. The first check found an unnormalized successor
+product and a tactic unavailable in the dependency-free root library.
+Preserved the draft and normalized the product before composition; replaced
+the tactic with definitional numeral conversion. No assumption or limit
+changed, and no audit from that failed build is treated as accepted.
+
+Index passes in936ms. All seven public audits have no axioms or only
+propext/Quot.sound. The concrete rectangular parsing theorem first lacked
+a Decidable equality for Except; preserved that draft and switched to
+definitional reduction (rfl), avoiding new global equality instances.
+
+Direct rfl hit elaborator recursion on the full character stream. The
+failed draft is retained. Split the closed parser reduction from the small
+Except-to-Option transport lemma and use existing kernel-mode decide for
+the former; no native-decide axiom or recursion/heartbeat increase is used.
+Kernel-mode decide rejected the complete parser equality with an application
+type mismatch after19s. This was not a timeout or an accepted theorem.
+Isolating tokenization and the closed result in a separate retained diagnostic
+before changing the proof boundary again.
+
+The smaller diagnostic passes: native parser returns the expected complete
+AST, lexical token count218, and kernel checks pass for the source length
+and a complete declaration. Split the production interface into tokenization
+and parseGemmTokens. The artifact now proves each boundary separately and
+composes them; the candidate218-token literal is untrusted until its lexer
+equality checks. Preserved the earlier combined source and parser boundary.
+
+The scalar diagnostic isolates the blocker: reducing even the core
+String.toNat? applied to "3" exhausts200,000 elaborator heartbeats; the
+parser reaches the same boundary when reading its first dimension. Neither
+limit was raised. Replaced slice-based decimal parsing with a total character-
+list fold that directly enforces canonical ASCII digits and the u32 range.
+The exact lexer equality already passes; token parsing will now be checked
+independently. Simplified the small Except composition by explicit reduction.
+All earlier drafts and diagnostic outputs remain preserved.
+
+After structural decimal parsing, both kernel reduction boundaries pass.
+The concrete composition change tactic still unfolded too much and hit
+recursion. Added a small generic parseGemm_of_tokens composition lemma with
+symbolic inputs and explicit Except.bind simplification; the artifact now
+applies that lemma without recomputing its checked token stream.
+
+The complete artifact composition now passes: Parse935ms, Index926ms,
+RectangularArtifact19s, ParseTest1.0s. The exact parsing theorem audits to
+propext/Classical.choice/Quot.sound; its resource validity has no axioms and
+its instantiated access bounds use propext/Quot.sound. No sorry, admit,
+new axiom or native-decide witness appears in these sources.
+The separate --run gate passes exact binary file identity against the
+proved source's UTF-8 bytes. Shader SHA-256 6fc06d865910ef3e615a1e33757e011feb56461958212160b04bf52c8d447455.
+The full adversarial parser corpus still passes after the decimal-parser
+change. No shader, native evidence, generator or numerical profile changed.
+
+Review of the proof and failures supports two reusable choices: separate
+lexer and token-parser equalities, then compose without reevaluating either;
+and use a structurally recursive ASCII decimal parser instead of a general
+string-slice conversion at the artifact-checking boundary. No LTG retrieval
+or cross-kernel performance claim is made. The theorem now concerns actual
+captured text, while operational and numerical obligations remain open.
+
+Reviewed checkpoint paths: Parse.lean, ParseTest.lean, Index.lean,
+RectangularArtifact.lean, WGSL.md, docs/wgsl/README.md and this journal.
+Focused checks and git diff --check pass. Intended publication:
+“Prove WGSL artifact parsing and GEMM index safety”.
