@@ -17,8 +17,10 @@ The existing Talos proof workspace now supplies concrete binary32 arithmetic,
 restricted exactness, and a composed GEMM error bound under explicit finite-input
 and magnitude conditions. The generated rectangular shader also runs headlessly
 on this ARM Mac's SwiftShader CPU device; all 15 output words match the reference.
-See [native execution instructions](tools/wgsl/README.md). Independent artifact
-package checking and the Wasm host/bundle composition remain open.
+See [generation, independent verification and execution instructions](tools/wgsl/README.md).
+The one-command pipeline now checks the exact shader package and passes the
+checked input snapshot directly to the native harness. Three matrix shapes and
+three rejection cases pass its fixed corpus. Wasm host/bundle composition is next.
 
 ## Purpose
 

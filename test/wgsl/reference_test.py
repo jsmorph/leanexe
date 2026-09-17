@@ -92,6 +92,22 @@ class ReferenceTests(unittest.TestCase):
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_checked_snapshot_does_not_reread_artifact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "report.json"
+            source = "// exact source checked before dispatch\n"
+            snapshot = {"artifactUtf8": source, "manifestUtf8": json.dumps(manifest())}
+            result = subprocess.run([sys.executable, str(ROOT / "tools/wgsl/run.py"),
+                                     "/nonexistent/shader", "/nonexistent/manifest",
+                                     "--snapshot-stdin", "--python", "/nonexistent/python",
+                                     "--report", str(report)], input=json.dumps(snapshot),
+                                    capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 1)
+            evidence = json.loads(report.read_text())
+            self.assertEqual(evidence["artifact"]["text"], source)
+            self.assertEqual(evidence["manifest"], manifest())
+            self.assertIn("FileNotFoundError", evidence["error"])
+
     def test_existing_evidence_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / "report.json"

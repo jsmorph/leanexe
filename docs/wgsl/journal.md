@@ -356,3 +356,61 @@ scripts, evidence, preservation guard and status documentation. No sorry, admit,
 new axiom or native_decide occurs in the new Lean sources. The coherent checkpoint
 is ready for non-forced publication on wgsl; Wasm composition and independent
 package checking are not claimed complete.
+
+The runtime/binary32 checkpoint cbd61b4777332abf6b1f5fb30bf95e2a887e6bb2 was
+published with parent ca6775030492aa2beb504867c1ac942b79fb3cca and tree
+58d45ec16d2458b495dd3c8c5d7eb034edd9feb9; exact fetched identity and clean status
+were checked. The user has now requested completion of the next plan: a single
+generate/verify/run path, a small size corpus, and a verified Wasm host/kernel
+composition, while checking concurrent GPT work on the parent branch.
+
+Fetched origin and established that wgsl diverged from main at
+00a011520a4da0085f66b3f38a5aa4be494eb401. The observed main tip f38cb7a3 has thirteen
+subsequent commits: complete tiny-model inference execution, checkpoint ranges,
+runtime weight validation/clipping, wider LayerNorm bounds, and degree-eighteen
+negative-exponential numerical proofs. Its new exponential generated-Wasm
+execution proof and complete model numerical composition are still open.
+Inspected these changes without modifying main or merging its ongoing work.
+
+Manifest.lean now describes the runtime metadata and proves its agreement with
+the shader configuration and selected profile. Package.lean connects any
+independently parsed supported shader to the existing binary32 dispatch,
+numerical and restricted exactness results. The first Manifest check found a
+constructor/theorem name collision and a shadowed fusion identifier. The next
+Package check needed the artifact's kernel projection exposed before rewriting
+the profile. Failed drafts/logs remain in task work/ and tmp. The corrected
+Manifest and Package builds pass in 1.1s and 3.2s, with standard-only axiom audits.
+
+Prepare.lean reads actual shader/manifest files, parses the shader independently
+and emits untrusted token hints and a proof draft. Separate kernel reductions
+check lexical identity, parsing, resource validity and manifest agreement. The
+first draft incorrectly indented multi-line structure literals; the next used
+an inferred theorem type where Lean requires a declared type. Retained both
+failed attempts and corrected the emitter's indentation and proof aliases.
+Aliases produce the harmless defProp linter warning; their complete axiom
+dependencies are still checked. No limits were increased and no timeout occurred.
+
+The package driver is exposed through tools/artifact-proof.js wgsl-build,
+wgsl-check, wgsl-run and wgsl-corpus. Checking never trusts a generation result,
+an existing receipt or a supplied proof file: it prepares and checks a fresh
+proof of the actual frozen input. The kernel theorem concerns exact shader text
+and typed metadata; JSON decoding and file identity remain explicit checker
+operations. A cross-check rejects differences between the JSON interpretation
+and checked metadata, including extra fields. The executor receives the verified
+snapshot directly over stdin, and its evidence must identify those same bytes.
+
+The rectangular end-to-end gate passes with 15 exact outputs. The fixed six-case
+corpus in build/wgsl/verified-corpus-v1 then passes: 1x1x1 separate, 3x5x2 separate,
+9x17x3 fusion (153 output cells and partial workgroups), plus rejection of an
+incorrect store address, wrong dimensions and extra metadata. All failed
+attempts remain intact. Accepted package inputs, proof drafts, verification
+receipts and native reports are copied without replacement to test/wgsl/packages.
+All ten focused Python harness tests pass in 1.186s, including protection against
+reopening changed input files after verification. JavaScript syntax checks pass.
+The runtime profile assumption and the numerical theorem's domain remain explicit.
+
+This checkpoint completes the generate/verify/run and small-corpus steps. The
+next step uses Talos's existing HostEnv/HostSpec and authoritative small-step
+host-call rule to connect the checked shader with an actual Wasm host artifact.
+The existing exact-binary decoder excludes imports, so that byte boundary must
+also be addressed before claiming the new Wasm artifact verified.

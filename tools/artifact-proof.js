@@ -353,6 +353,10 @@ function prepare(entry, inputPath) {
 }
 
 async function main() {
+  if (process.argv[2]?.startsWith("wgsl-")) {
+    await require("./wgsl/package").main(process.argv.slice(2));
+    return;
+  }
   const entries = loadRegistry();
   if (process.argv.length === 3 &&
       (process.argv[2] === "check-all" || process.argv[2] === "check-artifacts")) {

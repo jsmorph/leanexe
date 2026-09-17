@@ -66,10 +66,14 @@ and retains exact source/profile/configuration evidence. The first rectangular
 kernel passed on Mesa llvmpipe; failure probes are preserved under
 `test/wgsl/evidence`. These observations do not establish runtime conformance.
 
-1. Expand the fixed native execution corpus beyond the first rectangular artifact.
-2. Independently check the exact artifact package with the concrete binary32
-   interpretation, numerical bound and restricted exactness now proved.
-3. Add the Wasm dispatch boundary, bundle composition, and mixed-precision GPT-2
+The [independent package gate](../../tools/wgsl/README.md) now checks the actual
+shader source and all semantic manifest fields, instantiates the concrete
+binary32 theorems, audits their axioms and executes the held verified input.
+Its small corpus covers three matrix shapes, partial workgroups and three
+rejection cases. Accepted worked packages are retained in `test/wgsl/packages`.
+
+1. Add the Wasm dispatch boundary and prove the combined Wasm/WGSL artifact.
+2. Reuse the parent branch's GPT work for mixed-precision GPT-2
    integration before doing residency, tiling, and performance work.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
@@ -103,8 +107,8 @@ runs through the existing command-line harness. The rectangular shader emitted
 by `tools/wgsl/Generate.lean` is byte-for-byte identical to the captured source
 whose parse is proved. Runtime profile conformance remains an assumption;
 the numerical theorem's input conditions remain distinct from the harness's
-broader finite-input test envelope. The next integration boundary is independent
-artifact-package checking, followed by the Wasm dispatch interface.
+broader finite-input test envelope. Independent artifact-package checking now
+passes; the next integration boundary is the Wasm dispatch interface.
 
 ## Narrow artifact parser
 
