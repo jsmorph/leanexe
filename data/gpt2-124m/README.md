@@ -42,6 +42,19 @@ The user approved FP32 arithmetic and packed binary tensors and paused
 proof development.  The [implementation plan](../../plans/gpt2-124m.md)
 records the remaining work.
 
+The first attention projection runs through LeanExe/WASM with the
+pretrained 768 × 2,304 matrix and bias.  Its 2,304 FP32 outputs match a
+serial PyTorch evaluation with the same operation order bit-for-bit.
+The maximum absolute difference from PyTorch's standard matrix
+multiplication is 2.6226043701171875e-6.  The measured host call took
+0.034 seconds, including module startup and binary input loading.
+The [kernel test record](kernel-test.json) identifies the artifact and
+checkpoint.  Reproduce it with:
+
+```sh
+node test/packed.js --gpt2-kernel
+```
+
 ## Sources
 
 The [pinned checkpoint](https://huggingface.co/openai-community/gpt2/tree/607a30d783dfa663caf39e06633721c8d4cfcd7e),

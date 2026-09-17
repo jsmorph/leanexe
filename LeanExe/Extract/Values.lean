@@ -379,6 +379,7 @@ anything unrecognized keeps the previous leak rather than risking a double
 release. -/
 partial def exprBuildsFreshArray : IRExpr → Bool
   | .arrayLiteralSlots .. => true
+  | .byteArrayGenerate32Ptr .. => true
   | .byteArrayPushPtr .. => true
   | .byteArrayAppendPtr .. => true
   | .byteArraySetPtr .. => true
@@ -828,6 +829,11 @@ mutual
     | .byteArrayGet ptr len index =>
         addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
           (exprUsedSlots index)
+    | .byteArrayLoad32 ptr len index =>
+        addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+          (exprUsedSlots index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        addLiveSlots (exprUsedSlots len) (removeLiveSlot (exprUsedSlots body) indexSlot)
     | .byteArrayPushPtr ptr len value =>
         addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
           (exprUsedSlots value)
@@ -1848,6 +1854,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -1976,6 +1983,7 @@ mutual
     | .arrayExtractSlots .. => some []
     | .arrayMapSlots .. => some []
     | .arrayFilterSlots .. => some []
+    | .byteArrayGenerate32Ptr .. => some []
     | .byteArrayPushPtr .. => some []
     | .byteArrayAppendPtr .. => some []
     | .byteArraySetPtr .. => some []
@@ -2517,6 +2525,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -2584,6 +2593,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -2846,6 +2856,12 @@ mutual
         addLiveSlots
           (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
           (exprReleasedSlots index)
+    | .byteArrayLoad32 ptr len index =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+          (exprReleasedSlots index)
+    | .byteArrayGenerate32Ptr len _ body =>
+        addLiveSlots (exprReleasedSlots len) (exprReleasedSlots body)
     | .byteArrayPushPtr ptr len value =>
         addLiveSlots
           (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
@@ -3017,6 +3033,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -3799,6 +3816,15 @@ mutual
           (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
           (refreshOwnerMasksExprForAlloc summaries ownerSources len)
           (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .byteArrayLoad32 ptr len index =>
+        .byteArrayLoad32
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        .byteArrayGenerate32Ptr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len) indexSlot
+          (refreshOwnerMasksExprForAlloc summaries ownerSources body)
     | .byteArrayPushPtr ptr len value =>
         .byteArrayPushPtr
           (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)

@@ -40,18 +40,60 @@ def fetch(directory):
     check_files(directory)
 
 
-def generate(args):
+def load_model(directory):
     import torch
     import transformers
 
     torch.set_num_threads(1)
-    check_files(args.model_dir)
-    tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_dir, local_files_only=True)
+    check_files(directory)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(directory, local_files_only=True)
     model = transformers.GPT2LMHeadModel.from_pretrained(
-        args.model_dir, local_files_only=True, dtype=torch.float32, attn_implementation="eager").eval()
+        directory, local_files_only=True, dtype=torch.float32, attn_implementation="eager").eval()
     parameter_count = sum(p.numel() for p in model.parameters())
     if parameter_count != MANIFEST["parameters"]:
         raise ValueError(f"Expected {MANIFEST['parameters']} parameters, got {parameter_count}")
+    return tokenizer, model
+
+
+def export_kernel(args):
+    import torch
+
+    tokenizer, model = load_model(args.model_dir)
+    token = tokenizer.encode("Once")[0]
+    block = model.transformer.h[0]
+    with torch.inference_mode():
+        x = block.ln_1(model.transformer.wte.weight[token] + model.transformer.wpe.weight[0])
+        weight, bias = block.attn.c_attn.weight, block.attn.c_attn.bias
+        expected = block.attn.c_attn(x)
+        serial = torch.zeros_like(expected)
+        for row in range(weight.shape[0]):
+            serial = serial + x[row] * weight[row]
+        serial = serial + bias
+    output = args.model_dir / "kernel"
+    output.mkdir(exist_ok=True)
+    pack = lambda tensor: tensor.detach().contiguous().numpy().astype("<f4").tobytes()
+    (output / "weights.bin").write_bytes(pack(weight) + pack(bias))
+    (output / "input.bin").write_bytes(pack(x))
+    (output / "pytorch.bin").write_bytes(pack(expected))
+    (output / "serial.bin").write_bytes(pack(serial))
+    record = {
+        "checkpoint_sha256": MANIFEST["files"]["model.safetensors"],
+        "tensor": "h.0.attn.c_attn", "input_token": token, "position": 0,
+        "input_width": weight.shape[0], "output_width": weight.shape[1],
+        "weight_offset": 0, "bias_offset": weight.numel() * 4,
+        "serial_pytorch_max_abs_difference": (serial - expected).abs().max().item(),
+        "files": {name: digest(output / name) for name in
+                  ("weights.bin", "input.bin", "pytorch.bin", "serial.bin")},
+    }
+    (output / "manifest.json").write_text(json.dumps(record, indent=2) + "\n")
+    print(json.dumps(record))
+
+
+def generate(args):
+    import torch
+    import transformers
+
+    tokenizer, model = load_model(args.model_dir)
     inputs = tokenizer(args.text, return_tensors="pt")
     prompt_tokens = inputs.input_ids[0].tolist()
     limit = MANIFEST["reference_context_limit"]
@@ -71,7 +113,7 @@ def generate(args):
         "runtime": "Transformers CPU PyTorch FP32",
         "model": MANIFEST["model"], "revision": MANIFEST["revision"],
         "checkpoint_sha256": MANIFEST["files"]["model.safetensors"],
-        "parameters": parameter_count, "context_limit": limit,
+        "parameters": MANIFEST["parameters"], "context_limit": limit,
         "torch": torch.__version__, "transformers": transformers.__version__,
         "seed": args.seed, "top_k": args.top_k, "temperature": args.temperature,
         "prompt": args.text, "prompt_tokens": prompt_tokens, "generated_tokens": generated,
@@ -85,7 +127,7 @@ def generate(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Run the pinned pretrained GPT-2 124M CPU reference")
-    parser.add_argument("command", choices=["fetch", "generate"])
+    parser.add_argument("command", choices=["fetch", "generate", "export-kernel"])
     parser.add_argument("--model-dir", type=Path, default=ROOT / "build/gpt2-124m")
     parser.add_argument("--text")
     parser.add_argument("--max-new-tokens", type=int, default=64)
@@ -97,6 +139,9 @@ def main():
     if args.command == "fetch":
         fetch(args.model_dir)
         print("Checked the pinned GPT-2 checkpoint and tokenizer")
+        return
+    if args.command == "export-kernel":
+        export_kernel(args)
         return
     if args.text is None:
         parser.error("generate requires --text")

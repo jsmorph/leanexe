@@ -148,6 +148,21 @@ so callers must implement any needed floating-point ordering explicitly.
 The [numeric semantics](spec.md#numeric-semantics) state the supported
 operations and current proof boundary.
 
+### Packed words
+
+`LeanExe.Packed.getUInt32LE! bytes offset` reads four little-endian bytes
+at a byte offset and traps if the range exceeds the input.  Unaligned
+offsets are supported.  `LeanExe.Packed.generateUInt32LE size (fun i => value)`
+constructs `size` words in one allocation, evaluating a direct lambda at
+indices zero through `size - 1`.  Its result is a `ByteArray` containing
+four bytes per word.  The generator may capture supported scalar and heap
+values.  It checks the output byte-count multiplication for overflow.
+
+These operations store FP32 bit patterns without expanding each value to
+an eight-byte array slot.  The Wasmtime host accepts `bytes-file:PATH`
+where it accepts a `bytes:HEX` argument, allowing a binary tensor file to
+be passed as a `ByteArray`.
+
 ## Structures and Inductives
 
 Use structures for named fixed-width records.  Public structures flatten by runtime field order after proof-field erasure.  Internal structures may contain recursive-inductive pointer fields, byte arrays, arrays, or other supported values when their use stays inside accepted code.

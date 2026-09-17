@@ -1,6 +1,7 @@
 import Lean
 import LeanExe.Float64
 import LeanExe.Float32
+import LeanExe.Packed
 
 namespace LeanExe.IR
 
@@ -129,6 +130,8 @@ mutual
     | arraySwapIfInBoundsSlots (width childMask : Nat) (array left right : Expr)
     | arrayReverseSlots (width childMask : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
+    | byteArrayLoad32 (ptr len offset : Expr)
+    | byteArrayGenerate32Ptr (byteLen : Expr) (indexSlot : Nat) (body : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
     | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
     | byteArraySetPtr (ptr len index value : Expr)
@@ -316,6 +319,8 @@ mutual
     | .arraySwapIfInBoundsSlots _ _ array _ _ => array.eval module_ store
     | .arrayReverseSlots _ _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
+    | .byteArrayLoad32 _ _ _ => 0
+    | .byteArrayGenerate32Ptr _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
     | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
     | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store
