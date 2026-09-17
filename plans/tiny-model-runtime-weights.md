@@ -94,6 +94,13 @@ error falls from about 383.216 to 9.33e-11 in the Python binary64 prototype.
 The new implementation and proofs are in progress.  The command-line
 inference artifact still uses the previous arithmetic.
 
+The [new exponential numerical theorem](../proofs/talos/lean/Project/ExpNeg/Numerical.lean)
+proves finite, positive output and relative error at most 4029u on [-64, 0].
+The shared exact-halving theorem removes reduction roundoff.  Repeated
+squaring carries relative error, including multiplication underflow.
+Below -64, the output is zero and its absolute error is at most exp(-64),
+which the proof bounds by 1e-27.  Generated-WAT execution proofs remain open.
+
 ## Implementation sequence
 
 - [x] Preserve the cancellation case and calculate preliminary sensitivity terms.
