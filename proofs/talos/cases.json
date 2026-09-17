@@ -796,7 +796,7 @@
       "behaviorTheorems": [
         "Project.SequenceSoftmax.Spec.compute_exact"
       ],
-      "complete": false
+      "complete": true
     },
     {
       "name": "tiny_gpt2_seq",

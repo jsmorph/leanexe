@@ -14726,3 +14726,34 @@ OutputAppendBudget target.  The map-call targets in that run passed, and
 the client check then used the existing target names.  This parameter
 allows the sequence and later GPT allocation proofs to use the checked
 byte and page accounting without another implementation.
+
+### Complete sequence softmax
+
+The generated compute entry now has an exact source-equivalence theorem
+for empty and nonempty arrays.  The nonempty proof composes maximum,
+weights, total, normalization, and release.  Each allocation preserves all
+previously owned arrays.  The release proof preserves the result and all
+original arrays because the temporary allocation is disjoint from them.
+The empty branch allocates and initializes an empty result.
+
+The theorem carries the caller's remaining byte budget through the call
+and preserves its page limit.  The softmax reservation is
+2*(48+8*(n+1)), or 2,160 bytes at length 128.  The bound covers heap
+extension without assuming that a suitable free block exists.  The checked
+allocator also permits reuse.  OutputBudget.mono permits the empty branch
+to use the smaller reservation it needs.
+
+The nonempty proof checks in 1.7 seconds, the empty branch in 2.7 seconds,
+and the combined specification in 1.3 seconds.  Composition diagnostics
+identified an omitted Boolean result-type argument, a source-array size
+expression needing reduction, the qualified name of the region-symmetry
+lemma, and list prefixes requiring normalization before the frame tactic.
+The final proofs contain no local loop invariants beyond the previously
+checked map and fold modules.
+
+The focused sequence_softmax gate passes source regeneration, annotation
+checks, and the complete compute theorem.  Its axiom audit reports
+propext, Classical.choice, and Quot.sound.  The 3,851-byte generated module
+has SHA-256 7bdbd8540c977914030e757c76982e4bf8f851f66f3c32ef515bae6263971b7f.
+The identity and documentation tests pass.  The registry now has 61
+completed specifications among 62 cases.  GPT-2/128 remains incomplete.

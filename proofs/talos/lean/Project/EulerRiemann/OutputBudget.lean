@@ -11,6 +11,12 @@ structure OutputBudget (store : Store Unit) (heap : Heap) (remaining pageLimit :
   pageLimitBound : pageLimit ≤ 65536
   memoryCap : pageLimit ≤ store.memoryCap module_ 0
 
+theorem OutputBudget.mono {module_ : Wasm.Module} {store : Store Unit} {heap : Heap}
+    {remaining smaller pageLimit : Nat} (h : OutputBudget store heap remaining pageLimit module_)
+    (hSmaller : smaller ≤ remaining) : OutputBudget store heap smaller pageLimit module_ :=
+  ⟨lt_of_le_of_lt (Nat.add_le_add_left hSmaller _) h.addressBound,
+    (Nat.add_le_add_left hSmaller _).trans h.heapPages, h.pages, h.pageLimitBound, h.memoryCap⟩
+
 theorem OutputBudget.bump {module_ : Wasm.Module} {store : Store Unit} {heap : Heap} {remaining pageLimit : Nat}
     (h : OutputBudget store heap remaining pageLimit module_) (need : UInt64)
     (hCost : 48 + need.toNat ≤ remaining) :
@@ -75,6 +81,7 @@ theorem output_bytes_bound (size : Nat) (hSize : size ≤ 640000) :
   omega
 
 #print axioms OutputBudget.bump
+#print axioms OutputBudget.mono
 #print axioms OutputBudget.allocated
 #print axioms OutputBudget.released
 #print axioms Heap.OwnsWords.allocation_disjoint
