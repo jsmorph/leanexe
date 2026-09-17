@@ -132,13 +132,17 @@ The existing four-position artifact and the intermediate
 
 The array-based source runs in WASM.  Six test inputs spanning lengths one
 through 128 match all 1,536 Lean output words, and eight rejection cases
-return empty arrays.  The sequence sum and maximum have exact execution
-and store-preservation proofs.  The remaining softmax proofs cover the
-two array maps, allocation, and enclosing computation.
+return empty arrays.  Sequence softmax now has a complete exact execution
+theorem covering empty and nonempty input, allocation, output ownership,
+preservation of other live arrays, and temporary-array release.  Its
+worst-case allocation budget is 2,160 bytes for 128 scores.  The remaining
+inference proofs cover row traversal and composition through the exported
+weight-checking entry.
 
 - [x] Parameterize training and test the 128-position model.
 - [x] Train and export the [128-position checkpoint](../data/tiny-gpt2-128-v1/README.md) on pinned Tiny Shakespeare.
 - [x] Implement array-based inference and compare WASM with the Lean source.
-- [ ] Prove exact execution of sequence traversal and softmax.
+- [x] Prove exact execution, termination, and memory guarantees for sequence softmax.
+- [ ] Prove the sequence row traversals.
 - [ ] Compose checked inference, termination, and memory guarantees.
 - [ ] Publish the 128-byte CLI artifact with its checked proof.

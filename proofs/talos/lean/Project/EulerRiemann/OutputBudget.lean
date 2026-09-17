@@ -4,19 +4,25 @@ import Project.EulerRiemann.OutputMapPrepare
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime Project.ProofKit
 
-structure OutputBudget (store : Store Unit) (heap : Heap) (remaining pageLimit : Nat) : Prop where
+structure OutputBudget (store : Store Unit) (heap : Heap) (remaining pageLimit : Nat) (module_ : Wasm.Module := module) : Prop where
   addressBound : heap.top.toNat + remaining < 4294967296
   heapPages : heap.top.toNat + remaining ≤ pageLimit * 65536
   pages : store.mem.pages ≤ pageLimit
   pageLimitBound : pageLimit ≤ 65536
-  memoryCap : pageLimit ≤ store.memoryCap module 0
+  memoryCap : pageLimit ≤ store.memoryCap module_ 0
 
-theorem OutputBudget.bump {store : Store Unit} {heap : Heap} {remaining pageLimit : Nat}
-    (h : OutputBudget store heap remaining pageLimit) (need : UInt64)
+theorem OutputBudget.mono {module_ : Wasm.Module} {store : Store Unit} {heap : Heap}
+    {remaining smaller pageLimit : Nat} (h : OutputBudget store heap remaining pageLimit module_)
+    (hSmaller : smaller ≤ remaining) : OutputBudget store heap smaller pageLimit module_ :=
+  ⟨lt_of_le_of_lt (Nat.add_le_add_left hSmaller _) h.addressBound,
+    (Nat.add_le_add_left hSmaller _).trans h.heapPages, h.pages, h.pageLimitBound, h.memoryCap⟩
+
+theorem OutputBudget.bump {module_ : Wasm.Module} {store : Store Unit} {heap : Heap} {remaining pageLimit : Nat}
+    (h : OutputBudget store heap remaining pageLimit module_) (need : UInt64)
     (hCost : 48 + need.toNat ≤ remaining) :
     takeFirstFitFrom 0 need heap.nodes = none →
       heap.top.toNat + 48 + need.toNat < 4294967296 ∧
-      bumpPages heap.top need ≤ store.memoryCap module 0 := by
+      bumpPages heap.top need ≤ store.memoryCap module_ 0 := by
   intro _
   have hAddress := h.addressBound
   have hPages := h.heapPages
@@ -26,11 +32,11 @@ theorem OutputBudget.bump {store : Store Unit} {heap : Heap} {remaining pageLimi
   · unfold bumpPages
     omega
 
-theorem OutputBudget.allocated {store final : Store Unit} {heap : Heap} {remaining pageLimit start stop : Nat}
-    (h : OutputBudget store heap remaining pageLimit) (need stride : UInt64) (remainingAfter : Nat)
+theorem OutputBudget.allocated {module_ : Wasm.Module} {store final : Store Unit} {heap : Heap} {remaining pageLimit start stop : Nat}
+    (h : OutputBudget store heap remaining pageLimit module_) (need stride : UInt64) (remainingAfter : Nat)
     (hCost : 48 + need.toNat + remainingAfter ≤ remaining)
     (hWrites : ProofKit.Memory.WritesRange (heap.allocateArrayStore store need stride) final start stop) :
-    OutputBudget final (heap.allocate need) remainingAfter pageLimit := by
+    OutputBudget final (heap.allocate need) remainingAfter pageLimit module_ := by
   have hFit : takeFirstFitFrom 0 need heap.nodes = none →
       heap.top.toNat + 48 + need.toNat ≤ 4294967296 :=
     fun hNone => ((h.bump need (by omega)) hNone).1.le
@@ -45,13 +51,13 @@ theorem OutputBudget.allocated {store final : Store Unit} {heap : Heap} {remaini
   · rw [hWrites.2.1]
     exact heap.allocateArrayStore_pages_bound store need stride pageLimit h.pages (by intro _; omega)
   · rw [hWrites.1]
-    change pageLimit ≤ (heap.allocateArrayStore store need stride).memoryCap module 0
+    change pageLimit ≤ (heap.allocateArrayStore store need stride).memoryCap module_ 0
     rw [heap.allocateArrayStore_memoryCap]
     exact h.memoryCap
 
-theorem OutputBudget.released {store : Store Unit} {heap : Heap} {remaining pageLimit : Nat}
-    (h : OutputBudget store heap remaining pageLimit) (node : FreeNode) :
-    OutputBudget (heap.releaseStore store node) (heap.release node) remaining pageLimit :=
+theorem OutputBudget.released {module_ : Wasm.Module} {store : Store Unit} {heap : Heap} {remaining pageLimit : Nat}
+    (h : OutputBudget store heap remaining pageLimit module_) (node : FreeNode) :
+    OutputBudget (heap.releaseStore store node) (heap.release node) remaining pageLimit module_ :=
   ⟨h.addressBound, h.heapPages, h.pages, h.pageLimitBound, h.memoryCap⟩
 
 theorem Heap.OwnsWords.allocation_disjoint {heap : Heap} {store : Store Unit} {source : FreeNode}
@@ -75,6 +81,7 @@ theorem output_bytes_bound (size : Nat) (hSize : size ≤ 640000) :
   omega
 
 #print axioms OutputBudget.bump
+#print axioms OutputBudget.mono
 #print axioms OutputBudget.allocated
 #print axioms OutputBudget.released
 #print axioms Heap.OwnsWords.allocation_disjoint

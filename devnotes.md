@@ -14700,3 +14700,77 @@ sequence work without duplicating those proofs.
 The complete GPT-2/4 specification also passes after these shared-lemma
 changes.  Its entry, rejection, clipping, inference, and output modules
 rebuilt successfully.
+
+### Complete sequence map calls
+
+The weight and normalization function proofs now include the capacity
+calculation, free-list search or heap extension, length initialization,
+map loop, and returned owner and data pointers.  Both complete functions
+check in 4.6 seconds.  The allocation initialization proof checks in
+2.6 seconds and the ownership wrappers in 1.4 seconds.  The release proof
+checks in 1.5 seconds by applying the shared runtime release theorem.
+
+The proofs reuse the existing Heap, OwnsWords, finishWords, and allocation
+preservation lemmas.  Their result preserves every previously owned array,
+which lets callers retain weights and other intermediates across a map.
+The initial attempt needed explicit folding of the allocation-root names
+before arithmetic.  Subsequent diagnostics identified a missing tactic
+import, an already-simplified load guard, and frame-length goals requiring
+reduction before decide.  No timeout occurred.
+
+OutputBudget now accepts a module parameter with the previous Euler module
+as its default.  Its allocation and release lemmas preserve that parameter.
+The existing OutputFields and OutputTail clients pass after rebuilding
+their dependencies.  An earlier diagnostic named a nonexistent
+OutputAppendBudget target.  The map-call targets in that run passed, and
+the client check then used the existing target names.  This parameter
+allows the sequence and later GPT allocation proofs to use the checked
+byte and page accounting without another implementation.
+
+### Complete sequence softmax
+
+The generated compute entry now has an exact source-equivalence theorem
+for empty and nonempty arrays.  The nonempty proof composes maximum,
+weights, total, normalization, and release.  Each allocation preserves all
+previously owned arrays.  The release proof preserves the result and all
+original arrays because the temporary allocation is disjoint from them.
+The empty branch allocates and initializes an empty result.
+
+The theorem carries the caller's remaining byte budget through the call
+and preserves its page limit.  The softmax reservation is
+2*(48+8*(n+1)), or 2,160 bytes at length 128.  The bound covers heap
+extension without assuming that a suitable free block exists.  The checked
+allocator also permits reuse.  OutputBudget.mono permits the empty branch
+to use the smaller reservation it needs.
+
+The nonempty proof checks in 1.7 seconds, the empty branch in 2.7 seconds,
+and the combined specification in 1.3 seconds.  Composition diagnostics
+identified an omitted Boolean result-type argument, a source-array size
+expression needing reduction, the qualified name of the region-symmetry
+lemma, and list prefixes requiring normalization before the frame tactic.
+The final proofs contain no local loop invariants beyond the previously
+checked map and fold modules.
+
+The focused sequence_softmax gate passes source regeneration, annotation
+checks, and the complete compute theorem.  Its axiom audit reports
+propext, Classical.choice, and Quot.sound.  The 3,851-byte generated module
+has SHA-256 7bdbd8540c977914030e757c76982e4bf8f851f66f3c32ef515bae6263971b7f.
+The identity and documentation tests pass.  The registry now has 61
+completed specifications among 62 cases.  GPT-2/128 remains incomplete.
+
+### GPT-2/128 helper proof reuse
+
+Comparison of compiler source-name annotations and generated instruction
+streams identified 41 shared functions from TinyGpt2Hidden.  A closed
+function-region theorem now checks their parameter, local, instruction,
+result, and renamed-call equality inside the GPT-2/128 module.  Separate
+regions cover the eleven sequence-softmax helpers and all seven functions
+of the existing internal weight checker, including prepare.  The three
+regions cover 50 distinct functions and check in 15 seconds.
+
+The exported sequence-softmax entry returns one pointer.  GPT-2/128 calls
+an internal version with owner and data arguments and two returned
+pointers.  Its enclosing call therefore needs its own execution proof.
+The two maps, maximum, and sum transfer directly.  The proof will compose
+those results with the internal call's frame and release instructions.
+No change to source arithmetic or allocation behavior is needed.
