@@ -36,8 +36,11 @@ at most 0.0001 against the real head applied to the computed hidden row, for
 every four-byte checkpoint input. `GptNumerical` composes this with the parent's
 hidden-state error theorem against the complete real GPT model. Its uniform
 epsilon-floor bound is extremely loose (approximately 4.85e9 per logit), so it
-does not certify useful precision. The complete GPT artifact-execution bundle
-and subsequent performance work remain open.
+does not certify useful precision. The complete GPT artifact-execution bundle is now checked, including the
+exact hidden Wasm, dispatch bridge, WGSL head, bias-addition Wasm and checkpoint
+bytes. Its CPU corpus matches all 768 logits for three inputs and rejects three
+changed-artifact cases. Native runtime/conversion conformance is explicit.
+Performance work remains open.
 
 ## Purpose
 

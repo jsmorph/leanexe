@@ -162,7 +162,9 @@ async function corpus(directory) {
 async function main(args) {
   const [command, directory, ...rest] = args;
   requireThat(directory, "expected a WGSL package directory");
-  if (command.startsWith("wgsl-bundle-")) {
+  if (command.startsWith("wgsl-gpt-")) {
+    await require("./gpt").main([command, directory, ...rest]);
+  } else if (command.startsWith("wgsl-bundle-")) {
     return require("./bundle").main(args);
   } else if (command === "wgsl-corpus") {
     requireThat(rest.length === 0, "unexpected arguments");

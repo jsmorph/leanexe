@@ -777,3 +777,22 @@ reusable Composition macro also checks independently. This split preserves
 the original source and failed logs and adds no proof axioms or limit changes.
 The final hidden execution theorem is now being checked with these prepared
 dependencies. Parent main remains at the already merged bf6fcc42.
+
+The complete hidden execution theorem checks in 155s with only propext,
+Classical.choice and Quot.sound. GptHiddenArtifact needed an explicit module
+property when applying artifact_correct_of; the first failed elaboration and
+its diagnostics are retained. With that property supplied, the exact hidden
+binary theorem and the complete GptBundle artifact theorem pass. GptBundle
+checks in 4.2s and uses only the three standard logical axioms.
+
+The independent GPT gate then accepts the exact shader/manifest, the 16,006-byte
+hidden Wasm, 90-byte dispatch bridge, 61-byte bias-addition Wasm and 2,488-word
+checkpoint. The complete pipeline executes on SwiftShader CPU through native
+WebGPU. All 768 logits for Lean/zero/byte-edge token cases exactly match Lean's
+integer floating-point model. Hidden memory and bridge memory outside C are
+preserved. Altered hidden bytes, finish bytes and checkpoint bytes are rejected
+by the same exact-file gate. The six-case evidence is retained at
+build/wgsl/gpt-corpus-20260917-a and check-CIiblJ; the portable artifacts and
+recorded evidence are also kept under test/wgsl/gpt. Native orchestration,
+conversions and runtime conformance remain explicit assumptions, and the full
+real-model bound remains extremely loose. Performance work follows this gate.
