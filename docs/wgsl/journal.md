@@ -796,3 +796,35 @@ build/wgsl/gpt-corpus-20260917-a and check-CIiblJ; the portable artifacts and
 recorded evidence are also kept under test/wgsl/gpt. Native orchestration,
 conversions and runtime conformance remain explicit assumptions, and the full
 real-model bound remains extremely loose. Performance work follows this gate.
+
+The five fixed head performance candidates all pass independent artifact
+verification and native output checks: one-row 8×8, 32×1 and 64×1 workgroups,
+plus three-row 32×1 and 64×1 batches. Two warmup and nine measured rounds check
+84,480 words. Recreating each one-row pipeline costs approximately 17.9–18.4ms
+per three contexts; one resident pipeline costs 0.276–0.300ms. A resident
+three-row batch costs 0.120–0.121ms. Those are CPU-only measurements; the small
+32/64 workgroup difference is not a reliable selection criterion. Portable
+artifacts and reports are preserved under test/wgsl/head-performance.
+
+Stage timing also identifies roughly 445ms of native process setup per
+unshared inference. A bounded resident session now reuses one process, weight
+buffer and pipeline behind the unchanged synchronous Wasm import. Its first
+complete run matches all 768 Lean logits, rejects a changed resident-weight
+snapshot, and closes the native process and Node worker before success. Warm
+head calls measure 0.783–0.856ms, with about 1.1–1.2ms for all three Wasm/WGSL
+stages excluding proof/reference generation. A final focused run checks the
+separate native-startup timing field added after that first successful run.
+The four existing Wasm host boundary tests also pass after the native adapter
+refactoring. No new Wasm binary or new trusted axiom is introduced.
+
+The final resident-session run also passes all 768 exact logit comparisons and
+the changed-weight rejection, with one weight upload, one pipeline and three
+dispatches. Native startup is now recorded separately, and orderly native/worker
+shutdown is checked before success. Its complete receipt and output evidence
+are preserved in test/wgsl/gpt/session-evidence.json and check-TiMETC. The
+maintained-document checker passes 138 files. This completes the WGSL agenda
+within the user's explicit server-side CPU scope: the exact heterogeneous GPT
+artifact theorem, native execution, residency, batching/workgroup experiments
+and documented decisions about additional operations. Physical-GPU conformance
+and tighter full-model accuracy bounds remain clearly identified research
+extensions, not claims supplied by these CPU results.

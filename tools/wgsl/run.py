@@ -99,7 +99,7 @@ def parse_vectors(path, counts):
     return result
 
 
-def execute_worker(job):
+def open_device(job):
     import wgpu
     import wgpu.backends.wgpu_native as native
 
@@ -127,7 +127,17 @@ def execute_worker(job):
         runtime["wgpuNativeLibrarySha256"] = hashlib.sha256(Path(native_path).read_bytes()).hexdigest()
     runtime["pythonPackages"] = {name: importlib.metadata.version(name)
                                  for name in ("wgpu", "cffi", "pycparser", "rendercanvas", "numpy")}
+    return device, runtime
+
+
+def execute_worker(job):
+    import wgpu
+
+    device, runtime = open_device(job)
     try:
+        if "benchmark" in job:
+            from resident import benchmark
+            return {"runtime": runtime, "benchmark": benchmark(device, job, wgpu)}
         return {"runtime": runtime, "outputs": execute_dispatch(device, job, wgpu)}
     except Exception as error:
         return {"runtime": runtime, "error": f"{type(error).__name__}: {error}"}
@@ -259,6 +269,14 @@ def run(args):
 
 
 def main():
+    if sys.argv[1:] == ["--session"]:
+        try:
+            from session import serve
+            serve()
+        except Exception as error:
+            print(json.dumps({"error": f"{type(error).__name__}: {error}"}), flush=True)
+            return 1
+        return 0
     if sys.argv[1:] == ["--worker"]:
         try:
             print(json.dumps(execute_worker(json.load(sys.stdin))))

@@ -5,6 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { performance } = require("node:perf_hooks");
 const { instantiate, nativeDispatch } = require("./wasm-host");
 const requireThat = (ok, message) => { if (!ok) throw new Error(message); };
 const digest = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
@@ -13,7 +14,7 @@ const scratch = new DataView(new ArrayBuffer(8));
 function decode64(word) { scratch.setBigUint64(0, unsigned(word), true); return scratch.getFloat64(0, true); }
 function encode64(value) { scratch.setFloat64(0, value, true); return scratch.getBigUint64(0, true); }
 
-function execute(checked, tokens, reference, label) {
+function execute(checked, tokens, reference, label, dispatch) {
   requireThat(Array.isArray(tokens) && tokens.length === 4 &&
     tokens.every(t => Number.isInteger(t) && t >= 0 && t < 256), "expected four byte tokens");
   requireThat(/^[a-z0-9-]+$/.test(label), "invalid evidence label");
@@ -25,6 +26,7 @@ function execute(checked, tokens, reference, label) {
   const destination = path.join(checked.attempt, `gpt-${label}.json`);
   requireThat(!fs.existsSync(destination), "execution evidence already exists");
   try {
+    const started = performance.now();
     requireThat(checked.metadata.profile.id === "leanexe-f32-rne-separate-v1",
       "this exact-reference execution requires the separate profile");
     requireThat(checked.weightsBytes.length === 2488 * 8, "wrong checkpoint size");
@@ -42,9 +44,15 @@ function execute(checked, tokens, reference, label) {
     const hiddenWords = values.map(unsigned);
     requireThat(hiddenWords.every((word, i) => word.toString() === reference.hidden[i]), "hidden Wasm differs from pure Lean model");
     requireThat(Buffer.from(memory.buffer).equals(before), "hidden Wasm changed input memory");
+    const hiddenFinished = performance.now();
 
-    const bridge = instantiate(checked.hostBytes, checked.metadata, inputs =>
-      nativeDispatch(checked, inputs, path.join(checked.attempt, `gpt-${label}-native.log`)));
+    let residency;
+    const bridge = instantiate(checked.hostBytes, checked.metadata, inputs => {
+      const response = dispatch ? dispatch(inputs) :
+        nativeDispatch(checked, inputs, path.join(checked.attempt, `gpt-${label}-native.log`));
+      residency = response.resident;
+      return response;
+    });
     const bridgeMemory = bridge.instance.exports.memory;
     const a = 64, b = 128, c = b + 4 * 1024 + 64;
     const view = new DataView(bridgeMemory.buffer);
@@ -55,6 +63,7 @@ function execute(checked, tokens, reference, label) {
     const bridgeAfter = Buffer.from(bridgeMemory.buffer);
     requireThat(bridgeAfter.subarray(0, c).equals(bridgeBefore.subarray(0, c)) &&
       bridgeAfter.subarray(c + 1024).equals(bridgeBefore.subarray(c + 1024)), "bridge changed memory outside output");
+    const headFinished = performance.now();
 
     const finish = new WebAssembly.Instance(new WebAssembly.Module(checked.finishBytes), {});
     requireThat(typeof finish.exports.finish === "function", "missing finish export");
@@ -67,6 +76,9 @@ function execute(checked, tokens, reference, label) {
       logits.every((word, j) => word.toString() === reference.logits[j]), "mixed logits differ from pure Lean model");
     requireThat(logits.every(word => Number.isFinite(decode64(word))), "nonfinite mixed logit");
     Object.assign(report, { status: "pass", hidden: hiddenWords.map(String), logits: logits.map(String),
+      elapsedMs: { hidden: hiddenFinished - started, head: headFinished - hiddenFinished,
+        finish: performance.now() - headFinished, total: performance.now() - started },
+      residency,
       runtime: bridge.last.runtime, checkedElements: 256, hiddenMemoryPreserved: true,
       bridgeMemoryOutsideOutputPreserved: true, importedCalls: bridge.calls,
       reference: "pure Lean integer binary64 hidden and binary32 separate head with explicit conversions" });

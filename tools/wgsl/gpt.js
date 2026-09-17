@@ -118,7 +118,7 @@ async function corpus(directory) {
   console.log(`GPT corpus passed: ${results.length} cases; ${directory}`);
 }
 
-async function run(checked, tokens, label) {
+async function run(checked, tokens, label, dispatch) {
   requireThat(tokens.length === 4 && tokens.every(token => Number.isInteger(token) && token >= 0 && token < 256), "expected four byte tokens");
   const output = await lean("pure Lean mixed-precision reference", ["lake", "-d", proofRoot, "env", "lean", "--run",
     path.join(__dirname, "GptModel.lean"), ...tokens.map(String)], path.join(checked.attempt, `gpt-${label}-reference.log`));
@@ -126,9 +126,43 @@ async function run(checked, tokens, label) {
   requireThat(lines.length === 1, "missing or duplicate Lean reference output");
   const reference = JSON.parse(lines[0]);
   writeJson(path.join(checked.attempt, `gpt-${label}-reference.json`), reference);
-  const result = execute(checked, tokens, reference, label);
+  const result = execute(checked, tokens, reference, label, dispatch);
   console.log(`GPT Wasm → WGSL → Wasm passed: ${result.checkedElements} logits; ${checked.attempt}/gpt-${label}.json`);
   return result;
+}
+
+async function session(checked, inputs) {
+  const { NativeSession } = require("./native-session");
+  const bytes = Buffer.alloc(4);
+  const weights = Array.from({ length: 1024 }, (_, i) => {
+    bytes.writeFloatLE(checked.weightsBytes.readDoubleLE(8 * (1184 + i)));
+    return bytes.readUInt32LE();
+  });
+  const native = new NativeSession(checked, weights, path.join(checked.attempt, "gpt-session-native.log"));
+  const results = [];
+  try {
+    for (const [i, tokens] of inputs.entries())
+      results.push(await run(checked, tokens, `session-${i}`, values => native.dispatch(values)));
+    const last = results.at(-1).residency;
+    requireThat(last?.weightUploads === 1 && last.pipelineCreations === 1 && last.dispatches === inputs.length,
+      "native session did not retain one weight buffer and pipeline");
+    requireThat(Number.isFinite(last.nativeStartupMs) && last.nativeStartupMs > 0,
+      "native session did not report its startup cost");
+    // A changed Wasm B snapshot must never be dispatched against resident B.
+    const changed = weights.slice();
+    changed[0] ^= 1;
+    let rejected = false;
+    try { native.dispatch({ a: [0, 0, 0, 0], b: changed }); }
+    catch (error) { rejected = error.message.includes("resident weights differ"); }
+    requireThat(rejected, "changed resident weight snapshot was not rejected");
+  } finally {
+    await native.close();
+  }
+  writeJson(path.join(checked.attempt, "gpt-session.json"), { status: "pass", inputs,
+    checkedElements: 256 * inputs.length, changedWeightsRejected: true,
+    residency: results.at(-1).residency, elapsedMs: results.map(result => result.elapsedMs),
+    nativeClosed: true, universalRuntimeConformanceEstablished: false });
+  console.log(`Resident GPT session passed: ${inputs.length} inputs; ${checked.attempt}/gpt-session.json`);
 }
 
 async function main([command, directory, ...rest]) {
@@ -147,6 +181,16 @@ async function main([command, directory, ...rest]) {
   } else if (command === "wgsl-gpt-corpus") {
     requireThat(rest.length === 0, "unexpected arguments");
     await corpus(directory);
+  } else if (command === "wgsl-gpt-benchmark") {
+    requireThat(rest.length === 1, "expected an existing GPT bundle and fresh benchmark directory");
+    await require("./benchmark").main(directory, rest[0]);
+  } else if (command === "wgsl-gpt-session") {
+    requireThat(rest.length >= 4 && rest.length <= 64 && rest.length % 4 === 0 &&
+      rest.every(s => /^(0|[1-9][0-9]*)$/.test(s) && Number(s) < 256),
+    "expected 1–16 groups of four byte tokens");
+    const inputs = [];
+    for (let i = 0; i < rest.length; i += 4) inputs.push(rest.slice(i, i + 4).map(Number));
+    await session(await checkGpt(directory), inputs);
   } else throw new Error(`unknown GPT command: ${command}`);
 }
-module.exports = { main, generate, checkGpt, run, corpus };
+module.exports = { main, generate, checkGpt, run, corpus, session };
