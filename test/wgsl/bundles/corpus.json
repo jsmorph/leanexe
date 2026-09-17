@@ -1,0 +1,28 @@
+{
+  "status": "pass",
+  "results": [
+    {
+      "name": "scalar",
+      "status": "pass",
+      "verification": "scalar/bundle-verification.json",
+      "execution": "scalar/bundle-execution.json"
+    },
+    {
+      "name": "rectangular",
+      "status": "pass",
+      "verification": "rectangular/bundle-verification.json",
+      "execution": "rectangular/bundle-execution.json"
+    },
+    {
+      "name": "partial-workgroups",
+      "status": "pass",
+      "verification": "partial-workgroups/bundle-verification.json",
+      "execution": "partial-workgroups/bundle-execution.json"
+    },
+    {
+      "name": "altered-host",
+      "status": "rejected",
+      "failure": "Wasm exact bytes and host composition failed; retained diagnostics: /Users/jamiestephens/src/leanexe/build/wgsl/package-checks/check-on3OM7/host-verify.log"
+    }
+  ]
+}

@@ -28,8 +28,8 @@ async function lean(stage, args, log) {
   return output;
 }
 
-function audit(output) {
-  const expected = new Set(["package", "artifact", "numerical", "exact"].map(n => `CheckedWGSLPackage.${n}`));
+function audit(output, names = ["package", "artifact", "numerical", "exact"].map(n => `CheckedWGSLPackage.${n}`)) {
+  const expected = new Set(names);
   const checked = {};
   for (const match of output.matchAll(/'([^']+)' (?:depends on axioms:\s*\[([^\]]*)\]|does not depend on any axioms)/g)) {
     const [, name, list = ""] = match;
@@ -161,7 +161,9 @@ async function corpus(directory) {
 async function main(args) {
   const [command, directory, ...rest] = args;
   requireThat(directory, "expected a WGSL package directory");
-  if (command === "wgsl-corpus") {
+  if (command.startsWith("wgsl-bundle-")) {
+    return require("./bundle").main(args);
+  } else if (command === "wgsl-corpus") {
     requireThat(rest.length === 0, "unexpected arguments");
     await corpus(directory);
   } else if (command === "wgsl-build") {
@@ -174,4 +176,4 @@ async function main(args) {
   } else throw new Error(`unknown WGSL command: ${command}`);
 }
 
-module.exports = { main, checkPackage, executeChecked, generate, audit };
+module.exports = { main, checkPackage, executeChecked, generate, audit, lean };
