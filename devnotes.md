@@ -14431,3 +14431,36 @@ combined entry remains incomplete until the internal inference and enclosing
 entry proofs pass.  Documentation and whitespace checks pass.
 
 The standalone f64_clip gate also passes after the shared state refactor.
+
+### Internal inference execution
+
+The internal inference theorem now proves termination, all 256 raw-bit
+logits, and input preservation.  Its parameters and result include owner
+slots.  The output loop uses the existing allocation, copying, release,
+array-prefix, and memory-layout proofs.  The allocation execution theorem
+now accepts the module and scratch-local start, so both inference calling
+conventions use the same proof.  That shared theorem checks in 1.7 seconds.
+
+The internal frame and instruction proofs account for one additional
+parameter and one additional result local.  Logit execution checks in
+3.5 seconds, capacity in 1.7 seconds, allocation and initialization in
+1.3 seconds each, copying in 2.5 seconds, release in 2.6 seconds, and
+append composition in 1.4 seconds.  Two missed local-index substitutions
+and one obsolete audit name produced diagnostics during frame adaptation.
+Those errors are fixed.  The proof reuses the existing memory model rather
+than introducing a second heap representation.
+
+Iteration composition checks in 2.7 seconds, its guard in 1.6 seconds,
+and the terminating loop in 1.3 seconds.  Entry and initial allocation
+check in 2.2 and 1.3 seconds.  Initial setup first exposed one stale local
+index in the length-store decomposition, then checked in 3.2 seconds.
+The two-word return checks in 1.7 seconds, and the complete internal
+inference theorem in 1.4 seconds.  Audits report standard logical axioms.
+The enclosing checked entry remains open.  These changes preserve the
+compiled source and artifact bytes.
+
+The checked-entry partial-specification gate passes with internal inference
+registered.  The existing tiny_gpt2_infer gate passes after the shared
+allocation refactor.  Documentation checks pass for all 136 maintained
+Markdown files.  An initial documentation command used a nonexistent test
+filename.  The documented tools/check-docs.js command passed.
