@@ -39,6 +39,15 @@ length 64 the coordinatewise sum gives a factor sixteen more.  These
 estimates identify a need for sharper composition.  They do not determine
 the smallest possible uniform error bound.
 
+The [weighted attention proofs](../proofs/talos/lean/Project/Softmax/WeightedPerturbation.lean)
+now establish a context-independent real perturbation bound.  If values
+have magnitude at most M, score errors are at most d, and value errors
+are at most e, attention error is at most 2Md+e.  The sum of absolute
+probability changes is at most 2d.  A separate theorem bounds the weighted
+error from normalizing approximate exponential weights by 2Mr when each
+weight has relative error at most r and both sums are positive.  Rounding
+the sum, division, and weighted accumulation adds further errors.
+
 ## Proposed arithmetic
 
 The numerical prototype proposes a degree-eighteen Taylor polynomial for
@@ -67,6 +76,7 @@ await user confirmation.
 - [ ] Prove the checker's generated-WAT execution and memory use.
 - [ ] Confirm and implement the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
+- [x] Prove context-independent attention perturbation and relative normalization bounds.
 - [ ] Refine the composed bound, accounting for normalization sensitivity.
 - [ ] Prove the checked inference entry, including rejection and memory use.
 - [ ] Expose checkpoint and bound arguments in the CLI and complete its tests.
