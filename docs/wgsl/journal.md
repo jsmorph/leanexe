@@ -892,3 +892,15 @@ implementation model or a real-number specification. Pure conversion definitions
 were separated from their numerical theorems without changing the definitions.
 The specification and conversion model build successfully; correspondence and
 artifact integration are the next verification steps, not yet claimed here.
+
+The independent float algorithm now has universal correspondence proofs for
+its primitives and complete hidden computation. The theorem covers arbitrary
+parameter words, every four-byte context and all four valid positions; the
+artifact theorem will additionally require the packed parameter array to fit
+in memory. All public proof axioms are standard logical axioms. An initial
+attempt to infer projection indices through expanded IEEE operations exhausted
+the elaborator heartbeat limit; specifying the four finite indices explicitly
+removed that boundary and the complete network module checked in 5.9 seconds.
+A preliminary bit-vector tactic introduced native decision axioms, so that
+approach was discarded. The accepted sign-setting specification uses explicit
+mask/add word operations with direct logical correspondence instead.
