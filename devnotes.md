@@ -14346,3 +14346,25 @@ The inference artifact bytes remain unchanged, so the preceding native
 bit-model, PyTorch, and cancellation tests still apply.  Documentation
 checks pass for all 136 maintained Markdown files.  The next implementation
 step connects the proved weight preparation to the inference entry.
+
+### Checker allocation state
+
+The checker execution theorem now preserves the map loop's checked memory
+write range.  A derived theorem exposes the final allocator top, empty
+free list, incremented allocation count, unchanged retain/release/free
+counts, fresh output header, unchanged memory below the allocation, and
+all other store fields.  These facts are required to compose inference
+and release the temporary clipped array.  The accepted and rejected
+branches retain the same generated instructions.
+
+The strengthened branch proofs check in 2.0 and 1.6 seconds.  The enclosing
+proof needed its final frame match to retain the new memory assertion.
+It then checked in 2.0 seconds.  Allocation-state lemmas and the derived
+entry theorem each check in 1.3 seconds.  An extra tactic after a solved
+address goal caused one diagnostic and was removed.
+
+The f64_clip source-artifact gate passes with prepare_state registered.
+All audits report standard logical axioms.  The approved Node test passes
+all fourteen WASM clipping and rejection cases, including signed zero,
+subnormal bounds, extreme finite values, invalid shapes, and nonfinite
+inputs.  Documentation checks pass for 136 maintained Markdown files.
