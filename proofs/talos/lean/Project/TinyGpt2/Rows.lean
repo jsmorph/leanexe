@@ -91,6 +91,20 @@ theorem norm_error (w : Array UInt64) (offset : Nat) (x : Row)
   have hi := h.2 i
   fin_cases i <;> exact hi
 
+theorem norm_error_bounded (w : Array UInt64) (offset : Nat) (x : Row) (bound : ℝ)
+    (hb1 : 1 ≤ bound) (hbmax : bound ≤ 16)
+    (hx : ∀ i, Affine.Bounded (rowWords x i) bound)
+    (hg : LayerNorm.ValidRow (rowWords (loadRow w offset)))
+    (hb : LayerNorm.ValidRow (rowWords (loadRow w (offset+4)))) (i : Fin 4) :
+    Finite (rowWords (norm w offset x) i) ∧
+      |decodeRow (norm w offset x) i-Real.norm (decodeNorm w offset) (decodeRow x) i| ≤
+        (160000000*bound^2+64000*bound+16000057)*arithmeticEpsilon := by
+  let g := loadRow w offset
+  let b := loadRow w (offset+4)
+  have h := LayerNorm.compute_error_bounded x.x0 x.x1 x.x2 x.x3
+    g.x0 g.x1 g.x2 g.x3 b.x0 b.x1 b.x2 b.x3 bound hb1 hbmax hx hg hb i
+  fin_cases i <;> exact h
+
 theorem activate_error (x : Row) (hx : ∀ j, Finite (rowWords x j)) (i : Fin 4) :
     Finite (rowWords (activate x) i) ∧
       |decodeRow (activate x) i-Gelu.Real.gelu (decodeRow x i)| ≤ 1/100 := by

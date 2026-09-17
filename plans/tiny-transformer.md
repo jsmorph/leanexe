@@ -22,6 +22,9 @@ order before model integration.  The pinned TorchLean activation uses the
 tanh GELU formula.  Training is outside the inference proof.
 
 The user approved a proved 64-byte context as the subsequent target.
+The training backend remains CPU PyTorch 2.9.1 in the repository-local
+environment.  The user approved the pinned Tiny Shakespeare corpus,
+all byte tokens, and all 256 next-token logits per inference call.
 Complete the four-byte model's execution, checkpoint ranges, and composed
 numerical bound first.  Parameterize new sequence and softmax lemmas by
 length where practical.  The larger model will require array-based context
@@ -70,8 +73,10 @@ defines every stage of the audited architecture.  Its causal-prefix
 theorem proves equal output at a position whenever the input prefixes
 through that position agree.  The softmax computation now accepts a
 proved active-score spread of at most sixteen in its internal numerical
-theorem and propagates real score error with multiplier two.  Frozen
-checkpoint ranges and the composed numerical error bound remain open.
+theorem and propagates real score error with multiplier two.  Checkpoint
+range certificates prove finite hidden coordinates and all 256 finite
+logits for every four-byte input.  The composed numerical error bound
+remains open.
 The complete generated-WAT inference execution theorem passes, including
 termination, exact raw-bit output, checkpoint preservation, and its memory
 reservation.
