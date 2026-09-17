@@ -284,3 +284,14 @@ The native API follows the upstream
 [wgpu-py 0.31.1 compute example](https://github.com/pygfx/wgpu-py/blob/v0.31.1/examples/compute_noop.py).
 The numerical-policy source is the pinned
 [17 August 2026 WGSL floating-point evaluation draft](https://www.w3.org/TR/2026/CRD-WGSL-20260817/#floating-point-evaluation).
+
+## Focused numerical diagnostics
+
+`node tools/wgsl/audit/check.js` runs the [three-audit](../../docs/wgsl/numerical-audit.md)
+evidence checks using Node built-ins and the unchanged hidden Wasm. It checks
+retained Lean intermediate words, high-precision real references, pointwise
+sensitivity, alternative evaluation orders, scalar boundaries and the existing
+bound recurrence. It does not generate Wasm/WGSL or substitute diagnostics for
+artifact verification. To regenerate the Lean traces, configure the approved
+repository runtime, then run `node tools/wgsl/audit/trace.js`; that driver invokes
+`tools/leanrun` sequentially with explicit timeouts and preserves its logs.

@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "scope": "unverified binary64 prototypes, including native Math.expm1; finite cases, no uniform guarantee",
+  "referenceDecimalPlaces": 120,
+  "nearUniformAttentionSpreadLimit": 0.5,
+  "results": [
+    {
+      "name": "checkpoint-lean",
+      "idealEvenLogit": -4.688625075272067,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": -4.688625075272067,
+          "hiddenError": 3.9104603585975415e-16,
+          "head64Error": 1.6467799918946294e-15,
+          "mixedError": 6.494864517205224e-7
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -4.688625075272066,
+          "hiddenError": 1.0812433687154094e-15,
+          "head64Error": 2.106619204232115e-15,
+          "mixedError": 6.494864517205224e-7
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -4.688625075272066,
+          "hiddenError": 1.0812433687154094e-15,
+          "head64Error": 2.106619204232115e-15,
+          "mixedError": 6.494864517205224e-7
+        }
+      ]
+    },
+    {
+      "name": "checkpoint-zeros",
+      "idealEvenLogit": -6.671121052354408,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": -6.671121052354406,
+          "hiddenError": 1.8610277629404406e-15,
+          "head64Error": 3.67299407242235e-15,
+          "mixedError": 6.311271783224352e-7
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -6.671121052354405,
+          "hiddenError": 2.7492061826405658e-15,
+          "head64Error": 5.449350911822601e-15,
+          "mixedError": 6.311271783224352e-7
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -6.671121052354406,
+          "hiddenError": 2.7492061826405658e-15,
+          "head64Error": 5.671395516747631e-15,
+          "mixedError": 6.311271783224352e-7
+        }
+      ]
+    },
+    {
+      "name": "checkpoint-byte-edges",
+      "idealEvenLogit": -7.176607423167182,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": -7.176607423167178,
+          "hiddenError": 1.3583216758870455e-15,
+          "head64Error": 3.4178272279228715e-15,
+          "mixedError": 7.610396710338827e-7
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -7.17660742316718,
+          "hiddenError": 3.0914316842752616e-15,
+          "head64Error": 5.7311619793442304e-15,
+          "mixedError": 7.610396710338827e-7
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -7.176607423167179,
+          "hiddenError": 3.0914316842752616e-15,
+          "head64Error": 4.875001046622663e-15,
+          "mixedError": 7.610396710338827e-7
+        }
+      ]
+    },
+    {
+      "name": "adversarial-plus",
+      "idealEvenLogit": 59.92580537385506,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 0,
+          "hiddenError": 3.7453628358659414,
+          "head64Error": 59.92580537385506,
+          "mixedError": 59.92580537385506
+        },
+        {
+          "name": "center-components",
+          "evenLogit": 59.92581114450409,
+          "hiddenError": 3.6066556379258896e-7,
+          "head64Error": 0.000005770649020681423,
+          "mixedError": 0.0000063937230574910356
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": 59.92580537385506,
+          "hiddenError": 2.882863709981706e-16,
+          "head64Error": 4.61258193597073e-15,
+          "mixedError": 0.0000012356714737589642
+        }
+      ]
+    },
+    {
+      "name": "adversarial-minus",
+      "idealEvenLogit": -59.91959050362319,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 0,
+          "hiddenError": 3.7449744064764494,
+          "head64Error": 59.91959050362319,
+          "mixedError": 59.91959050362319
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -59.9195962773293,
+          "hiddenError": 3.6085663174307704e-7,
+          "head64Error": 0.000005773706107889233,
+          "mixedError": 0.0000071221092321575485
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -59.91959050362319,
+          "hiddenError": 5.602050251853058e-17,
+          "head64Error": 8.963280402964893e-16,
+          "mixedError": 5.07285299092452e-7
+        }
+      ]
+    },
+    {
+      "name": "adversarial-zero",
+      "idealEvenLogit": 0,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 0,
+          "hiddenError": 0,
+          "head64Error": 0,
+          "mixedError": 0
+        },
+        {
+          "name": "center-components",
+          "evenLogit": 0,
+          "hiddenError": 0,
+          "head64Error": 0,
+          "mixedError": 0
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": 0,
+          "hiddenError": 0,
+          "head64Error": 0,
+          "mixedError": 0
+        }
+      ]
+    },
+    {
+      "name": "adversarial-minus-2^-60",
+      "idealEvenLogit": -5.313150527260672,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 0,
+          "hiddenError": 0.332071907953792,
+          "head64Error": 5.313150527260672,
+          "mixedError": 5.313150527260672
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -5.313448436009939,
+          "hiddenError": 0.000018619296829243685,
+          "head64Error": 0.00029790874926789897,
+          "mixedError": 0.00029790184699447954
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -5.31315052726067,
+          "hiddenError": 9.269757291025781e-17,
+          "head64Error": 1.483161166564125e-15,
+          "mixedError": 1.213768824736148e-7
+        }
+      ]
+    },
+    {
+      "name": "adversarial-plus-2^-60",
+      "idealEvenLogit": 5.313289164912761,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 0,
+          "hiddenError": 0.33208057280704756,
+          "head64Error": 5.313289164912761,
+          "mixedError": 5.313289164912761
+        },
+        {
+          "name": "center-components",
+          "evenLogit": 5.3135870891555586,
+          "hiddenError": 0.000018620265174848345,
+          "head64Error": 0.0002979242427975735,
+          "mixedError": 0.00029802380794214696
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": 5.313289164912759,
+          "hiddenError": 1.1394795068294477e-16,
+          "head64Error": 1.8231672109271164e-15,
+          "mixedError": 5.840651938060111e-10
+        }
+      ]
+    },
+    {
+      "name": "adversarial-minus-2^-50",
+      "idealEvenLogit": -63.995482395950795,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": -63.9954823962203,
+          "hiddenError": 1.6844115242661637e-11,
+          "head64Error": 2.695058438825862e-10,
+          "mixedError": 0.0000010024867092935006
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -63.99548239622085,
+          "hiddenError": 1.6878754201029942e-11,
+          "head64Error": 2.700600672164791e-10,
+          "mixedError": 0.0000010024867092935006
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -63.995482395950795,
+          "hiddenError": 2.5560225861138677e-16,
+          "head64Error": 4.0896361377821884e-15,
+          "mixedError": 0.0000010024867092935006
+        }
+      ]
+    },
+    {
+      "name": "adversarial-plus-2^-50",
+      "idealEvenLogit": 63.995719039549556,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 63.99571903981192,
+          "hiddenError": 1.6397734779755027e-11,
+          "head64Error": 2.623637564760804e-10,
+          "mixedError": 8.701184158334877e-7
+        },
+        {
+          "name": "center-components",
+          "evenLogit": 63.99571903981244,
+          "hiddenError": 1.643059738128393e-11,
+          "head64Error": 2.628895581005429e-10,
+          "mixedError": 8.701184158334877e-7
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": 63.995719039549556,
+          "hiddenError": 1.8479525131357552e-16,
+          "head64Error": 2.9567240210172082e-15,
+          "mixedError": 8.701184158334877e-7
+        }
+      ]
+    },
+    {
+      "name": "adversarial-minus-2^-40",
+      "idealEvenLogit": -16.668815872154198,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": -16.668815871953253,
+          "hiddenError": 1.2558986628595876e-11,
+          "head64Error": 2.00943786057534e-10,
+          "mixedError": 2.5936122812986436e-7
+        },
+        {
+          "name": "center-components",
+          "evenLogit": -16.668815871953164,
+          "hiddenError": 1.2564537743719002e-11,
+          "head64Error": 2.0103260389950402e-10,
+          "mixedError": 2.5936122812986436e-7
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": -16.668815872154195,
+          "hiddenError": 1.4377403610529176e-16,
+          "head64Error": 2.300384577684668e-15,
+          "mixedError": 2.5936122812986436e-7
+        }
+      ]
+    },
+    {
+      "name": "adversarial-plus-2^-40",
+      "idealEvenLogit": 63.999999998875296,
+      "variants": [
+        {
+          "name": "current",
+          "evenLogit": 63.99999999887529,
+          "hiddenError": 2.921937928077348e-16,
+          "head64Error": 4.675100684923757e-15,
+          "mixedError": 1.12470631590662e-9
+        },
+        {
+          "name": "center-components",
+          "evenLogit": 63.99999999887529,
+          "hiddenError": 2.921937928077348e-16,
+          "head64Error": 4.675100684923757e-15,
+          "mixedError": 1.12470631590662e-9
+        },
+        {
+          "name": "center-components-and-expm1-attention",
+          "evenLogit": 63.99999999887529,
+          "hiddenError": 2.921937928077348e-16,
+          "head64Error": 4.675100684923757e-15,
+          "mixedError": 1.12470631590662e-9
+        }
+      ]
+    }
+  ]
+}
