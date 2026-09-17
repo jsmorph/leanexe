@@ -15,7 +15,7 @@ theorem accept_program_spec (env : HostEnv Unit) (initial : Store Unit)
     (hPages : initial.mem.pages ≤ 65536)
     (hCap : initial.mem.pages ≤ initial.memoryCap Project.F64Clip.module 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ final frame, prepareResult initial ptr (base+48) w (w.map (clip bound)) final frame →
+    (hNext : ∀ final frame, prepareResult initial ptr base allocations w (w.map (clip bound)) final frame →
       wp Project.F64Clip.module rest Q final frame env) :
     wp Project.F64Clip.module (acceptProgram ++ rest) Q initial (prepareFrame count bound ptr 1) env := by
   have hWords := clip_allocation_words base w.size hFit
@@ -72,7 +72,7 @@ theorem accept_program_spec (env : HostEnv Unit) (initial : Store Unit)
       wp_fixed_frame [mapFrame, List.append]
       apply hNext
       exact ⟨rfl, rfl, hOutput, hInitializedInput.writesRange hWrites (Or.inl hOutputBefore),
-        hWrites.2.1.trans hInitializedPages⟩
+        hWrites.2.1.trans hInitializedPages, by simpa using hWrites⟩
 
 #print axioms accept_program_spec
 end Project.F64Clip.Spec
