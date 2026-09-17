@@ -95,8 +95,10 @@ The remaining boundaries are a refinement of this subset semantics to a
 complete formal WGSL semantics, external runtime conformance, and a general
 interleaved GPU scheduler model for this new grammar. The proof uses the same
 explicit scalar arithmetic on the source and statement sides. See the precise
-[source specification](lean-source-specification.md). The existing GPT-2
-bundle still uses the original GEMM templates; it has not been migrated.
+[source specification](lean-source-specification.md). New GPT-2 builds use this
+compiler for all six dense-product shaders; older bundles used the original
+GEMM templates. The [GPT-2 verification record](gpt2-verification.md) describes
+the connection to its packed matrix specification.
 
 Run the bounded corpus on the configured Mac:
 

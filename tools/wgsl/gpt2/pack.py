@@ -88,6 +88,7 @@ for token,_ in sorted(vocab.items(), key=lambda item:item[1]):
 table += decode_starts+decode_data
 np.asarray(table,dtype='<u8').tofile(out/'tokenizer.bin')
 (out/'layout.json').write_text(json.dumps({'schemaVersion':2,'model':'GPT-2 124M','contextTokens':128,
+    'shaderCompiler':'lean-body-wgsl','shaderEntryPoint':'lean_kernel',
     'shapes':[{'inner':k,'cols':n,'shader':f'kernel-{i}.wgsl'} for i,(k,n) in enumerate(shapes)],
     'matrices':matrices,'parameterOffsets':offsets,'unicodeVersion':unicodedata.unidata_version,
     'source':json.loads((source/'source.json').read_text()),

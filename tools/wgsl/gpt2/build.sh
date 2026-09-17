@@ -21,12 +21,9 @@ python3 tools/wgsl/gpt2/transfer.py "$work/transfer.wat"
 "${WASM_TOOLS:-wasm-tools}" parse "$work/transfer.wat" -o "$out/transfer.wasm"
 for name in model tokenizer transfer; do "${WASM_TOOLS:-wasm-tools}" validate "$out/$name.wasm"; done
 generation=$(mktemp -d "$work/generation-XXXXXX")
-index=0
-for shape in 2304:768 768:768 3072:768 768:3072 25129:768 25128:768; do
-  columns=${shape%:*}; inner=${shape#*:}
-  tools/leanrun --timeout 90s --lock-timeout 10 lake env lean --run tools/wgsl/Generate.lean "$generation/$index" 1 "$columns" "$inner" separate
+node tools/wgsl/gpt2/body-shaders.js "$generation"
+for index in 0 1 2 3 4 5; do
   cp "$generation/$index/kernel.wgsl" "$out/kernel-$index.wgsl"
-  index=$((index+1))
 done
 python3 tools/wgsl/gpt2/manifest.py "$out"
 tools/wgsl/gpt2/compile-native.sh
