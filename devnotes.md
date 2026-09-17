@@ -14700,3 +14700,29 @@ sequence work without duplicating those proofs.
 The complete GPT-2/4 specification also passes after these shared-lemma
 changes.  Its entry, rejection, clipping, inference, and output modules
 rebuilt successfully.
+
+### Complete sequence map calls
+
+The weight and normalization function proofs now include the capacity
+calculation, free-list search or heap extension, length initialization,
+map loop, and returned owner and data pointers.  Both complete functions
+check in 4.6 seconds.  The allocation initialization proof checks in
+2.6 seconds and the ownership wrappers in 1.4 seconds.  The release proof
+checks in 1.5 seconds by applying the shared runtime release theorem.
+
+The proofs reuse the existing Heap, OwnsWords, finishWords, and allocation
+preservation lemmas.  Their result preserves every previously owned array,
+which lets callers retain weights and other intermediates across a map.
+The initial attempt needed explicit folding of the allocation-root names
+before arithmetic.  Subsequent diagnostics identified a missing tactic
+import, an already-simplified load guard, and frame-length goals requiring
+reduction before decide.  No timeout occurred.
+
+OutputBudget now accepts a module parameter with the previous Euler module
+as its default.  Its allocation and release lemmas preserve that parameter.
+The existing OutputFields and OutputTail clients pass after rebuilding
+their dependencies.  An earlier diagnostic named a nonexistent
+OutputAppendBudget target.  The map-call targets in that run passed, and
+the client check then used the existing target names.  This parameter
+allows the sequence and later GPT allocation proofs to use the checked
+byte and page accounting without another implementation.
