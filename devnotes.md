@@ -13872,3 +13872,28 @@ The complete range module checks in 1.7 seconds, and the decoder adapter
 in 1.3 seconds, using only standard logical axioms.  The score proof's
 first check required explicit embedding arguments in intermediate
 declarations, where Lean had no expected type to infer them.
+
+The f64_clip registration now retains the generated module and checked
+compiler-annotation matches.  Exact execution proofs cover absolute value,
+finiteness, bound validation, negative absolute value, scalar clipping,
+and the complete array validator.  Each preserves the store.  Scalar
+clipping's generated-WAT result also carries the finite real-clamp theorem.
+The registration remains incomplete pending output allocation and the map
+loop.  The source registry now has 56 cases and 55 completed specifications.
+
+The scan proof reuses FixedArrayTraversalInput for bounds-checked reads,
+BlockLoop for termination, and the scalar finiteness theorem for each word.
+Its invariant records a finite prefix and a decreasing remaining count.
+The scalar clipping proof uses ExactCall to preserve the lower operand
+stack across the second absolute-value call.  Initial checks exposed the
+missing typed-control compatibility import, reversed argument-stack order,
+and a size conversion that simplification expanded recursively.  Explicit
+argument order and the represented array's size bound resolved those proof
+obligations.  The scan checks in 3.7 seconds, the complete validator in
+3.4 seconds, and its specification in 1.6 seconds.  A focused gate run
+before the final size-conversion correction failed on that obligation.
+
+The corrected f64_clip target passes compiler regeneration, program-cache
+comparison, annotation checking, and its current specification.  All
+reported axioms are standard logical axioms.  The gate reports the case
+as incomplete because the full prepare entry remains open.
