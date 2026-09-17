@@ -66,9 +66,13 @@ parsed shader dispatch to its mixed-precision specification. `HeadNumerical`
 accounts for binary64-to-binary32 input conversions, separate or fused
 accumulation, exact promotion, and binary64 bias addition. `GptHeadCheckpoint`
 instantiates the 0.0001 head error for every four-byte input and every vocabulary
-coordinate. Its reference uses the computed binary64 hidden row. The theorem
-against real GPT still exposes the hidden-state error as a premise; completing
-that composition and connecting all actual Wasm artifacts remain required.
+coordinate. Its reference uses the computed binary64 hidden row. `GptNumerical`
+discharges the hidden-state error premise using the parent's composed theorem.
+The resulting full-real-model bound is `1/10000 + 16*ErrorBudget.hidden` with
+three explicit normalization denominator floors. The uniform epsilon floors
+give approximately 4.85e9 per logit: this is too loose to certify precision.
+Connecting all actual Wasm artifacts and executing the complete bundle remain
+required.
 
 The [native harness](../../tools/wgsl/README.md) now executes captured artifacts
 and retains exact source/profile/configuration evidence. The first rectangular
@@ -89,9 +93,10 @@ conformance remains an explicit premise. The native demonstration invokes that
 Wasm function and checks the values it wrote back. Commands and worked bundles
 are documented in the [native harness](../../tools/wgsl/README.md).
 
-The parent's wider-arithmetic GPT inference is merged. Mixed-precision GPT
-integration is in progress, followed by residency, tiling and performance.
-The current GEMM bundle does not establish a complete GPT numerical theorem.
+The parent's wider-arithmetic GPT inference and full-model error theorem are
+merged. GPT artifact integration is in progress, followed by residency, tiling
+and performance. The generic GEMM bundle gate still checks only the GEMM host
+and shader; the complete GPT bundle gate is being implemented separately.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
 lemmas. Reuse belongs in the existing proof workspace, preserving its dependency
@@ -153,8 +158,9 @@ source tools/macos-env.sh # configured ARM Mac only
 node test/wgsl/precision_test.js
 ```
 
-The remaining GPT composition must account for these conversion errors and
-for the binary64 stages. These lemmas alone do not establish that theorem.
+`GptNumerical` now includes these conversion errors and the binary64 stages in
+the complete real-model bound described above. The native conversion/transfer
+contract remains an explicit execution assumption.
 
 ## Narrow artifact parser
 
