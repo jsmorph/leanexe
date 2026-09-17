@@ -13897,3 +13897,36 @@ The corrected f64_clip target passes compiler regeneration, program-cache
 comparison, annotation checking, and its current specification.  All
 reported axioms are standard logical axioms.  The gate reports the case
 as incomplete because the full prepare entry remains open.
+
+The complete f64_clip generated-WAT entry now checks.  The map invariant
+records a clipped output prefix and a write range disjoint from the input.
+FixedArrayTraversalInput supplies safe reads, ExactCall handles the scalar
+clip call with the output address below its arguments, ArrayPrefix supplies
+writes and preservation, and BlockLoop supplies termination.  The accepted
+and rejected branches both use FixedArrayAllocateNone.  Allocation and the
+length store preserve the input and page count when the reservation fits.
+The full theorem reserves 48+8(n+1) bytes for n input words.  The rejected
+branch has its own 56-byte bound.  Both assume an empty allocator free list.
+
+The new execution modules contain 482 lines, including program shapes,
+frame definitions, memory facts, both branches, and the entry theorem.
+The map proof checks in 2.2 seconds, allocation memory in 1.5 seconds,
+accepted execution in 1.9 seconds, rejected execution in 1.5 seconds, and
+the entry in 2.0 seconds.  Initial checks exposed arithmetic over the
+variable-length frame tail, equivalent normalized address expressions,
+and explicit List.append terms that the fixed-frame simplifier did not
+reduce.  Arithmetic simplification and targeted list reduction resolved
+those obligations.  The first allocation-memory proof used Talos's native
+read-after-write lemma.  Axiom inspection identified that dependency, and
+the proof now uses ProofKit's kernel-checked Memory.read64_write64 theorem.
+No new axiom or resource-limit increase was needed.
+
+The f64_clip gate passes regeneration, cache comparison, annotations, and
+both registered entry theorems.  prepare_exact proves the source array
+result, input preservation, and a fixed page count.  prepare_real adds the
+accepted output length, finite elements, magnitude cap, and exact decoded
+clamp.  Their axiom reports contain only propext, Classical.choice, and
+Quot.sound.  The registration is complete, bringing the registry to 56
+completed cases.  The existing assoc_list aggregate-cache blocker remains.
+The production numerical kernels are unchanged while the proposed methods
+await confirmation.

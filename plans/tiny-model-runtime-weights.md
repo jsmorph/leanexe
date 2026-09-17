@@ -55,6 +55,12 @@ error from normalizing approximate exponential weights by 2Mr when each
 weight has relative error at most r and both sums are positive.  Rounding
 the sum, division, and weighted accumulation adds further errors.
 
+The [complete checker theorem](../proofs/talos/lean/Project/F64Clip/Prepare.lean)
+proves generated-WAT termination and exact output for arbitrary runtime
+arrays.  It preserves the input and page count when 48+8(n+1) reserved
+bytes fit after the input and the allocator free list is empty.  Accepted
+output has finite values equal to the real clamp and bounded by B.
+
 ## Proposed arithmetic
 
 The numerical prototype proposes a degree-eighteen Taylor polynomial for
@@ -82,7 +88,7 @@ await user confirmation.
 - [x] Prove the parameterized scalar clipping operation and array checker at source level.
 - [x] Prove real-model ranges and connect them to accepted clipped arrays.
 - [x] Prove generated-WAT scalar clipping and complete array validation.
-- [ ] Prove the checker's generated-WAT execution and memory use.
+- [x] Prove the checker's generated-WAT execution and memory use.
 - [ ] Confirm and implement the revised numerical methods.
 - [ ] Prove the wider component domains and their numerical errors.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
