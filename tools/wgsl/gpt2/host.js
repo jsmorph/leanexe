@@ -72,7 +72,7 @@ export class Gpt2 {
       for (const shape of manifest.shapes) {
         notify(`Compiling WGSL: 1 × ${shape.cols} × ${shape.inner}`);
         const module = device.createShaderModule({ code: new TextDecoder().decode(await artifact(shape.shader)) });
-        runner.pipelines.push(await device.createComputePipelineAsync({ layout: "auto", compute: { module, entryPoint: "gemm_f32" } }));
+        runner.pipelines.push(await device.createComputePipelineAsync({ layout: "auto", compute: { module, entryPoint: manifest.shaderEntryPoint ?? "gemm_f32" } }));
       }
       runner.groups = []; runner.weights = [];
       for (const [index, matrix] of manifest.matrices.entries()) {

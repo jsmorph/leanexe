@@ -44,6 +44,12 @@ Python executable (default `python3.13`), and `GPT2_BUILD_PYTHON` can select an
 existing environment. Downloaded source files are pinned by revision and
 SHA-256. No downloaded executable model code is used.
 
+The six dense-product WGSL shaders now come from compilation of the Lean
+definitions in `LeanExe.WGSL.Gpt2`. The builder checks the parsed statement
+execution and its equality to the source, then connects each product to the
+existing packed matrix specification. See the [verification record](gpt2-verification.md)
+for the exact scope and the remaining runtime and complete-model assumptions.
+
 The build also creates `build/gpt2/gpt2-browser.zip`, a portable static bundle.
 Extract it and serve the extracted directory from localhost or HTTPS. The
 browser needs WebGPU, but no Lean, PyTorch, Node, or inference server.

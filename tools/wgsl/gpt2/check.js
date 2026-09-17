@@ -27,6 +27,10 @@ async function check(directory) {
   const manifestBytes = fs.readFileSync(path.join(directory, "manifest.json"));
   const manifest = JSON.parse(manifestBytes);
   need(manifest.schemaVersion === 2 && isDeepStrictEqual(manifest.shapes, shapes), "unexpected GPT-2 shader plan");
+  const bodyCompiler = manifest.shaderCompiler === "lean-body-wgsl";
+  need(bodyCompiler ? manifest.shaderEntryPoint === "lean_kernel" :
+    manifest.shaderCompiler === undefined && (manifest.shaderEntryPoint ?? "gemm_f32") === "gemm_f32",
+    "unsupported GPT-2 shader compiler or entry point");
   const snapshots = shapes.map(shape => {
     const bytes = fs.readFileSync(path.join(directory, shape.shader));
     need(bytes.length === manifest.sizes[shape.shader] && hash(bytes) === manifest.sha256[shape.shader], `${shape.shader}: bundle identity mismatch`);
@@ -46,7 +50,9 @@ async function check(directory) {
       path.join(attempt, "matrix-verify.log"));
     const matrixAxioms = audit(matrixOutput, matrixTheorems);
     need(matrixOutput.split("\n").filter(s => s === "GPT2_MATRIX_PLAN 50").length === 1, "missing checked matrix plan");
-    for (const [index, shape] of shapes.entries()) {
+    if (bodyCompiler) {
+      results.push(...await require("./body-shaders").checkExisting(directory, attempt, snapshots));
+    } else for (const [index, shape] of shapes.entries()) {
       const selected = path.join(attempt, String(index));
       fs.mkdirSync(selected);
       fs.writeFileSync(path.join(selected, "kernel.wgsl"), snapshots[index], { flag: "wx" });
@@ -70,11 +76,13 @@ async function check(directory) {
     for (const [index,shape] of shapes.entries())
       need(fs.readFileSync(path.join(directory,shape.shader)).equals(snapshots[index]), "delivered shader changed during checking");
     write(path.join(attempt, "verification.json"), { status: "pass", bundleManifestSha256: hash(manifestBytes),
-      subject: "Six delivered GPT-2 WGSL shaders implement the selected Lean binary32 GEMM",
+      subject: bodyCompiler ? "Six delivered WGSL shaders execute their compiled Lean definition bodies and the GPT-2 packed matrix specification" :
+        "Six delivered GPT-2 WGSL shaders implement the selected Lean binary32 GEMM",
+      shaderCompiler: bodyCompiler ? "lean-body-wgsl" : "fixed-gemm-template",
       profile: "leanexe-f32-rne-separate-v1", numericalErrorTolerance: null,
       runtimeConformanceEstablished: false, modelCompositionEstablished: false,
       matrixAxioms, matrixAssignmentsChecked: 50, vocabularyDecompositionProved: true,
-      fusionAlternative: "Each output equals the Lean binary32 algorithm for some concrete per-step fused/separate choices",
+      fusionAlternative: bodyCompiler ? null : "Each output equals the Lean binary32 algorithm for some concrete per-step fused/separate choices",
       scope: "Shader word equality to Lean matrix products, packed layouts, vocabulary decomposition and matrix descriptor plan; no checkpoint contents, float conversions, Wasm, host schedule or driver proof",
       results });
     console.log(`GPT-2 WGSL fidelity: all six shaders verified; ${attempt}`);
