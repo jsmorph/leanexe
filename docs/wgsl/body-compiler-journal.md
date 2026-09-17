@@ -127,3 +127,21 @@ cases check wrong loop increments, nonzero counter starts, assignment to the
 wrong accumulator and use of a local after its scope ended. The manifest is
 now version 2 and explicitly identifies `Statement.runShader` as the execution
 semantics. This result does not migrate the GPT-2 bundle's fixed templates.
+
+## GPT-2 body compilation
+
+Added six eligible Lean definitions in `LeanExe.WGSL.Gpt2`, each calling a
+shared dense-product function whose callback specifies the scalar operations
+and packed indices. `Project.Gpt2.BodyCompile` proves that these definitions
+compute the existing packed GPT-2 matrix specification, and composes that
+fact with any successful body-compiler execution certificate.
+
+The first generation attempt, `build/gpt2/body-generation-v1`, failed before
+emitting the QKV package: weak-head normalization expanded the transparent
+`dense` helper past `Source.fold`, producing a chain of operations that hit
+the traversal budget. The compiler now exposes one helper definition at a
+time before falling back to weak-head normalization, so its loop translator
+can see the fold. The failure is retained. The matrix bridge module passes;
+the corrected generation in `build/gpt2/body-generation-v2` has checked its
+first QKV package, including all four axiom reports. Remaining shapes and
+runtime integration are still being checked at this checkpoint.
