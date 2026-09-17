@@ -776,7 +776,9 @@
       "behaviorTheorems": [
         "Project.TinyGpt2Checked.Spec.hidden_exact",
         "Project.TinyGpt2Checked.Spec.logit_exact",
-        "Project.TinyGpt2Checked.Spec.accepted_exact"
+        "Project.TinyGpt2Checked.Spec.accepted_exact",
+        "Project.TinyGpt2Checked.Spec.prepare_exact",
+        "Project.TinyGpt2Checked.Spec.prepare_state"
       ],
       "complete": false
     }

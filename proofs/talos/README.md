@@ -141,8 +141,9 @@ Its [source proofs](lean/Project/TinyGpt2/CheckedBounds.lean) cover rejection,
 finite accepted logits, and the composed error bound against clipped weights.
 Checked function-region equality transfers the hidden-state, single-logit,
 validation, and scalar clipping execution proofs.  The internal array
-preparation and inference calls have additional owner slots and still need
-execution proofs.  The registration remains incomplete.  WASM tests compare
+preparation call now has a complete execution proof for its owner and
+data-pointer results.  The internal inference call and enclosing entry
+remain open, and the registration remains incomplete.  WASM tests compare
 768 logits at B = 10, 1, and 0 and check eight rejection cases.
 
 The [negative exponential](lean/Project/ExpNeg/Spec.lean) accepts every finite
