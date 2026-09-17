@@ -103,6 +103,13 @@ which the proof bounds by 1e-27.  The registered generated-WAT theorem
 proves exact output, rejection, termination, store preservation, and the
 combined numerical bound.
 
+The [wider GELU source theorem](../proofs/talos/lean/Project/GeluWide/Bounds.lean)
+proves finite output for every finite input and absolute error at most
+200000u, below 4.45e-11.  Its tail error is at most 1e-18.  The core
+uses the new exponential and avoids cancellation in its negative branch.
+The input-perturbation theorem adds four times the input error.  Generated
+WAT execution and integration into inference remain in progress.
+
 ## Implementation sequence
 
 - [x] Preserve the cancellation case and calculate preliminary sensitivity terms.

@@ -54,44 +54,53 @@ theorem Approximation.add {a b : UInt64} {p q ba bb ea eb bound : ℝ}
 #print axioms Approximation.mul
 #print axioms Approximation.add
 
+theorem Approximation.div_pos {a b : UInt64} {p q ba bb ea eb bound ratioBound lower : ℝ}
+    (ha : Approximation a p ba ea) (hb : Approximation b q bb eb)
+    (hl : 0 < lower) (hd : lower ≤ value b) (hq : 0 < q) (hr : |p/q| ≤ ratioBound)
+    (hbound : 1 ≤ bound) (hmax : bound < (2:ℝ)^1022) (hba : ba ≤ bound*lower) :
+    Approximation (Wasm.IEEE64.div a b) (p/q) (bound+arithmeticEpsilon*bound)
+      (arithmeticEpsilon*bound+(ea+ratioBound*eb)/lower) := by
+  have dp : 0 < value b := hl.trans_le hd
+  have rn : 0 ≤ ratioBound := (abs_nonneg _).trans hr
+  have ean : 0 ≤ ea := (abs_nonneg _).trans ha.accuracy
+  have ebn : 0 ≤ eb := (abs_nonneg _).trans hb.accuracy
+  have hid : value a/value b-p/q = ((value a-p)+(p/q)*(q-value b))/value b := by
+    field_simp
+    ring
+  have he : |value a/value b-p/q| ≤ (ea+ratioBound*eb)/lower := by
+    rw [hid, abs_div, abs_of_pos dp]
+    have hterm : |(p/q)*(q-value b)| ≤ ratioBound*eb := by
+      rw [abs_mul, abs_sub_comm q]
+      exact mul_le_mul hr hb.accuracy (abs_nonneg _) rn
+    have hn := (abs_add_le _ _).trans (add_le_add ha.accuracy hterm)
+    exact (div_le_div_of_nonneg_right hn dp.le).trans
+      (div_le_div_of_nonneg_left (add_nonneg ean (mul_nonneg rn ebn)) hl hd)
+  have hmag : |value a/value b| ≤ bound := by
+    rw [abs_div, abs_of_pos dp]
+    apply (div_le_iff₀ dp).mpr
+    exact ha.magnitude.trans (hba.trans
+      (mul_le_mul_of_nonneg_left hd (by linarith)))
+  have hnz : Wasm.IEEE64.scaledMagnitude b ≠ 0 := by
+    intro hh
+    simp [value, Wasm.IEEE64.scaledValue, hh] at dp
+  have ho := F64ArithmeticBounds.div_error a b ha.finite hb.finite hnz bound hbound hmax hmag
+  refine ⟨ho.1, F64ArithmeticBounds.magnitude_of_error _ _ _ bound ho.2 hmag, ?_⟩
+  exact (abs_sub_le _ _ _).trans (add_le_add ho.2 he)
+
 theorem Approximation.div_ge_one {a b : UInt64} {p q ba bb ea eb bound pb : ℝ}
     (ha : Approximation a p ba ea) (hb : Approximation b q bb eb)
     (hd : 1 ≤ value b) (hq : 1 ≤ q) (hp : |p| ≤ pb)
     (hbound : 1 ≤ bound) (hmax : bound < (2:ℝ)^1022) (hba : ba ≤ bound) :
     Approximation (Wasm.IEEE64.div a b) (p/q) (bound+arithmeticEpsilon*bound)
       (arithmeticEpsilon*bound+ea+pb*eb) := by
-  have dp : 0 < value b := by linarith
   have qp : 0 < q := by linarith
-  have pbn : 0 ≤ pb := (abs_nonneg _).trans hp
-  have ean : 0 ≤ ea := (abs_nonneg _).trans ha.accuracy
-  have ebn : 0 ≤ eb := (abs_nonneg _).trans hb.accuracy
   have hratio : |p/q| ≤ pb := by
     rw [abs_div, abs_of_pos qp]
     apply (div_le_iff₀ qp).mpr
-    nlinarith [mul_le_mul_of_nonneg_left hq pbn]
-  have hid : value a/value b-p/q = ((value a-p)+(p/q)*(q-value b))/value b := by
-    field_simp
-    ring
-  have he : |value a/value b-p/q| ≤ ea+pb*eb := by
-    rw [hid, abs_div, abs_of_pos dp]
-    apply (div_le_iff₀ dp).mpr
-    have hterm : |(p/q)*(q-value b)| ≤ pb*eb := by
-      rw [abs_mul, abs_sub_comm q]
-      exact mul_le_mul hratio hb.accuracy (abs_nonneg _) pbn
-    have hn := (abs_add_le _ _).trans (add_le_add ha.accuracy hterm)
-    have hm := mul_le_mul_of_nonneg_left hd (add_nonneg ean (mul_nonneg pbn ebn))
-    nlinarith only [hn, hm]
-  have hmag : |value a/value b| ≤ bound := by
-    rw [abs_div, abs_of_pos dp]
-    apply (div_le_iff₀ dp).mpr
-    have hm := mul_le_mul_of_nonneg_left hd (by linarith : 0 ≤ bound)
-    linarith [ha.magnitude]
-  have hnz : Wasm.IEEE64.scaledMagnitude b ≠ 0 := by
-    intro hh
-    simp [value, Wasm.IEEE64.scaledValue, hh] at dp
-  have ho := F64ArithmeticBounds.div_error a b ha.finite hb.finite hnz bound hbound hmax hmag
-  refine ⟨ho.1, F64ArithmeticBounds.magnitude_of_error _ _ _ bound ho.2 hmag, ?_⟩
-  exact (abs_sub_le _ _ _).trans ((add_le_add ho.2 he).trans_eq (by ring))
+    exact hp.trans (by nlinarith [mul_le_mul_of_nonneg_left hq ((abs_nonneg _).trans hp)])
+  simpa only [div_one, mul_one, add_assoc] using
+    ha.div_pos hb (by norm_num : (0:ℝ) < 1) hd qp hratio hbound hmax (by simpa using hba)
 
+#print axioms Approximation.div_pos
 #print axioms Approximation.div_ge_one
 end Project.ProofKit.F64Horner
