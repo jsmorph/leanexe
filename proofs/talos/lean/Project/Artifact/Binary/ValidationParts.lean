@@ -2,6 +2,15 @@ import Project.Artifact.Binary.Validate
 
 namespace Wasm.Binary
 
+/-- Convert successful validation's Boolean observation into its exact result. -/
+theorem ok_unit_of_isSome {error : Type} {result : Except error Unit}
+    (h : result.toOption.isSome = true) : result = .ok () := by
+  cases result with
+  | error e => simp [Except.toOption] at h
+  | ok value => cases value; rfl
+
+#print axioms ok_unit_of_isSome
+
 /-- Split validation at an instruction-list boundary, preserving the exact
 operand stack and source index used by the validator. -/
 theorem validateInstrs_eq_append {context : Validator.Context} {path : List Nat}
