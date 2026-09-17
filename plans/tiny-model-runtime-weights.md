@@ -80,8 +80,22 @@ derives finite loaded parameters, bounds every intermediate operation,
 and uses the wider numerical components.  It requires no checkpoint facts.
 The shared affine bounds take the product magnitude as a parameter, and
 the normalization perturbation theorem retains an explicit denominator
-lower bound.  The composed error bound and combined checker execution
-remain open.
+lower bound.
+
+The [composed source error theorem](../proofs/talos/lean/Project/TinyGpt2/NumericalLogits.lean)
+and [numerical execution theorem](../proofs/talos/lean/Project/TinyGpt2Infer/Numerical.lean)
+pass.  Their error formula takes B and positive lower bounds for the three
+normalization stages.  Each lower bound must cover both the decoded computed
+input and the corresponding real input.  The square root of the epsilon
+floor always qualifies.  The formula accounts for all rounded operations,
+coefficient errors, exponential tails, activation approximation, and input
+perturbation through every stage.
+
+The epsilon-floor formula evaluates to about 320.304 at B = 1, 1.733e7 at
+B = 2.5, and 2.934e14 at B = 10.  These estimates are too coarse to certify
+precision.  Repeated worst-case normalization sensitivity dominates the
+composition.  The formulas accept larger certified denominator lower bounds.
+A useful precision certificate and combined checker execution remain open.
 
 ## Approved arithmetic
 
@@ -144,7 +158,8 @@ integration into the inference artifact.
 - [x] Prove the wider component domains and their numerical errors.
 - [x] Prove LayerNorm's wider domain and runtime-weight error bound.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
-- [ ] Refine the composed bound, accounting for normalization sensitivity.
+- [x] Prove the composed error bound with explicit normalization sensitivity.
+- [ ] Obtain a useful precision certificate from sharper numerical information.
 - [ ] Prove the checked inference entry, including rejection and memory use.
 - [ ] Expose checkpoint and bound arguments in the CLI and complete its tests.
 - [ ] Reuse the checker and numerical results for the 64-byte model.
