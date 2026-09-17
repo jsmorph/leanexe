@@ -4,6 +4,11 @@ The [development plan](../../WGSL.md) targets independently verified Wasm/WGSL
 bundles. This directory records implementation progress, not a completed GPU
 correctness claim.
 
+The [floating-point specification](float-specification.md) gives the exact
+counterpart of “the artifact computes the Lean function,” and an independent
+typed float algorithm for the complete GPT path. Its output contract is word
+equality and requires no real-valued reference or error tolerance.
+
 ## Checked foundation
 
 - `LeanExe.WGSL.Profile` separates scalar policies from source-ordered expression

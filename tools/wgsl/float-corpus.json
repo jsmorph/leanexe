@@ -1,0 +1,16 @@
+{
+  "positive": [
+    { "name": "lean", "weights": "checkpoint", "position": 3, "tokens": [76,101,97,110] },
+    { "name": "first-position", "weights": "checkpoint", "position": 0, "tokens": [0,0,0,0] },
+    { "name": "second-position", "weights": "checkpoint", "position": 1, "tokens": [255,128,1,0] },
+    { "name": "third-position", "weights": "checkpoint", "position": 2, "tokens": [76,101,97,110] },
+    { "name": "adversarial-plus", "weights": "adversarial-plus", "position": 3, "tokens": [0,1,2,3] },
+    { "name": "adversarial-minus", "weights": "adversarial-minus", "position": 3, "tokens": [0,1,2,3] }
+  ],
+  "negative": [
+    { "name": "altered-hidden", "file": "hidden.wasm", "offset": 0, "xor": 1, "failure": "hidden Wasm bytes differ" },
+    { "name": "altered-finish", "file": "finish.wasm", "offset": 0, "xor": 1, "failure": "finish Wasm bytes differ" },
+    { "name": "nonfinite-parameter", "file": "weights.bin", "word": "9218868437227405312", "failure": "parameter word outside" },
+    { "name": "above-cap-parameter", "file": "weights.bin", "word": "4616189618054758401", "failure": "parameter word outside" }
+  ]
+}

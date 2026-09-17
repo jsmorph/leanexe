@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "shaderSha256": "1b65d91e06689223846b9737830d4a09b1425779bd996b65a2ec6675abad8067",
+  "manifestSha256": "a787f77fcf453389a4bd743e38e1e2f66ef59bb66f6cbadafdedf9245741aac8",
+  "proofSha256": "8bb347c52af7d62c952c446acfa6e07e725c2957550db835fb743ea53f9759f0",
+  "profile": {
+    "id": "leanexe-f32-rne-separate-v1",
+    "revision": 1
+  },
+  "axioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numericalWide": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "subject": "Exact embedded WGSL source with parsed configuration and matched manifest fields",
+  "claims": [
+    "termination",
+    "memory safety",
+    "GEMM correspondence",
+    "conditional numerical bound"
+  ],
+  "exactness": "separate binary32 GEMM",
+  "numericalDomain": "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
+  "wideNumericalDomain": "Project.WGSL.Binary32.WideDotDomain; per-cell absolute error <= K*stepError(accBudget, productBudget)",
+  "runtimeConformanceEstablished": false,
+  "boundary": "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement."
+}

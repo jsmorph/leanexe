@@ -1,0 +1,17 @@
+'Project.TinyGpt2.FloatSpec.Correspondence.hidden_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.TinyGpt2.FloatSpec.Correspondence.logits_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.TinyGpt2.FloatSpec.Evaluation.hidden_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.GptFloatArtifact.hidden_interface' does not depend on any axioms
+'Project.WGSL.GptFloatArtifact.finish_interface' does not depend on any axioms
+'Project.WGSL.GptFloatArtifact.hidden_artifact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.GptFloatArtifact.artifact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.negative_zero' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.head_zero_sign' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.head_subnormals' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.balanced_order' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.sequential_differs' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.exponential_cutoff' depends on axioms: [propext, Quot.sound]
+'Project.TinyGpt2.FloatSpec.ContractTests.canonical_nan' depends on axioms: [propext, Quot.sound]
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+uncaught exception: finish Wasm bytes differ from the proved artifact
