@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "pass",
+  "shaderSha256": "8a542a1e2cd3032436558c4d0e8cf87e018a6330d32e5c607f0aac0c39515cf4",
+  "manifestSha256": "94d78d0d84a09fa4f81ae3cfc9e81be56f29ed80c7b3b73fc91b782d08e68c91",
+  "proofSha256": "520cbfa49017a01d4cd7d6778636925f48c4844cb2c9f36792fc8c2be7e4bad6",
+  "profile": {
+    "id": "leanexe-f32-rne-fusion-v1",
+    "revision": 1
+  },
+  "axioms": {
+    "CheckedWGSLPackage.package": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.artifact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.numerical": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "CheckedWGSLPackage.exact": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "subject": "Exact embedded WGSL source with parsed configuration and matched manifest fields",
+  "claims": [
+    "termination",
+    "memory safety",
+    "GEMM correspondence",
+    "conditional numerical bound"
+  ],
+  "exactness": "not claimed for fusion profile",
+  "numericalDomain": "Project.WGSL.Binary32.DotDomain; per-cell absolute error <= 2*K*2^-23",
+  "runtimeConformanceEstablished": false,
+  "boundary": "JSON decoding and byte-to-file comparison are checker operations; the kernel checks shader parsing and typed metadata agreement."
+}

@@ -1,0 +1,13 @@
+{"workgroupSize": [8, 8, 1],
+ "wgslRevision": "2026-08-17",
+ "schemaVersion": 1,
+ "profile": {"revision": 1, "id": "leanexe-f32-rne-fusion-v1"},
+ "kernel": "gemm_f32",
+ "entryPoint": "gemm_f32",
+ "dispatchWorkgroups": [3, 2, 1],
+ "dimensions": {"rows": 9, "inner": 3, "cols": 17},
+ "buffers":
+ {"c": {"elements": 153, "bytes": 612},
+  "b": {"elements": 51, "bytes": 204},
+  "a": {"elements": 27, "bytes": 108}},
+ "bindings": {"group": 0, "c": 2, "b": 1, "a": 0}}
