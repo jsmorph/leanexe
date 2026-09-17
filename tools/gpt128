@@ -1,0 +1,27 @@
+#!/bin/sh
+# Source-only entry point. Generated packages stay under ignored build/.
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+bundle=${LEANEXE_GPT128_BUNDLE:-"$root/build/gpt128-demo"}
+command=${1:-help}
+if [ "$#" -gt 0 ]; then shift; fi
+case "$command" in
+ build) exec "$root/tools/wgsl/demo/build.sh" "$@" ;;
+ serve)
+  [ -f "$bundle/index.html" ] || { echo 'Run tools/gpt128 build first' >&2; exit 1; }
+  printf 'Open http://localhost:8765/\n'
+  exec python3 -m http.server 8765 --bind 127.0.0.1 --directory "$bundle" ;;
+ run|test)
+  [ -x "$bundle/gpt128" ] || { echo 'Run tools/gpt128 build first' >&2; exit 1; }
+  if [ "$(uname -s)" = Darwin ]; then
+   driver=${LEANEXE_SWIFTSHADER_DIR:-"/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries"}
+   [ -f "$driver/vk_swiftshader_icd.json" ] || { echo 'Set LEANEXE_SWIFTSHADER_DIR to the installed Vulkan CPU driver directory' >&2; exit 1; }
+   DYLD_LIBRARY_PATH="$driver${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+   VK_ICD_FILENAMES="$driver/vk_swiftshader_icd.json"
+   VK_DRIVER_FILES="$VK_ICD_FILENAMES"
+   export DYLD_LIBRARY_PATH VK_ICD_FILENAMES VK_DRIVER_FILES
+  fi
+  if [ "$command" = test ]; then exec python3 "$root/tools/wgsl/demo/test.py" "$root" "$bundle"; fi
+  exec "$bundle/gpt128" "$bundle" "$@" ;;
+ *) printf 'tools/gpt128 build\ntools/gpt128 run --prompt "To be, or not to be" --generate 64\ntools/gpt128 serve\ntools/gpt128 test\n' ;;
+esac
