@@ -1,16 +1,17 @@
-import LeanExe.WGSL.Source
+import LeanExe.WGSL.Statement
 import LeanExe.WGSL.Lexer
 
 /-! Independent parser for the structured shader grammar. It reads actual
 WGSL tokens; it does not call the emitter or accept an expected source body.
-Immutable shader temporaries are substituted into their uses. A loop becomes
-an ascending fold only after its initializer, test, increment, sole accumulator
-assignment and scope have all been checked. -/
+Bindings and loops are retained as statements, with local names resolved to
+slots. The parser checks the initializer, test, increment, sole accumulator
+assignment and scope of each loop. -/
 namespace LeanExe.WGSL.Source
+open Statement
 
 private abbrev P := StateT (List String) (Except String)
-private abbrev Words := List (String × Term)
-private abbrev Indices := List (String × Index)
+private abbrev Words := List String
+private abbrev Indices := List String
 
 private def take : P String := do
   match ← get with
@@ -37,9 +38,9 @@ private def natural (unsigned : Bool := true) : P Nat := do
   if n > 4294967295 then throw "literal exceeds u32"
   pure n
 
-private def lookupWord (env : Words) (name : String) : P Term :=
-  match env.lookup name with
-  | some term => pure term
+private def lookupWord (env : Words) (name : String) : P Nat :=
+  match env.idxOf? name with
+  | some slot => pure slot
   | none => throw s!"undefined word {name}"
 
 private def identifier : P String := do
@@ -52,7 +53,7 @@ private def identifier : P String := do
 
 private def fresh (words : Words) (indices : Indices) : P String := do
   let name ← identifier
-  if (words.lookup name).isSome || (indices.lookup name).isSome then throw s!"duplicate local {name}"
+  if words.contains name || indices.contains name then throw s!"duplicate local {name}"
   pure name
 
 private def parseIndex : Nat → Indices → P Index
@@ -71,46 +72,29 @@ private def parseIndex : Nat → Indices → P Index
       | some "row" => token "row"; pure .row
       | some "col" => token "col"; pure .col
       | some name =>
-          if let some i := env.lookup name then token name; pure i
+          if let some i := env.idxOf? name then token name; pure (.local i)
           else pure (.lit (← natural))
       | none => throw "expected index expression"
 
-private def rhs (words : Words) (indices : Indices) : P Term := do
+private def rhs (words : Words) (indices : Indices) : P Prim := do
   let first ← take
   if first == "bitcast" then
     tokens ["<", "f32", ">", "("]
     let word ← natural
     token ")"
-    return .lit (UInt32.ofNat word)
+    return .literal (UInt32.ofNat word)
   if first == "a" || first == "b" then
     token "["
     let i ← parseIndex (← get).length indices
     token "]"
-    return if first == "a" then .readA i else .readB i
+    return if first == "a" then .loadA i else .loadB i
   let a ← lookupWord words first
   match (← get).head? with
   | some "+" => token "+"; return .add a (← lookupWord words (← take))
   | some "*" => token "*"; return .mul a (← lookupWord words (← take))
-  | _ => pure a
+  | _ => pure (.copy a)
 
-/-- Adjust free local references when entering a new loop binder. -/
-private def shiftIndex (cutoff : Nat) : Index → Index
-  | .local n => .local (if n ≥ cutoff then n + 1 else n)
-  | .add a b => .add (shiftIndex cutoff a) (shiftIndex cutoff b)
-  | .mul a b => .mul (shiftIndex cutoff a) (shiftIndex cutoff b)
-  | i => i
-
-private def shiftTerm (ni nw : Nat) : Term → Term
-  | .local n => .local (if n ≥ nw then n + 1 else n)
-  | .readA i => .readA (shiftIndex ni i)
-  | .readB i => .readB (shiftIndex ni i)
-  | .add a b => .add (shiftTerm ni nw a) (shiftTerm ni nw b)
-  | .mul a b => .mul (shiftTerm ni nw a) (shiftTerm ni nw b)
-  | .letE a b => .letE (shiftTerm ni nw a) (shiftTerm ni (nw + 1) b)
-  | .fold n a b => .fold n (shiftTerm ni nw a) (shiftTerm (ni + 1) (nw + 1) b)
-  | e => e
-
-private def statements : Nat → Words → Indices → Option String → P Term
+private def statements : Nat → Words → Indices → Option String → P Code
   | 0, _, _, _ => throw "statement parser fuel exhausted"
   | fuel + 1, words, indices, finish => do
       let first ← take
@@ -119,20 +103,20 @@ private def statements : Nat → Words → Indices → Option String → P Term
         tokens [":", "f32", "="]
         let value ← rhs words indices
         token ";"
-        return ← statements fuel ((name, value) :: words) indices finish
+        return .bind value (← statements fuel (name :: words) indices finish)
       if first == "var" then
         let acc ← fresh words indices
         tokens [":", "f32", "="]
         let initial ← lookupWord words (← take)
         tokens [";", "for", "(", "var"]
-        let k ← fresh ((acc, initial) :: words) indices
+        let k ← fresh (acc :: words) indices
         tokens [":", "u32", "=", "0u", ";", k, "<"]
         let count ← natural
         tokens [";", k, "=", k, "+", "1u", ")", "{"]
-        let innerWords := (acc, Term.local 0) :: words.map (fun (n, e) => (n, shiftTerm 0 0 e))
-        let innerIndices := (k, Index.local 0) :: indices.map (fun (n, e) => (n, shiftIndex 0 e))
+        let innerWords := acc :: words
+        let innerIndices := k :: indices
         let body ← statements fuel innerWords innerIndices (some acc)
-        statements fuel ((acc, .fold count initial body) :: words) indices finish
+        return .loop count initial body (← statements fuel (acc :: words) indices finish)
       else
         match finish with
         | some acc =>
@@ -140,19 +124,21 @@ private def statements : Nat → Words → Indices → Option String → P Term
             token "="
             let value ← lookupWord words (← take)
             tokens [";", "}"]
-            pure value
+            pure (.finish value)
         | none =>
             unless first == "c" do throw "expected the sole output store"
             tokens ["[", "row", "*", "N", "+", "col", "]", "="]
             let value ← lookupWord words (← take)
             tokens [";", "}"]
-            pure value
+            pure (.finish value)
 
 structure Parsed where
   rows : Nat
   cols : Nat
-  body : Term
+  code : Code
   deriving Repr, BEq, DecidableEq
+
+def Parsed.body (parsed : Parsed) : Term := parsed.code.term
 
 private def moduleP : P Parsed := do
   tokens ["const", "M", ":", "u32", "="]

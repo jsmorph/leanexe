@@ -23,7 +23,7 @@ def main():
     if wgpu.__version__ != WGPU_VERSION:
         raise ValueError(f"expected wgpu {WGPU_VERSION}")
     package = json.loads((args.package / "manifest.json").read_text())
-    if package.get("kind") != "lean-body-wgsl" or package.get("schemaVersion") != 1:
+    if package.get("kind") != "lean-body-wgsl" or package.get("schemaVersion") != 2:
         raise ValueError("expected a Lean-body compiler package")
     shape = package["shape"]
     if any(type(shape[k]) is not int or not 0 < shape[k] <= 16384

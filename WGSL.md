@@ -9,7 +9,10 @@ The existing GPT-2 bundle has not been migrated to the new compiler.
 
 ## Current verification focus
 
-The active work is [WGSL artifact fidelity for pretrained GPT-2](docs/wgsl/gpt2-verification.md):
+The current implementation work is the [restricted Lean body compiler](docs/wgsl/body-compiler.md),
+including a checked connection from parsed statement execution to its Lean
+source. The original [WGSL artifact fidelity work for pretrained GPT-2](docs/wgsl/gpt2-verification.md)
+uses fixed GEMM templates. Its objective remains to
 prove that the six delivered shaders execute their selected Lean matrix-product
 definitions over floating-point words, verify the matrix layouts and split
 vocabulary computation, and state the arithmetic choices precisely. Numerical error bounds

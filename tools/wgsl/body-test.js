@@ -38,16 +38,17 @@ try {
   for (const {name} of cases) {
     const log = lean(['env', 'lean', path.join(root, `${name}.lean`)]);
     if (log.includes('sorryAx') || log.includes('Lean.ofReduceBool')) throw new Error('forbidden proof axiom');
-    if ((log.match(/depends on axioms:|does not depend on any axioms/g) || []).length !== 2)
+    if ((log.match(/depends on axioms:|does not depend on any axioms/g) || []).length !== 3)
       throw new Error('missing proof audits');
-    console.log(`Lean checked source equality and actual shader text: ${name}`);
+    console.log(`Lean checked source equality, actual shader text and statement execution: ${name}`);
   }
-  console.log(`Passed ${cases.length} source equality and actual shader parse proofs.`);
+  console.log(`Passed ${cases.length} source equality, shader parse and statement execution proofs.`);
   const independent = path.join(root, 'IndependentMatrix.lean');
   fs.writeFileSync(independent, 'import LeanExe.WGSL.Examples.Body\n' +
     fs.readFileSync(path.join(root, 'matmul/source-equality.lean.txt'), 'utf8') +
     '\n#print axioms LeanExe.WGSL.Examples.Body.matmul.wgslShaderParsed\n' +
-    '#print axioms LeanExe.WGSL.Examples.Body.matmul.wgslSourceCorrect\n');
+    '#print axioms LeanExe.WGSL.Examples.Body.matmul.wgslSourceCorrect\n' +
+    '#print axioms LeanExe.WGSL.Examples.Body.matmul.wgslExecutionCorrect\n');
   const independentLog = lean(['env', 'lean', independent]);
   if (independentLog.includes('sorryAx') || independentLog.includes('Lean.ofReduceBool'))
     throw new Error('forbidden independent proof axiom');
@@ -83,6 +84,10 @@ try {
     ['trailing-store', 'add', '2 3 6 6', original + '\nc[0u] = 0.0f;\n', 'trailing tokens'],
     ['wrong-loop-count', 'matmul', '2 3 8 12', matrix.replace('< 4u', '< 3u'), 'source equality did not pass'],
     ['wrong-initial-word', 'matmul', '2 3 8 12', matrix.replace('bitcast<f32>(0u)', 'bitcast<f32>(1065353216u)'), 'source equality did not pass'],
+    ['wrong-increment', 'matmul', '2 3 8 12', matrix.replace('k2 + 1u', 'k2 + 2u'), 'failed independent parsing'],
+    ['wrong-loop-start', 'matmul', '2 3 8 12', matrix.replace('k2: u32 = 0u', 'k2: u32 = 1u'), 'failed independent parsing'],
+    ['wrong-loop-assignment', 'matmul', '2 3 8 12', matrix.replace('acc1 = v6;', 'v0 = v6;'), 'expected loop accumulator assignment'],
+    ['escaped-local', 'matmul', '2 3 8 12', matrix.replace('c[row * N + col] = acc1;', 'c[row * N + col] = v6;'), 'undefined word'],
   ];
   for (const [name, entry, shape, shader, diagnostic] of mutations) {
     if (shader === (entry === 'add' ? original : matrix)) throw new Error('mutation did not apply');
@@ -91,7 +96,8 @@ try {
     negative(name, dest => `#check_wgsl LeanExe.WGSL.Examples.Body.${entry} ${shape} ${JSON.stringify(shaderFile)} ${JSON.stringify(dest)}`, diagnostic);
   }
   const summary = {status:'pass', sourceCases:cases.length, outputWords:cases.reduce((n,c)=>n+c.shape.rows*c.shape.cols,0),
-    rejectedCases:14, bodyMutationPairs:2, independentMatrixProof:'pass', evidenceDirectory:root, universalRuntimeConformanceEstablished:false};
+    rejectedCases:18, bodyMutationPairs:2, independentMatrixProof:'pass', statementExecutionProofs:cases.length,
+    evidenceDirectory:root, universalRuntimeConformanceEstablished:false};
   fs.writeFileSync(path.join(root,'summary.json'), JSON.stringify(summary,null,2)+'\n');
   console.log(JSON.stringify(summary));
 } catch (error) {

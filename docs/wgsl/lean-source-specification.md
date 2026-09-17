@@ -64,8 +64,8 @@ emits a WGSL `for` loop. Nested folds are supported. Initial words need not be
 zero. No assumption of algebraic associativity or commutativity is used.
 
 Index-local bindings are substituted. Word-local bindings retain their value
-in the emitted shader. The independent parser substitutes immutable shader
-temporaries in its pure computation model. Transparent helpers must expose
+in the emitted shader. The independent parser retains shader temporaries as
+bindings and resolves their uses to local slots. Transparent helpers must expose
 the accepted grammar within a finite normalization budget: 256 recursive
 index-translation steps and 512 word-translation steps along a path. These
 are implementation limits, not support for arbitrary recursion.
@@ -108,24 +108,48 @@ buffers, keep C disjoint from A/B, and dispatch the stated grid.
 The compiler translates the Lean body into an expression tree and renders
 WGSL. An independent parser then reads the actual emitted text, checks its
 declarations, guard, arithmetic, scopes, exact loop control and final store,
-and reconstructs its pure computation. It does not consult an expected GEMM
+and retains its bindings, local references and scoped loops as statements.
+It does not substitute expressions for variables, consult an expected GEMM
 body or the emitter. Complete token consumption is required.
 The accepted shader grammar uses compiler-style local names (`v`, `k` or
 `acc` followed by decimal digits); it is not a general WGSL parser.
 
-Lean checks two claims for each successful invocation:
+Lean checks three claims for each successful compilation:
 
-1. The actual shader string parses into the recorded computation.
-2. That parsed computation equals the supplied Lean definition, as functions
+1. The actual shader string parses into the recorded statement program.
+2. The statement program's source interpretation equals the supplied Lean definition, as functions
    of all five arguments, for every input buffer and arithmetic interpretation.
+3. Executing those statements, the guard and the final store returns the Lean
+   definition's value at the correct output address for every active invocation.
+   Inactive invocations return without accessing memory. The theorem quantifies
+   over all inputs, with adequate buffer lengths and the same scalar arithmetic
+   interpretation on both sides.
 
 Checking occurs synchronously before file emission. All dependencies of the
-two theorems are audited; only `propext`, `Classical.choice` and `Quot.sound`
+three theorems are audited; only `propext`, `Classical.choice` and `Quot.sound`
 are allowed. No `sorry` or native-computation axiom is accepted. Unsupported
 source syntax, shader syntax, changed operations, failed equality proofs,
 invalid shapes and out-of-range accesses prevent emission.
 
-The parsed computation is a model of this explicit WGSL subset. There is no
+The execution definition is `Statement.runShader`. It includes checked local
+lookup, finite buffer access checks, wrapping u32 index arithmetic, sequential
+bindings, loop condition tests, accumulator assignment, u32 counter increments
+and lexical scope restoration. Each loop has a body-execution budget equal to
+its literal count. Reaching that budget with a true loop condition is an error;
+the proof establishes successful return without exhausting it. Thus it proves
+bounded termination as well as the absence of local/load/store errors, rather
+than assuming an execution already succeeded.
+
+`Index.bound_le` and `Index.word_eq` establish soundness of the index bounds and
+absence of u32 wraparound for accepted accesses. `Code.run_eq` proves statement
+execution agrees with its source interpretation. `shader_implements` combines
+this with parsing, dimension checks and the source equality. The generated
+`entry.wgslExecutionCorrect` theorem has type `Statement.Implements` and applies
+these results to the actual shader string. Shared theorems also establish
+coverage by the 8×8 dispatch and distinct stores for distinct active cells.
+These two geometric facts are not a formalization of an external GPU scheduler.
+
+This is an execution semantics of this explicit WGSL subset. There is no
 machine-checked refinement of this model against a complete formalization of
 the WebGPU/WGSL standard, and no proof of the external shader compiler or
 device. The arithmetic argument must match the runtime's scalar policy.
@@ -135,14 +159,8 @@ fusion, subnormal handling and exceptional values; the execution tests do not
 establish universal exact agreement on those cases. The new compiler does not
 yet expose the old GEMM path's per-step fusion relation.
 
-The static access checker is executable and covered by rejection tests; a
-generic Lean proof of its soundness is not included in this implementation.
-The existing GEMM dispatch/memory theorems have not been generalized to this
-new grammar. These are explicit remaining proof obligations, separate from
-the checked source-to-parsed-computation equality.
-
 `#check_wgsl pointwise 2 3 6 6 "existing.wgsl" "build/checked-example"` applies
-the same parser/equality gate to an existing shader. This supports tests that
+the same parser, source-equality and execution-proof gate to an existing shader. This supports tests that
 change a valid shader operation and require rejection against the original
 source definition.
 

@@ -1,5 +1,5 @@
 import LeanExe.WGSL.BodyEmit
-import LeanExe.WGSL.BodyParse
+import LeanExe.WGSL.BodyExecution
 import Lean
 
 namespace LeanExe.WGSL.Source
@@ -137,11 +137,16 @@ private def compileDefinition (entry : TSyntax `ident) (rows cols a b : TSyntax 
   match validate shape body with
   | .error message => throwError "WGSL: parsed shader failed validation: {message}"
   | .ok () => pure ()
-  let bodyText := s!"({body.lean} : LeanExe.WGSL.Source.Term)"
-  let bodySyntax ← match Parser.runParserCategory (← getEnv) `term bodyText with
+  let codeText := s!"({parsed.code.lean} : LeanExe.WGSL.Statement.Code)"
+  let codeSyntax ← match Parser.runParserCategory (← getEnv) `term codeText with
     | .ok parsed => pure parsed
     | .error message => throwError "WGSL internal expression serialization error: {message}"
   let bodyName := mkIdent (name ++ `wgslBody)
+  let codeName := mkIdent (name ++ `wgslCode)
+  let shapeName := mkIdent (name ++ `wgslShape)
+  let validName := mkIdent (name ++ `wgslCodeValid)
+  let shapeValidName := mkIdent (name ++ `wgslShapeValid)
+  let executionName := mkIdent (name ++ `wgslExecutionCorrect)
   let proofName := mkIdent (name ++ `wgslSourceCorrect)
   let parseName := mkIdent (name ++ `wgslShaderParsed)
   let tokensName := mkIdent (name ++ `wgslTokens)
@@ -154,8 +159,10 @@ private def compileDefinition (entry : TSyntax `ident) (rows cols a b : TSyntax 
     | .ok parsed => pure parsed
     | .error message => throwError "WGSL: {message}"
   let tokensTerm : TSyntax `term := ⟨tokensSyntax⟩
-  let bodyTerm : TSyntax `term := ⟨bodySyntax⟩
-  elabCommand (← `(def $bodyName : Source.Term := $bodyTerm))
+  let codeTerm : TSyntax `term := ⟨codeSyntax⟩
+  elabCommand (← `(def $codeName : Statement.Code := $codeTerm))
+  elabCommand (← `(def $shapeName : Source.Shape := ⟨$rows, $cols, $a, $b⟩))
+  elabCommand (← `(def $bodyName : Source.Term := Statement.Code.term $codeName))
   elabCommand (← `(theorem $proofName : $entry = Source.Term.kernel $bodyName := by rfl))
   if (← get).messages.hasErrors then throwError "WGSL: source equality did not pass Lean checking"
   let shaderLiteral := Syntax.mkStrLit shader
@@ -163,13 +170,17 @@ private def compileDefinition (entry : TSyntax `ident) (rows cols a b : TSyntax 
   elabCommand (← `(theorem $lexedName : tokenize $shaderLiteral = Except.ok $tokensName :=
     Source.ok_of_toOption _ _ (by decide +kernel)))
   elabCommand (← `(theorem $tokensParsedName : Source.parseTokens $tokensName =
-    Except.ok (Source.Parsed.mk $rows $cols $bodyName) :=
+    Except.ok (Source.Parsed.mk $rows $cols $codeName) :=
     Source.ok_of_toOption _ _ (by decide +kernel)))
   elabCommand (← `(theorem $parseName : Source.parse $shaderLiteral =
-    Except.ok (Source.Parsed.mk $rows $cols $bodyName) :=
+    Except.ok (Source.Parsed.mk $rows $cols $codeName) :=
     Source.parse_of_tokens _ _ _ $lexedName $tokensParsedName))
-  if (← get).messages.hasErrors then throwError "WGSL: source equality did not pass Lean checking"
-  for declaration in [proofName.getId, parseName.getId] do
+  elabCommand (← `(theorem $validName : Statement.Code.Valid $shapeName [] 0 $codeName := by decide +kernel))
+  elabCommand (← `(theorem $shapeValidName : Statement.ShapeValid $shapeName := by decide +kernel))
+  elabCommand (← `(theorem $executionName : Statement.Implements $shaderLiteral $shapeName $entry :=
+    Statement.shader_implements _ _ _ _ $parseName $shapeValidName $validName $proofName))
+  if (← get).messages.hasErrors then throwError "WGSL: execution proof did not pass Lean checking"
+  for declaration in [proofName.getId, parseName.getId, executionName.getId] do
     let axioms ← Lean.collectAxioms declaration
     for axiomName in axioms do
       unless [``propext, ``Classical.choice, ``Quot.sound].contains axiomName do
@@ -177,22 +188,29 @@ private def compileDefinition (entry : TSyntax `ident) (rows cols a b : TSyntax 
   liftIO <| IO.FS.createDirAll output
   liftIO <| IO.FS.writeFile (output / "kernel.wgsl") shader
   liftIO <| IO.FS.writeFile (output / "manifest.json") <| (Lean.Json.mkObj [
-    ("schemaVersion", toJson (1 : Nat)), ("kind", toJson "lean-body-wgsl"),
+    ("schemaVersion", toJson (2 : Nat)), ("kind", toJson "lean-body-wgsl"),
     ("sourceDeclaration", toJson name.toString), ("entryPoint", toJson "lean_kernel"),
     ("shape", toJson shape), ("workgroupSize", toJson ([8,8,1] : List Nat)),
     ("sourceEqualityChecked", toJson true), ("shaderParseChecked", toJson true),
-    ("proofScope", toJson "parsed shader computation equals the Lean definition; arithmetic interpretation is explicit"),
+    ("statementExecutionChecked", toJson true),
+    ("proofScope", toJson "parsed statement execution terminates without local, load, store or loop-budget errors and equals the Lean definition for every invocation and input under the same explicit scalar arithmetic"),
+    ("executionSemantics", toJson "LeanExe.WGSL.Statement.runShader"),
     ("universalRuntimeConformanceEstablished", toJson false)]).pretty
   liftIO <| IO.FS.writeFile (output / "source-equality.lean.txt")
     (String.intercalate "\n" [
       "set_option maxRecDepth 16384",
-      s!"def {bodyName.getId} : LeanExe.WGSL.Source.Term := {body.lean}",
+      s!"def {codeName.getId} : LeanExe.WGSL.Statement.Code := {parsed.code.lean}",
+      s!"def {shapeName.getId} : LeanExe.WGSL.Source.Shape := ⟨{shape.rows}, {shape.cols}, {shape.elementsA}, {shape.elementsB}⟩",
+      s!"def {bodyName.getId} : LeanExe.WGSL.Source.Term := {codeName.getId}.term",
       s!"theorem {proofName.getId} : {name} = LeanExe.WGSL.Source.Term.kernel {bodyName.getId} := by rfl",
       s!"def {tokensName.getId} : List String := {reprStr ts}",
       s!"theorem {lexedName.getId} : LeanExe.WGSL.tokenize {reprStr shader} = Except.ok {tokensName.getId} := LeanExe.WGSL.Source.ok_of_toOption _ _ (by decide +kernel)",
-      s!"theorem {tokensParsedName.getId} : LeanExe.WGSL.Source.parseTokens {tokensName.getId} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {bodyName.getId}) := LeanExe.WGSL.Source.ok_of_toOption _ _ (by decide +kernel)",
-      s!"theorem {parseName.getId} : LeanExe.WGSL.Source.parse {reprStr shader} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {bodyName.getId}) := LeanExe.WGSL.Source.parse_of_tokens _ _ _ {lexedName.getId} {tokensParsedName.getId}", ""])
-  logInfo m!"WGSL: compiled body of {name}; shader parse and source equality checked; wrote {output}"
+      s!"theorem {tokensParsedName.getId} : LeanExe.WGSL.Source.parseTokens {tokensName.getId} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {codeName.getId}) := LeanExe.WGSL.Source.ok_of_toOption _ _ (by decide +kernel)",
+      s!"theorem {parseName.getId} : LeanExe.WGSL.Source.parse {reprStr shader} = Except.ok (LeanExe.WGSL.Source.Parsed.mk {shape.rows} {shape.cols} {codeName.getId}) := LeanExe.WGSL.Source.parse_of_tokens _ _ _ {lexedName.getId} {tokensParsedName.getId}",
+      s!"theorem {validName.getId} : LeanExe.WGSL.Statement.Code.Valid {shapeName.getId} [] 0 {codeName.getId} := by decide +kernel",
+      s!"theorem {shapeValidName.getId} : LeanExe.WGSL.Statement.ShapeValid {shapeName.getId} := by decide +kernel",
+      s!"theorem {executionName.getId} : LeanExe.WGSL.Statement.Implements {reprStr shader} {shapeName.getId} {name} := LeanExe.WGSL.Statement.shader_implements _ _ _ _ {parseName.getId} {shapeValidName.getId} {validName.getId} {proofName.getId}", ""])
+  logInfo m!"WGSL: compiled body of {name}; shader parse, source equality and statement execution checked; wrote {output}"
 
 @[command_elab compileWGSL] def elabCompileWGSL : CommandElab := fun stx => do
   let `(command| #compile_wgsl $entry:ident $rows:num $cols:num $a:num $b:num $directory:str) := stx
