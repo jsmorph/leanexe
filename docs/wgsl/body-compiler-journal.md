@@ -145,3 +145,20 @@ can see the fold. The failure is retained. The matrix bridge module passes;
 the corrected generation in `build/gpt2/body-generation-v2` has checked its
 first QKV package, including all four axiom reports. Remaining shapes and
 runtime integration are still being checked at this checkpoint.
+
+The 3,072-term projection exposed a second limitation in
+`body-generation-v2`: direct reflexivity reached the proof recursion limit
+while comparing the source with the statement interpretation. The failed
+source declaration contained Lean's error placeholder; the synchronous error
+gate stopped compilation before creating that package. The proof generator now
+first simplifies statement interpretation and local-slot lookups, leaving the
+fold and its callback intact. A focused 3,072-term diagnostic passed with a
+4,096 recursion limit, and the complete projection package in
+`body-generation-v5/3` passes all four dependency audits.
+
+Two intervening attempts are also retained: v3 failed to compile a tactic
+quotation because its identifiers needed explicit syntax categories; v4 failed
+because Lean theorem headers cannot infer a placeholder type from the proof
+body. The fourth product proof remains a checked proposition-valued definition
+with a style warning; it is audited exactly like the three named theorems.
+Neither failed attempt was installed into the demo bundle.
