@@ -958,3 +958,24 @@ The existing GptBundle module also rebuilds successfully in 4.1 seconds with
 standard logical axioms, confirming that the shared raw-word dispatch lemma
 preserves its previous theorem. JavaScript syntax checks and diff whitespace
 checks pass. No unrelated project regression suite was run.
+
+GPT2/128 development starts by merging parent main at 2f4e024a into wgsl in
+28575838. The parent supplies the trained 2,984-word checkpoint, sequence source,
+six source/native comparison cases, and exact sequence sum/maximum execution
+proofs. Its complete hidden-Wasm execution theorem is still unfinished. The
+merged four-position artifact theorem and sequence inference source build.
+
+The first 128-position execution path therefore evaluates the parent's hidden
+function directly in Lean and retains the proved Wasm bridge, parsed WGSL head,
+and proved finish Wasm. No unfinished 128-position Wasm is executed. The user's
+optional choice between this path and completing the entire Wasm proof first
+was requested; independent head integration proceeded while awaiting a reply.
+
+TinyGpt2Seq.Mixed names the mixed-precision function separately from the parent's
+binary64 inference function. Its checked entry reuses F64Clip.prepare. The new
+GptSequence theorem connects the head at offset 1,680 and bias at 2,704 to the
+same checked 1x256x4 shader. The head equality, raw dispatch equality and composed
+bridge/finish theorem pass with standard logical axioms; the final module checks
+in 3.9 seconds. The exact function and theorem are shared across all sequence
+lengths and runtime parameters. Native Lean evaluation and transfer remain
+explicit execution boundaries. The runtime gate/corpus is the next check.
