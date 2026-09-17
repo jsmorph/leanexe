@@ -49,9 +49,20 @@ theorem inferChecked_accuracy (weights : Array UInt64) (bound : UInt64)
   rw [inferChecked_accept weights bound tokens ha]
   exact clipped_infer_accuracy bound weights ha tokens j
 
+theorem inferChecked_error_magnitude (weights : Array UInt64) (bound : UInt64)
+    (tokens : Real.Tokens) (ha : F64Clip.accepted Layout.size bound weights = true) (j : Fin 256) :
+    |value (inferChecked weights bound (tokenWords tokens 0) (tokenWords tokens 1)
+      (tokenWords tokens 2) (tokenWords tokens 3))[j.val]!-
+      Real.logits (parameters (F64Clip.prepare Layout.size bound weights)) tokens 3 j| ≤
+        1260+12*(value bound)^2+value bound := by
+  have hc := (inferChecked_bounded weights bound tokens ha j).2
+  have hr := clipped_real_logits_magnitude bound weights ha tokens 3 j
+  exact (abs_sub _ _).trans (by simpa only [add_assoc] using add_le_add hc hr)
+
 #print axioms inferChecked_accept
 #print axioms inferChecked_reject
 #print axioms inferChecked_reject_token
 #print axioms inferChecked_bounded
 #print axioms inferChecked_accuracy
+#print axioms inferChecked_error_magnitude
 end Project.TinyGpt2

@@ -14520,3 +14520,18 @@ Four-byte exact execution and the composed numerical theorem are complete,
 including runtime-weight checking.  The current unconditional estimate
 still cannot certify useful precision.  The next model step is the approved
 64-byte extension, beginning with sequence traversal and softmax arithmetic.
+
+### Uniform logit error magnitude cap
+
+The runtime-weight execution theorem now bounds each absolute logit error
+by the minimum of the composed numerical budget and 1,260+12B²+B.
+The latter follows from the proved computed-logit magnitude bound 1,260
+and real-logit bound 12B²+B.  At the default B=10, the minimum gives
+2,470.  This remains too coarse to certify useful precision.  The reference
+uses clipped weights, and the proof requires no checkpoint-specific facts.
+The focused source and execution-corollary builds passed in 2.6 and
+1.6 seconds, with standard logical axioms.  The artifact is unchanged.
+
+The focused tiny_gpt2_checked gate passes artifact regeneration, annotation
+checks, and the strengthened numerical theorem.  Documentation checks pass
+for all 136 maintained Markdown files.
