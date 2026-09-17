@@ -82,3 +82,11 @@ output-directory freshness before proof work and applies the existing 64 KiB
 UTF-8 artifact-check limit. The 768-term case exercised this final successful
 path; focused rejection checks cover the earlier stop. No unrelated regression
 suite was run and no generated shader, proof, vector or log was committed.
+
+The final integrated `node tools/wgsl/body-test.js` run passed in
+`build/wgsl/body-check-29xE6I/`: nine definitions, all eighteen source/parse
+theorem audits, 51 matching output words, fourteen expected rejections, both
+source-operation mutation pairs and the independent matrix-proof recheck.
+This run exercised the committed compiler and the complete updated driver;
+the subsequent edits only clarify normalization behavior and record this
+result. The documentation checker passed for all 149 maintained Markdown files.
