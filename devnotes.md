@@ -14569,3 +14569,23 @@ the ring tactic rejected.  An explicit equality for the next error budget
 resolved that boundary.  The induction checks in 1.9 seconds, and the
 zero-initial and array corollaries in 1.0 seconds.  The length parameter
 keeps the accumulation lemma applicable beyond the 64-position model.
+
+### Source-equivalent GPT-2/128
+
+The user selected a checked proof for each compilation and changed the next
+context size to 128.  Further real-arithmetic error bounds are deferred.
+The four-byte inferChecked_exact theorem already names the compiled Lean
+function and proves exact returned words, termination, input preservation,
+and its memory conditions.  The 128-position theorem will use the same
+statement form, with an array of byte tokens and runtime weights.
+
+The source retains binary64 operations, the existing exponential and GELU
+definitions, and weight checking and clipping.  Its position table has
+512 words and the complete checkpoint has 2,984 words.  The training model
+and loader now accept context 128.  CPU tests passed parameter counts,
+output shapes, causal prefixes, finite gradients, and invalid-length
+rejection for contexts four, 64, and 128.  The 4,000-step training run
+completed with the approved corpus and backend.  Validation cross-entropy
+fell from 5.5597421815995585 to 2.691612944826216.  All 2,984 weights are
+finite, with maximum magnitude 2.3113755988772042.  The checkpoint hash is
+1e98ac0661cec2eed22473af75bb5ca2dac8bf1dd9a1788567981f57df4e6356.

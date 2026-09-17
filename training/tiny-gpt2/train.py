@@ -57,7 +57,7 @@ def main():
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=0.001)
-    parser.add_argument("--context", type=int, choices=(4, 64), default=4)
+    parser.add_argument("--context", type=int, choices=(4, 64, 128), default=4)
     args = parser.parse_args()
     if args.steps < 1 or args.batch_size < 1 or not 0 < args.learning_rate < 1:
         parser.error("Steps and batch size must be positive, and learning rate must lie in (0, 1)")
