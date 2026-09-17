@@ -83,6 +83,17 @@ error at most 1/50000 against real exponential softmax, and normalization error
 at most 32 times 2^-52.  Its [command-line interface](../../data/numerical/README.md)
 accepts decimal scores or exact binary64 words.
 
+The [wider softmax computation](lean/Project/SoftmaxWide/Spec.lean) uses the
+new exponential for one to four active scores.  Its numerical hypothesis
+requires finite words and active score differences below 2^1023.  The sum
+of absolute probability errors is at most 10053 times 2^-52, below 2.24e-12.
+Normalization error is at most 52 times 2^-52.  The weighted-value theorem
+multiplies the probability error by the value-magnitude bound.  Its
+shared normalization theorem separates weight, sum, and division errors
+for any finite index type.  Exact generated-WAT execution preserves the
+complete store for every raw input.  The internal entry returns all four
+probabilities and status zero.  The GPT-2 CLI integration remains open.
+
 The softmax input-error theorem adds twice the maximum score error to the
 1/50000 local bound.  Its internal computation also has a generated-WAT
 numerical theorem for finite scores with active spread at most sixteen,

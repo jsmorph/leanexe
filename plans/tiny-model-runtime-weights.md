@@ -81,9 +81,9 @@ then square the result once per halving.  Arguments below -64 return zero,
 with real absolute error at most exp(-64).  The remaining arguments need
 at most six halvings and squarings.
 
-GELU will evaluate its logistic formula through magnitude eight.  Larger
+GELU evaluates its logistic formula through magnitude eight.  Larger
 positive inputs return the input, and larger negative inputs return zero.
-The negative branch within the interval will use -a*e/(1+e), avoiding
+The negative branch within the interval uses -a*e/(1+e), avoiding
 subtraction of the two nearly equal positive quantities a/(1+e) and a.
 The real reference remains the audited tanh GELU formula.  Every tail,
 coefficient, and rounded operation requires a proved error bound.
@@ -91,8 +91,9 @@ coefficient, and rounded operation requires a proved error bound.
 The prototype's largest measured errors are 8.27e-17 across 276 exponential
 inputs and 1.11e-15 across 519 GELU inputs.  The cancellation-case logit
 error falls from about 383.216 to 9.33e-11 in the Python binary64 prototype.
-The new implementation and proofs are in progress.  The command-line
-inference artifact still uses the previous arithmetic.
+The component implementations and proofs are complete.  Integration into
+inference is in progress.  The command-line inference artifact uses the
+previous arithmetic.
 
 The [new exponential numerical theorem](../proofs/talos/lean/Project/ExpNeg/Numerical.lean)
 proves finite, positive output and relative error at most 4029u on [-64, 0].
@@ -111,6 +112,14 @@ The input-perturbation theorem adds four times the input error.  Its
 generated-WAT theorem proves exact output, rejection, termination, and
 complete store preservation.  Integration into inference remains in progress.
 
+The [wider softmax theorem](../proofs/talos/lean/Project/SoftmaxWide/Spec.lean)
+proves a sum of absolute probability errors at most 10053u and normalization
+error at most 52u.  It accepts finite scores whose active differences are
+below 2^1023.  Weight error is relative, with an additive 1e-27 tail term.
+The shared normalization result works over any finite index type.  The
+four-position source and generated-WAT proofs are complete.  The remaining
+integration will replace the old exponential and GELU in inference.
+
 ## Implementation sequence
 
 - [x] Preserve the cancellation case and calculate preliminary sensitivity terms.
@@ -119,8 +128,8 @@ complete store preservation.  Integration into inference remains in progress.
 - [x] Prove generated-WAT scalar clipping and complete array validation.
 - [x] Prove the checker's generated-WAT execution and memory use.
 - [x] Confirm the revised numerical methods.
-- [ ] Implement and verify the revised numerical methods.
-- [ ] Prove the wider component domains and their numerical errors.
+- [x] Implement and verify the revised numerical methods.
+- [x] Prove the wider component domains and their numerical errors.
 - [x] Prove LayerNorm's wider domain and runtime-weight error bound.
 - [x] Prove context-independent attention perturbation and relative normalization bounds.
 - [ ] Refine the composed bound, accounting for normalization sensitivity.
