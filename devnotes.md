@@ -13739,3 +13739,51 @@ program comparisons.  The checkpoint-word identity check passes for all
 2,488 words.  The CLI smoke test returns 256 logits with the unchanged
 artifact digest.  Documentation and whitespace checks pass.  The recorded
 assoc_list cache mismatch remains the aggregate gate blocker.
+
+The user requires checkpoint-independent preprocessing and proofs.  The
+proposed parameter range is 0 <= B <= 10.  Finite weights are clipped to
+[-B, B], and the inference theorem refers to those clipped weights.  A NaN
+causes an empty output array.  Comparison with the supplied, unclipped
+model is deferred.  Infinity handling remains undecided.  These changes
+have not been implemented.
+
+Review of this proposal found an error in the preceding discussion of
+GELU.  The model calls evaluateAll, whose existing theorem covers every
+finite input with absolute error at most 1/100.  Magnitude three selects
+its sharper 1/80000 bound.  The
+[all-finite GELU proof](proofs/talos/lean/Project/Gelu/AllFinite.lean)
+and [model body](proofs/talos/lean/Project/TinyGpt2/Model.lean) establish
+that distinction.  Softmax still evaluates its polynomial beyond the
+proved shifted-score range when arbitrary bounded weights produce a
+larger score spread.  LayerNorm's current numerical theorem accepts input
+magnitudes through sixteen and scale and bias magnitudes through four.
+
+A numerical probe shows that the existing GELU tail approximation can
+cause a large final error under the proposed cap.  All weights are zero
+except expansion bias 1140 = 3.01, contraction row zero = [3, -3, 3, -3],
+contraction biases = [-c, c, -c, c] with c = 9.019430618323202,
+final normalization scales = [10, 10, 10, 10], and vocabulary column zero
+= [10, -10, 10, -10].  Every stored weight is finite with magnitude at
+most ten.  On bytes [0, 0, 0, 0], the current inference WASM returned logit
+zero 383.2155982715268.  An 80-digit Decimal calculation of the real tanh
+GELU formula on the decoded binary64 weights gave approximately
+-9.32404605210924e-11.  The other 255 WASM logits were zero.
+
+The contraction bias nearly cancels the real activation, leaving a
+reference residual coordinate near -7.37e-16.  The GELU tail branch
+returns 3.01, and its approximation error gives a computed residual
+coordinate near 0.01057.  Final LayerNorm amplifies that difference.
+This probe is numerical evidence, rather than a new Lean theorem.  It
+shows why a useful uniform error bound requires examining approximation
+accuracy and cancellation.  Enlarging range proofs alone leaves this
+example's error unchanged.  The existing trained checkpoint has maximum
+measured weight magnitude 2.516808310176425.
+
+Coarse real-arithmetic estimates from the cap give normalized magnitude
+at most 3B, query/key/value magnitude at most 12B^2, first-residual
+magnitude at most 48B^3+3B, and second-residual magnitude at most
+144B^3+8B^2+4B.  At B = 10 the residual bounds are 48,030 and 144,840.
+These calculations require binary64 error margins before they establish
+runtime domains.  The next numerical analysis should quantify the
+achievable error before committing to a useful uniform E(10), and should
+parameterize attention by context length for the subsequent 64-byte model.
