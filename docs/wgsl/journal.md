@@ -532,3 +532,28 @@ completion in this attempt. This merge checkpoint records successful softmax,
 projection and contraction execution checks, not a new full-inference proof
 run. The imported source and its parent history are unchanged. Subsequent work
 will use smaller theorem boundaries where this composition is required.
+
+The new binary32 foundation passes at the default heartbeat limit:
+F32Packing proves finite packing below scaled magnitude 2^276 and a relative
+error of 2^-24; F32AddBounds transfers it to addition/subtraction for exact
+results of magnitude below 2^127. F32DyadicBounds proves single rounding for
+arbitrary positive extra fractional-bit counts, including subnormal outputs.
+F32MulBounds obtains error at most 2^-24 times the exact product magnitude plus
+2^-150, again below the explicit finite-range bound. Every printed public
+result uses only propext, Classical.choice and Quot.sound.
+
+The binary64 proof structure supplied the packing/multiplication scaffold;
+existing IEEE32 field and roundShift lemmas supplied the trusted arithmetic
+steps. Direct reduction of the zero encoding caused kernel recursion, and broad
+simplification around powers exhausted default heartbeats. A separate zero
+encoding lemma, separate scaled-half lemma, separate small-magnitude lemma,
+and explicit power rewrites resolved those boundaries without larger limits.
+Failed drafts remain in the task work directory and failed logs in tmp/.
+The accepted packing build took 2.0s; addition 2.9s; multiplication 3.4s.
+These are numerical foundations, not yet a GPT artifact theorem.
+
+Re-fetched the parent: main advanced to
+8309cc9bf88d69553fb4aa81bd4f09fe809e94d4, integrating wider exponential,
+GELU and softmax into the actual GPT inference artifact and execution theorem.
+The parent still records the complete real-model error composition as open.
+This change will be merged separately; no concurrent parent files are edited.
