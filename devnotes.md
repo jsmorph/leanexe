@@ -14881,3 +14881,37 @@ and starts with compiler primitives and a GPT-sized matrix multiplication.
 Array push and set currently copy their inputs, while array map allocates
 one result.  Indexed tensor construction and resident binary weight input
 need explicit implementation before the full model.  Proof work stays paused.
+
+### Binary32 compiler operations
+
+LeanExe.Float32 now exposes add, subtract, multiply, divide, and square root
+over UInt32 bit patterns, plus conversions to and from binary64 words.
+The existing UInt32 ABI uses zero-extended i64 slots.  WASM lowering wraps
+to i32, reinterprets to f32, executes one arithmetic instruction, and
+returns the zero-extended result bits.  Binary32 multiply and add remain
+separate operations.  The [WASM instruction encoding](https://webassembly.github.io/spec/core/binary/instructions.html)
+and the pinned Lean Float32 source define the opcode and native-reference
+boundaries.  Unary traversal uses one shared IR constructor for square
+root and precision conversions.  The experimental image schema continues
+to reject floating-point modules.
+
+The focused test passes 64 cases in native Lean, the scalar IR evaluator,
+and Wasmtime, plus a captured-value array map.  Cases cover rounding ties,
+subnormals, signed zero, overflow, infinities, NaN classes, nested operations,
+and a multiply-add example that distinguishes separate rounding from FMA.
+Two test-driver errors concerned the existing host's array-result API and
+JSON encoding.  Correcting the driver produced the passing result without
+compiler changes.  Node child-process launches initially failed with
+sandbox EPERM and succeeded after the required prefix approvals.
+
+The twelve-case WAT/binary round-trip gate passes, including new FP32
+arithmetic and conversion examples.  The aggregate execution test remains
+blocked at the pre-existing release input identity mismatch, before its
+compiler tests run.  Documentation checks pass.  Binary32 model proofs
+remain deferred as requested.
+
+The existing FP64 execution, lowering, annotation, and image-rejection
+test also passes.  The root library, scalar compiler certificates, and
+image codec/integration tests build successfully.  The required existing
+Talos gate reaches the previously recorded assoc_list generated-cache
+mismatch and stops.  No proof source or tracked artifact cache was changed.
