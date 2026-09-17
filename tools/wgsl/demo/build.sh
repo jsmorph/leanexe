@@ -23,4 +23,5 @@ if [ "$(uname -s)" = Darwin ]; then crypto=""; fi
 cc -std=c11 -O2 -Wall -Wextra -Werror -I"$c_api/include" -I"$wgpu/ffi" -I"$wgpu/ffi/webgpu-headers" -I"$out" \
   tools/wgsl/demo/native.c -L"$c_api/lib" -lwasmtime -Wl,-rpath,"$c_api/lib" \
   -L"$wgpu/target/release" -lwgpu_native -Wl,-rpath,"$wgpu/target/release" $crypto -o "$out/gpt128"
+if [ -f "$out/host.js" ]; then python3 tools/wgsl/demo/archive.py "$out"; fi
 printf 'Built %s\n' "$out"
