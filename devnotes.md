@@ -14816,3 +14816,18 @@ the GPT-2/128 internal entry in 1.4 seconds.  Their audits retain only the
 three standard logical axioms.  The focused sequence_softmax gate passes
 again with unchanged compiler output.  The public inference proof will
 use these frames for host weights and tokens.
+
+### Fixed-width array proof checkpoint
+
+FixedWidthArray and FixedWidthArrayPrefix now provide field reads,
+address bounds, byte preservation, and successive field writes for
+arbitrary element widths.  RowMemory instantiates these results at width
+four.  They reuse ArrayField's generated address arithmetic and the
+existing word-memory lemmas.  The final builds took 2.1, 1.6, and 1.4
+seconds, with propext and Quot.sound in the audits.  An initial index
+injectivity diagnostic required substituting the row-index equality
+before cancelling the field offset.  No timeout occurred.
+
+The user paused proof development to inspect GPT-2/128 text completions.
+The array helpers are checked, while the row loops and full inference
+composition remain open.
