@@ -1,0 +1,10 @@
+'Project.WGSL.HostBinary.encoded' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.HostBinary.interface' depends on axioms: [propext]
+'Project.WGSL.HostMemory.upload_word' depends on axioms: [propext, Quot.sound]
+'Project.WGSL.HostExecution.completes' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.HostExecution.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.HostExecution.numerical' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.WGSL.HostExecution.numerical_wide' depends on axioms: [propext, Classical.choice, Quot.sound]
+WGSL_WASM_HOST_VERIFIED
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable

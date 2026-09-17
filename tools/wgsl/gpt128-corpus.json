@@ -1,0 +1,18 @@
+{
+  "checkpoint": "data/tiny-gpt2-128-v1/checkpoint.json",
+  "positive": [
+    {"name":"one-byte","tokens":[97]},
+    {"name":"four-bytes","tokens":[84,111,32,98]},
+    {"name":"sixty-four","range":64},
+    {"name":"full-context","range":128},
+    {"name":"all-zero","length":128,"repeat":0},
+    {"name":"all-255","length":128,"repeat":255},
+    {"name":"clipped","tokens":[84,111,32,98],"bound":0.5}
+  ],
+  "invalidTokens": [
+    {"name":"empty","tokens":[]},
+    {"name":"too-long","length":129,"repeat":0},
+    {"name":"above-byte","tokens":[256]},
+    {"name":"negative-byte","tokens":[-1]}
+  ]
+}

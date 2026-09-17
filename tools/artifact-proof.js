@@ -400,6 +400,8 @@ async function main() {
       "       artifact-proof.js wgsl-float-check <bundle-directory>",
       "       artifact-proof.js wgsl-float-run <bundle-directory> <position> <t0> <t1> <t2> <t3>",
       "       artifact-proof.js wgsl-float-corpus <fresh-directory>",
+      "       artifact-proof.js wgsl-gpt128-run <checkpoint.json> [--bound B] --text TEXT|--tokens T0 ...",
+      "       artifact-proof.js wgsl-gpt128-corpus <fresh-directory>",
       "       artifact-proof.js wgsl-gpt-run <bundle-directory> <t0> <t1> <t2> <t3>",
       "       artifact-proof.js wgsl-gpt-benchmark <bundle-directory> <fresh-directory>",
       "       artifact-proof.js wgsl-gpt-session <bundle-directory> <four byte tokens> [<four byte tokens> ...]",
