@@ -104,8 +104,9 @@ The combined entry compiles and passes 768 WASM logit comparisons and eight
 rejection tests.  Its source rejection and numerical theorems pass.  Checked
 function-region equality reuses the scalar checker, hidden-state, and logit
 execution proofs.  The internal preparation call now has a complete proof
-for its owner and data-pointer results.  The internal output loop and
-combined execution theorem remain open.
+for its owner and data-pointer results.  The internal inference call now
+proves termination, all 256 logits, and input preservation under the same
+277,560-byte output reservation.  The enclosing entry proof remains open.
 
 ## Approved arithmetic
 

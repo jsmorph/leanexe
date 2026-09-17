@@ -1,3 +1,4 @@
 import Project.TinyGpt2Checked.ClipPrepare
+import Project.TinyGpt2Checked.Inference
 import Project.TinyGpt2.CheckedBounds
 import Project.TinyGpt2Checked.AnnotationMatches
