@@ -14247,3 +14247,56 @@ checks in 174 seconds with standard axioms.  Documentation checks pass
 for all 136 maintained Markdown files, and git diff --check is clean.
 The previously recorded assoc_list generation mismatch still blocks the
 aggregate gate.  This integration changed neither that source nor its cache.
+
+### Parameterized runtime arithmetic
+
+The balanced two-, four-, and eight-term dot-product proofs now accept a
+product-magnitude parameter P in [1, 2^40].  Their error bounds are
+(4P+1)u, (12P+6)u, and (32P+22)u, respectively.  The proof follows the
+source's balanced addition tree and reuses the binary64 multiplication
+and addition theorems.  It checks in 1.7 seconds.  Runtime column adapters
+set P from the input and weight bounds and check in 1.3 seconds.
+
+The wider LayerNorm adapter now propagates input error with an explicit
+positive denominator lower bound.  Its first check required unfolding
+the real-model and row-decoding definitions at the final transfer.  The
+corrected theorem checks in 1.1 seconds.  Runtime parameter lemmas derive
+finite loaded rows and matrices directly from accepted clipping.  They
+prove normalization and projection ranges for B in [0, 10].  Removing a
+redundant dsimp resolved their first diagnostic, and the module checks
+in 1.3 seconds.
+
+The wider attention-score proof carries the dot-product parameter through
+division by the rounded square root of two.  Its error is (16P+3)u, and
+it checks in 1.2 seconds.  The attention-value adapter uses nonnegative
+probabilities and their proved mass bound for the output magnitude.
+Its error against exact softmax of the decoded computed scores is
+(10077M+6)u for value magnitude M in [1, 2^30].  The first check found a
+reference-function argument mismatch: the reference accepts a score
+vector.  Runtime attention now has a finite-output bound of 1,250 from
+query, key, and value bounds of 1,249, independent of checkpoint values.
+
+The attention-value module checks in 2.2 seconds after an explicit
+real-number bound conversion at its final range theorem.  The residual
+proof likewise needed explicit conversions for sums of real numerals.
+The shared Bounded.weaken theorem now handles those transfers.  Residual
+composition checks in 1.1 seconds, and feed-forward composition in 1.5
+seconds.  The pure stage decomposition checks in 1.0 second.
+
+The complete runtime-weight source range theorem checks in 1.6 seconds.
+For every four-byte input and every accepted array clipped at B in
+[0, 10], all 256 logits are finite and have magnitude at most 1,260.
+The proved intermediate caps are 21 for embeddings, 31 for normalized
+rows, 1,249 for query/key/value projections, 1,250 for attention values,
+60,000 for the first residual, 1,260 for expansion, 1,261 for activation,
+and 100,910 for contraction.  The second residual fits the 200,000
+normalization input bound.  Every proof depends on finite clipped-weight
+bounds rather than checkpoint-specific certificates.  The combined
+numerical error and checker-to-inference execution proofs remain open.
+
+The inference gate passes with the runtime range theorem imported by its
+registered specification.  Regeneration preserves the published artifact
+bytes.  All runtime arithmetic and range audits report only standard
+logical axioms.  Documentation and whitespace checks pass.  The existing
+trained-model and cancellation tests remain applicable to these unchanged
+inference bytes.
