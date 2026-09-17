@@ -14535,3 +14535,37 @@ The focused source and execution-corollary builds passed in 2.6 and
 The focused tiny_gpt2_checked gate passes artifact regeneration, annotation
 checks, and the strengthened numerical theorem.  Documentation checks pass
 for all 136 maintained Markdown files.
+
+### 64-position training
+
+The training model now accepts context sizes four and 64 and nonempty
+prefixes within the selected size.  The position table supplies the first
+rows for a shorter prefix.  CPU tests passed both parameter counts and
+output shapes, causal-prefix equality at tolerance 1e-12, and finite
+gradients.  The default four-position configuration is unchanged.
+
+The deterministic 64-position run finished 4,000 Adam steps on the pinned
+Tiny Shakespeare corpus.  Validation cross-entropy fell from
+5.567620995482236 to 2.696367581735353.  All 2,728 exported weights are
+finite, with maximum magnitude 2.7499298233598095.  The published checkpoint
+has SHA-256 af60facd001d370103c85be793f61585fd290131662a86175f166b5967fd83ff.
+Its inference proofs remain open.  The optional NumPy warning does not
+affect this tensor-based training and standard-library export.
+
+### Length-dependent binary64 accumulation
+
+The shared F64SequentialSum proof bounds the absolute rounding error of
+a left-associated sum of n finite words of magnitude at most M by
+n(L+1)(M+1) times 2^-52, where
+n≤L.  Its hypotheses bound L(L+1) times 2^-52 by one and
+(L+1)(M+1) below 2^1023.  The proof establishes finite intermediate
+sums and has list and array forms.  For 64 exponential weights bounded
+by two, it gives absolute accumulation error at most 12,480 times
+2^-52.  Exponential approximation and division errors remain separate
+obligations for sequence softmax.
+
+The induction's first algebraic conversion left an unchanged goal that
+the ring tactic rejected.  An explicit equality for the next error budget
+resolved that boundary.  The induction checks in 1.9 seconds, and the
+zero-initial and array corollaries in 1.0 seconds.  The length parameter
+keeps the accumulation lemma applicable beyond the 64-position model.

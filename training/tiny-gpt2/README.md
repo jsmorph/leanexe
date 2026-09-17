@@ -1,8 +1,9 @@
 # Tiny GPT-2 training
 
 This directory trains the architecture in the
-[inference plan](../../plans/tiny-transformer.md).  It has 2,488 parameters:
-four byte-token positions, vocabulary 256, one pre-normalized block, two
+[inference plan](../../plans/tiny-transformer.md).  It supports four or 64
+byte-token positions, with 2,488 or 2,728
+parameters.  Both settings have vocabulary 256, one pre-normalized block, two
 heads of width two, model width four, feed-forward width eight, tanh GELU,
 and a final LayerNorm.  Query, key, and value projections have no biases.
 The attention output, both feed-forward projections, and the independent
@@ -19,6 +20,9 @@ python3 -m venv .venv-tiny-gpt2
 .venv-tiny-gpt2/bin/python -m pip install -r training/tiny-gpt2/requirements.txt
 .venv-tiny-gpt2/bin/python training/tiny-gpt2/train.py \
   --corpus path/to/corpus.txt --output build/tiny-gpt2/checkpoint.json
+.venv-tiny-gpt2/bin/python training/tiny-gpt2/train.py \
+  --context 64 --corpus build/tiny-gpt2/tiny-shakespeare.txt \
+  --output build/tiny-gpt2/context64-checkpoint.json
 ```
 
 Training uses binary64, Adam, one CPU thread, a recorded seed, and a
@@ -30,11 +34,16 @@ Matrices use input-by-output row-major order.
 
 ## Evidence
 
-The model's shape, causal prefix equality, and finite gradients pass a
-direct CPU test.  The first [trained checkpoint](../../data/tiny-gpt2-v1/README.md)
+Both model sizes pass CPU tests of output shape, causal prefixes, and finite
+gradients.  A nonempty prefix uses the corresponding first positional rows.
+The first [trained checkpoint](../../data/tiny-gpt2-v1/README.md)
 uses the approved Tiny Shakespeare corpus and 4,000 Adam steps.
 Its validation cross-entropy fell from 5.5688 to 2.7068.
-Exported-weight verification remains open.
+The [64-position checkpoint](../../data/tiny-gpt2-64-v1/README.md) uses
+the same corpus and training settings.  Its validation cross-entropy fell
+from 5.5676 to 2.6964.
+The four-byte CLI now has checkpoint-independent checking, exact execution,
+and numerical-error theorems.  The 64-position inference proofs remain open.
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The inference proof must establish its own ranges and error bounds.
 
