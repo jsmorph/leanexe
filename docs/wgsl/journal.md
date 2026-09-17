@@ -446,3 +446,52 @@ wasm-tools-produced binary with the kernel-checked bytes and passed. Corrected
 proof-layout, existential-trace and projection-rewrite drafts remain available;
 the final focused build took 3.9s. The native Wasm-to-WebGPU runner remains the
 next step; this checkpoint makes no claim that it has already executed.
+
+Published the checked host foundation as fe87593562b705cd227ce7eb3538af608a721721
+with parent 9b378e1925f326d46d5bf2964fe5a301f6a41a71. The native bridge then ran
+the actual exported Wasm function through Node's built-in WebAssembly engine.
+Its import snapshots the two memory regions, sends the checked shader and words
+to the existing wgpu-native worker, validates the returned buffer, and copies it
+back before returning zero. SwiftShader's CPU Vulkan adapter produced all
+fifteen expected words in the first rectangular run; every byte outside C was
+unchanged. No new library, browser process, Metal backend or VM is involved.
+
+The bundle commands independently check both artifacts. Existing shader checking
+is followed by exact host-byte comparison and a fresh BundleProof instantiating
+the host execution/numerical theorems with that checked shader package. All
+axioms remain standard-only. The runtime receives the held shader text and
+instantiates the held Wasm bytes. Existing proof files and receipts are ignored
+as authorities. The adapter and execution engines are explicitly outside the
+formal proof; HostExecution.contract states their required behavior.
+
+The complete fixed bundle corpus passes: scalar (one output), rectangular
+(fifteen), partial workgroups (153, fusion profile), and a changed host call
+target rejected by the exact-byte gate before instantiation. Four boundary
+tests pass through the actual Wasm body using a controlled import: argument/byte
+order, overlapping input/output snapshots, seven invalid-address cases rejected
+before dispatch, and malformed output rejected before any write. The ten
+existing reference/harness tests pass in 1.211s. JavaScript and shell syntax,
+diff whitespace, and the 136 maintained-document checks pass. Positive worked
+bundles, composed proof drafts, receipts and native results are preserved in
+test/wgsl/bundles; all execution attempts and rejected inputs remain in build/.
+
+Rechecked concurrent parent work. Main advanced from f38cb7a3 to
+9f231789 with four commits: the negative exponential's generated-Wasm execution,
+wider GELU numerical results and generated-Wasm execution, and wider softmax
+verification using relative weight bounds. The wider GELU bound is 200000u;
+softmax's sum of absolute probability errors is at most 10053u, with
+normalization error at most 52u (binary64 u = 2^-52). The parent still records
+GPT integration of these replacements and the composed model numerical bound
+as open. No concurrent parent changes were merged or edited.
+
+The current three-step GEMM plan is complete: one generate/check/run path, a
+small size/rejection corpus, and an exact verified Wasm host composed with the
+checked WGSL kernel and executed through CPU WebGPU. The broader WGSL roadmap's
+mixed-precision GPT composition and performance stages are not claimed complete.
+
+An additional independent wgsl-bundle-check of the saved scalar bundle passes
+from test/wgsl/bundles, without generation or native execution. This confirms
+the worked artifact is sufficient for a fresh package check. Final review
+moved the bundle rejection case into the same checked corpus configuration as
+the positive shapes; its mutation bytes and expected rejection match the
+retained corpus attempt. No additional Lean or runtime test scope was added.

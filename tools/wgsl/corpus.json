@@ -4,6 +4,10 @@
     { "name": "rectangular", "dimensions": ["3", "5", "2", "separate"] },
     { "name": "partial-workgroups", "dimensions": ["9", "17", "3", "fusion"] }
   ],
+  "bundleNegative": [
+    { "name": "altered-host", "base": "scalar", "byteOffsetFromEnd": 2, "value": 1,
+      "failure": "Wasm exact bytes and host composition failed" }
+  ],
   "negative": [
     { "name": "wrong-store", "shaderReplace": ["c[row * N + col] = acc", "c[0u] = acc"], "failure": "prepare independent proof failed" },
     { "name": "wrong-dimension", "manifestRows": 4, "failure": "prepare independent proof failed" },

@@ -15,8 +15,8 @@ correctness claim.
   Its composition lemmas require a total execution theorem; they do not establish
   that a WGSL kernel satisfies those obligations.
 - `LeanExe.WGSL.Generate` emits an untiled row-major FP32 GEMM. A typed
-  `KernelCandidate` marks a checked Lean GEMM definition for this narrow lowering.
-  This is a first source mechanism, not arbitrary Lean program extraction.
+  `KernelCandidate` selects the checked Lean GEMM implementation for the supported
+  row-major WGSL template.
   Each invocation owns one output; partial workgroups exit before accessing
   buffers. Validation bounds dimensions, storage sizes, binding identities,
   workgroup size, and dispatch counts.
@@ -42,9 +42,9 @@ profiles, both at revision 1:
 | `leanexe-f32-rne-separate-v1` | Nearest/even, preserve subnormals, IEEE zero signs | Separate |
 | `leanexe-f32-rne-fusion-v1` | Same scalar choices | Separate or fused locally |
 
-Both profile records select IEEE exceptional handling; planned GEMM numerical
-theorems must show that exceptional cases are unreachable on their advertised
-domains. Runtime conformance to either profile is an explicit assumption.
+Both profile records select IEEE exceptional handling. The GEMM numerical
+theorem proves that exceptional cases are unreachable on its advertised domain.
+Runtime conformance to either profile is an explicit assumption.
 Shader text alone cannot force these restrictions. Runtime observations are
 evidence for individual executions, not universal conformance proofs.
 
@@ -72,9 +72,17 @@ binary32 theorems, audits their axioms and executes the held verified input.
 Its small corpus covers three matrix shapes, partial workgroups and three
 rejection cases. Accepted worked packages are retained in `test/wgsl/packages`.
 
-1. Add the Wasm dispatch boundary and prove the combined Wasm/WGSL artifact.
-2. Reuse the parent branch's GPT work for mixed-precision GPT-2
-   integration before doing residency, tiling, and performance work.
+The Wasm dispatch boundary is now proved and runnable through the independent
+bundle gate. `HostBinary` checks the exact 90-byte bridge's section encodings;
+`HostMemory` proves uploads, readback and memory preservation; `HostExecution`
+connects the actual small-step call to the checked shader package. Runtime
+conformance remains an explicit premise. The native demonstration invokes that
+Wasm function and checks the values it wrote back. Commands and worked bundles
+are documented in the [native harness](../../tools/wgsl/README.md).
+
+The broader roadmap still requires the parent branch's GPT work for
+mixed-precision GPT integration, followed by residency, tiling and performance.
+The current GEMM bundle does not establish a complete GPT numerical theorem.
 
 The existing pinned Talos dependency has pure binary32 operations and numerical
 lemmas. Reuse belongs in the existing proof workspace, preserving its dependency
@@ -108,7 +116,7 @@ by `tools/wgsl/Generate.lean` is byte-for-byte identical to the captured source
 whose parse is proved. Runtime profile conformance remains an assumption;
 the numerical theorem's input conditions remain distinct from the harness's
 broader finite-input test envelope. Independent artifact-package checking now
-passes; the next integration boundary is the Wasm dispatch interface.
+passes, including the composed Wasm dispatch interface.
 
 ## Narrow artifact parser
 
@@ -167,7 +175,6 @@ proves the dot-product relation at every active cell. The artifact package now
 includes this dispatch theorem and conditional restricted bit exactness.
 
 This is a macro-step semantics for the fixed parsed subset, with separate A/B/C
-storage objects and explicit runtime progress/conformance assumptions. It does
-not yet provide a concrete binary32 error bound or a Wasm/WebGPU binding theorem.
-All public audits use standard logical axioms only. No new dependency is needed;
-the native harness and its Linux evidence are unchanged.
+storage objects and explicit runtime progress/conformance assumptions. The
+concrete binary32 error bound and Wasm binding theorems above compose through
+this model. All public audits use standard logical axioms only.

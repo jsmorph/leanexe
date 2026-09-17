@@ -385,7 +385,17 @@ async function main() {
     return;
   }
   if (process.argv.length !== 5 || process.argv[2] !== "check") {
-    fail("usage: artifact-proof.js check <program.wasm> <proof-target>\n       artifact-proof.js check-artifacts\n       artifact-proof.js check-all");
+    fail([
+      "usage: artifact-proof.js check <program.wasm> <proof-target>",
+      "       artifact-proof.js check-artifacts",
+      "       artifact-proof.js check-all",
+      "       artifact-proof.js wgsl-build <fresh-directory> <rows> <cols> <inner> separate|fusion",
+      "       artifact-proof.js wgsl-check|wgsl-run <package-directory>",
+      "       artifact-proof.js wgsl-corpus <fresh-directory>",
+      "       artifact-proof.js wgsl-bundle-build <fresh-directory> <rows> <cols> <inner> separate|fusion",
+      "       artifact-proof.js wgsl-bundle-check|wgsl-bundle-run <bundle-directory>",
+      "       artifact-proof.js wgsl-bundle-corpus <fresh-directory>",
+    ].join("\n"));
   }
   const inputPath = path.resolve(process.argv[3]);
   const proofTarget = process.argv[4];
