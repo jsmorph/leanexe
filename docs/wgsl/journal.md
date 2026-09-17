@@ -1071,3 +1071,24 @@ choose actual pretrained GPT-2 or the smaller Shakespeare target before that
 substantial model/implementation expansion. All downloads and reference outputs
 remain ignored under build/gpt128-quality. The documentation checker passes
 143 maintained files.
+
+The user approved switching to actual pretrained GPT-2. The new demo retains
+all twelve layers, width 768, twelve heads, 3,072-wide MLPs, and tied 50,257-way
+output embedding. The public checkpoint is pinned at 607a30d with SHA-256
+248dfc39...a707. Packing reads safetensors; no downloaded model code executes.
+Generated GEMM kernels perform every dense product. New Lean-generated Wasm
+performs the remaining stages, BPE, and top-k sampling. Both the native CPU
+Vulkan runner and browser page now produce readable model continuations.
+The first full-vocabulary native comparison has maximum absolute logit error
+9.1552734375e-5 and agrees with the independent reference's top ten tokens.
+
+Mixed-whitespace tokenizer tests exposed an array assembly problem: compiled
+fold/push concatenation produced [32,32,198] when appending [201,198] to [32].
+The tokenizer now uses the dedicated Array.append operation, which gives
+[32,201,198]. This is an execution workaround, not a claim that the general
+compiler issue has been fixed. The tokenizer corpus is being expanded before
+final validation. New source is committed separately from all generated files.
+
+The parent branch concurrently added the same checkpoint and an independent
+CPU reference in fa676032. Its pinned checkpoint hashes agree with this demo.
+That reference is complementary to this branch's Wasm/WGSL runtime work.
