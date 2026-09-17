@@ -2105,7 +2105,298 @@ def func34Def : Wasm.Function :=
 
 def func35 : Wasm.Program :=
   [
+  .constI64 0,
+  .localSet 5,
+  .block 0 0 [
+   .loop 0 0 [
+    .localGet 0,
+    .constI64 0,
+    .eqI64,
+    .eqz,
+    .iff 0 1 [
+     .localGet 5,
+     .constI64 0,
+     .eqI64
+    ] [
+     .const 0
+    ] [] [.i32],
+    .eqz,
+    .br_if 1,
+    .localGet 1,
+    .constI64 13830554455654793216,
+    .leUI64,
+    .iff 0 0 [
+     .localGet 1,
+     .localSet 3,
+     .localGet 2,
+     .localSet 4,
+     .constI64 1,
+     .localSet 5
+    ] [
+     .localGet 1,
+     .f64ReinterpretI64,
+     .constI64 4602678819172646912,
+     .f64ReinterpretI64,
+     .f64Mul,
+     .i64ReinterpretF64,
+     .localSet 6,
+     .localGet 6,
+     .localSet 7,
+     .localGet 2,
+     .localSet 11,
+     .constI64 1,
+     .localSet 12,
+     .localGet 11,
+     .localGet 12,
+     .addI64,
+     .localTee 13,
+     .localGet 11,
+     .ltUI64,
+     .iff 0 1 [
+      .unreachable
+     ] [
+      .localGet 13
+     ] [] [.i64],
+     .localSet 8,
+     .localGet 7,
+     .localSet 9,
+     .localGet 8,
+     .localSet 10,
+     .localGet 9,
+     .localSet 1,
+     .localGet 10,
+     .localSet 2,
+     .localGet 0,
+     .constI64 1,
+     .subI64,
+     .localSet 0
+    ],
+    .br 0
+   ]
+  ],
+  .localGet 5,
+  .constI64 0,
+  .eqI64,
+  .iff 0 0 [
+   .localGet 1,
+   .localSet 3,
+   .localGet 2,
+   .localSet 4
+  ] [],
+  .localGet 3,
+  .localGet 4
+ ]
+
+def func35Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func35, results := [.i64, .i64], typeIdx := some 35 }
+
+def func36 : Wasm.Program :=
+  [
+  .constI64 0,
+  .localSet 3,
+  .block 0 0 [
+   .loop 0 0 [
+    .localGet 0,
+    .constI64 0,
+    .eqI64,
+    .eqz,
+    .iff 0 1 [
+     .localGet 3,
+     .constI64 0,
+     .eqI64
+    ] [
+     .const 0
+    ] [] [.i32],
+    .eqz,
+    .br_if 1,
+    .localGet 1,
+    .f64ReinterpretI64,
+    .localGet 1,
+    .f64ReinterpretI64,
+    .f64Mul,
+    .i64ReinterpretF64,
+    .localSet 4,
+    .localGet 4,
+    .localSet 5,
+    .localGet 5,
+    .localSet 1,
+    .localGet 0,
+    .constI64 1,
+    .subI64,
+    .localSet 0,
+    .br 0
+   ]
+  ],
+  .localGet 3,
+  .constI64 0,
+  .eqI64,
+  .iff 0 0 [
+   .localGet 1,
+   .localSet 2
+  ] [],
+  .localGet 2
+ ]
+
+def func36Def : Wasm.Function :=
+  { params := [.i64, .i64], locals := [.i64, .i64, .i64, .i64], body := func36, results := [.i64], typeIdx := some 36 }
+
+def func37 : Wasm.Program :=
+  [
+  .localGet 1,
+  .localSet 2,
+  .localGet 2
+ ]
+
+def func37Def : Wasm.Function :=
+  { params := [.i64, .i64], locals := [.i64], body := func37, results := [.i64], typeIdx := some 37 }
+
+def func38 : Wasm.Program :=
+  [
+  .constI64 4370323941990432151,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4389130328383466826,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 1,
+  .localGet 1,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4407590220077447199,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 2,
+  .localGet 2,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4425604618586929183,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 3,
+  .localGet 3,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4443145680587881629,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 4,
+  .localGet 4,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4460272573143870729,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 5,
+  .localGet 5,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4477122120089393304,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 6,
+  .localGet 6,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4493156764026750180,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 7,
+  .localGet 7,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4508805057796939612,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 8,
+  .localGet 8,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4523617214285662004,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 9,
+  .localGet 9,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4537941361671905306,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 10,
+  .localGet 10,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
+  .constI64 4551452160554016794,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 11,
+  .localGet 11,
+  .f64ReinterpretI64,
+  .localGet 0,
+  .f64ReinterpretI64,
+  .f64Mul,
+  .i64ReinterpretF64,
+  .f64ReinterpretI64,
   .constI64 4564047942368979991,
+  .f64ReinterpretI64,
+  .f64Add,
+  .i64ReinterpretF64,
+  .localSet 12,
+  .localGet 12,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2116,8 +2407,8 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 1,
-  .localGet 1,
+  .localSet 13,
+  .localGet 13,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2128,8 +2419,8 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 2,
-  .localGet 2,
+  .localSet 14,
+  .localGet 14,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2140,8 +2431,8 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 3,
-  .localGet 3,
+  .localSet 15,
+  .localGet 15,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2152,8 +2443,8 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 4,
-  .localGet 4,
+  .localSet 16,
+  .localGet 16,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2164,8 +2455,8 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 5,
-  .localGet 5,
+  .localSet 17,
+  .localGet 17,
   .f64ReinterpretI64,
   .localGet 0,
   .f64ReinterpretI64,
@@ -2176,57 +2467,71 @@ def func35 : Wasm.Program :=
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .localSet 6,
-  .localGet 6
+  .localSet 18,
+  .localGet 18
  ]
 
-def func35Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64], body := func35, results := [.i64], typeIdx := some 35 }
+def func38Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func38, results := [.i64], typeIdx := some 38 }
 
-def func36 : Wasm.Program :=
+def func39 : Wasm.Program :=
   [
   .localGet 0,
-  .f64ReinterpretI64,
-  .constI64 4620693217682128896,
-  .f64ReinterpretI64,
-  .f64Div,
-  .i64ReinterpretF64,
-  .localSet 1,
-  .localGet 1,
   .localSet 2,
-  .localGet 2,
-  .call 35,
-  .localSet 3,
-  .localGet 3,
-  .localSet 4,
-  .localGet 4,
-  .f64ReinterpretI64,
-  .localGet 4,
-  .f64ReinterpretI64,
-  .f64Mul,
-  .i64ReinterpretF64,
-  .localSet 5,
-  .localGet 5,
-  .f64ReinterpretI64,
-  .localGet 5,
-  .f64ReinterpretI64,
-  .f64Mul,
-  .i64ReinterpretF64,
-  .localSet 6,
-  .localGet 6,
-  .f64ReinterpretI64,
-  .localGet 6,
-  .f64ReinterpretI64,
-  .f64Mul,
-  .i64ReinterpretF64,
-  .localSet 7,
-  .localGet 7
+  .localGet 2
  ]
 
-def func36Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func36, results := [.i64], typeIdx := some 36 }
+def func39Def : Wasm.Function :=
+  { params := [.i64, .i64], locals := [.i64], body := func39, results := [.i64], typeIdx := some 39 }
 
-def func37 : Wasm.Program :=
+def func40 : Wasm.Program :=
+  [
+  .constI64 13857576053419016192,
+  .localGet 0,
+  .ltUI64,
+  .iff 0 0 [
+   .constI64 0,
+   .localSet 13
+  ] [
+   .constI64 6,
+   .localSet 1,
+   .localGet 0,
+   .localSet 2,
+   .constI64 0,
+   .localSet 3,
+   .localGet 1,
+   .localGet 2,
+   .localGet 3,
+   .call 35,
+   .localSet 5,
+   .localSet 4,
+   .localGet 4,
+   .localSet 6,
+   .localGet 5,
+   .localSet 7,
+   .localGet 7,
+   .localSet 8,
+   .localGet 6,
+   .localSet 9,
+   .localGet 9,
+   .call 38,
+   .localSet 10,
+   .localGet 10,
+   .localSet 11,
+   .localGet 8,
+   .localGet 11,
+   .call 36,
+   .localSet 12,
+   .localGet 12,
+   .localSet 13
+  ],
+  .localGet 13
+ ]
+
+def func40Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func40, results := [.i64], typeIdx := some 40 }
+
+def func41 : Wasm.Program :=
   [
   .localGet 1,
   .localGet 0,
@@ -2240,7 +2545,7 @@ def func37 : Wasm.Program :=
    .i64ReinterpretF64,
    .localSet 4,
    .localGet 4,
-   .call 36,
+   .call 40,
    .localSet 5,
    .localGet 5,
    .localSet 6
@@ -2251,10 +2556,10 @@ def func37 : Wasm.Program :=
   .localGet 6
  ]
 
-def func37Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64], body := func37, results := [.i64], typeIdx := some 37 }
+def func41Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64], body := func41, results := [.i64], typeIdx := some 41 }
 
-def func38 : Wasm.Program :=
+def func42 : Wasm.Program :=
   [
   .localGet 0,
   .f64ReinterpretI64,
@@ -2276,10 +2581,10 @@ def func38 : Wasm.Program :=
   .localGet 4
  ]
 
-def func38Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64], locals := [.i64], body := func38, results := [.i64], typeIdx := some 38 }
+def func42Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64], locals := [.i64], body := func42, results := [.i64], typeIdx := some 42 }
 
-def func39 : Wasm.Program :=
+def func43 : Wasm.Program :=
   [
   .localGet 1,
   .localGet 0,
@@ -2298,10 +2603,10 @@ def func39 : Wasm.Program :=
   .localGet 4
  ]
 
-def func39Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64], locals := [.i64], body := func39, results := [.i64], typeIdx := some 39 }
+def func43Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64], locals := [.i64], body := func43, results := [.i64], typeIdx := some 43 }
 
-def func40 : Wasm.Program :=
+def func44 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 5,
@@ -2334,7 +2639,7 @@ def func40 : Wasm.Program :=
   .localGet 13,
   .localGet 14,
   .localGet 15,
-  .call 37,
+  .call 41,
   .localSet 16,
   .localGet 16,
   .localSet 17,
@@ -2350,7 +2655,7 @@ def func40 : Wasm.Program :=
   .localGet 19,
   .localGet 20,
   .localGet 21,
-  .call 37,
+  .call 41,
   .localSet 22,
   .localGet 22,
   .localSet 23,
@@ -2366,7 +2671,7 @@ def func40 : Wasm.Program :=
   .localGet 25,
   .localGet 26,
   .localGet 27,
-  .call 37,
+  .call 41,
   .localSet 28,
   .localGet 28,
   .localSet 29,
@@ -2382,7 +2687,7 @@ def func40 : Wasm.Program :=
   .localGet 31,
   .localGet 32,
   .localGet 33,
-  .call 37,
+  .call 41,
   .localSet 34,
   .localGet 34,
   .localSet 35,
@@ -2398,7 +2703,7 @@ def func40 : Wasm.Program :=
   .localGet 37,
   .localGet 38,
   .localGet 39,
-  .call 38,
+  .call 42,
   .localSet 40,
   .localGet 40,
   .localSet 41,
@@ -2416,7 +2721,7 @@ def func40 : Wasm.Program :=
   .localGet 43,
   .localGet 44,
   .localGet 45,
-  .call 39,
+  .call 43,
   .localSet 46,
   .localGet 46,
   .localSet 63,
@@ -2432,7 +2737,7 @@ def func40 : Wasm.Program :=
   .localGet 48,
   .localGet 49,
   .localGet 50,
-  .call 39,
+  .call 43,
   .localSet 51,
   .localGet 51,
   .localSet 64,
@@ -2448,7 +2753,7 @@ def func40 : Wasm.Program :=
   .localGet 53,
   .localGet 54,
   .localGet 55,
-  .call 39,
+  .call 43,
   .localSet 56,
   .localGet 56,
   .localSet 65,
@@ -2464,7 +2769,7 @@ def func40 : Wasm.Program :=
   .localGet 58,
   .localGet 59,
   .localGet 60,
-  .call 39,
+  .call 43,
   .localSet 61,
   .localGet 61,
   .localSet 66,
@@ -2475,10 +2780,10 @@ def func40 : Wasm.Program :=
   .localGet 66
  ]
 
-def func40Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func40, results := [.i64, .i64, .i64, .i64, .i64], typeIdx := some 40 }
+def func44Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func44, results := [.i64, .i64, .i64, .i64, .i64], typeIdx := some 44 }
 
-def func41 : Wasm.Program :=
+def func45 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 4,
@@ -2502,10 +2807,10 @@ def func41 : Wasm.Program :=
   .localGet 8
  ]
 
-def func41Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64], body := func41, results := [.i64], typeIdx := some 41 }
+def func45Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64], body := func45, results := [.i64], typeIdx := some 45 }
 
-def func42 : Wasm.Program :=
+def func46 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 11,
@@ -2521,7 +2826,7 @@ def func42 : Wasm.Program :=
   .localGet 13,
   .localGet 14,
   .localGet 15,
-  .call 41,
+  .call 45,
   .localSet 16,
   .localGet 16,
   .localSet 17,
@@ -2537,7 +2842,7 @@ def func42 : Wasm.Program :=
   .localGet 19,
   .localGet 20,
   .localGet 21,
-  .call 41,
+  .call 45,
   .localSet 22,
   .localGet 22,
   .localSet 23,
@@ -2553,7 +2858,7 @@ def func42 : Wasm.Program :=
   .localGet 25,
   .localGet 26,
   .localGet 27,
-  .call 41,
+  .call 45,
   .localSet 28,
   .localGet 28,
   .localSet 29,
@@ -2569,7 +2874,7 @@ def func42 : Wasm.Program :=
   .localGet 31,
   .localGet 32,
   .localGet 33,
-  .call 41,
+  .call 45,
   .localSet 34,
   .localGet 34,
   .localSet 35,
@@ -2578,7 +2883,7 @@ def func42 : Wasm.Program :=
   .localGet 23,
   .localGet 29,
   .localGet 35,
-  .call 40,
+  .call 44,
   .localSet 40,
   .localSet 39,
   .localSet 38,
@@ -2601,50 +2906,50 @@ def func42 : Wasm.Program :=
   .localGet 45
  ]
 
-def func42Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func42, results := [.i64, .i64, .i64, .i64, .i64], typeIdx := some 42 }
+def func46Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func46, results := [.i64, .i64, .i64, .i64, .i64], typeIdx := some 46 }
 
-def func43 : Wasm.Program :=
+def func47 : Wasm.Program :=
   [
   .localGet 1,
   .localSet 5,
   .localGet 5
  ]
 
-def func43Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func43, results := [.i64], typeIdx := some 43 }
+def func47Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func47, results := [.i64], typeIdx := some 47 }
 
-def func44 : Wasm.Program :=
+def func48 : Wasm.Program :=
   [
   .localGet 2,
   .localSet 5,
   .localGet 5
  ]
 
-def func44Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func44, results := [.i64], typeIdx := some 44 }
+def func48Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func48, results := [.i64], typeIdx := some 48 }
 
-def func45 : Wasm.Program :=
+def func49 : Wasm.Program :=
   [
   .localGet 3,
   .localSet 5,
   .localGet 5
  ]
 
-def func45Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func45, results := [.i64], typeIdx := some 45 }
+def func49Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func49, results := [.i64], typeIdx := some 49 }
 
-def func46 : Wasm.Program :=
+def func50 : Wasm.Program :=
   [
   .localGet 4,
   .localSet 5,
   .localGet 5
  ]
 
-def func46Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func46, results := [.i64], typeIdx := some 46 }
+def func50Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64], body := func50, results := [.i64], typeIdx := some 50 }
 
-def func47 : Wasm.Program :=
+def func51 : Wasm.Program :=
   [
   .localGet 1,
   .localSet 9,
@@ -2677,10 +2982,10 @@ def func47 : Wasm.Program :=
   .localGet 18
  ]
 
-def func47Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func47, results := [.i64], typeIdx := some 47 }
+def func51Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func51, results := [.i64], typeIdx := some 51 }
 
-def func48 : Wasm.Program :=
+def func52 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 37,
@@ -2715,7 +3020,7 @@ def func48 : Wasm.Program :=
   .localGet 45,
   .localGet 46,
   .localGet 47,
-  .call 42,
+  .call 46,
   .localSet 52,
   .localSet 51,
   .localSet 50,
@@ -2764,7 +3069,7 @@ def func48 : Wasm.Program :=
   .localGet 66,
   .localGet 67,
   .localGet 68,
-  .call 42,
+  .call 46,
   .localSet 73,
   .localSet 72,
   .localSet 71,
@@ -2807,7 +3112,7 @@ def func48 : Wasm.Program :=
   .localGet 85,
   .localGet 86,
   .localGet 87,
-  .call 47,
+  .call 51,
   .localSet 88,
   .localGet 88,
   .localSet 119,
@@ -2838,7 +3143,7 @@ def func48 : Wasm.Program :=
   .localGet 95,
   .localGet 96,
   .localGet 97,
-  .call 47,
+  .call 51,
   .localSet 98,
   .localGet 98,
   .localSet 120,
@@ -2869,7 +3174,7 @@ def func48 : Wasm.Program :=
   .localGet 105,
   .localGet 106,
   .localGet 107,
-  .call 47,
+  .call 51,
   .localSet 108,
   .localGet 108,
   .localSet 121,
@@ -2900,7 +3205,7 @@ def func48 : Wasm.Program :=
   .localGet 115,
   .localGet 116,
   .localGet 117,
-  .call 47,
+  .call 51,
   .localSet 118,
   .localGet 118,
   .localSet 122,
@@ -2910,56 +3215,56 @@ def func48 : Wasm.Program :=
   .localGet 122
  ]
 
-def func48Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func48, results := [.i64, .i64, .i64, .i64], typeIdx := some 48 }
+def func52Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func52, results := [.i64, .i64, .i64, .i64], typeIdx := some 52 }
 
-def func49 : Wasm.Program :=
+def func53 : Wasm.Program :=
   [
   .constI64 1088,
   .localSet 0,
   .localGet 0
  ]
 
-def func49Def : Wasm.Function :=
-  { locals := [.i64], body := func49, results := [.i64], typeIdx := some 49 }
+def func53Def : Wasm.Function :=
+  { locals := [.i64], body := func53, results := [.i64], typeIdx := some 53 }
 
-def func50 : Wasm.Program :=
+def func54 : Wasm.Program :=
   [
   .constI64 1104,
   .localSet 0,
   .localGet 0
  ]
 
-def func50Def : Wasm.Function :=
-  { locals := [.i64], body := func50, results := [.i64], typeIdx := some 50 }
+def func54Def : Wasm.Function :=
+  { locals := [.i64], body := func54, results := [.i64], typeIdx := some 54 }
 
-def func51 : Wasm.Program :=
+def func55 : Wasm.Program :=
   [
   .constI64 1108,
   .localSet 0,
   .localGet 0
  ]
 
-def func51Def : Wasm.Function :=
-  { locals := [.i64], body := func51, results := [.i64], typeIdx := some 51 }
+def func55Def : Wasm.Function :=
+  { locals := [.i64], body := func55, results := [.i64], typeIdx := some 55 }
 
-def func52 : Wasm.Program :=
+def func56 : Wasm.Program :=
   [
   .constI64 1140,
   .localSet 0,
   .localGet 0
  ]
 
-def func52Def : Wasm.Function :=
-  { locals := [.i64], body := func52, results := [.i64], typeIdx := some 52 }
+def func56Def : Wasm.Function :=
+  { locals := [.i64], body := func56, results := [.i64], typeIdx := some 56 }
 
-def func53 : Wasm.Program :=
+def func57 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 6,
   .localGet 1,
   .localSet 7,
-  .call 51,
+  .call 55,
   .localSet 8,
   .localGet 8,
   .localSet 9,
@@ -2992,7 +3297,7 @@ def func53 : Wasm.Program :=
   .localSet 17,
   .localGet 1,
   .localSet 18,
-  .call 51,
+  .call 55,
   .localSet 19,
   .localGet 19,
   .localSet 20,
@@ -3025,7 +3330,7 @@ def func53 : Wasm.Program :=
   .localSet 28,
   .localGet 1,
   .localSet 29,
-  .call 51,
+  .call 55,
   .localSet 30,
   .localGet 30,
   .localSet 31,
@@ -3058,7 +3363,7 @@ def func53 : Wasm.Program :=
   .localSet 39,
   .localGet 1,
   .localSet 40,
-  .call 51,
+  .call 55,
   .localSet 41,
   .localGet 41,
   .localSet 42,
@@ -3091,7 +3396,7 @@ def func53 : Wasm.Program :=
   .localSet 54,
   .localGet 1,
   .localSet 55,
-  .call 51,
+  .call 55,
   .localSet 56,
   .localGet 56,
   .localSet 57,
@@ -3124,7 +3429,7 @@ def func53 : Wasm.Program :=
   .localSet 65,
   .localGet 1,
   .localSet 66,
-  .call 51,
+  .call 55,
   .localSet 67,
   .localGet 67,
   .localSet 68,
@@ -3157,7 +3462,7 @@ def func53 : Wasm.Program :=
   .localSet 76,
   .localGet 1,
   .localSet 77,
-  .call 51,
+  .call 55,
   .localSet 78,
   .localGet 78,
   .localSet 79,
@@ -3190,7 +3495,7 @@ def func53 : Wasm.Program :=
   .localSet 87,
   .localGet 1,
   .localSet 88,
-  .call 51,
+  .call 55,
   .localSet 89,
   .localGet 89,
   .localSet 90,
@@ -3225,7 +3530,7 @@ def func53 : Wasm.Program :=
   .localSet 102,
   .localGet 1,
   .localSet 103,
-  .call 52,
+  .call 56,
   .localSet 104,
   .localGet 104,
   .localSet 105,
@@ -3248,7 +3553,7 @@ def func53 : Wasm.Program :=
   .localSet 110,
   .localGet 1,
   .localSet 111,
-  .call 52,
+  .call 56,
   .localSet 112,
   .localGet 112,
   .localSet 113,
@@ -3271,7 +3576,7 @@ def func53 : Wasm.Program :=
   .localSet 118,
   .localGet 1,
   .localSet 119,
-  .call 52,
+  .call 56,
   .localSet 120,
   .localGet 120,
   .localSet 121,
@@ -3294,7 +3599,7 @@ def func53 : Wasm.Program :=
   .localSet 126,
   .localGet 1,
   .localSet 127,
-  .call 52,
+  .call 56,
   .localSet 128,
   .localGet 128,
   .localSet 129,
@@ -3461,20 +3766,20 @@ def func53 : Wasm.Program :=
   .localGet 169
  ]
 
-def func53Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func53, results := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], typeIdx := some 53 }
+def func57Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func57, results := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], typeIdx := some 57 }
 
-def func54 : Wasm.Program :=
+def func58 : Wasm.Program :=
   [
   .constI64 2472,
   .localSet 0,
   .localGet 0
  ]
 
-def func54Def : Wasm.Function :=
-  { locals := [.i64], body := func54, results := [.i64], typeIdx := some 54 }
+def func58Def : Wasm.Function :=
+  { locals := [.i64], body := func58, results := [.i64], typeIdx := some 58 }
 
-def func55 : Wasm.Program :=
+def func59 : Wasm.Program :=
   [
   .localGet 0,
   .constI64 9223372036854775807,
@@ -3483,16 +3788,16 @@ def func55 : Wasm.Program :=
   .localGet 1
  ]
 
-def func55Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64], body := func55, results := [.i64], typeIdx := some 55 }
+def func59Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func59, results := [.i64], typeIdx := some 59 }
 
-def func56 : Wasm.Program :=
+def func60 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 1,
   .localGet 1,
-  .call 55,
-  .constI64 4613937818241073152,
+  .call 59,
+  .constI64 4620693217682128896,
   .leUI64,
   .iff 0 1 [
    .constI64 1
@@ -3503,25 +3808,25 @@ def func56 : Wasm.Program :=
   .localGet 2
  ]
 
-def func56Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64], body := func56, results := [.i64], typeIdx := some 56 }
+def func60Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64], body := func60, results := [.i64], typeIdx := some 60 }
 
-def func57 : Wasm.Program :=
+def func61 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 1,
   .localGet 1,
-  .call 55,
+  .call 59,
   .constI64 9223372036854775808,
   .addI64,
   .localSet 2,
   .localGet 2
  ]
 
-def func57Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64], body := func57, results := [.i64], typeIdx := some 57 }
+def func61Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64], body := func61, results := [.i64], typeIdx := some 61 }
 
-def func58 : Wasm.Program :=
+def func62 : Wasm.Program :=
   [
   .localGet 0,
   .f64ReinterpretI64,
@@ -3557,90 +3862,83 @@ def func58 : Wasm.Program :=
   .localGet 3
  ]
 
-def func58Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64], body := func58, results := [.i64], typeIdx := some 58 }
+def func62Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64], body := func62, results := [.i64], typeIdx := some 62 }
 
-def func59 : Wasm.Program :=
+def func63 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 1,
   .localGet 1,
-  .call 58,
+  .call 59,
   .localSet 2,
   .localGet 2,
   .localSet 3,
   .localGet 3,
-  .call 57,
   .localSet 4,
   .localGet 4,
+  .call 62,
   .localSet 5,
   .localGet 5,
   .localSet 6,
   .localGet 6,
-  .call 36,
+  .call 61,
   .localSet 7,
   .localGet 7,
   .localSet 8,
-  .localGet 0,
-  .f64ReinterpretI64,
+  .localGet 8,
+  .localSet 9,
+  .localGet 9,
+  .call 40,
+  .localSet 10,
+  .localGet 10,
+  .localSet 11,
   .constI64 4607182418800017408,
   .f64ReinterpretI64,
-  .localGet 8,
+  .localGet 11,
   .f64ReinterpretI64,
   .f64Add,
   .i64ReinterpretF64,
-  .f64ReinterpretI64,
-  .f64Div,
-  .i64ReinterpretF64,
-  .localSet 9,
-  .localGet 9
- ]
-
-def func59Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func59, results := [.i64], typeIdx := some 59 }
-
-def func60 : Wasm.Program :=
-  [
-  .localGet 0,
-  .localSet 1,
-  .localGet 1,
-  .call 55,
-  .localSet 2,
-  .localGet 2,
-  .localSet 3,
-  .localGet 3,
-  .localSet 4,
-  .localGet 4,
-  .call 59,
-  .localSet 5,
-  .localGet 5,
-  .localSet 6,
+  .localSet 12,
   .localGet 0,
   .constI64 9223372036854775808,
   .ltUI64,
   .iff 0 1 [
-   .localGet 6
-  ] [
-   .localGet 6,
-   .f64ReinterpretI64,
    .localGet 3,
    .f64ReinterpretI64,
-   .f64Sub,
+   .localGet 12,
+   .f64ReinterpretI64,
+   .f64Div,
+   .i64ReinterpretF64
+  ] [
+   .localGet 3,
+   .localSet 13,
+   .localGet 13,
+   .call 61,
+   .f64ReinterpretI64,
+   .localGet 11,
+   .f64ReinterpretI64,
+   .f64Mul,
+   .i64ReinterpretF64,
+   .f64ReinterpretI64,
+   .localGet 12,
+   .f64ReinterpretI64,
+   .f64Div,
    .i64ReinterpretF64
   ] [] [.i64],
-  .localSet 7,
-  .localGet 7
+  .localSet 14,
+  .localGet 14
  ]
 
-def func60Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func60, results := [.i64], typeIdx := some 60 }
+def func63Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func63, results := [.i64], typeIdx := some 63 }
 
-def func61 : Wasm.Program :=
+def func64 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 1,
   .localGet 1,
-  .call 56,
+  .call 60,
   .localSet 2,
   .localGet 2,
   .constI64 1,
@@ -3657,7 +3955,7 @@ def func61 : Wasm.Program :=
    .localGet 0,
    .localSet 3,
    .localGet 3,
-   .call 60,
+   .call 63,
    .localSet 4,
    .localGet 4,
    .localSet 5
@@ -3675,36 +3973,36 @@ def func61 : Wasm.Program :=
   .localGet 5
  ]
 
-def func61Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64], body := func61, results := [.i64], typeIdx := some 61 }
+def func64Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64], body := func64, results := [.i64], typeIdx := some 64 }
 
-def func62 : Wasm.Program :=
+def func65 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 4,
   .localGet 4,
-  .call 61,
+  .call 64,
   .localSet 5,
   .localGet 5,
   .localSet 12,
   .localGet 1,
   .localSet 6,
   .localGet 6,
-  .call 61,
+  .call 64,
   .localSet 7,
   .localGet 7,
   .localSet 13,
   .localGet 2,
   .localSet 8,
   .localGet 8,
-  .call 61,
+  .call 64,
   .localSet 9,
   .localGet 9,
   .localSet 14,
   .localGet 3,
   .localSet 10,
   .localGet 10,
-  .call 61,
+  .call 64,
   .localSet 11,
   .localGet 11,
   .localSet 15,
@@ -3714,10 +4012,10 @@ def func62 : Wasm.Program :=
   .localGet 15
  ]
 
-def func62Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func62, results := [.i64, .i64, .i64, .i64], typeIdx := some 62 }
+def func65Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func65, results := [.i64, .i64, .i64, .i64], typeIdx := some 65 }
 
-def func63 : Wasm.Program :=
+def func66 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 8,
@@ -3733,10 +4031,10 @@ def func63 : Wasm.Program :=
   .localGet 11
  ]
 
-def func63Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64], body := func63, results := [.i64, .i64, .i64, .i64], typeIdx := some 63 }
+def func66Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64], body := func66, results := [.i64, .i64, .i64, .i64], typeIdx := some 66 }
 
-def func64 : Wasm.Program :=
+def func67 : Wasm.Program :=
   [
   .localGet 4,
   .localSet 8,
@@ -3752,10 +4050,10 @@ def func64 : Wasm.Program :=
   .localGet 11
  ]
 
-def func64Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64], body := func64, results := [.i64, .i64, .i64, .i64], typeIdx := some 64 }
+def func67Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64], body := func67, results := [.i64, .i64, .i64, .i64], typeIdx := some 67 }
 
-def func65 : Wasm.Program :=
+def func68 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 16,
@@ -3815,10 +4113,10 @@ def func65 : Wasm.Program :=
   .localGet 32
  ]
 
-def func65Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func65, results := [.i64], typeIdx := some 65 }
+def func68Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func68, results := [.i64], typeIdx := some 68 }
 
-def func66 : Wasm.Program :=
+def func69 : Wasm.Program :=
   [
   .localGet 5,
   .localSet 13,
@@ -4394,43 +4692,43 @@ def func66 : Wasm.Program :=
   .localGet 26,
   .localGet 27,
   .localGet 28,
-  .call 65,
+  .call 68,
   .localSet 29,
   .localGet 29,
   .localSet 30,
   .localGet 30
  ]
 
-def func66Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func66, results := [.i64], typeIdx := some 66 }
+def func69Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func69, results := [.i64], typeIdx := some 69 }
 
-def func67 : Wasm.Program :=
+def func70 : Wasm.Program :=
   [
   .constI64 1148,
   .localSet 0,
   .localGet 0
  ]
 
-def func67Def : Wasm.Function :=
-  { locals := [.i64], body := func67, results := [.i64], typeIdx := some 67 }
+def func70Def : Wasm.Function :=
+  { locals := [.i64], body := func70, results := [.i64], typeIdx := some 70 }
 
-def func68 : Wasm.Program :=
+def func71 : Wasm.Program :=
   [
   .constI64 1180,
   .localSet 0,
   .localGet 0
  ]
 
-def func68Def : Wasm.Function :=
-  { locals := [.i64], body := func68, results := [.i64], typeIdx := some 68 }
+def func71Def : Wasm.Function :=
+  { locals := [.i64], body := func71, results := [.i64], typeIdx := some 71 }
 
-def func69 : Wasm.Program :=
+def func72 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 10,
   .localGet 1,
   .localSet 11,
-  .call 67,
+  .call 70,
   .localSet 12,
   .localGet 12,
   .localSet 13,
@@ -4467,7 +4765,7 @@ def func69 : Wasm.Program :=
   .localGet 21,
   .localGet 22,
   .localGet 23,
-  .call 66,
+  .call 69,
   .localSet 24,
   .localGet 24,
   .f64ReinterpretI64,
@@ -4475,7 +4773,7 @@ def func69 : Wasm.Program :=
   .localSet 70,
   .localGet 1,
   .localSet 71,
-  .call 68,
+  .call 71,
   .localSet 72,
   .localGet 72,
   .localSet 73,
@@ -4496,7 +4794,7 @@ def func69 : Wasm.Program :=
   .localSet 93,
   .localGet 1,
   .localSet 94,
-  .call 67,
+  .call 70,
   .localSet 95,
   .localGet 95,
   .localSet 96,
@@ -4533,7 +4831,7 @@ def func69 : Wasm.Program :=
   .localGet 104,
   .localGet 105,
   .localGet 106,
-  .call 66,
+  .call 69,
   .localSet 107,
   .localGet 107,
   .f64ReinterpretI64,
@@ -4541,7 +4839,7 @@ def func69 : Wasm.Program :=
   .localSet 138,
   .localGet 1,
   .localSet 139,
-  .call 68,
+  .call 71,
   .localSet 140,
   .localGet 140,
   .localSet 141,
@@ -4562,7 +4860,7 @@ def func69 : Wasm.Program :=
   .localSet 176,
   .localGet 1,
   .localSet 177,
-  .call 67,
+  .call 70,
   .localSet 178,
   .localGet 178,
   .localSet 179,
@@ -4599,7 +4897,7 @@ def func69 : Wasm.Program :=
   .localGet 187,
   .localGet 188,
   .localGet 189,
-  .call 66,
+  .call 69,
   .localSet 190,
   .localGet 190,
   .f64ReinterpretI64,
@@ -4607,7 +4905,7 @@ def func69 : Wasm.Program :=
   .localSet 206,
   .localGet 1,
   .localSet 207,
-  .call 68,
+  .call 71,
   .localSet 208,
   .localGet 208,
   .localSet 209,
@@ -4628,7 +4926,7 @@ def func69 : Wasm.Program :=
   .localSet 259,
   .localGet 1,
   .localSet 260,
-  .call 67,
+  .call 70,
   .localSet 261,
   .localGet 261,
   .localSet 262,
@@ -4665,7 +4963,7 @@ def func69 : Wasm.Program :=
   .localGet 270,
   .localGet 271,
   .localGet 272,
-  .call 66,
+  .call 69,
   .localSet 273,
   .localGet 273,
   .f64ReinterpretI64,
@@ -4673,7 +4971,7 @@ def func69 : Wasm.Program :=
   .localSet 274,
   .localGet 1,
   .localSet 275,
-  .call 68,
+  .call 71,
   .localSet 276,
   .localGet 276,
   .localSet 277,
@@ -4696,20 +4994,20 @@ def func69 : Wasm.Program :=
   .localGet 285
  ]
 
-def func69Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func69, results := [.i64, .i64, .i64, .i64], typeIdx := some 69 }
+def func72Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func72, results := [.i64, .i64, .i64, .i64], typeIdx := some 72 }
 
-def func70 : Wasm.Program :=
+def func73 : Wasm.Program :=
   [
   .constI64 2480,
   .localSet 0,
   .localGet 0
  ]
 
-def func70Def : Wasm.Function :=
-  { locals := [.i64], body := func70, results := [.i64], typeIdx := some 70 }
+def func73Def : Wasm.Function :=
+  { locals := [.i64], body := func73, results := [.i64], typeIdx := some 73 }
 
-def func71 : Wasm.Program :=
+def func74 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 7,
@@ -5376,7 +5674,7 @@ def func71 : Wasm.Program :=
   .localGet 294,
   .localGet 295,
   .localGet 296,
-  .call 48,
+  .call 52,
   .localSet 300,
   .localSet 299,
   .localSet 298,
@@ -5393,7 +5691,7 @@ def func71 : Wasm.Program :=
   .localSet 305,
   .localGet 1,
   .localSet 306,
-  .call 49,
+  .call 53,
   .localSet 307,
   .localGet 307,
   .localSet 308,
@@ -5423,7 +5721,7 @@ def func71 : Wasm.Program :=
   .localSet 317,
   .localGet 1,
   .localSet 318,
-  .call 50,
+  .call 54,
   .localSet 319,
   .localGet 319,
   .localSet 320,
@@ -5444,7 +5742,7 @@ def func71 : Wasm.Program :=
   .localSet 325,
   .localGet 1,
   .localSet 326,
-  .call 49,
+  .call 53,
   .localSet 327,
   .localGet 327,
   .localSet 328,
@@ -5474,7 +5772,7 @@ def func71 : Wasm.Program :=
   .localSet 337,
   .localGet 1,
   .localSet 338,
-  .call 50,
+  .call 54,
   .localSet 339,
   .localGet 339,
   .localSet 340,
@@ -5495,7 +5793,7 @@ def func71 : Wasm.Program :=
   .localSet 345,
   .localGet 1,
   .localSet 346,
-  .call 49,
+  .call 53,
   .localSet 347,
   .localGet 347,
   .localSet 348,
@@ -5525,7 +5823,7 @@ def func71 : Wasm.Program :=
   .localSet 357,
   .localGet 1,
   .localSet 358,
-  .call 50,
+  .call 54,
   .localSet 359,
   .localGet 359,
   .localSet 360,
@@ -5546,7 +5844,7 @@ def func71 : Wasm.Program :=
   .localSet 365,
   .localGet 1,
   .localSet 366,
-  .call 49,
+  .call 53,
   .localSet 367,
   .localGet 367,
   .localSet 368,
@@ -5576,7 +5874,7 @@ def func71 : Wasm.Program :=
   .localSet 377,
   .localGet 1,
   .localSet 378,
-  .call 50,
+  .call 54,
   .localSet 379,
   .localGet 379,
   .localSet 380,
@@ -5690,7 +5988,7 @@ def func71 : Wasm.Program :=
   .localSet 426,
   .localGet 1,
   .localSet 427,
-  .call 51,
+  .call 55,
   .localSet 428,
   .localGet 428,
   .localSet 429,
@@ -5702,7 +6000,7 @@ def func71 : Wasm.Program :=
   .localSet 432,
   .localGet 1,
   .localSet 433,
-  .call 54,
+  .call 58,
   .localSet 434,
   .localGet 434,
   .localSet 435,
@@ -5751,7 +6049,7 @@ def func71 : Wasm.Program :=
   .localSet 449,
   .localGet 1,
   .localSet 450,
-  .call 51,
+  .call 55,
   .localSet 451,
   .localGet 451,
   .localSet 452,
@@ -5763,7 +6061,7 @@ def func71 : Wasm.Program :=
   .localSet 455,
   .localGet 1,
   .localSet 456,
-  .call 54,
+  .call 58,
   .localSet 457,
   .localGet 457,
   .localSet 458,
@@ -5812,7 +6110,7 @@ def func71 : Wasm.Program :=
   .localSet 472,
   .localGet 1,
   .localSet 473,
-  .call 51,
+  .call 55,
   .localSet 474,
   .localGet 474,
   .localSet 475,
@@ -5824,7 +6122,7 @@ def func71 : Wasm.Program :=
   .localSet 478,
   .localGet 1,
   .localSet 479,
-  .call 54,
+  .call 58,
   .localSet 480,
   .localGet 480,
   .localSet 481,
@@ -5873,7 +6171,7 @@ def func71 : Wasm.Program :=
   .localSet 495,
   .localGet 1,
   .localSet 496,
-  .call 51,
+  .call 55,
   .localSet 497,
   .localGet 497,
   .localSet 498,
@@ -5885,7 +6183,7 @@ def func71 : Wasm.Program :=
   .localSet 501,
   .localGet 1,
   .localSet 502,
-  .call 54,
+  .call 58,
   .localSet 503,
   .localGet 503,
   .localSet 504,
@@ -5934,7 +6232,7 @@ def func71 : Wasm.Program :=
   .localSet 522,
   .localGet 1,
   .localSet 523,
-  .call 51,
+  .call 55,
   .localSet 524,
   .localGet 524,
   .localSet 525,
@@ -5946,7 +6244,7 @@ def func71 : Wasm.Program :=
   .localSet 528,
   .localGet 1,
   .localSet 529,
-  .call 54,
+  .call 58,
   .localSet 530,
   .localGet 530,
   .localSet 531,
@@ -5995,7 +6293,7 @@ def func71 : Wasm.Program :=
   .localSet 545,
   .localGet 1,
   .localSet 546,
-  .call 51,
+  .call 55,
   .localSet 547,
   .localGet 547,
   .localSet 548,
@@ -6007,7 +6305,7 @@ def func71 : Wasm.Program :=
   .localSet 551,
   .localGet 1,
   .localSet 552,
-  .call 54,
+  .call 58,
   .localSet 553,
   .localGet 553,
   .localSet 554,
@@ -6056,7 +6354,7 @@ def func71 : Wasm.Program :=
   .localSet 568,
   .localGet 1,
   .localSet 569,
-  .call 51,
+  .call 55,
   .localSet 570,
   .localGet 570,
   .localSet 571,
@@ -6068,7 +6366,7 @@ def func71 : Wasm.Program :=
   .localSet 574,
   .localGet 1,
   .localSet 575,
-  .call 54,
+  .call 58,
   .localSet 576,
   .localGet 576,
   .localSet 577,
@@ -6117,7 +6415,7 @@ def func71 : Wasm.Program :=
   .localSet 591,
   .localGet 1,
   .localSet 592,
-  .call 51,
+  .call 55,
   .localSet 593,
   .localGet 593,
   .localSet 594,
@@ -6129,7 +6427,7 @@ def func71 : Wasm.Program :=
   .localSet 597,
   .localGet 1,
   .localSet 598,
-  .call 54,
+  .call 58,
   .localSet 599,
   .localGet 599,
   .localSet 600,
@@ -6180,7 +6478,7 @@ def func71 : Wasm.Program :=
   .localSet 618,
   .localGet 1,
   .localSet 619,
-  .call 52,
+  .call 56,
   .localSet 620,
   .localGet 620,
   .localSet 621,
@@ -6203,7 +6501,7 @@ def func71 : Wasm.Program :=
   .localSet 626,
   .localGet 1,
   .localSet 627,
-  .call 52,
+  .call 56,
   .localSet 628,
   .localGet 628,
   .localSet 629,
@@ -6226,7 +6524,7 @@ def func71 : Wasm.Program :=
   .localSet 634,
   .localGet 1,
   .localSet 635,
-  .call 52,
+  .call 56,
   .localSet 636,
   .localGet 636,
   .localSet 637,
@@ -6249,7 +6547,7 @@ def func71 : Wasm.Program :=
   .localSet 642,
   .localGet 1,
   .localSet 643,
-  .call 52,
+  .call 56,
   .localSet 644,
   .localGet 644,
   .localSet 645,
@@ -6418,7 +6716,7 @@ def func71 : Wasm.Program :=
   .localGet 687,
   .localGet 688,
   .localGet 689,
-  .call 62,
+  .call 65,
   .localSet 693,
   .localSet 692,
   .localSet 691,
@@ -6443,7 +6741,7 @@ def func71 : Wasm.Program :=
   .localGet 695,
   .localGet 696,
   .localGet 697,
-  .call 62,
+  .call 65,
   .localSet 701,
   .localSet 700,
   .localSet 699,
@@ -6488,7 +6786,7 @@ def func71 : Wasm.Program :=
   .localGet 717,
   .localGet 718,
   .localGet 719,
-  .call 69,
+  .call 72,
   .localSet 723,
   .localSet 722,
   .localSet 721,
@@ -6530,7 +6828,7 @@ def func71 : Wasm.Program :=
   .localGet 731,
   .localGet 732,
   .localGet 733,
-  .call 69,
+  .call 72,
   .localSet 737,
   .localSet 736,
   .localSet 735,
@@ -6572,7 +6870,7 @@ def func71 : Wasm.Program :=
   .localGet 745,
   .localGet 746,
   .localGet 747,
-  .call 69,
+  .call 72,
   .localSet 751,
   .localSet 750,
   .localSet 749,
@@ -6614,7 +6912,7 @@ def func71 : Wasm.Program :=
   .localGet 759,
   .localGet 760,
   .localGet 761,
-  .call 69,
+  .call 72,
   .localSet 765,
   .localSet 764,
   .localSet 763,
@@ -6628,7 +6926,7 @@ def func71 : Wasm.Program :=
   .localSet 770,
   .localGet 1,
   .localSet 771,
-  .call 70,
+  .call 73,
   .localSet 772,
   .localGet 772,
   .localSet 773,
@@ -6666,36 +6964,36 @@ def func71 : Wasm.Program :=
   .localGet 785
  ]
 
-def func71Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func71, results := [.i64, .i64, .i64, .i64], typeIdx := some 71 }
+def func74Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func74, results := [.i64, .i64, .i64, .i64], typeIdx := some 74 }
 
-def func72 : Wasm.Program :=
+def func75 : Wasm.Program :=
   [
   .constI64 1184,
   .localSet 0,
   .localGet 0
  ]
 
-def func72Def : Wasm.Function :=
-  { locals := [.i64], body := func72, results := [.i64], typeIdx := some 72 }
+def func75Def : Wasm.Function :=
+  { locals := [.i64], body := func75, results := [.i64], typeIdx := some 75 }
 
-def func73 : Wasm.Program :=
+def func76 : Wasm.Program :=
   [
   .constI64 2208,
   .localSet 0,
   .localGet 0
  ]
 
-def func73Def : Wasm.Function :=
-  { locals := [.i64], body := func73, results := [.i64], typeIdx := some 73 }
+def func76Def : Wasm.Function :=
+  { locals := [.i64], body := func76, results := [.i64], typeIdx := some 76 }
 
-def func74 : Wasm.Program :=
+def func77 : Wasm.Program :=
   [
   .localGet 0,
   .localSet 7,
   .localGet 1,
   .localSet 8,
-  .call 72,
+  .call 75,
   .localSet 9,
   .localGet 9,
   .localSet 10,
@@ -6767,11 +7065,11 @@ def func74 : Wasm.Program :=
   .localGet 17
  ]
 
-def func74Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func74, results := [.i64], typeIdx := some 74 }
+def func77Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func77, results := [.i64], typeIdx := some 77 }
 
 /-- Exported function. -/
-def func75 : Wasm.Program :=
+def func78 : Wasm.Program :=
   [
   .constI64 0,
   .localSet 5,
@@ -6794,7 +7092,7 @@ def func75 : Wasm.Program :=
   .localGet 9,
   .localGet 10,
   .localGet 11,
-  .call 71,
+  .call 74,
   .localSet 15,
   .localSet 14,
   .localSet 13,
@@ -7063,7 +7361,7 @@ def func75 : Wasm.Program :=
     .localGet 32,
     .localGet 33,
     .localGet 34,
-    .call 74,
+    .call 77,
     .localSet 35,
     .localGet 36,
     .localSet 48,
@@ -7356,7 +7654,7 @@ def func75 : Wasm.Program :=
      .neI64,
      .iff 0 0 [
       .localGet 23,
-      .call 79
+      .call 82
      ] []
     ] [],
     .localGet 64,
@@ -7400,16 +7698,16 @@ def func75 : Wasm.Program :=
   .eqz,
   .iff 0 0 [
    .localGet 21,
-   .call 79
+   .call 82
   ] [],
   .localGet 44
  ]
 
-def func75Def : Wasm.Function :=
-  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func75, results := [.i64], typeIdx := some 75 }
+def func78Def : Wasm.Function :=
+  { params := [.i64, .i64, .i64, .i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func78, results := [.i64], typeIdx := some 78 }
 
 /-- Exported function. -/
-def func76 : Wasm.Program :=
+def func79 : Wasm.Program :=
   [
   .localGet 0,
   .constI64 7,
@@ -7609,11 +7907,11 @@ def func76 : Wasm.Program :=
   .localGet 6
  ]
 
-def func76Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64], body := func76, results := [.i64], typeIdx := some 76 }
+def func79Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64], body := func79, results := [.i64], typeIdx := some 79 }
 
 /-- Exported function. -/
-def func77 : Wasm.Program :=
+def func80 : Wasm.Program :=
   [
   .constI64 4096,
   .globalSet 0,
@@ -7629,11 +7927,11 @@ def func77 : Wasm.Program :=
   .globalSet 5
  ]
 
-def func77Def : Wasm.Function :=
-  { body := func77, typeIdx := some 77 }
+def func80Def : Wasm.Function :=
+  { body := func80, typeIdx := some 80 }
 
 /-- Exported function. -/
-def func78 : Wasm.Program :=
+def func81 : Wasm.Program :=
   [
   .localGet 0,
   .constI64 0,
@@ -7677,11 +7975,11 @@ def func78 : Wasm.Program :=
   .localGet 0
  ]
 
-def func78Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64], body := func78, results := [.i64], typeIdx := some 78 }
+def func81Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func81, results := [.i64], typeIdx := some 81 }
 
 /-- Exported function. -/
-def func79 : Wasm.Program :=
+def func82 : Wasm.Program :=
   [
   .localGet 0,
   .constI64 0,
@@ -7776,7 +8074,7 @@ def func79 : Wasm.Program :=
       .load64 0,
       .localSet 8,
       .localGet 8,
-      .call 79
+      .call 82
      ] [],
      .localGet 6,
      .constI64 1,
@@ -7845,7 +8143,7 @@ def func79 : Wasm.Program :=
         .load64 0,
         .localSet 8,
         .localGet 8,
-        .call 79
+        .call 82
        ] [],
        .localGet 6,
        .constI64 1,
@@ -7882,8 +8180,8 @@ def func79 : Wasm.Program :=
   .globalSet 1
  ]
 
-def func79Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func79, typeIdx := some 79 }
+def func82Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func82, typeIdx := some 82 }
 
 def «module» : Wasm.Module :=
 {
@@ -7967,15 +8265,18 @@ def «module» : Wasm.Module :=
    func76Def,
    func77Def,
    func78Def,
-   func79Def
+   func79Def,
+   func80Def,
+   func81Def,
+   func82Def
   ],
   exports := [
-   { name := "infer", funcIdx := 75 },
-   { name := "alloc", funcIdx := 76 },
-   { name := "reset", funcIdx := 77 },
-   { name := "retain", funcIdx := 78 },
-   { name := "release", funcIdx := 79 },
-   { name := "free", funcIdx := 79 }
+   { name := "infer", funcIdx := 78 },
+   { name := "alloc", funcIdx := 79 },
+   { name := "reset", funcIdx := 80 },
+   { name := "retain", funcIdx := 81 },
+   { name := "release", funcIdx := 82 },
+   { name := "free", funcIdx := 82 }
   ],
   memory := some ({ pagesMin := 16 }),
   globals := [
@@ -8034,7 +8335,11 @@ def «module» : Wasm.Module :=
    { params := [.i64, .i64], results := [.i64] },
    { params := [.i64, .i64, .i64, .i64], results := [.i64] },
    { params := [.i64, .i64, .i64, .i64, .i64], results := [.i64] },
+   { params := [.i64, .i64, .i64], results := [.i64, .i64] },
+   { params := [.i64, .i64], results := [.i64] },
+   { params := [.i64, .i64], results := [.i64] },
    { params := [.i64], results := [.i64] },
+   { params := [.i64, .i64], results := [.i64] },
    { params := [.i64], results := [.i64] },
    { params := [.i64, .i64, .i64, .i64], results := [.i64] },
    { params := [.i64, .i64, .i64, .i64], results := [.i64] },
@@ -8054,7 +8359,6 @@ def «module» : Wasm.Module :=
    { results := [.i64] },
    { params := [.i64, .i64, .i64, .i64, .i64, .i64], results := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64] },
    { results := [.i64] },
-   { params := [.i64], results := [.i64] },
    { params := [.i64], results := [.i64] },
    { params := [.i64], results := [.i64] },
    { params := [.i64], results := [.i64] },
@@ -8116,7 +8420,11 @@ def «module» : Wasm.Module :=
    { comp := .func ({ params := [.i64, .i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64, .i64, .i64, .i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64, .i64, .i64, .i64, .i64], results := [.i64] }) },
+   { comp := .func ({ params := [.i64, .i64, .i64], results := [.i64, .i64] }) },
+   { comp := .func ({ params := [.i64, .i64], results := [.i64] }) },
+   { comp := .func ({ params := [.i64, .i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64], results := [.i64] }) },
+   { comp := .func ({ params := [.i64, .i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64, .i64, .i64, .i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64, .i64, .i64, .i64], results := [.i64] }) },
@@ -8136,7 +8444,6 @@ def «module» : Wasm.Module :=
    { comp := .func ({ results := [.i64] }) },
    { comp := .func ({ params := [.i64, .i64, .i64, .i64, .i64, .i64], results := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64] }) },
    { comp := .func ({ results := [.i64] }) },
-   { comp := .func ({ params := [.i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64], results := [.i64] }) },
    { comp := .func ({ params := [.i64], results := [.i64] }) },

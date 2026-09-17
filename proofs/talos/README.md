@@ -92,7 +92,8 @@ multiplies the probability error by the value-magnitude bound.  Its
 shared normalization theorem separates weight, sum, and division errors
 for any finite index type.  Exact generated-WAT execution preserves the
 complete store for every raw input.  The internal entry returns all four
-probabilities and status zero.  The GPT-2 CLI integration remains open.
+probabilities and status zero.  The GPT-2 CLI artifact and its execution
+proof use this implementation.
 
 The softmax input-error theorem adds twice the maximum score error to the
 1/50000 local bound.  Its internal computation also has a generated-WAT
@@ -133,8 +134,8 @@ give relative error at most 4029 times 2^-52 on [-64, 0].  Below -64 it
 returns zero with absolute error at most 1e-27.  The exported numerical
 theorem combines these bounds.  The raw-word tests cover all reduction
 thresholds, signed zeros, subnormals, extreme finite inputs, and rejection.
-The GPT-2 artifact still uses the previous exponential while replacement
-GELU and attention proofs are in progress.
+The GPT-2 artifact uses this exponential through its verified GELU and
+softmax components.
 
 The `exp_wide` case covers [-8, 0] with proved absolute error at most
 1/300000 and output at least 1/100000.  Its generated-WAT execution,

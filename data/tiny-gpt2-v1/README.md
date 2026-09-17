@@ -18,8 +18,8 @@ Each command accepts four bytes and returns all 256 next-byte logits in one
 WASM call.  JSON output contains decimal logits, raw binary64 words, input
 tokens, artifact hashes, and the current verification status.  The host
 checks the recorded checkpoint and module hashes before execution.
-The 16,788-byte [module](inference.wasm) runs through the existing Wasmtime
-C host.  The separate 15,423-byte hidden-state module has a
+The 17,371-byte [module](inference.wasm) runs through the existing Wasmtime
+C host.  The separate 16,006-byte hidden-state module has a
 [proof](../../proofs/talos/lean/Project/TinyGpt2Hidden/Hidden.lean) of termination,
 exact agreement with the raw-bit model, and store preservation for every
 four-byte input.  The
@@ -58,7 +58,8 @@ The [attention audit](attention-audit.json) enumerates all token pairs at
 distinct active key positions in CPU binary64 arithmetic.  It retains a
 context attaining each reported maximum.  Bytes `[0, 0, 36, 82]` give a
 spread of 12.117768731550278 in the second head at the final position.
-The internal softmax theorem now covers spread at most sixteen.  The
+The wider softmax theorem covers every finite row whose active score
+differences are below 2^1023.  The
 checkpoint's [range proof](../../plans/tiny-model-range-analysis.md)
 now establishes real score spread at most 103/7 for every accepted context.
 The binary64 certificate adds normalization, projection, and score errors
@@ -75,10 +76,16 @@ error bound against the real model remains open.
 The compiled body passes 24 context-position tests, including that witness.
 Every hidden-state word and 96 selected logits match the native Talos bit
 model.  Maximum empirical differences from CPU PyTorch are approximately
-2.605 × 10^-5 for hidden coordinates and 3.542 × 10^-5 for selected logits.
+5.996 × 10^-15 for hidden coordinates and 1.155 × 10^-14 for selected logits.
 The complete inference entry also matches all 1,536 output words from six
 contexts against the native Talos bit model.  Its largest measured
-CPU PyTorch difference is 3.914 × 10^-5.
+CPU PyTorch difference is 7.994 × 10^-15.
+
+The artifact uses the verified degree-eighteen negative exponential and
+wider GELU.  The [cancellation audit](numerical-audit.json) now measures
+absolute logit error 9.325 × 10^-11 against its 80-digit reference, down
+from 383.216 with the previous arithmetic.  This measurement does not
+establish the pending uniform logit error bound.
 
 ## Reproduction
 

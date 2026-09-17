@@ -78,9 +78,9 @@ uses the approved CPU PyTorch backend.
 The [real-valued model](../proofs/talos/lean/Project/TinyGpt2/Real.lean)
 defines every stage of the audited architecture.  Its causal-prefix
 theorem proves equal output at a position whenever the input prefixes
-through that position agree.  The softmax computation now accepts a
-proved active-score spread of at most sixteen in its internal numerical
-theorem and propagates real score error with multiplier two.  Checkpoint
+through that position agree.  The wider softmax computation proves a sum
+of absolute probability errors of at most 10053 times 2^-52 for finite scores with active differences below
+2^1023.  Its real input-perturbation theorem has multiplier two.  Checkpoint
 range certificates prove finite hidden coordinates and all 256 finite
 logits for every four-byte input.  The composed numerical error bound
 remains open.

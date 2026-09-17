@@ -2,10 +2,12 @@ import Project.TinyGpt2.CheckpointProjection
 import Project.TinyGpt2.CheckpointEmbedding
 import Project.TinyGpt2.CheckpointAttention
 import Project.TinyGpt2.ScorePerturbation
-import Project.Softmax.Row
+import Project.SoftmaxWide.Row
 
 namespace Project.TinyGpt2.Checkpoint
 open CodeLib.IEEE64 Project.ProofKit F64Horner
+
+set_option exponentiation.threshold 4096
 
 def computedScore (x y : Row) (head : Fin 2) : UInt64 :=
   attentionScore
@@ -42,7 +44,7 @@ theorem computed_scores_valid (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     (x : Row) (keys : Fin 4 → Row) (head : Fin 2)
     (hx : LayerNorm.ValidRow (rowWords x))
     (hk : ∀ i, LayerNorm.ValidRow (rowWords (keys i))) :
-    Softmax.SpreadValid n (computedScore x (keys 0) head) (computedScore x (keys 1) head)
+    SoftmaxWide.Valid n (computedScore x (keys 0) head) (computedScore x (keys 1) head)
       (computedScore x (keys 2) head) (computedScore x (keys 3) head) := by
   have hs (i : Fin 4) : Softmax.scores
       (computedScore x (keys 0) head) (computedScore x (keys 1) head)
@@ -54,13 +56,13 @@ theorem computed_scores_valid (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     exact (computedScore_error x (keys i) head hx (hk i)).finite
   · intro i j _ _
     rw [hs, hs]
-    exact computedScore_spread x (keys i) (keys j) head hx (hk i) (hk j)
+    exact (computedScore_spread x (keys i) (keys j) head hx (hk i) (hk j)).trans_lt (by norm_num)
 
 theorem context_scores_valid (n : UInt64) (hn : 0 < n) (hn4 : n ≤ 4)
     (tokens : Fin 4 → UInt64) (ht : ∀ i, (tokens i).toNat < 256)
     (position : Fin 4) (head : Fin 2) :
     let rows := fun i : Fin 4 => embedding words (tokens i) (UInt64.ofNat i.val)
-    Softmax.SpreadValid n (computedScore (rows position) (rows 0) head)
+    SoftmaxWide.Valid n (computedScore (rows position) (rows 0) head)
       (computedScore (rows position) (rows 1) head)
       (computedScore (rows position) (rows 2) head)
       (computedScore (rows position) (rows 3) head) := by

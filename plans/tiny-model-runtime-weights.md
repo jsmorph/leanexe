@@ -91,9 +91,11 @@ coefficient, and rounded operation requires a proved error bound.
 The prototype's largest measured errors are 8.27e-17 across 276 exponential
 inputs and 1.11e-15 across 519 GELU inputs.  The cancellation-case logit
 error falls from about 383.216 to 9.33e-11 in the Python binary64 prototype.
-The component implementations and proofs are complete.  Integration into
-inference is in progress.  The command-line inference artifact uses the
-previous arithmetic.
+The component implementations and proofs are complete.  The command-line
+inference artifact now uses these methods, with a complete generated-WAT
+execution proof and checkpoint finite-output certificate.  The cancellation
+case has measured WASM error 9.325e-11 against the 80-digit reference,
+compared with 383.216 for the previous artifact.
 
 The [new exponential numerical theorem](../proofs/talos/lean/Project/ExpNeg/Numerical.lean)
 proves finite, positive output and relative error at most 4029u on [-64, 0].
@@ -110,15 +112,15 @@ proves finite output for every finite input and absolute error at most
 uses the new exponential and avoids cancellation in its negative branch.
 The input-perturbation theorem adds four times the input error.  Its
 generated-WAT theorem proves exact output, rejection, termination, and
-complete store preservation.  Integration into inference remains in progress.
+complete store preservation.  The inference proof reuses this theorem.
 
 The [wider softmax theorem](../proofs/talos/lean/Project/SoftmaxWide/Spec.lean)
 proves a sum of absolute probability errors at most 10053u and normalization
 error at most 52u.  It accepts finite scores whose active differences are
 below 2^1023.  Weight error is relative, with an additive 1e-27 tail term.
 The shared normalization result works over any finite index type.  The
-four-position source and generated-WAT proofs are complete.  The remaining
-integration will replace the old exponential and GELU in inference.
+four-position source and generated-WAT proofs are complete, including their
+integration into the inference artifact.
 
 ## Implementation sequence
 

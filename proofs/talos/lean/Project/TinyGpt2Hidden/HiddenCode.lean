@@ -62,7 +62,7 @@ noncomputable def tail88 : Wasm.Program :=
   .localSet 769,
   .localGet 0,
   .localSet 770,
-  .call 70
+  .call 73
   ] ++ tail89
 
 noncomputable def tail87 : Wasm.Program :=
@@ -108,7 +108,7 @@ noncomputable def tail87 : Wasm.Program :=
   .localGet 758,
   .localGet 759,
   .localGet 760,
-  .call 69
+  .call 72
   ] ++ tail88
 
 noncomputable def tail86 : Wasm.Program :=
@@ -154,7 +154,7 @@ noncomputable def tail86 : Wasm.Program :=
   .localGet 744,
   .localGet 745,
   .localGet 746,
-  .call 69
+  .call 72
   ] ++ tail87
 
 noncomputable def tail85 : Wasm.Program :=
@@ -200,7 +200,7 @@ noncomputable def tail85 : Wasm.Program :=
   .localGet 730,
   .localGet 731,
   .localGet 732,
-  .call 69
+  .call 72
   ] ++ tail86
 
 noncomputable def tail84 : Wasm.Program :=
@@ -249,7 +249,7 @@ noncomputable def tail84 : Wasm.Program :=
   .localGet 716,
   .localGet 717,
   .localGet 718,
-  .call 69
+  .call 72
   ] ++ tail85
 
 noncomputable def tail83 : Wasm.Program :=
@@ -278,7 +278,7 @@ noncomputable def tail83 : Wasm.Program :=
   .localGet 694,
   .localGet 695,
   .localGet 696,
-  .call 62
+  .call 65
   ] ++ tail84
 
 noncomputable def tail82 : Wasm.Program :=
@@ -304,7 +304,7 @@ noncomputable def tail82 : Wasm.Program :=
   .localGet 686,
   .localGet 687,
   .localGet 688,
-  .call 62
+  .call 65
   ] ++ tail83
 
 noncomputable def tail81 : Wasm.Program :=
@@ -491,7 +491,7 @@ noncomputable def tail76 : Wasm.Program :=
   .localSet 641,
   .localGet 0,
   .localSet 642,
-  .call 52
+  .call 56
   ] ++ tail77
 
 noncomputable def tail75 : Wasm.Program :=
@@ -522,7 +522,7 @@ noncomputable def tail74 : Wasm.Program :=
   .localSet 633,
   .localGet 0,
   .localSet 634,
-  .call 52
+  .call 56
   ] ++ tail75
 
 noncomputable def tail73 : Wasm.Program :=
@@ -553,7 +553,7 @@ noncomputable def tail72 : Wasm.Program :=
   .localSet 625,
   .localGet 0,
   .localSet 626,
-  .call 52
+  .call 56
   ] ++ tail73
 
 noncomputable def tail71 : Wasm.Program :=
@@ -578,7 +578,7 @@ noncomputable def tail70 : Wasm.Program :=
   .localSet 617,
   .localGet 0,
   .localSet 618,
-  .call 52
+  .call 56
   ] ++ tail71
 
 noncomputable def tail69 : Wasm.Program :=
@@ -643,7 +643,7 @@ noncomputable def tail67 : Wasm.Program :=
   .localSet 596,
   .localGet 0,
   .localSet 597,
-  .call 54
+  .call 58
   ] ++ tail68
 
 noncomputable def tail66 : Wasm.Program :=
@@ -655,7 +655,7 @@ noncomputable def tail66 : Wasm.Program :=
   .localSet 590,
   .localGet 0,
   .localSet 591,
-  .call 51
+  .call 55
   ] ++ tail67
 
 noncomputable def tail65 : Wasm.Program :=
@@ -720,7 +720,7 @@ noncomputable def tail63 : Wasm.Program :=
   .localSet 573,
   .localGet 0,
   .localSet 574,
-  .call 54
+  .call 58
   ] ++ tail64
 
 noncomputable def tail62 : Wasm.Program :=
@@ -732,7 +732,7 @@ noncomputable def tail62 : Wasm.Program :=
   .localSet 567,
   .localGet 0,
   .localSet 568,
-  .call 51
+  .call 55
   ] ++ tail63
 
 noncomputable def tail61 : Wasm.Program :=
@@ -797,7 +797,7 @@ noncomputable def tail59 : Wasm.Program :=
   .localSet 550,
   .localGet 0,
   .localSet 551,
-  .call 54
+  .call 58
   ] ++ tail60
 
 noncomputable def tail58 : Wasm.Program :=
@@ -809,7 +809,7 @@ noncomputable def tail58 : Wasm.Program :=
   .localSet 544,
   .localGet 0,
   .localSet 545,
-  .call 51
+  .call 55
   ] ++ tail59
 
 noncomputable def tail57 : Wasm.Program :=
@@ -874,7 +874,7 @@ noncomputable def tail55 : Wasm.Program :=
   .localSet 527,
   .localGet 0,
   .localSet 528,
-  .call 54
+  .call 58
   ] ++ tail56
 
 noncomputable def tail54 : Wasm.Program :=
@@ -886,7 +886,7 @@ noncomputable def tail54 : Wasm.Program :=
   .localSet 521,
   .localGet 0,
   .localSet 522,
-  .call 51
+  .call 55
   ] ++ tail55
 
 noncomputable def tail53 : Wasm.Program :=
@@ -951,7 +951,7 @@ noncomputable def tail51 : Wasm.Program :=
   .localSet 500,
   .localGet 0,
   .localSet 501,
-  .call 54
+  .call 58
   ] ++ tail52
 
 noncomputable def tail50 : Wasm.Program :=
@@ -963,7 +963,7 @@ noncomputable def tail50 : Wasm.Program :=
   .localSet 494,
   .localGet 0,
   .localSet 495,
-  .call 51
+  .call 55
   ] ++ tail51
 
 noncomputable def tail49 : Wasm.Program :=
@@ -1028,7 +1028,7 @@ noncomputable def tail47 : Wasm.Program :=
   .localSet 477,
   .localGet 0,
   .localSet 478,
-  .call 54
+  .call 58
   ] ++ tail48
 
 noncomputable def tail46 : Wasm.Program :=
@@ -1040,7 +1040,7 @@ noncomputable def tail46 : Wasm.Program :=
   .localSet 471,
   .localGet 0,
   .localSet 472,
-  .call 51
+  .call 55
   ] ++ tail47
 
 noncomputable def tail45 : Wasm.Program :=
@@ -1105,7 +1105,7 @@ noncomputable def tail43 : Wasm.Program :=
   .localSet 454,
   .localGet 0,
   .localSet 455,
-  .call 54
+  .call 58
   ] ++ tail44
 
 noncomputable def tail42 : Wasm.Program :=
@@ -1117,7 +1117,7 @@ noncomputable def tail42 : Wasm.Program :=
   .localSet 448,
   .localGet 0,
   .localSet 449,
-  .call 51
+  .call 55
   ] ++ tail43
 
 noncomputable def tail41 : Wasm.Program :=
@@ -1182,7 +1182,7 @@ noncomputable def tail39 : Wasm.Program :=
   .localSet 431,
   .localGet 0,
   .localSet 432,
-  .call 54
+  .call 58
   ] ++ tail40
 
 noncomputable def tail38 : Wasm.Program :=
@@ -1203,7 +1203,7 @@ noncomputable def tail38 : Wasm.Program :=
   .localSet 425,
   .localGet 0,
   .localSet 426,
-  .call 51
+  .call 55
   ] ++ tail39
 
 noncomputable def tail37 : Wasm.Program :=
@@ -1327,7 +1327,7 @@ noncomputable def tail34 : Wasm.Program :=
   .localSet 376,
   .localGet 0,
   .localSet 377,
-  .call 50
+  .call 54
   ] ++ tail35
 
 noncomputable def tail33 : Wasm.Program :=
@@ -1368,7 +1368,7 @@ noncomputable def tail32 : Wasm.Program :=
   .localSet 364,
   .localGet 0,
   .localSet 365,
-  .call 49
+  .call 53
   ] ++ tail33
 
 noncomputable def tail31 : Wasm.Program :=
@@ -1394,7 +1394,7 @@ noncomputable def tail30 : Wasm.Program :=
   .localSet 356,
   .localGet 0,
   .localSet 357,
-  .call 50
+  .call 54
   ] ++ tail31
 
 noncomputable def tail29 : Wasm.Program :=
@@ -1435,7 +1435,7 @@ noncomputable def tail28 : Wasm.Program :=
   .localSet 344,
   .localGet 0,
   .localSet 345,
-  .call 49
+  .call 53
   ] ++ tail29
 
 noncomputable def tail27 : Wasm.Program :=
@@ -1461,7 +1461,7 @@ noncomputable def tail26 : Wasm.Program :=
   .localSet 336,
   .localGet 0,
   .localSet 337,
-  .call 50
+  .call 54
   ] ++ tail27
 
 noncomputable def tail25 : Wasm.Program :=
@@ -1502,7 +1502,7 @@ noncomputable def tail24 : Wasm.Program :=
   .localSet 324,
   .localGet 0,
   .localSet 325,
-  .call 49
+  .call 53
   ] ++ tail25
 
 noncomputable def tail23 : Wasm.Program :=
@@ -1528,7 +1528,7 @@ noncomputable def tail22 : Wasm.Program :=
   .localSet 316,
   .localGet 0,
   .localSet 317,
-  .call 50
+  .call 54
   ] ++ tail23
 
 noncomputable def tail21 : Wasm.Program :=
@@ -1572,7 +1572,7 @@ noncomputable def tail20 : Wasm.Program :=
   .localSet 304,
   .localGet 0,
   .localSet 305,
-  .call 49
+  .call 53
   ] ++ tail21
 
 noncomputable def tail19 : Wasm.Program :=
@@ -1738,7 +1738,7 @@ noncomputable def tail19 : Wasm.Program :=
   .localGet 293,
   .localGet 294,
   .localGet 295,
-  .call 48
+  .call 52
   ] ++ tail20
 
 noncomputable def tail18 : Wasm.Program :=
@@ -2321,6 +2321,6 @@ noncomputable def tail0 : Wasm.Program :=
   .call 8
   ] ++ tail1
 
-theorem program_eq : func71 = tail0 := by rfl
+theorem program_eq : func74 = tail0 := by rfl
 
 end Project.TinyGpt2Hidden.HiddenCode
