@@ -28,6 +28,15 @@ def writeElement (store : Store Unit) (ptr : UInt64) (index : Nat) (value : UInt
     Store Unit :=
   { store with mem := store.mem.write64 (wordAddress ptr (index + 1)) value }
 
+theorem generatedElementAddress (ptr : UInt64) (index : Nat) :
+    UInt32.ofNat ((ptr+(UInt64.ofNat index*1+1)*8).toNat % 2^32) = wordAddress ptr (index+1) := by
+  have hOffset : (UInt64.ofNat index*1+1)*8 = UInt64.ofNat (8*(index+1)) := by
+    rw [UInt64.mul_one]
+    change (UInt64.ofNat index+UInt64.ofNat 1)*UInt64.ofNat 8 = _
+    rw [← UInt64.ofNat_add, ← UInt64.ofNat_mul, Nat.mul_comm (index+1) 8]
+  rw [hOffset]
+  exact (Memory.toUInt32_eq_ofNat _).symm
+
 @[simp] theorem writeElement_pages (store : Store Unit) (ptr : UInt64)
     (index : Nat) (value : UInt64) :
     (writeElement store ptr index value).mem.pages = store.mem.pages := Mem.write64_pages ..
