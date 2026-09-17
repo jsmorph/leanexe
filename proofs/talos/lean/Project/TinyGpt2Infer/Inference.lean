@@ -4,7 +4,7 @@ import Project.TinyGpt2Infer.OutputExit
 namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.Runtime Project.ProofKit ArrayPushLayout
 
-theorem infer_export : module.findExport "infer" = some 75 := rfl
+theorem infer_export : module.findExport "infer" = some 78 := rfl
 
 theorem inference_output_reservation (start : Nat) : top start 256 = start + 277560 := by
   unfold top root base capacity
@@ -12,14 +12,14 @@ theorem inference_output_reservation (start : Nat) : top start 256 = start + 277
 
 theorem inference_initial_memory : top 24056 256 = 301616 ∧ top 24056 256 ≤ 16 * 65536 := by decide
 
-theorem inference_stages : func75 = func75.take 52 ++ (func75.drop 52).take 15 ++
-    (func75.drop 67).take 22 ++ [.block 0 0 [.loop 0 0 outputBody]] ++ func75.drop 90 := by
-  have hPrefix : func75.take 89 =
-      func75.take 52 ++ (func75.drop 52).take 15 ++ (func75.drop 67).take 22 := by
+theorem inference_stages : func78 = func78.take 52 ++ (func78.drop 52).take 15 ++
+    (func78.drop 67).take 22 ++ [.block 0 0 [.loop 0 0 outputBody]] ++ func78.drop 90 := by
+  have hPrefix : func78.take 89 =
+      func78.take 52 ++ (func78.drop 52).take 15 ++ (func78.drop 67).take 22 := by
     rw [show 89 = 67 + 22 from rfl, List.take_add,
       show 67 = 52 + 15 from rfl, List.take_add]
   calc
-    func75 = func75.take 89 ++ [.block 0 0 [.loop 0 0 outputBody]] ++ func75.drop 90 :=
+    func78 = func78.take 89 ++ [.block 0 0 [.loop 0 0 outputBody]] ++ func78.drop 90 :=
       inference_loop_shape
     _ = _ := by rw [hPrefix]
 
@@ -36,7 +36,7 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     (hMemory : top start 256 ≤ initial.mem.pages * 65536)
     (hPages : initial.mem.pages ≤ 65536)
     (hCap : initial.mem.pages ≤ initial.memoryCap module 0) :
-    TerminatesWith env module 75 initial [.i64 t3, .i64 t2, .i64 t1, .i64 t0, .i64 pointer]
+    TerminatesWith env module 78 initial [.i64 t3, .i64 t2, .i64 t1, .i64 t0, .i64 pointer]
       (fun final values => values = [.i64 (node start 256).root] ∧
         UInt64Array.At final (node start 256).root (infer weights t0 t1 t2 t3) ∧
         UInt64Array.At final pointer weights ∧
@@ -63,8 +63,8 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     dsimp only [prepared]
     rw [OutputMemory.prepare_store]
     rfl
-  refine TerminatesWith.of_wp_entry_for (f := func75Def) rfl ?_ (by decide)
-  change wp module func75 _ initial (func75Def.toLocals (inferenceParams pointer t0 t1 t2 t3)) env
+  refine TerminatesWith.of_wp_entry_for (f := func78Def) rfl ?_ (by decide)
+  change wp module func78 _ initial (func78Def.toLocals (inferenceParams pointer t0 t1 t2 t3)) env
   rw [inference_stages]
   simp only [List.append_assoc]
   apply inference_prefix_spec env initial pointer weights t0 t1 t2 t3 hWeights hSize ht0 ht1 ht2 ht3
