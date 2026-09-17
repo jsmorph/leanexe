@@ -27,20 +27,30 @@ private def token (expected : String) : Parser Unit := do
 private def tokens (expected : List String) : Parser Unit :=
   expected.forM token
 
+/-- Canonical ASCII decimal parsing over a structural list. Avoids slice
+iterator reduction and accepts no leading zeros, separators or alternate bases. -/
+private def decimal : List Char → Option Nat
+  | [] => none
+  | ['0'] => some 0
+  | '0' :: _ => none
+  | chars =>
+      if chars.all (fun c => '0' ≤ c && c ≤ '9') then
+        some (chars.foldl (fun n c => n * 10 + (c.toNat - 48)) 0)
+      else none
+
 private def natural (unsigned : Bool := false) : Parser Nat := do
   let actual ← match ← get with
     | t :: rest => set rest; pure t
     | [] => throw "expected decimal integer, found end of input"
   let digits := if unsigned then
       match actual.toList.reverse with
-      | 'u' :: rest => String.ofList rest.reverse
-      | _ => ""
-    else actual
-  match digits.toNat? with
-  | none => throw s!"invalid decimal integer: {actual}"
+      | 'u' :: rest => rest.reverse
+      | _ => []
+    else actual.toList
+  match decimal digits with
+  | none => throw s!"invalid canonical decimal integer: {actual}"
   | some n =>
-      if actual != toString n ++ (if unsigned then "u" else "") || n > 4294967295 then
-        throw s!"noncanonical or out-of-range decimal integer: {actual}"
+      if n > 4294967295 then throw s!"out-of-range decimal integer: {actual}"
       return n
 
 private def constant (name : String) : Parser Nat := do
@@ -103,12 +113,24 @@ private def moduleParser : Parser GemmSyntax := do
   }
   return ⟨config, .guardedRowMajor⟩
 
+/-- Token-level boundary for compositional artifact checking. -/
+def parseGemmTokens (ts : List String) : Except String GemmSyntax := do
+  let (ast, _) ← moduleParser.run ts
+  return ast
+
 /-- Parses actual source text without consulting a manifest or the renderer.
 Successful parsing consumes the complete token stream. -/
 def parseGemm (source : String) : Except String GemmSyntax := do
   let ts ← tokenize source
-  let (ast, _) ← moduleParser.run ts
-  return ast
+  parseGemmTokens ts
+
+/-- Compose checked lexer and token-parser results without reevaluating either. -/
+theorem parseGemm_of_tokens (source : String) (ts : List String) (ast : GemmSyntax)
+    (lexed : tokenize source = .ok ts) (parsed : parseGemmTokens ts = .ok ast) :
+    parseGemm source = .ok ast := by
+  unfold parseGemm
+  rw [lexed]
+  simpa only [bind, Except.bind] using parsed
 
 /-- Parsed syntax plus the explicitly checked resource/index envelope. -/
 structure CheckedGemm where
