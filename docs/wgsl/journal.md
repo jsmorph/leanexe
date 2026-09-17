@@ -904,3 +904,14 @@ removed that boundary and the complete network module checked in 5.9 seconds.
 A preliminary bit-vector tactic introduced native decision axioms, so that
 approach was discarded. The accepted sign-setting specification uses explicit
 mask/add word operations with direct logical correspondence instead.
+
+The new GptFloatArtifact theorem now composes exact hidden Wasm decoding,
+validation and execution with the parsed WGSL head, bridge readback and finish
+Wasm. Its output contract compares both the raw binary32 head word and the
+final binary64 result with the independent vector algorithm. It is parameterized
+by runtime parameter arrays, all four-byte contexts and all four positions;
+it has no real-valued reference or error allowance. Native transfer/conversion
+and restricted-profile runtime conformance remain explicit premises. The shared
+head bridge proof now exposes the raw Dot result before bias addition, avoiding
+an inference of raw-word equality from a potentially non-injective final add.
+The artifact module checked in 3.8 seconds with standard logical axioms only.

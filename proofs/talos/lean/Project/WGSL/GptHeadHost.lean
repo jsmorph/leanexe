@@ -1,4 +1,4 @@
-import Project.WGSL.GptHeadCheckpoint
+import Project.WGSL.GptHead
 import Project.WGSL.HostExecution
 import Project.WGSL.FinishBinary
 import Project.WGSL.DotBuffers
@@ -14,14 +14,15 @@ def Inputs (w : Array UInt64) (x : Project.TinyGpt2.Row) (memory : Mem) (a b : U
   (∀ i, i < 1024 → (HostExecution.input GptHead.config memory a b).buffers.b i =
     HeadNumerical.converted (GptHead.matrixBuffer w) i)
 
-theorem dispatch_result {source metadata} (package : Binary32.Package source metadata)
+theorem dispatch_word {source metadata} (package : Binary32.Package source metadata)
     (shape : package.kernel.ast.config = GptHead.config)
     (w : Array UInt64) (x : Project.TinyGpt2.Row) (memory : Mem) (a b : UInt32)
     (inputs : Inputs w x memory a b) (output : WordBuffer)
     (run : (Dispatch.model Binary32.semantics).Exec package.tag.profile package.kernel
       (HostExecution.input package.kernel.ast.config memory a b) output) (j : Fin 256) :
-    GptHead.Result package.tag.profile w x j
-      (HeadNumerical.finish (output j.val) (GptHead.bias w j)) := by
+    Dot Binary32.semantics package.tag.profile GptHead.config
+      (HeadNumerical.converted (GptHead.rowBuffer x))
+      (HeadNumerical.converted (GptHead.matrixBuffer w)) 0 j.val 4 (output j.val) := by
   have hr : 0 < package.kernel.ast.config.rows := by rw [shape]; decide
   have hc : j.val < package.kernel.ast.config.cols := by rw [shape]; exact j.isLt
   have h := package.artifact.execution.corresponds _ output (HostExecution.input_valid ..) run 0 j.val hr hc
@@ -31,7 +32,7 @@ theorem dispatch_result {source metadata} (package : Binary32.Package source met
     0 j.val package.kernel.ast.config.inner (output (0*package.kernel.ast.config.cols+j.val)) at h
   rw [shape] at h
   simp only [Nat.zero_mul, Nat.zero_add] at h
-  refine ⟨output j.val, h.congr_buffers _ _ ?_ ?_, rfl⟩
+  apply h.congr_buffers _ _
   · intro i hi
     simpa only [Nat.zero_mul, Nat.zero_add] using inputs.1 i hi
   · intro i hi
@@ -39,6 +40,16 @@ theorem dispatch_result {source metadata} (package : Binary32.Package source met
     change i*256+j.val < 1024
     change i < 4 at hi
     omega
+
+theorem dispatch_result {source metadata} (package : Binary32.Package source metadata)
+    (shape : package.kernel.ast.config = GptHead.config)
+    (w : Array UInt64) (x : Project.TinyGpt2.Row) (memory : Mem) (a b : UInt32)
+    (inputs : Inputs w x memory a b) (output : WordBuffer)
+    (run : (Dispatch.model Binary32.semantics).Exec package.tag.profile package.kernel
+      (HostExecution.input package.kernel.ast.config memory a b) output) (j : Fin 256) :
+    GptHead.Result package.tag.profile w x j
+      (HeadNumerical.finish (output j.val) (GptHead.bias w j)) := by
+  exact ⟨output j.val, dispatch_word package shape w x memory a b inputs output run j, rfl⟩
 
 /-- The actual bridge call terminates, and its final memory determines a head
 result. Running the independently verified finish artifact on the promoted
@@ -72,6 +83,7 @@ theorem completes {source metadata} (package : Binary32.Package source metadata)
     c ready.2.2.1 hj, download_word st.mem c buffer hj]
   exact dispatch_result package shape w x st.mem a b inputs (words buffer) run j
 
+#print axioms dispatch_word
 #print axioms dispatch_result
 #print axioms completes
 end Project.WGSL.GptHeadHost
