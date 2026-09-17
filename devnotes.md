@@ -14368,3 +14368,40 @@ All audits report standard logical axioms.  The approved Node test passes
 all fourteen WASM clipping and rejection cases, including signed zero,
 subnormal bounds, extreme finite values, invalid shapes, and nonfinite
 inputs.  Documentation checks pass for 136 maintained Markdown files.
+
+### Combined checked entry
+
+The new inferChecked source rejects out-of-range byte tokens, runs the
+clipping checker, and calls inference only for the accepted 2,488-word
+result.  Rejection returns an empty array.  Its generated module has
+19,397 bytes.  Source proofs establish accepted output equality, invalid
+weight and token rejection, finite logits, and the composed real-error
+bound against clipped weights.  These check in 2.5 seconds.  The first
+check found an argument-order error and a simplification that unfolded
+the layout size before using the acceptance hypothesis.  Both are fixed.
+
+The generated functions expose an ABI boundary: internal array parameters
+and results carry owner and data-pointer slots, while public entries
+expose only data pointers.  The existing public prepare and infer execution
+theorems therefore cannot transfer by function-index renaming.  Checked
+renaming does transfer all 78 numerical functions, including hidden and
+logit, and the six scalar checker functions.  The region proof checks in
+18 seconds and the component adapters in 1.9 seconds.  Every audit reports
+standard logical axioms.  Internal preparation, the output loop, and the
+enclosing entry remain open.
+
+The ownership report confirms that prepare returns a fresh array.  The
+inference helper's fold result lacks a fresh-result summary, so the compiler
+retains the temporary clipped weights until the caller resets the arena.
+The combined entry emits no temporary-weight release.  Its memory proof
+must account for that allocation.  Compiler ownership changes are outside
+this implementation step.
+
+The Node test passes 768 bit-for-bit logit comparisons at clipping bounds
+10, 1, and 0, plus eight rejection cases covering shape, nonfinite input,
+invalid bound, and all four token positions.  The initial invocation failed
+with EPERM while spawning the Lean runner.  The approved rerun passed.
+The focused source-artifact gate regenerates the same module, checks its
+annotations, and builds the partial specification.  The registry records
+this case as incomplete.  The existing assoc_list mismatch still blocks
+the aggregate source gate.  Documentation checks pass for all 136 files.

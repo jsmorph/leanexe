@@ -6,6 +6,7 @@
 -/
 
 import Project.Runtime.Defs
+import Project.TinyGpt2Checked.Program
 import Project.AppendBang.Program
 import Project.AssocList.Program
 import Project.BoxFree.Program
@@ -363,5 +364,10 @@ example : eraseTypeIdx Project.TinyGpt2Infer.func79Def = eraseTypeIdx allocFuncD
 example : eraseTypeIdx Project.TinyGpt2Infer.func80Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Infer.func81Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Infer.func82Def = eraseTypeIdx (releaseFuncDef 82) := rfl
+
+example : eraseTypeIdx Project.TinyGpt2Checked.func86Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Checked.func87Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Checked.func88Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.TinyGpt2Checked.func89Def = eraseTypeIdx (releaseFuncDef 89) := rfl
 
 end Project.Runtime
