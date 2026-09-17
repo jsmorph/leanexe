@@ -70,6 +70,15 @@ mutual
     | .sqrtF64 => [s!"{pad indent}f64.sqrt"]
     | .i64ReinterpretF64 => [s!"{pad indent}i64.reinterpret_f64"]
     | .f64ReinterpretI64 => [s!"{pad indent}f64.reinterpret_i64"]
+    | .addF32 => [s!"{pad indent}f32.add"]
+    | .subF32 => [s!"{pad indent}f32.sub"]
+    | .mulF32 => [s!"{pad indent}f32.mul"]
+    | .divF32 => [s!"{pad indent}f32.div"]
+    | .sqrtF32 => [s!"{pad indent}f32.sqrt"]
+    | .i32ReinterpretF32 => [s!"{pad indent}i32.reinterpret_f32"]
+    | .f32ReinterpretI32 => [s!"{pad indent}f32.reinterpret_i32"]
+    | .f32DemoteF64 => [s!"{pad indent}f32.demote_f64"]
+    | .f64PromoteF32 => [s!"{pad indent}f64.promote_f32"]
     | .block body =>
         [s!"{pad indent}block"] ++ instrListLines (indent + 1) body ++
           [s!"{pad indent}end"]

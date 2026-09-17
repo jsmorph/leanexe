@@ -1,5 +1,6 @@
 import Lean
 import LeanExe.Float64
+import LeanExe.Float32
 
 namespace LeanExe.IR
 
@@ -37,7 +38,23 @@ inductive U64Op where
   | f64MulBits
   | f64SubBits
   | f64DivBits
+  | f32AddBits
+  | f32SubBits
+  | f32MulBits
+  | f32DivBits
   deriving BEq, Repr
+
+inductive FloatUnaryOp where
+  | f32SqrtBits
+  | f32ToF64Bits
+  | f64ToF32Bits
+  deriving BEq, Repr
+
+def FloatUnaryOp.eval (op : FloatUnaryOp) (value : UInt64) : UInt64 :=
+  match op with
+  | .f32SqrtBits => (LeanExe.Float32.sqrtBits value.toUInt32).toUInt64
+  | .f32ToF64Bits => LeanExe.Float32.toFloat64Bits value.toUInt32
+  | .f64ToF32Bits => (LeanExe.Float32.ofFloat64Bits value).toUInt64
 
 inductive RuntimeStat where
   | allocs
@@ -69,6 +86,7 @@ mutual
     | trap
     | u64 (value : Nat)
     | f64SqrtBits (value : Expr)
+    | floatUnary (op : FloatUnaryOp) (value : Expr)
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
@@ -212,6 +230,7 @@ mutual
     | .trap => 0
     | .u64 value => UInt64.ofNat value
     | .f64SqrtBits value => LeanExe.Float64.sqrtBits (value.eval module_ store)
+    | .floatUnary op value => op.eval (value.eval module_ store)
     | .u64Bin op left right =>
         let leftValue := left.eval module_ store
         let rightValue := right.eval module_ store
@@ -233,6 +252,10 @@ mutual
         | .f64MulBits => LeanExe.Float64.mulBits leftValue rightValue
         | .f64SubBits => LeanExe.Float64.subBits leftValue rightValue
         | .f64DivBits => LeanExe.Float64.divBits leftValue rightValue
+        | .f32AddBits => (LeanExe.Float32.addBits leftValue.toUInt32 rightValue.toUInt32).toUInt64
+        | .f32SubBits => (LeanExe.Float32.subBits leftValue.toUInt32 rightValue.toUInt32).toUInt64
+        | .f32MulBits => (LeanExe.Float32.mulBits leftValue.toUInt32 rightValue.toUInt32).toUInt64
+        | .f32DivBits => (LeanExe.Float32.divBits leftValue.toUInt32 rightValue.toUInt32).toUInt64
     | .ite cond thenValue elseValue =>
         if cond.eval module_ store then
           thenValue.eval module_ store

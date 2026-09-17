@@ -166,7 +166,10 @@ def knownExternal? (name : Name) : Option Classification :=
   else if LeanExe.Extract.Core.compilerPrimitiveName name then
     some {
       status := "implemented"
-      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? name).isSome ||
+          (LeanExe.Extract.Core.floatUnaryPrimitive? name).isSome then
+        "compiler-recognized binary32 bit-pattern floating-point intrinsic"
+      else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit, ``PUnit].contains name then
     some { status := "implemented", reason := "primitive or erased unit type in the intended subset" }
@@ -283,7 +286,10 @@ def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) :
   if LeanExe.Extract.Core.compilerPrimitiveName info.name then
     {
       status := "implemented"
-      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? info.name).isSome ||
+          (LeanExe.Extract.Core.floatUnaryPrimitive? info.name).isSome then
+        "compiler-recognized binary32 bit-pattern floating-point intrinsic"
+      else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
   else if validatorImplementedNames.contains info.name then
     { status := "implemented", reason := "accepted by the validator demo compiler path" }

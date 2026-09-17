@@ -126,6 +126,28 @@ wasmtime run --invoke choose build/choose.wasm 0 41 99
 
 Use `UInt64` unless the source logic specifically needs bounded `Nat` operations.  `UInt64` arithmetic wraps like Lean's fixed-width integer operations.  Runtime `Nat` is bounded to the compiler's `i64` representation, and overflowing `Nat` addition or multiplication traps.
 
+### Floating-point bit patterns
+
+Import `LeanExe.Float32` for binary32 arithmetic over `UInt32` encodings,
+or `LeanExe.Float64` for binary64 arithmetic over `UInt64` encodings.
+Both modules provide `addBits`, `subBits`, `mulBits`, `divBits`, and
+`sqrtBits`.  The binary32 module also provides `toFloat64Bits` and
+`ofFloat64Bits`.  Each arithmetic operation rounds at its declared precision.
+The public ABI passes the raw integer words in `i64` slots.
+
+```lean
+import LeanExe.Float32
+
+def addSingle (left right : UInt32) : UInt32 :=
+  LeanExe.Float32.addBits left right
+```
+
+For example, `1065353216` encodes binary32 one, and `1073741824` encodes
+binary32 two.  Integer comparison of these words compares their encodings,
+so callers must implement any needed floating-point ordering explicitly.
+The [numeric semantics](spec.md#numeric-semantics) state the supported
+operations and current proof boundary.
+
 ## Structures and Inductives
 
 Use structures for named fixed-width records.  Public structures flatten by runtime field order after proof-field erasure.  Internal structures may contain recursive-inductive pointer fields, byte arrays, arrays, or other supported values when their use stays inside accepted code.
