@@ -3,3 +3,4 @@ import Project.Gpt2CachedStep.RowInvStd
 import Project.Gpt2CachedStep.LinearRows.Heap
 import Project.Gpt2CachedStep.Release
 import Project.Gpt2CachedStep.LayerNorm.Spec
+import Project.Gpt2CachedStep.CachedScore.Spec
