@@ -91,6 +91,14 @@ product's inputs or arithmetic order. -/
 def slice (weights : Matrix) (start : Nat) : Matrix :=
   fun k col => weights k (start + col)
 
+theorem columnAccum_slice (arithmetic : ScalarArithmetic) (x : WordBuffer)
+    (weights : Matrix) (start col count : Nat) :
+    columnAccum arithmetic x (slice weights start) col count =
+      columnAccum arithmetic x weights (start + col) count := by
+  induction count with
+  | zero => rfl
+  | succ count ih => simp only [columnAccum, ih, slice]
+
 theorem slice_run_iff {s p x weights start col k result} :
     ColumnRun s p x (slice weights start) col k result ↔
       ColumnRun s p x weights (start + col) k result := by
