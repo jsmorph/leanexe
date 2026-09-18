@@ -15376,3 +15376,13 @@ branches.  The complete module checks in 1.4 seconds, and `add_eq` uses
 only `propext`, `Classical.choice`, and `Quot.sound`.  No runtime or compiler
 code changed.  The remaining arithmetic correspondences are subtraction,
 multiplication, division, and square root.
+
+### Complete source FP32 subtraction
+
+The [subtraction correspondence](proofs/talos/lean/Project/ProofKit/F32Sub.lean)
+proves exact source/Talos equality for every pair of input words.  It
+reuses addition after proving that Talos's sign-bit change agrees with
+negating Lean's decoded value.  The proof covers NaNs through the same
+decoding equation.  An initial proof unfolded integer negation too far.
+Using the existing double-negation theorem kept that step within its
+algebraic interface.  The module checks in 1.2 seconds with standard axioms.
