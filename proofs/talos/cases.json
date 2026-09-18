@@ -863,6 +863,16 @@
       "annotations": true,
       "behaviorTheorems": ["Project.Gpt2AttentionScore.Spec.attentionScore_exact"],
       "complete": true
+    },
+    {
+      "name": "gpt2_linear_rows",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.linearRows",
+      "leanModule": "Gpt2LinearRows",
+      "specTarget": "Project.Gpt2LinearRows.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2LinearRows.Spec.linearRows_exact"],
+      "complete": false
     }
   ]
 }
