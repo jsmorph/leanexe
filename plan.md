@@ -6,9 +6,11 @@ and cached attention.  Tests compare every logit at context lengths one
 through 128 with PyTorch.  Run it with
 `tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
 The user resumed formal proof development on 2026-09-17, prioritizing
-agreement between generated WASM and the Lean algorithm.  Packed reads
-now have exact source-agreement and store-preservation proofs.  Packed
-construction and tensor traversal are next.  Numerical bounds remain deferred.  The earlier
+agreement between generated WASM and the Lean algorithm.  Exact execution
+proofs now cover all transformer kernels and the complete hidden-state
+function, including embedding, all twelve blocks, cache assembly, and cleanup.
+Vocabulary projection and the exported cached step remain open.
+Numerical bounds remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.
