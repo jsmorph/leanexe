@@ -15281,3 +15281,22 @@ rewriting the quotient calculation.  The final proof uses induction and
 quotient/remainder identities.  It checks in 1.3 seconds and uses only
 standard axioms.  The source adapters and comparison test check in 1.3 and
 1.1 seconds.  No source algorithm or compiler change was required.
+
+### FP32 encoding and source input conversion
+
+The [encoding lemmas](proofs/talos/lean/Project/ProofKit/F32Encoding.lean)
+relate Lean's unpacked sign, exponent, and significand to Talos's raw-word
+fields for every input.  They also relate field concatenation to Talos's
+encoder.  The [packing lemmas](proofs/talos/lean/Project/ProofKit/F32Packing.lean)
+prove that packing a decoded word preserves it except for the specified
+canonicalization of NaNs.  Consequently, decoding `Float32.Model.ofBits`
+agrees with direct decoding of the supplied word.  All five source
+operations now have checked equations over that shared decoding.
+
+The field proof required a reusable bit-vector concatenation equation in
+terms of natural addition.  Expanding bitwise OR directly did not expose
+the disjoint fields to arithmetic automation.  The proof now applies
+`Nat.shiftLeft_add_eq_or_of_lt` before arithmetic reasoning.  Explicit
+normalization of powers also prevents simplification from missing field
+bounds.  The encoding module checks in 1.4 seconds and the packing module
+in 1.5 seconds.  Axiom reports contain only standard axioms.
