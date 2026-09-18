@@ -24,3 +24,4 @@ import Project.Gpt2CachedStep.CachedBlock.Spec
 import Project.Gpt2CachedStep.CachedHidden.Source
 import Project.Gpt2CachedStep.CachedHidden.Code
 import Project.Gpt2CachedStep.CachedHidden.Embedding
+import Project.Gpt2CachedStep.CachedHidden.LayerAppend

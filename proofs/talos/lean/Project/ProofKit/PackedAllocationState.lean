@@ -45,6 +45,27 @@ theorem allocatedFrame_get_field (frame : Locals) (start : Nat)
     (frame.locals.take (start - frame.params.length)) (frame.locals.drop (start - frame.params.length + 6))
     need previous current capacity next result field hField
 
+theorem allocatedFrame_get_after (frame : Locals) (start : Nat)
+    (need previous current capacity next result : UInt64)
+    (hLower : frame.params.length ≤ start) (hBound : start + 6 ≤ frame.params.length + frame.locals.length)
+    (index : Nat) (hIndex : start + 6 ≤ index) :
+    (allocatedFrame frame start need previous current capacity next result).get index = frame.get index := by
+  have hLength := allocatedFrame_length frame start need previous current capacity next result hLower hBound
+  have hPrefix : (frame.locals.take (start - frame.params.length)).length = start - frame.params.length := by
+    rw [List.length_take, Nat.min_eq_left (by omega)]
+  have hParam : ¬index < frame.params.length := by omega
+  simp only [Locals.get, show (allocatedFrame frame start need previous current capacity next result).params = frame.params from rfl,
+    hParam, ite_false, hLength]
+  split
+  · simp only [allocatedFrame, FixedArraySearch.frame, List.getElem?_append, hPrefix,
+      show ¬index - frame.params.length < start - frame.params.length by omega, ite_false,
+      List.length_cons, List.length_nil,
+      show ¬index - frame.params.length - (start - frame.params.length) < 6 by omega,
+      List.getElem?_drop]
+    congr 1
+    omega
+  · rfl
+
 #print axioms allocatedFrame_get_before
 #print axioms allocatedFrame_get_field
 
@@ -71,6 +92,18 @@ theorem capacityFrame_get_before (frame : Locals) (slot : Nat) (word : UInt64)
 
 theorem capacityFrame_typed (frame : Locals) (slot : Nat) (word : UInt64)
     (h : I64Values frame.locals) : I64Values (capacityFrame frame slot word).locals := h.set _ _
+
+theorem capacityFrame_get_ne (frame : Locals) (slot : Nat) (word : UInt64)
+    (hLower : frame.params.length ≤ slot) (index : Nat) (hIndex : index ≠ slot) :
+    (capacityFrame frame slot word).get index = frame.get index := by
+  unfold capacityFrame Locals.get
+  by_cases hParam : index < frame.params.length
+  · simp only [hParam, ite_true]
+  · simp only [hParam, ite_false, List.length_set]
+    split
+    · simp only [List.getElem?_set, show slot - frame.params.length ≠ index - frame.params.length by omega,
+        ite_false]
+    · rfl
 
 theorem storeWord_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
     (frame : Locals) (slot : Nat) (word : UInt64)
