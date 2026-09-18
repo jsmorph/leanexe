@@ -2,10 +2,11 @@ import Project.Gpt2RowMean.Program
 import Project.Gpt2RowMean.Source
 import Project.ProofKit.PackedWordRead
 import Project.ProofKit.RangeFoldLoop
+import Project.ProofKit.PackedFloatFrame
 
 namespace Project.Gpt2RowMean
 
-open Wasm Project.ProofKit PackedMemory LeanExe.Models.Gpt2
+open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
   match (func1[12]? : Option Wasm.Instruction) with
@@ -68,46 +69,27 @@ theorem step_spec (env : HostEnv Unit) (initial : Store Unit)
       UInt64.toNat_ofNat_of_lt' (by change index + 1 < 18446744073709551616; omega),
       UInt64.toNat_ofNat_of_lt' (by change index < 18446744073709551616; omega)]
     omega
-  have hcast (word : UInt32) : UInt32.ofNat (word.toUInt64.toNat % 2^32) = word := by simp
   simp only [stepCode, func1, List.getElem?_cons_zero, List.getElem?_cons_succ, List.drop, List.dropLast,
-    Nat.reduceEqDiff, List.cons_append, List.nil_append]
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast]
+    List.cons_append, List.nil_append]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   refine wp_iff_cons rfl ?_
   rw [ite_eq_right (by decide)]
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   refine wp_iff_cons rfl ?_
   rw [ite_eq_right (by simpa using hsafe)]
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   refine wp_iff_cons rfl ?_
   rw [ite_eq_right (by simpa using hsafeAdd)]
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   simp only [hadd]
   refine wp_call_tw ((PackedWordRead.exact «module» 0 (some 0) rfl rfl
     env initial 0 ptr input (row * 768 + index) hbytes (by omega)).append_args
     rfl rfl rfl [.f32 (sumPrefix input row index)]) ?_
   rintro final values ⟨out, rfl, rfl, rfl⟩
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast, Wasm.f32Add]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   refine wp_iff_cons rfl ?_
   rw [ite_eq_right (by simpa using hsafeInc)]
-  wp_run [hparams, hlength, htotal, hcounter, hstop, hstride,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte,
-    List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    List.nil_append, List.cons_append, hcast, Wasm.f32Add]
+  wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   apply hnext
   · simp only [RangeFoldLoop.Ready, Locals.get, hparams, hlength, List.length_set,
       List.length_cons, List.length_nil, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
@@ -117,7 +99,6 @@ theorem step_spec (env : HostEnv Unit) (initial : Store Unit)
   · simp only [Accumulator, hparams, hlength, List.length_set, List.getElem?_set,
       Nat.reduceLT, Nat.reduceEqDiff, reduceIte, hstride, sumPrefix_succ,
       LeanExe.Models.Gpt2.word, true_and, and_self]
-    simp only [UInt64.ofNat_uInt32ToNat, and_self]
 
 #print axioms step_spec
 
