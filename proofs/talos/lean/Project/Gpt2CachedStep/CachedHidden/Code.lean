@@ -1,6 +1,6 @@
 import Project.Gpt2CachedStep.Program
 import Project.ProofKit.Annotation
-import Project.ProofKit.PackedAppendCopy
+import Project.ProofKit.PackedAppend
 
 namespace Project.Gpt2CachedStep.CachedHidden
 open Wasm Project.ProofKit
@@ -19,7 +19,15 @@ set_option maxRecDepth 32768 in
 theorem emitted_cacheCopy : (func36.drop 153).take 6 =
     PackedCopy.program 103 107 104 109 none ++ PackedCopy.program 105 107 106 109 (some 104) := rfl
 
+set_option maxRecDepth 32768 in
+theorem emitted_layerAppend : (layerBody.drop 88).take 40 = PackedAppend.program 106 := rfl
+
+set_option maxRecDepth 32768 in
+theorem emitted_cacheAppend : (func36.drop 120).take 40 = PackedAppend.program 103 := rfl
+
 #print axioms emitted_layerCopy
 #print axioms emitted_cacheCopy
+#print axioms emitted_layerAppend
+#print axioms emitted_cacheAppend
 
 end Project.Gpt2CachedStep.CachedHidden
