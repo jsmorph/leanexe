@@ -62,6 +62,13 @@ mutual
     | orI64 : PortableInstruction domain .orI64
     | shlI64 : PortableInstruction domain .shlI64
     | shrUI64 : PortableInstruction domain .shrUI64
+    | f32ReinterpretI32 : PortableInstruction domain .f32ReinterpretI32
+    | i32ReinterpretF32 : PortableInstruction domain .i32ReinterpretF32
+    | f32Add : PortableInstruction domain .f32Add
+    | f32Sub : PortableInstruction domain .f32Sub
+    | f32Mul : PortableInstruction domain .f32Mul
+    | f32Div : PortableInstruction domain .f32Div
+    | f32Sqrt : PortableInstruction domain .f32Sqrt
     | f64ReinterpretI64 : PortableInstruction domain .f64ReinterpretI64
     | i64ReinterpretF64 : PortableInstruction domain .i64ReinterpretF64
     | f64Add : PortableInstruction domain .f64Add
@@ -77,6 +84,8 @@ mutual
     | geUI64 : PortableInstruction domain .geUI64
     | wrapI64 : PortableInstruction domain .wrapI64
     | extendUI32 : PortableInstruction domain .extendUI32
+    | load32 (offset : UInt32) : PortableInstruction domain (.load32 offset)
+    | store32 (offset : UInt32) : PortableInstruction domain (.store32 offset)
     | load64 (offset : UInt32) : PortableInstruction domain (.load64 offset)
     | store64 (offset : UInt32) : PortableInstruction domain (.store64 offset)
     | memorySize : PortableInstruction domain .memorySize
@@ -130,6 +139,13 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.orI64
     | apply PortableInstruction.shlI64
     | apply PortableInstruction.shrUI64
+    | apply PortableInstruction.f32ReinterpretI32
+    | apply PortableInstruction.i32ReinterpretF32
+    | apply PortableInstruction.f32Add
+    | apply PortableInstruction.f32Sub
+    | apply PortableInstruction.f32Mul
+    | apply PortableInstruction.f32Div
+    | apply PortableInstruction.f32Sqrt
     | apply PortableInstruction.f64ReinterpretI64
     | apply PortableInstruction.i64ReinterpretF64
     | apply PortableInstruction.f64Add
@@ -145,6 +161,8 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.geUI64
     | apply PortableInstruction.wrapI64
     | apply PortableInstruction.extendUI32
+    | apply PortableInstruction.load32
+    | apply PortableInstruction.store32
     | apply PortableInstruction.load64
     | apply PortableInstruction.store64
     | apply PortableInstruction.memorySize

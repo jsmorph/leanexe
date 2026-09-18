@@ -20,7 +20,7 @@ private def HasNoReturnCall : Continuation α → Prop
 
 macro "no_return_call_atomic" : tactic => `(tactic|
   (simp only [execOne.eq_def]
-   repeat' (first | split | simp_all [HasNoReturnCall])))
+   repeat' (first | split | simp_all only [HasNoReturnCall])))
 
 private theorem noReturnCall_divUI64 (fuel : Nat) (m : Module) (env : HostEnv α)
     (st : Store α) (s : Locals) :
@@ -101,6 +101,13 @@ private theorem noReturnCall_aux : ∀ fuel,
         | orI64 => no_return_call_atomic
         | shlI64 => no_return_call_atomic
         | shrUI64 => no_return_call_atomic
+        | f32ReinterpretI32 => no_return_call_atomic
+        | i32ReinterpretF32 => no_return_call_atomic
+        | f32Add => no_return_call_atomic
+        | f32Sub => no_return_call_atomic
+        | f32Mul => no_return_call_atomic
+        | f32Div => no_return_call_atomic
+        | f32Sqrt => no_return_call_atomic
         | f64ReinterpretI64 => no_return_call_atomic
         | i64ReinterpretF64 => no_return_call_atomic
         | f64Add => no_return_call_atomic
@@ -116,6 +123,8 @@ private theorem noReturnCall_aux : ∀ fuel,
         | geUI64 => no_return_call_atomic
         | wrapI64 => no_return_call_atomic
         | extendUI32 => no_return_call_atomic
+        | load32 => no_return_call_atomic
+        | store32 => no_return_call_atomic
         | load64 => no_return_call_atomic
         | store64 => no_return_call_atomic
         | memorySize => no_return_call_atomic
