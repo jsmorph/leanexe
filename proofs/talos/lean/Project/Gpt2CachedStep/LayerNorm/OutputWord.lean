@@ -20,7 +20,7 @@ def OutputState (params : List Wasm.Value) (meansOwner meansPtr inversesOwner in
   frame.locals[32]? = some (.i64 inversesOwner) ∧
   frame.locals[33]? = some (.i64 inversesPtr) ∧
   frame.locals[34]? = some (.i64 (UInt64.ofNat (4 * rows))) ∧
-  frame.locals[35]? = some (.i64 (UInt64.ofNat (4 * (rows * 768))))
+  frame.locals[35]? = some (.i64 (UInt64.ofNat (4 * (rows * 768)))) ∧ I64Values frame.locals
 
 set_option maxRecDepth 32768 in
 theorem outputWord_spec (env : HostEnv Unit) (initial : Store Unit)
@@ -47,7 +47,7 @@ theorem outputWord_spec (env : HostEnv Unit) (initial : Store Unit)
     wp «module» (outputWord ++ rest) Q initial
       { frame with values := [.i32 (PackedGenerateLoop.address outputPtr index)] } env := by
   rcases hState with ⟨hParams, hLength, hMeansOwner, hMeansPtr, hMeansSize,
-    hInversesOwner, hInversesPtr, hInversesSize, hBytes⟩
+    hInversesOwner, hInversesPtr, hInversesSize, hBytes, hTyped⟩
   simp only [parameters] at hParams
   have hCounter : frame.locals[36]? = some (.i64 (UInt64.ofNat index)) := by
     simpa [Locals.get, hParams, hLength] using hReady.2.1
@@ -134,9 +134,9 @@ theorem outputWord_spec (env : HostEnv Unit) (initial : Store Unit)
         hLength, List.length_set, List.length_cons, List.length_nil,
         Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte, List.getElem?_set,
         Nat.reduceEqDiff, hCounter, hLengthLocal, hPointer, true_and]
-    · simp only [OutputState, parameters, hLength, List.length_set, List.getElem?_set,
+    · simp (config := { maxDischargeDepth := 64 }) only [OutputState, parameters, hLength, List.length_set, List.getElem?_set,
         Nat.reduceEqDiff, reduceIte, hMeansOwner, hMeansPtr, hMeansSize,
-        hInversesOwner, hInversesPtr, hInversesSize, hBytes, and_self]
+        hInversesOwner, hInversesPtr, hInversesSize, hBytes, I64Values.set, hTyped, and_self]
   · intro result h
     exact hNext result h.1 h.2
 
