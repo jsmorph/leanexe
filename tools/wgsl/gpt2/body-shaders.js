@@ -42,13 +42,37 @@ async function one(item, attempt, existing = null) {
     .map(suffix=>`${name}.${suffix}`));
   return {role,shader,inner,cols,package:destination,sourceDeclaration:name,axioms};
 }
+async function checkVocabulary(attempt, results) {
+  const heads = ["vocabularyLeft", "vocabularyRight"].map(role => {
+    const item = results.find(result => result.role === role);
+    if (!item) throw Error(`Missing vocabulary shader: ${role}`);
+    return {
+      source: item.sourceDeclaration,
+      text: fs.readFileSync(path.join(item.package,"kernel.wgsl"),"utf8"),
+      proof: fs.readFileSync(path.join(item.package,"source-equality.lean.txt"),"utf8"),
+    };
+  });
+  const name = "Project.Gpt2.CheckedVocabularyBodies";
+  const file = path.join(attempt,"vocabulary.lean");
+  write(file, ["import Project.Gpt2.BodyCompile", ...heads.map(head=>head.proof),
+    `theorem ${name} (x embedding : LeanExe.WGSL.WordBuffer) (token : Nat) (ht : token < 50257) :`,
+    `  Project.Gpt2.Matrix.vocabularyBodyRun ${JSON.stringify(heads[0].text)} ${JSON.stringify(heads[1].text)}`,
+    "    x embedding token = Except.ok (some ⟨token, Project.Gpt2.Matrix.vocabulary x embedding token⟩) :=",
+    "  Project.Gpt2.Matrix.vocabulary_from_body_shaders _ _",
+    `    ${heads[0].source}.wgslExecutionCorrect ${heads[1].source}.wgslExecutionCorrect x embedding token ht`,
+    `#print axioms ${name}`, ""].join("\n"));
+  const output = await lean("GPT-2 body shader vocabulary composition",
+    ["lake", "-d", proofRoot, "env", "lean", file], path.join(attempt,"vocabulary.log"));
+  return {theorem:name, semantics:"Project.Gpt2.Matrix.vocabularyBodyRun", axioms:audit(output,[name])};
+}
 async function generate(attempt) {
   attempt = path.resolve(attempt);
   fs.mkdirSync(attempt, {recursive:true});
   await dependencies(attempt);
   const results = [];
   for (const item of plan) results.push(await one(item, attempt));
-  write(path.join(attempt,"results.json"), JSON.stringify({status:"pass",kind:"lean-body-wgsl",results},null,2)+"\n");
+  const vocabulary = await checkVocabulary(attempt, results);
+  write(path.join(attempt,"results.json"), JSON.stringify({status:"pass",kind:"lean-body-wgsl",results,vocabulary},null,2)+"\n");
   return results;
 }
 async function checkExisting(directory, attempt, snapshots) {
@@ -61,7 +85,7 @@ async function checkExisting(directory, attempt, snapshots) {
     write(snapshot,snapshots[item.index]);
     results.push(await one(item,selected,snapshot));
   }
-  return results;
+  return {results, vocabulary:await checkVocabulary(selected, results)};
 }
 module.exports = {plan,generate,checkExisting};
 if (require.main === module) {

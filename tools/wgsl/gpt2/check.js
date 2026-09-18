@@ -41,6 +41,7 @@ async function check(directory) {
   const attempt = fs.mkdtempSync(path.join(parent, "check-"));
   fs.writeFileSync(path.join(attempt, "bundle-manifest.json"), manifestBytes, { flag: "wx" });
   const results = [];
+  let vocabularyVerification = null;
   try {
     const proofRoot = path.join(root, "proofs/talos/lean");
     await lean("GPT-2 matrix proof dependencies", ["lake", "-d", proofRoot, "build", "Project.Gpt2.MatrixArithmetic"],
@@ -51,7 +52,9 @@ async function check(directory) {
     const matrixAxioms = audit(matrixOutput, matrixTheorems);
     need(matrixOutput.split("\n").filter(s => s === "GPT2_MATRIX_PLAN 50").length === 1, "missing checked matrix plan");
     if (bodyCompiler) {
-      results.push(...await require("./body-shaders").checkExisting(directory, attempt, snapshots));
+      const checked = await require("./body-shaders").checkExisting(directory, attempt, snapshots);
+      results.push(...checked.results);
+      vocabularyVerification = checked.vocabulary;
     } else for (const [index, shape] of shapes.entries()) {
       const selected = path.join(attempt, String(index));
       fs.mkdirSync(selected);
@@ -81,7 +84,7 @@ async function check(directory) {
       shaderCompiler: bodyCompiler ? "lean-body-wgsl" : "fixed-gemm-template",
       profile: "leanexe-f32-rne-separate-v1", numericalErrorTolerance: null,
       runtimeConformanceEstablished: false, modelCompositionEstablished: false,
-      matrixAxioms, matrixAssignmentsChecked: 50, vocabularyDecompositionProved: true,
+      matrixAxioms, matrixAssignmentsChecked: 50, vocabularyDecompositionProved: true, vocabularyVerification,
       fusionAlternative: bodyCompiler ? null : "Each output equals the Lean binary32 algorithm for some concrete per-step fused/separate choices",
       scope: "Shader word equality to Lean matrix products, packed layouts, vocabulary decomposition and matrix descriptor plan; no checkpoint contents, float conversions, Wasm, host schedule or driver proof",
       results });

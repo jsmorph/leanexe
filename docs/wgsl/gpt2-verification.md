@@ -16,7 +16,7 @@ entry point is `lean_kernel`, selected by both the native and browser hosts.
 Each compilation checks three theorems: the actual shader parses into the
 recorded statement program, its source interpretation equals the named Lean
 definition, and its execution returns that value at the correct address without
-modeled errors. `Project.Gpt2.BodyCompile.from_body_shader` supplies a fourth
+modeled errors. `Project.Gpt2.Matrix.from_body_shader` supplies a fourth
 checked connection to the existing packed GPT-2 matrix product under concrete
 binary32 arithmetic. All four dependency lists are audited. Generated shaders,
 proof fragments and logs remain under ignored `build/`.
@@ -24,7 +24,14 @@ proof fragments and logs remain under ignored `build/`.
 `wgsl-gpt2-check` recognizes the bundle's `shaderCompiler: lean-body-wgsl`
 declaration and checks its six existing shader texts with `#check_wgsl`, then
 checks their connection to the packed matrix specification. It also retains
-the fifty-matrix routing-plan check. Older bundles without that declaration
+the fifty-matrix routing-plan check. It replays the two vocabulary shader
+certificates together and applies `vocabulary_from_body_shaders` to their
+actual texts. This proves that `vocabularyBodyRun` selects the proper shader
+and local column, shifts the right output address, and returns the Lean
+vocabulary product for every token below 50,257. The receipt records this
+separate composition theorem and its audited dependencies. It is a proof of
+that declared composition, not of the native or browser host implementation.
+Older bundles without that declaration
 continue through the original template-artifact checker described below.
 
 This new path uses the [body compiler's statement execution semantics](body-compiler.md),
