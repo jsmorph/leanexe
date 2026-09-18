@@ -145,3 +145,4 @@ import Project.F64Clip.Spec
 import Project.TinyGpt2Checked.Spec
 import Project.SequenceSoftmax.Spec
 import Project.PackedRead.Spec
+import Project.PackedGenerate.Spec
