@@ -15513,3 +15513,11 @@ that existing objects lie below the heap end.  They impose no numerical
 conditions on tensor contents.  The memory modules check in 1.7 seconds
 with standard axioms.  Explicit store arguments distinguish allocation
 counter updates from memory writes when applying the framing theorem.
+
+### Packed-word calls and scalar range loops
+
+`PackedWordRead.exact` proves the compiler's indexed packed-word reader against `Packed.getUInt32LE!`, including multiplication overflow guards, byte bounds, and preservation of the store.  The theorem takes a module and function index so callers can reuse it after checking the emitted function body.  Lean checks the theorem in 2.2 seconds.
+
+`RangeFoldLoop.program_spec` supplies a decreasing-index proof for read-only range reductions.  Clients prove one iteration and state their accumulator invariant.  The rule imposes no particular scalar operation or loop width.  Lean checks it in 1.4 seconds.  Both axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The GPT-2 row-mean proof now has a checked source prefix recurrence using the established FP32 addition and division correspondences.  The generated reader and generic loop rule are ready.  The generated iteration and entry composition remain in progress.  The first iteration proof exposed a generated-instruction pattern mismatch before any execution obligations ran.  That diagnostic is retained in the proof-session output.  No arithmetic or compiler behavior changed.
