@@ -15319,3 +15319,24 @@ elaboration problem.  Normalizing numeric powers in hypotheses resolved
 the remaining field-comparison rewrites.  The completed module checks in
 1.8 seconds with only standard axioms.  Exponent-alignment invariance and
 the arithmetic-operation theorems remain open.
+
+### Exponent alignment and signed normalization
+
+The [shift lemmas](proofs/talos/lean/Project/ProofKit/F32Shift.lean) prove
+exact cancellation of powers of two through the extended mantissa,
+including its rounding and sticky bits.  The
+[normalization proof](proofs/talos/lean/Project/ProofKit/F32Normalize.lean)
+uses those lemmas to prove that multiplying a nonzero mantissa by a power
+of two and decreasing its exponent preserves Lean's rounded result.
+It then transfers packing to Talos's scaled-magnitude rounder for any
+exponent at least -149 and proves the corresponding signed-normalization
+equation, including the caller-specified sign of zero.
+
+The shared first-shift lemma isolates exponent alignment from the final
+rounding stage.  Composing equal first-shift states avoids duplicating the
+carry proof.  Failed iterations exposed broad simplification of integer
+casts into maxima and constructor-form integers that the arithmetic tactic
+did not normalize.  Restricted simplification and `Int.ofNat_eq_natCast`
+resolved those issues.  The shift and normalization modules check in
+1.4 and 2.1 seconds, with standard axioms.  The next composition relates the
+two aligned signed operands to the exact sum used by Talos.
