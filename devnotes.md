@@ -15340,3 +15340,23 @@ did not normalize.  Restricted simplification and `Int.ofNat_eq_natCast`
 resolved those issues.  The shift and normalization modules check in
 1.4 and 2.1 seconds, with standard axioms.  The next composition relates the
 two aligned signed operands to the exact sum used by Talos.
+
+### Exact source addition for finite nonzero inputs
+
+The [finite-addition proof](proofs/talos/lean/Project/ProofKit/F32AddFinite.lean)
+establishes the scaled value of each aligned operand and then composes
+signed normalization with their exact sum.  The
+[decoded-input proof](proofs/talos/lean/Project/ProofKit/F32Decoded.lean)
+applies it to source words.  `add_eq_talos_finite` proves exact equality
+between `LeanExe.Float32.addBits` and `Wasm.IEEE32.add` for arbitrary finite
+nonzero operands.  The result includes cancellation, subnormal outputs,
+rounding carry, and overflow.  Additional lemmas prove that rounding a
+represented finite nonzero input preserves its word, for use in the
+zero-operand branches.
+
+The finite-addition and decoded-input modules check in 1.9 and 1.3 seconds.
+Their axiom reports contain only standard axioms.  The proof distinguishes
+zero from negative zero at cancellation: two strictly negative operands
+cannot sum to zero.  The remaining addition branches concern signed zero,
+infinities, and NaNs.  Subtraction, multiplication, division, square root,
+and the complete GPT-2 composition remain open.
