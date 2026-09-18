@@ -15455,3 +15455,24 @@ The arithmetic tactic did not infer that multiplication from its factors.
 The final modules check in 1.2 to 2.8 seconds with standard axioms.
 Addition, subtraction, multiplication, and division now have complete
 source correspondences.  Square root remains before tensor composition.
+
+### Complete source FP32 square root
+
+The [square-root rounding lemmas](proofs/talos/lean/Project/ProofKit/F32SqrtRounding.lean)
+prove that Lean's remainder test agrees with Talos's exact midpoint test.
+The [core proof](proofs/talos/lean/Project/ProofKit/F32SqrtCore.lean)
+shows that decoded FP32 inputs produce a 24-bit integer root and relates
+the source radicand to Talos's radicand by power-of-four scaling.  The
+[finite-input composition](proofs/talos/lean/Project/ProofKit/F32SqrtFinite.lean)
+reuses the checked final packing stage.  The
+[complete theorem](proofs/talos/lean/Project/ProofKit/F32Sqrt.lean)
+proves source/Talos equality for every input word, including negative
+values, signed zeros, infinities, and NaNs.
+
+A direct definitional reduction of the carry significand exhausted the
+200,000-heartbeat limit.  Reusing the exact-shift theorem made that step
+explicit and reduced the packing module to 1.9 seconds.  Explicit zero
+shift and integer-cast rewrites removed another expensive failed reduction.
+The square-root modules check in 1.1 to 1.6 seconds with standard axioms.
+All five FP32 arithmetic correspondences are complete.  The generated
+tensor loops and full GPT-2 composition remain open.
