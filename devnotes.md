@@ -15087,3 +15087,44 @@ WAT/binary comparisons, scalar compiler certificates, and image codec and
 integration targets.  The documentation checker accepts 137 maintained
 Markdown files.  Release bookkeeping and the paused model proof work were
 not resumed.
+
+## Resumed pretrained GPT-2 execution proofs
+
+The user resumed formal proof work on 2026-09-17 and deferred numerical
+bounds.  The existing pretrained implementation and cached text completions
+provide the execution baseline.  The first proof target is the existing
+`LeanExe.Examples.Packed.readWord` entry.  Its emitted bounds checks and
+`i32.load` must return the source `LeanExe.Packed.getUInt32LE!` word for
+all valid byte arrays and offsets while preserving the complete store.
+
+The pinned Talos dependency already supplies binary32 execution semantics.
+The GPT-2 source currently uses opaque native Lean `Float32` operations.
+The old tiny model compiles proof-visible `Wasm.IEEE64` operations from the
+proof workspace.  That distinction must remain explicit: a theorem against
+Talos arithmetic alone will not connect the present GPT-2 source to it.
+The plan keeps that source-arithmetic connection as an open obligation.
+
+The new shared packed-memory predicate records contiguous source bytes,
+the 32-bit address limit, and available memory.  Its first theorem connects
+Talos `Mem.read32` to the source packed read and checks in Lean.  The first
+entry proof attempt exposed an explicit-argument requirement in the core
+subtraction lemma and the need to add natural-number reductions to
+`wp_run`.  Neither failure required a compiler change.
+
+The completed entry proof checks in 1.9 seconds, and the shared memory
+lemma in 1.4 seconds.  Both are input-generic.  The proof reuses the Talos
+entry, branch, and straight-line execution rules and the existing unsigned
+integer bridges.  No LTG retrieval or generated-proof agent was used.
+A trial `bv_decide` for the return mask introduced a native-decider axiom.
+It was replaced by the core natural-number mask theorem.  The final
+`readWord_exact` theorem reports only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+`tools/talos-proof.js check packed_read` regenerates the artifact and passes
+the proof.  `node test/packed.js` passes the packed, ownership, and host-file
+tests.  The aggregate proof attempt passes registration consistency but
+stops at the existing `gcd` generated-cache mismatch.  Inspection shows
+that current emission uses two additional local slots in its loop: the
+loop-control local moves from 19 to 21.  This proof change does not modify
+the compiler or that cache.  The focused packed-read result remains the
+accepted result for this milestone.

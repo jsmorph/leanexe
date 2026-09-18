@@ -810,6 +810,17 @@
         "Project.TinyGpt2Seq.Spec.inferChecked_exact"
       ],
       "complete": false
+    },
+    {
+      "name": "packed_read",
+      "module": "LeanExe.Examples.Packed",
+      "entry": "LeanExe.Examples.Packed.readWord",
+      "leanModule": "PackedRead",
+      "specTarget": "Project.PackedRead.Spec",
+      "behaviorTheorems": [
+        "Project.PackedRead.Spec.readWord_exact"
+      ],
+      "complete": true
     }
   ]
 }
