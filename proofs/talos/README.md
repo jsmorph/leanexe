@@ -97,6 +97,16 @@ return an ownership handle.  The [internal linear-row proof](lean/Project/Gpt2Ca
 checks that interface against function 21, including the returned handle,
 exact packed output, input preservation, and the remaining free list.
 
+The [internal normalization theorem](lean/Project/Gpt2CachedStep/LayerNorm/Spec.lean)
+checks function 20 against the Lean `layerNorm` source for variable row
+counts and arbitrary FP32 words.  It composes all three tensor allocations
+and construction loops, both temporary-buffer releases, and the returned
+owner, pointer, and length.  It proves ownership of the exact output,
+the final heap state, and preservation of every protected region.
+The assumptions bound tensor extents and provide capacity for each
+allocation when no free block fits.  The body composition checks in
+1.4 seconds, and the public theorem checks in 1.2 seconds with standard axioms.
+
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
 and preserves every previously owned array.  It covers empty and
