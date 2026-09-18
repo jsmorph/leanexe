@@ -229,3 +229,42 @@ infinities, quiet/signaling NaNs, an unused NaN, and an altered Nat typeclass
 instance. This last case confirms that the source-equality gate rejects the
 extractor's tentative interpretation when the original instance changes the
 meaning. The targeted Lean build and host syntax checks also passed.
+
+## Review: vocabulary proof connection, 2026-09-17
+
+The GPT-2 checker reported `vocabularyDecompositionProved: true` on the new
+body-compiler path, while its composition theorem audit still referred to
+`vocabulary_exact`, whose premises use the legacy template dispatch model.
+The six individual packed-product proofs were present, but there was no
+checked application composing the new vocabulary shader executions. Reusing
+the receipt field without that connection was incorrect.
+
+`MatrixView.columnAccum_slice` now proves the source-ordered slice identity
+for any arithmetic. `bodyColumn_eq` applies a body-compiler certificate to
+a packed product; `vocabulary_from_body_shaders` then proves the declared
+`vocabularyBodyRun` composition for every token below 50,257. It checks the
+local right column and the shifted output address. It does not claim to
+verify a C or JavaScript host schedule. The driver replays both head
+certificates in a single Lean file and audits the resulting specialized
+composition theorem before reporting success, on both generation and checking.
+
+The first targeted build failed because `omega` saw `UInt32.size` as an
+uninterpreted constant in a range proof. Exposing its value with
+`change col < 4294967296` solved that obligation; deprecated `if_pos`/`if_neg`
+uses were also removed. The second targeted build passed without warnings in
+the changed proof modules. Logs are `build/wgsl/review-20260917/vocabulary-build.log`
+and `vocabulary-build-v2.log`.
+
+The installed-shader gate then passed in
+`build/gpt2/shader-checks/check-NRdyF3/verification.json`. All six shader
+texts passed their four audited certificates, and the additional
+`Project.Gpt2.CheckedVocabularyBodies` theorem passed with only `propext`,
+`Classical.choice` and `Quot.sound`. Its proof replays both head certificates
+without invoking the compiler. The receipt names `vocabularyBodyRun` as its
+composition semantics. The fifty matrix assignments also passed. Runtime
+conformance and full model composition remain explicitly unestablished.
+
+No shader operations or runtime hosts changed in this review, and no new
+completion run is claimed. The existing completion evidence remains one
+24-token native greedy run after the previous shader migration, with its full
+trace equal to the previous baseline. Browser inference was not rerun.
