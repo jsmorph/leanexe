@@ -15146,3 +15146,42 @@ splitting conditions and reached the recursion limit.  Keeping the proof
 to explicit conditional reductions and `omega` resolved that elaboration
 problem.  The source module builds in 2.7 seconds and the memory module in
 1.7 seconds.  Their axiom reports contain only the standard three axioms.
+
+### Generated packed construction loop
+
+The shared [packed loop proof](proofs/talos/lean/Project/ProofKit/PackedGenerateLoop.lean)
+now proves termination and exact source bytes for arbitrary word counts
+and word functions.  Its word-computation premise permits scratch-local
+changes while preserving the counter, length, pointer, and a caller-selected
+predicate.  It preserves the page count, non-memory store fields, and all
+bytes outside the output interval.  The output must fit in current memory
+and the 32-bit address range.
+
+The proof reuses the fixed-array copy counter frame, Talos's block and loop
+rules, and the preceding packed-prefix write theorem.  Three remaining
+diagnostics concerned reduction of the taken branch, an ambiguous integer
+conversion lemma, and the reconstructed local frame in the termination
+measure.  Reducing the branch, qualifying the lemma, and exposing the
+definitionally equal frame discharged them.  The shared module checks in
+3.5 seconds after removing unused simplification arguments.
+
+The [generated example proof](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+checks that instruction 42 of the emitted `makeWords` entry is this loop,
+then proves its output equals the Lean source bytes for every count and
+offset.  The word proof uses the core mask and narrowing-conversion
+theorems.  Its first conversion attempt required an explicit `ofNat`
+narrowing lemma.  The next run rejected a trailing `rfl` because the
+simplification had closed the goal.  Removing it completed the proof.
+
+`tools/talos-proof.js check packed_generate` passes regeneration equality
+and builds the example in 1.4 seconds.  The region equality has no axioms.
+The execution theorem uses only `propext`, `Classical.choice`, and
+`Quot.sound`.  The handwritten shared proof is 164 lines, and the example
+is 61 lines.  No LTG retrieval or generated-proof agent was used.
+The registration remains incomplete until allocation and the public return
+are composed with the loop.  The next shared obligation is raw-buffer
+allocation, whose object header differs from the fixed-array header.
+
+The shared-runtime equality checks and registry-import consistency pass.
+The documentation checker accepts 137 maintained Markdown files, and
+`git diff --check` passes.  The registry contains 64 cases, 62 complete.

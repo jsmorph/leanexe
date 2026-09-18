@@ -821,6 +821,17 @@
         "Project.PackedRead.Spec.readWord_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "packed_generate",
+      "module": "LeanExe.Examples.Packed",
+      "entry": "LeanExe.Examples.Packed.makeWords",
+      "leanModule": "PackedGenerate",
+      "specTarget": "Project.PackedGenerate.Spec",
+      "behaviorTheorems": [
+        "Project.PackedGenerate.Spec.generated_loop_spec"
+      ],
+      "complete": false
     }
   ]
 }
