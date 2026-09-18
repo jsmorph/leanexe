@@ -141,8 +141,15 @@ proves function 33 computes the Lean `cachedBlock` result for every layer below
 twelve and position below 128, including both returned buffers and all nine
 temporary releases.  It provides output ownership, separation, and preservation
 of protected input memory.  The body and entry check in 2.4 and 2.1 seconds.
-Cache assembly, the twelve-block traversal, vocabulary projection, and the
-complete cached entry remain open.
+The [complete hidden-state theorem](lean/Project/Gpt2CachedStep/CachedHidden/Spec.lean)
+proves function 36 computes the Lean `cachedHidden` result: token and position
+embedding, all twelve blocks, accumulated updates, final cache concatenation,
+and temporary-buffer cleanup.  It proves termination, exact output bytes,
+ownership, output separation, and protected-input preservation under its
+tensor-extent and allocation-capacity assumptions.  It covers every vocabulary
+token and positions zero through 127.  The body and entry check in 2.9 and
+2.2 seconds with standard axioms.  Vocabulary projection and the complete
+cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
