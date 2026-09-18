@@ -1,6 +1,7 @@
 import Project.Gpt2CachedStep.RowMean
 import Project.Gpt2CachedStep.LayerNorm.Source
 import Project.ProofKit.PackedGenerateLoop
+import Project.ProofKit.I64Frame
 
 namespace Project.Gpt2CachedStep.LayerNorm
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
@@ -23,7 +24,7 @@ theorem emitted_means : (func20.drop 42).take 1 = PackedGenerateLoop.program 10 
 
 def MeansState (params : List Wasm.Value) (rows : Nat) (frame : Locals) : Prop :=
   frame.params = params ∧ frame.locals.length = 74 ∧
-  frame.locals[0]? = some (.i64 (UInt64.ofNat (4 * rows)))
+  frame.locals[0]? = some (.i64 (UInt64.ofNat (4 * rows))) ∧ I64Values frame.locals
 
 set_option maxRecDepth 32768 in
 theorem meansWord_spec (env : HostEnv Unit) (initial : Store Unit)
@@ -42,7 +43,7 @@ theorem meansWord_spec (env : HostEnv Unit) (initial : Store Unit)
         [.i64 (rowMean input index).toUInt64, .i32 (PackedGenerateLoop.address outputPtr index)] } env) :
     wp «module» (meansWord ++ rest) Q initial
       { frame with values := [.i32 (PackedGenerateLoop.address outputPtr index)] } env := by
-  rcases hState with ⟨hParams, hLength, hBytes⟩
+  rcases hState with ⟨hParams, hLength, hBytes, hTyped⟩
   simp only [parameters] at hParams
   have hCounter : frame.locals[1]? = some (.i64 (UInt64.ofNat index)) := by
     simpa [Locals.get, hParams, hLength] using hReady.2.1
@@ -67,8 +68,8 @@ theorem meansWord_spec (env : HostEnv Unit) (initial : Store Unit)
         hLength, List.length_set, List.length_cons, List.length_nil,
         Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte, List.getElem?_set,
         Nat.reduceEqDiff, hCounter, hLengthLocal, hPointer, true_and]
-    · simp only [MeansState, parameters, hLength, List.length_set, List.getElem?_set,
-        Nat.reduceEqDiff, reduceIte, hBytes, and_self]
+    · simp (config := { maxDischargeDepth := 64 }) only [MeansState, parameters, hLength, List.length_set, List.getElem?_set,
+        Nat.reduceEqDiff, reduceIte, hBytes, I64Values.set, hTyped, and_self]
   · intro result h
     exact hNext result h.1 h.2
 
@@ -76,10 +77,10 @@ theorem meansState_advance (params : List Wasm.Value) (rows : Nat) (hParams : pa
     (frame : Locals) (index : Nat) (hValid : frame.validIndex 10)
     (hState : MeansState params rows frame) :
     MeansState params rows (FixedArrayCopy.counterFrame frame 10 index hValid) := by
-  rcases hState with ⟨hFrameParams, hLength, hBytes⟩
-  simp only [MeansState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
+  rcases hState with ⟨hFrameParams, hLength, hBytes, hTyped⟩
+  simp (config := { maxDischargeDepth := 64 }) only [MeansState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
     hLength, List.length_set, List.getElem?_set, Nat.reduceSub, Nat.reduceLT,
-    Nat.reduceEqDiff, reduceIte, hBytes, and_self]
+    Nat.reduceEqDiff, reduceIte, hBytes, I64Values.set, hTyped, and_self]
 
 set_option maxRecDepth 32768 in
 theorem meansLoop_spec (env : HostEnv Unit) (initial : Store Unit)

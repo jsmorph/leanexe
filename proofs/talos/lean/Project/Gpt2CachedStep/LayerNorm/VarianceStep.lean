@@ -21,7 +21,7 @@ def InversesState (params : List Wasm.Value) (meansOwner meansPtr : UInt64) (row
   frame.locals[7]? = some (.i64 meansOwner) ∧
   frame.locals[8]? = some (.i64 meansPtr) ∧
   frame.locals[9]? = some (.i64 (UInt64.ofNat (4 * rows))) ∧
-  frame.locals[10]? = some (.i64 (UInt64.ofNat (4 * rows)))
+  frame.locals[10]? = some (.i64 (UInt64.ofNat (4 * rows))) ∧ I64Values frame.locals
 
 def VarianceState (params : List Wasm.Value) (input : ByteArray)
     (meansOwner meansPtr outputPtr : UInt64) (rows row index : Nat) (frame : Locals) : Prop :=
@@ -49,7 +49,7 @@ theorem varianceStep_spec (env : HostEnv Unit) (initial : Store Unit)
         scaleOffset biasOffset rows) input meansOwner meansPtr outputPtr rows row (index + 1) result →
       wp «module» rest Q initial result env) :
     wp «module» (varianceStep ++ rest) Q initial frame env := by
-  rcases hState with ⟨⟨hParams, hLength, hMeansOwner, hMeansPtr, hMeansSize, hBytes⟩,
+  rcases hState with ⟨⟨hParams, hLength, hMeansOwner, hMeansPtr, hMeansSize, hBytes, hTyped⟩,
     hRowLocal, hTotal, hLengthLocal, hPointer, hStride⟩
   simp only [parameters] at hParams
   have hCounter : frame.locals[63]? = some (.i64 (UInt64.ofNat index)) := by
@@ -112,9 +112,10 @@ theorem varianceStep_spec (env : HostEnv Unit) (initial : Store Unit)
       List.length_cons, List.length_nil, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
       reduceIte, List.getElem?_set, Nat.reduceEqDiff, hStop, hInc, true_and]
     rfl
-  · simp only [VarianceState, InversesState, parameters, hLength, List.length_set, List.getElem?_set,
+  · simp (config := { maxDischargeDepth := 64 }) only [VarianceState, InversesState, parameters, hLength, List.length_set, List.getElem?_set,
       Nat.reduceLT, Nat.reduceEqDiff, reduceIte, hMeansOwner, hMeansPtr, hMeansSize, hBytes,
-      hRowLocal, hLengthLocal, hPointer, hStride, variancePrefix_succ, word, and_self]
+      hRowLocal, hLengthLocal, hPointer, hStride, variancePrefix_succ, word,
+      I64Values.set, hTyped, and_self]
 
 #print axioms varianceStep_spec
 

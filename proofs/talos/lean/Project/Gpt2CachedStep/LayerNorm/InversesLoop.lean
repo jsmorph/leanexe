@@ -33,7 +33,7 @@ theorem inversesWord_spec (env : HostEnv Unit) (initial : Store Unit)
          .i32 (PackedGenerateLoop.address outputPtr row)] } env) :
     wp «module» (inversesWord ++ rest) Q initial
       { frame with values := [.i32 (PackedGenerateLoop.address outputPtr row)] } env := by
-  rcases hState with ⟨hParams, hLength, hMeansOwner, hMeansPtr, hMeansSize, hBytes⟩
+  rcases hState with ⟨hParams, hLength, hMeansOwner, hMeansPtr, hMeansSize, hBytes, hTyped⟩
   simp only [parameters] at hParams
   have hCounter : frame.locals[11]? = some (.i64 (UInt64.ofNat row)) := by
     simpa [Locals.get, hParams, hLength] using hReady.2.1
@@ -53,9 +53,10 @@ theorem inversesWord_spec (env : HostEnv Unit) (initial : Store Unit)
       input meansOwner meansPtr outputPtr rows row index)
   · decide
   · simp [RangeFoldLoop.Ready, Locals.get, hLength]
-  · simp only [VarianceState, InversesState, parameters, hLength, List.length_set,
+  · simp (config := { maxDischargeDepth := 64 }) only [VarianceState, InversesState, parameters, hLength, List.length_set,
       List.getElem?_set, Nat.reduceLT, Nat.reduceEqDiff, reduceIte, hMeansOwner, hMeansPtr,
-      hMeansSize, hBytes, hCounter, hLengthLocal, hPointer, variancePrefix_zero, and_self]
+      hMeansSize, hBytes, hCounter, hLengthLocal, hPointer, variancePrefix_zero,
+      I64Values.set, hTyped, and_self]
     decide
   · intro index next hIndex hReady hState Q rest hNext
     exact varianceStep_spec env initial weightsOwner inputOwner weightsPtr inputPtr meansOwner meansPtr
@@ -63,7 +64,7 @@ theorem inversesWord_spec (env : HostEnv Unit) (initial : Store Unit)
       [.i32 (PackedGenerateLoop.address outputPtr row)] hInput hMeans hRow hRows hIndex
       hReady hState Q rest hNext
   · intro result hReady hState
-    rcases hState with ⟨⟨hResultParams, hResultLength, hMeanOwner, hMeanPtr, hMeanSize, hByteLength⟩,
+    rcases hState with ⟨⟨hResultParams, hResultLength, hMeanOwner, hMeanPtr, hMeanSize, hByteLength, hResultTyped⟩,
       hRowLocal, hTotal, hSize, hPtr, _⟩
     simp only [parameters] at hResultParams
     wp_packed_frame [hResultParams, hResultLength, hTotal, hReady.1]
@@ -79,8 +80,9 @@ theorem inversesWord_spec (env : HostEnv Unit) (initial : Store Unit)
           hResultLength, List.length_set, List.length_cons, List.length_nil,
           Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte, List.getElem?_set,
           Nat.reduceEqDiff, hRowLocal, hSize, hPtr, true_and]
-      · simp only [InversesState, parameters, hResultLength, List.length_set, List.getElem?_set,
-          Nat.reduceEqDiff, reduceIte, hMeanOwner, hMeanPtr, hMeanSize, hByteLength, and_self]
+      · simp (config := { maxDischargeDepth := 64 }) only [InversesState, parameters, hResultLength, List.length_set, List.getElem?_set,
+          Nat.reduceEqDiff, reduceIte, hMeanOwner, hMeanPtr, hMeanSize, hByteLength,
+          I64Values.set, hResultTyped, and_self]
     · intro next h
       exact hNext next h.1 h.2
 
@@ -88,10 +90,10 @@ theorem inversesState_advance (params : List Wasm.Value) (meansOwner meansPtr : 
     (rows : Nat) (hParams : params.length = 9) (frame : Locals) (index : Nat)
     (hValid : frame.validIndex 20) (hState : InversesState params meansOwner meansPtr rows frame) :
     InversesState params meansOwner meansPtr rows (FixedArrayCopy.counterFrame frame 20 index hValid) := by
-  rcases hState with ⟨hFrameParams, hLength, hOwner, hPtr, hSize, hBytes⟩
-  simp only [InversesState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
+  rcases hState with ⟨hFrameParams, hLength, hOwner, hPtr, hSize, hBytes, hTyped⟩
+  simp (config := { maxDischargeDepth := 64 }) only [InversesState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
     hLength, List.length_set, List.getElem?_set, Nat.reduceSub, Nat.reduceLT,
-    Nat.reduceEqDiff, reduceIte, hOwner, hPtr, hSize, hBytes, and_self]
+    Nat.reduceEqDiff, reduceIte, hOwner, hPtr, hSize, hBytes, I64Values.set, hTyped, and_self]
 
 set_option maxRecDepth 32768 in
 theorem inversesLoop_spec (env : HostEnv Unit) (initial : Store Unit)
