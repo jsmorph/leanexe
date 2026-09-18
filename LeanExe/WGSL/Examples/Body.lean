@@ -44,6 +44,11 @@ private def twice (arithmetic : ScalarArithmetic) (word : UInt32) :=
   Source.fold 768 0 fun k acc =>
     arithmetic.add acc (arithmetic.mul (a (row * 768 + k)) (b (k * 3 + col)))
 
+/-- Exercise unused input bindings and the largest finite binary32 literal. -/
+@[wgsl] def constant : Kernel := fun _ _ _ _ _ => 0x7f7fffff
+
+@[wgsl] def onlyA : Kernel := fun _ a _ row col => a (row * 3 + col)
+
 /-- Executable corpus membership shared by the compiler and IEEE32 runner. -/
 def cases : List (String × Kernel × Shape) := [
   ("add", add, ⟨2, 3, 6, 6⟩),
@@ -54,6 +59,8 @@ def cases : List (String × Kernel × Shape) := [
   ("transpose", transpose, ⟨2, 3, 6, 6⟩),
   ("nested", nested, ⟨2, 3, 12, 9⟩),
   ("zeroFold", zeroFold, ⟨2, 3, 1, 1⟩),
-  ("matmul768", matmul768, ⟨1, 3, 768, 2304⟩)]
+  ("matmul768", matmul768, ⟨1, 3, 768, 2304⟩),
+  ("constant", constant, ⟨2, 3, 1, 1⟩),
+  ("onlyA", onlyA, ⟨2, 3, 6, 1⟩)]
 
 end LeanExe.WGSL.Examples.Body

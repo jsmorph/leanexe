@@ -32,7 +32,7 @@ are `arithmetic.add` and `arithmetic.mul`, **not UInt32 integer addition or
 multiplication**. The existing pure `Wasm.IEEE32` definitions supply the exact
 floating-point interpretation in proofs and execution references.
 
-Supported body constructs are word literals, A/B reads, the two arithmetic
+Supported body constructs are finite binary32 word literals, A/B reads, the two arithmetic
 operations, word and index local bindings, transparent helpers reducible to
 these constructs, and `Source.fold count initial (fun k acc => ...)`. Fold
 counts must be compile-time literals at most 65535. Index expressions contain
@@ -69,20 +69,26 @@ buffer declarations, operations, loop initialization/test/increment, scope and
 sole output store. Checking is synchronous: failures and forbidden proof
 axioms prevent file emission. The old GEMM artifact checker remains separate.
 
-Nine examples cover addition, multiplication, a 2×4 by 4×3 matrix
+Eleven examples cover addition, multiplication, a 2×4 by 4×3 matrix
 multiplication, changing its product to addition, helper functions, changed
-indexing, nested folds, zero-iteration folds and a 1×768 by 768×3 product.
+indexing, nested folds, zero-iteration folds, a 1×768 by 768×3 product,
+a constant-only kernel using the largest finite binary32 word, and a kernel
+using only buffer A.
 All have passed the three Lean
 proofs and executed using native WebGPU on SwiftShader's Vulkan CPU device.
-All 51 output words matched execution of the original Lean definitions using
+All 63 output words matched execution of the original Lean definitions using
 pure `Wasm.IEEE32` arithmetic.
 These are bounded tests, not universal runtime-conformance proofs. Python only
 allocates buffers, submits WGSL, reads results and compares words.
 
-Eighteen rejection cases cover unsupported definitions, invalid dimensions,
+Twenty-four rejection cases cover unsupported definitions, invalid dimensions,
 buffer/index violations and altered shaders, including changed operations,
 loop count, initial accumulator, output indexing, a removed edge guard,
 incorrect counter increments, accumulator assignments and escaped locals.
+They also cover both infinities, quiet/signaling NaNs, an unused NaN in an
+otherwise correct shader, and a custom Nat addition instance that changes the
+source computation. The latter must fail source equality rather than silently
+being treated as ordinary addition.
 Each rejection leaves no emitted package. The saved matrix proof also passed
 a fresh Lean check without invoking the compiler.
 
