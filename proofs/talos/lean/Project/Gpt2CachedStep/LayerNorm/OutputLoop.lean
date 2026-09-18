@@ -14,11 +14,11 @@ theorem outputState_advance (params : List Wasm.Value)
     OutputState params meansOwner meansPtr inversesOwner inversesPtr rows
       (FixedArrayCopy.counterFrame frame 45 index hValid) := by
   rcases hState with ⟨hFrameParams, hLength, hMeansOwner, hMeansPtr, hMeansSize,
-    hInversesOwner, hInversesPtr, hInversesSize, hBytes⟩
-  simp only [OutputState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
+    hInversesOwner, hInversesPtr, hInversesSize, hBytes, hTyped⟩
+  simp (config := { maxDischargeDepth := 64 }) only [OutputState, FixedArrayCopy.counterFrame, Locals.set, hFrameParams, hParams,
     hLength, List.length_set, List.getElem?_set, Nat.reduceSub, Nat.reduceLT,
     Nat.reduceEqDiff, reduceIte, hMeansOwner, hMeansPtr, hMeansSize,
-    hInversesOwner, hInversesPtr, hInversesSize, hBytes, and_self]
+    hInversesOwner, hInversesPtr, hInversesSize, hBytes, I64Values.set, hTyped, and_self]
 
 set_option maxRecDepth 32768 in
 theorem outputLoop_spec (env : HostEnv Unit) (initial : Store Unit)
