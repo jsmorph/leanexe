@@ -829,7 +829,8 @@
       "leanModule": "PackedGenerate",
       "specTarget": "Project.PackedGenerate.Spec",
       "behaviorTheorems": [
-        "Project.PackedGenerate.Spec.makeWords_exact"
+        "Project.PackedGenerate.Spec.makeWords_exact",
+        "Project.PackedGenerate.Spec.makeWords_with_reuse_exact"
       ],
       "complete": true
     }

@@ -1,4 +1,4 @@
-import Project.PackedGenerate.Entry
+import Project.PackedGenerate.EntryAll
 
 namespace Project.PackedGenerate.Spec
 open Wasm Project.ProofKit Project.PackedGenerate.Entry
@@ -32,5 +32,37 @@ theorem makeWords_exact (env : HostEnv Unit) (initial : Store Unit)
     simpa [func0Def, Function.numParams, hvalues] using And.intro hbytes hwrites
 
 #print axioms makeWords_exact
+
+theorem makeWords_with_reuse_exact (env : HostEnv Unit) (initial : Store Unit)
+    (count : Nat) (offset : UInt32) (base allocations : UInt64)
+    (nodes : List Project.Runtime.FreeNode)
+    (hcount : 4 * count ≤ 2^32)
+    (hGlobal0 : initial.globals.globals[0]? = some (.i64 base))
+    (hGlobal1 : initial.globals.globals[1]? = some (.i64 (Project.Runtime.freeHead nodes)))
+    (hGlobal2 : initial.globals.globals[2]? = some (.i64 allocations))
+    (hList : Project.Runtime.FreeListAt initial.mem nodes)
+    (hBump : Project.Runtime.takeFirstFitFrom 0
+        (PackedCapacity.capacity (UInt64.ofNat (4 * count))) nodes = none →
+      base.toNat + 48 + PackedCapacity.capacityNat (4 * count) ≤ 2^32 ∧
+      FixedArrayBump.requiredPages base (PackedCapacity.capacity (UInt64.ofNat (4 * count))) ≤
+        initial.memoryCap «module» 0)
+    (hPages : initial.mem.pages ≤ 65536) :
+    TerminatesWith env «module» 0 initial [.i64 offset.toUInt64, .i64 (UInt64.ofNat count)]
+      (fun final values =>
+        values = [.i64 (UInt64.ofNat (4 * count)), .i64 (EntryAll.outputRoot base count nodes)] ∧
+        PackedMemory.ByteArrayAt final.mem (EntryAll.outputRoot base count nodes).toNat
+          (LeanExe.Examples.Packed.makeWords count offset) ∧
+        Memory.WritesRange (EntryAll.bufferStore initial base count allocations nodes) final
+          (EntryAll.outputRoot base count nodes).toNat
+          ((EntryAll.outputRoot base count nodes).toNat + 4 * count)) := by
+  apply TerminatesWith.of_wp_entry_for (f := func0Def)
+  · simp [«module»]
+  · change wp «module» func0 _ initial (entryFrame count offset) env
+    apply EntryAll.body_spec env initial count offset base allocations nodes hcount
+      hGlobal0 hGlobal1 hGlobal2 hList hBump hPages
+    intro final result hvalues hbytes hwrites
+    simpa [func0Def, Function.numParams, hvalues] using And.intro hbytes hwrites
+
+#print axioms makeWords_with_reuse_exact
 
 end Project.PackedGenerate.Spec
