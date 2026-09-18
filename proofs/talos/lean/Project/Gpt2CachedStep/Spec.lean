@@ -16,3 +16,7 @@ import Project.Gpt2CachedStep.CachedBlock.Cache
 import Project.Gpt2CachedStep.CachedBlock.Cleanup
 import Project.Gpt2CachedStep.CachedBlock.Base
 import Project.Gpt2CachedStep.CachedBlock.Attention
+import Project.Gpt2CachedStep.CachedBlock.Normalized2
+import Project.Gpt2CachedStep.CachedBlock.Activated
+import Project.Gpt2CachedStep.CachedBlock.Projected2
+import Project.Gpt2CachedStep.CachedBlock.Hidden
