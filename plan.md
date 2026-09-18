@@ -5,8 +5,10 @@ text through LeanExe/WASM with FP32, packed binary tensors, resident weights,
 and cached attention.  Tests compare every logit at context lengths one
 through 128 with PyTorch.  Run it with
 `tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
-The user paused proof development on 2026-09-17.  That pause remains in
-effect.  The earlier
+The user resumed formal proof development on 2026-09-17, prioritizing
+agreement between generated WASM and the Lean algorithm.  Packed reads
+now have exact source-agreement and store-preservation proofs.  Packed
+construction and tensor traversal are next.  Numerical bounds remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.
