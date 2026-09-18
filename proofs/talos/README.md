@@ -88,7 +88,8 @@ the remaining free list under its size, memory, and separation assumptions.
 It imposes no numerical conditions on the weights or input words.
 
 The complete cached-inference artifact is registered as `gpt2_cached_step`,
-with its specification marked incomplete.  Its internal
+with a checked [public execution theorem](lean/Project/Gpt2CachedStep/Spec.lean).
+Its internal
 [row mean](lean/Project/Gpt2CachedStep/RowMean.lean) and
 [inverse standard deviation](lean/Project/Gpt2CachedStep/RowInvStd.lean)
 have checked source-agreement proofs.  These entries include the ownership
@@ -152,7 +153,21 @@ token and positions zero through 127.  The body and entry check in 2.9 and
 proves function 37 computes all 50,257 output scores through their ordered
 768-term FP32 sums.  It includes allocation, packed output ownership, and
 protected-input preservation.  Its body and entry check in 4.5 and 2.9 seconds.
-The complete cached entry remains open.
+The public `cachedStep_exact` theorem composes these functions with final
+normalization, temporary-buffer cleanup, and the exported return.  It proves
+termination, exact source cache and logits, represented output bytes, a valid
+final heap, protected-input preservation, and unchanged memory capacity.
+Its assumptions require represented inputs, a valid initial heap, a position
+that fits UInt64, at most 65,536 initial pages, and capacity for every required
+allocation on accepted inputs.  The [accepted-entry theorem](lean/Project/Gpt2CachedStep/Entry/Accepted.lean)
+also records ownership and separation of both returned buffers.  The
+[rejected-entry theorem](lean/Project/Gpt2CachedStep/Entry/Rejected.lean)
+proves invalid weight length, token, position, or cache length returns empty
+outputs with the entire store unchanged.  These theorems accept arbitrary
+runtime weight words, including exceptional FP32 values.  Their exactness is
+relative to Lean's logical Float32 model and Talos semantics.  Host execution,
+tokenization, and sampling remain outside this theorem.  Exact-byte packaging
+and a source theorem equating cached and full-prefix inference remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
@@ -788,7 +803,7 @@ and releases its temporary arrays.  The exact-byte package remains open.
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all sixty-nine registered models, verifies the registry against runtime and specification imports, and builds all sixty-seven completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all sixty-nine registered models, verifies the registry against runtime and specification imports, and builds all sixty-eight completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -826,7 +841,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains sixty-nine cases, sixty-seven complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains sixty-nine cases, sixty-eight complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
 The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All forty-two packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
 

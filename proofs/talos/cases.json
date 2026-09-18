@@ -882,7 +882,7 @@
       "specTarget": "Project.Gpt2CachedStep.Spec",
       "annotations": true,
       "behaviorTheorems": ["Project.Gpt2CachedStep.Spec.cachedStep_exact"],
-      "complete": false
+      "complete": true
     }
   ]
 }
