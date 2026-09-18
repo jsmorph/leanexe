@@ -130,8 +130,10 @@ input extents and capacity for each allocation when no free block fits.
 The body composition checks in 4.6 seconds, and the public theorem checks
 in 1.3 seconds with standard axioms.  The [block cache-update constructor](lean/Project/Gpt2CachedStep/CachedBlock/Cache.lean)
 proves allocation and exact copying of the 1,536 key/value words from QKV,
-preserving protected tensors and the hidden-output bindings.  A shared
-guarded-release theorem handles the block's two retained outputs.
+preserving protected tensors and the hidden-output bindings.
+[Block cleanup](lean/Project/Gpt2CachedStep/CachedBlock/Cleanup.lean) proves
+all nine temporary releases and the six-word return, preserving both output
+buffers and protected input regions through a shared list-based release rule.
 Transformer-block composition and the complete cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
