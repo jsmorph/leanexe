@@ -120,8 +120,16 @@ protected-region preservation.  It accepts arbitrary represented input
 lengths and computes the source-specified number of complete words.
 The [residual-addition theorem](lean/Project/Gpt2CachedStep/AddRows/Spec.lean)
 proves exact packed output, allocation, ownership, and preservation of both
-protected inputs.  Attention construction, transformer-block composition,
-and the complete cached entry remain open.
+protected inputs.  The [cached-attention theorem](lean/Project/Gpt2CachedStep/CachedAttention/Spec.lean)
+proves function 29 computes the Lean `cachedAttention` result for all twelve
+layers and positions zero through 127.  It composes six tensor constructors,
+the nested weighted-value fold, and release of all five temporary tensors.
+It returns exact output bytes and ownership, the updated heap, and
+preservation of all protected inputs.  Its assumptions provide represented
+input extents and capacity for each allocation when no free block fits.
+The body composition checks in 4.6 seconds, and the public theorem checks
+in 1.3 seconds with standard axioms.  Transformer-block composition and
+the complete cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
