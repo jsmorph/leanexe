@@ -52,14 +52,25 @@ the resumed pretrained GPT-2 proof work.
 The [packed constructor proof](lean/Project/PackedGenerate/Spec.lean)
 proves termination and the exact bytes returned by the generated `makeWords`
 entry for every word count and offset under its allocation assumptions.
-The represented free list must have no block large enough, and the rounded
-allocation must fit the 32-bit address range and runtime memory cap.
+The theorem covers free-block reuse and bump allocation.  When no free block
+fits, the rounded allocation must fit the 32-bit address range and runtime
+memory cap.
 It composes size calculation, allocation with conditional memory growth,
 construction, and the pointer/length return.  It applies the shared
 [generation theorem](lean/Project/ProofKit/PackedGenerateLoop.lean), which
 accepts a proof of the word computation and preserves memory outside the
 output range.  The complete result states the allocation effects and the
-construction write range.  The sufficient-free-block path remains open.
+construction write range.  Shared memory lemmas preserve input bytes and
+the remaining free list across allocation and construction.
+
+The [GPT-2 row-mean proof](lean/Project/Gpt2RowMean/Spec.lean) establishes
+that the generated 768-element FP32 reduction returns the Lean source
+`rowMean` result and preserves the store.  Its arithmetic follows Talos's
+binary32 model.  The proof covers any row whose 3,072 bytes fit in the
+represented input.  It composes the shared
+[indexed word reader](lean/Project/ProofKit/PackedWordRead.lean),
+[range-loop rule](lean/Project/ProofKit/RangeFoldLoop.lean), and checked
+source/Talos addition and division correspondences.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
