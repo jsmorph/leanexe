@@ -7,6 +7,7 @@
 
 import Project.Runtime.Defs
 import Project.PackedRead.Program
+import Project.PackedGenerate.Program
 import Project.SequenceSoftmax.Program
 import Project.TinyGpt2Seq.Program
 import Project.TinyGpt2Checked.Program
@@ -387,5 +388,10 @@ example : eraseTypeIdx Project.PackedRead.func1Def = eraseTypeIdx allocFuncDef :
 example : eraseTypeIdx Project.PackedRead.func2Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.PackedRead.func3Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.PackedRead.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.PackedGenerate.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
 end Project.Runtime
