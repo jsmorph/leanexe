@@ -1,0 +1,20 @@
+ LeanExe/Extract/Core.lean            | 241 ++++++++++++++++++++--------
+ LeanExe/Extract/Demand.lean          |   7 +
+ LeanExe/Extract/Eval.lean            |   1 +
+ LeanExe/Extract/OwnershipReport.lean |  19 ++-
+ LeanExe/Extract/ReleaseCheck.lean    |  15 +-
+ LeanExe/Extract/Report.lean          |  18 ++-
+ LeanExe/Extract/Storage.lean         |   5 +-
+ LeanExe/Extract/Types.lean           |  45 +++++-
+ LeanExe/Extract/Values.lean          | 176 +++++++++++++++++----
+ LeanExe/Float32.lean                 |  24 +++
+ LeanExe/IR/Core.lean                 |  32 +++-
+ LeanExe/Packed.lean                  |  22 +++
+ LeanExe/Wasm/Binary.lean             | 293 ++++++++++++++++++++++++-----------
+ LeanExe/Wasm/Image.lean              |   6 +-
+ LeanExe/Wasm/Image/Emit.lean         |   9 ++
+ LeanExe/Wasm/Instr.lean              |   9 ++
+ LeanExe/Wasm/ScalarDescriptor.lean   |   3 +-
+ LeanExe/Wasm/Wat.lean                |   9 ++
+ docs/spec.md                         |  36 ++++-
+ 19 files changed, 758 insertions(+), 212 deletions(-)

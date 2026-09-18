@@ -1,0 +1,171 @@
+{
+  "old_checkpoint": "2f3ec33f6e98ad98ac94df277c91e5319763cf9d",
+  "checkpoint": "df70a0a56dd909ce2a4685faba5498bdcaf01e81",
+  "files": [
+    {
+      "path": "LeanExe/Extract/Types.lean",
+      "git_blob": "2cddb2236726f755390c9a4c95c71df6a88e713f",
+      "sha256": "25c55290ac49e21221e768fb14c4c90e81bb107bcb39284067f16a2bb6dce545"
+    },
+    {
+      "path": "LeanExe/Extract/Core.lean",
+      "git_blob": "ab4f6cdab4c88451755753e67988fe9bd5a23a1d",
+      "sha256": "5a89a7288d3fadc4793f253d5f05ddca665c527af31b7ca853fb3f5a1247b243"
+    },
+    {
+      "path": "LeanExe/Extract/Patterns.lean",
+      "git_blob": "67da3071a77f77906f943291f64e17148a715565",
+      "sha256": "73aac867e3d178e884505aa46ff6a7c8e3f73589f3c2f7afeda4ea04d0c831d5"
+    },
+    {
+      "path": "LeanExe/Extract/StructuralRec.lean",
+      "git_blob": "d087afdd85de83baaabd00f7165a32e6e30bf693",
+      "sha256": "2ff73fdabc5ed4cdf98676a4687a450ec8f926035d89cd4d9eae131b99118d1e"
+    },
+    {
+      "path": "LeanExe/Extract/Demand.lean",
+      "git_blob": "d714bcafd0e737e2a6115bb7dbf4076f579fc4d7",
+      "sha256": "9bd72f6ef9281bba1c06a302a05b117eeb80ad147aa3db992105aeab45a8507a"
+    },
+    {
+      "path": "LeanExe/Extract/Storage.lean",
+      "git_blob": "0ab4899ec29bab8440b9e5cb07889b13b6b92954",
+      "sha256": "2db0dad62603de91c426adc55a5d5401008a87f174c8be24595aa91997fe1f43"
+    },
+    {
+      "path": "LeanExe/Extract/Values.lean",
+      "git_blob": "c3ec3a98d67e9ae6064782ced4b55e93a8838fc1",
+      "sha256": "e2da1f44be2709720420a8d704c8aea35a9bff03d0acac7bfed7d478d72f7e47"
+    },
+    {
+      "path": "LeanExe/Extract/ReleaseCheck.lean",
+      "git_blob": "318259b9273e3772932e25bbd0f420b7326343e2",
+      "sha256": "1cb69a0c74e94f914d14bb9e7b7f4876ccce764681015b98981dcb84445b4899"
+    },
+    {
+      "path": "LeanExe/Extract/Eval.lean",
+      "git_blob": "31b99802144f4307c01e824016de55d1aa22de56",
+      "sha256": "b6518f47e13283e517b4790672f72a72588dcfc7847f4d8c75a6125814599d03"
+    },
+    {
+      "path": "LeanExe/IR/Core.lean",
+      "git_blob": "e1db3b11562410cf02bf95bfc0818a32548b1a72",
+      "sha256": "fcf3abd6d95c478fc561aad64e377117c5f260242bf1c490c643197b224903d4"
+    },
+    {
+      "path": "LeanExe/Wasm/Binary.lean",
+      "git_blob": "adbb855cee0f7554d363c38123e1e635034b3d47",
+      "sha256": "b73a62696bee7c1834a0625801fd3c72940c77e4d4c4f116ff83f896267c6b22"
+    },
+    {
+      "path": "LeanExe/Wasm/ScalarCertificate.lean",
+      "git_blob": "b491cf4b4394edc1982444924483a6710b25957d",
+      "sha256": "dc2d561d4ecabb5a95de605463d3f7b94d524a33cf123b3322ff4f18add62ee8"
+    },
+    {
+      "path": "LeanExe/Float32.lean",
+      "git_blob": "48807c8735a9f129808d89513405e17ca03fa5f2",
+      "sha256": "7e7729bc533bc878b98e7fe8fb2598302f0677274dae15446174b9eae0f04c9a"
+    },
+    {
+      "path": "LeanExe/Packed.lean",
+      "git_blob": "022649c256fc47b53e5ee9d5dd24ea434db823f5",
+      "sha256": "9352aa2899d4517e0a1cf058ec58e82c01ef2096d0506ff38442869320d57e8d"
+    },
+    {
+      "path": "docs/leanexe-type-theory.md",
+      "git_blob": "92bd4e1a8562ccdad1bf513f48146e1ddee9fe27",
+      "sha256": "ed9c34d5201a4e3ad397ff6432b9eab4c605b9dd33ddc07c3709e6e23535d933"
+    },
+    {
+      "path": "docs/leanexe-formal-specification.md",
+      "git_blob": "10de13af65f5021b2c7c04c529045831e222974c",
+      "sha256": "64395120948a4d4516d1d92af6b90f535bbec441e3c85d193e23da23d2fcba24"
+    },
+    {
+      "path": "docs/spec.md",
+      "git_blob": "acf925a88907c9f5650cd333df78b0aec78662f9",
+      "sha256": "0435dfc6bf1af8c75e6818dd3aa31be27be20b8b4d3cca844f12790b965a2fef"
+    },
+    {
+      "path": "test/f32_bits.js",
+      "git_blob": "33b485470445858f81de1c7a47439d2cbd7373fa",
+      "sha256": "f6b6301318e8961646d92d2abfa866601cb7ceebf37553a1da8f2b008b5943cb"
+    },
+    {
+      "path": "plans/gpt2-124m.md",
+      "git_blob": "cbbe1838fd96712834dea4eeed690e044a9f84f2",
+      "sha256": "92ce320d289d0a8d6d4184b10d3d67024e0a8875b33d5670aa84d48caaccbf1e"
+    },
+    {
+      "path": "data/gpt2-124m/README.md",
+      "git_blob": "67c802582ce7bdf71c423424f1821241173bd974",
+      "sha256": "aadbc9f036e66217a4980e09e2c6ddc700ee51599d24be7eb830ffd2a509cbb9"
+    },
+    {
+      "path": "proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean",
+      "git_blob": "49214b4858da8ac933bb3e121529cb43ca79d652",
+      "sha256": "4482f48b3f832756417d32e06acfd55487439dfa6a3cdcbd4d93fb8214e94365"
+    },
+    {
+      "path": "proofs/talos/lean/Project/PackedRead/Spec.lean",
+      "git_blob": "c131917e1e0faf58a01d693645197b9fdf94fc50",
+      "sha256": "1d7a58ca695197eb928f10ce8eded12599613aea07064cec03d796b674fbaf65"
+    },
+    {
+      "path": "proofs/talos/lean/Project/PackedGenerate/Spec.lean",
+      "git_blob": "35e6ba0e8dc8f6ca951e09e664bbfcc60e3b6507",
+      "sha256": "3c4950d96d59b05876fb048fdebfdf1f2eefa91a073d17615fd15499b3419082"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Source.lean",
+      "git_blob": "ba6edd707d563c8a69a2c3d1e35f7e445ba9161a",
+      "sha256": "04b3655c46043f736be05608404bd8de57425dd610b629c2524fa5263e2c20e4"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Add.lean",
+      "git_blob": "578573160bf546d7409eefe8c91de82cb4c01d91",
+      "sha256": "76d933f081c255021d20145d275c1efdc3070ad511b8c27cc0cc7b505dd63d94"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Sub.lean",
+      "git_blob": "b3b46309bab44745635576d62ee417949d6d86a5",
+      "sha256": "592e1615af364a8a8698aa3a0fb0324700276e127fd30143629a4130bdf84074"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Mul.lean",
+      "git_blob": "a2f1c6515c589784f3fd955d59d9eac285dffbc1",
+      "sha256": "c6d1505f582c63e18b0dec4f84bf5a13283dece450bb0f612b876b6b72c2402e"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Div.lean",
+      "git_blob": "0696f3598f71ff6edfe498b773395718c219a137",
+      "sha256": "74ffd0fe2190a9331d19df39d527fdd36623a365b7fb354df2f4f8caae70b35e"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32Sqrt.lean",
+      "git_blob": "1c7c9d76e2426a18d7096692e8613a39c06c51d6",
+      "sha256": "4bad2905f70948e15a9e127f1548c5490510eb8625fd63d608933c61af68f561"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/PackedSource.lean",
+      "git_blob": "275850cca3cf1ce41bf3dacfeefef792a1fbd797",
+      "sha256": "2983e9fd57eb8d198cf822406d1476abe1af0b5004e743d29ef5f6c28d5dd0fb"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/PackedGenerateLoop.lean",
+      "git_blob": "e6b96c474ee4e64b4208015f22a263ce79d5e61a",
+      "sha256": "42db3e6d7650e859d6bd735c152241cfeea837fcdff65a852cef743bbd3e016e"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/PackedAllocationMemory.lean",
+      "git_blob": "bf1e94a7578f37efad268f274d37ca1b9a5db7da",
+      "sha256": "62d2f14872fa4bd68eab1f78d3e1d2317211fbc5746f9c814053993a9b5ab4f9"
+    },
+    {
+      "path": "LeanExe/Extract/Report.lean",
+      "git_blob": "7747b4a68cd2d3c3ee79ff14994572db1eb16a08",
+      "sha256": "df6b4063ce0f929815defb66fd41303d3a2d12417453eaaff98544787e2d5d93"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+1. Requirement 9, Section 5.1: “Report classification and complete extraction therefore have different result objects.”  Define the paper-specific term “report classification” and identify the result objects being compared.
+
+2. Requirement 12, Register and Terminology, Section 4.1: “a live allocation root whose lifetime covers the visible range.”  Distinguish allocation bounds from lifetime.  State that the allocation contains the visible byte range and remains live during its use.
