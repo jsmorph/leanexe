@@ -15208,3 +15208,51 @@ counting.  It supports arbitrary saved parameters and locals.  The header
 and allocator modules check in 2.2 and 2.6 seconds, with standard axioms.
 The next constructor proof can apply these results after its size and
 capacity calculations.  Free-block reuse remains a separate obligation.
+
+### Complete packed constructor on the no-fit path
+
+The [constructor theorem](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+now proves generated-entry termination, its pointer/length return, every
+source byte, and preservation outside the output writes relative to the
+specified allocation effects.  It quantifies over counts, offsets, stores,
+and represented free lists with no sufficiently large block.  Its memory
+assumptions bound the rounded allocation in the 32-bit address range and
+the runtime memory cap.  The theorem includes conditional memory growth.
+
+The shared capacity proof relates the emitted word arithmetic to
+`max 8 (((bytes + 7) / 8) * 8)` and proves the allocation covers the requested
+bytes.  It checks in 1.6 seconds.  The constructor body composes this result,
+checked natural multiplication, the packed allocator, and the construction
+loop.  The loop adapter now preserves a caller-selected local predicate,
+which retains the byte length and local-frame dimensions for the return.
+The body checks in 3.6 seconds, and the public theorem in 1.0 second.
+
+Failed iterations exposed unreduced word-size constants, a simplification
+that expanded `UInt64.ofNat` multiplication across the loop boundary,
+optional versus indexed local getters, and a residual argument-count
+condition in the public entry rule.  Explicit word-size reductions,
+preserving the multiplication expression, the existing indexed frame
+lemma, and unfolding `Function.numParams` resolved those diagnostics.
+No compiler change or increased proof-resource limit was needed.
+
+`tools/talos-proof.js check packed_generate` passes regeneration equality
+and the full public theorem.  Its axiom report contains only `propext`,
+`Classical.choice`, and `Quot.sound`.  Registry/import consistency and the
+137-file documentation check pass.  The registry now has 64 cases and
+63 completed specifications.  The constructor's sufficient-free-block
+path remains open for later GPT-2 allocator composition.
+
+### Correction to the FP32 source assessment
+
+The earlier claim that the pinned source arithmetic was opaque was wrong.
+Lean 4.34.0-rc2's `Init.Data.Float.Float32` defines addition, subtraction,
+multiplication, division, square root, and bit conversion through the pure
+`Float32.Model`.  Its `extern` annotations select native implementations
+for execution while retaining logical definitions.  Precision conversions
+between FP32 and FP64 remain opaque, but GPT-2 does not call them.
+
+The next arithmetic obligation is equivalence between that source model
+and Talos's `Wasm.IEEE32`.  Both have explicit integer arithmetic and
+rounding definitions.  This permits work on the existing GPT-2 source.
+The plan now records this corrected boundary.  NaN canonicalization and
+rounding must be checked as part of the equivalence proof.

@@ -37,6 +37,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.PackedGenerateLoop` | Terminating packed-word generation with exact source bytes, preservation outside the output range, and a supplied proof for the word computation. |
 | `Project.ProofKit.PackedHeader` | Raw-buffer header initialization, exact reads of its six fields, and preservation outside the header. |
 | `Project.ProofKit.PackedAllocate` | Raw-buffer allocation through a free list with no sufficient block, conditional memory growth, header initialization, and allocation counting. |
+| `Project.ProofKit.PackedCapacity` | Raw-buffer byte-capacity rounding, its bounds, and execution of the emitted capacity prefix. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.ArrayField` | Fixed-width array field address, load, and store execution with caller-local and operand-stack preservation. |
 | `Project.ProofKit.ArrayFieldConstant` | Constant-index field address and store execution with arbitrary element width, field, and operand-stack tail. |
