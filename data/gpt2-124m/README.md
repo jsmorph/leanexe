@@ -70,9 +70,9 @@ runs.  The first prompt continued:
 
 That run generated 64 tokens in 3.8 seconds using one CPU thread.
 LeanExe/WASM execution now generates text from the same checkpoint.
-The user approved FP32 arithmetic and packed binary tensors and paused
-proof development.  The [implementation plan](../../plans/gpt2-124m.md)
-records the completed implementation steps.
+The user approved FP32 arithmetic and packed binary tensors.
+The [development plan](../../plans/gpt2-124m.md) records the completed
+implementation and the resumed exact execution proofs.
 
 The first attention projection runs through LeanExe/WASM with the
 pretrained 768 × 2,304 matrix and bias.  Its 2,304 FP32 outputs match a
@@ -119,7 +119,7 @@ and full-prefix WASM logits match bit-for-bit for the nine-token prompt.
 The test also checks cache reset, the position limit, invalid token IDs,
 invalid cache lengths, and incorrect weight lengths.  These are execution
 measurements for the recorded checkpoint and token sequence.  Formal
-proof development remains paused.
+proof development has resumed with packed tensor access as its first target.
 
 The 128-position test took 63.2 seconds and reached 1,107,361,792 bytes of
 WASM linear memory.  After each call, only the weights and current cache
