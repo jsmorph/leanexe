@@ -141,8 +141,9 @@ Weights and cached attention keys and values stay resident.  Tests compare
 6,432,896 logits with PyTorch across context lengths one through 128 and
 check cleanup after each call.  Formal proof development has resumed,
 prioritizing exact agreement with the Lean algorithm.  Packed access and
-construction, row mean, inverse standard deviation, attention score, and
-linear matrix projection have checked execution theorems.  The remaining
+construction, row mean, inverse standard deviation, attention score,
+linear matrix projection, and complete layer normalization have checked
+execution theorems.  The remaining
 kernels and complete inference composition remain open.  Numerical error
 bounds remain deferred.
 
