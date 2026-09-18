@@ -18,7 +18,19 @@ def program (scratch : Nat) : Wasm.Program :=
 
 def Preserved (before after : Locals) (scratch : Nat) : Prop :=
   after.params = before.params ∧ after.locals.length = before.locals.length ∧
-  I64Values after.locals ∧ ∀ index, index < scratch → after.get index = before.get index
+  I64Values after.locals ∧ ∀ index, index < scratch ∨ scratch + 13 ≤ index → after.get index = before.get index
+
+theorem Preserved.local {before after : Locals} {scratch : Nat} (h : Preserved before after scratch)
+    (index : Nat) (hIndex : before.params.length + index < scratch ∨ scratch + 13 ≤ before.params.length + index) :
+    after.locals[index]? = before.locals[index]? := by
+  have hRead := h.2.2.2 (before.params.length + index) hIndex
+  by_cases hi : index < before.locals.length
+  · simpa only [Locals.get, h.1, h.2.1,
+      show ¬before.params.length + index < before.params.length by omega, ite_false,
+      show before.params.length + index < before.params.length + before.locals.length by omega,
+      ite_true, Nat.add_sub_cancel_left] using hRead
+  · simp only [List.getElem?_eq_none (Nat.le_of_not_lt hi),
+      List.getElem?_eq_none (by rw [h.2.1]; omega : after.locals.length ≤ index)]
 
 theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit)
     (initial : Store Unit) (heap : Heap) (frame : Locals) (leftPtr rightPtr : UInt64) (left right : ByteArray)
@@ -105,6 +117,13 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
   have hResultRead : allocated.get (scratch + 12) = some (.i64 (allocatedRoot heap.top (need left right) heap.nodes)) := by
     exact PackedAllocation.allocatedFrame_get_field prepared (scratch + 7) _ _ _ _ _ _
       (by rw [hPreparedParams]; omega) (by rw [hPreparedParams, hPreparedLength]; omega) 5 (by decide)
+  have hAllocatedAfter (index : Nat) (hi : scratch + 13 ≤ index) : allocated.get index = frame.get index := by
+    exact (PackedAllocation.allocatedFrame_get_after prepared (scratch + 7) (need left right) previous current capacity next
+      (allocatedRoot heap.top (need left right) heap.nodes)
+      (by rw [hPreparedParams]; omega) (by rw [hPreparedParams, hPreparedLength]; omega) index (by omega)).trans
+      ((capacityFrame_get_ne sized (scratch + 7) (need left right)
+        (by change frame.params.length ≤ scratch + 7; omega) index (by omega)).trans
+      (capacityFrame_get_ne frame (scratch + 5) (UInt64.ofNat (left.size + right.size)) (by omega) index (by omega)))
   change wp module_ (.localGet (scratch + 12) :: .localSet (scratch + 4) :: _) Q
     (heap.allocatePackedStore initial (need left right)) allocated env
   simp only [wp_localGet_cons, hResultRead, show allocated.values = [] from rfl]
@@ -153,8 +172,11 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
       rw [hDoneCapacity]
       exact capacityFrame_typed _ _ _ hCopyingTyped
     · intro index hi
-      exact (counterFrame_get_ne copying (scratch + 6) right.size index hCounter (by omega)).trans
-        (hCopyingRead index (by omega))
+      apply (counterFrame_get_ne copying (scratch + 6) right.size index hCounter (by omega)).trans
+      rcases hi with hi | hi
+      · exact hCopyingRead index (by omega)
+      · exact (capacityFrame_get_ne allocated (scratch + 4) _
+          (by rw [hAllocatedParams]; omega) index (by omega)).trans (hAllocatedAfter index hi)
   · exact heap.packedOutput initial final (need left right) (left ++ right) hHeap
       (by rw [ByteArray.size_append]; exact hNeed) (fun h => (hBump h).1) hPages
       (by rw [ByteArray.size_append]; exact hWrites) hBytes
