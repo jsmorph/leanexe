@@ -15360,3 +15360,19 @@ zero from negative zero at cancellation: two strictly negative operands
 cannot sum to zero.  The remaining addition branches concern signed zero,
 infinities, and NaNs.  Subtraction, multiplication, division, square root,
 and the complete GPT-2 composition remain open.
+
+### Complete source FP32 addition
+
+The [addition correspondence](proofs/talos/lean/Project/ProofKit/F32Add.lean)
+now proves `LeanExe.Float32.addBits a b = Wasm.IEEE32.add a b` for every
+pair of input words.  It composes the finite-input result with signed-zero,
+infinity, and NaN branches.  The proof includes both NaN operands,
+noncanonical NaN payloads, opposite infinities, negative-zero preservation,
+and exact cancellation to positive zero.
+
+The exception proof reuses field decoding and the input-rounding identity.
+Source commutativity avoids duplicating the zero and single-infinity
+branches.  The complete module checks in 1.4 seconds, and `add_eq` uses
+only `propext`, `Classical.choice`, and `Quot.sound`.  No runtime or compiler
+code changed.  The remaining arithmetic correspondences are subtraction,
+multiplication, division, and square root.
