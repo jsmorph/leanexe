@@ -1,6 +1,7 @@
 import Project.Gpt2CachedStep.Program
 import Project.ProofKit.PackedHeader
 import Project.ProofKit.PackedRelease
+import Project.ProofKit.OwnedPacked
 
 namespace Project.Gpt2CachedStep.Release
 open Wasm Project.ProofKit
@@ -21,5 +22,16 @@ theorem release_exact (env : HostEnv Unit) (initial : Store Unit)
     hHeader.magic hHeader.references hHeader.kind hHead hReleases hFrees
 
 #print axioms release_exact
+
+theorem release_owned (env : HostEnv Unit) (initial : Store Unit)
+    (heap : Project.EulerRiemann.Execution.Heap) (node : Project.Runtime.FreeNode) (bytes : ByteArray)
+    (hHeap : heap.At initial) (hOwner : heap.OwnsPacked initial node bytes) :
+    TerminatesWith env «module» 42 initial [.i64 node.root]
+      (fun final values => values = [] ∧ final = heap.releaseStore initial node ∧
+        (heap.release node).At final) :=
+  heap.releasePacked_exact env «module» 42 initial node bytes
+    (typeIdx := some 42) rfl rfl hHeap hOwner
+
+#print axioms release_owned
 
 end Project.Gpt2CachedStep.Release
