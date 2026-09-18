@@ -144,7 +144,7 @@ prioritizing exact agreement with the Lean algorithm.  Packed access and
 construction, row mean, inverse standard deviation, attention score,
 linear matrix projection, complete layer normalization, cached key/value
 lookup and scores, row maximum and sum, exponential evaluation, and tensor
-activation have checked execution theorems.  Residual addition, attention
+activation and residual addition have checked execution theorems.  Attention
 construction, block composition, and complete inference remain open.  Numerical error
 bounds remain deferred.
 

@@ -118,7 +118,9 @@ The [tensor-activation theorem](lean/Project/Gpt2CachedStep/Activate/Spec.lean)
 adds both allocation paths, packed construction, output ownership, and
 protected-region preservation.  It accepts arbitrary represented input
 lengths and computes the source-specified number of complete words.
-Residual addition, attention construction, transformer-block composition,
+The [residual-addition theorem](lean/Project/Gpt2CachedStep/AddRows/Spec.lean)
+proves exact packed output, allocation, ownership, and preservation of both
+protected inputs.  Attention construction, transformer-block composition,
 and the complete cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)

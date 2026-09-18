@@ -10,3 +10,4 @@ import Project.Gpt2CachedStep.CachedRowSum.Spec
 import Project.Gpt2CachedStep.CachedRowMaximum.Spec
 import Project.Gpt2CachedStep.Gelu
 import Project.Gpt2CachedStep.Activate.Spec
+import Project.Gpt2CachedStep.AddRows.Spec
