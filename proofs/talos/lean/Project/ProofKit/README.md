@@ -35,6 +35,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.PackedSource` | Packed 32-bit construction size, individual bytes, prefix recurrence, and word read-back for arbitrary source word functions. |
 | `Project.ProofKit.PackedMemory` | Source byte-array representation, exact packed reads, 32-bit write prefix extension, and preservation outside the write. |
 | `Project.ProofKit.PackedGenerateLoop` | Terminating packed-word generation with exact source bytes, preservation outside the output range, and a supplied proof for the word computation. |
+| `Project.ProofKit.PackedHeader` | Raw-buffer header initialization, exact reads of its six fields, and preservation outside the header. |
+| `Project.ProofKit.PackedAllocate` | Raw-buffer allocation through a free list with no sufficient block, conditional memory growth, header initialization, and allocation counting. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.ArrayField` | Fixed-width array field address, load, and store execution with caller-local and operand-stack preservation. |
 | `Project.ProofKit.ArrayFieldConstant` | Constant-index field address and store execution with arbitrary element width, field, and operand-stack tail. |
@@ -45,7 +47,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FreeListMemory` | First-fit predecessor membership and resulting head, free-list preservation under header-byte agreement and page growth, and preservation of bytes outside free-node regions during reuse. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant or local result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayCapacityArithmetic` | Exact normalized byte counts under a checked word-overflow bound. |
-| `Project.ProofKit.FixedArrayBump` | Conditional memory growth, heap-top and root assignment, and exact header initialization with configurable local slots. |
+| `Project.ProofKit.FixedArrayBump` | Shared conditional memory growth and heap-top/root assignment, with a separate fixed-array header composition theorem. |
 | `Project.ProofKit.FixedArrayBumpPrefix` | Checked heap-top and page arithmetic with named result frames. |
 | `Project.ProofKit.FixedArrayBumpInstall` | Heap-top and root assignment with preservation of the remaining locals and store fields. |
 | `Project.ProofKit.FixedArraySearchFrame` | Six allocator scratch slots with arbitrary parameters, saved locals, and trailing locals. |
