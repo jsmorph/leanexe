@@ -1,0 +1,7 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 9: “The proof workspace pins Talos revision” introduces Talos without identifying it.  Define Talos and its role in the WebAssembly proofs at this first mention.
