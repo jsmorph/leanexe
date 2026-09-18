@@ -118,8 +118,7 @@ the test tolerance of 0.002 + 0.0001 times the reference magnitude.  Cached
 and full-prefix WASM logits match bit-for-bit for the nine-token prompt.
 The test also checks cache reset, the position limit, invalid token IDs,
 invalid cache lengths, and incorrect weight lengths.  These are execution
-measurements for the recorded checkpoint and token sequence.  Formal
-proof development has resumed with packed tensor access as its first target.
+measurements for the recorded checkpoint and token sequence.
 
 The 128-position test took 63.2 seconds and reached 1,107,361,792 bytes of
 WASM linear memory.  After each call, only the weights and current cache
@@ -136,6 +135,29 @@ node test/packed.js --gpt2-completions
 The [cached Lean model](../../LeanExe/Models/Gpt2/Cached.lean) defines the
 token step.  The [command-line client](../../training/gpt2/wasm.py) keeps the
 WASM instance resident and releases each superseded cache and logit buffer.
+
+## Formal execution proof
+
+The [public cached-step theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean)
+proves that the generated module terminates and returns the exact cache and
+logit bytes specified by the Lean token step.  It covers embedding, all twelve
+transformer blocks, final normalization, all 50,257 scores, allocation, and
+temporary-buffer cleanup.  Invalid weight length, token, position, or cache
+length returns empty outputs with the store unchanged.
+
+The theorem accepts runtime weights without numerical restrictions.  It
+assumes represented protected input buffers, a valid heap, a position that
+fits UInt64, and sufficient allocation capacity.  It uses Lean's logical
+Float32 model and Talos execution semantics.  Tokenization, sampling, host
+orchestration, and runtime implementation are outside its scope.  Numerical
+error bounds and exact-byte packaging remain deferred.  Cached/full-prefix
+equivalence has execution tests and remains a separate source-proof task.
+
+Regenerate the module and check its execution proof with:
+
+```sh
+tools/talos-proof.js check gpt2_cached_step
+```
 
 ## Sources
 
