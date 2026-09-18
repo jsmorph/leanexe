@@ -236,7 +236,7 @@ theorem release_decrements (env : HostEnv Unit) (m : Module) (id : Nat)
 /-- Releasing a raw-kind object at refcount one frees it: the count word
 zeroes, the object links onto the free list, and the release and free
 counters advance. -/
-theorem release_frees_fresh_raw (env : HostEnv Unit) (m : Module) (id : Nat)
+theorem release_frees_fresh_raw_full (env : HostEnv Unit) (m : Module) (id : Nat)
     (st4 : Store Unit)
     (p g1v c4 c5 : UInt64)
     {typeIdx : Option Nat}
@@ -260,7 +260,8 @@ theorem release_frees_fresh_raw (env : HostEnv Unit) (m : Module) (id : Nat)
           ((p - 8).toUInt32) g1v ∧
         st'.globals.globals =
           ((st4.globals.globals.set 4 (.i64 (c4 + 1))).set 5
-            (.i64 (c5 + 1))).set 1 (.i64 p)) := by
+            (.i64 (c5 + 1))).set 1 (.i64 p) ∧
+        st' = { st4 with mem := st'.mem, globals := st'.globals }) := by
   have hp0 : ¬ (p = 0) := by
     intro h
     rw [h] at hp48
@@ -377,5 +378,37 @@ theorem release_frees_fresh_raw (env : HostEnv Unit) (m : Module) (id : Nat)
   try simp
   try simp [releaseFuncDef]
   exact ⟨by omega, by omega⟩
+
+theorem release_frees_fresh_raw (env : HostEnv Unit) (m : Module) (id : Nat)
+    (st4 : Store Unit)
+    (p g1v c4 c5 : UInt64)
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
+    (hImp : m.imports[id]? = none)
+    (hp48 : 48 ≤ p.toNat)
+    (hp32 : p.toNat < 4294967296)
+    (hfit : p.toNat ≤ st4.mem.pages * 65536)
+    (hmagic : st4.mem.read64 ((p - 48).toUInt32) = 5501223100278326855)
+    (hrc : st4.mem.read64 ((p - 40).toUInt32) = 1)
+    (hkind : st4.mem.read64 ((p - 24).toUInt32) = 0)
+    (hg1 : st4.globals.globals[1]? = some (.i64 g1v))
+    (hg4 : st4.globals.globals[4]? = some (.i64 c4))
+    (hg5 : st4.globals.globals[5]? = some (.i64 c5)) :
+    TerminatesWith (m := m) (id := id) (initial := st4) (env := env)
+      [.i64 p]
+      (fun st' vs =>
+        vs = [] ∧
+        st'.mem = (st4.mem.write64 ((p - 40).toUInt32) 0).write64
+          ((p - 8).toUInt32) g1v ∧
+        st'.globals.globals =
+          ((st4.globals.globals.set 4 (.i64 (c4 + 1))).set 5
+            (.i64 (c5 + 1))).set 1 (.i64 p)) := by
+  apply (release_frees_fresh_raw_full env m id st4 p g1v c4 c5 hf hImp
+    hp48 hp32 hfit hmagic hrc hkind hg1 hg4 hg5).mono
+  rintro final values ⟨hValues, hMem, hGlobals, _⟩
+  exact ⟨hValues, hMem, hGlobals⟩
+
+#print axioms release_frees_fresh_raw_full
 
 end Project.Runtime
