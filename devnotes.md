@@ -15496,3 +15496,20 @@ The registered `packed_generate` gate checks both constructor theorems.
 It passed with standard axioms.  The new modules check in 1.0 to 2.8 seconds.
 An explicit append-identity rewrite was necessary after the search proof
 became parametric in its initialization program.
+
+### Packed allocation preserves tensor inputs
+
+The [reuse memory proof](proofs/talos/lean/Project/ProofKit/PackedReuseMemory.lean)
+preserves the remaining free list and byte regions disjoint from the free
+blocks.  The [allocation memory proof](proofs/talos/lean/Project/ProofKit/PackedAllocationMemory.lean)
+combines that result with bump allocation and memory growth.  Its final
+theorems preserve represented input byte arrays and remaining free-list
+headers after writes anywhere in the allocated output region.  The
+[byte-array framing lemmas](proofs/talos/lean/Project/ProofKit/PackedMemory.lean)
+also apply to individual tensor-loop steps.
+
+These results assume input/free-region separation and, for bump allocation,
+that existing objects lie below the heap end.  They impose no numerical
+conditions on tensor contents.  The memory modules check in 1.7 seconds
+with standard axioms.  Explicit store arguments distinguish allocation
+counter updates from memory writes when applying the framing theorem.

@@ -12,6 +12,23 @@ def ByteArrayAt (mem : Mem) (base : Nat) (bytes : ByteArray) : Prop :=
   base + bytes.size ≤ mem.pages * 65536 ∧
   ∀ index, index < bytes.size → mem.bytes (base + index) = bytes[index]!
 
+theorem ByteArrayAt.frame {mem mem' : Mem} {base : Nat} {bytes : ByteArray}
+    (h : ByteArrayAt mem base bytes) (hPages : mem.pages ≤ mem'.pages)
+    (hBytes : ∀ address, base ≤ address → address < base + bytes.size →
+      mem'.bytes address = mem.bytes address) : ByteArrayAt mem' base bytes := by
+  refine ⟨h.1, h.2.1.trans (Nat.mul_le_mul_right 65536 hPages), ?_⟩
+  intro index hIndex
+  rw [hBytes _ (by omega) (by omega)]
+  exact h.2.2 index hIndex
+
+theorem ByteArrayAt.writesRange {initial final : Store α} {base start stop : Nat} {bytes : ByteArray}
+    (h : ByteArrayAt initial.mem base bytes) (hWrites : Memory.WritesRange initial final start stop)
+    (hDisjoint : base + bytes.size ≤ start ∨ stop ≤ base) : ByteArrayAt final.mem base bytes := by
+  apply h.frame (by rw [hWrites.2.1])
+  intro address hLow hHigh
+  apply hWrites.2.2
+  omega
+
 theorem read32_eq_getUInt32LE (mem : Mem) (base : Nat) (bytes : ByteArray)
     (offset : Nat) (address : UInt32)
     (hbytes : ByteArrayAt mem base bytes)
