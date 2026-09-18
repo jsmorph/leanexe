@@ -15300,3 +15300,22 @@ the disjoint fields to arithmetic automation.  The proof now applies
 normalization of powers also prevents simplification from missing field
 bounds.  The encoding module checks in 1.4 seconds and the packing module
 in 1.5 seconds.  Axiom reports contain only standard axioms.
+
+### Exact scaled-magnitude rounding
+
+The [scaled rounding proof](proofs/talos/lean/Project/ProofKit/F32RoundScaled.lean)
+proves that Lean's `round`, followed by packing, equals Talos's
+`roundScaledMagnitude` for either sign and every natural mantissa at
+exponent -149.  It includes zero, subnormal and normal encodings, a carry
+from rounding the significand, and overflow to infinity.  This is exact
+word equality, without an upper-magnitude assumption.
+
+A shared theorem composes the two exponent-selection stages of
+`roundWithAccuracy`.  The proof reuses the checked discarded-bit lemmas and
+Talos's quotient-rounding bounds.  A first simultaneous simplification
+unfolded the extended-mantissa constructor inside a dependent rewrite.
+Separating the first shift, mantissa result, and second shift removed that
+elaboration problem.  Normalizing numeric powers in hypotheses resolved
+the remaining field-comparison rewrites.  The completed module checks in
+1.8 seconds with only standard axioms.  Exponent-alignment invariance and
+the arithmetic-operation theorems remain open.
