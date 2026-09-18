@@ -74,4 +74,48 @@ theorem pack_finish_normal (s : Sign) (m : Nat) (k : Nat)
 #print axioms pack_finish_scaled
 #print axioms pack_finish_normal
 
+theorem finish_eq_round (s : Sign) (m : Nat) (e : Int)
+    (hlo : 2 ^ 23 ≤ m) (hhi : m ≤ 2 ^ 24) (he : -149 ≤ e) :
+    finish s m e = UnpackedFloat.round Format.binary32 s m e := by
+  have hm : 0 < m := by omega
+  by_cases hc : m = 2 ^ 24
+  · subst m
+    have ht : Format.binary32.targetExponent (totalExponent (2 ^ 24) e) = e + 1 := by
+      simp only [Format.targetExponent, totalExponent, Format.mantissaBits,
+        Format.minExponent, Nat.log2_two_pow]
+      omega
+    have hz : (e - (e + 1)).toNat = 0 := by omega
+    simp only [UnpackedFloat.round, ht, decreaseExponent, hz, Nat.shiftLeft_zero,
+      Nat.cast_zero, sub_zero, roundWithAccuracy_finish]
+    rw [shift_target _ e .exact 1 (by simpa using ht)]
+    have hr : (ExtendedMantissa.ofMantissaAndAccuracy (2 ^ 24) .exact >>> 1).roundedMantissa =
+        2 ^ 23 := by
+      rw [show (2 ^ 24 : Nat) = 2 ^ 23 * 2 ^ 1 by norm_num, F32Shift.shift_exact_mul_pow]
+      rfl
+    dsimp only
+    rw [hr]
+    simp only [Nat.cast_one]
+    rw [finish_carry s e he, finish_no_shift s (2 ^ 23) (e + 1) (by decide)]
+    simp only [Format.targetExponent, totalExponent, Format.mantissaBits,
+      Format.minExponent, Nat.log2_two_pow]
+    omega
+  · have hl : m.log2 = 23 := (Nat.log2_eq_iff (Nat.ne_of_gt hm)).mpr ⟨hlo, by omega⟩
+    have ht : Format.binary32.targetExponent (totalExponent m e) = e := by
+      simp only [Format.targetExponent, totalExponent, Format.mantissaBits,
+        Format.minExponent, hl]
+      omega
+    simp only [UnpackedFloat.round, ht, decreaseExponent, sub_self, Int.toNat_zero,
+      Nat.shiftLeft_zero, Nat.cast_zero, sub_zero, roundWithAccuracy_finish]
+    rw [shift_target _ e .exact 0 (by simpa using ht)]
+    simp [shift_zero, roundedMantissa_eq, ExtendedMantissa.ofMantissaAndAccuracy]
+
+theorem pack_finish_above_min (s : Sign) (m : Nat) (e : Int)
+    (hlo : 2 ^ 23 ≤ m) (hhi : m ≤ 2 ^ 24) (he : -149 ≤ e) :
+    UInt32.ofBitVec (UnpackedFloat.pack Format.binary32 (finish s m e)) =
+      Wasm.IEEE32.roundScaledMagnitude (negative s) (m * 2 ^ (e + 149).toNat) := by
+  rw [finish_eq_round s m e hlo hhi he,
+    F32Normalize.pack_round_above_min s m e (by omega) he]
+
+#print axioms pack_finish_above_min
+
 end Project.ProofKit.F32RoundFinish
