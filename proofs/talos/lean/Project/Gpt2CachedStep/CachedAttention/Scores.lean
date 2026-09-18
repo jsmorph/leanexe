@@ -7,7 +7,7 @@ open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project
 def scoresNeed (position : Nat) : UInt64 := PackedCapacity.capacity (UInt64.ofNat (4 * (12 * (position + 1))))
 
 def ScoresBuiltState (params : List Wasm.Value) (pointer : UInt64) (position : Nat) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 109 ∧ frame.values = [] ∧
+  frame.params = params ∧ frame.locals.length = 114 ∧ frame.values = [] ∧
   frame.locals[0]? = some (.i64 (UInt64.ofNat (position + 1))) ∧
   frame.locals[14]? = some (.i64 pointer) ∧ frame.locals[15]? = some (.i64 pointer) ∧
   frame.locals[16]? = some (.i64 (UInt64.ofNat (4 * (12 * (position + 1))))) ∧ I64Values frame.locals
@@ -33,7 +33,7 @@ theorem scores_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       FixedArrayBump.requiredPages heap.top (scoresNeed position) ≤ initial.memoryCap «module» 0)
     (hPages : initial.mem.pages ≤ 65536)
     (hParams : frame.params = parameters cacheOwner qkvOwner cachePtr qkvPtr cache qkv layer position)
-    (hLocals : frame.locals.length = 109) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
+    (hLocals : frame.locals.length = 114) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final result,
       ScoresBuiltState (parameters cacheOwner qkvOwner cachePtr qkvPtr cache qkv layer position)
@@ -68,7 +68,7 @@ theorem scores_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp [scoresSizeFrame, Locals.validIndex, hParamLength, hLocals]
   let prepared := FixedArrayCapacity.capacityFrame (scoresSizeFrame frame position) 111 (scoresNeed position)
   have hPreparedParams : prepared.params = frame.params := by simp [prepared, FixedArrayCapacity.capacityFrame, scoresSizeFrame, hParamLength]
-  have hPreparedLocals : prepared.locals.length = 109 := by simp [prepared, FixedArrayCapacity.capacityFrame, scoresSizeFrame, hParamLength, hLocals]
+  have hPreparedLocals : prepared.locals.length = 114 := by simp [prepared, FixedArrayCapacity.capacityFrame, scoresSizeFrame, hParamLength, hLocals]
   have hPreparedTyped : I64Values prepared.locals := by
     simp (config := { maxDischargeDepth := 64 }) only [prepared, FixedArrayCapacity.capacityFrame,
       scoresSizeFrame, hParamLength, Nat.reduceSub, I64Values.set, hTyped]
@@ -77,7 +77,7 @@ theorem scores_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · rfl
   · exact hPreparedTyped
   · rw [hPreparedParams, hParamLength]; decide
-  · rw [hPreparedParams, hParamLength, hPreparedLocals]
+  · rw [hPreparedParams, hParamLength, hPreparedLocals]; decide
   · simp [prepared, FixedArrayCapacity.capacityFrame, scoresSizeFrame, Locals.get, hParamLength, hLocals]
   · rw [hHeap.globals]; rfl
   · rw [hHeap.globals]; rfl
@@ -90,7 +90,7 @@ theorem scores_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   simp only [List.cons_append, List.nil_append]
   wp_packed_frame [PackedAllocation.allocatedFrame, FixedArraySearch.frame, hPreparedParams,
     hPreparedLocals, hParamLength, List.length_append, List.length_take, List.length_drop,
-    List.getElem?_append, List.getElem?_take, show min 103 109 = 103 from rfl]
+    List.getElem?_append, List.getElem?_take, show min 103 114 = 103 from rfl]
   apply scoresLoop_spec env (heap.allocatePackedStore initial (scoresNeed position))
     cacheOwner qkvOwner cachePtr qkvPtr (allocatedRoot heap.top (scoresNeed position) heap.nodes)
     cache qkv layer position _ hCacheAllocated hQkvAllocated hLayer hPosition hCacheSize hQkvSize

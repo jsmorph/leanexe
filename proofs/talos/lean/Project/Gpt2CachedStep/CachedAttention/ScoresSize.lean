@@ -17,7 +17,7 @@ def scoresSizeFrame (frame : Locals) (position : Nat) : Locals :=
 
 set_option maxRecDepth 32768 in
 theorem scoresSize_spec (env : HostEnv Unit) (store : Store Unit) (frame : Locals) (position : Nat)
-    (hParams : frame.params.length = 8) (hLocals : frame.locals.length = 109)
+    (hParams : frame.params.length = 8) (hLocals : frame.locals.length = 114)
     (hValues : frame.values = []) (hPosition : frame.params[7]? = some (.i64 (UInt64.ofNat position)))
     (hBound : position < 128)
     (Q : Assertion Unit) (rest : Wasm.Program)
