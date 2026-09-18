@@ -15386,3 +15386,21 @@ negating Lean's decoded value.  The proof covers NaNs through the same
 decoding equation.  An initial proof unfolded integer negation too far.
 Using the existing double-negation theorem kept that step within its
 algebraic interface.  The module checks in 1.2 seconds with standard axioms.
+
+### Exact dyadic rounding for products
+
+The [final-rounding lemmas](proofs/talos/lean/Project/ProofKit/F32RoundFinish.lean)
+separate the rounded significand from its exponent adjustment and packing.
+The [dyadic correspondence](proofs/talos/lean/Project/ProofKit/F32RoundDyadic.lean)
+proves exact agreement with Talos's `roundDyadicMagnitude` for any nonzero
+mantissa and any number of fractional bits.  It includes gradual underflow
+and rounding to zero.  An exponent-shifting corollary permits direct use
+for products of decoded inputs, whose exponents sum to at least -298.
+
+The proof retains discarded fractional bits until rounding, then reuses
+the checked carry and packing lemmas.  Bounds on the quotient prove which
+packing case applies.  These are internal proof obligations, without a
+numerical-accuracy assumption on model weights.  A dependent rewrite in
+the final constructor needed restricted simplification to preserve its
+nonzero proof.  The final-rounding and dyadic modules check in 1.3 and
+1.6 seconds, with standard axioms.
