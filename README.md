@@ -147,8 +147,10 @@ lookup and scores, row maximum and sum, exponential evaluation, and tensor
 activation, residual addition, complete cached attention, and complete cached
 transformer blocks have checked execution theorems.  The block theorem includes
 both returned buffers, all ten kernel calls, and temporary-buffer cleanup.
-Cache assembly, hidden traversal, vocabulary projection, and complete inference
-remain open.  Numerical error bounds remain deferred.
+The complete hidden-state theorem includes token and position embedding,
+all twelve blocks, cache assembly, output ownership, and temporary-buffer
+cleanup.  Vocabulary projection and complete inference remain open.
+Numerical error bounds remain deferred.
 
 The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
 
