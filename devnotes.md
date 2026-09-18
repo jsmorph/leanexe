@@ -15521,3 +15521,11 @@ counter updates from memory writes when applying the framing theorem.
 `RangeFoldLoop.program_spec` supplies a decreasing-index proof for read-only range reductions.  Clients prove one iteration and state their accumulator invariant.  The rule imposes no particular scalar operation or loop width.  Lean checks it in 1.4 seconds.  Both axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
 
 The GPT-2 row-mean proof now has a checked source prefix recurrence using the established FP32 addition and division correspondences.  The generated reader and generic loop rule are ready.  The generated iteration and entry composition remain in progress.  The first iteration proof exposed a generated-instruction pattern mismatch before any execution obligations ran.  That diagnostic is retained in the proof-session output.  No arithmetic or compiler behavior changed.
+
+### Generated GPT-2 row mean
+
+[The row-mean theorem](proofs/talos/lean/Project/Gpt2RowMean/Spec.lean) proves the generated `rowMean` entry terminates, preserves its complete store, and returns the Lean function's result for every represented input and valid 768-word row.  The arithmetic statement uses Talos's binary32 model.  The proof requires no finite-value or weight assumptions.
+
+The source recurrence follows the ordered 768-element fold.  A definitionally checked decomposition identifies the emitted loop.  Its invariant records only the input parameters, accumulator, range bounds, stride, and frame size.  One iteration composes checked address arithmetic, the shared packed-word call, and FP32 addition.  The entry composes that result with the generic range rule and FP32 division.  The iteration checks in 2.6 seconds and the entry in 1.5 seconds, with standard axioms.
+
+A broad final simplification cycled between natural-number injection and UInt64 addition.  Restricted simplification removed that cycle.  Explicit list-update rules and the core UInt32-to-UInt64 lemma resolved the generated frame and bit-conversion obligations.  These were proof elaboration failures.  The compiler and model source remain unchanged.  The generated standalone kernel still needs transfer into the complete inference module when the kernel proofs are composed.
