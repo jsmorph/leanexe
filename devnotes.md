@@ -15436,3 +15436,22 @@ The proof reuses the final-rounding and packing results from multiplication.
 The two modules check in 1.2 and 1.7 seconds with standard axioms.  The next
 step relates the exponent and integer quotient chosen by Lean's division
 core to this common rational representation.
+
+### Complete source FP32 division
+
+The [rational scaling lemmas](proofs/talos/lean/Project/ProofKit/F32RationalScale.lean)
+and [normalization proof](proofs/talos/lean/Project/ProofKit/F32RationalNormalize.lean)
+establish rounding invariance under exponent changes and equivalent
+numerator/denominator representations.  The
+[division-core proof](proofs/talos/lean/Project/ProofKit/F32DivCore.lean)
+shows that Lean's selected exponent retains enough quotient bits, then
+uses equality of cross products to match Talos's scaled rational.
+The [complete division theorem](proofs/talos/lean/Project/ProofKit/F32Div.lean)
+proves `LeanExe.Float32.divBits a b = Wasm.IEEE32.div a b` for every pair
+of input words, including all exceptional cases.
+
+The scaling proof needed an explicit multiplication of a power bound.
+The arithmetic tactic did not infer that multiplication from its factors.
+The final modules check in 1.2 to 2.8 seconds with standard axioms.
+Addition, subtraction, multiplication, and division now have complete
+source correspondences.  Square root remains before tensor composition.
