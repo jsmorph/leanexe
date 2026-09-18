@@ -4,6 +4,12 @@ namespace Project.ProofKit.PackedHeader
 open Wasm Project.ProofKit.Memory Project.ProofKit.Allocation
 open Project.ProofKit.FixedArrayHeader
 
+structure FreshAt (mem : Mem) (root capacity : UInt64) : Prop where
+  magic : mem.read64 (root - 48).toUInt32 = 5501223100278326855
+  references : mem.read64 (root - 40).toUInt32 = 1
+  capacityWord : mem.read64 (root - 32).toUInt32 = capacity
+  kind : mem.read64 (root - 24).toUInt32 = 0
+
 def headerMem (mem : Mem) (base capacity : UInt64) : Mem :=
   (((((mem.write64
     (UInt32.ofNat (base.toNat % 4294967296)) 5501223100278326855).write64
@@ -93,8 +99,42 @@ theorem bytes_outside (mem : Mem) (base capacity : UInt64)
     simp only [UInt32.toNat_ofNat', Nat.reducePow, Nat.mod_mod]
     omega)]
 
+theorem fresh (mem : Mem) (base capacity : UInt64)
+    (hFit32 : base.toNat + 48 ≤ 4294967296) :
+    FreshAt (headerMem mem base capacity) (base + 48) capacity := by
+  obtain ⟨h40, h32, h24, _, _⟩ := headerOffsets base hFit32
+  have h48 : (base + 48 - 48).toNat = base.toNat := by
+    rw [root_sub_toNat base 48 hFit32 (by decide)]
+    rfl
+  obtain ⟨hMagic, hRc, hCapacity, hKind, _, _⟩ := reads mem base capacity
+  constructor
+  · simpa only [toUInt32_eq_ofNat, h48] using hMagic
+  · simpa only [toUInt32_eq_ofNat, h40] using hRc
+  · simpa only [toUInt32_eq_ofNat, h32] using hCapacity
+  · simpa only [toUInt32_eq_ofNat, h24] using hKind
+
+theorem FreshAt.frame_region {initial final : Mem} {root capacity : UInt64}
+    (h : FreshAt initial root capacity) (hRoot : 48 ≤ root.toNat)
+    (hRoot32 : root.toNat ≤ 4294967296)
+    (hBytes : ∀ address : Nat, root.toNat - 48 ≤ address → address < root.toNat →
+      final.bytes address = initial.bytes address) : FreshAt final root capacity := by
+  have hRead (offset : UInt64) (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :
+      final.read64 (root - offset).toUInt32 = initial.read64 (root - offset).toUInt32 := by
+    apply read64_congr
+    intro index hIndex
+    have hAddress : (root - offset).toUInt32.toNat = root.toNat - offset.toNat := by
+      rw [UInt64.toNat_toUInt32, toNat_sub_of_le _ _ (by omega), Nat.mod_eq_of_lt (by omega)]
+    apply hBytes <;> rw [hAddress] <;> omega
+  constructor
+  · rw [hRead 48 (by decide) (by decide)]; exact h.magic
+  · rw [hRead 40 (by decide) (by decide)]; exact h.references
+  · rw [hRead 32 (by decide) (by decide)]; exact h.capacityWord
+  · rw [hRead 24 (by decide) (by decide)]; exact h.kind
+
 #print axioms program_spec
 #print axioms reads
 #print axioms bytes_outside
+#print axioms fresh
+#print axioms FreshAt.frame_region
 
 end Project.ProofKit.PackedHeader
