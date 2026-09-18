@@ -8,3 +8,4 @@ import Project.Gpt2CachedStep.FiniteLt
 import Project.Gpt2CachedStep.ExpPolynomial
 import Project.Gpt2CachedStep.CachedRowSum.Spec
 import Project.Gpt2CachedStep.CachedRowMaximum.Spec
+import Project.Gpt2CachedStep.Gelu
