@@ -15185,3 +15185,26 @@ allocation, whose object header differs from the fixed-array header.
 The shared-runtime equality checks and registry-import consistency pass.
 The documentation checker accepts 137 maintained Markdown files, and
 `git diff --check` passes.  The registry contains 64 cases, 62 complete.
+
+### Packed-buffer allocation
+
+The [allocation preparation theorem](proofs/talos/lean/Project/ProofKit/FixedArrayBump.lean)
+now separates heap growth and pointer assignment from object-header writes.
+The existing fixed-array theorem composes this preparation with its header
+proof and retains its statement.  The first refactoring attempt exposed
+a local variable that shadowed the new store definition.  Naming the store
+`preparedStore` and retaining the grown store's global projection resolved
+the mismatch.  The refactored module checks in 2.1 seconds, and its existing
+no-fit allocator consumer rebuilds in 3.2 seconds.
+
+The [packed header theorem](proofs/talos/lean/Project/ProofKit/PackedHeader.lean)
+uses the existing checked constant/local word stores.  It establishes the
+raw-buffer kind, reference count, capacity, exact metadata reads, and
+preservation outside the 48-byte header.  The
+[packed allocator theorem](proofs/talos/lean/Project/ProofKit/PackedAllocate.lean)
+composes initialization, traversal of a represented free list with no
+sufficient block, conditional growth, raw-header writes, and allocation
+counting.  It supports arbitrary saved parameters and locals.  The header
+and allocator modules check in 2.2 and 2.6 seconds, with standard axioms.
+The next constructor proof can apply these results after its size and
+capacity calculations.  Free-block reuse remains a separate obligation.
