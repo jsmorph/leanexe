@@ -147,3 +147,4 @@ import Project.SequenceSoftmax.Spec
 import Project.PackedRead.Spec
 import Project.PackedGenerate.Spec
 import Project.Gpt2RowMean.Spec
+import Project.Gpt2RowInvStd.Spec
