@@ -15256,3 +15256,28 @@ and Talos's `Wasm.IEEE32`.  Both have explicit integer arithmetic and
 rounding definitions.  This permits work on the existing GPT-2 source.
 The plan now records this corrected boundary.  NaN canonicalization and
 rounding must be checked as part of the equivalence proof.
+
+### Source-model rounding correspondence
+
+The [source arithmetic adapters](proofs/talos/lean/Project/ProofKit/F32Source.lean)
+prove that the five GPT-2 intrinsics reduce to explicit `Float32.Model`
+operations.  The [comparison test](proofs/talos/lean/Project/F32Source/Checks.lean)
+evaluates those pure operations against Talos, avoiding native floating-point
+extern calls.  All 8,000 results agree across an edge-word matrix and 1,024
+deterministic word pairs.  The edge words include subnormal boundaries,
+signed zeros, infinities, and noncanonical NaN payloads.
+
+The [rounding proof](proofs/talos/lean/Project/ProofKit/F32Rounding.lean)
+establishes the mantissa, round bit, and sticky bit after arbitrary shifts,
+including initial residual bits.  Its `round_exact_shift` theorem proves
+that Lean's nearest-even rounding of an exact mantissa agrees with Talos's
+`roundShift` for every mantissa and positive shift.  This is a component
+of arithmetic equivalence.  Exponent selection, packing, and the complete
+operations remain open.
+
+The first proof attempts needed explicit Boolean-to-proposition conversion,
+the definition of `Nat.repeat`, and reduction of local definitions before
+rewriting the quotient calculation.  The final proof uses induction and
+quotient/remainder identities.  It checks in 1.3 seconds and uses only
+standard axioms.  The source adapters and comparison test check in 1.3 and
+1.1 seconds.  No source algorithm or compiler change was required.
