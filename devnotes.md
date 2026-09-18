@@ -15404,3 +15404,20 @@ numerical-accuracy assumption on model weights.  A dependent rewrite in
 the final constructor needed restricted simplification to preserve its
 nonzero proof.  The final-rounding and dyadic modules check in 1.3 and
 1.6 seconds, with standard axioms.
+
+### Complete source FP32 multiplication
+
+The [finite-product proof](proofs/talos/lean/Project/ProofKit/F32MulFinite.lean)
+relates the decoded product to Talos's numerator over `2^149`.  It proves
+that Lean's product rounder needs no initial left shift and applies the
+general dyadic theorem.  The
+[complete multiplication theorem](proofs/talos/lean/Project/ProofKit/F32Mul.lean)
+then establishes `LeanExe.Float32.mulBits a b = Wasm.IEEE32.mul a b` for
+every pair of input words.  Exceptional branches include zero times
+infinity, NaN operands, and signed-zero results.
+
+The finite and complete multiplication modules check in 1.4 and 1.5 seconds.
+Both use only standard axioms.  The encoding and exception lemmas from the
+addition proof apply without changes.  Addition, subtraction, and
+multiplication now have complete source correspondences.  Division and
+square root remain open before the tensor-loop composition.
