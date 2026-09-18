@@ -71,6 +71,10 @@ represented input.  It composes the shared
 [indexed word reader](lean/Project/ProofKit/PackedWordRead.lean),
 [range-loop rule](lean/Project/ProofKit/RangeFoldLoop.lean), and checked
 source/Talos addition and division correspondences.
+The [inverse-standard-deviation proof](lean/Project/Gpt2RowInvStd/Spec.lean)
+extends this structure to the squared-deviation fold, variance division,
+epsilon addition, square root, and reciprocal.  It accepts any supplied
+FP32 mean and valid row and preserves the store.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,

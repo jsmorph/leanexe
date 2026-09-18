@@ -1,10 +1,10 @@
-import Project.Gpt2RowMean.Program
-import Project.Gpt2RowMean.Source
+import Project.Gpt2RowInvStd.Program
+import Project.Gpt2RowInvStd.Source
 import Project.ProofKit.PackedWordRead
 import Project.ProofKit.RangeFoldLoop
 import Project.ProofKit.PackedFloatFrame
 
-namespace Project.Gpt2RowMean
+namespace Project.Gpt2RowInvStd
 
 open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
@@ -14,30 +14,30 @@ def stepCode : Wasm.Program :=
   | _ => []
 
 theorem emitted_loop :
-    func1 = func1.take 12 ++ RangeFoldLoop.program 16 17 stepCode ++ func1.drop 13 := rfl
+    func1 = func1.take 12 ++ RangeFoldLoop.program 20 21 stepCode ++ func1.drop 13 := rfl
 
-def Accumulator (ptr : UInt64) (input : ByteArray) (row index : Nat) (frame : Locals) : Prop :=
-  frame.params = [.i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat row)] ∧
-  frame.locals.length = 24 ∧
-  frame.locals[1]? = some (.i64 (sumPrefix input row index).toUInt64) ∧
-  frame.locals[15]? = some (.i64 1)
+def Accumulator (ptr : UInt64) (input : ByteArray) (row index : Nat) (mean : UInt32) (frame : Locals) : Prop :=
+  frame.params = [.i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat row), .i64 mean.toUInt64] ∧
+  frame.locals.length = 27 ∧
+  frame.locals[1]? = some (.i64 (variancePrefix input row mean index).toUInt64) ∧
+  frame.locals[18]? = some (.i64 1)
 
 set_option maxRecDepth 16384 in
 theorem step_spec (env : HostEnv Unit) (initial : Store Unit)
-    (ptr : UInt64) (input : ByteArray) (row index : Nat) (frame : Locals)
+    (ptr : UInt64) (input : ByteArray) (row index : Nat) (mean : UInt32) (frame : Locals)
     (hbytes : ByteArrayAt initial.mem ptr.toNat input)
     (hrow : (row + 1) * 768 * 4 ≤ input.size)
     (hindex : index < 768)
-    (hready : RangeFoldLoop.Ready 16 17 768 index frame)
-    (hacc : Accumulator ptr input row index frame)
+    (hready : RangeFoldLoop.Ready 20 21 768 index frame)
+    (hacc : Accumulator ptr input row index mean frame)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hnext : ∀ result, RangeFoldLoop.Ready 16 17 768 (index + 1) result →
-      Accumulator ptr input row (index + 1) result → wp «module» rest Q initial result env) :
+    (hnext : ∀ result, RangeFoldLoop.Ready 20 21 768 (index + 1) result →
+      Accumulator ptr input row (index + 1) mean result → wp «module» rest Q initial result env) :
     wp «module» (stepCode ++ rest) Q initial frame env := by
   rcases hacc with ⟨hparams, hlength, htotal, hstride⟩
-  have hcounter : frame.locals[13]? = some (.i64 (UInt64.ofNat index)) := by
+  have hcounter : frame.locals[16]? = some (.i64 (UInt64.ofNat index)) := by
     simpa [Locals.get, hparams, hlength] using hready.2.1
-  have hstop : frame.locals[14]? = some (.i64 768) := by
+  have hstop : frame.locals[17]? = some (.i64 768) := by
     simpa [Locals.get, hparams, hlength] using hready.2.2
   have hrow64 : row < UInt64.size := by
     have := hbytes.1
@@ -84,7 +84,7 @@ theorem step_spec (env : HostEnv Unit) (initial : Store Unit)
   simp only [hadd]
   refine wp_call_tw ((PackedWordRead.exact «module» 0 (some 0) rfl rfl
     env initial 0 ptr input (row * 768 + index) hbytes (by omega)).append_args
-    rfl rfl rfl [.f32 (sumPrefix input row index)]) ?_
+    rfl rfl rfl []) ?_
   rintro final values ⟨out, rfl, rfl, rfl⟩
   wp_packed_frame [hparams, hlength, htotal, hcounter, hstop, hstride, hready.1]
   refine wp_iff_cons rfl ?_
@@ -97,9 +97,9 @@ theorem step_spec (env : HostEnv Unit) (initial : Store Unit)
       true_and, and_self]
     rfl
   · simp only [Accumulator, hparams, hlength, List.length_set, List.getElem?_set,
-      Nat.reduceLT, Nat.reduceEqDiff, reduceIte, hstride, sumPrefix_succ,
+      Nat.reduceLT, Nat.reduceEqDiff, reduceIte, hstride, variancePrefix_succ,
       LeanExe.Models.Gpt2.word, true_and, and_self]
 
 #print axioms step_spec
 
-end Project.Gpt2RowMean
+end Project.Gpt2RowInvStd
