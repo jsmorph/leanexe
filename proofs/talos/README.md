@@ -136,10 +136,13 @@ all nine temporary releases and the six-word return, preserving both output
 buffers and protected input regions through a shared list-based release rule.
 All ten kernel calls within the block now have checked argument preparation,
 returned bindings, exact source results, ownership, and memory postconditions.
-The [first block section](lean/Project/Gpt2CachedStep/CachedBlock/Front.lean)
-composes base calculation, normalization, QKV projection, and cached attention,
-including temporary ownership and local bindings.  Complete block composition
-and the complete cached entry remain open.
+The [complete block theorem](lean/Project/Gpt2CachedStep/CachedBlock/Spec.lean)
+proves function 33 computes the Lean `cachedBlock` result for every layer below
+twelve and position below 128, including both returned buffers and all nine
+temporary releases.  It provides output ownership, separation, and preservation
+of protected input memory.  The body and entry check in 2.4 and 2.1 seconds.
+Cache assembly, the twelve-block traversal, vocabulary projection, and the
+complete cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
