@@ -7,6 +7,7 @@ const {spawnSync} = require('node:child_process');
 const repo = path.resolve(__dirname, '../..');
 const root = fs.mkdtempSync(path.join(repo, 'build/wgsl/body-check-'));
 let sequence = 0;
+let rejectedCases = 0;
 
 function run(command, args, expectFailure = false, diagnostic = null) {
   const result = spawnSync(command, args, {cwd: repo, encoding: 'utf8', maxBuffer: 16*1024*1024});
@@ -28,6 +29,7 @@ function negative(name, body, diagnostic) {
   fs.writeFileSync(file, `import LeanExe.WGSL.Examples.Body\nopen LeanExe.WGSL LeanExe.WGSL.Source\n${body(destination)}\n`);
   lean(['env', 'lean', file], true, diagnostic);
   if (fs.existsSync(destination)) throw new Error(`Rejected case wrote output: ${name}`);
+  rejectedCases++;
 }
 
 try {
@@ -74,6 +76,12 @@ try {
   negative('out-of-bounds', compile('@[wgsl] def bad : Kernel := fun _ a _ r c => a (r*3+c+1)'), 'A index may be out of bounds');
   negative('overflow', compile('@[wgsl] def bad : Kernel := fun _ a _ r _ => a (4294967295+r)'), 'index addition may overflow');
   negative('zero-dimension', compile('@[wgsl] def bad : Kernel := fun _ a _ _ _ => a 0', '0 3 6 6'), 'dimensions must be positive');
+  for (const [name, word] of [['positive-infinity','0x7f800000'], ['negative-infinity','0xff800000'],
+    ['quiet-nan','0x7fc00000'], ['signaling-nan','0x7f800001']])
+    negative(name, compile(`@[wgsl] def bad : Kernel := fun _ _ _ _ _ => ${word}`), 'nonfinite word literal');
+  negative('custom-nat-add', compile('def alteredAdd : HAdd Nat Nat Nat := ⟨Nat.mul⟩\n' +
+    '@[wgsl] def bad : Kernel := fun _ a _ r c => a (@HAdd.hAdd Nat Nat Nat alteredAdd r c)'),
+    'source equality did not pass');
 
   const original = fs.readFileSync(path.join(root, 'add', 'kernel.wgsl'), 'utf8');
   const matrix = fs.readFileSync(path.join(root, 'matmul', 'kernel.wgsl'), 'utf8');
@@ -88,6 +96,8 @@ try {
     ['wrong-loop-start', 'matmul', '2 3 8 12', matrix.replace('k2: u32 = 0u', 'k2: u32 = 1u'), 'failed independent parsing'],
     ['wrong-loop-assignment', 'matmul', '2 3 8 12', matrix.replace('acc1 = v6;', 'v0 = v6;'), 'expected loop accumulator assignment'],
     ['escaped-local', 'matmul', '2 3 8 12', matrix.replace('c[row * N + col] = acc1;', 'c[row * N + col] = v6;'), 'undefined word'],
+    ['unused-nan', 'add', '2 3 6 6', original.replace('  c[row * N + col]',
+      '  let v99: f32 = bitcast<f32>(2143289344u);\n  c[row * N + col]'), 'nonfinite word literal'],
   ];
   for (const [name, entry, shape, shader, diagnostic] of mutations) {
     if (shader === (entry === 'add' ? original : matrix)) throw new Error('mutation did not apply');
@@ -96,7 +106,7 @@ try {
     negative(name, dest => `#check_wgsl LeanExe.WGSL.Examples.Body.${entry} ${shape} ${JSON.stringify(shaderFile)} ${JSON.stringify(dest)}`, diagnostic);
   }
   const summary = {status:'pass', sourceCases:cases.length, outputWords:cases.reduce((n,c)=>n+c.shape.rows*c.shape.cols,0),
-    rejectedCases:18, bodyMutationPairs:2, independentMatrixProof:'pass', statementExecutionProofs:cases.length,
+    rejectedCases, bodyMutationPairs:2, independentMatrixProof:'pass', statementExecutionProofs:cases.length,
     evidenceDirectory:root, universalRuntimeConformanceEstablished:false};
   fs.writeFileSync(path.join(root,'summary.json'), JSON.stringify(summary,null,2)+'\n');
   console.log(JSON.stringify(summary));

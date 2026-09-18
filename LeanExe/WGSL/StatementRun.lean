@@ -78,7 +78,7 @@ instance (shape ranges size i) : Decidable (AccessValid shape ranges size i) := 
   split <;> infer_instance
 
 def Prim.Valid (shape : Shape) (ranges : List Nat) (words : Nat) : Prim → Prop
-  | .literal _ => True
+  | .literal word => FiniteLiteral word
   | .copy n => n < words
   | .loadA i => AccessValid shape ranges shape.elementsA i
   | .loadB i => AccessValid shape ranges shape.elementsB i

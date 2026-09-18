@@ -201,3 +201,31 @@ The browser archive was rebuilt and its six shaders and host were compared
 with the installed bundle. Browser inference was not rerun in this iteration;
 the actual completion test used the native CPU path. Generated shaders, Wasm,
 weights, proof fragments, reports, binaries and archives remain uncommitted.
+
+## Review: literal validity and runtime assumptions, 2026-09-17
+
+The review found that any UInt32 word was accepted as a literal, although
+`bitcast<f32>(...u)` is a WGSL constant expression and NaN/infinity constants
+are shader-creation errors under the pinned WGSL specification. Before the
+fix, `build/wgsl/review-20260917/Probe.lean` successfully compiled positive
+infinity and a quiet NaN. Native SwiftShader/wgpu execution even accepted the
+infinity shader and preserved its bits. This is evidence that a passing CPU
+test alone did not enforce the standard's constant-expression restriction.
+
+`Source.FiniteLiteral` now checks the exponent field. Both source validation
+and the kernel-checked `Statement.Prim.Valid` predicate require it. The
+checker also rejects an unused nonfinite literal in an existing shader.
+The shared execution proofs required no new axioms or changed conclusions.
+The source specification now states the complete external assumption: word
+preservation through literals, loads, copies and stores, plus the modeled
+operation order and arithmetic. Matching add/mul alone is insufficient.
+
+The bounded corpus passed in `build/wgsl/body-check-TTw4Ba`: eleven source,
+parse and execution proof triples; 63 exact CPU output words compared with
+original Lean definitions; 24 rejection cases with no emitted packages; and
+an independent replay of the matrix certificate. New positives exercise a
+constant-only shader and a shader using only A. New negatives cover both
+infinities, quiet/signaling NaNs, an unused NaN, and an altered Nat typeclass
+instance. This last case confirms that the source-equality gate rejects the
+extractor's tentative interpretation when the original instance changes the
+meaning. The targeted Lean build and host syntax checks also passed.

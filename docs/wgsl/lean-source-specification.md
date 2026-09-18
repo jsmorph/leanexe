@@ -70,8 +70,14 @@ the accepted grammar within a finite normalization budget: 256 recursive
 index-translation steps and 512 word-translation steps along a path. These
 are implementation limits, not support for arbitrary recursion.
 
-Literal words must fit u32; both decimal literals and `UInt32.ofNat` of a
-literal are accepted. Natural addition/multiplication syntax is accepted for
+Literal words must fit u32 and encode a finite binary32 value; both decimal
+literals and `UInt32.ofNat` of a literal are accepted. The exponent must not be
+255. The emitted `bitcast<f32>(...u)` is a constant expression, so a NaN or
+infinity would violate WGSL's shader-creation rules, even when a runtime happens
+to accept it. Both the source validator and the kernel-checked statement
+validity predicate enforce this restriction, including unused literals.
+See [WGSL floating-point evaluation](https://www.w3.org/TR/2026/CRD-WGSL-20260817/#floating-point-evaluation).
+Natural addition/multiplication syntax is accepted for
 indices. UInt32 integer arithmetic, even though it has the same storage type,
 is rejected. A custom typeclass instance cannot bypass the final checked
 equality to the original source.
@@ -152,10 +158,14 @@ These two geometric facts are not a formalization of an external GPU scheduler.
 This is an execution semantics of this explicit WGSL subset. There is no
 machine-checked refinement of this model against a complete formalization of
 the WebGPU/WGSL standard, and no proof of the external shader compiler or
-device. The arithmetic argument must match the runtime's scalar policy.
+device. Applying the theorem to an external runtime requires that runtime to
+implement this statement model: preserve the specified words through literals,
+loads, copies and stores, and use the supplied scalar operations in source
+order. Matching the arithmetic argument alone does not establish those other
+conditions.
 Instantiating it with the existing pure IEEE32 add/mul gives the strict
 separate-operation specification. Native WGSL implementations can differ on
-fusion, subnormal handling and exceptional values; the execution tests do not
+fusion, subnormal handling, zero signs and exceptional values; the execution tests do not
 establish universal exact agreement on those cases. The new compiler does not
 yet expose the old GEMM path's per-step fusion relation.
 

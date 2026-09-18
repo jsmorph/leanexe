@@ -65,6 +65,14 @@ structure Shape where
   elementsB : Nat
   deriving Repr, BEq, DecidableEq, Lean.ToJson, Lean.FromJson
 
+/-- A bitcast of a literal is a WGSL const-expression. Its binary32 exponent
+must not be all ones: NaNs and infinities are shader-creation errors even when
+the same bit patterns may occur in runtime buffers. -/
+def FiniteLiteral (word : UInt32) : Prop :=
+  word.toNat / 8388608 % 256 < 255
+
+instance (word) : Decidable (FiniteLiteral word) := inferInstanceAs (Decidable (_ < _))
+
 /-- Inclusive upper bound. The grammar is monotone in all index variables. -/
 def Index.bound (shape : Shape) (locals : List Nat) : Index → Except String Nat
   | .lit n => if n ≤ 4294967295 then pure n else .error "index literal exceeds u32"
@@ -84,7 +92,8 @@ def Index.bound (shape : Shape) (locals : List Nat) : Index → Except String Na
 
 def Term.validate (shape : Shape) (indices : List Nat) (wordCount : Nat) :
     Term → Except String Unit
-  | .lit _ => pure ()
+  | .lit word => if FiniteLiteral word then pure ()
+      else .error "nonfinite word literal is not a valid WGSL constant"
   | .local i => if i < wordCount then pure () else .error "unbound word local"
   | .readA i => do
       if (← i.bound shape indices) ≥ shape.elementsA then throw "A index may be out of bounds"
