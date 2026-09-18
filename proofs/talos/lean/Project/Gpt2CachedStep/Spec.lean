@@ -25,3 +25,6 @@ import Project.Gpt2CachedStep.CachedHidden.Source
 import Project.Gpt2CachedStep.CachedHidden.Code
 import Project.Gpt2CachedStep.CachedHidden.Embedding
 import Project.Gpt2CachedStep.CachedHidden.LayerAppend
+import Project.Gpt2CachedStep.CachedHidden.LayerCacheRelease
+import Project.Gpt2CachedStep.CachedHidden.LayerOldRelease
+import Project.Gpt2CachedStep.CachedHidden.LayerControl
