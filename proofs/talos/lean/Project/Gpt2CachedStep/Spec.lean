@@ -21,3 +21,5 @@ import Project.Gpt2CachedStep.CachedBlock.Activated
 import Project.Gpt2CachedStep.CachedBlock.Projected2
 import Project.Gpt2CachedStep.CachedBlock.Hidden
 import Project.Gpt2CachedStep.CachedBlock.Spec
+import Project.Gpt2CachedStep.CachedHidden.Source
+import Project.Gpt2CachedStep.CachedHidden.Code
