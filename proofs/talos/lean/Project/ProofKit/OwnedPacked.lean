@@ -101,6 +101,35 @@ theorem Heap.OwnsPacked.allocated {heap : Heap} {store : Store Unit} {source : F
   (heap.frame_allocatePacked store need hHeap hBump).ownsPacked
     (heap.allocatePacked_at store need hHeap hBump) hOwner
 
+structure Heap.PackedOutput (heap : Heap) (initial final : Store Unit)
+    (need : UInt64) (bytes : ByteArray) : Prop where
+  heapAt : (heap.allocate need).At final
+  owned : (heap.allocate need).OwnsPacked final (allocatedNode heap.top need heap.nodes) bytes
+  frame : heap.Frame initial (heap.allocate need) final
+  pages : final.mem.pages ≤ 65536
+  memoryCap : ∀ (module_ : Wasm.Module) (index : Nat),
+    final.memoryCap module_ index = initial.memoryCap module_ index
+
+theorem Heap.packedOutput (heap : Heap) (initial final : Store Unit)
+    (need : UInt64) (bytes : ByteArray) (hHeap : heap.At initial) (hNeed : bytes.size ≤ need.toNat)
+    (hBump : takeFirstFitFrom 0 need heap.nodes = none →
+      heap.top.toNat + 48 + need.toNat < 4294967296)
+    (hPages : initial.mem.pages ≤ 65536)
+    (hWrites : ProofKit.Memory.WritesRange (heap.allocatePackedStore initial need) final
+      (allocatedRoot heap.top need heap.nodes).toNat
+      ((allocatedRoot heap.top need heap.nodes).toNat + bytes.size))
+    (hBytes : PackedMemory.ByteArrayAt final.mem (allocatedRoot heap.top need heap.nodes).toNat bytes) :
+    heap.PackedOutput initial final need bytes := by
+  refine ⟨heap.packedWritten_at initial final need bytes.size hHeap hNeed (fun h => (hBump h).le) hWrites,
+    heap.ownsPacked_written initial final need bytes hHeap hNeed hBump hWrites hBytes,
+    heap.frame_packedWritten initial final need bytes.size hHeap hNeed (fun h => (hBump h).le) hWrites,
+    ?_, ?_⟩
+  · rw [hWrites.2.1]
+    exact heap.allocatePackedStore_pages_le initial need hPages (fun h => (hBump h).le)
+  · intro module_ index
+    rw [hWrites.1]
+    exact heap.allocatePackedStore_memoryCap initial need module_ index
+
 theorem Heap.OwnsPacked.writesRange {heap : Heap} {initial final : Store Unit} {source : FreeNode}
     {bytes : ByteArray} {start stop : Nat} (hOwner : heap.OwnsPacked initial source bytes)
     (hWrites : ProofKit.Memory.WritesRange initial final start stop)
@@ -149,6 +178,7 @@ theorem Heap.releasePacked_exact (env : HostEnv Unit) (module_ : Wasm.Module) (i
 
 #print axioms Heap.Frame.ownsPacked
 #print axioms Heap.ownsPacked_written
+#print axioms Heap.packedOutput
 #print axioms Heap.OwnsPacked.allocated
 #print axioms Heap.OwnsPacked.writesRange
 #print axioms Heap.OwnsPacked.released
