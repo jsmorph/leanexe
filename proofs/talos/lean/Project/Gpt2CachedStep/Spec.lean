@@ -11,4 +11,4 @@ import Project.Gpt2CachedStep.CachedRowMaximum.Spec
 import Project.Gpt2CachedStep.Gelu
 import Project.Gpt2CachedStep.Activate.Spec
 import Project.Gpt2CachedStep.AddRows.Spec
-import Project.Gpt2CachedStep.CachedAttention.Scores
+import Project.Gpt2CachedStep.CachedAttention.Maxima

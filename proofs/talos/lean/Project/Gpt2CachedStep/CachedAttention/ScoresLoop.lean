@@ -23,7 +23,7 @@ set_option maxRecDepth 32768 in
 theorem emitted_scores : (func29.drop 61).take 1 = PackedGenerateLoop.program 10 109 110 scoresWord := rfl
 
 def ScoresState (params : List Wasm.Value) (position : Nat) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 109 ∧
+  frame.params = params ∧ frame.locals.length = 114 ∧
   frame.locals[0]? = some (.i64 (UInt64.ofNat (position + 1))) ∧
   frame.locals[1]? = some (.i64 (UInt64.ofNat (4 * (12 * (position + 1))))) ∧ I64Values frame.locals
 
