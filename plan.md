@@ -9,7 +9,8 @@ The user resumed formal proof development on 2026-09-17, prioritizing
 agreement between generated WASM and the Lean algorithm.  Exact execution
 proofs now cover all transformer kernels and the complete hidden-state
 function, including embedding, all twelve blocks, cache assembly, and cleanup.
-Vocabulary projection and the exported cached step remain open.
+Vocabulary projection also has a complete execution proof.  The exported
+cached step remains open.
 Numerical bounds remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
