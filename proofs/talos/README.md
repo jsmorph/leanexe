@@ -107,6 +107,20 @@ The assumptions bound tensor extents and provide capacity for each
 allocation when no free block fits.  The body composition checks in
 1.4 seconds, and the public theorem checks in 1.2 seconds with standard axioms.
 
+The cached module also has checked proofs for [key/value lookup](lean/Project/Gpt2CachedStep/CachedKv.lean),
+[attention scores](lean/Project/Gpt2CachedStep/CachedScore/Spec.lean),
+[row maximum](lean/Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean),
+[row sum](lean/Project/Gpt2CachedStep/CachedRowSum/Spec.lean),
+[exponential evaluation](lean/Project/Gpt2CachedStep/ExpNeg/Spec.lean), and
+[scalar GELU](lean/Project/Gpt2CachedStep/Gelu.lean).  These functions return
+the Lean source's exact result and preserve the complete store.
+The [tensor-activation theorem](lean/Project/Gpt2CachedStep/Activate/Spec.lean)
+adds both allocation paths, packed construction, output ownership, and
+protected-region preservation.  It accepts arbitrary represented input
+lengths and computes the source-specified number of complete words.
+Residual addition, attention construction, transformer-block composition,
+and the complete cached entry remain open.
+
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
 and preserves every previously owned array.  It covers empty and
