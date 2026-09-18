@@ -16,8 +16,8 @@ theorem choice_previous_bound {mem : Wasm.Mem} {nodes : List FreeNode}
   rw [hRoot, UInt64.toNat_toUInt32, hSub, Nat.mod_eq_of_lt (by omega)]
   omega
 
-def fitInvariant (initial : Store Unit) (params saved extra : List Wasm.Value)
-    (need stride : UInt64) (skipped tail : List FreeNode) (choice : FreeChoice) : AssertionF Unit :=
+def fitInvariant (initial final : Store Unit) (params saved extra : List Wasm.Value)
+    (need : UInt64) (skipped tail : List FreeNode) (choice : FreeChoice) : AssertionF Unit :=
   fun store locals =>
     (∃ capacity next : UInt64, ∃ visited remaining : List FreeNode,
       store = initial ∧ skipped = visited ++ remaining ∧
@@ -25,7 +25,7 @@ def fitInvariant (initial : Store Unit) (params saved extra : List Wasm.Value)
       (∀ node ∈ remaining, node.capacity < need) ∧
       locals = frame params saved extra need (previousRoot 0 visited)
         (freeHead (remaining ++ choice.node :: tail)) capacity next 0) ∨
-    (store = fixedArrayAllocFitStore initial choice stride ∧
+    (store = final ∧
       locals = frame params saved extra need choice.previous choice.node.root
         choice.node.capacity choice.next choice.node.root)
 
@@ -34,16 +34,23 @@ def fitMeasure (start : Nat) (nodes : List FreeNode) (store : Store Unit) (local
   | some (.i64 result) => if result = 0 then measure start nodes store locals else 0
   | _ => 0
 
-theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
+theorem fitProgram_spec_of (module_ : Wasm.Module) (env : HostEnv Unit) (initial final : Store Unit)
     (params saved extra : List Wasm.Value) (start : Nat)
-    (hStart : params.length + saved.length = start) (need capacity next stride : UInt64) (nodes : List FreeNode)
-    (choice : FreeChoice) (hGlobal : initial.globals.globals[1]? = some (.i64 (freeHead nodes)))
+    (hStart : params.length + saved.length = start) (need capacity next : UInt64) (nodes : List FreeNode)
+    (choice : FreeChoice) (fitProgram : Wasm.Program)
     (hList : FreeListAt initial.mem nodes) (hTake : takeFirstFitFrom 0 need nodes = some choice)
+    (hReuse : ∀ (Q : Assertion Unit) (rest : Wasm.Program),
+      wp module_ rest Q final
+        (frame params saved extra need choice.previous choice.node.root choice.node.capacity
+          choice.next choice.node.root) env →
+      wp module_ (fitProgram ++ rest) Q initial
+        (frame params saved extra need choice.previous choice.node.root choice.node.capacity
+          choice.next 0) env)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : wp module_ rest Q (fixedArrayAllocFitStore initial choice stride)
+    (hNext : wp module_ rest Q final
       (frame params saved extra need choice.previous choice.node.root choice.node.capacity
         choice.next choice.node.root) env) :
-    wp module_ (program start (FixedArrayReuse.program start stride) ++ rest) Q initial
+    wp module_ (program start fitProgram ++ rest) Q initial
       (frame params saved extra need 0 (freeHead nodes) capacity next 0) env := by
   subst start
   obtain ⟨skipped, tail, hNodes, hPrevious, hNextRoot, _, hSmall⟩ :=
@@ -52,10 +59,9 @@ theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : 
   have hChoiceFit := takeFirstFitFrom_some_capacity hTake
   have hChoiceRoot := hList.roots_ne_zero choice.node
     (List.mem_append_right skipped List.mem_cons_self)
-  have hPreviousBound := choice_previous_bound hList hTake
   simp only [program, List.cons_append, List.nil_append]
   apply wp_block_cons
-  apply wp_loop_cons (Inv := fitInvariant initial params saved extra need stride skipped tail choice)
+  apply wp_loop_cons (Inv := fitInvariant initial final params saved extra need skipped tail choice)
     (μ := fitMeasure (params.length + saved.length) (skipped ++ choice.node :: tail))
   · left
     exact ⟨capacity, next, [], skipped, rfl, by simp, hList, hSmall, rfl⟩
@@ -110,8 +116,7 @@ theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : 
             simp only [freeHead, List.length_cons] at hBefore
             simp [fitMeasure, measure, frame, Locals.get,
               Nat.add_assoc, hAfter]
-            simpa [freeHead, hBefore] using
-              Nat.lt_succ_self (remaining ++ choice.node :: tail).length
+            simp [freeHead, hBefore]
       | nil =>
         simp only [List.nil_append] at hRemaining
         cases hRemaining with
@@ -130,13 +135,12 @@ theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : 
           simp [wp_simp, frame, Nat.add_assoc]
           refine wp_iff_cons rfl ?_
           rw [ite_eq_left (by simp [hChoiceFit])]
-          change wp _ (FixedArrayReuse.program (params.length + saved.length) stride ++ []) _ store
+          rw [← List.append_nil fitProgram]
+          change wp _ (fitProgram ++ []) _ store
             (frame params saved extra need (previousRoot 0 visited) choice.node.root
               choice.node.capacity (freeHead tail) 0) env
           rw [hRuntimePrevious, ← hNextRoot]
-          apply FixedArrayReuse.program_spec module_ env store params saved extra _ rfl need 0
-            (freeHead (skipped ++ choice.node :: tail)) stride choice hGlobal hPreviousBound hp
-            (by omega) hFit
+          apply hReuse
           simp [wp_simp]
           refine ⟨Or.inr ⟨rfl, rfl⟩, ?_⟩
           have hScan := hList.scanRemaining_suffix
@@ -148,7 +152,27 @@ theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : 
       simp only [body]
       simpa [guardProgram, wp_simp, frame, Nat.add_assoc, hChoiceRoot] using hNext
 
+theorem fitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
+    (params saved extra : List Wasm.Value) (start : Nat)
+    (hStart : params.length + saved.length = start) (need capacity next stride : UInt64) (nodes : List FreeNode)
+    (choice : FreeChoice) (hGlobal : initial.globals.globals[1]? = some (.i64 (freeHead nodes)))
+    (hList : FreeListAt initial.mem nodes) (hTake : takeFirstFitFrom 0 need nodes = some choice)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q (fixedArrayAllocFitStore initial choice stride)
+      (frame params saved extra need choice.previous choice.node.root choice.node.capacity
+        choice.next choice.node.root) env) :
+    wp module_ (program start (FixedArrayReuse.program start stride) ++ rest) Q initial
+      (frame params saved extra need 0 (freeHead nodes) capacity next 0) env := by
+  apply fitProgram_spec_of module_ env initial _ params saved extra start hStart need capacity next
+    nodes choice (FixedArrayReuse.program start stride) hList hTake _ Q rest hNext
+  intro post continuation hContinuation
+  obtain ⟨hRoot, hRoot32, hFit⟩ := hList.mem_bounds (takeFirstFitFrom_some_mem hTake)
+  exact FixedArrayReuse.program_spec module_ env initial params saved extra start hStart need 0
+    (freeHead nodes) stride choice hGlobal (choice_previous_bound hList hTake) hRoot
+    (by omega) hFit post continuation hContinuation
+
 #print axioms choice_previous_bound
+#print axioms fitProgram_spec_of
 #print axioms fitProgram_spec
 
 end Project.ProofKit.FixedArraySearch

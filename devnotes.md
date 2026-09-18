@@ -15476,3 +15476,23 @@ shift and integer-cast rewrites removed another expensive failed reduction.
 The square-root modules check in 1.1 to 1.6 seconds with standard axioms.
 All five FP32 arithmetic correspondences are complete.  The generated
 tensor loops and full GPT-2 composition remain open.
+
+### Packed constructor with free-block reuse
+
+The [free-list search proof](proofs/talos/lean/Project/ProofKit/FixedArraySearchFit.lean)
+now accepts a checked block-initialization program.  Its original fixed-array
+theorem remains a specialization and checks against the existing allocator.
+The [packed reuse proof](proofs/talos/lean/Project/ProofKit/PackedReuse.lean)
+composes unlinking, packed-header initialization, and the returned pointer.
+The [complete packed allocator](proofs/talos/lean/Project/ProofKit/PackedAllocation.lean)
+covers either reuse or bump allocation and proves the output region fits
+memory and the 32-bit address range.
+
+The [generated constructor proof](proofs/talos/lean/Project/PackedGenerate/EntryAll.lean)
+composes the allocator with the checked construction loop and return.
+`makeWords_with_reuse_exact` removes the previous no-fit assumption and
+requires bump capacity only when the search finds no sufficient free block.
+The registered `packed_generate` gate checks both constructor theorems.
+It passed with standard axioms.  The new modules check in 1.0 to 2.8 seconds.
+An explicit append-identity rewrite was necessary after the search proof
+became parametric in its initialization program.
