@@ -146,3 +146,4 @@ import Project.TinyGpt2Checked.Spec
 import Project.SequenceSoftmax.Spec
 import Project.PackedRead.Spec
 import Project.PackedGenerate.Spec
+import Project.Gpt2RowMean.Spec

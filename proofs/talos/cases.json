@@ -833,6 +833,16 @@
         "Project.PackedGenerate.Spec.makeWords_with_reuse_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "gpt2_row_mean",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.rowMean",
+      "leanModule": "Gpt2RowMean",
+      "specTarget": "Project.Gpt2RowMean.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2RowMean.Spec.rowMean_exact"],
+      "complete": true
     }
   ]
 }
