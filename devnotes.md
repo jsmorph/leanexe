@@ -15128,3 +15128,21 @@ that current emission uses two additional local slots in its loop: the
 loop-control local moves from 19 to 21.  This proof change does not modify
 the compiler or that cache.  The focused packed-read result remains the
 accepted result for this milestone.
+
+## Packed tensor construction proofs
+
+The source proof now gives the exact size, every output byte, and read-back
+of every generated word for arbitrary counts and word functions.  It
+rewrites the source range loop to a list fold and uses a prefix recurrence.
+The existing tiny-model output proof supplied the range-to-fold identity.
+`ByteArray.emptyWithCapacity` is definitionally empty in the proof model,
+so capacity needs no additional source hypothesis.
+
+The memory extension theorem proves that one `Mem.write32` extends that
+source prefix by one word.  Its range theorem preserves every byte outside
+the write.  These facts support loop invariants without repeating byte
+extraction in each tensor proof.  A first byte proof used `simp_all` after
+splitting conditions and reached the recursion limit.  Keeping the proof
+to explicit conditional reductions and `omega` resolved that elaboration
+problem.  The source module builds in 2.7 seconds and the memory module in
+1.7 seconds.  Their axiom reports contain only the standard three axioms.
