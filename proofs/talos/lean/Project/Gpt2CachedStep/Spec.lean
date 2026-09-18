@@ -33,4 +33,4 @@ import Project.Gpt2CachedStep.CachedHidden.Traversal
 import Project.Gpt2CachedStep.CachedHidden.LayerLoop
 import Project.Gpt2CachedStep.CachedHidden.Spec
 import Project.Gpt2CachedStep.Vocabulary.Spec
-import Project.Gpt2CachedStep.Entry.Body
+import Project.Gpt2CachedStep.Entry.Accepted
