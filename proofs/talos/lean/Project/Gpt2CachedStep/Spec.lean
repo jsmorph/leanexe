@@ -20,3 +20,4 @@ import Project.Gpt2CachedStep.CachedBlock.Normalized2
 import Project.Gpt2CachedStep.CachedBlock.Activated
 import Project.Gpt2CachedStep.CachedBlock.Projected2
 import Project.Gpt2CachedStep.CachedBlock.Hidden
+import Project.Gpt2CachedStep.CachedBlock.Front

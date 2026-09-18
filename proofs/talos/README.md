@@ -136,7 +136,10 @@ all nine temporary releases and the six-word return, preserving both output
 buffers and protected input regions through a shared list-based release rule.
 All ten kernel calls within the block now have checked argument preparation,
 returned bindings, exact source results, ownership, and memory postconditions.
-Transformer-block composition and the complete cached entry remain open.
+The [first block section](lean/Project/Gpt2CachedStep/CachedBlock/Front.lean)
+composes base calculation, normalization, QKV projection, and cached attention,
+including temporary ownership and local bindings.  Complete block composition
+and the complete cached entry remain open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
