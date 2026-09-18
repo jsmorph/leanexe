@@ -75,6 +75,9 @@ The [inverse-standard-deviation proof](lean/Project/Gpt2RowInvStd/Spec.lean)
 extends this structure to the squared-deviation fold, variance division,
 epsilon addition, square root, and reciprocal.  It accepts any supplied
 FP32 mean and valid row and preserves the store.
+The [attention-score proof](lean/Project/Gpt2AttentionScore/Spec.lean)
+checks the 64-element query/key dot product and scaling for every head
+below 12 and any two represented rows.  It also preserves the store.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
