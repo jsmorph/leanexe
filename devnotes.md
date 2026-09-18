@@ -15421,3 +15421,18 @@ Both use only standard axioms.  The encoding and exception lemmas from the
 addition proof apply without changes.  Addition, subtraction, and
 multiplication now have complete source correspondences.  Division and
 square root remain open before the tensor-loop composition.
+
+### Exact rounding of rational magnitudes
+
+The [rational shift lemmas](proofs/talos/lean/Project/ProofKit/F32RationalRounding.lean)
+prove that shifting a quotient and its rounding state preserves the
+remainder represented by the scaled denominator.  The
+[rational rounder correspondence](proofs/talos/lean/Project/ProofKit/F32RoundRational.lean)
+then proves exact agreement with Talos's `roundRationalMagnitude` at the
+minimum source exponent, for every numerator and positive denominator.
+The result includes ties, underflow, rounding carry, and overflow.
+
+The proof reuses the final-rounding and packing results from multiplication.
+The two modules check in 1.2 and 1.7 seconds with standard axioms.  The next
+step relates the exponent and integer quotient chosen by Lean's division
+core to this common rational representation.
