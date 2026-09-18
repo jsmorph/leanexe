@@ -32,6 +32,8 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
 | `Project.ProofKit.GuardedBackEdge` | One scalar body and condition followed by either loop exit or a scalar continuation and back edge. |
 | `Project.ProofKit.EncodedIndexDecoder` | The compiler's zero-or-index-plus-one decoder with exact scratch and destination-local frame semantics. |
+| `Project.ProofKit.PackedSource` | Packed 32-bit construction size, individual bytes, prefix recurrence, and word read-back for arbitrary source word functions. |
+| `Project.ProofKit.PackedMemory` | Source byte-array representation, exact packed reads, 32-bit write prefix extension, and preservation outside the write. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.ArrayField` | Fixed-width array field address, load, and store execution with caller-local and operand-stack preservation. |
 | `Project.ProofKit.ArrayFieldConstant` | Constant-index field address and store execution with arbitrary element width, field, and operand-stack tail. |
