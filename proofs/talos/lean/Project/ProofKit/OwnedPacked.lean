@@ -47,6 +47,32 @@ theorem Heap.OwnsPacked.protects {heap : Heap} {store : Store Unit} {node : Free
   simp only [regionsDisjoint, FreeNode.region] at hSep
   omega
 
+theorem Heap.OwnsPacked.payload_protects {heap : Heap} {store : Store Unit} {node : FreeNode}
+    {bytes : ByteArray} (h : heap.OwnsPacked store node bytes) :
+    heap.Protects node.root.toNat (node.root.toNat + bytes.size) := by
+  have hFull := h.protects
+  have hCapacity := h.buffer.capacity
+  refine ⟨by have := hFull.below; omega, ?_⟩
+  intro other hOther
+  have := hFull.separated other hOther
+  omega
+
+theorem Heap.OwnsPacked.allocation_disjoint {heap : Heap} {store : Store Unit} {source : FreeNode}
+    {bytes : ByteArray} (h : heap.OwnsPacked store source bytes) (need : UInt64)
+    (hFit : takeFirstFitFrom 0 need heap.nodes = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296) :
+    regionsDisjoint source.region (allocatedNode heap.top need heap.nodes).region :=
+  allocated_region_disjoint heap.top need source heap.nodes h.buffer.rootBound h.separated h.below hFit
+
+theorem Heap.OwnsPacked.root_ne {heap : Heap} {store : Store Unit} {source other : FreeNode}
+    {bytes : ByteArray} (h : heap.OwnsPacked store source bytes)
+    (hSep : regionsDisjoint source.region other.region) : source.root ≠ other.root := by
+  intro hEqual
+  have hRoot := h.buffer.rootBound
+  have hSame := congrArg UInt64.toNat hEqual
+  simp only [regionsDisjoint, FreeNode.region] at hSep
+  omega
+
 theorem Heap.Frame.ownsPacked {before after : Heap} {initial final : Store Unit}
     (h : before.Frame initial after final) (hHeap : after.At final)
     {node : FreeNode} {bytes : ByteArray}
@@ -177,6 +203,9 @@ theorem Heap.releasePacked_exact (env : HostEnv Unit) (module_ : Wasm.Module) (i
     hOwner.below hOwner.separated⟩
 
 #print axioms Heap.Frame.ownsPacked
+#print axioms Heap.OwnsPacked.payload_protects
+#print axioms Heap.OwnsPacked.allocation_disjoint
+#print axioms Heap.OwnsPacked.root_ne
 #print axioms Heap.ownsPacked_written
 #print axioms Heap.packedOutput
 #print axioms Heap.OwnsPacked.allocated
