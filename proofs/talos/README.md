@@ -148,8 +148,11 @@ and temporary-buffer cleanup.  It proves termination, exact output bytes,
 ownership, output separation, and protected-input preservation under its
 tensor-extent and allocation-capacity assumptions.  It covers every vocabulary
 token and positions zero through 127.  The body and entry check in 2.9 and
-2.2 seconds with standard axioms.  Vocabulary projection and the complete
-cached entry remain open.
+2.2 seconds with standard axioms.  The [vocabulary projection theorem](lean/Project/Gpt2CachedStep/Vocabulary/Spec.lean)
+proves function 37 computes all 50,257 output scores through their ordered
+768-term FP32 sums.  It includes allocation, packed output ownership, and
+protected-input preservation.  Its body and entry check in 4.5 and 2.9 seconds.
+The complete cached entry remains open.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
