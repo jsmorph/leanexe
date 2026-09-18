@@ -20,4 +20,14 @@ theorem guard_of_fits (left right : UInt64)
 
 #print axioms guard_of_fits
 
+theorem guard_of_nat_fits (left right : Nat)
+    (hFit : left * right < UInt64.size) (hRight : UInt64.ofNat right ≠ 0) :
+    ¬ (-1 : UInt64) / UInt64.ofNat right < UInt64.ofNat left := by
+  apply guard_of_fits _ _ _ hRight
+  apply lt_of_le_of_lt _ hFit
+  simp only [UInt64.toNat_ofNat']
+  exact Nat.mul_le_mul (Nat.mod_le ..) (Nat.mod_le ..)
+
+#print axioms guard_of_nat_fits
+
 end Project.ProofKit.CheckedNatMul
