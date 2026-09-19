@@ -288,3 +288,28 @@ axioms. The retained earlier logs include a missing size-lemma import and a
 normalization mismatch in the vocabulary bridge. The full controller proof
 is being replayed against the independently parsed hybrid module in a separate
 generated namespace; it is not yet established by these bridge lemmas.
+
+## Complete hybrid transformer block
+
+The proof preparation tool `packed-compose.js` reuses parent controller proof
+text in a separate generated module, adjusts direct function indices for the
+two imports, and checks the resulting declarations with Lean. Each controller
+segment still proves its literal instruction sequence matches the independently
+parsed hybrid Wasm. Unchanged helper contracts are transported through the
+proved closed call region; the four matrix call contracts use the concrete
+compiled shader certificates. The proof generation text transformations are
+not trusted: a wrong index, instruction sequence, or postcondition is rejected
+by the generated Lean checks.
+
+The QKV controller passed in `packed-compose-02/logs/run-3.json`. The complete
+block then passed in `run-5.json`, including all products, attention, residuals,
+cache construction, allocation and cleanup. Its public theorem is
+`Project.Gpt2Hybrid.CachedBlock.Spec.cachedBlock_exact`, conditional on the
+explicit host execution/transfer interface. All audited dependencies are the
+standard Lean axioms. The failed attempts are retained: generated import-root
+resolution, theorem headers containing `let`, role-size normalization, and a
+packed-word helper whose old API required an import-free module. That helper
+was handled by the existing semantic transport theorem, preserving its original
+proof instead of weakening the import premise.
+
+The twelve-block traversal and complete token/session theorem remain pending.
