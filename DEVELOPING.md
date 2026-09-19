@@ -69,6 +69,14 @@ NaN words, including signaling inputs and noncanonical payloads.  The
 [Wasmtime configuration reference](https://docs.wasmtime.dev/c-api/config_8h.html)
 documents `wasmtime_config_cranelift_nan_canonicalization_set`.
 
+The pretrained GPT-2 commands require `uv` and use the project in
+`training/gpt2`.  Its lockfile preserves the approved PyTorch and Transformers
+versions and their dependencies.  `tools/gpt2` runs WASM inference, and
+`tools/gpt2-pytorch` runs the CPU reference with the same generation defaults.
+Both create or update `training/gpt2/.venv` through `uv run`.
+The [GPT-2 instructions](data/gpt2-124m/README.md) include checkpoint setup
+and direct Python one-liners.  Tests in `test/packed.js` use the same project.
+
 ## Lean Process Limits
 
 Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  In standard mode `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It always acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.

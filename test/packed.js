@@ -13,7 +13,7 @@ const compiler = process.env.LEAN_WASM_EXE || ".lake/build/bin/lean-wasm";
 const run = args => runChecked(args, { encoding: "utf8" }).stdout.trim();
 
 function testGpt2Kernel() {
-  run([".venv-tiny-gpt2/bin/python", "training/gpt2/reference.py", "export-kernel"]);
+  run(["uv", "run", "--color", "never", "--project", "training/gpt2", "training/gpt2/reference.py", "export-kernel"]);
   const kernelModule = "LeanExe.Models.Gpt2.Kernel";
   run(["lake", "build", kernelModule]);
   const directory = "build/gpt2-124m/kernel";
@@ -49,7 +49,7 @@ function testGpt2Kernel() {
 }
 
 function testGpt2Block() {
-  run([".venv-tiny-gpt2/bin/python", "training/gpt2/reference.py", "export-block"]);
+  run(["uv", "run", "--color", "never", "--project", "training/gpt2", "training/gpt2/reference.py", "export-block"]);
   const module = "LeanExe.Models.Gpt2.Block";
   run(["lake", "build", module]);
   const directory = "build/gpt2-124m/block";
@@ -114,7 +114,7 @@ function testGpt2Block() {
 }
 
 function testGpt2Inference() {
-  run([".venv-tiny-gpt2/bin/python", "training/gpt2/reference.py", "export-model"]);
+  run(["uv", "run", "--color", "never", "--project", "training/gpt2", "training/gpt2/reference.py", "export-model"]);
   const module = "LeanExe.Models.Gpt2.Inference";
   run(["lake", "build", module]);
   const directory = "build/gpt2-124m/inference";
@@ -169,8 +169,8 @@ function testGpt2Completions() {
         "cached sampling preserves the first full-prefix completion");
     }
     if (topK === 1) {
-      const reference = JSON.parse(run([".venv-tiny-gpt2/bin/python", "training/gpt2/reference.py",
-        "generate", "--text", text, "--max-new-tokens", String(count), "--top-k", "1", "--json"]));
+      const reference = JSON.parse(run(["tools/gpt2-pytorch",
+        "--text", text, "--generate", String(count), "--top-k", "1", "--json"]));
       assert.deepEqual(record.generated_tokens, reference.generated_tokens, "greedy WASM and PyTorch text match");
       record.pytorch_greedy_tokens_exact = true;
     }
@@ -306,7 +306,8 @@ function main() {
   if (process.argv.includes("--gpt2-block")) testGpt2Block();
   if (process.argv.includes("--gpt2-inference")) testGpt2Inference();
   if (process.argv.includes("--gpt2-cached"))
-    runChecked([".venv-tiny-gpt2/bin/python", "training/gpt2/test_wasm.py"], { stdio: "inherit", timeout: 300000 });
+    runChecked(["uv", "run", "--color", "never", "--project", "training/gpt2", "training/gpt2/test_wasm.py"],
+      { stdio: "inherit", timeout: 300000 });
   if (process.argv.includes("--gpt2-completions")) testGpt2Completions();
 }
 
