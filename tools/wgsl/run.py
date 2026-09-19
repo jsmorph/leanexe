@@ -157,7 +157,10 @@ def execute_dispatch(device, job, wgpu):
             words = [0x7fc00001] * manifest["buffers"][name]["elements"]
         else:
             words = job["inputs"][name]
-        buffers[name] = device.create_buffer_with_data(data=words_to_bytes(words), usage=usage)
+        data = words if isinstance(words, (bytes, bytearray, memoryview)) else words_to_bytes(words)
+        if len(data) != manifest["buffers"][name]["bytes"]:
+            raise ValueError(f"wrong packed byte count for {name}")
+        buffers[name] = device.create_buffer_with_data(data=data, usage=usage)
         layouts.append({"binding": bindings[name], "visibility": wgpu.ShaderStage.COMPUTE,
                         "buffer": {"type": "storage" if name == "c" else "read-only-storage"}})
     group_layout = device.create_bind_group_layout(entries=layouts)

@@ -204,7 +204,7 @@ new exact-byte packaging work are outside this integration agenda.
 - [x] Read the public step/session theorem, source operations and parent test record.
 - [x] Preview the merge and identify conflicts and ABI/proof differences.
 - [x] Merge and recheck both baselines.
-- [ ] Prove compiled biased products and vocabulary against the parent source.
+- [x] Prove compiled biased products and vocabulary against the parent source.
 - [ ] Prove and execute the packed replacement-call boundary.
 - [ ] Compose hybrid cached-step and 128-position execution.
 - [ ] Run native and browser completion evidence for the integrated model.
