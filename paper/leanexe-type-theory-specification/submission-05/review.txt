@@ -1,0 +1,7 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 12, Register, Table 2: “Map body has type υ and returns Array υ.”  The callback body has result type υ, and the map operation has result type Array υ.  The sentence attributes both types to the body.

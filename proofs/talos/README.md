@@ -39,6 +39,152 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The [packed tensor read](lean/Project/PackedRead/Spec.lean) proves that the
+generated `readWord` entry returns `LeanExe.Packed.getUInt32LE!` for every
+represented byte array and valid offset.  It terminates and preserves the
+complete store.  The shared
+[packed-memory lemma](lean/Project/ProofKit/PackedMemory.lean) connects the
+four memory bytes to the source word without an alignment restriction.
+The representation requires the input to fit in both the 32-bit address
+range and the current memory.  This is the first completed component of
+the resumed pretrained GPT-2 proof work.
+
+The [packed constructor proof](lean/Project/PackedGenerate/Spec.lean)
+proves termination and the exact bytes returned by the generated `makeWords`
+entry for every word count and offset under its allocation assumptions.
+The theorem covers free-block reuse and bump allocation.  When no free block
+fits, the rounded allocation must fit the 32-bit address range and runtime
+memory cap.
+It composes size calculation, allocation with conditional memory growth,
+construction, and the pointer/length return.  It applies the shared
+[generation theorem](lean/Project/ProofKit/PackedGenerateLoop.lean), which
+accepts a proof of the word computation and preserves memory outside the
+output range.  The complete result states the allocation effects and the
+construction write range.  Shared memory lemmas preserve input bytes and
+the remaining free list across allocation and construction.
+
+The [GPT-2 row-mean proof](lean/Project/Gpt2RowMean/Spec.lean) establishes
+that the generated 768-element FP32 reduction returns the Lean source
+`rowMean` result and preserves the store.  Its arithmetic follows Talos's
+binary32 model.  The proof covers any row whose 3,072 bytes fit in the
+represented input.  It composes the shared
+[indexed word reader](lean/Project/ProofKit/PackedWordRead.lean),
+[range-loop rule](lean/Project/ProofKit/RangeFoldLoop.lean), and checked
+source/Talos addition and division correspondences.
+The [inverse-standard-deviation proof](lean/Project/Gpt2RowInvStd/Spec.lean)
+extends this structure to the squared-deviation fold, variance division,
+epsilon addition, square root, and reciprocal.  It accepts any supplied
+FP32 mean and valid row and preserves the store.
+The [attention-score proof](lean/Project/Gpt2AttentionScore/Spec.lean)
+checks the 64-element query/key dot product and scaling for every head
+below 12 and any two represented rows.  It also preserves the store.
+
+The [linear-row theorem](lean/Project/Gpt2LinearRows/Spec.lean) proves the
+generated matrix projection against `linearRows` for variable input and
+output widths and row counts.  It composes ordered FP32 dot products,
+bias addition, packed construction, both allocation paths, and the returned
+pointer and byte length.  The theorem preserves both input tensors and
+the remaining free list under its size, memory, and separation assumptions.
+It imposes no numerical conditions on the weights or input words.
+
+The complete cached-inference artifact is registered as `gpt2_cached_step`,
+with a checked [public execution theorem](lean/Project/Gpt2CachedStep/Spec.lean).
+Its internal
+[row mean](lean/Project/Gpt2CachedStep/RowMean.lean) and
+[inverse standard deviation](lean/Project/Gpt2CachedStep/RowInvStd.lean)
+have checked source-agreement proofs.  These entries include the ownership
+argument used by internal tensor calls.  Internal tensor constructors also
+return an ownership handle.  The [internal linear-row proof](lean/Project/Gpt2CachedStep/LinearRows/Spec.lean)
+checks that interface against function 21, including the returned handle,
+exact packed output, input preservation, and the remaining free list.
+
+The [internal normalization theorem](lean/Project/Gpt2CachedStep/LayerNorm/Spec.lean)
+checks function 20 against the Lean `layerNorm` source for variable row
+counts and arbitrary FP32 words.  It composes all three tensor allocations
+and construction loops, both temporary-buffer releases, and the returned
+owner, pointer, and length.  It proves ownership of the exact output,
+the final heap state, and preservation of every protected region.
+The assumptions bound tensor extents and provide capacity for each
+allocation when no free block fits.  The body composition checks in
+1.4 seconds, and the public theorem checks in 1.2 seconds with standard axioms.
+
+The cached module also has checked proofs for [key/value lookup](lean/Project/Gpt2CachedStep/CachedKv.lean),
+[attention scores](lean/Project/Gpt2CachedStep/CachedScore/Spec.lean),
+[row maximum](lean/Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean),
+[row sum](lean/Project/Gpt2CachedStep/CachedRowSum/Spec.lean),
+[exponential evaluation](lean/Project/Gpt2CachedStep/ExpNeg/Spec.lean), and
+[scalar GELU](lean/Project/Gpt2CachedStep/Gelu.lean).  These functions return
+the Lean source's exact result and preserve the complete store.
+The [tensor-activation theorem](lean/Project/Gpt2CachedStep/Activate/Spec.lean)
+adds both allocation paths, packed construction, output ownership, and
+protected-region preservation.  It accepts arbitrary represented input
+lengths and computes the source-specified number of complete words.
+The [residual-addition theorem](lean/Project/Gpt2CachedStep/AddRows/Spec.lean)
+proves exact packed output, allocation, ownership, and preservation of both
+protected inputs.  The [cached-attention theorem](lean/Project/Gpt2CachedStep/CachedAttention/Spec.lean)
+proves function 29 computes the Lean `cachedAttention` result for all twelve
+layers and positions zero through 127.  It composes six tensor constructors,
+the nested weighted-value fold, and release of all five temporary tensors.
+It returns exact output bytes and ownership, the updated heap, and
+preservation of all protected inputs.  Its assumptions provide represented
+input extents and capacity for each allocation when no free block fits.
+The body composition checks in 4.6 seconds, and the public theorem checks
+in 1.3 seconds with standard axioms.  The [block cache-update constructor](lean/Project/Gpt2CachedStep/CachedBlock/Cache.lean)
+proves allocation and exact copying of the 1,536 key/value words from QKV,
+preserving protected tensors and the hidden-output bindings.
+[Block cleanup](lean/Project/Gpt2CachedStep/CachedBlock/Cleanup.lean) proves
+all nine temporary releases and the six-word return, preserving both output
+buffers and protected input regions through a shared list-based release rule.
+All ten kernel calls within the block now have checked argument preparation,
+returned bindings, exact source results, ownership, and memory postconditions.
+The [complete block theorem](lean/Project/Gpt2CachedStep/CachedBlock/Spec.lean)
+proves function 33 computes the Lean `cachedBlock` result for every layer below
+twelve and position below 128, including both returned buffers and all nine
+temporary releases.  It provides output ownership, separation, and preservation
+of protected input memory.  The body and entry check in 2.4 and 2.1 seconds.
+The [complete hidden-state theorem](lean/Project/Gpt2CachedStep/CachedHidden/Spec.lean)
+proves function 36 computes the Lean `cachedHidden` result: token and position
+embedding, all twelve blocks, accumulated updates, final cache concatenation,
+and temporary-buffer cleanup.  It proves termination, exact output bytes,
+ownership, output separation, and protected-input preservation under its
+tensor-extent and allocation-capacity assumptions.  It covers every vocabulary
+token and positions zero through 127.  The body and entry check in 2.9 and
+2.2 seconds with standard axioms.  The [vocabulary projection theorem](lean/Project/Gpt2CachedStep/Vocabulary/Spec.lean)
+proves function 37 computes all 50,257 output scores through their ordered
+768-term FP32 sums.  It includes allocation, packed output ownership, and
+protected-input preservation.  Its body and entry check in 4.5 and 2.9 seconds.
+The public `cachedStep_exact` theorem composes these functions with final
+normalization, temporary-buffer cleanup, and the exported return.  It proves
+termination, exact source cache and logits, represented output bytes, a valid
+final heap, protected-input preservation, and unchanged memory capacity.
+Its assumptions require represented inputs, a valid initial heap, a position
+that fits UInt64, at most 65,536 initial pages, and capacity for every required
+allocation on accepted inputs.  The [accepted-entry theorem](lean/Project/Gpt2CachedStep/Entry/Accepted.lean)
+also records ownership and separation of both returned buffers.  The
+[rejected-entry theorem](lean/Project/Gpt2CachedStep/Entry/Rejected.lean)
+proves invalid weight length, token, position, or cache length returns empty
+outputs with the entire store unchanged.  These theorems accept arbitrary
+runtime weight words, including exceptional FP32 values.  Their exactness is
+relative to Lean's logical Float32 model and Talos semantics.
+
+The [128-position invocation theorem](lean/Project/Gpt2CachedStep/Session/Spec.lean)
+`gpt2_128_exact` starts at the module's initial store and composes the host's
+reset and weight-allocation calls, input byte encoding, and up to 128 cached
+token calls.  It proves each returned cache and logit vector equals the Lean
+`cachedStep` recurrence, including the old-cache and logit releases between
+calls.  Its only input conditions are the 497,759,232-byte weight shape,
+vocabulary token IDs, and the 128-token limit.  The proof derives input
+ownership, heap validity, and allocation sufficiency.  It allows 16 MiB of
+heap-top growth per token from a 512 MiB initial allowance.  The public
+theorem checks with `propext`, `Classical.choice`, and `Quot.sound`.
+
+The runtime target is Wasmtime 44.0.0 with Cranelift's NaN canonicalization
+enabled.  The repository C host selects that mode.  The formal theorem
+specifies the sequence of WASM calls and the byte input/output boundary.
+Tokenization, token selection, the native host implementation, and Wasmtime
+remain outside the Lean proof.  Exact-byte packaging and comparison with the
+separate full-prefix Lean algorithm remain outside this proof target.
+
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
 and preserves every previously owned array.  It covers empty and
@@ -673,7 +819,7 @@ and releases its temporary arrays.  The exact-byte package remains open.
 
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all sixty-two registered models, verifies the registry against runtime and specification imports, and builds all sixty-one completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all sixty-nine registered models, verifies the registry against runtime and specification imports, and builds all sixty-eight completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -711,7 +857,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains sixty-two cases, sixty-one complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains sixty-nine cases, sixty-eight complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), including the [grid-scan execution case](lean/Project/EulerGridScan/README.md) and raw-bit floating-point cases: the proved Euler flux and fixed two-cell step plus subtraction, division, square-root primitives, checked conservative-state side, dynamic interface and cell update.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26 and the then-current twenty-six-case aggregate on 2026-09-04.  The then-current twenty-nine-case aggregate regenerated every model on 2026-09-07, then reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic.  Smaller missing targets must complete before the retry.  `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
 The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-07 `check-artifacts` run passes all twenty-five artifact theorem targets, and focused full checks pass the three new arithmetic packages and the subsequent conservative-side, dynamic-interface, cell-update and grid-scan packages; the current source aggregate remains pending after the earlier 29-case attempt hit its dependency-build timeout.  All forty-two packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 twenty-one-package receipt, including the 1,808-byte Euler artifact, remains historical for its exact input.  The retained 21-package release draft records input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, whose aggregate artifact receipt is pending.
 

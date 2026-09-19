@@ -1,4 +1,4 @@
-import Project.ProofKit.F32Packing
+import Project.ProofKit.F32PackingBounds
 import CodeLib.IEEE32.Rounders
 
 namespace Project.ProofKit.F32DyadicBounds

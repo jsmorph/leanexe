@@ -1,4 +1,4 @@
-import Project.ProofKit.F32Packing
+import Project.ProofKit.F32PackingBounds
 
 namespace Project.ProofKit.F32AddBounds
 open CodeLib.IEEE32
@@ -23,7 +23,7 @@ theorem add_scaled_relative (a b : UInt32) (ha : Finite a) (hb : Finite b)
     have hfinite := (CodeLib.IEEE32.add_spec a b ha hb
       (by change z.natAbs < 2^151; simp [hz])).1
     exact ⟨hfinite, by change |Wasm.IEEE32.scaledValue (Wasm.IEEE32.add a b) - z| * _ ≤ _; simp [hzero, hz]⟩
-  · have hround := F32Packing.signed_pack_relative z hbound
+  · have hround := F32PackingBounds.signed_pack_relative z hbound
     simpa [Wasm.IEEE32.add, not_nan_of_finite ha, not_nan_of_finite hb,
       not_infinite_of_finite ha, not_infinite_of_finite hb, z, hz] using hround
 

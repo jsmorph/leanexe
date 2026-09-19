@@ -390,6 +390,13 @@ partial def demandExpr
           | (.const ``ByteArray.toUInt64BE! _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
+          | (.const ``LeanExe.Packed.getUInt32LE! _, _) => .trap
+          | (.const ``LeanExe.Packed.generateUInt32LE _, args) =>
+              match args with
+              | [size, generator] =>
+                  Demand.always (demandExpr ctx visiting size)
+                    (demandOptionSomeArm ctx visiting generator)
+              | _ => .empty
           | (.const ``ByteArray.get _, args) =>
               match args.reverse with
               | _proof :: index :: array :: _ =>

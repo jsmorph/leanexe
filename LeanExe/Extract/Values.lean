@@ -379,6 +379,7 @@ anything unrecognized keeps the previous leak rather than risking a double
 release. -/
 partial def exprBuildsFreshArray : IRExpr → Bool
   | .arrayLiteralSlots .. => true
+  | .byteArrayGenerate32Ptr .. => true
   | .byteArrayPushPtr .. => true
   | .byteArrayAppendPtr .. => true
   | .byteArraySetPtr .. => true
@@ -723,6 +724,7 @@ mutual
     | .trap => []
     | .u64 _ => []
     | .f64SqrtBits value => exprUsedSlots value
+    | .floatUnary _ value => exprUsedSlots value
     | .u64Bin _ left right =>
         addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
     | .ite cond thenValue elseValue =>
@@ -827,6 +829,11 @@ mutual
     | .byteArrayGet ptr len index =>
         addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
           (exprUsedSlots index)
+    | .byteArrayLoad32 ptr len index =>
+        addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+          (exprUsedSlots index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        addLiveSlots (exprUsedSlots len) (removeLiveSlot (exprUsedSlots body) indexSlot)
     | .byteArrayPushPtr ptr len value =>
         addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
           (exprUsedSlots value)
@@ -1847,6 +1854,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -1942,6 +1950,7 @@ mutual
       (summaries : Array (List Nat))
       (ownerSources : List (Nat × List Nat)) :
       IRExpr → Option (List Nat)
+    | .u64 0 => some []
     | .local slot => ownerSourceSlots? ownerSources slot
     | .letE slot value body =>
         let nextSources :=
@@ -1975,6 +1984,7 @@ mutual
     | .arrayExtractSlots .. => some []
     | .arrayMapSlots .. => some []
     | .arrayFilterSlots .. => some []
+    | .byteArrayGenerate32Ptr .. => some []
     | .byteArrayPushPtr .. => some []
     | .byteArrayAppendPtr .. => some []
     | .byteArraySetPtr .. => some []
@@ -2516,6 +2526,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -2583,6 +2594,7 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
@@ -2719,13 +2731,22 @@ def ownedChildMaskForStrictSlotsWithSummaries
     Nat :=
   ownedChildMaskForSlotsWithLetsWithSummaries summaries childMask slots.lets slots.slots
 
-def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat
-  | .expr slot expr => if exprReturnsOwnedNonrecursiveHeapObject expr then [slot] else []
+def localLetCreatedNonrecursiveHeapSlots (ctx : Context) (ownedLocals : List Nat) :
+    LeanExe.IR.LocalLet → List Nat
+  | .expr _ (.local _) => []
+  | .expr slot expr =>
+      if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals expr then [slot] else []
   | .slots slots values =>
       (slots.zip values).filterMap fun item =>
-        if exprReturnsOwnedNonrecursiveHeapObject item.snd then some item.fst else none
+        match item.snd with
+        | .local _ => none
+        | expr =>
+            if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals expr then some item.fst else none
   | .call slots index _ => callResultNonrecursiveReleaseOwnerSlots ctx index slots
   | .branch _ _ _ => []
+
+def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat :=
+  localLetCreatedNonrecursiveHeapSlots ctx []
 
 mutual
   partial def transferredOwnerSlotsFromValues
@@ -2747,6 +2768,7 @@ mutual
     | .release ptr =>
         addLiveSlots (exprUsedSlots ptr) (exprReleaseTargetSlots ptr)
     | .f64SqrtBits value => exprReleasedSlots value
+    | .floatUnary _ value => exprReleasedSlots value
     | .u64Bin _ left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
     | .ite cond thenValue elseValue =>
         addLiveSlots (condReleasedSlots cond)
@@ -2844,6 +2866,12 @@ mutual
         addLiveSlots
           (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
           (exprReleasedSlots index)
+    | .byteArrayLoad32 ptr len index =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+          (exprReleasedSlots index)
+    | .byteArrayGenerate32Ptr len _ body =>
+        addLiveSlots (exprReleasedSlots len) (exprReleasedSlots body)
     | .byteArrayPushPtr ptr len value =>
         addLiveSlots
           (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
@@ -3015,16 +3043,42 @@ mutual
     | .arrayExtractSlots .. => true
     | .arrayMapSlots .. => true
     | .arrayFilterSlots .. => true
+    | .byteArrayGenerate32Ptr .. => true
     | .byteArrayPushPtr .. => true
     | .byteArrayAppendPtr .. => true
     | .byteArraySetPtr .. => true
     | .byteArrayFromArrayPtr .. => true
     | .byteArrayCopySlicePtr .. => true
+    | .arrayFoldMultiSlot _ _ _ _ _ _ initValues accStart _ bodyValues bodyLets bodyDone _ offset
+    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues accStart _ bodyValues bodyLets bodyDone _ offset
+    | .rangeFoldMultiSlot _ _ _ _ initValues accStart _ bodyValues bodyLets bodyDone _ offset
+    | .loopFoldMultiSlot _ initValues accStart bodyValues bodyLets bodyDone _ offset =>
+        foldResultOffsetFreshOwned summaries ownedLocals initValues accStart
+          bodyValues bodyLets bodyDone offset
     | .call index _ =>
         match summaries[index]? with
         | some offsets => offsets.contains 0
         | none => false
     | _ => false
+
+  partial def foldResultOffsetFreshOwned
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat)
+      (initValues : List IRExpr)
+      (accStart : Nat)
+      (bodyValues : List IRExpr)
+      (bodyLets : List LeanExe.IR.LocalLet)
+      (bodyDone : IRExpr)
+      (offset : Nat) : Bool :=
+    let bodyOwned := ownedHeapLocalsAfterLocalLets summaries [] bodyLets
+    let released := addLiveSlots (localLetsReleasedSlots bodyLets) (exprReleasedSlots bodyDone)
+    !released.contains (accStart + offset) &&
+      (match initValues[offset]?, bodyValues[offset]? with
+       | some init, some value =>
+           exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals init &&
+             exprReturnsFreshOwnedHeapObjectFrom summaries
+               (removeLiveSlots bodyOwned (exprReleasedSlots bodyDone)) value
+       | _, _ => false)
 
   partial def ownedHeapLocalsAfterLocalLet
       (summaries : Array (List Nat))
@@ -3072,6 +3126,13 @@ def foldAssignReleasedSlots
   addLiveSlots (exprListReleasedSlots values)
     (addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots done))
 
+def localLetsOwnedNonrecursiveHeapSlots (ctx : Context)
+    (lets : List LeanExe.IR.LocalLet) (initial : List Nat := []) : List Nat :=
+  (lets.foldl (fun (known, created) localLet =>
+    (ownedHeapLocalsAfterLocalLet ctx.freshResultOwnerOffsets known localLet,
+     addLiveSlots created (localLetCreatedNonrecursiveHeapSlots ctx known localLet)))
+    (initial, [])).snd
+
 def foldAccumulatorReleaseOffsets
     (summaries : Array (List Nat))
     (resultTy : Ty)
@@ -3088,6 +3149,21 @@ def foldAccumulatorReleaseOffsets
         ownedBodyLocals.contains target && !released.contains (accStart + offset)
     | none => false
 
+def foldFreshOwnedTargets
+    (summaries : Array (List Nat))
+    (ownedLocals : List Nat)
+    (initValues : List IRExpr)
+    (accStart : Nat)
+    (bodyValues : List IRExpr)
+    (bodyLets : List LeanExe.IR.LocalLet)
+    (bodyDone : IRExpr)
+    (targets : List Nat) : List Nat :=
+  (targets.zipIdx).filterMap fun (target, offset) =>
+    if foldResultOffsetFreshOwned summaries ownedLocals initValues accStart
+        bodyValues bodyLets bodyDone offset then
+      some target
+    else none
+
 mutual
   partial def stmtFreshOwnedLocalsAfter
       (summaries : Array (List Nat))
@@ -3103,7 +3179,7 @@ mutual
           removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots args)
         addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
     | .release ptr => removeLiveSlots ownedLocals (exprUsedSlots ptr)
-    | .arrayFoldMultiSlotAssign _ _ _reverse array start stop initValues _ _ bodyValues bodyLets bodyDone
+    | .arrayFoldMultiSlotAssign _ _ _reverse array start stop initValues accStart _ bodyValues bodyLets bodyDone
         _releaseOffsets targets =>
         let released :=
           addLiveSlots
@@ -3111,8 +3187,9 @@ mutual
               (exprReleasedSlots stop))
             (addLiveSlots (exprListReleasedSlots initValues)
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
-        removeLiveSlots (removeLiveSlots ownedLocals targets) released
-    | .byteArrayFoldMultiSlotAssign _ ptr len start stop initValues _ _ bodyValues bodyLets
+        addLiveSlots (removeLiveSlots (removeLiveSlots ownedLocals targets) released)
+          (foldFreshOwnedTargets summaries ownedLocals initValues accStart bodyValues bodyLets bodyDone targets)
+    | .byteArrayFoldMultiSlotAssign _ ptr len start stop initValues accStart _ bodyValues bodyLets
         bodyDone _releaseOffsets targets =>
         let released :=
           addLiveSlots
@@ -3121,8 +3198,9 @@ mutual
               (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop)))
             (addLiveSlots (exprListReleasedSlots initValues)
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
-        removeLiveSlots (removeLiveSlots ownedLocals targets) released
-    | .rangeFoldMultiSlotAssign _ start stop step initValues _ _ bodyValues bodyLets bodyDone
+        addLiveSlots (removeLiveSlots (removeLiveSlots ownedLocals targets) released)
+          (foldFreshOwnedTargets summaries ownedLocals initValues accStart bodyValues bodyLets bodyDone targets)
+    | .rangeFoldMultiSlotAssign _ start stop step initValues accStart _ bodyValues bodyLets bodyDone
         _releaseOffsets targets =>
         let released :=
           addLiveSlots
@@ -3131,13 +3209,15 @@ mutual
               (exprReleasedSlots step))
             (addLiveSlots (exprListReleasedSlots initValues)
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
-        removeLiveSlots (removeLiveSlots ownedLocals targets) released
-    | .loopFoldMultiSlotAssign _ initValues _ bodyValues bodyLets bodyDone _releaseOffsets
+        addLiveSlots (removeLiveSlots (removeLiveSlots ownedLocals targets) released)
+          (foldFreshOwnedTargets summaries ownedLocals initValues accStart bodyValues bodyLets bodyDone targets)
+    | .loopFoldMultiSlotAssign _ initValues accStart bodyValues bodyLets bodyDone _releaseOffsets
         targets =>
         let released :=
           addLiveSlots (exprListReleasedSlots initValues)
             (foldAssignReleasedSlots bodyValues bodyLets bodyDone)
-        removeLiveSlots (removeLiveSlots ownedLocals targets) released
+        addLiveSlots (removeLiveSlots (removeLiveSlots ownedLocals targets) released)
+          (foldFreshOwnedTargets summaries ownedLocals initValues accStart bodyValues bodyLets bodyDone targets)
     | .ite cond thenStmt elseStmt =>
         let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)
         intersectLiveSlots
@@ -3257,12 +3337,13 @@ def releaseIfDistinctStmt (released : List Nat) (slot : Nat) : IRStmt :=
       nonzero
   .ite distinct (.release (.local slot)) .skip
 
-def appendDistinctReleases (stmt : IRStmt) (slots : List Nat) : IRStmt :=
+def appendDistinctReleases (stmt : IRStmt) (slots : List Nat)
+    (protectedSlots : List Nat := []) : IRStmt :=
   let rec loop (released : List Nat) (current : IRStmt) : List Nat → IRStmt
     | [] => current
     | slot :: rest =>
         loop (slot :: released) (.seq current (releaseIfDistinctStmt released slot)) rest
-  loop [] stmt slots
+  loop protectedSlots stmt slots
 
 partial def exprBorrowedOwnerSourceSlots : IRExpr → List Nat
   | .local slot => [slot]
@@ -3572,6 +3653,7 @@ partial def exprSpineOwnedTemps (ownedLocals : List Nat) : IRExpr → List Nat
           !released.contains slot && !exprReturnsLocalSlot slot body)
         (exprSpineOwnedTemps ownedLocals body)
   | .f64SqrtBits value => exprSpineOwnedTemps ownedLocals value
+  | .floatUnary _ value => exprSpineOwnedTemps ownedLocals value
   | .u64Bin _ left right =>
       addLiveSlots (exprSpineOwnedTemps ownedLocals left)
         (exprSpineOwnedTemps ownedLocals right)
@@ -3642,6 +3724,8 @@ mutual
       IRExpr → IRExpr
     | .f64SqrtBits value =>
         .f64SqrtBits (refreshOwnerMasksExprForAlloc summaries ownerSources value)
+    | .floatUnary op value =>
+        .floatUnary op (refreshOwnerMasksExprForAlloc summaries ownerSources value)
     | .u64Bin op left right =>
         .u64Bin op
           (refreshOwnerMasksExprForAlloc summaries ownerSources left)
@@ -3794,6 +3878,15 @@ mutual
           (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
           (refreshOwnerMasksExprForAlloc summaries ownerSources len)
           (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .byteArrayLoad32 ptr len index =>
+        .byteArrayLoad32
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        .byteArrayGenerate32Ptr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len) indexSlot
+          (refreshOwnerMasksExprForAlloc summaries ownerSources body)
     | .byteArrayPushPtr ptr len value =>
         .byteArrayPushPtr
           (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
@@ -3986,6 +4079,8 @@ partial def materializeResultValue
     (ownerSources : List (Nat × List Nat) := []) :
     Except String IRStmt := do
   let canReleaseOwnedTemps := !tyContainsHeapPointer ty
+  let protectedSlots :=
+    if useAbi then [] else (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => targets[offset]?
   match value with
   | .letE slot expr body => do
       let expr := refreshOwnerMasksExprForAlloc ctx.freshResultOwnerOffsets ownerSources expr
@@ -3999,7 +4094,9 @@ partial def materializeResultValue
           releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
           !slotReleasedByValue slot body &&
           !(stmtReleasedSlots bodyStmt).contains slot then
-        .ok (.seq stmt (.release (.local slot)))
+        let release := if protectedSlots.isEmpty then .release (.local slot)
+          else releaseIfDistinctStmt protectedSlots slot
+        .ok (.seq stmt release)
       else
         .ok stmt
   | .letCall slots index args body => do
@@ -4024,7 +4121,7 @@ partial def materializeResultValue
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot
         let ownerSlots := addLiveSlots bodyOwnerSlots resultOwnerSlots
-        .ok (appendDistinctReleases stmt ownerSlots)
+        .ok (appendDistinctReleases stmt ownerSlots protectedSlots)
       else
         let released := valueReleasedSlots body
         let returnedOwnerSlots :=
@@ -4033,7 +4130,7 @@ partial def materializeResultValue
           (callResultNonrecursiveReleaseOwnerSlots ctx index slots).filter fun slot =>
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot
-        .ok (appendDistinctReleases stmt ownerSlots)
+        .ok (appendDistinctReleases stmt ownerSlots protectedSlots)
   | .letLocal lets body => do
       let values ← flattenResultValue useAbi ty body
       let kept := pruneLocalLets lets (exprListUsedSlots values)
@@ -4050,11 +4147,11 @@ partial def materializeResultValue
           (stmtReleasedSlots bodyStmt)
       let returnedOwnerSlots :=
         localLetsResultOwnerLocalSlotsWithLater ctx (valueResultOwnerLocalSlots ctx body) kept
-      let ownerSlots := kept.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
+      let ownerSlots := localLetsOwnedNonrecursiveHeapSlots ctx kept (ownerSources.map Prod.fst)
       .ok (appendDistinctReleases stmt
         (ownerSlots.filter fun slot =>
           releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
-            !released.contains slot))
+            !released.contains slot) protectedSlots)
   | .ite cond thenValue elseValue => do
       let cond := refreshOwnerMasksCondForAlloc ctx.freshResultOwnerOffsets ownerSources cond
       let thenStmt ← materializeResultValue ctx useAbi ty targets thenValue ownerSources

@@ -163,10 +163,15 @@ def knownExternal? (name : Name) : Option Classification :=
   let root := rootString name
   if effectRoots.contains root then
     some { status := "rejected", reason := "unsupported effect dependency" }
+  else if LeanExe.Extract.Core.packedPrimitiveName name then
+    some { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
   else if LeanExe.Extract.Core.compilerPrimitiveName name then
     some {
       status := "implemented"
-      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? name).isSome ||
+          (LeanExe.Extract.Core.floatUnaryPrimitive? name).isSome then
+        "compiler-recognized binary32 bit-pattern floating-point intrinsic"
+      else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit, ``PUnit].contains name then
     some { status := "implemented", reason := "primitive or erased unit type in the intended subset" }
@@ -253,7 +258,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,
       ``Nat.toUInt64, ``UInt8.ofNat, ``UInt8.toNat, ``UInt8.toUInt32, ``UInt8.toUInt64,
-      ``UInt32.ofNat, ``UInt32.toNat, ``UInt32.toUInt8, ``UInt32.toUInt64].contains name then
+      ``UInt32.ofNat, ``Nat.toUInt32, ``UInt32.toNat, ``UInt32.toUInt8, ``UInt32.toUInt64].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
       ``HAnd.hAnd, ``HOr.hOr, ``HXor.hXor, ``Min.min, ``Max.max,
@@ -280,10 +285,15 @@ def knownExternal? (name : Name) : Option Classification :=
     none
 
 def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) : Classification :=
-  if LeanExe.Extract.Core.compilerPrimitiveName info.name then
+  if LeanExe.Extract.Core.packedPrimitiveName info.name then
+    { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
+  else if LeanExe.Extract.Core.compilerPrimitiveName info.name then
     {
       status := "implemented"
-      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? info.name).isSome ||
+          (LeanExe.Extract.Core.floatUnaryPrimitive? info.name).isSome then
+        "compiler-recognized binary32 bit-pattern floating-point intrinsic"
+      else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
   else if validatorImplementedNames.contains info.name then
     { status := "implemented", reason := "accepted by the validator demo compiler path" }

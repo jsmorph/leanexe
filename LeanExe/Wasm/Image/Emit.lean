@@ -137,6 +137,15 @@ mutual
     | .sqrtF64 => byte 159
     | .i64ReinterpretF64 => byte 189
     | .f64ReinterpretI64 => byte 191
+    | .addF32 => byte 146
+    | .subF32 => byte 147
+    | .mulF32 => byte 148
+    | .divF32 => byte 149
+    | .sqrtF32 => byte 145
+    | .i32ReinterpretF32 => byte 188
+    | .f32ReinterpretI32 => byte 190
+    | .f32DemoteF64 => byte 182
+    | .f64PromoteF32 => byte 187
     | .block body => bytes2 2 64 ++ emitInstrs body ++ byte 11
     | .loop body => bytes2 3 64 ++ emitInstrs body ++ byte 11
     | .iff resultI64 thn els =>

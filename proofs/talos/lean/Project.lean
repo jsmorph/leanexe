@@ -144,3 +144,10 @@ import Project.TinyGpt2Infer.Spec
 import Project.F64Clip.Spec
 import Project.TinyGpt2Checked.Spec
 import Project.SequenceSoftmax.Spec
+import Project.PackedRead.Spec
+import Project.PackedGenerate.Spec
+import Project.Gpt2RowMean.Spec
+import Project.Gpt2RowInvStd.Spec
+import Project.Gpt2AttentionScore.Spec
+import Project.Gpt2LinearRows.Spec
+import Project.Gpt2CachedStep.Spec

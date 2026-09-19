@@ -1180,7 +1180,8 @@ partial def normalizeClassEvidenceExpr
       let normalize := normalizeClassEvidenceExpr env fuel
       let unfoldApplication (name : Name) (levels : List Level) (args : List Expr)
           (fallback : Expr) : Expr :=
-        if isEvidenceProjectionFunction env name || classEvidenceApplication? env fallback then
+        if name == ``ForIn.forIn then fallback
+        else if isEvidenceProjectionFunction env name || classEvidenceApplication? env fallback then
           match env.find? name with
           | some info =>
               match info.value? with
@@ -1338,8 +1339,26 @@ def f64BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
 def f64SqrtPrimitiveName (name : Name) : Bool :=
   name == ``LeanExe.Float64.sqrtBits || name == `Wasm.IEEE64.sqrt
 
+def f32BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
+  if name == ``LeanExe.Float32.addBits then some .f32AddBits
+  else if name == ``LeanExe.Float32.subBits then some .f32SubBits
+  else if name == ``LeanExe.Float32.mulBits then some .f32MulBits
+  else if name == ``LeanExe.Float32.divBits then some .f32DivBits
+  else none
+
+def floatUnaryPrimitive? (name : Name) : Option LeanExe.IR.FloatUnaryOp :=
+  if name == ``LeanExe.Float32.sqrtBits then some .f32SqrtBits
+  else if name == ``LeanExe.Float32.toFloat64Bits then some .f32ToF64Bits
+  else if name == ``LeanExe.Float32.ofFloat64Bits then some .f64ToF32Bits
+  else none
+
+def packedPrimitiveName (name : Name) : Bool :=
+  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE
+
 def compilerPrimitiveName (name : Name) : Bool :=
-  (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name
+  (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name ||
+    (f32BinaryPrimitive? name).isSome || (floatUnaryPrimitive? name).isSome ||
+    packedPrimitiveName name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda

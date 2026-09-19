@@ -1,0 +1,30 @@
+#!/bin/sh
+# Generated pretrained GPT-2 demo. Numerical inference is Wasm + WGSL.
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+bundle=${LEANEXE_GPT2_BUNDLE:-"$root/build/gpt2/bundle"}
+command=${1:-help}
+if [ "$#" -gt 0 ]; then shift; fi
+case "$command" in
+ build) exec "$root/tools/wgsl/gpt2/build.sh" "$@" ;;
+ test)
+  cd "$root"
+  if [ "$(uname -s)" = Darwin ]; then . tools/macos-env.sh; fi
+  exec python3 tools/wgsl/gpt2/test.py ;;
+ serve)
+  [ -f "$bundle/index.html" ] || { echo 'Run tools/gpt2 build first' >&2; exit 1; }
+  printf 'Open http://localhost:8766/\n'
+  exec python3 -m http.server 8766 --bind 127.0.0.1 --directory "$bundle" ;;
+ run)
+  [ -x "$bundle/gpt2" ] || { echo 'Run tools/gpt2 build first' >&2; exit 1; }
+  if [ "$(uname -s)" = Darwin ]; then
+   driver=${LEANEXE_SWIFTSHADER_DIR:-"/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/152.0.7977.84/Libraries"}
+   [ -f "$driver/vk_swiftshader_icd.json" ] || { echo 'Set LEANEXE_SWIFTSHADER_DIR to the installed Vulkan CPU driver directory' >&2; exit 1; }
+   DYLD_LIBRARY_PATH="$driver${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+   VK_ICD_FILENAMES="$driver/vk_swiftshader_icd.json"
+   VK_DRIVER_FILES="$VK_ICD_FILENAMES"
+   export DYLD_LIBRARY_PATH VK_ICD_FILENAMES VK_DRIVER_FILES
+  fi
+  exec "$bundle/gpt2" "$bundle" "$@" ;;
+ *) printf 'tools/gpt2 build\ntools/gpt2 run --prompt "The purpose of science is" --generate 64\ntools/gpt2 serve\ntools/gpt2 test\n' ;;
+esac

@@ -50,6 +50,8 @@ function main() {
   run([process.execPath, path.join("test", "core_correctness.js")]);
   run([process.execPath, path.join("test", "f64_bits.js")]);
   run([process.execPath, path.join("test", "f64_extended_bits.js")]);
+  run([process.execPath, path.join("test", "f32_bits.js")]);
+  run([process.execPath, path.join("test", "packed.js")]);
   run([process.execPath, path.join("test", "f64_dot.js")]);
   run([process.execPath, path.join("test", "euler_rusanov.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);

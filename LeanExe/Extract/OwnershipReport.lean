@@ -89,6 +89,7 @@ mutual
     | .trap => Scan.empty
     | .u64 _ => Scan.empty
     | .f64SqrtBits value => scanExpr (childPath path "value") value
+    | .floatUnary _ value => scanExpr (childPath path "value") value
     | .u64Bin _ left right =>
         Scan.many [
           scanExpr (childPath path "left") left,
@@ -240,6 +241,14 @@ mutual
           scanExpr (childPath path "len") len,
           scanExpr (childPath path "index") index
         ]
+    | .byteArrayLoad32 ptr len index =>
+        Scan.many [
+          scanExpr (childPath path "ptr") ptr,
+          scanExpr (childPath path "len") len,
+          scanExpr (childPath path "index") index
+        ]
+    | .byteArrayGenerate32Ptr len _ body =>
+        Scan.many [scanExpr (childPath path "len") len, scanExpr (childPath path "body") body]
     | .byteArrayPushPtr ptr len value =>
         Scan.many [
           scanExpr (childPath path "ptr") ptr,

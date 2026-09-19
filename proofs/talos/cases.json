@@ -810,6 +810,82 @@
         "Project.TinyGpt2Seq.Spec.inferChecked_exact"
       ],
       "complete": false
+    },
+    {
+      "name": "packed_read",
+      "module": "LeanExe.Examples.Packed",
+      "entry": "LeanExe.Examples.Packed.readWord",
+      "leanModule": "PackedRead",
+      "specTarget": "Project.PackedRead.Spec",
+      "behaviorTheorems": [
+        "Project.PackedRead.Spec.readWord_exact"
+      ],
+      "complete": true
+    },
+    {
+      "name": "packed_generate",
+      "module": "LeanExe.Examples.Packed",
+      "entry": "LeanExe.Examples.Packed.makeWords",
+      "leanModule": "PackedGenerate",
+      "specTarget": "Project.PackedGenerate.Spec",
+      "behaviorTheorems": [
+        "Project.PackedGenerate.Spec.makeWords_exact",
+        "Project.PackedGenerate.Spec.makeWords_with_reuse_exact"
+      ],
+      "complete": true
+    },
+    {
+      "name": "gpt2_row_mean",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.rowMean",
+      "leanModule": "Gpt2RowMean",
+      "specTarget": "Project.Gpt2RowMean.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2RowMean.Spec.rowMean_exact"],
+      "complete": true
+    },
+    {
+      "name": "gpt2_row_inv_std",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.rowInvStd",
+      "leanModule": "Gpt2RowInvStd",
+      "specTarget": "Project.Gpt2RowInvStd.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2RowInvStd.Spec.rowInvStd_exact"],
+      "complete": true
+    },
+    {
+      "name": "gpt2_attention_score",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.attentionScore",
+      "leanModule": "Gpt2AttentionScore",
+      "specTarget": "Project.Gpt2AttentionScore.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2AttentionScore.Spec.attentionScore_exact"],
+      "complete": true
+    },
+    {
+      "name": "gpt2_linear_rows",
+      "module": "LeanExe.Models.Gpt2.Kernel",
+      "entry": "LeanExe.Models.Gpt2.linearRows",
+      "leanModule": "Gpt2LinearRows",
+      "specTarget": "Project.Gpt2LinearRows.Spec",
+      "annotations": true,
+      "behaviorTheorems": ["Project.Gpt2LinearRows.Spec.linearRows_exact"],
+      "complete": true
+    },
+    {
+      "name": "gpt2_cached_step",
+      "module": "LeanExe.Models.Gpt2.Cached",
+      "entry": "LeanExe.Models.Gpt2.cachedStep",
+      "leanModule": "Gpt2CachedStep",
+      "specTarget": "Project.Gpt2CachedStep.Spec",
+      "annotations": true,
+      "behaviorTheorems": [
+        "Project.Gpt2CachedStep.Spec.cachedStep_exact",
+        "Project.Gpt2CachedStep.Spec.gpt2_128_exact"
+      ],
+      "complete": true
     }
   ]
 }
