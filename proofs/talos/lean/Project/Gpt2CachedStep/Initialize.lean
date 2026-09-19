@@ -13,6 +13,11 @@ def heap : Heap := freshHeap.allocate weightNeed
 def allocatedStore : Store Unit := freshHeap.allocatePackedStore «module».initialStore weightNeed
 def store (weights : ByteArray) : Store Unit := PackedInput.write allocatedStore weightNode.root.toNat weights
 
+theorem export_indices : «module».findExport "cachedStep" = some 38 ∧
+    «module».findExport "alloc" = some 39 ∧ «module».findExport "reset" = some 40 ∧
+    «module».findExport "release" = some 42 := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
 theorem freshHeap_at : freshHeap.At («module».initialStore (α := Unit)) := by
   refine ⟨rfl, .nil, ?_⟩
   simp [freshHeap]
