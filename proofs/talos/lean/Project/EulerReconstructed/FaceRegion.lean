@@ -12,17 +12,49 @@ def rename (index : Nat) : Nat :=
 
 def domain (index : Nat) : Prop := index < 71
 
-set_option maxRecDepth 32768 in
+set_option maxRecDepth 32768
+
+private def FunctionMatches (index : Nat) : Prop :=
+  ∃ f,
+    Project.EulerOutwardFaceStep.«module».funcs[index]? = some f ∧
+    Project.EulerReconstructed.«module».funcs[rename index]? =
+      some (renameFunction rename rename f) ∧
+    PortableProgram domain f.body
+
+private theorem functions_first (index : Nat) (hi : index < 24) :
+    FunctionMatches index := by
+  unfold FunctionMatches
+  interval_cases index
+  all_goals refine ⟨_, rfl, rfl, ?_⟩
+  all_goals prove_portable
+  all_goals norm_num [domain]
+
+private theorem functions_middle (index : Nat) (lo : 24 ≤ index) (hi : index < 48) :
+    FunctionMatches index := by
+  unfold FunctionMatches
+  interval_cases index
+  all_goals refine ⟨_, rfl, rfl, ?_⟩
+  all_goals prove_portable
+  all_goals norm_num [domain]
+
+private theorem functions_last (index : Nat) (lo : 48 ≤ index) (hi : index < 71) :
+    FunctionMatches index := by
+  unfold FunctionMatches
+  interval_cases index
+  all_goals refine ⟨_, rfl, rfl, ?_⟩
+  all_goals prove_portable
+  all_goals norm_num [domain]
+
 theorem shift :
     Shift Project.EulerOutwardFaceStep.«module» Project.EulerReconstructed.«module»
       rename rename domain := by
   refine ⟨rfl, rfl, rfl, ?_⟩
   intro index hi
-  have hi : index < 71 := hi
-  interval_cases index
-  all_goals refine ⟨_, rfl, rfl, ?_⟩
-  all_goals prove_portable
-  all_goals norm_num [domain]
+  by_cases first : index < 24
+  · exact functions_first index first
+  by_cases middle : index < 48
+  · exact functions_middle index (by omega) middle
+  exact functions_last index (by omega) hi
 
 #print axioms shift
 end Project.EulerReconstructed.FaceRegion
