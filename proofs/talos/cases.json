@@ -881,7 +881,10 @@
       "leanModule": "Gpt2CachedStep",
       "specTarget": "Project.Gpt2CachedStep.Spec",
       "annotations": true,
-      "behaviorTheorems": ["Project.Gpt2CachedStep.Spec.cachedStep_exact"],
+      "behaviorTheorems": [
+        "Project.Gpt2CachedStep.Spec.cachedStep_exact",
+        "Project.Gpt2CachedStep.Spec.gpt2_128_exact"
+      ],
       "complete": true
     }
   ]

@@ -145,13 +145,23 @@ transformer blocks, final normalization, all 50,257 scores, allocation, and
 temporary-buffer cleanup.  Invalid weight length, token, position, or cache
 length returns empty outputs with the store unchanged.
 
-The theorem accepts runtime weights without numerical restrictions.  It
-assumes represented protected input buffers, a valid heap, a position that
-fits UInt64, and sufficient allocation capacity.  It uses Lean's logical
-Float32 model and Talos execution semantics.  Tokenization, sampling, host
-orchestration, and runtime implementation are outside its scope.  Numerical
-error bounds and exact-byte packaging remain deferred.  Cached/full-prefix
-equivalence has execution tests and remains a separate source-proof task.
+The [128-position theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean)
+derives the initial heap, input representation, and allocation conditions.
+It starts with module initialization, reset, weight allocation, and the byte
+copy that encodes the input.  It then composes up to 128 token calls, releases
+each previous cache, reads every returned logit vector, and releases that
+vector.  Each cache and logit vector equals the corresponding result of the
+Lean `cachedStep` recurrence.  The theorem takes arbitrary 497,759,232-byte
+weights and vocabulary token IDs.  Its heap-top allowance is 512 MiB plus
+16 MiB per token, within the module's 4 GiB address limit.
+
+The proof uses Lean's logical Float32 model and Talos execution semantics.
+The command-line host uses Wasmtime 44.0.0 with Cranelift and canonical NaNs,
+as required for exact NaN words.  Tokenization, token selection, the native
+host implementation, and Wasmtime are outside the Lean proof.  The theorem
+specifies and proves the host's WASM call sequence and byte input/output
+boundary.  Numerical error bounds, exact-byte packaging, and comparison with
+the separate full-prefix Lean algorithm remain outside this proof target.
 
 Regenerate the module and check its execution proof with:
 

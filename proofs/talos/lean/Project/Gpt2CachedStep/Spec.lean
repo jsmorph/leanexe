@@ -36,6 +36,7 @@ import Project.Gpt2CachedStep.Vocabulary.Spec
 import Project.Gpt2CachedStep.Entry.Accepted
 import Project.Gpt2CachedStep.Entry.Rejected
 import Project.Gpt2CachedStep.Entry.Budget
+import Project.Gpt2CachedStep.Session.Spec
 
 namespace Project.Gpt2CachedStep.Spec
 open Wasm Project.ProofKit PackedMemory Project.EulerRiemann.Execution LeanExe.Models.Gpt2
@@ -65,7 +66,7 @@ theorem cachedStep_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
   by_cases hValid : Entry.Valid weights cache token position
   · refine TerminatesWith.mono (Entry.cachedStep_accepted env initial heap weightsPtr cachePtr weights cache
       token position hHeap hWeights hCache hWeightsProtected hCacheProtected hValid (hResources hValid) hPages) ?_
-    rintro final values ⟨hValues, hFinalHeap, hFinalCache, hFinalLogits, hFrame, _, hFinalPages, hCapacity⟩
+    rintro final values ⟨hValues, hFinalHeap, hFinalCache, hFinalLogits, hFrame, _, _, _, hFinalPages, hCapacity⟩
     exact ⟨(Entry.cacheNode heap position cache.size).root, (Entry.logitsNode heap position cache.size).root,
       Entry.finalHeap heap position cache.size, hValues, hFinalCache.buffer.values, hFinalLogits.buffer.values,
       hFinalHeap, hFrame, hFinalPages, hCapacity⟩

@@ -11,9 +11,12 @@ proofs now cover all transformer kernels and the complete hidden-state
 function, including embedding, all twelve blocks, cache assembly, and cleanup.
 Vocabulary projection and the complete exported cached step now have checked
 execution proofs, including invalid-input rejection, exact output bytes,
-allocation, and cleanup under the represented-input and resource assumptions.
-Cache equivalence with full-prefix inference remains a separate source theorem.
-Numerical bounds and exact-byte packaging remain deferred.  The earlier
+allocation, and cleanup.  The 128-position invocation theorem derives the
+input and resource premises, starting with reset and weight loading, then
+composing token calls and cache/logit releases.  The runtime target is
+Wasmtime's canonical-NaN mode.  Source-artifact regeneration and runtime tests
+are the final checks for this update.  Numerical bounds and exact-byte
+packaging remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.

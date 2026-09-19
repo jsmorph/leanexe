@@ -62,6 +62,13 @@ These environment variables configure local executables and the Wasmtime downloa
 | `WASM_TOOLS` | `wasm-tools` executable used by WAT and Talos checks. |
 | `LEANEXE_FUZZ_CASES` | Case count for the ASCII validator fuzz test.  The default is 50. |
 
+The C host runner uses Cranelift with Wasmtime's NaN canonicalization enabled.
+This execution mode matches the canonical arithmetic NaNs in the Lean and
+Talos floating-point models.  `node test/f32_bits.js` checks exact Wasmtime
+NaN words, including signaling inputs and noncanonical payloads.  The
+[Wasmtime configuration reference](https://docs.wasmtime.dev/c-api/config_8h.html)
+documents `wasmtime_config_cranelift_nan_canonicalization_set`.
+
 ## Lean Process Limits
 
 Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  In standard mode `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It always acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.

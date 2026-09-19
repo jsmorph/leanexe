@@ -33,6 +33,8 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
         (cachedStep weights cache token position).logits →
       heap.Frame initial (finalHeap heap position cache.size) final →
       regionsDisjoint (cacheNode heap position cache.size).region (logitsNode heap position cache.size).region →
+      heap.FreshNode (cacheNode heap position cache.size) →
+      heap.FreshNode (logitsNode heap position cache.size) →
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       Q (.Fallthrough final result)) : wp «module» validBody Q initial frame env := by
   have hNormSize : (finalNormOffset + 1536) * 4 ≤ weights.size := by rw [hValid.1]; rfl
@@ -98,6 +100,8 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simpa only [cachedStep_valid hValid, finalHeap] using hFinalLogits
   · exact hFinalFrame
   · exact regionsDisjoint_symm hLogitsCache
+  · exact hCacheFresh
+  · exact hCombinedFrame.freshNode hLogitsFresh
   · exact hLogitsOutput.pages
   · exact hCapacity
 
