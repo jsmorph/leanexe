@@ -4,27 +4,45 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
 
+enum { PACKED_BINDING_CAPACITY=64 };
+typedef struct { uint64_t pointer, size, weight_offset, bias_offset; size_t shape; } PackedBinding;
 typedef struct {
   WGPUInstance instance;
   WGPUAdapter adapter;
   WGPUDevice device;
   WGPUQueue queue;
   WGPUComputePipeline pipelines[6];
-  WGPUBindGroup groups[50];
-  WGPUBuffer weights[50], input, output, readback;
-  uint64_t weight_pointer;
-  bool loaded;
+  WGPUBindGroup groups[PACKED_BINDING_CAPACITY];
+  WGPUBuffer weights[PACKED_BINDING_CAPACITY], input, output, readback;
+  PackedBinding bindings[PACKED_BINDING_CAPACITY];
+  size_t binding_count;
+  Runtime *owner;
   size_t dispatches;
 } PackedGPU;
 static PackedGPU packed_gpu;
 static const size_t packed_inner[6]={768,768,768,3072,768,768};
 static const size_t packed_cols[6]={2304,768,3072,768,25129,25128};
-static const size_t packed_offsets[4]={1536,1773312,2365440,4727808};
-static const size_t packed_block_words=7087872, packed_blocks_offset=39383808;
 static const char *packed_roles[6]={"qkv","attention","expansion","projection","vocabularyLeft","vocabularyRight"};
 
+static void packed_clear_weights(Runtime *runtime) {
+  PackedGPU *g=&packed_gpu;
+  if(g->owner!=runtime)return;
+  for(size_t i=0;i<g->binding_count;i++) {
+    wgpuBindGroupRelease(g->groups[i]);wgpuBufferRelease(g->weights[i]);
+    g->groups[i]=NULL;g->weights[i]=NULL;
+  }
+  g->binding_count=0;
+}
+static void packed_memory_write(Runtime *runtime,uint64_t start,size_t length) {
+  PackedGPU *g=&packed_gpu;
+  if(g->owner!=runtime)return;
+  for(size_t i=0;i<g->binding_count;i++) {
+    PackedBinding *b=&g->bindings[i];
+    if(start<b->pointer+b->size&&b->pointer<start+length){packed_clear_weights(runtime);return;}
+  }
+}
+
 static void packed_need(bool ok,const char *message) { if(!ok) die(message); }
-static size_t packed_shape(size_t matrix) { return matrix<48?matrix%4:matrix-44; }
 static uint8_t *packed_region(Runtime *runtime,uint64_t start,size_t length) {
   size_t size=wasmtime_memory_data_size(runtime->context,&runtime->memory);
   packed_need(runtime->has_memory&&start<=size&&length<=size-start,"packed Wasm memory range");
@@ -79,35 +97,40 @@ static void packed_initialize(void) {
     packed_need(g->pipelines[shape]!=NULL,"packed pipeline");wgpuShaderModuleRelease(module);free(bytes);
   }
 }
-static void packed_load_weights(Runtime *runtime,uint64_t pointer,uint64_t size) {
-  PackedGPU *g=&packed_gpu;
-  packed_need(size==497759232,"parent weight byte count");
-  if(g->loaded){packed_need(g->weight_pointer==pointer,"weight pointer changed; start a new session");return;}
-  packed_initialize();const uint8_t *weights=packed_region(runtime,pointer,(size_t)size);
-  for(size_t matrix=0;matrix<50;matrix++) {
-    size_t shape=packed_shape(matrix),cols=packed_cols[shape],inner=packed_inner[shape];
-    size_t bytes=4*(inner*cols+(matrix<48?cols:0));uint8_t *transposed=NULL;
-    const uint8_t *source;
-    if(matrix<48) source=weights+4*(packed_blocks_offset+(matrix/4)*packed_block_words+packed_offsets[shape]);
-    else {
-      transposed=malloc(bytes);packed_need(transposed!=NULL,"vocabulary staging allocation");
-      size_t start=matrix==48?0:25129;
-      for(size_t k=0;k<inner;k++)for(size_t col=0;col<cols;col++)
-        memcpy(transposed+4*(k*cols+col),weights+4*((start+col)*768+k),4);
-      source=transposed;
-    }
-    g->weights[matrix]=packed_buffer(bytes,WGPUBufferUsage_Storage|WGPUBufferUsage_CopyDst);
-    wgpuQueueWriteBuffer(g->queue,g->weights[matrix],0,source,bytes);free(transposed);
-    WGPUBindGroupLayout layout=wgpuComputePipelineGetBindGroupLayout(g->pipelines[shape],0);
-    WGPUBindGroupEntry entries[]={{.binding=0,.buffer=g->input,.size=inner*4},
-      {.binding=1,.buffer=g->weights[matrix],.size=bytes},{.binding=2,.buffer=g->output,.size=cols*4}};
-    g->groups[matrix]=wgpuDeviceCreateBindGroup(g->device,&(WGPUBindGroupDescriptor){.layout=layout,.entryCount=3,.entries=entries});
-    packed_need(g->groups[matrix]!=NULL,"packed bind group");wgpuBindGroupLayoutRelease(layout);
+/* Uploaded weight views remain immutable for one inference session. The host
+ * keys them by the actual Wasm arguments, without hard-coded block offsets. */
+static size_t packed_binding(Runtime *runtime,size_t shape,uint64_t pointer,uint64_t size,uint64_t weight_offset,uint64_t bias_offset) {
+  PackedGPU *g=&packed_gpu;packed_initialize();
+  if(g->owner!=runtime){packed_clear_weights(g->owner);g->owner=runtime;}
+  for(size_t i=0;i<g->binding_count;i++) {
+    PackedBinding *b=&g->bindings[i];
+    if(b->shape==shape&&b->pointer==pointer&&b->size==size&&b->weight_offset==weight_offset&&b->bias_offset==bias_offset)return i;
   }
-  wgpuDevicePoll(g->device,true,NULL);g->weight_pointer=pointer;g->loaded=true;
+  packed_need(g->binding_count<PACKED_BINDING_CAPACITY,"GPU weight-view capacity exhausted");
+  size_t matrix=g->binding_count,cols=packed_cols[shape],inner=packed_inner[shape];
+  size_t words=inner*cols,bytes=4*(words+(shape<4?cols:0));
+  const uint8_t *weights=packed_region(runtime,pointer,(size_t)size);
+  uint8_t *staging=malloc(bytes);packed_need(staging!=NULL,"weight-view staging allocation");
+  if(shape<4) {
+    packed_need(weight_offset<=size/4&&words<=size/4-weight_offset&&bias_offset<=size/4&&cols<=size/4-bias_offset,"matrix/bias weight bounds");
+    memcpy(staging,weights+weight_offset*4,words*4);memcpy(staging+words*4,weights+bias_offset*4,cols*4);
+  } else {
+    size_t start=shape==4?0:25129;
+    packed_need(size>=(start+cols)*768*4,"vocabulary weight bounds");
+    for(size_t k=0;k<inner;k++)for(size_t col=0;col<cols;col++)
+      memcpy(staging+4*(k*cols+col),weights+4*((start+col)*768+k),4);
+  }
+  g->weights[matrix]=packed_buffer(bytes,WGPUBufferUsage_Storage|WGPUBufferUsage_CopyDst);
+  wgpuQueueWriteBuffer(g->queue,g->weights[matrix],0,staging,bytes);free(staging);
+  WGPUBindGroupLayout layout=wgpuComputePipelineGetBindGroupLayout(g->pipelines[shape],0);
+  WGPUBindGroupEntry entries[]={{.binding=0,.buffer=g->input,.size=inner*4},
+    {.binding=1,.buffer=g->weights[matrix],.size=bytes},{.binding=2,.buffer=g->output,.size=cols*4}};
+  g->groups[matrix]=wgpuDeviceCreateBindGroup(g->device,&(WGPUBindGroupDescriptor){.layout=layout,.entryCount=3,.entries=entries});
+  packed_need(g->groups[matrix]!=NULL,"packed bind group");wgpuBindGroupLayoutRelease(layout);
+  g->bindings[matrix]=(PackedBinding){pointer,size,weight_offset,bias_offset,shape};g->binding_count++;return matrix;
 }
 static void packed_dispatch(Runtime *runtime,size_t matrix,uint64_t input,uint64_t output) {
-  PackedGPU *g=&packed_gpu;size_t shape=packed_shape(matrix),bytes=4*packed_cols[shape];
+  PackedGPU *g=&packed_gpu;size_t shape=g->bindings[matrix].shape,bytes=4*packed_cols[shape];
   wgpuQueueWriteBuffer(g->queue,g->input,0,packed_region(runtime,input,4*packed_inner[shape]),4*packed_inner[shape]);
   WGPUCommandEncoder encoder=wgpuDeviceCreateCommandEncoder(g->device,NULL);
   WGPUComputePassEncoder pass=wgpuCommandEncoderBeginComputePass(encoder,NULL);
@@ -128,19 +151,16 @@ static wasm_trap_t *packed_callback(void *data,wasmtime_caller_t *caller,const w
   (void)caller;(void)results;Runtime *runtime=data;uint64_t a[12];
   packed_need((argc==12||argc==7)&&resultc==0,"packed import signature");
   for(size_t i=0;i<argc;i++){packed_need(args[i].kind==WASMTIME_I64,"packed import parameter");a[i]=(uint64_t)args[i].of.i64;}
-  packed_load_weights(runtime,a[1],a[2]);
   if(argc==12) {
-    size_t matrix=50;
-    for(size_t i=0;i<48;i++) {
-      size_t shape=i%4,offset=packed_blocks_offset+(i/4)*packed_block_words+packed_offsets[shape];
-      if(a[6]==offset && a[7]==offset+packed_inner[shape]*packed_cols[shape] &&
-         a[8]==packed_inner[shape] && a[9]==packed_cols[shape]) {matrix=i;break;}
-    }
-    packed_need(matrix<48&&a[10]==1&&a[5]==4*a[8],"unsupported packed linear request");
+    size_t shape=4;
+    for(size_t i=0;i<4;i++)if(a[8]==packed_inner[i]&&a[9]==packed_cols[i]){shape=i;break;}
+    packed_need(shape<4&&a[10]==1&&a[5]>=4*packed_inner[shape],"unsupported packed linear request");
+    size_t matrix=packed_binding(runtime,shape,a[1],a[2],a[6],a[7]);
     packed_dispatch(runtime,matrix,a[4],a[11]);
   } else {
-    packed_need(a[5]==3072,"packed vocabulary input length");
-    packed_dispatch(runtime,48,a[4],a[6]);packed_dispatch(runtime,49,a[4],a[6]+25129*4);
+    packed_need(a[5]>=3072,"packed vocabulary input length");
+    size_t left=packed_binding(runtime,4,a[1],a[2],0,0),right=packed_binding(runtime,5,a[1],a[2],0,0);
+    packed_dispatch(runtime,left,a[4],a[6]);packed_dispatch(runtime,right,a[4],a[6]+25129*4);
   }
   return NULL;
 }
@@ -157,8 +177,8 @@ static void packed_imports(Runtime *runtime,wasmtime_extern_t imports[2]) {
 static void packed_cleanup(void) {
   PackedGPU *g=&packed_gpu;
   if(!g->device)return;
-  fprintf(stderr,"Packed WebGPU dispatches: %zu\n",g->dispatches);
-  for(size_t i=0;i<50;i++) {
+  fprintf(stderr,"Packed WebGPU dispatches: %zu; weight views: %zu\n",g->dispatches,g->binding_count);
+  for(size_t i=0;i<g->binding_count;i++) {
     if(g->groups[i])wgpuBindGroupRelease(g->groups[i]);
     if(g->weights[i])wgpuBufferRelease(g->weights[i]);
   }

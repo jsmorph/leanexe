@@ -252,3 +252,21 @@ All five operation checks passed in `build/gpt2/packed-wrapper-check-02/`.
 Each check discharges its shader certificate premise using the generated
 certificate, and leaves the completed host execution/transfer assumption
 explicit. The full controller/session proof is still pending.
+
+## Actual matrix offsets and host cache invalidation
+
+The native host now constructs matrix/bias views from the offsets supplied by
+Wasm instead of duplicating GPT-2 block-layout constants. It copies raw words,
+including separately located biases and the two transposed vocabulary slices.
+The sixteen-token native science trace remained byte-identical to the earlier
+trace (`packed-runtime-01/views-science.f32.bin`).
+
+Cached GPU views are invalidated on a Wasm reset or an external host write to
+their source weight array. The focused `packed-host-test.js` exercises the
+actual QKV wrapper at noncontiguous offsets, changes a bias through the host,
+then resets and reallocates the input. All three calls returned the expected
+6,912 FP32 words exactly (`packed-host-test-01/results.json`). Expected words
+come from the existing Lean fixture. The host supports at most 64 concurrent
+cached views; the full model uses 50. Successful GPU allocation and execution
+remain explicit runtime assumptions rather than Lean-proved properties of C
+or of the driver.
