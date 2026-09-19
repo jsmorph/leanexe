@@ -14,8 +14,8 @@ execution proofs, including invalid-input rejection, exact output bytes,
 allocation, and cleanup.  The 128-position invocation theorem derives the
 input and resource premises, starting with reset and weight loading, then
 composing token calls and cache/logit releases.  The runtime target is
-Wasmtime's canonical-NaN mode.  Source-artifact regeneration and runtime tests
-are the final checks for this update.  Numerical bounds and exact-byte
+Wasmtime's canonical-NaN mode.  Source-artifact regeneration, canonical-NaN
+tests, all 128 contexts, and three text completions pass.  Numerical bounds and exact-byte
 packaging remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
