@@ -159,6 +159,10 @@ static void free_u64_list(U64List list) {
   free(list.items);
 }
 
+#ifdef LEANEXE_WGSL_PACKED_HOST
+#include "wgsl/gpt2/packed-host.h"
+#endif
+
 static void init_runtime(Runtime *runtime, const char *wasm_path) {
   memset(runtime, 0, sizeof(*runtime));
   size_t wasm_len = 0;
@@ -190,7 +194,13 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
   runtime->context = wasmtime_store_context(runtime->store);
 
   wasm_trap_t *trap = NULL;
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  wasmtime_extern_t imports[2];
+  packed_imports(runtime, imports);
+  error = wasmtime_instance_new(runtime->context, module, imports, 2, &runtime->instance, &trap);
+#else
   error = wasmtime_instance_new(runtime->context, module, NULL, 0, &runtime->instance, &trap);
+#endif
   wasmtime_module_delete(module);
   if (error != NULL) {
     print_error(error);
@@ -1101,6 +1111,9 @@ int main(int argc, char **argv) {
   } else {
     usage();
   }
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  packed_cleanup();
+#endif
   wasmtime_store_delete(runtime.store);
   wasm_engine_delete(runtime.engine);
   return 0;

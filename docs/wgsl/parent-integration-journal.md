@@ -111,3 +111,48 @@ after sourcing the platform environment. `--test-existing` resumes only the
 runtime-test stage after a successful six-shader proof receipt. The complete
 hybrid Wasm caller/session theorem and universal WebGPU conformance remain
 outside this milestone.
+
+## Experimental full packed execution
+
+`packed-module.js` creates a separate experimental artifact from the parent
+WAT. It retains the parent's non-matrix function bodies, renames direct call
+and export indices for two new imports, and replaces only the linear-product
+and vocabulary bodies. The replacement functions call the existing Wasm
+allocator, invoke WebGPU, then return the packed pointer/length triple.
+The host performs GPU API calls, layout copies and synchronized readback.
+No non-matrix FP32 computation moves into C, JavaScript or Python.
+
+This selects a synchronous Wasm import as the call boundary. Native execution
+waits for readback before returning. A browser worker can suspend at the same
+boundary using a shared-memory request/completion exchange; that browser path
+is not implemented yet. The parent cached-step proof does not automatically
+apply to this transformed module. The separate wrapper and full-module proof
+obligations remain pending, and this artifact is labeled experimental.
+
+The 124M packed artifact passed three common-context comparisons with both
+the original parent artifact and PyTorch: France, science and story, sixteen
+predictions each. All 48 greedy argmax choices agreed, and all 2,412,336 logit
+words were bit-identical between the packed hybrid and parent Wasm. The maximum
+absolute difference from PyTorch was 0.00032806396484375. Both artifacts had
+identical allocation/release counts and memory size on each prompt; only the
+weights and current cache remained live. Reports and logs are under
+`build/gpt2/packed-runtime-01/`. The reference test chooses forced tokens in
+Python; this is a test harness, not the delivered sampler.
+
+Reproduction, with an existing pinned checkpoint and parent artifact:
+
+```sh
+source tools/macos-env.sh
+node tools/wgsl/gpt2/packed-module.js proofs/talos/.generated/gpt2_cached_step/program.wat build/gpt2/FRESH_RUNTIME
+sh tools/wgsl/gpt2/compile-packed-host.sh
+export LEANEXE_PACKED_SHADERS="$PWD/build/gpt2/packed-parent-01"
+build/gpt128-quality/venv/bin/python tools/wgsl/gpt2/compare-packed.py \
+  --candidate-host tools/wgsl/gpt2/packed-cpu.sh \
+  --candidate-wasm build/gpt2/FRESH_RUNTIME/model.wasm \
+  --prompt 'The purpose of science is' --generate 16 \
+  --output build/gpt2/FRESH_RUNTIME/science.json
+```
+
+The shader directory is the output of the preceding certificate gate; use
+its actual path when generating a fresh set. The existing generic Wasmtime
+host remains the parent comparison host. The packed host is a separate build.
