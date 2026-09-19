@@ -1,0 +1,7 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 12, Register, Section 4: “The proof quantifies over the module’s fixed architecture and supported context length.”  This misstates the quantified parameters.  Theorem 1 fixes the module and the 128-token bound and quantifies over weight arrays and token lists satisfying its stated conditions.

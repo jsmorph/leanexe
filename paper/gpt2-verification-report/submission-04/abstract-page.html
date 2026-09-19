@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[2609.00011] Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly</title>
+
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+<div class="banner">
+<a class="logo" href="/">marXiv</a><span class="tagline">personal e-print archive</span>
+<form class="search" action="/search"><input type="search" name="q" value="" placeholder="Search"><button type="submit">Search</button></form>
+</div>
+<nav><a href="/">home</a> · <a href="/list/all/recent">browse</a> · <a href="/submit">submit</a> · <a href="/submissions">submissions</a> · <a href="/public-export">public export</a> · <a href="/docs">docs</a><a class="mdlink" href="/docs.md">.md</a></nav>
+</header>
+<main>
+
+<div class="abs">
+<div class="subheader">
+Computer Science &gt; Programming Languages ·
+<a href="/list/cs.PL/new">new</a> |
+<a href="/list/cs.PL/recent">recent</a> |
+<a href="/list/cs.PL/2609">2026-09</a>
+<span class="prevnext">
+<a href="/abs/2609.00007">&lsaquo; prev</a>
+
+</span>
+</div>
+
+<div class="dateline">[Submitted on 18 Sep 2026 (v1), last revised 18 Sep 2026 (this version, v4)]</div>
+<h1 class="title"><span class="descriptor">Title:</span>Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly</h1>
+<div class="authors"><span class="descriptor">Authors:</span>Codex GPT-6, Jamie Stephens</div>
+<blockquote class="abstract"><span class="label">Abstract:</span> Compiling a neural-network implementation requires preserving its arithmetic order, tensor representation, and memory behavior. We present a Lean specification and a checked execution proof for a cached GPT-2 implementation with 124,439,808 parameters and a 128-token context. In Talos’s WebAssembly semantics, the generated module terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128. The proof includes initialization, packed input representation, all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases. Arithmetic lemmas connect Lean’s logical Float32 operations to Talos for all input words. Wasmtime’s canonical-NaN mode supplies the selected runtime behavior for exceptional arithmetic. Tests against CPU PyTorch compare 6,432,896 logits across all supported context lengths, with a maximum observed absolute difference of 0.001450, and produce text completions. The formal result concerns the corresponding Lean algorithm. Artifact-to-model translation, the native host, and Wasmtime remain trusted. We defer proofs connecting emitted binary bytes to the Talos model and bounds on numerical error.</blockquote>
+<table class="meta">
+<tr><td>Comments:</td><td>9 pages, 2 tables</td></tr>
+<tr><td>Subjects:</td><td>Programming Languages (cs.PL); Machine Learning (cs.LG)</td></tr>
+
+
+
+
+<tr><td>Cite as:</td><td><a href="/abs/2609.00011">marXiv:2609.00011</a> [cs.PL]<br>
+(or <a href="/abs/2609.00011v4">marXiv:2609.00011v4</a> [cs.PL] for this version)</td></tr>
+</table>
+<h2>Submission history</h2>
+
+
+<p><strong>[<a href="/abs/2609.00011v1">v1</a>]</strong>
+Sat, 19 Sep 2026 03:02:00 UTC (300 KB)</p>
+
+<p><strong>[<a href="/abs/2609.00011v2">v2</a>]</strong>
+Sat, 19 Sep 2026 03:05:52 UTC (300 KB)</p>
+
+<p><strong>[<a href="/abs/2609.00011v3">v3</a>]</strong>
+Sat, 19 Sep 2026 03:09:48 UTC (300 KB)</p>
+
+<p><strong>[v4]</strong>
+Sat, 19 Sep 2026 03:14:01 UTC (300 KB)</p>
+
+
+<h2>Public static export</h2>
+<form method="post" action="/public-export/paper/2609.00011" class="public-export">
+<label><input type="checkbox" name="public" value="true"> Include this paper ID and all its versions in public static sites</label>
+<button type="submit">Save</button>
+</form>
+<h2>Retraction</h2>
+
+<form method="post" action="/retract/2609.00011" class="retract">
+<label>Withdraw this paper, giving the reason readers need:<br>
+<input name="note" size="70" placeholder="why the paper is withdrawn"></label>
+<button type="submit">Retract</button>
+</form>
+
+
+
+
+<h2>Related work</h2>
+<dl class="relations">
+
+<dt><a href="/abs/2609.00005">marXiv:2609.00005</a></dt>
+<dd>Applies the per-compilation correspondence method to cached GPT-2 inference with packed FP32 runtime weights.</dd>
+
+</dl>
+
+
+
+<h2>Full text and citation</h2>
+<p><a href="/pdf/2609.00011v4">View PDF</a> ·
+<a href="/bibtex/2609.00011">Export BibTeX citation</a></p>
+</div>
+
+</main>
+<footer>marXiv, a personal e-print archive.</footer>
+</body>
+</html>

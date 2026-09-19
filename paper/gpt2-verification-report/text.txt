@@ -320,12 +320,12 @@ Applying the result to a native run also trusts model translation, Wasmtime, its
 the C host, and the host’s byte I/O. Tokenization and token selection occur outside the proved
 recurrence. The theorem accepts vocabulary indices and produces logit bytes, which lets either a
 user-selected sequence or a generated sequence supply the next valid token.
-The proof quantifies over the module’s fixed architecture and supported context length. A larger
-architecture or context needs corresponding source, generated-module, and proof updates. The
-scalar arithmetic and packed-memory lemmas accept inputs beyond this one model. The composed
-transformer and allocation theorems retain their stated dimension bounds. Numerical accuracy
-against real arithmetic, equivalence between the cached and separate full-prefix Lean algorithms,
-and language-quality properties remain separate obligations.
+The theorem fixes the module’s architecture and the 128-token limit and quantifies over weight
+arrays and token lists satisfying the stated conditions. A larger architecture or context needs
+corresponding source, generated-module, and proof updates. The scalar arithmetic and packedmemory lemmas accept inputs beyond this one model. The composed transformer and allocation
+theorems retain their stated dimension bounds. Numerical accuracy against real arithmetic,
+equivalence between the cached and separate full-prefix Lean algorithms, and language-quality
+properties remain separate obligations.
 
 5
 
@@ -338,7 +338,6 @@ thread. The WASM driver keeps weights and cached key/value data in a resident Wa
 instance [22].
 The 128-position test starts with the story prompt “Once upon a time, in a small village” and
 appends repetitions of a fixed sentence before taking the first 128 token IDs. For each prefix length
-
 6
 
 from one to 128, it compares all 50,257 cached WASM logits with the corresponding CPU PyTorch
