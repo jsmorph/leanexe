@@ -1,0 +1,1382 @@
+checked wasm-tools 1.251.0
+Building the pinned Talos verifier.
+⚠ [3/52] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+Build completed successfully (52 jobs).
+⚠ [2/67] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+Build completed successfully (67 jobs).
+Preparing Talos artifact: gpt2_cached_step
+==> 1 crate(s): gpt2_cached_step
+    emitted /home/somebody/src/leanexe/tmp/leanexe-talos-Nn7TL5/lean/Project/Gpt2CachedStep/Program.lean
+    scaffolded /home/somebody/src/leanexe/tmp/leanexe-talos-Nn7TL5/lean/Project/Gpt2CachedStep/Spec.lean
+Prepared Talos artifact: gpt2_cached_step
+⚠ [4/240] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [14/240] Replayed Interpreter.Wasm.Semantics.Lemmas
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:162:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:166:50: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:168:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:172:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:224:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:226:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:229:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:262:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:264:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:267:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:433:15: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:443:15: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [15/240] Replayed Interpreter.Wasm.SmallStep
+warning: Interpreter/Wasm/SmallStep.lean:6300:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6872:24: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6874:24: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/SmallStep.lean:6888:13: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [18/240] Replayed Interpreter.Wasm.Host.StdIO
+warning: Interpreter/Wasm/Host/StdIO.lean:88:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Host/StdIO.lean:100:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Host/StdIO.lean:118:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+ℹ [3346/3674] Replayed Project.ProofKit.F32Source
+info: Project/ProofKit/F32Source.lean:28:0: 'Project.ProofKit.F32Source.add_source' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Source.lean:29:0: 'Project.ProofKit.F32Source.sub_source' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Source.lean:30:0: 'Project.ProofKit.F32Source.mul_source' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Source.lean:31:0: 'Project.ProofKit.F32Source.div_source' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Source.lean:32:0: 'Project.ProofKit.F32Source.sqrt_source' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3347/3674] Replayed Project.ProofKit.F32Encoding
+info: Project/ProofKit/F32Encoding.lean:89:0: 'Project.ProofKit.F32Encoding.unpack_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Encoding.lean:90:0: 'Project.ProofKit.F32Encoding.packComponents_eq' depends on axioms: [propext, Quot.sound]
+⚠ [3350/3674] Replayed Interpreter.Wasm.Examples.FloatAssociativity
+warning: Interpreter/Wasm/Examples/FloatAssociativity.lean:167:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3351/3674] Replayed CodeLib.IEEE32.Roundoff
+warning: CodeLib/IEEE32/Roundoff.lean:283:19: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Roundoff.lean:276:39: This simp argument is unused:
+  Nat.mul_left_comm
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [roundedMagnitude, hexactNum, shift, rounded, hcarryNum, pow_succ, Nat.mul_assoc, Nat.mul_comm]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Roundoff.lean:317:14: This simp argument is unused:
+  show shift + 1 ≠ 0 by omega
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Roundoff.lean:405:18: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: CodeLib/IEEE32/Roundoff.lean:413:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Roundoff.lean:498:35: `if_false` has been deprecated: Use `ite_false` instead
+info: CodeLib/IEEE32/Roundoff.lean:794:0: 'CodeLib.IEEE32.assocGap_output_lt_epsilon' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Roundoff.lean:795:0: 'CodeLib.IEEE32.assocGap_terminates_lt_epsilon' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Roundoff.lean:796:0: 'CodeLib.IEEE32.add_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Roundoff.lean:797:0: 'CodeLib.IEEE32.sub_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3352/3674] Replayed CodeLib.IEEE32.SpecialValues
+info: CodeLib/IEEE32/SpecialValues.lean:328:0: 'CodeLib.IEEE32.add_nan_left' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE32/SpecialValues.lean:329:0: 'CodeLib.IEEE32.add_infinities_opposite_sign' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/SpecialValues.lean:330:0: 'CodeLib.IEEE32.roundScaledMagnitude_overflows' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/SpecialValues.lean:331:0: 'CodeLib.IEEE32.add_overflow' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/SpecialValues.lean:332:0: 'CodeLib.IEEE32.sub_overflow' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3353/3674] Replayed Project.ProofKit.F32Packing
+info: Project/ProofKit/F32Packing.lean:165:0: 'Project.ProofKit.F32Packing.pack_decode' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:166:0: 'Project.ProofKit.F32Packing.unpack_ofBits' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:167:0: 'Project.ProofKit.F32Packing.add_unpacked' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:168:0: 'Project.ProofKit.F32Packing.sub_unpacked' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:169:0: 'Project.ProofKit.F32Packing.mul_unpacked' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:170:0: 'Project.ProofKit.F32Packing.div_unpacked' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Packing.lean:171:0: 'Project.ProofKit.F32Packing.sqrt_unpacked' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3354/3674] Replayed Project.ProofKit.F32Rounding
+info: Project/ProofKit/F32Rounding.lean:77:0: 'Project.ProofKit.F32Rounding.round_exact_shift' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3355/3674] Replayed Project.ProofKit.F32RoundScaled
+info: Project/ProofKit/F32RoundScaled.lean:149:0: 'Project.ProofKit.F32RoundScaled.pack_round_scaled' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3356/3674] Replayed Project.ProofKit.F32Shift
+info: Project/ProofKit/F32Shift.lean:50:0: 'Project.ProofKit.F32Shift.shift_exact_mul_pow_add' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/F32Shift.lean:51:0: 'Project.ProofKit.F32Shift.target_mul_pow' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3357/3674] Replayed Project.ProofKit.F32Normalize
+info: Project/ProofKit/F32Normalize.lean:84:0: 'Project.ProofKit.F32Normalize.round_mul_pow' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Normalize.lean:85:0: 'Project.ProofKit.F32Normalize.pack_round_above_min' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Normalize.lean:111:0: 'Project.ProofKit.F32Normalize.pack_normalize' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3358/3674] Replayed Project.ProofKit.F32AddFinite
+info: Project/ProofKit/F32AddFinite.lean:56:0: 'Project.ProofKit.F32AddFinite.pack_add_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3359/3674] Replayed Project.ProofKit.F32Decoded
+info: Project/ProofKit/F32Decoded.lean:106:0: 'Project.ProofKit.F32Decoded.finite_add' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Decoded.lean:107:0: 'Project.ProofKit.F32Decoded.roundedSigned_value' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32Decoded.lean:127:0: 'Project.ProofKit.F32Decoded.add_eq_talos_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3360/3674] Replayed Project.ProofKit.F32Add
+info: Project/ProofKit/F32Add.lean:123:0: 'Project.ProofKit.F32Add.add_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3361/3674] Replayed Project.ProofKit.F32RoundFinish
+info: Project/ProofKit/F32RoundFinish.lean:74:0: 'Project.ProofKit.F32RoundFinish.pack_finish_scaled' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32RoundFinish.lean:75:0: 'Project.ProofKit.F32RoundFinish.pack_finish_normal' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32RoundFinish.lean:119:0: 'Project.ProofKit.F32RoundFinish.pack_finish_above_min' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3362/3674] Replayed Project.ProofKit.F32RationalRounding
+info: Project/ProofKit/F32RationalRounding.lean:84:0: 'Project.ProofKit.F32RationalRounding.fraction_round' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/F32RationalRounding.lean:85:0: 'Project.ProofKit.F32RationalRounding.shiftRightOne_fraction' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32RationalRounding.lean:86:0: 'Project.ProofKit.F32RationalRounding.rounded_fraction' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3363/3674] Replayed CodeLib.IEEE32.Rounders
+warning: CodeLib/IEEE32/Rounders.lean:26:48: `if_false` has been deprecated: Use `ite_false` instead
+warning: CodeLib/IEEE32/Rounders.lean:176:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:211:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:120:28: This simp argument is unused:
+  hshiftEq
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [totalShift]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Rounders.lean:127:28: This simp argument is unused:
+  hshiftEq
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [totalShift]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Rounders.lean:410:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:447:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:482:31: This simp argument is unused:
+  pow_add
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [midpointTwice, unit, pow_two]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Rounders.lean:593:42: This simp argument is unused:
+  Nat.mul_assoc
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Wasm.IEEE32.roundShift, pow_succ]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE32/Rounders.lean:621:35: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:634:35: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:636:29: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE32/Rounders.lean:765:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: CodeLib/IEEE32/Rounders.lean:786:0: 'CodeLib.IEEE32.roundDyadicMagnitude149_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Rounders.lean:787:0: 'CodeLib.IEEE32.roundQuotient_int_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Rounders.lean:788:0: 'CodeLib.IEEE32.roundRationalMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Rounders.lean:789:0: 'CodeLib.IEEE32.roundSqrtIntegral_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Rounders.lean:790:0: 'CodeLib.IEEE32.roundSqrtMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3364/3674] Replayed Project.ProofKit.F32RoundRational
+info: Project/ProofKit/F32RoundRational.lean:71:0: 'Project.ProofKit.F32RoundRational.pack_roundWithAccuracy_rational' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3365/3674] Replayed Project.ProofKit.F32RationalScale
+info: Project/ProofKit/F32RationalScale.lean:92:0: 'Project.ProofKit.F32RationalScale.roundWithAccuracy_mul_pow' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3366/3674] Replayed Project.ProofKit.F32RationalNormalize
+info: Project/ProofKit/F32RationalNormalize.lean:51:0: 'Project.ProofKit.F32RationalNormalize.rational_congr' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32RationalNormalize.lean:52:0: 'Project.ProofKit.F32RationalNormalize.pack_roundWithAccuracy' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3367/3674] Replayed Project.ProofKit.F32DivCore
+info: Project/ProofKit/F32DivCore.lean:77:0: 'Project.ProofKit.F32DivCore.core_ready' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/F32DivCore.lean:78:0: 'Project.ProofKit.F32DivCore.pack_div_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3368/3674] Replayed Project.ProofKit.F32Div
+info: Project/ProofKit/F32Div.lean:74:0: 'Project.ProofKit.F32Div.div_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3370/3674] Replayed Project.TalosCompat
+info: Project/TalosCompat.lean:92:0: 'Wasm.exec_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:93:0: 'Wasm.exec_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:94:0: 'Wasm.wp_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:95:0: 'Wasm.wp_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3372/3674] Replayed Project.Common
+warning: Project/Common.lean:117:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Common.lean:126:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [3373/3674] Replayed Project.ProofKit.PackedSource
+info: Project/ProofKit/PackedSource.lean:106:0: 'Project.ProofKit.PackedSource.generate_size' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedSource.lean:107:0: 'Project.ProofKit.PackedSource.generate_byte' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedSource.lean:108:0: 'Project.ProofKit.PackedSource.generate_read' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3375/3674] Replayed Project.ProofKit.MemoryFrame
+info: Project/ProofKit/MemoryFrame.lean:44:0: 'Project.ProofKit.Memory.WritesRange.trans' does not depend on any axioms
+info: Project/ProofKit/MemoryFrame.lean:45:0: 'Project.ProofKit.Memory.WritesRange.mono' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/MemoryFrame.lean:46:0: 'Project.ProofKit.Memory.WritesRange.write64' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/MemoryFrame.lean:47:0: 'Project.ProofKit.Memory.WritesRange.read64' depends on axioms: [propext, Quot.sound]
+ℹ [3376/3674] Replayed Project.ProofKit.PackedMemory
+info: Project/ProofKit/PackedMemory.lean:95:0: 'Project.ProofKit.PackedMemory.write32_wordPrefix' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3377/3674] Replayed Project.ProofKit.CallRemainder
+info: Project/ProofKit/CallRemainder.lean:39:0: 'Wasm.run_append_of_success' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/CallRemainder.lean:40:0: 'Wasm.TerminatesWith.append_args' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3378/3674] Replayed Project.ProofKit.PackedWordRead
+warning: Project/ProofKit/PackedWordRead.lean:126:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/PackedWordRead.lean:129:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/ProofKit/PackedWordRead.lean:140:0: 'Project.ProofKit.PackedWordRead.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3380/3674] Replayed Project.ProofKit.RangeFoldLoop
+info: Project/ProofKit/RangeFoldLoop.lean:99:0: 'Project.ProofKit.RangeFoldLoop.program_spec_with_stack' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/RangeFoldLoop.lean:100:0: 'Project.ProofKit.RangeFoldLoop.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3382/3674] Replayed Project.Gpt2CachedStep.RowMean
+info: Project/Gpt2CachedStep/RowMean.lean:132:0: 'Project.Gpt2CachedStep.RowMean.rowMean_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3383/3674] Replayed Project.ProofKit.F32Sub
+info: Project/ProofKit/F32Sub.lean:37:0: 'Project.ProofKit.F32Sub.sub_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3384/3674] Replayed Project.ProofKit.F32RoundDyadic
+info: Project/ProofKit/F32RoundDyadic.lean:90:0: 'Project.ProofKit.F32RoundDyadic.pack_roundWithAccuracy_dyadic' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/ProofKit/F32RoundDyadic.lean:111:0: 'Project.ProofKit.F32RoundDyadic.pack_round_above_dyadic' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3385/3674] Replayed Project.ProofKit.F32MulFinite
+info: Project/ProofKit/F32MulFinite.lean:65:0: 'Project.ProofKit.F32MulFinite.mul_eq_talos_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3386/3674] Replayed Project.ProofKit.F32Mul
+info: Project/ProofKit/F32Mul.lean:62:0: 'Project.ProofKit.F32Mul.mul_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3387/3674] Replayed Project.ProofKit.F32SqrtRounding
+info: Project/ProofKit/F32SqrtRounding.lean:68:0: 'Project.ProofKit.F32SqrtRounding.rounded_root' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32SqrtRounding.lean:69:0: 'Project.ProofKit.F32SqrtRounding.roundSqrtIntegral_scaled' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3388/3674] Replayed Project.ProofKit.F32SqrtCore
+info: Project/ProofKit/F32SqrtCore.lean:68:0: 'Project.ProofKit.F32SqrtCore.root_log' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F32SqrtCore.lean:69:0: 'Project.ProofKit.F32SqrtCore.scaled_root_log' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3389/3674] Replayed Project.ProofKit.F32SqrtFinite
+info: Project/ProofKit/F32SqrtFinite.lean:37:0: 'Project.ProofKit.F32SqrtFinite.pack_sqrt_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3390/3674] Replayed Project.ProofKit.F32Sqrt
+info: Project/ProofKit/F32Sqrt.lean:42:0: 'Project.ProofKit.F32Sqrt.sqrt_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3392/3674] Replayed Project.Gpt2CachedStep.RowInvStd
+info: Project/Gpt2CachedStep/RowInvStd.lean:132:0: 'Project.Gpt2CachedStep.RowInvStd.rowInvStd_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3393/3674] Replayed Project.Gpt2LinearRows.Source
+info: Project/Gpt2LinearRows/Source.lean:49:0: 'Project.Gpt2LinearRows.linearRows_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3396/3674] Replayed Project.ProofKit.CheckedNatMulArithmetic
+info: Project/ProofKit/CheckedNatMulArithmetic.lean:21:0: 'Project.ProofKit.CheckedNatMul.guard_of_fits' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/CheckedNatMulArithmetic.lean:31:0: 'Project.ProofKit.CheckedNatMul.guard_of_nat_fits' depends on axioms: [propext, Quot.sound]
+ℹ [3397/3674] Replayed Project.Gpt2CachedStep.LinearRows.DotStep
+info: Project/Gpt2CachedStep/LinearRows/DotStep.lean:135:0: 'Project.Gpt2CachedStep.LinearRows.dotStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3398/3674] Replayed Project.ProofKit.Array
+warning: Project/ProofKit/Array.lean:245:34: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Project/ProofKit/Array.lean:249:34: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+ℹ [3399/3674] Replayed Project.ProofKit.MemoryRoundtrip
+info: Project/ProofKit/MemoryRoundtrip.lean:18:0: 'Project.ProofKit.Memory.read64_write64' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3400/3674] Replayed Project.ProofKit.FixedArrayCopy
+warning: Project/ProofKit/FixedArrayCopy.lean:171:42: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:184:56: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:184:66: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:505:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:515:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:545:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:546:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:770:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:780:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:832:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayCopy.lean:833:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/ProofKit/FixedArrayCopy.lean:1197:0: 'Project.ProofKit.FixedArrayCopy.initializeCounter_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1198:0: 'Project.ProofKit.FixedArrayCopy.counterFrame_withValues_set?_counter' depends on axioms: [propext]
+info: Project/ProofKit/FixedArrayCopy.lean:1199:0: 'Project.ProofKit.FixedArrayCopy.prefixProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1200:0: 'Project.ProofKit.FixedArrayCopy.prefixProgram_framed_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1201:0: 'Project.ProofKit.FixedArrayCopy.suffixProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1202:0: 'Project.ProofKit.FixedArrayCopy.suffixProgram_framed_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1203:0: 'Project.ProofKit.FixedArrayCopy.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1204:0: 'Project.ProofKit.FixedArrayCopy.program_framed_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayCopy.lean:1205:0: 'Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3401/3674] Replayed Project.ProofKit.PackedGenerateLoop
+info: Project/ProofKit/PackedGenerateLoop.lean:162:0: 'Project.ProofKit.PackedGenerateLoop.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3402/3674] Replayed Project.Gpt2CachedStep.LinearRows.Word
+info: Project/Gpt2CachedStep/LinearRows/Word.lean:121:0: 'Project.Gpt2CachedStep.LinearRows.word_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3404/3674] Replayed Project.Gpt2CachedStep.LinearRows.Loop
+info: Project/Gpt2CachedStep/LinearRows/Loop.lean:85:0: 'Project.Gpt2CachedStep.LinearRows.generated_loop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3407/3674] Replayed Project.Runtime.FreeList
+warning: Project/Runtime/FreeList.lean:85:26: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/FreeList.lean:94:26: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FreeList.lean:377:55: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/Runtime/FreeList.lean:594:39: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/Runtime/FreeList.lean:609:0: 'Project.Runtime.FreeListAt.frame_write64_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/Runtime/FreeList.lean:610:0: 'Project.Runtime.FreeListAt.unlink_takeFirstFitFrom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Runtime/FreeList.lean:611:0: 'Project.Runtime.FreeListAt.takeFirstFitFrom_node_disjoint' depends on axioms: [propext, Quot.sound]
+ℹ [3408/3674] Replayed Project.ProofKit.FixedArraySearchFrame
+info: Project/ProofKit/FixedArraySearchFrame.lean:50:0: 'Project.ProofKit.FixedArraySearch.frame_get' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFrame.lean:51:0: 'Project.ProofKit.FixedArraySearch.frame_set_capacity' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFrame.lean:52:0: 'Project.ProofKit.FixedArraySearch.frame_set_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFrame.lean:53:0: 'Project.ProofKit.FixedArraySearch.frame_set_previous' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFrame.lean:54:0: 'Project.ProofKit.FixedArraySearch.frame_set_current' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3409/3674] Replayed Project.ProofKit.FixedArraySearchRead
+info: Project/ProofKit/FixedArraySearchRead.lean:52:0: 'Project.ProofKit.FixedArraySearch.readProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchRead.lean:53:0: 'Project.ProofKit.FixedArraySearch.advanceProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3410/3674] Replayed Project.ProofKit.FixedArraySearchNone
+info: Project/ProofKit/FixedArraySearchNone.lean:103:0: 'Project.ProofKit.FixedArraySearch.guardProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchNone.lean:104:0: 'Project.ProofKit.FixedArraySearch.noneProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3412/3674] Replayed Project.ProofKit.FixedArrayAllocator
+warning: Project/ProofKit/FixedArrayAllocator.lean:296:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:302:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:306:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:364:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:364:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:367:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:368:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:368:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:372:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:373:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:373:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:377:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:378:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:378:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:382:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:383:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:383:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:387:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:388:4: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:388:4: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayAllocator.lean:392:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3413/3674] Replayed Project.ProofKit.FixedArrayResult
+warning: Project/ProofKit/FixedArrayResult.lean:214:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayResult.lean:239:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayResult.lean:269:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3414/3674] Replayed Project.ProofKit.FixedArrayFold
+warning: Project/ProofKit/FixedArrayFold.lean:205:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayFold.lean:206:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayFold.lean:208:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayFold.lean:282:31: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/FixedArrayFold.lean:282:41: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/FixedArrayFold.lean:284:28: `if_false` has been deprecated: Use `ite_false` instead
+ℹ [3415/3674] Replayed Project.ProofKit.FixedArrayBumpPrefix
+info: Project/ProofKit/FixedArrayBumpPrefix.lean:47:0: 'Project.ProofKit.FixedArrayBump.prefixProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3416/3674] Replayed Project.ProofKit.FixedArrayBumpInstall
+info: Project/ProofKit/FixedArrayBumpInstall.lean:36:0: 'Project.ProofKit.FixedArrayBump.installProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3417/3674] Replayed Project.Clob
+warning: Project/Clob.lean:320:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Project/Clob.lean:329:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+ℹ [3419/3674] Replayed Project.ProofKit.FixedArrayHeader
+info: Project/ProofKit/FixedArrayHeader.lean:60:0: 'Project.ProofKit.FixedArrayHeader.reads' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayHeader.lean:61:0: 'Project.ProofKit.FixedArrayHeader.fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayHeader.lean:62:0: 'Project.ProofKit.FixedArrayHeader.from_root' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayHeader.lean:63:0: 'Project.ProofKit.FixedArrayHeader.bytes_outside' depends on axioms: [propext, Quot.sound]
+ℹ [3420/3674] Replayed Project.ProofKit.FixedArrayHeaderExec
+info: Project/ProofKit/FixedArrayHeaderExec.lean:97:0: 'Project.ProofKit.FixedArrayHeader.writeConst_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayHeaderExec.lean:98:0: 'Project.ProofKit.FixedArrayHeader.writeLocal_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayHeaderExec.lean:99:0: 'Project.ProofKit.FixedArrayHeader.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3421/3674] Replayed Project.ProofKit.MemoryGrowth
+info: Project/ProofKit/MemoryGrowth.lean:66:0: 'Project.ProofKit.MemoryGrowth.delta_toNat' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/MemoryGrowth.lean:67:0: 'Project.ProofKit.MemoryGrowth.grow_exact' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/MemoryGrowth.lean:68:0: 'Project.ProofKit.MemoryGrowth.growProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3422/3674] Replayed Project.ProofKit.MemoryEnsure
+info: Project/ProofKit/MemoryEnsure.lean:60:0: 'Project.ProofKit.MemoryGrowth.ensured_pages' depends on axioms: [propext]
+info: Project/ProofKit/MemoryEnsure.lean:61:0: 'Project.ProofKit.MemoryGrowth.ensured_bytes' does not depend on any axioms
+info: Project/ProofKit/MemoryEnsure.lean:62:0: 'Project.ProofKit.MemoryGrowth.ensureProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3423/3674] Replayed Project.ProofKit.FixedArrayBump
+info: Project/ProofKit/FixedArrayBump.lean:155:0: 'Project.ProofKit.FixedArrayBump.requiredPages_word' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayBump.lean:156:0: 'Project.ProofKit.FixedArrayBump.requiredPages_fit' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayBump.lean:157:0: 'Project.ProofKit.FixedArrayBump.prepareProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayBump.lean:158:0: 'Project.ProofKit.FixedArrayBump.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3424/3674] Replayed Project.ProofKit.FixedArrayAllocateNone
+info: Project/ProofKit/FixedArrayAllocateNone.lean:107:0: 'Project.ProofKit.FixedArrayAllocateNone.initializeProgram_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/ProofKit/FixedArrayAllocateNone.lean:108:0: 'Project.ProofKit.FixedArrayAllocateNone.countProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayAllocateNone.lean:109:0: 'Project.ProofKit.FixedArrayAllocateNone.bump_result' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayAllocateNone.lean:110:0: 'Project.ProofKit.FixedArrayAllocateNone.allocated_count' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayAllocateNone.lean:111:0: 'Project.ProofKit.FixedArrayAllocateNone.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3425/3674] Replayed Project.ProofKit.PackedHeader
+info: Project/ProofKit/PackedHeader.lean:134:0: 'Project.ProofKit.PackedHeader.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeader.lean:135:0: 'Project.ProofKit.PackedHeader.reads' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeader.lean:136:0: 'Project.ProofKit.PackedHeader.bytes_outside' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedHeader.lean:137:0: 'Project.ProofKit.PackedHeader.fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeader.lean:138:0: 'Project.ProofKit.PackedHeader.FreshAt.frame_region' depends on axioms: [propext, Quot.sound]
+ℹ [3426/3674] Replayed Project.ProofKit.PackedAllocate
+info: Project/ProofKit/PackedAllocate.lean:72:0: 'Project.ProofKit.PackedAllocate.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3427/3674] Replayed Project.ClobMatchFuel.BookAllocFitState
+info: Project/ClobMatchFuel/BookAllocFitState.lean:96:0: 'Project.ClobMatchFuel.BookAllocFit.freeListAt_fixedArrayAllocFitMem' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/ClobMatchFuel/BookAllocFitState.lean:97:0: 'Project.ClobMatchFuel.BookAllocFit.freeListAt_bookAllocFitMem' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/ClobMatchFuel/BookAllocFitState.lean:98:0: 'Project.ClobMatchFuel.BookAllocFit.freshFixedArrayAt_fixedArrayAllocFitStore' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3428/3674] Replayed Project.ProofKit.FixedArrayReuse
+info: Project/ProofKit/FixedArrayReuse.lean:101:0: 'Project.ProofKit.FixedArrayReuse.unlinkStore_pages' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayReuse.lean:102:0: 'Project.ProofKit.FixedArrayReuse.fitStore_header' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayReuse.lean:103:0: 'Project.ProofKit.FixedArrayReuse.unlinkProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayReuse.lean:104:0: 'Project.ProofKit.FixedArrayReuse.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3429/3674] Replayed Project.ProofKit.FreeListMemory
+info: Project/ProofKit/FreeListMemory.lean:86:0: 'Project.ProofKit.FreeListMemory.previous_mem' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FreeListMemory.lean:87:0: 'Project.ProofKit.FreeListMemory.frame_grow' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FreeListMemory.lean:88:0: 'Project.ProofKit.FreeListMemory.fit_bytes' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FreeListMemory.lean:89:0: 'Project.ProofKit.FreeListMemory.frame_headers' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FreeListMemory.lean:115:0: 'Project.ProofKit.FreeListMemory.remaining_head' depends on axioms: [propext, Quot.sound]
+ℹ [3430/3674] Replayed Project.ProofKit.FixedArraySearchFit
+info: Project/ProofKit/FixedArraySearchFit.lean:174:0: 'Project.ProofKit.FixedArraySearch.choice_previous_bound' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFit.lean:175:0: 'Project.ProofKit.FixedArraySearch.fitProgram_spec_of' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArraySearchFit.lean:176:0: 'Project.ProofKit.FixedArraySearch.fitProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3431/3674] Replayed Project.ProofKit.PackedReuse
+info: Project/ProofKit/PackedReuse.lean:70:0: 'Project.ProofKit.PackedReuse.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedReuse.lean:71:0: 'Project.ProofKit.PackedReuse.search_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3432/3674] Replayed Project.ProofKit.PackedAllocation
+info: Project/ProofKit/PackedAllocation.lean:75:0: 'Project.ProofKit.PackedAllocation.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedAllocation.lean:98:0: 'Project.ProofKit.PackedAllocation.root_bounds' depends on axioms: [propext, Quot.sound]
+⚠ [3433/3674] Replayed Project.ProofKit.FixedArrayCapacity
+warning: Project/ProofKit/FixedArrayCapacity.lean:132:24: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayCapacity.lean:137:24: `if_false` has been deprecated: Use `ite_false` instead
+info: Project/ProofKit/FixedArrayCapacity.lean:159:0: 'Project.ProofKit.FixedArrayCapacity.localProgram_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3434/3674] Replayed Project.ProofKit.PackedCapacity
+info: Project/ProofKit/PackedCapacity.lean:69:0: 'Project.ProofKit.PackedCapacity.capacity_toNat' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedCapacity.lean:70:0: 'Project.ProofKit.PackedCapacity.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3435/3674] Replayed Project.ProofKit.CheckedNatMul
+info: Project/ProofKit/CheckedNatMul.lean:52:0: 'Project.ProofKit.CheckedNatMul.zero_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/CheckedNatMul.lean:53:0: 'Project.ProofKit.CheckedNatMul.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/CheckedNatMul.lean:79:0: 'Project.ProofKit.CheckedNatMul.guard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3436/3674] Replayed Project.Gpt2CachedStep.LinearRows.EntryFrame
+info: Project/Gpt2CachedStep/LinearRows/EntryFrame.lean:100:0: 'Project.Gpt2CachedStep.LinearRows.size_prefix' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/LinearRows/EntryFrame.lean:101:0: 'Project.Gpt2CachedStep.LinearRows.capacity_prefix' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/LinearRows/EntryFrame.lean:102:0: 'Project.Gpt2CachedStep.LinearRows.return_suffix' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3437/3674] Replayed Project.ProofKit.PackedReuseMemory
+info: Project/ProofKit/PackedReuseMemory.lean:61:0: 'Project.ProofKit.PackedReuse.freeListAt' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedReuseMemory.lean:62:0: 'Project.ProofKit.PackedReuse.bytes_outside' depends on axioms: [propext, Quot.sound]
+ℹ [3438/3674] Replayed Project.ProofKit.PackedAllocationMemory
+info: Project/ProofKit/PackedAllocationMemory.lean:76:0: 'Project.ProofKit.PackedAllocation.byteArrayAt' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedAllocationMemory.lean:77:0: 'Project.ProofKit.PackedAllocation.freeListAt' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedAllocationMemory.lean:157:0: 'Project.ProofKit.PackedAllocation.freeListAt_after_writes' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedAllocationMemory.lean:158:0: 'Project.ProofKit.PackedAllocation.byteArrayAt_after_writes' depends on axioms: [propext, Quot.sound]
+ℹ [3439/3674] Replayed Project.Gpt2CachedStep.LinearRows.Entry
+info: Project/Gpt2CachedStep/LinearRows/Entry.lean:127:0: 'Project.Gpt2CachedStep.LinearRows.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3440/3674] Replayed Project.Gpt2CachedStep.LinearRows.Spec
+info: Project/Gpt2CachedStep/LinearRows/Spec.lean:79:0: 'Project.Gpt2CachedStep.LinearRows.Spec.linearRows_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3442/3674] Replayed CodeLib.IEEE64.Roundoff
+warning: CodeLib/IEEE64/Roundoff.lean:218:19: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Roundoff.lean:247:14: This simp argument is unused:
+  show shift + 1 ≠ 0 by omega
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE64/Roundoff.lean:414:18: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: CodeLib/IEEE64/Roundoff.lean:422:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Roundoff.lean:444:18: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: CodeLib/IEEE64/Roundoff.lean:452:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: CodeLib/IEEE64/Roundoff.lean:717:0: 'CodeLib.IEEE64.roundScaledMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:718:0: 'CodeLib.IEEE64.roundedMagnitude_relative_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:719:0: 'CodeLib.IEEE64.roundScaledMagnitude_relative_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:720:0: 'CodeLib.IEEE64.roundScaledValue_relative_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:721:0: 'CodeLib.IEEE64.add_relative_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:722:0: 'CodeLib.IEEE64.add_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:723:0: 'CodeLib.IEEE64.add_real_relative_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Roundoff.lean:724:0: 'CodeLib.IEEE64.sub_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3443/3674] Replayed Project.ProofKit.F64Order
+info: Project/ProofKit/F64Order.lean:162:0: 'Project.ProofKit.F64Order.absBits_of_positive' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64Order.lean:163:0: 'Project.ProofKit.F64Order.finiteBits_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64Order.lean:164:0: 'Project.ProofKit.F64Order.abs_value_mono' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64Order.lean:165:0: 'Project.ProofKit.F64Order.positiveBits_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3444/3674] Replayed Project.ProofKit.F64StrictOrder
+info: Project/ProofKit/F64StrictOrder.lean:66:0: 'Project.ProofKit.F64Order.abs_value_lt' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3445/3674] Replayed CodeLib.IEEE64.Rounders
+warning: CodeLib/IEEE64/Rounders.lean:24:48: `if_false` has been deprecated: Use `ite_false` instead
+warning: CodeLib/IEEE64/Rounders.lean:58:42: This simp argument is unused:
+  Nat.mul_assoc
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Wasm.IEEE32.roundShift, pow_succ]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: CodeLib/IEEE64/Rounders.lean:86:35: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:99:35: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:101:29: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:375:65: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:378:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:517:65: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:520:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: CodeLib/IEEE64/Rounders.lean:679:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: CodeLib/IEEE64/Rounders.lean:701:0: 'CodeLib.IEEE64.roundDyadicMagnitude1074_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Rounders.lean:702:0: 'CodeLib.IEEE64.roundDyadicMagnitude1074_adaptive_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Rounders.lean:703:0: 'CodeLib.IEEE64.roundRationalMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Rounders.lean:704:0: 'CodeLib.IEEE64.roundSqrtMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3446/3674] Replayed Interpreter.Wasm.Examples.Float64AddSub
+warning: Interpreter/Wasm/Examples/Float64AddSub.lean:61:50: `if_false` has been deprecated: Use `ite_false` instead
+warning: Interpreter/Wasm/Examples/Float64AddSub.lean:144:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3447/3674] Replayed Interpreter.Wasm.Examples.Float64Division
+warning: Interpreter/Wasm/Examples/Float64Division.lean:82:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3448/3674] Replayed Interpreter.Wasm.Examples.Float64Multiplication
+warning: Interpreter/Wasm/Examples/Float64Multiplication.lean:65:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3449/3674] Replayed Interpreter.Wasm.Examples.Float64SquareRoot
+warning: Interpreter/Wasm/Examples/Float64SquareRoot.lean:69:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3451/3674] Replayed CodeLib.IEEE64.Operations
+warning: CodeLib/IEEE64/Operations.lean:261:29: `if_false` has been deprecated: Use `ite_false` instead
+warning: CodeLib/IEEE64/Operations.lean:297:21: `if_true` has been deprecated: Use `ite_true` instead
+warning: CodeLib/IEEE64/Operations.lean:299:21: `if_false` has been deprecated: Use `ite_false` instead
+warning: CodeLib/IEEE64/Operations.lean:337:21: `if_true` has been deprecated: Use `ite_true` instead
+warning: CodeLib/IEEE64/Operations.lean:340:22: `if_false` has been deprecated: Use `ite_false` instead
+warning: CodeLib/IEEE64/Operations.lean:539:6: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+info: CodeLib/IEEE64/Operations.lean:634:0: 'CodeLib.IEEE64.mul_nan_left' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:635:0: 'CodeLib.IEEE64.mul_infinities' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:636:0: 'CodeLib.IEEE64.add_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:637:0: 'CodeLib.IEEE64.sub_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:638:0: 'CodeLib.IEEE64.mul_program_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:639:0: 'CodeLib.IEEE64.mul_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:640:0: 'CodeLib.IEEE64.mul_scaled_adaptive_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:641:0: 'CodeLib.IEEE64.mul_real_adaptive_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:642:0: 'CodeLib.IEEE64.mul_real_mixed_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:643:0: 'CodeLib.IEEE64.mul_real_relative_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:644:0: 'CodeLib.IEEE64.mul_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:645:0: 'CodeLib.IEEE64.div_finite_rounder' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:646:0: 'CodeLib.IEEE64.div_scaled_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:647:0: 'CodeLib.IEEE64.div_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:648:0: 'CodeLib.IEEE64.div_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:649:0: 'CodeLib.IEEE64.sqrt_positive_finite' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:650:0: 'CodeLib.IEEE64.sqrt_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:651:0: 'CodeLib.IEEE64.sqrt_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE64/Operations.lean:652:0: 'CodeLib.IEEE64.arithmetic_examples' depends on axioms: [propext,
+ Quot.sound,
+ arithmetic_examples._native.native_decide.ax_1_1]
+ℹ [3452/3674] Replayed Project.ProofKit.F64InternalEnergy
+info: Project/ProofKit/F64InternalEnergy.lean:97:0: 'Project.ProofKit.F64InternalEnergy.residual_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3453/3674] Replayed Interpreter.Wasm.Examples.FloatMultiplication
+warning: Interpreter/Wasm/Examples/FloatMultiplication.lean:102:50: `if_false` has been deprecated: Use `ite_false` instead
+ℹ [3454/3674] Replayed CodeLib.IEEE32.Multiplication
+info: CodeLib/IEEE32/Multiplication.lean:193:0: 'CodeLib.IEEE32.mul_finite_nonzero' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE32/Multiplication.lean:194:0: 'CodeLib.IEEE32.mul_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Multiplication.lean:195:0: 'CodeLib.IEEE32.mul_program_terminates_finite_nonzero' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/IEEE32/Multiplication.lean:196:0: 'CodeLib.IEEE32.mul_infinities' depends on axioms: [propext, Quot.sound]
+info: CodeLib/IEEE32/Multiplication.lean:197:0: 'CodeLib.IEEE32.mul_largest_finite_by_two_overflows' depends on axioms: [propext, Quot.sound]
+ℹ [3455/3674] Replayed CodeLib.Numerical.ErrorComposition
+info: CodeLib/Numerical/ErrorComposition.lean:214:0: 'CodeLib.Numerical.sum_perturbations' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:215:0: 'CodeLib.Numerical.list_sum_perturbations' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:216:0: 'CodeLib.Numerical.sequential_perturbation' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:217:0: 'CodeLib.Numerical.product_perturbations' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:218:0: 'CodeLib.Numerical.division_by_exact_constant' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:219:0: 'CodeLib.Numerical.abs_le_of_error_headroom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:220:0: 'CodeLib.Numerical.horner_error_recurrence' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:221:0: 'CodeLib.Numerical.hornerErrorBudget_closed_form' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:222:0: 'CodeLib.Numerical.horner_error_unit_interval' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/ErrorComposition.lean:223:0: 'CodeLib.Numerical.horner_two_step' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3456/3674] Replayed CodeLib.Numerical.RelativeError
+info: CodeLib/Numerical/RelativeError.lean:359:0: 'CodeLib.Numerical.gamma_nonneg' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:360:0: 'CodeLib.Numerical.one_add_gamma' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:361:0: 'CodeLib.Numerical.ratio_one_sub_mono' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:362:0: 'CodeLib.Numerical.gamma_mono_steps' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:363:0: 'CodeLib.Numerical.gamma_mono_roundoff' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:364:0: 'CodeLib.Numerical.unitStepFactor_pow_le_inv' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:365:0: 'CodeLib.Numerical.unitStepFactor_pow_sub_one_le_gamma' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:366:0: 'CodeLib.Numerical.unitStepFactor_pow_le_one_add_gamma' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:367:0: 'CodeLib.Numerical.geometric_error_le_gamma_mul' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:368:0: 'CodeLib.Numerical.relative_error_le_gamma_mul' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:369:0: 'CodeLib.Numerical.relative_mul_add_step_geometric' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:370:0: 'CodeLib.Numerical.sequentialExactSum_eq_add_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:371:0: 'CodeLib.Numerical.sequentialMagnitude_eq_add_sum_abs' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:372:0: 'CodeLib.Numerical.relativeDotAcc_geometric_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/RelativeError.lean:373:0: 'CodeLib.Numerical.relativeDotAcc_gamma_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3457/3674] Replayed Interpreter.Wasm.Examples.FloatNumericalKernels
+warning: Interpreter/Wasm/Examples/FloatNumericalKernels.lean:75:50: `if_false` has been deprecated: Use `ite_false` instead
+warning: Interpreter/Wasm/Examples/FloatNumericalKernels.lean:191:50: `if_false` has been deprecated: Use `ite_false` instead
+warning: Interpreter/Wasm/Examples/FloatNumericalKernels.lean:306:50: `if_false` has been deprecated: Use `ite_false` instead
+warning: Interpreter/Wasm/Examples/FloatNumericalKernels.lean:433:50: `if_false` has been deprecated: Use `ite_false` instead
+⚠ [3458/3674] Replayed CodeLib.Numerical.Kernels
+warning: CodeLib/Numerical/Kernels.lean:100:30: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: CodeLib/Numerical/Kernels.lean:490:30: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: CodeLib/Numerical/Kernels.lean:1174:36: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: CodeLib/Numerical/Kernels.lean:1174:50: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: CodeLib/Numerical/Kernels.lean:1207:30: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: CodeLib/Numerical/Kernels.lean:1433:41: This simp argument is unused:
+  Nat.cast_one
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [dot64, dot64Acc, dot64Exact, dot64ExactAcc, List.length_cons, List.length_nil] at herror
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+info: CodeLib/Numerical/Kernels.lean:1544:0: 'CodeLib.Numerical.Kernels.horner32_step_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1545:0: 'CodeLib.Numerical.Kernels.horner32_safe_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1546:0: 'CodeLib.Numerical.Kernels.horner32_safe_trace' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1547:0: 'CodeLib.Numerical.Kernels.horner32_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1548:0: 'CodeLib.Numerical.Kernels.horner32_safe_of_headroom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1549:0: 'CodeLib.Numerical.Kernels.horner32_real_error_of_headroom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1550:0: 'CodeLib.Numerical.Kernels.affine_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1551:0: 'CodeLib.Numerical.Kernels.affine_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1552:0: 'CodeLib.Numerical.Kernels.horner3_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1553:0: 'CodeLib.Numerical.Kernels.horner3_program_real_error_of_headroom' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1554:0: 'CodeLib.Numerical.Kernels.dot64_step_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1555:0: 'CodeLib.Numerical.Kernels.dot64AbsMass_nonneg' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1556:0: 'CodeLib.Numerical.Kernels.dot64AbsMass_take_add_drop' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1557:0: 'CodeLib.Numerical.Kernels.dot64PrefixMass_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1558:0: 'CodeLib.Numerical.Kernels.dot64ExactAcc_eq_add_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1559:0: 'CodeLib.Numerical.Kernels.dot64ExactList_eq_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1560:0: 'CodeLib.Numerical.Kernels.dot64UnitInputs_of_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1561:0: 'CodeLib.Numerical.Kernels.dot64AbsMass_le_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1562:0: 'CodeLib.Numerical.Kernels.dot64_safe_of_abs_mass_budget' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1563:0: 'CodeLib.Numerical.Kernels.dot64_safe_nonempty_of_abs_mass' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1564:0: 'CodeLib.Numerical.Kernels.dot64_safe_nonempty_of_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1565:0: 'CodeLib.Numerical.Kernels.dot64ListSafe_of_abs_mass' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1566:0: 'CodeLib.Numerical.Kernels.dot64ListSafe_of_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1567:0: 'CodeLib.Numerical.Kernels.dot64Acc_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1568:0: 'CodeLib.Numerical.Kernels.dot64_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1569:0: 'CodeLib.Numerical.Kernels.dot64List_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1570:0: 'CodeLib.Numerical.Kernels.dot64List_real_error_of_abs_mass' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1571:0: 'CodeLib.Numerical.Kernels.dot64List_real_error_of_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1572:0: 'CodeLib.Numerical.Kernels.dot64List_real_gamma_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1573:0: 'CodeLib.Numerical.Kernels.dot64List_real_gamma_error_of_abs_mass' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1574:0: 'CodeLib.Numerical.Kernels.dot64List_conditioned_relative_error' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1575:0: 'CodeLib.Numerical.Kernels.dot64List_conditioned_relative_error_of_abs_mass' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1576:0: 'CodeLib.Numerical.Kernels.dot64_safe_of_headroom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1577:0: 'CodeLib.Numerical.Kernels.dot64_real_error_of_headroom' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1578:0: 'CodeLib.Numerical.Kernels.dot64ExactAcc_eq_sequentialExactSum' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1579:0: 'CodeLib.Numerical.Kernels.sequentialMagnitude_dot64ExactTerms' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1580:0: 'CodeLib.Numerical.Kernels.dot64_relative_trace' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1581:0: 'CodeLib.Numerical.Kernels.dot64_real_gamma_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1582:0: 'CodeLib.Numerical.Kernels.dot64_conditioned_relative_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1583:0: 'CodeLib.Numerical.Kernels.dot_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1584:0: 'CodeLib.Numerical.Kernels.dot_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1585:0: 'CodeLib.Numerical.Kernels.dot4_program_real_error' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: CodeLib/Numerical/Kernels.lean:1586:0: 'CodeLib.Numerical.Kernels.dot4_program_real_error_of_headroom' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3459/3674] Replayed Project.ProofKit.F64Bounds
+info: Project/ProofKit/F64Bounds.lean:130:0: 'Project.ProofKit.F64Bounds.boundedByHalf_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3460/3674] Replayed Project.ProofKit.F64Normalize
+warning: Project/ProofKit/F64Normalize.lean:24:5: Variable name `he` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _he
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+info: Project/ProofKit/F64Normalize.lean:114:0: 'Project.ProofKit.F64Normalize.normalizedMagnitude_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3461/3674] Replayed Project.ProofKit.F64Admissibility
+info: Project/ProofKit/F64Admissibility.lean:150:0: 'Project.ProofKit.F64Admissibility.checked_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3469/3674] Replayed Project.EulerRusanov.RealConservative
+info: Project/EulerRusanov/RealConservative.lean:233:0: 'Project.EulerRusanov.RealConservative.conservativeFlux_primitiveToConservative' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/EulerRusanov/RealConservative.lean:234:0: 'Project.EulerRusanov.RealConservative.primitiveToConservative_admissible' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/EulerRusanov/RealConservative.lean:235:0: 'Project.EulerRusanov.RealConservative.soundSpeedSquared_eq_enthalpyGap' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3470/3674] Replayed Project.Euler2DConservative.Guard
+info: Project/Euler2DConservative/Guard.lean:103:0: 'Project.Euler2DConservative.Guard.narrowStateGuard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DConservative/Guard.lean:104:0: 'Project.Euler2DConservative.Guard.stateGuard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DConservative/Guard.lean:105:0: 'Project.Euler2DConservative.Guard.internalEnergy_lower' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DConservative/Guard.lean:106:0: 'Project.Euler2DConservative.Guard.stateGuard_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3471/3674] Replayed Project.Euler2DCellStep.SweepModel
+info: Project/Euler2DCellStep/SweepModel.lean:72:0: 'Project.Euler2DCellStep.Sweep.orient_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3473/3674] Replayed Project.ProofKit.F64NormalizeTiny
+info: Project/ProofKit/F64NormalizeTiny.lean:119:0: 'Project.ProofKit.F64NormalizeTiny.exactMagnitude_lt_of_gap' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64NormalizeTiny.lean:120:0: 'Project.ProofKit.F64NormalizeTiny.tiny_magnitude_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64NormalizeTiny.lean:121:0: 'Project.ProofKit.F64NormalizeTiny.normalizedMomentum_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3474/3674] Replayed Project.ProofKit.F64OrderComplete
+info: Project/ProofKit/F64OrderComplete.lean:60:0: 'Project.ProofKit.F64Order.positiveBits_of_finite_value_pos' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64OrderComplete.lean:61:0: 'Project.ProofKit.F64Order.positiveBits_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64OrderComplete.lean:62:0: 'Project.ProofKit.F64Order.positive_word_lt_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3475/3674] Replayed Project.ProofKit.F64AdmissibilityTiny
+info: Project/ProofKit/F64AdmissibilityTiny.lean:163:0: 'Project.ProofKit.F64AdmissibilityTiny.residual_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64AdmissibilityTiny.lean:164:0: 'Project.ProofKit.F64AdmissibilityTiny.exactResidual_scaled' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64AdmissibilityTiny.lean:165:0: 'Project.ProofKit.F64AdmissibilityTiny.checked_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64AdmissibilityTiny.lean:166:0: 'Project.ProofKit.F64AdmissibilityTiny.checked_of_margin' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/F64AdmissibilityTiny.lean:167:0: 'Project.ProofKit.F64AdmissibilityTiny.checked_extends' depends on axioms: [propext, Quot.sound]
+ℹ [3477/3674] Replayed Project.Euler2DConservative.Safety
+info: Project/Euler2DConservative/Safety.lean:87:0: 'Project.Euler2DConservative.Safety.accepted_inputGuard' depends on axioms: [propext, Quot.sound]
+info: Project/Euler2DConservative/Safety.lean:88:0: 'Project.Euler2DConservative.Safety.accepted_intermediates_finite' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/Euler2DConservative/Safety.lean:89:0: 'Project.Euler2DConservative.Safety.accepted_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3478/3674] Replayed Project.Euler2DConservative.Outputs
+info: Project/Euler2DConservative/Outputs.lean:37:0: 'Project.Euler2DConservative.Safety.accepted_outputPositive' depends on axioms: [propext, Quot.sound]
+ℹ [3479/3674] Replayed Project.EulerConservative.Guard
+info: Project/EulerConservative/Guard.lean:69:0: 'Project.EulerConservative.Guard.stateGuard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerConservative/Guard.lean:70:0: 'Project.EulerConservative.Guard.internalEnergy_lower' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerConservative/Guard.lean:71:0: 'Project.EulerConservative.Guard.stateGuard_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3480/3674] Replayed Project.EulerConservative.Safety
+info: Project/EulerConservative/Safety.lean:78:0: 'Project.EulerConservative.Safety.accepted_inputGuard' depends on axioms: [propext, Quot.sound]
+info: Project/EulerConservative/Safety.lean:79:0: 'Project.EulerConservative.Safety.accepted_intermediates_finite' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/EulerConservative/Safety.lean:80:0: 'Project.EulerConservative.Safety.accepted_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3481/3674] Replayed Project.EulerConservative.Outputs
+info: Project/EulerConservative/Outputs.lean:36:0: 'Project.EulerConservative.Safety.accepted_outputPositive' depends on axioms: [propext, Quot.sound]
+ℹ [3482/3674] Replayed Project.EulerDynamicFlux.Safety
+info: Project/EulerDynamicFlux/Safety.lean:147:0: 'Project.EulerDynamicFlux.Safety.component_intermediates_finite' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/EulerDynamicFlux/Safety.lean:148:0: 'Project.EulerDynamicFlux.Safety.component_result_finite' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerDynamicFlux/Safety.lean:149:0: 'Project.EulerDynamicFlux.Safety.accepted_sides' depends on axioms: [propext, Quot.sound]
+info: Project/EulerDynamicFlux/Safety.lean:150:0: 'Project.EulerDynamicFlux.Safety.selected_speed_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerDynamicFlux/Safety.lean:151:0: 'Project.EulerDynamicFlux.Safety.accepted_fields' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerDynamicFlux/Safety.lean:152:0: 'Project.EulerDynamicFlux.Safety.accepted_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3483/3674] Replayed Project.Euler2DDynamicFlux.Safety
+info: Project/Euler2DDynamicFlux/Safety.lean:69:0: 'Project.Euler2DDynamicFlux.Safety.accepted_sides' depends on axioms: [propext, Quot.sound]
+info: Project/Euler2DDynamicFlux/Safety.lean:70:0: 'Project.Euler2DDynamicFlux.Safety.accepted_fields' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DDynamicFlux/Safety.lean:71:0: 'Project.Euler2DDynamicFlux.Safety.accepted_admissible' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3484/3674] Replayed Project.Euler2DCellStep.Safety
+info: Project/Euler2DCellStep/Safety.lean:95:0: 'Project.Euler2DCellStep.Safety.accepted_alpha' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DCellStep/Safety.lean:96:0: 'Project.Euler2DCellStep.Safety.accepted_courant' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DCellStep/Safety.lean:97:0: 'Project.Euler2DCellStep.Safety.accepted_state' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Euler2DCellStep/Safety.lean:98:0: 'Project.Euler2DCellStep.Safety.accepted_courant_guard' depends on axioms: [propext, Quot.sound]
+ℹ [3485/3674] Replayed Project.EulerRiemann.NumericsSafety
+info: Project/EulerRiemann/NumericsSafety.lean:97:0: 'Project.EulerRiemann.Numerics.stateGuard_extends' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/NumericsSafety.lean:98:0: 'Project.EulerRiemann.Numerics.side_eq_of_old_accepted' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/NumericsSafety.lean:99:0: 'Project.EulerRiemann.Numerics.stateGuard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/NumericsSafety.lean:100:0: 'Project.EulerRiemann.Numerics.side_state' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/NumericsSafety.lean:101:0: 'Project.EulerRiemann.Numerics.cell_state' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3486/3674] Replayed Project.EulerRiemann.NumericsSweep
+info: Project/EulerRiemann/NumericsSweep.lean:36:0: 'Project.EulerRiemann.Numerics.evaluate_state' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/NumericsSweep.lean:37:0: 'Project.EulerRiemann.Numerics.nextGrid_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3489/3674] Replayed Project.EulerRiemann.Memory
+info: Project/EulerRiemann/Memory.lean:120:0: 'Project.EulerRiemann.Memory.GridAt.fieldAddress_toNat' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/Memory.lean:121:0: 'Project.EulerRiemann.Memory.GridAt.fieldBound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/Memory.lean:122:0: 'Project.EulerRiemann.Memory.GridAt.generatedField' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/Memory.lean:123:0: 'Project.EulerRiemann.Memory.field_offset' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/Memory.lean:124:0: 'Project.EulerRiemann.Memory.GridAt.frame' depends on axioms: [propext, Quot.sound]
+ℹ [3490/3674] Replayed Project.EulerRiemann.AllocationGrowth
+info: Project/EulerRiemann/AllocationGrowth.lean:38:0: 'Project.EulerRiemann.Execution.sweep_bump_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationGrowth.lean:39:0: 'Project.EulerRiemann.Execution.sweep_growth_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationGrowth.lean:40:0: 'Project.EulerRiemann.Execution.sweep_growth_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationGrowth.lean:41:0: 'Project.EulerRiemann.Execution.gridAt_ensured' depends on axioms: [propext, Quot.sound]
+ℹ [3491/3674] Replayed Project.EulerRiemann.AllocationHeader
+info: Project/EulerRiemann/AllocationHeader.lean:53:0: 'Project.EulerRiemann.Execution.sweep_header_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationHeader.lean:54:0: 'Project.EulerRiemann.Execution.sweep_search_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationHeader.lean:55:0: 'Project.EulerRiemann.Execution.sweep_fit_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationHeader.lean:56:0: 'Project.EulerRiemann.Execution.sweep_fit_header_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationHeader.lean:57:0: 'Project.EulerRiemann.Execution.sweep_header_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationHeader.lean:58:0: 'Project.EulerRiemann.Execution.gridAt_header' depends on axioms: [propext, Quot.sound]
+ℹ [3492/3674] Replayed Project.EulerRiemann.AllocationBump
+info: Project/EulerRiemann/AllocationBump.lean:163:0: 'Project.EulerRiemann.Execution.sweep_bump_parts' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationBump.lean:164:0: 'Project.EulerRiemann.Execution.bumpPrefix_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:165:0: 'Project.EulerRiemann.Execution.bumpInstall_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:166:0: 'Project.EulerRiemann.Execution.bumpPages_le' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:167:0: 'Project.EulerRiemann.Execution.bumpPages_word' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:168:0: 'Project.EulerRiemann.Execution.bumpPages_fit' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:169:0: 'Project.EulerRiemann.Execution.sweep_bump_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:170:0: 'Project.EulerRiemann.Execution.bumpStore_pages' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:171:0: 'Project.EulerRiemann.Execution.bumpStore_globals' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:172:0: 'Project.EulerRiemann.Execution.bumpStore_fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:173:0: 'Project.EulerRiemann.Execution.bumpStore_bytes_outside' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBump.lean:174:0: 'Project.EulerRiemann.Execution.gridAt_bump' depends on axioms: [propext, Quot.sound]
+ℹ [3493/3674] Replayed Project.EulerRiemann.AllocationReuse
+info: Project/EulerRiemann/AllocationReuse.lean:96:0: 'Project.EulerRiemann.Execution.unlinkStore_pages' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationReuse.lean:97:0: 'Project.EulerRiemann.Execution.fitStore_header' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationReuse.lean:98:0: 'Project.EulerRiemann.Execution.sweep_fit_parts' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationReuse.lean:99:0: 'Project.EulerRiemann.Execution.fitUnlink_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationReuse.lean:100:0: 'Project.EulerRiemann.Execution.sweep_fit_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationReuse.lean:101:0: 'Project.ClobMatchFuel.BookAllocFit.freeListAt_fixedArrayAllocFitMem' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3494/3674] Replayed Project.EulerRiemann.AllocationSearchRead
+info: Project/EulerRiemann/AllocationSearchRead.lean:57:0: 'Project.EulerRiemann.Execution.sweep_search_read_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationSearchRead.lean:58:0: 'Project.EulerRiemann.Execution.searchRead_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationSearchRead.lean:59:0: 'Project.EulerRiemann.Execution.sweep_search_advance_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationSearchRead.lean:60:0: 'Project.EulerRiemann.Execution.searchAdvance_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3495/3674] Replayed Project.EulerRiemann.AllocationSearchGuard
+info: Project/EulerRiemann/AllocationSearchGuard.lean:27:0: 'Project.EulerRiemann.Execution.sweep_search_parts' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationSearchGuard.lean:28:0: 'Project.EulerRiemann.Execution.searchGuard_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3496/3674] Replayed Project.EulerRiemann.AllocationSearchNone
+warning: Project/EulerRiemann/AllocationSearchNone.lean:62:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/EulerRiemann/AllocationSearchNone.lean:78:0: 'Project.EulerRiemann.Execution.search_none_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3497/3674] Replayed Project.EulerRiemann.AllocationSearchFit
+warning: Project/EulerRiemann/AllocationSearchFit.lean:86:14: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/EulerRiemann/AllocationSearchFit.lean:111:12: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: Project/EulerRiemann/AllocationSearchFit.lean:130:14: `if_pos` has been deprecated: Use `ite_eq_left` instead
+info: Project/EulerRiemann/AllocationSearchFit.lean:149:0: 'Project.EulerRiemann.Execution.choice_previous_bound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationSearchFit.lean:150:0: 'Project.EulerRiemann.Execution.search_fit_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3498/3674] Replayed Project.EulerRiemann.AllocationExecute
+info: Project/EulerRiemann/AllocationExecute.lean:140:0: 'Project.EulerRiemann.Execution.sweep_allocation_shape' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationExecute.lean:141:0: 'Project.EulerRiemann.Execution.allocationInit_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationExecute.lean:142:0: 'Project.EulerRiemann.Execution.allocationCount_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationExecute.lean:143:0: 'Project.EulerRiemann.Execution.allocatedStore_count' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationExecute.lean:144:0: 'Project.EulerRiemann.Execution.allocationCore_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationExecute.lean:145:0: 'Project.EulerRiemann.Execution.allocation_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3499/3674] Replayed Project.EulerRiemann.AllocationCapacity
+info: Project/EulerRiemann/AllocationCapacity.lean:41:0: 'Project.EulerRiemann.Execution.sweep_capacity_shape' does not depend on any axioms
+info: Project/EulerRiemann/AllocationCapacity.lean:42:0: 'Project.EulerRiemann.Execution.sweep_capacity_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationCapacity.lean:43:0: 'Project.EulerRiemann.Execution.sweep_capacity_toNat' depends on axioms: [propext, Quot.sound]
+ℹ [3500/3674] Replayed Project.EulerRiemann.AllocationBounds
+info: Project/EulerRiemann/AllocationBounds.lean:101:0: 'Project.EulerRiemann.Execution.fitStore_pages' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBounds.lean:102:0: 'Project.EulerRiemann.Execution.allocated_capacity' depends on axioms: [propext]
+info: Project/EulerRiemann/AllocationBounds.lean:103:0: 'Project.EulerRiemann.Execution.allocated_bounds' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBounds.lean:104:0: 'Project.EulerRiemann.Execution.allocated_fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/AllocationBounds.lean:105:0: 'Project.EulerRiemann.Execution.allocated_pages_ge' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBounds.lean:106:0: 'Project.EulerRiemann.Execution.allocated_pages_le' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationBounds.lean:107:0: 'Project.EulerRiemann.Execution.sweep_allocated_bounds' depends on axioms: [propext, Quot.sound]
+ℹ [3501/3674] Replayed Project.EulerRiemann.AllocationPreserve
+info: Project/EulerRiemann/AllocationPreserve.lean:65:0: 'Project.EulerRiemann.Execution.gridAt_allocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationPreserve.lean:66:0: 'Project.EulerRiemann.Execution.allocated_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationPreserve.lean:67:0: 'Project.EulerRiemann.Execution.gridAt_counted' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationPreserve.lean:68:0: 'Project.EulerRiemann.Execution.freeListAt_ensured' depends on axioms: [propext, Quot.sound]
+ℹ [3502/3674] Replayed Project.EulerRiemann.AllocationState
+info: Project/EulerRiemann/AllocationState.lean:76:0: 'Project.EulerRiemann.Execution.allocatedNodes_mem' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationState.lean:77:0: 'Project.EulerRiemann.Execution.allocated_strict_bound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationState.lean:78:0: 'Project.EulerRiemann.Execution.allocated_node_separated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationState.lean:79:0: 'Project.EulerRiemann.Execution.freeListAt_allocated' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3503/3674] Replayed Project.EulerRiemann.AllocationGlobals
+info: Project/EulerRiemann/AllocationGlobals.lean:96:0: 'Project.EulerRiemann.Execution.allocatedStore_top' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationGlobals.lean:97:0: 'Project.EulerRiemann.Execution.allocatedStore_head' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationGlobals.lean:98:0: 'Project.EulerRiemann.Execution.allocatedStore_other_global' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationGlobals.lean:99:0: 'Project.EulerRiemann.Execution.allocatedStore_memoryCap' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationGlobals.lean:100:0: 'Project.EulerRiemann.Execution.allocatedTop_toNat' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationGlobals.lean:101:0: 'Project.EulerRiemann.Execution.allocated_below_top' depends on axioms: [propext, Quot.sound]
+⚠ [3504/3674] Replayed Project.Runtime.Spec
+warning: Project/Runtime/Spec.lean:77:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/Spec.lean:83:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:89:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:128:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/Spec.lean:201:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:207:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:213:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:218:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/Spec.lean:342:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:348:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:354:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:359:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:365:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/Spec.lean:369:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/Runtime/Spec.lean:412:0: 'Project.Runtime.release_frees_fresh_raw_full' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3505/3674] Replayed Project.Runtime.FixedArraySpec
+warning: Project/Runtime/FixedArraySpec.lean:118:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:127:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:136:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:141:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:150:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:154:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/FixedArraySpec.lean:199:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/FixedArraySpec.lean:204:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:227:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:257:14: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Runtime/FixedArraySpec.lean:276:14: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Runtime/FixedArraySpec.lean:281:14: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/Runtime/FixedArraySpec.lean:324:0: 'Project.Runtime.release_frees_fixed_array_zero_mask_full' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Runtime/FixedArraySpec.lean:325:0: 'Project.Runtime.release_frees_fixed_array_zero_mask' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3506/3674] Replayed Project.ProofKit.FixedArrayRelease
+info: Project/ProofKit/FixedArrayRelease.lean:106:0: 'Project.ProofKit.FixedArrayRelease.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/FixedArrayRelease.lean:107:0: 'Project.ProofKit.FixedArrayRelease.bytes_outside' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayRelease.lean:108:0: 'Project.ProofKit.FixedArrayRelease.freeListAt' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3507/3674] Replayed Project.EulerRiemann.ExecutionRelease
+info: Project/EulerRiemann/ExecutionRelease.lean:40:0: 'Project.EulerRiemann.Execution.release_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/ExecutionRelease.lean:41:0: 'Project.EulerRiemann.Execution.releasedStore_pages' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ExecutionRelease.lean:42:0: 'Project.EulerRiemann.Execution.releasedStore_memoryCap' depends on axioms: [propext, Quot.sound]
+ℹ [3508/3674] Replayed Project.EulerRiemann.ReleaseMemory
+info: Project/EulerRiemann/ReleaseMemory.lean:37:0: 'Project.EulerRiemann.Execution.releasedStore_bytes' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ReleaseMemory.lean:38:0: 'Project.EulerRiemann.Execution.gridAt_releasedStore' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ReleaseMemory.lean:39:0: 'Project.EulerRiemann.Execution.freeListAt_releasedStore' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3509/3674] Replayed Project.EulerRiemann.HeapState
+info: Project/EulerRiemann/HeapState.lean:85:0: 'Project.EulerRiemann.Execution.Heap.allocate_globals' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapState.lean:86:0: 'Project.EulerRiemann.Execution.Heap.allocate_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/HeapState.lean:87:0: 'Project.EulerRiemann.Execution.Heap.release_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/HeapState.lean:88:0: 'Project.EulerRiemann.Execution.Heap.allocateStore_memoryCap' depends on axioms: [propext, Quot.sound]
+ℹ [3510/3674] Replayed Project.ProofKit.FixedArrayAllocate
+info: Project/ProofKit/FixedArrayAllocate.lean:79:0: 'Project.ProofKit.FixedArrayAllocate.allocated_count' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/FixedArrayAllocate.lean:80:0: 'Project.ProofKit.FixedArrayAllocate.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3511/3674] Replayed Project.EulerRiemann.HeapAllocateExecute
+info: Project/EulerRiemann/HeapAllocateExecute.lean:36:0: 'Project.EulerRiemann.Execution.allocated_shared' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapAllocateExecute.lean:37:0: 'Project.EulerRiemann.Execution.allocatedRoot_shared' does not depend on any axioms
+info: Project/EulerRiemann/HeapAllocateExecute.lean:38:0: 'Project.EulerRiemann.Execution.heap_allocation_program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3512/3674] Replayed Project.EulerRiemann.MemoryWrite
+info: Project/EulerRiemann/MemoryWrite.lean:100:0: 'Project.EulerRiemann.Memory.PrefixAt.empty' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryWrite.lean:101:0: 'Project.EulerRiemann.Memory.PrefixAt.complete' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryWrite.lean:102:0: 'Project.EulerRiemann.Memory.PrefixAt.write_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/MemoryWrite.lean:103:0: 'Project.EulerRiemann.Memory.GridAt.writeField_disjoint' depends on axioms: [propext, Quot.sound]
+ℹ [3513/3674] Replayed Project.EulerRiemann.MemoryWriteCell
+info: Project/EulerRiemann/MemoryWriteCell.lean:62:0: 'Project.EulerRiemann.Memory.PrefixAt.write_cell' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/MemoryWriteCell.lean:63:0: 'Project.EulerRiemann.Memory.GridAt.writeCell_disjoint' depends on axioms: [propext, Quot.sound]
+ℹ [3514/3674] Replayed Project.EulerRiemann.MemoryFrame
+info: Project/EulerRiemann/MemoryFrame.lean:57:0: 'Project.EulerRiemann.Memory.WritesGrid.trans' does not depend on any axioms
+info: Project/EulerRiemann/MemoryFrame.lean:58:0: 'Project.EulerRiemann.Memory.writeCell_frame' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryFrame.lean:59:0: 'Project.EulerRiemann.Memory.PrefixAt.fieldBound' depends on axioms: [propext, Quot.sound]
+ℹ [3515/3674] Replayed Project.EulerRiemann.AllocationPageBound
+info: Project/EulerRiemann/AllocationPageBound.lean:37:0: 'Project.EulerRiemann.Execution.allocated_pages_bound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationPageBound.lean:38:0: 'Project.EulerRiemann.Execution.Heap.allocateStore_pages_bound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationPageBound.lean:39:0: 'Project.EulerRiemann.Execution.allocated_grid_pages_bound' depends on axioms: [propext, Quot.sound]
+ℹ [3516/3674] Replayed Project.EulerRiemann.ArrayAllocationMemory
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:97:0: 'Project.EulerRiemann.Execution.arrayAllocated_pages' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:98:0: 'Project.EulerRiemann.Execution.arrayAllocated_globals' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:99:0: 'Project.EulerRiemann.Execution.arrayBump_bytes_outside' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:100:0: 'Project.EulerRiemann.Execution.arrayAllocated_freeList' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:101:0: 'Project.EulerRiemann.Execution.arrayAllocated_fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:102:0: 'Project.EulerRiemann.Execution.Heap.allocateArrayStore_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:103:0: 'Project.EulerRiemann.Execution.Heap.allocateArrayStore_pages_bound' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationMemory.lean:104:0: 'Project.EulerRiemann.Execution.Heap.allocateArrayStore_memoryCap' depends on axioms: [propext, Quot.sound]
+ℹ [3517/3674] Replayed Project.EulerRiemann.MemoryLength
+info: Project/EulerRiemann/MemoryLength.lean:28:0: 'Project.EulerRiemann.Memory.writeLength_prefix' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/EulerRiemann/MemoryLength.lean:29:0: 'Project.EulerRiemann.Memory.GridAt.writeLength_disjoint' depends on axioms: [propext, Quot.sound]
+ℹ [3518/3674] Replayed Project.EulerRiemann.MemoryOwnership
+info: Project/EulerRiemann/MemoryOwnership.lean:66:0: 'Project.EulerRiemann.Memory.writeLength_frame' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryOwnership.lean:67:0: 'Project.EulerRiemann.Memory.WritesGrid.fresh' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryOwnership.lean:68:0: 'Project.EulerRiemann.Memory.WritesGrid.fresh_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryOwnership.lean:69:0: 'Project.EulerRiemann.Memory.WritesGrid.freeList' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryOwnership.lean:70:0: 'Project.EulerRiemann.Memory.WritesGrid.grid' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/MemoryOwnership.lean:71:0: 'Project.EulerRiemann.Memory.WritesGrid.globals' does not depend on any axioms
+info: Project/EulerRiemann/MemoryOwnership.lean:72:0: 'Project.EulerRiemann.Memory.WritesGrid.memoryCap' depends on axioms: [propext]
+ℹ [3519/3674] Replayed Project.EulerRiemann.AllocationFrame
+info: Project/EulerRiemann/AllocationFrame.lean:85:0: 'Project.EulerRiemann.Execution.allocated_bytes_in_region' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationFrame.lean:86:0: 'Project.EulerRiemann.Execution.freshAt_allocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationFrame.lean:87:0: 'Project.EulerRiemann.Execution.allocated_region_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/AllocationFrame.lean:88:0: 'Project.EulerRiemann.Execution.freshAt_sweep' depends on axioms: [propext, Quot.sound]
+ℹ [3520/3674] Replayed Project.EulerRiemann.SweepResources
+info: Project/EulerRiemann/SweepResources.lean:76:0: 'Project.EulerRiemann.Execution.sweep_resources' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3521/3674] Replayed Project.EulerRiemann.OwnedGrid
+info: Project/EulerRiemann/OwnedGrid.lean:72:0: 'Project.EulerRiemann.Execution.OwnedGridAt.allocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedGrid.lean:73:0: 'Project.EulerRiemann.Execution.OwnedGridAt.mem_congr' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedGrid.lean:74:0: 'Project.EulerRiemann.Execution.OwnedGridAt.writes' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedGrid.lean:75:0: 'Project.EulerRiemann.Execution.OwnedGridAt.released' depends on axioms: [propext, Quot.sound]
+ℹ [3522/3674] Replayed Project.EulerRiemann.HeapGrid
+info: Project/EulerRiemann/HeapGrid.lean:67:0: 'Project.EulerRiemann.Execution.Heap.Owns.allocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapGrid.lean:68:0: 'Project.EulerRiemann.Execution.Heap.Owns.writes' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapGrid.lean:69:0: 'Project.EulerRiemann.Execution.Heap.Owns.released' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapGrid.lean:70:0: 'Project.EulerRiemann.Execution.Heap.Owns.swept' depends on axioms: [propext, Quot.sound]
+ℹ [3523/3674] Replayed Project.EulerRiemann.ArrayAllocationFrame
+info: Project/EulerRiemann/ArrayAllocationFrame.lean:78:0: 'Project.EulerRiemann.Execution.arrayAllocated_bytes_in_region' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationFrame.lean:79:0: 'Project.EulerRiemann.Execution.Heap.allocateArrayStore_pages_ge' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationFrame.lean:80:0: 'Project.EulerRiemann.Execution.OwnedGridAt.frame_region' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationFrame.lean:81:0: 'Project.EulerRiemann.Execution.Heap.Owns.arrayAllocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/ArrayAllocationFrame.lean:82:0: 'Project.EulerRiemann.Execution.Heap.Owns.writesRange' depends on axioms: [propext, Quot.sound]
+ℹ [3524/3674] Replayed Project.ProofKit.ArrayPrefix
+info: Project/ProofKit/ArrayPrefix.lean:103:0: 'Project.ProofKit.UInt64Array.PrefixAt.empty' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:104:0: 'Project.ProofKit.UInt64Array.PrefixAt.complete' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:105:0: 'Project.ProofKit.UInt64Array.PrefixAt.elementBound' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:106:0: 'Project.ProofKit.UInt64Array.PrefixAt.write_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:107:0: 'Project.ProofKit.UInt64Array.writeElement_frame' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:108:0: 'Project.ProofKit.UInt64Array.At.frame' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/ArrayPrefix.lean:109:0: 'Project.ProofKit.UInt64Array.At.writesRange' depends on axioms: [propext, Quot.sound]
+ℹ [3525/3674] Replayed Project.EulerRiemann.OwnedWords
+info: Project/EulerRiemann/OwnedWords.lean:76:0: 'Project.EulerRiemann.Execution.OwnedWordsAt.frame_region' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedWords.lean:77:0: 'Project.EulerRiemann.Execution.Heap.OwnsWords.arrayAllocated' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedWords.lean:78:0: 'Project.EulerRiemann.Execution.Heap.OwnsWords.writesRange' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/OwnedWords.lean:79:0: 'Project.EulerRiemann.Execution.Heap.OwnsWords.released' depends on axioms: [propext, Quot.sound]
+ℹ [3526/3674] Replayed Project.EulerRiemann.HeapFrame
+info: Project/EulerRiemann/HeapFrame.lean:131:0: 'Project.EulerRiemann.Execution.Heap.Frame.trans' does not depend on any axioms
+info: Project/EulerRiemann/HeapFrame.lean:132:0: 'Project.EulerRiemann.Execution.Heap.Frame.ownsWords' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapFrame.lean:133:0: 'Project.EulerRiemann.Execution.Heap.Frame.words' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapFrame.lean:134:0: 'Project.EulerRiemann.Execution.Heap.Protects.allocated_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapFrame.lean:135:0: 'Project.EulerRiemann.Execution.Heap.frame_allocate' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapFrame.lean:136:0: 'Project.EulerRiemann.Execution.Heap.frame_arrayWritten' depends on axioms: [propext, Quot.sound]
+info: Project/EulerRiemann/HeapFrame.lean:137:0: 'Project.EulerRiemann.Execution.Heap.Frame.released' depends on axioms: [propext, Quot.sound]
+ℹ [3527/3674] Replayed Project.ProofKit.PackedHeap
+info: Project/ProofKit/PackedHeap.lean:135:0: 'Project.ProofKit.PackedAllocation.fresh' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeap.lean:136:0: 'Project.EulerRiemann.Execution.Heap.allocatePacked_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeap.lean:137:0: 'Project.EulerRiemann.Execution.Heap.packedWritten_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedHeap.lean:138:0: 'Project.EulerRiemann.Execution.Heap.frame_packedWritten' depends on axioms: [propext, Quot.sound]
+ℹ [3528/3674] Replayed Project.ProofKit.PackedRelease
+info: Project/ProofKit/PackedRelease.lean:35:0: 'Project.ProofKit.PackedRelease.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3529/3674] Replayed Project.ProofKit.OwnedPacked
+info: Project/ProofKit/OwnedPacked.lean:205:0: 'Project.EulerRiemann.Execution.Heap.Frame.ownsPacked' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:206:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.payload_protects' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:207:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.allocation_disjoint' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:208:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.root_ne' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:209:0: 'Project.EulerRiemann.Execution.Heap.ownsPacked_written' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:210:0: 'Project.EulerRiemann.Execution.Heap.packedOutput' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:211:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.allocated' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:212:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.writesRange' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:213:0: 'Project.EulerRiemann.Execution.Heap.OwnsPacked.released' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/OwnedPacked.lean:214:0: 'Project.EulerRiemann.Execution.Heap.releasePacked_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3530/3674] Replayed Project.Gpt2CachedStep.LinearRows.Heap
+info: Project/Gpt2CachedStep/LinearRows/Heap.lean:79:0: 'Project.Gpt2CachedStep.LinearRows.Spec.linearRows_owned' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3531/3674] Replayed Project.Gpt2CachedStep.Release
+info: Project/Gpt2CachedStep/Release.lean:24:0: 'Project.Gpt2CachedStep.Release.release_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Release.lean:35:0: 'Project.Gpt2CachedStep.Release.release_owned' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3532/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Source
+info: Project/Gpt2CachedStep/LayerNorm/Source.lean:40:0: 'Project.Gpt2CachedStep.LayerNorm.layerNorm_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3533/3674] Replayed Project.ProofKit.I64Frame
+info: Project/ProofKit/I64Frame.lean:93:0: 'Project.ProofKit.I64Values.block6' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/I64Frame.lean:94:0: 'Project.ProofKit.Frame.exists_allocator' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3534/3674] Replayed Project.Gpt2CachedStep.LayerNorm.MeansLoop
+info: Project/Gpt2CachedStep/LayerNorm/MeansLoop.lean:122:0: 'Project.Gpt2CachedStep.LayerNorm.meansWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/LayerNorm/MeansLoop.lean:123:0: 'Project.Gpt2CachedStep.LayerNorm.meansLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3535/3674] Replayed Project.Gpt2CachedStep.LayerNorm.VarianceStep
+info: Project/Gpt2CachedStep/LayerNorm/VarianceStep.lean:120:0: 'Project.Gpt2CachedStep.LayerNorm.varianceStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3536/3674] Replayed Project.Gpt2CachedStep.LayerNorm.InversesLoop
+info: Project/Gpt2CachedStep/LayerNorm/InversesLoop.lean:139:0: 'Project.Gpt2CachedStep.LayerNorm.inversesWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/LayerNorm/InversesLoop.lean:140:0: 'Project.Gpt2CachedStep.LayerNorm.inversesLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3537/3674] Replayed Project.Gpt2CachedStep.LayerNorm.OutputWord
+info: Project/Gpt2CachedStep/LayerNorm/OutputWord.lean:143:0: 'Project.Gpt2CachedStep.LayerNorm.outputWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3538/3674] Replayed Project.Gpt2CachedStep.LayerNorm.OutputLoop
+info: Project/Gpt2CachedStep/LayerNorm/OutputLoop.lean:77:0: 'Project.Gpt2CachedStep.LayerNorm.outputLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3539/3674] Replayed Project.ProofKit.PackedAllocationFrame
+info: Project/ProofKit/PackedAllocationFrame.lean:51:0: 'Project.ProofKit.PackedAllocation.allocatedFrame_typed' depends on axioms: [propext]
+info: Project/ProofKit/PackedAllocationFrame.lean:52:0: 'Project.ProofKit.PackedAllocation.program_spec_frame' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3540/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Size
+info: Project/Gpt2CachedStep/LayerNorm/Size.lean:60:0: 'Project.Gpt2CachedStep.LayerNorm.sizeCode_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3541/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Means
+info: Project/Gpt2CachedStep/LayerNorm/Means.lean:117:0: 'Project.Gpt2CachedStep.LayerNorm.means_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3542/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Inverses
+info: Project/Gpt2CachedStep/LayerNorm/Inverses.lean:122:0: 'Project.Gpt2CachedStep.LayerNorm.inverses_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3543/3674] Replayed Project.Gpt2CachedStep.LayerNorm.OutputSize
+info: Project/Gpt2CachedStep/LayerNorm/OutputSize.lean:58:0: 'Project.Gpt2CachedStep.LayerNorm.outputSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3544/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Output
+info: Project/Gpt2CachedStep/LayerNorm/Output.lean:142:0: 'Project.Gpt2CachedStep.LayerNorm.output_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3545/3674] Replayed Project.ProofKit.PackedReleaseGuard
+info: Project/ProofKit/PackedReleaseGuard.lean:50:0: 'Project.ProofKit.PackedReleaseGuard.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedReleaseGuard.lean:99:0: 'Project.ProofKit.PackedReleaseGuard.programTwo_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3546/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Cleanup
+info: Project/Gpt2CachedStep/LayerNorm/Cleanup.lean:67:0: 'Project.Gpt2CachedStep.LayerNorm.cleanup_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3548/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Body
+info: Project/Gpt2CachedStep/LayerNorm/Body.lean:102:0: 'Project.Gpt2CachedStep.LayerNorm.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3549/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Spec
+info: Project/Gpt2CachedStep/LayerNorm/Spec.lean:45:0: 'Project.Gpt2CachedStep.LayerNorm.Spec.layerNorm_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3553/3674] Replayed Project.Gpt2CachedStep.CachedKv
+info: Project/Gpt2CachedStep/CachedKv.lean:79:0: 'Project.Gpt2CachedStep.CachedKv.cachedKv_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3554/3674] Replayed Project.Gpt2CachedStep.CachedScore.Source
+info: Project/Gpt2CachedStep/CachedScore/Source.lean:33:0: 'Project.Gpt2CachedStep.CachedScore.cachedScore_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3555/3674] Replayed Project.Gpt2CachedStep.CachedScore.Step
+info: Project/Gpt2CachedStep/CachedScore/Step.lean:94:0: 'Project.Gpt2CachedStep.CachedScore.step_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3556/3674] Replayed Project.Gpt2CachedStep.CachedScore.Spec
+info: Project/Gpt2CachedStep/CachedScore/Spec.lean:41:0: 'Project.Gpt2CachedStep.CachedScore.Spec.cachedScore_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3557/3674] Replayed Project.Gpt2CachedStep.FiniteLt
+info: Project/Gpt2CachedStep/FiniteLt.lean:43:0: 'Project.Gpt2CachedStep.FiniteLt.finiteLt_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3558/3674] Replayed Project.Gpt2CachedStep.ExpPolynomial
+info: Project/Gpt2CachedStep/ExpPolynomial.lean:23:0: 'Project.Gpt2CachedStep.ExpPolynomial.expPolynomial_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3559/3674] Replayed Project.Gpt2CachedStep.CachedRowSum.Source
+info: Project/Gpt2CachedStep/CachedRowSum/Source.lean:27:0: 'Project.Gpt2CachedStep.CachedRowSum.cachedRowSum_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3560/3674] Replayed Project.Gpt2CachedStep.CachedRowSum.Step
+info: Project/Gpt2CachedStep/CachedRowSum/Step.lean:102:0: 'Project.Gpt2CachedStep.CachedRowSum.step_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3561/3674] Replayed Project.Gpt2CachedStep.CachedRowSum.Spec
+info: Project/Gpt2CachedStep/CachedRowSum/Spec.lean:36:0: 'Project.Gpt2CachedStep.CachedRowSum.Spec.cachedRowSum_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3562/3674] Replayed Project.Gpt2CachedStep.CachedRowMaximum.Source
+info: Project/Gpt2CachedStep/CachedRowMaximum/Source.lean:35:0: 'Project.Gpt2CachedStep.CachedRowMaximum.cachedRowMaximum_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3563/3674] Replayed Project.Gpt2CachedStep.CachedRowMaximum.Step
+info: Project/Gpt2CachedStep/CachedRowMaximum/Step.lean:106:0: 'Project.Gpt2CachedStep.CachedRowMaximum.step_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3564/3674] Replayed Project.Gpt2CachedStep.CachedRowMaximum.Spec
+info: Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean:61:0: 'Project.Gpt2CachedStep.CachedRowMaximum.Spec.cachedRowMaximum_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3565/3674] Replayed Project.Gpt2CachedStep.ExpNeg.Source
+info: Project/Gpt2CachedStep/ExpNeg/Source.lean:56:0: 'Project.Gpt2CachedStep.ExpNeg.expNeg_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/ExpNeg/Source.lean:57:0: 'Project.Gpt2CachedStep.ExpNeg.reducePrefix_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3566/3674] Replayed Project.Gpt2CachedStep.ExpNeg.ReduceStep
+info: Project/Gpt2CachedStep/ExpNeg/ReduceStep.lean:82:0: 'Project.Gpt2CachedStep.ExpNeg.reduceStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3567/3674] Replayed Project.Gpt2CachedStep.ExpNeg.SquareStep
+info: Project/Gpt2CachedStep/ExpNeg/SquareStep.lean:53:0: 'Project.Gpt2CachedStep.ExpNeg.squareStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3568/3674] Replayed Project.Gpt2CachedStep.ExpNeg.Spec
+info: Project/Gpt2CachedStep/ExpNeg/Spec.lean:66:0: 'Project.Gpt2CachedStep.ExpNeg.Spec.expNeg_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3569/3674] Replayed Project.Gpt2CachedStep.Gelu
+info: Project/Gpt2CachedStep/Gelu.lean:48:0: 'Project.Gpt2CachedStep.Gelu.gelu_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3570/3674] Replayed Project.Gpt2CachedStep.Activate.Loop
+info: Project/Gpt2CachedStep/Activate/Loop.lean:116:0: 'Project.Gpt2CachedStep.Activate.wordCode_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Activate/Loop.lean:117:0: 'Project.Gpt2CachedStep.Activate.loop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3571/3674] Replayed Project.Gpt2CachedStep.Activate.Size
+info: Project/Gpt2CachedStep/Activate/Size.lean:45:0: 'Project.Gpt2CachedStep.Activate.size_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3572/3674] Replayed Project.Gpt2CachedStep.Activate.Body
+info: Project/Gpt2CachedStep/Activate/Body.lean:110:0: 'Project.Gpt2CachedStep.Activate.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3573/3674] Replayed Project.Gpt2CachedStep.Activate.Spec
+info: Project/Gpt2CachedStep/Activate/Spec.lean:39:0: 'Project.Gpt2CachedStep.Activate.Spec.activate_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3574/3674] Replayed Project.Gpt2CachedStep.AddRows.Loop
+info: Project/Gpt2CachedStep/AddRows/Loop.lean:128:0: 'Project.Gpt2CachedStep.AddRows.wordCode_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/AddRows/Loop.lean:129:0: 'Project.Gpt2CachedStep.AddRows.loop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3575/3674] Replayed Project.Gpt2CachedStep.AddRows.Size
+info: Project/Gpt2CachedStep/AddRows/Size.lean:45:0: 'Project.Gpt2CachedStep.AddRows.size_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3576/3674] Replayed Project.Gpt2CachedStep.AddRows.Body
+info: Project/Gpt2CachedStep/AddRows/Body.lean:117:0: 'Project.Gpt2CachedStep.AddRows.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3577/3674] Replayed Project.Gpt2CachedStep.AddRows.Spec
+info: Project/Gpt2CachedStep/AddRows/Spec.lean:44:0: 'Project.Gpt2CachedStep.AddRows.Spec.addRows_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3578/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Source
+info: Project/Gpt2CachedStep/CachedAttention/Source.lean:87:0: 'Project.Gpt2CachedStep.CachedAttention.cachedAttention_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3579/3674] Replayed Project.Gpt2CachedStep.CachedAttention.ScoresLoop
+info: Project/Gpt2CachedStep/CachedAttention/ScoresLoop.lean:150:0: 'Project.Gpt2CachedStep.CachedAttention.scoresWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/ScoresLoop.lean:151:0: 'Project.Gpt2CachedStep.CachedAttention.scoresLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3580/3674] Replayed Project.Gpt2CachedStep.CachedAttention.ScoresSize
+info: Project/Gpt2CachedStep/CachedAttention/ScoresSize.lean:56:0: 'Project.Gpt2CachedStep.CachedAttention.scoresSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3581/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Scores
+info: Project/Gpt2CachedStep/CachedAttention/Scores.lean:124:0: 'Project.Gpt2CachedStep.CachedAttention.scores_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3582/3674] Replayed Project.Gpt2CachedStep.CachedAttention.MaximaLoop
+info: Project/Gpt2CachedStep/CachedAttention/MaximaLoop.lean:119:0: 'Project.Gpt2CachedStep.CachedAttention.maximaWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/MaximaLoop.lean:120:0: 'Project.Gpt2CachedStep.CachedAttention.maximaLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3583/3674] Replayed Project.Gpt2CachedStep.CachedAttention.FixedSize
+info: Project/Gpt2CachedStep/CachedAttention/FixedSize.lean:53:0: 'Project.Gpt2CachedStep.CachedAttention.fixedSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3584/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Maxima
+info: Project/Gpt2CachedStep/CachedAttention/Maxima.lean:114:0: 'Project.Gpt2CachedStep.CachedAttention.maxima_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3585/3674] Replayed Project.Gpt2CachedStep.CachedAttention.ExponentialsLoop
+info: Project/Gpt2CachedStep/CachedAttention/ExponentialsLoop.lean:168:0: 'Project.Gpt2CachedStep.CachedAttention.exponentialsWord_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/ExponentialsLoop.lean:169:0: 'Project.Gpt2CachedStep.CachedAttention.exponentialsLoop_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3586/3674] Replayed Project.Gpt2CachedStep.CachedAttention.MatrixSize
+info: Project/Gpt2CachedStep/CachedAttention/MatrixSize.lean:61:0: 'Project.Gpt2CachedStep.CachedAttention.matrixSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3587/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Exponentials
+info: Project/Gpt2CachedStep/CachedAttention/Exponentials.lean:126:0: 'Project.Gpt2CachedStep.CachedAttention.exponentials_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3588/3674] Replayed Project.Gpt2CachedStep.CachedAttention.SumsLoop
+info: Project/Gpt2CachedStep/CachedAttention/SumsLoop.lean:119:0: 'Project.Gpt2CachedStep.CachedAttention.sumsWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/SumsLoop.lean:120:0: 'Project.Gpt2CachedStep.CachedAttention.sumsLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3589/3674] Replayed Project.ProofKit.LocalPrefix
+info: Project/ProofKit/LocalPrefix.lean:28:0: 'Project.ProofKit.Frame.local_of_take_eq' depends on axioms: [propext]
+info: Project/ProofKit/LocalPrefix.lean:29:0: 'Project.ProofKit.Frame.get_of_take_eq' depends on axioms: [propext, Quot.sound]
+ℹ [3590/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Sums
+info: Project/Gpt2CachedStep/CachedAttention/Sums.lean:115:0: 'Project.Gpt2CachedStep.CachedAttention.sums_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3591/3674] Replayed Project.Gpt2CachedStep.CachedAttention.ProbabilitiesLoop
+info: Project/Gpt2CachedStep/CachedAttention/ProbabilitiesLoop.lean:165:0: 'Project.Gpt2CachedStep.CachedAttention.probabilitiesWord_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/ProbabilitiesLoop.lean:166:0: 'Project.Gpt2CachedStep.CachedAttention.probabilitiesLoop_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3592/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Probabilities
+info: Project/Gpt2CachedStep/CachedAttention/Probabilities.lean:126:0: 'Project.Gpt2CachedStep.CachedAttention.probabilities_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3593/3674] Replayed Project.Gpt2CachedStep.CachedAttention.MixedStep
+info: Project/Gpt2CachedStep/CachedAttention/MixedStep.lean:122:0: 'Project.Gpt2CachedStep.CachedAttention.mixedStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3594/3674] Replayed Project.Gpt2CachedStep.CachedAttention.MixedLoop
+info: Project/Gpt2CachedStep/CachedAttention/MixedLoop.lean:160:0: 'Project.Gpt2CachedStep.CachedAttention.mixedWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedAttention/MixedLoop.lean:161:0: 'Project.Gpt2CachedStep.CachedAttention.mixedLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3595/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Mixed
+info: Project/Gpt2CachedStep/CachedAttention/Mixed.lean:134:0: 'Project.Gpt2CachedStep.CachedAttention.mixed_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3596/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Cleanup
+info: Project/Gpt2CachedStep/CachedAttention/Cleanup.lean:140:0: 'Project.Gpt2CachedStep.CachedAttention.cleanup_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3598/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Body
+info: Project/Gpt2CachedStep/CachedAttention/Body.lean:174:0: 'Project.Gpt2CachedStep.CachedAttention.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3599/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Spec
+info: Project/Gpt2CachedStep/CachedAttention/Spec.lean:47:0: 'Project.Gpt2CachedStep.CachedAttention.Spec.cachedAttention_exact' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+ℹ [3601/3674] Replayed Project.Gpt2CachedStep.CachedBlock.CacheLoop
+info: Project/Gpt2CachedStep/CachedBlock/CacheLoop.lean:132:0: 'Project.Gpt2CachedStep.CachedBlock.cacheWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedBlock/CacheLoop.lean:133:0: 'Project.Gpt2CachedStep.CachedBlock.cacheLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3602/3674] Replayed Project.Gpt2CachedStep.CachedBlock.CacheSize
+info: Project/Gpt2CachedStep/CachedBlock/CacheSize.lean:39:0: 'Project.Gpt2CachedStep.CachedBlock.cacheSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3603/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Cache
+info: Project/Gpt2CachedStep/CachedBlock/Cache.lean:129:0: 'Project.Gpt2CachedStep.CachedBlock.cache_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3604/3674] Replayed Project.ProofKit.PackedReleaseMany
+info: Project/ProofKit/PackedReleaseMany.lean:100:0: 'Project.ProofKit.PackedReleaseMany.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3605/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Cleanup
+info: Project/Gpt2CachedStep/CachedBlock/Cleanup.lean:63:0: 'Project.Gpt2CachedStep.CachedBlock.cleanup_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3607/3674] Replayed Project.ProofKit.ConstantFunction
+info: Project/ProofKit/ConstantFunction.lean:25:0: 'Project.ProofKit.ConstantFunction.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3608/3674] Replayed Project.Gpt2CachedStep.Layout
+info: Project/Gpt2CachedStep/Layout.lean:268:0: 'Project.Gpt2CachedStep.Layout.vocabulary_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:269:0: 'Project.Gpt2CachedStep.Layout.positionOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:270:0: 'Project.Gpt2CachedStep.Layout.blocksOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:271:0: 'Project.Gpt2CachedStep.Layout.qkvWeightOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:272:0: 'Project.Gpt2CachedStep.Layout.qkvBiasOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:273:0: 'Project.Gpt2CachedStep.Layout.attnWeightOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:274:0: 'Project.Gpt2CachedStep.Layout.attnBiasOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:275:0: 'Project.Gpt2CachedStep.Layout.ln2ScaleOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:276:0: 'Project.Gpt2CachedStep.Layout.ln2BiasOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:277:0: 'Project.Gpt2CachedStep.Layout.fcWeightOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:278:0: 'Project.Gpt2CachedStep.Layout.fcBiasOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:279:0: 'Project.Gpt2CachedStep.Layout.mlpWeightOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:280:0: 'Project.Gpt2CachedStep.Layout.mlpBiasOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:281:0: 'Project.Gpt2CachedStep.Layout.blockWords_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:282:0: 'Project.Gpt2CachedStep.Layout.finalNormOffset_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:283:0: 'Project.Gpt2CachedStep.Layout.parameterWords_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Layout.lean:284:0: 'Project.Gpt2CachedStep.Layout.cachePositionWords_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3609/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Base
+info: Project/Gpt2CachedStep/CachedBlock/Base.lean:60:0: 'Project.Gpt2CachedStep.CachedBlock.base_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3610/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Normalized
+info: Project/Gpt2CachedStep/CachedBlock/Normalized.lean:99:0: 'Project.Gpt2CachedStep.CachedBlock.normalized_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3611/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Qkv
+info: Project/Gpt2CachedStep/CachedBlock/Qkv.lean:114:0: 'Project.Gpt2CachedStep.CachedBlock.qkv_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3612/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Attention
+info: Project/Gpt2CachedStep/CachedBlock/Attention.lean:78:0: 'Project.Gpt2CachedStep.CachedBlock.attention_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3614/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Normalized2
+info: Project/Gpt2CachedStep/CachedBlock/Normalized2.lean:111:0: 'Project.Gpt2CachedStep.CachedBlock.normalized2_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3615/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Expanded
+info: Project/Gpt2CachedStep/CachedBlock/Expanded.lean:114:0: 'Project.Gpt2CachedStep.CachedBlock.expanded_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3616/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Activated
+info: Project/Gpt2CachedStep/CachedBlock/Activated.lean:64:0: 'Project.Gpt2CachedStep.CachedBlock.activated_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3617/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Projected2
+info: Project/Gpt2CachedStep/CachedBlock/Projected2.lean:114:0: 'Project.Gpt2CachedStep.CachedBlock.projected2_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3618/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Projection
+info: Project/Gpt2CachedStep/CachedBlock/Projection.lean:114:0: 'Project.Gpt2CachedStep.CachedBlock.projection_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3619/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Residual
+info: Project/Gpt2CachedStep/CachedBlock/Residual.lean:73:0: 'Project.Gpt2CachedStep.CachedBlock.residual_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3620/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Hidden
+info: Project/Gpt2CachedStep/CachedBlock/Hidden.lean:72:0: 'Project.Gpt2CachedStep.CachedBlock.hidden_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3621/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Tensors
+info: Project/Gpt2CachedStep/CachedBlock/Tensors.lean:57:0: 'Project.Gpt2CachedStep.CachedBlock.tensors_sizes' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3622/3674] Replayed Project.ProofKit.PackedFresh
+info: Project/ProofKit/PackedFresh.lean:41:0: 'Project.EulerRiemann.Execution.Heap.Protects.allocated' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedFresh.lean:42:0: 'Project.EulerRiemann.Execution.Heap.FreshNode.owns_disjoint' depends on axioms: [propext, Quot.sound]
+ℹ [3623/3674] Replayed Project.Gpt2CachedStep.LayerNorm.Fresh
+info: Project/Gpt2CachedStep/LayerNorm/Fresh.lean:14:0: 'Project.Gpt2CachedStep.LayerNorm.outputNode_fresh' depends on axioms: [propext, Quot.sound]
+ℹ [3624/3674] Replayed Project.Gpt2CachedStep.CachedAttention.Fresh
+info: Project/Gpt2CachedStep/CachedAttention/Fresh.lean:17:0: 'Project.Gpt2CachedStep.CachedAttention.outputNode_fresh' depends on axioms: [propext, Quot.sound]
+ℹ [3625/3674] Replayed Project.ProofKit.PackedOwners
+info: Project/ProofKit/PackedOwners.lean:46:0: 'Project.ProofKit.PackedReleaseMany.Owners.cons' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedOwners.lean:47:0: 'Project.ProofKit.PackedReleaseMany.Owners.disjoint_fresh' depends on axioms: [propext, Quot.sound]
+ℹ [3626/3674] Replayed Project.ProofKit.PackedBindings
+info: Project/ProofKit/PackedBindings.lean:27:0: 'Project.ProofKit.PackedReleaseMany.Bindings.prefix' depends on axioms: [propext, Quot.sound]
+ℹ [3628/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Front
+info: Project/Gpt2CachedStep/CachedBlock/Front.lean:104:0: 'Project.Gpt2CachedStep.CachedBlock.front_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3629/3674] Replayed Project.Gpt2CachedStep.CachedBlock.CompositionState
+info: Project/Gpt2CachedStep/CachedBlock/CompositionState.lean:47:0: 'Project.Gpt2CachedStep.CachedBlock.KernelState.preserveAttention' depends on axioms: [propext]
+ℹ [3630/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Body
+info: Project/Gpt2CachedStep/CachedBlock/Body.lean:301:0: 'Project.Gpt2CachedStep.CachedBlock.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3631/3674] Replayed Project.Gpt2CachedStep.CachedBlock.Spec
+info: Project/Gpt2CachedStep/CachedBlock/Spec.lean:65:0: 'Project.Gpt2CachedStep.CachedBlock.Spec.cachedBlock_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3632/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Source
+info: Project/Gpt2CachedStep/CachedHidden/Source.lean:51:0: 'Project.Gpt2CachedStep.CachedHidden.cachedHidden_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedHidden/Source.lean:52:0: 'Project.Gpt2CachedStep.CachedHidden.layerPrefix_sizes' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3634/3674] Replayed Project.ProofKit.CopyAddress
+info: Project/ProofKit/CopyAddress.lean:53:0: 'Project.ProofKit.CopyAddress.offset_word' depends on axioms: [propext]
+info: Project/ProofKit/CopyAddress.lean:54:0: 'Project.ProofKit.CopyAddress.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3635/3674] Replayed Project.ProofKit.PackedCopyAddress
+info: Project/ProofKit/PackedCopyAddress.lean:47:0: 'Project.ProofKit.PackedCopy.addressCode_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3636/3674] Replayed Project.ProofKit.PackedCopy
+info: Project/ProofKit/PackedCopy.lean:119:0: 'Project.ProofKit.PackedCopy.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3637/3674] Replayed Project.ProofKit.PackedAppendCopy
+info: Project/ProofKit/PackedAppendCopy.lean:80:0: 'Project.ProofKit.PackedCopy.append_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3638/3674] Replayed Project.ProofKit.PackedAllocationState
+info: Project/ProofKit/PackedAllocationState.lean:69:0: 'Project.ProofKit.PackedAllocation.allocatedFrame_get_before' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedAllocationState.lean:70:0: 'Project.ProofKit.PackedAllocation.allocatedFrame_get_field' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedAllocationState.lean:118:0: 'Project.ProofKit.FixedArrayCapacity.capacityFrame_get_before' depends on axioms: [propext, Quot.sound]
+info: Project/ProofKit/PackedAllocationState.lean:119:0: 'Project.ProofKit.FixedArrayCapacity.storeWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3639/3674] Replayed Project.ProofKit.PackedAppend
+info: Project/ProofKit/PackedAppend.lean:184:0: 'Project.ProofKit.PackedAppend.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3640/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Code
+info: Project/Gpt2CachedStep/CachedHidden/Code.lean:28:0: 'Project.Gpt2CachedStep.CachedHidden.emitted_layerCopy' depends on axioms: [propext]
+info: Project/Gpt2CachedStep/CachedHidden/Code.lean:29:0: 'Project.Gpt2CachedStep.CachedHidden.emitted_cacheCopy' does not depend on any axioms
+info: Project/Gpt2CachedStep/CachedHidden/Code.lean:30:0: 'Project.Gpt2CachedStep.CachedHidden.emitted_layerAppend' depends on axioms: [propext]
+info: Project/Gpt2CachedStep/CachedHidden/Code.lean:31:0: 'Project.Gpt2CachedStep.CachedHidden.emitted_cacheAppend' does not depend on any axioms
+ℹ [3641/3674] Replayed Project.Gpt2CachedStep.CachedHidden.EmbeddingWord
+info: Project/Gpt2CachedStep/CachedHidden/EmbeddingWord.lean:152:0: 'Project.Gpt2CachedStep.CachedHidden.embeddingWord_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3642/3674] Replayed Project.Gpt2CachedStep.CachedHidden.EmbeddingLoop
+info: Project/Gpt2CachedStep/CachedHidden/EmbeddingLoop.lean:52:0: 'Project.Gpt2CachedStep.CachedHidden.embeddingLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3643/3674] Replayed Project.Gpt2CachedStep.CachedHidden.EmbeddingSize
+info: Project/Gpt2CachedStep/CachedHidden/EmbeddingSize.lean:36:0: 'Project.Gpt2CachedStep.CachedHidden.embeddingSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3644/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Embedding
+info: Project/Gpt2CachedStep/CachedHidden/Embedding.lean:114:0: 'Project.Gpt2CachedStep.CachedHidden.embedding_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3645/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerCall
+info: Project/Gpt2CachedStep/CachedHidden/LayerCall.lean:116:0: 'Project.Gpt2CachedStep.CachedHidden.layerCall_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3646/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerAppend
+info: Project/Gpt2CachedStep/CachedHidden/LayerAppend.lean:83:0: 'Project.Gpt2CachedStep.CachedHidden.layerAppend_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3647/3674] Replayed Project.ProofKit.PackedReleaseFilter
+info: Project/ProofKit/PackedReleaseFilter.lean:37:0: 'Project.ProofKit.PackedReleaseFilter.tests_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ProofKit/PackedReleaseFilter.lean:83:0: 'Project.ProofKit.PackedReleaseFilter.program_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3648/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerCacheRelease
+info: Project/Gpt2CachedStep/CachedHidden/LayerCacheRelease.lean:104:0: 'Project.Gpt2CachedStep.CachedHidden.layerCacheRelease_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3649/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerOldRelease
+info: Project/Gpt2CachedStep/CachedHidden/LayerOldRelease.lean:81:0: 'Project.Gpt2CachedStep.CachedHidden.oldRelease_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3650/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerControl
+info: Project/Gpt2CachedStep/CachedHidden/LayerControl.lean:106:0: 'Project.Gpt2CachedStep.CachedHidden.initializeLayer_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedHidden/LayerControl.lean:107:0: 'Project.Gpt2CachedStep.CachedHidden.prepareLayer_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedHidden/LayerControl.lean:108:0: 'Project.Gpt2CachedStep.CachedHidden.advanceLayer_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3652/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerStep
+info: Project/Gpt2CachedStep/CachedHidden/LayerStep.lean:159:0: 'Project.Gpt2CachedStep.CachedHidden.layerStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3654/3674] Replayed Project.Gpt2CachedStep.CachedHidden.TraversalState
+info: Project/Gpt2CachedStep/CachedHidden/TraversalState.lean:105:0: 'Project.Gpt2CachedStep.CachedHidden.traversalState_initial' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/CachedHidden/TraversalState.lean:106:0: 'Project.Gpt2CachedStep.CachedHidden.traversalStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3655/3674] Replayed Project.Gpt2CachedStep.CachedHidden.LayerLoop
+info: Project/Gpt2CachedStep/CachedHidden/LayerLoop.lean:77:0: 'Project.Gpt2CachedStep.CachedHidden.layerLoop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3656/3674] Replayed Project.Gpt2CachedStep.CachedHidden.CachePrepare
+info: Project/Gpt2CachedStep/CachedHidden/CachePrepare.lean:52:0: 'Project.Gpt2CachedStep.CachedHidden.cachePrepare_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3657/3674] Replayed Project.Gpt2CachedStep.CachedHidden.CacheAppend
+info: Project/Gpt2CachedStep/CachedHidden/CacheAppend.lean:67:0: 'Project.Gpt2CachedStep.CachedHidden.cacheAppend_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3658/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Cleanup
+info: Project/Gpt2CachedStep/CachedHidden/Cleanup.lean:77:0: 'Project.Gpt2CachedStep.CachedHidden.cleanup_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3660/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Body
+info: Project/Gpt2CachedStep/CachedHidden/Body.lean:131:0: 'Project.Gpt2CachedStep.CachedHidden.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3661/3674] Replayed Project.Gpt2CachedStep.CachedHidden.Spec
+info: Project/Gpt2CachedStep/CachedHidden/Spec.lean:64:0: 'Project.Gpt2CachedStep.CachedHidden.Spec.cachedHidden_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3662/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Source
+info: Project/Gpt2CachedStep/Vocabulary/Source.lean:27:0: 'Project.Gpt2CachedStep.Vocabulary.vocabularyHead_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3663/3674] Replayed Project.Gpt2CachedStep.Vocabulary.DotStep
+info: Project/Gpt2CachedStep/Vocabulary/DotStep.lean:118:0: 'Project.Gpt2CachedStep.Vocabulary.dotStep_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3664/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Word
+info: Project/Gpt2CachedStep/Vocabulary/Word.lean:79:0: 'Project.Gpt2CachedStep.Vocabulary.word_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3665/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Loop
+info: Project/Gpt2CachedStep/Vocabulary/Loop.lean:50:0: 'Project.Gpt2CachedStep.Vocabulary.loop_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3666/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Size
+info: Project/Gpt2CachedStep/Vocabulary/Size.lean:33:0: 'Project.Gpt2CachedStep.Vocabulary.size_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3667/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Body
+info: Project/Gpt2CachedStep/Vocabulary/Body.lean:107:0: 'Project.Gpt2CachedStep.Vocabulary.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3668/3674] Replayed Project.Gpt2CachedStep.Vocabulary.Spec
+info: Project/Gpt2CachedStep/Vocabulary/Spec.lean:35:0: 'Project.Gpt2CachedStep.Vocabulary.Spec.vocabularyHead_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3670/3674] Replayed Project.Gpt2CachedStep.Entry.Hidden
+info: Project/Gpt2CachedStep/Entry/Hidden.lean:73:0: 'Project.Gpt2CachedStep.Entry.hidden_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3671/3674] Replayed Project.Gpt2CachedStep.Entry.Normalized
+info: Project/Gpt2CachedStep/Entry/Normalized.lean:83:0: 'Project.Gpt2CachedStep.Entry.normalized_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3672/3674] Replayed Project.Gpt2CachedStep.Entry.Logits
+info: Project/Gpt2CachedStep/Entry/Logits.lean:55:0: 'Project.Gpt2CachedStep.Entry.logits_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3674/3694] Replayed Project.Gpt2CachedStep.Entry.Cleanup
+info: Project/Gpt2CachedStep/Entry/Cleanup.lean:66:0: 'Project.Gpt2CachedStep.Entry.cleanup_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3676/3694] Replayed Project.Gpt2CachedStep.Entry.Body
+info: Project/Gpt2CachedStep/Entry/Body.lean:108:0: 'Project.Gpt2CachedStep.Entry.body_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3677/3694] Replayed Project.ProofKit.FixedArrayTraversalInput
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:96:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:211:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:251:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:303:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:305:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:308:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:354:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:356:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayTraversalInput.lean:359:6: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3678/3694] Replayed Project.ProofKit.FixedArrayEqNode
+warning: Project/ProofKit/FixedArrayEqNode.lean:253:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:256:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:264:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:267:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:333:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:337:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:346:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/FixedArrayEqNode.lean:350:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+ℹ [3679/3694] Replayed Project.Gpt2CachedStep.Entry.GuardValid
+info: Project/Gpt2CachedStep/Entry/GuardValid.lean:71:0: 'Project.Gpt2CachedStep.Entry.guard_valid_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3680/3694] Replayed Project.Gpt2CachedStep.Entry.Accepted
+info: Project/Gpt2CachedStep/Entry/Accepted.lean:50:0: 'Project.Gpt2CachedStep.Entry.cachedStep_accepted' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3681/3694] Replayed Project.Gpt2CachedStep.Entry.Rejected
+info: Project/Gpt2CachedStep/Entry/Rejected.lean:88:0: 'Project.Gpt2CachedStep.Entry.cachedStep_rejected' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3682/3694] Replayed Project.ProofKit.HeapGrowth
+info: Project/ProofKit/HeapGrowth.lean:19:0: 'Project.EulerRiemann.Execution.Heap.allocate_top_le' depends on axioms: [propext, Quot.sound]
+ℹ [3683/3694] Replayed Project.Gpt2CachedStep.LayerNorm.Budget
+info: Project/Gpt2CachedStep/LayerNorm/Budget.lean:34:0: 'Project.Gpt2CachedStep.LayerNorm.budget' depends on axioms: [propext, Quot.sound]
+ℹ [3684/3694] Replayed Project.Gpt2CachedStep.CachedAttention.Budget
+info: Project/Gpt2CachedStep/CachedAttention/Budget.lean:36:0: 'Project.Gpt2CachedStep.CachedAttention.budget' depends on axioms: [propext, Quot.sound]
+ℹ [3685/3694] Replayed Project.Gpt2CachedStep.CachedBlock.Budget
+info: Project/Gpt2CachedStep/CachedBlock/Budget.lean:43:0: 'Project.Gpt2CachedStep.CachedBlock.budget' depends on axioms: [propext, Quot.sound]
+ℹ [3686/3694] Replayed Project.Gpt2CachedStep.CachedHidden.Budget
+info: Project/Gpt2CachedStep/CachedHidden/Budget.lean:77:0: 'Project.Gpt2CachedStep.CachedHidden.budget' depends on axioms: [propext, Quot.sound]
+ℹ [3687/3694] Replayed Project.Gpt2CachedStep.Entry.Budget
+info: Project/Gpt2CachedStep/Entry/Budget.lean:24:0: 'Project.Gpt2CachedStep.Entry.budget' depends on axioms: [propext, Quot.sound]
+ℹ [3688/3694] Replayed Project.ProofKit.PackedInput
+info: Project/ProofKit/PackedInput.lean:43:0: 'Project.ProofKit.PackedInput.allocated' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3689/3694] Replayed Project.ProofKit.PackedAllocExport
+info: Project/ProofKit/PackedAllocExport.lean:42:0: 'Project.ProofKit.PackedAllocExport.exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3690/3694] Replayed Project.Gpt2CachedStep.Initialize
+info: Project/Gpt2CachedStep/Initialize.lean:55:0: 'Project.Gpt2CachedStep.Initialize.allocate_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Initialize.lean:56:0: 'Project.Gpt2CachedStep.Initialize.reset_initial' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Initialize.lean:57:0: 'Project.Gpt2CachedStep.Initialize.input' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3691/3694] Replayed Project.Gpt2CachedStep.Session.State
+info: Project/Gpt2CachedStep/Session/State.lean:73:0: 'Project.Gpt2CachedStep.Session.ready_initial' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3692/3694] Replayed Project.Gpt2CachedStep.Session.Step
+info: Project/Gpt2CachedStep/Session/Step.lean:94:0: 'Project.Gpt2CachedStep.Session.step' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3693/3694] Replayed Project.Gpt2CachedStep.Session.Spec
+info: Project/Gpt2CachedStep/Session/Spec.lean:38:0: 'Project.Gpt2CachedStep.Session.runs_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Session/Spec.lean:39:0: 'Project.Gpt2CachedStep.Session.initialized_runs_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/Gpt2CachedStep/Session/Spec.lean:63:0: 'Project.Gpt2CachedStep.Spec.gpt2_128_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3694/3694] Replayed Project.Gpt2CachedStep.Spec
+info: Project/Gpt2CachedStep/Spec.lean:88:0: 'Project.Gpt2CachedStep.Spec.cachedStep_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+Build completed successfully (3694 jobs).
+Talos proof passed: gpt2_cached_step

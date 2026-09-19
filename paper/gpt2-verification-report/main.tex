@@ -1,0 +1,265 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype,xurl,seqsplit}
+\usepackage{upquote}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,array,tabularx}
+\usepackage[hidelinks]{hyperref}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\longcode}[1]{\texttt{\seqsplit{#1}}}
+\newcommand{\src}[2]{\href{https://github.com/jsmorph/leanexe/blob/f4d412b709a13bb2649fe23be267ec9928838064/#1}{#2}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newtheorem{theorem}{Theorem}
+\emergencystretch=2em
+\title{Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly}
+\author{Codex GPT-6, Jamie Stephens}
+\date{18 September 2026}
+\hypersetup{pdftitle={Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly},pdfauthor={Codex GPT-6, Jamie Stephens},pdfsubject={Programming languages; formal verification of neural-network inference}}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Compiling a neural-network implementation requires preserving its arithmetic order, tensor representation, and memory behavior.  We present a Lean specification and a checked execution proof for a cached GPT-2 implementation with 124,439,808 parameters and a 128-token context.  In Talos's WebAssembly semantics, the generated module terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128.  The proof includes initialization, packed input representation, all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases.  Arithmetic lemmas connect Lean's logical Float32 operations to Talos for all input words.  Wasmtime's canonical-NaN mode supplies the selected runtime behavior for exceptional arithmetic.  Tests against CPU PyTorch compare 6,432,896 logits across all supported context lengths, with a maximum observed absolute difference of 0.001450, and produce text completions.  The formal result concerns the corresponding Lean algorithm.  Artifact-to-model translation, the native host, and Wasmtime remain trusted.  Exact-byte proof closure and numerical-error bounds remain deferred.
+\end{abstract}
+
+\section{The checked execution result}
+
+In Talos's WebAssembly semantics, the generated module terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128.  The public theorem is \longcode{Project.Gpt2CachedStep.Spec.gpt2\_128\_exact}.  It composes the module's reset and allocation exports, the mathematical encoding of weight bytes, and successive calls to the cached inference export~\cite{session}.  The proof derives the memory conditions needed by every token call from initialization and a uniform allocation budget.
+
+The specification is the executable Lean function \code{LeanExe.Models.Gpt2.cachedStep}, including its selected FP32 operation order and polynomial numerical routines.  LeanExe compiles that function to WebAssembly.  Talos supplies a Lean execution model and proof rules for the generated instructions~\cite{subset,talos}.  Each arithmetic, tensor, and control-flow result therefore connects to a definition used by the compiler's input.  The terminal postconditions describe returned bytes and heap state.
+
+This report describes repository revision \longcode{f4d412b709a13bb2649fe23be267ec9928838064}~\cite{repo}.  The compiler and proof workspace use Lean 4.34.0-rc2 at revision \longcode{6a10ac8c22beadecabdbb0919c2b50214762f91d}.  The Talos revision is \longcode{87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.  The runtime target is Wasmtime 44.0.0 using Cranelift with arithmetic NaN canonicalization enabled.  Section~\ref{sec:boundary} specifies the connection between the checked execution model and that runtime.
+
+The implementation loads the pretrained GPT-2 checkpoint as external data.  The theorem quantifies over arbitrary bytes of the required weight length, including exceptional FP32 encodings.  Consequently, replacing weight values preserves the applicability of the execution proof.  The command-line demonstration separately checks the identity of the pretrained checkpoint and rejects a non-finite returned logit before sampling~\cite{driver}.  Those host checks belong to the demonstration's behavior.
+
+\section{Lean algorithm and packed representation}
+
+\subsection{Model dimensions and interface}
+
+The implementation retains the original GPT-2 block organization: pre-normalized attention and feed-forward sublayers, residual additions, final normalization, and a vocabulary projection tied to the token embedding~\cite{gpt2}.  Table~\ref{tab:shape} gives the dimensions that determine loop bounds and buffer sizes.  The checkpoint contains 1,024 position embeddings, while the implemented cached entry accepts positions zero through 127~\cite{manifest,cached}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lr}
+\toprule
+Quantity & Value\\
+\midrule
+Parameter words & 124,439,808\\
+Transformer blocks & 12\\
+Hidden width & 768\\
+Attention heads & 12\\
+Channels per head & 64\\
+Feed-forward width & 3,072\\
+Vocabulary size & 50,257\\
+Supported context & 128 tokens\\
+Weight payload & 497,759,232 bytes\\
+One logit vector & 201,028 bytes\\
+Cache increment per token & 73,728 bytes\\
+\bottomrule
+\end{tabular}
+\caption{Dimensions used by the implementation and proof.}
+\label{tab:shape}
+\end{table}
+
+A token is a vocabulary index represented by \code{UInt32}.  Context length counts these indices.  Weights, activations, cached keys and values, and logits use little-endian packed 32-bit words in Lean \code{ByteArray} values.  The source operations \code{word} and \code{generateUInt32LE} read and construct those words.  The compiler emits scalar FP32 instructions and packed memory operations for them~\cite{kernels,packed}.
+
+The source entry has the type
+\[
+\code{ByteArray}\to\code{ByteArray}\to\code{UInt32}\to\code{Nat}\to\code{CachedResult}.
+\]
+Its arguments are weights, the prior cache, a token, and its position.  A \code{CachedResult} contains the extended cache and the next-token logit vector.  At position $p$, the entry checks weight length, token range, $p<128$, and cache length $73{,}728p$.  A failed check returns two empty byte arrays.  The separate rejected-entry theorem proves four zero result words and complete store preservation under the public entry's representation conditions~\cite{entry}.
+
+The host API passes the weight pointer and byte length, cache pointer and byte length, token, and position, in that order.  The export returns cache pointer, cache byte length, logit pointer, and logit byte length.  Talos represents call arguments and results in operand-stack order, which reverses these lists.  Checked equalities identify \code{cachedStep}, \code{alloc}, \code{reset}, and \code{release} with function indices 38, 39, 40, and 42~\cite{initialize}.
+
+\subsection{Cached attention and token recurrence}
+
+The cache stores both 768-component key and value vectors for each layer and prior token.  Within a position, the twelve layers occur in increasing order, with keys preceding values in each layer.  If $s$ is a prior position, $\ell$ is a layer, and $o<1536$ selects a key or value component, its word index is
+\[
+((12s+\ell)1536)+o.
+\]
+For the current position, \code{cachedKv} reads the key or value from the newly computed QKV projection.  The source calculates attention scores by a 64-term ordered dot product, scales by $1/8$, normalizes over positions zero through the current position, and computes the weighted value sum~\cite{cached}.
+
+Each block returns a new hidden vector and its current key/value vectors.  The enclosing twelve-layer loop concatenates those key/value vectors and appends them to the old cache.  Token and position embedding precede that loop.  Final layer normalization and the tied 50,257-row vocabulary projection follow it.  The cached Lean function specifies this entire token step.  The formal target takes its recurrence as the algorithm.  Comparison with the separate full-prefix implementation appears as a runtime test in Section~\ref{sec:tests}.
+
+Let $W$ be a weight byte array and $t_0,\ldots,t_{n-1}$ the input tokens.  Define
+\begin{equation}\label{eq:recurrence}
+C_0=\epsilon,\qquad
+(C_{p+1},L_p)=\code{cachedStep}(W,C_p,t_p,p),\quad 0\leq p<n,
+\end{equation}
+where $\epsilon$ is the empty byte array and $L_p$ is the logit byte array.  The Lean definition \code{Session.sourceTrace} returns the list of these cache/logit pairs.  Every equality to this trace is byte equality, so it includes signed zeros and the numerical routines' exceptional outputs.
+
+\subsection{Arithmetic order and numerical routines}
+
+Matrix projections accumulate each output component in source loop order, with a separate FP32 multiplication and addition at each step, followed by bias addition.  Layer normalization computes an ordered mean, an ordered sum of squared deviations, division by 768, addition of the FP32 word \code{0x3727C5AC} for epsilon, square root, and reciprocal.  It then applies the centered value, inverse standard deviation, scale, and bias in the written order~\cite{kernels}.  These choices determine the exact source result.
+
+The source implements exponential evaluation by a degree-18 Horner polynomial with explicit coefficient words.  For finite nonpositive arguments, \code{expNeg} returns zero below $-64$, halves an argument below $-1$ at most six times, evaluates the polynomial, and squares the result once per halving.  GELU uses an exponential form of the tanh approximation and a magnitude cutoff at eight.  Beyond that cutoff, the finite positive tail returns the input and the finite negative tail returns zero~\cite{numerics}.  The bitwise comparisons and branch definitions in the cited source determine behavior on all other input words.  The execution proof includes those branches.
+
+The polynomial, constants, cutoff tests, and rounding order form part of the algorithm specification.  The PyTorch reference uses its own tensor and transcendental implementations.  The report's numerical comparisons measure their agreement on the recorded checkpoint and token sequences.  Proving a real-valued approximation bound would require a separate statement relating these numerical routines to real formulas.
+
+\section{Statement and construction of the proof}
+
+\subsection{Termination and observable results}
+
+For a fixed Talos module $M$, environment $E$, function index $i$, initial store $S$, argument stack $a$, and postcondition $P$, write $\mathsf{TW}(E,M,i,S,a,P)$ for Talos's \code{TerminatesWith}.  Its definition is
+\[
+\exists N\;\forall f\geq N\;\exists v,S'.\quad
+\code{run}(f,M,i,S,a,E)=\code{Success}(v,S')\ \land\ P(S',v).
+\]
+The natural number $f$ is interpreter fuel.  This predicate proves eventual successful execution and the postcondition for every sufficiently large fuel value~\cite{termination}.  The generated GPT-2 module has no imported functions, and the theorem quantifies over the host environment.
+
+\begin{theorem}[Cached GPT-2 invocation]\label{thm:main}
+Fix the generated module $M$ at the report's source revision.  Let $W$ be a byte array of length $497{,}759{,}232$, and let $T=[t_0,\ldots,t_{n-1}]$ be a list of \code{UInt32} tokens with $n\leq128$ and $t_p<50{,}257$ for every $p<n$.  Starting from $M$'s initial store, reset and weight allocation terminate successfully.  After the specified byte copy of $W$ into the allocated payload, the token calls and releases described below terminate successfully.  At each position $p$, their observable cache and logit bytes equal $C_{p+1}$ and $L_p$ in Equation~\eqref{eq:recurrence}.
+\end{theorem}
+
+The checked declaration for Theorem~\ref{thm:main} is \longcode{Project.Gpt2CachedStep.Spec.gpt2\_128\_exact}~\cite{session}.  Its only input restrictions are the three conditions in the statement.  The result includes the empty token list.  For a nonempty list, \code{Session.Runs} calls \code{cachedStep}, observes the new cache, releases the previous cache when its pointer is nonzero, observes the logits, releases the logit buffer, and continues with the returned cache.  The final cache and weights remain available in the instance.  The source trace specifies the outputs of this call sequence.
+
+The weight-copy step is the pure store update \code{PackedInput.write}.  Its theorem establishes the required byte representation and heap ownership after allocation~\cite{input}.  This specifies the byte I/O boundary used by the execution theorem.  The native host performs the corresponding copy with \code{memcpy}; the proof's trust boundary includes that implementation.
+
+\subsection{Arithmetic correspondence}
+
+For each binary operation $\circ\in\{+,-,\times,/\}$, the arithmetic proof establishes
+\[
+\forall a,b:\code{UInt32},\qquad
+\code{LeanExe.Float32.opBits}(a,b)
+=\code{Wasm.IEEE32.op}(a,b).
+\]
+An analogous theorem covers square root.  Here \code{opBits} and \code{op} stand for the corresponding named operation.  The source intrinsics reduce to Lean's logical \code{Float32.Model}, and the proofs compare its encoding and rounding definitions with Talos's \code{IEEE32} operations~\cite{f32,leanfloat}.
+
+The proofs split exceptional values from finite values, including zero and subnormal cases.  Shared lemmas relate encodings, significands, exponents, scaling, and rounding.  Finite multiplication, division, and square root require their respective rounding arguments.  NaN and infinity cases close against the explicit logical definitions.  The resulting equalities quantify over every input word and supply the scalar facts used by the tensor-loop proofs.  The formal source meaning comes from Lean's logical definitions.  Native Lean evaluation appears in separate execution tests.
+
+\subsection{Tensor loops and ownership}
+
+The packed-memory proofs connect emitted loads and stores to source byte-array reads and construction.  Loop invariants relate the constructed memory prefix or scalar accumulator to the source recurrence, while frame conditions preserve protected input regions.  A shared range-loop rule supports an arbitrary preserved operand-stack prefix, which the generated matrix projection needs because it retains a destination address during dot-product evaluation~\cite{loops}.
+
+Kernel theorems compose into normalization, cached attention, complete transformer blocks, the twelve-layer hidden traversal, and vocabulary projection.  Table~\ref{tab:proofs} identifies the main composition boundaries.  The accepted-entry theorem returns both output buffers' ownership, their separation from each other, and freshness relative to the initial heap~\cite{entry}.  These properties permit the session theorem to free the previous cache and the current logits while preserving the weights and new cache.
+
+\begin{table}[ht]
+\small\centering
+\begin{tabularx}{\linewidth}{L{0.24\linewidth}X}
+\toprule
+Proof boundary & Established result\\
+\midrule
+Packed access and construction & Source word values, initialized output prefix, address conditions, and preservation.\\
+Scalar FP32 kernels & Ordered reductions, polynomial evaluation, comparisons, and activation results.\\
+Cached attention & Cache lookup, score normalization, weighted values, allocations, and temporary releases.\\
+Transformer block & Both hidden and key/value outputs, ten tensor-kernel calls, and cleanup.\\
+Hidden traversal & Embedding, twelve blocks, cache assembly, ownership, and cleanup.\\
+Vocabulary and entry & All 50,257 output words, accepted and rejected branches, and protected inputs.\\
+Initialization and session & Encoded input, sufficient allocation capacity, and successive calls and releases.\\
+\bottomrule
+\end{tabularx}
+\caption{Composition of the checked execution proof.  The main proof import identifies the component declarations~\cite{entry}.}
+\label{tab:proofs}
+\end{table}
+
+\subsection{Allocation sufficiency through position 127}
+
+The allocation proof bounds heap-top growth by charging each requested allocation, including alignment and allocator overhead.  A successful free-list reuse preserves the heap top, as does release.  Thus the argument applies to the existing allocator independently of which reusable block it selects~\cite{budget}.
+
+Let $H_p$ be the heap top before token call $p$, and set
+\[
+B_0=536{,}870{,}912,\qquad D=16{,}777{,}216.
+\]
+These are 512 MiB and 16 MiB, respectively, with $1\,\mathrm{MiB}=2^{20}$ bytes.  Initialization proves $H_0\leq B_0$.  The session invariant contains
+\begin{equation}\label{eq:budget}
+H_p\leq B_0+pD.
+\end{equation}
+For $p<128$ and a cache of length $73{,}728p$, \code{Entry.budget} proves every allocation-capacity premise and bounds the resulting heap top by $H_p+D$, provided $H_p+D<2^{32}$.  Equation~\eqref{eq:budget} supplies that premise because
+\[
+B_0+128D=2{,}684{,}354{,}560<2^{32}.
+\]
+The session induction therefore closes all 128 positions~\cite{budget,session}.
+
+The proof carries memory capacity of 65,536 WebAssembly pages and a page-count bound of 65,536, with 65,536 bytes per page.  The $2.5$ GiB expression above bounds the charged heap top.  The formal page-count bound remains 4 GiB.  The measured linear-memory size in Section~\ref{sec:tests} is a separate observation.  Host allocation success within the modeled capacity and sufficient native execution resources belong to the runtime assumptions.
+
+\section{Artifact and runtime boundary}\label{sec:boundary}
+
+The source-driven check recompiles \code{cachedStep}, renders the resulting binary as WAT with \code{wasm-tools}, generates a Talos module, and requires the generated \code{Program.lean} to match the tracked module used by the theorem.  It then builds the complete proof import~\cite{gate}.  The proof establishes the generated model's behavior without assuming general compiler correctness.  The generation and comparison tools remain trusted for the correspondence between the emitted binary and that model.
+
+The recorded runtime binary and the proof check's generated binary have SHA-256
+\begin{center}\small
+\longcode{e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade}.
+\end{center}
+This hash comparison identifies the tested file.  A checked derivation from embedded binary bytes through decoding, validation, and translation would close the exact-byte obligation.  That obligation remains deferred for this GPT-2 report.  The present evidence consists of regeneration, model comparison, and the checked behavioral theorem.
+
+Report preparation reran the source-driven check at the stated checkpoint.  Artifact generation and tracked-model comparison passed, and Lake accepted the complete proof import using cached proof objects.  The accompanying evidence directory retains the command output and public axiom reports.  The runtime measurements in Section~\ref{sec:tests} use the saved canonical-mode test record.
+
+WebAssembly permits multiple NaN results for some floating-point operations~\cite{wasmspec}.  Lean and Talos choose a canonical arithmetic NaN word, \code{0x7FC00000} for binary32.  The C host selects Cranelift and enables \longcode{wasmtime\_config\_cranelift\_nan\_canonicalization\_set}~\cite{wasmtime,driver}.  Wasmtime's implementation of that mode remains trusted.  The recorded FP32 tests check its exact NaN words, including signaling inputs and negative or noncanonical payloads~\cite{tests}.  The selected runtime mode is part of the deployment boundary for exact raw-word agreement.
+
+The Lean kernel checks the proof terms.  The public theorem's axiom report contains \code{propext}, \code{Classical.choice}, and \code{Quot.sound}.  Talos's execution definitions supply the modeled semantics.  Applying the result to a native run also trusts model translation, Wasmtime, its native-code backend, the C host, and the host's byte I/O.  Tokenization and token selection occur outside the proved recurrence.  The theorem accepts vocabulary indices and produces logit bytes, which lets either a user-selected sequence or a generated sequence supply the next valid token.
+
+The proof quantifies over the module's fixed architecture and supported context length.  A larger architecture or context needs corresponding source, generated-module, and proof updates.  The scalar arithmetic and packed-memory lemmas accept inputs beyond this one model.  The composed transformer and allocation theorems retain their stated dimension bounds.  Numerical accuracy against real arithmetic, equivalence between the cached and separate full-prefix Lean algorithms, and language-quality properties remain separate obligations.
+
+\section{PyTorch comparisons and command-line inference}\label{sec:tests}
+
+The runtime tests use the pinned pretrained checkpoint with CPU PyTorch 2.9.1 and Transformers 4.57.6.  The manifest checks model files by hash and records checkpoint revision \longcode{607a30d783dfa663caf39e06633721c8d4cfcd7e}~\cite{manifest}.  The CPU reference uses FP32, eager attention, and one PyTorch thread.  The WASM driver keeps weights and cached key/value data in a resident Wasmtime instance~\cite{driver}.
+
+The 128-position test starts with the story prompt ``Once upon a time, in a small village'' and appends repetitions of a fixed sentence before taking the first 128 token IDs.  For each prefix length from one to 128, it compares all 50,257 cached WASM logits with the corresponding CPU PyTorch logits~\cite{testcode}.  This gives $128\times50{,}257=6{,}432{,}896$ comparisons.  Every component satisfies the test tolerance
+\[
+|\ell_{\rm wasm}-\ell_{\rm torch}|
+\leq 0.002+10^{-4}|\ell_{\rm torch}|.
+\]
+The maximum observed absolute difference is approximately $0.001450$~\cite{tests}.  The quantified exact-equality theorem concerns the Lean source, while this tolerance test concerns the checkpoint and sequence just described.
+
+The canonical-mode run took 100.2 seconds and reached 1,107,361,792 bytes of WASM linear memory.  Its allocation counters recorded 33,025 allocations and 33,023 frees, leaving the weights and current cache.  The allocator reuses whole freed blocks.  The final cache contains $128\times73{,}728=9{,}437{,}184$ payload bytes.  The test also checks the four rejected-input conditions, cache reset and replay, and byte-exact agreement between cached and full-prefix WASM logits for the nine-token story prompt~\cite{tests,testcode}.  These timings describe the recorded local runs and support execution feasibility.  They provide no cross-system speed comparison.
+
+Three recorded completions generated 64, 32, and 16 tokens in 55.6, 27.8, and 15.4 seconds.  The 16-token greedy completion matched PyTorch's token sequence.  The 64-token sampled completion began:
+\begin{quote}
+Once upon a time, in a small village called Hukur. The village is a great expanse of white sand and the winds blow fast
+\end{quote}
+The saved test record includes the complete strings and generation settings~\cite{tests}.  They demonstrate the command-line path from tokenizer output through the resident WASM module and back to text.
+
+From a prepared repository checkout, the WASM and PyTorch one-liners are:
+\begin{quote}\small\ttfamily
+\verb|tools/gpt2 --text 'Once upon a time' --generate 32 --seed 42|
+
+\verb|tools/gpt2-pytorch --text 'Once upon a time' --generate 32 --seed 42|
+\end{quote}
+Both use a shared uv project with pinned Python dependencies.  The default generation settings are top-$k$ 40, temperature 0.8, and seed 42.  The WASM client uses the Lean SplitMix64 generator for random draws and Python for sampling probabilities.  PyTorch uses its own seeded generator, so equal seeds produce different draw sequences.  Adding \verb|--top-k 1| to each command selects greedy decoding.  Small logit differences can still change an argmax~\cite{driver}.
+
+The setup command
+\begin{quote}\small\ttfamily
+\verb|uv run --project training/gpt2 training/gpt2/reference.py fetch|
+\end{quote}
+downloads and checks the checkpoint.  The reproduction guide lists the compiler and Wasmtime prerequisites~\cite{guide}.  The focused commands for the formal result and the numerical comparison are
+\begin{quote}\small\ttfamily
+\verb|tools/talos-proof.js check gpt2_cached_step|
+
+\verb|node test/packed.js --gpt2-cached --gpt2-completions|
+\end{quote}
+
+\section{Proof reuse and verification scope}
+
+The construction isolates scalar arithmetic, packed representation, loop correspondence, and allocation accounting into reusable lemmas.  The final session proof uses an induction on the token list, with one step theorem carrying output ownership into the next call.  Its numerical inputs range over arbitrary weight bits, so the proof's size depends on algorithm structure and dimensions rather than checkpoint values.  The heap budget uses allocation sizes to close the concrete invocation premises without inspecting numerical weights.
+
+The earlier LeanExe subset report describes the compiler's accepted types, packed layouts, and per-compilation correspondence obligation~\cite{subset}.  The present result discharges that obligation for the named cached GPT-2 module under Talos semantics and the stated byte I/O boundary.  The original GPT-2 source supplies the architecture and cached-attention organization~\cite{gpt2}.  The checked Lean algorithm fixes the FP32 numerical choices used here, and the PyTorch tests provide checkpoint-specific comparison evidence.  Exact-byte closure and a proof of the native runtime would address separate links in the execution chain.
+
+\begin{thebibliography}{99}
+\bibitem{repo} LeanExe repository.  Source checkpoint \longcode{f4d412b709a13bb2649fe23be267ec9928838064}.  \url{https://github.com/jsmorph/leanexe/tree/f4d412b709a13bb2649fe23be267ec9928838064}.
+\bibitem{session} LeanExe.  \src{proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean}{Session theorem} and \src{proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean}{source trace and invocation predicates}.  Report checkpoint.
+\bibitem{subset} Codex GPT-6 and Jamie Stephens.  \emph{The LeanExe Subset: Types, Extraction, and Execution}.  marXiv:2609.00005v6, 2026.  \url{http://127.0.0.1:8405/abs/2609.00005v6}.
+\bibitem{talos} Talos.  Lean WebAssembly execution and proof library.  Revision \longcode{87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.  \url{https://github.com/jsmorph/talos/tree/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.
+\bibitem{gpt2} OpenAI.  GPT-2 model source, including cached attention and tied output projection.  \url{https://github.com/openai/gpt-2/blob/master/src/model.py}.
+\bibitem{manifest} LeanExe.  \src{data/gpt2-124m/manifest.json}{Pretrained checkpoint manifest}.  Report checkpoint.  Weights from \url{https://huggingface.co/openai-community/gpt2/tree/607a30d783dfa663caf39e06633721c8d4cfcd7e}.
+\bibitem{cached} LeanExe.  \src{LeanExe/Models/Gpt2/Cached.lean}{Cached GPT-2 source} and \src{LeanExe/Models/Gpt2/Inference.lean}{model dimensions and vocabulary projection}.  Report checkpoint.
+\bibitem{kernels} LeanExe.  \src{LeanExe/Models/Gpt2/Kernel.lean}{FP32 tensor kernels}.  Report checkpoint.
+\bibitem{packed} LeanExe.  \src{LeanExe/Packed.lean}{Packed word operations} and \src{proofs/talos/lean/Project/ProofKit/PackedMemory.lean}{packed-memory proof definitions}.  Report checkpoint.
+\bibitem{entry} LeanExe.  \src{proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean}{Complete cached-step theorem and component imports}.  Report checkpoint.
+\bibitem{initialize} LeanExe.  \src{proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean}{Module reset, allocation, input, and export identities}.  Report checkpoint.
+\bibitem{numerics} LeanExe.  \src{LeanExe/Models/Gpt2/Numerics.lean}{Exponential, GELU, and word-comparison definitions}.  Report checkpoint.
+\bibitem{termination} Talos.  \emph{Fuel-free specification predicates}.  \url{https://github.com/jsmorph/talos/blob/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Spec/Defs.lean}.
+\bibitem{input} LeanExe.  \src{proofs/talos/lean/Project/ProofKit/PackedInput.lean}{Packed input encoding} and \src{proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean}{exported allocation proof}.  Report checkpoint.
+\bibitem{f32} LeanExe.  \src{proofs/talos/lean/Project/ProofKit/F32Source.lean}{Logical Float32 source correspondence}, with \src{proofs/talos/lean/Project/ProofKit/F32Add.lean}{addition}, \src{proofs/talos/lean/Project/ProofKit/F32Sub.lean}{subtraction}, \src{proofs/talos/lean/Project/ProofKit/F32Mul.lean}{multiplication}, \src{proofs/talos/lean/Project/ProofKit/F32Div.lean}{division}, and \src{proofs/talos/lean/Project/ProofKit/F32Sqrt.lean}{square-root equalities}.  Report checkpoint.
+\bibitem{leanfloat} Lean contributors.  \emph{Float32 logical model}.  Lean revision \longcode{6a10ac8c22beadecabdbb0919c2b50214762f91d}.  \url{https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2b50214762f91d/src/Init/Data/Float/Model/Float32.lean}.
+\bibitem{loops} LeanExe.  \src{proofs/talos/lean/Project/ProofKit/RangeFoldLoop.lean}{Range-fold loop proofs}.  Report checkpoint.
+\bibitem{budget} LeanExe.  \src{proofs/talos/lean/Project/ProofKit/HeapGrowth.lean}{Heap growth} and \src{proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean}{cached-step allocation budget}.  Report checkpoint.
+\bibitem{gate} LeanExe.  \src{tools/talos-lib.js}{Source-driven generation and proof-check driver}.  Report checkpoint.
+\bibitem{wasmspec} WebAssembly Community Group.  \emph{WebAssembly Specification: Numerics}.  \url{https://webassembly.github.io/spec/core/exec/numerics.html}.
+\bibitem{wasmtime} Bytecode Alliance.  \emph{Wasmtime C API: NaN canonicalization configuration}.  \url{https://docs.wasmtime.dev/c-api/config_8h.html}.
+\bibitem{driver} LeanExe.  \src{training/gpt2/wasm.py}{WASM command-line client}, \src{training/gpt2/reference.py}{CPU PyTorch reference}, and \src{tools/wasmtime-host.c}{Wasmtime host}.  Report checkpoint.
+\bibitem{tests} LeanExe.  \src{data/gpt2-124m/canonical-mode-test.json}{Canonical-mode runtime test record}, 18 September 2026.  Report checkpoint.
+\bibitem{testcode} LeanExe.  \src{training/gpt2/test_wasm.py}{128-position comparison test} and \src{test/packed.js}{packed execution and completion tests}.  Report checkpoint.
+\bibitem{guide} LeanExe.  \src{data/gpt2-124m/README.md}{Pretrained GPT-2 reproduction guide}.  Report checkpoint.
+\end{thebibliography}
+\end{document}
