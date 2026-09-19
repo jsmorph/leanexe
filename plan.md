@@ -118,9 +118,9 @@ revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dat
 Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  After the fixed-step
 proof, the retained 21-package draft records release-input digest
 `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
-The preceding 2026-09-04 aggregate artifact receipt is historical for an older
-input identity; aggregate artifact proof, semantic conformance, immutable
-source revision, and cold checkout remain release evidence obligations.  The
+The 2026-09-19 aggregate artifact check passed all 43 current packages.
+The retained release draft does not record that run.  Semantic conformance,
+immutable source revision, and cold checkout remain release evidence obligations.  The
 retained draft predates the recovered 22nd artifact and ARM Mac tooling; its
 input identity and receipts are not presented as current.  Cold
 verification remains deferred and does not form part of the current work.
@@ -136,8 +136,7 @@ verification remains deferred and does not form part of the current work.
       `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` for those historical inputs.
 - [x] Record the prior twenty-one-package aggregate artifact receipt under its
       exact FP `87e3aa5` input identity.
-- [ ] Record a matching aggregate artifact receipt for the final current input
-      after the remaining fixed-step exact-byte and data checkpoints settle.
+- [x] Record the 2026-09-19 aggregate artifact receipt for all 43 current packages.
 - [ ] Complete current semantic conformance, then record its receipt and an
       immutable source revision.
 - [ ] Resume conformance from the preserved local cache.  A command-line target
@@ -810,7 +809,7 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Prove equality with the execution model and transfer the complete session theorem.
 - [x] Complete the focused GPT-2 artifact and source-proof checks.
 - [x] Run cached inference and CLI completion tests.
-- [ ] Complete the aggregate artifact check after the shared verifier change.
+- [x] Complete the aggregate artifact check after the shared verifier change.
 
 The repository-wide source check still stops at the existing `gcd` cache
 mismatch.  GPT-2's focused regeneration and proof checks pass.
