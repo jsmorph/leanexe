@@ -246,6 +246,7 @@ mutual
     | .trap => .trap
     | .u64 value => .u64 value
     | .f64SqrtBits value => .f64SqrtBits (shiftExprCalls offset value)
+    | .floatUnary op value => .floatUnary op (shiftExprCalls offset value)
     | .u64Bin op left right =>
         .u64Bin op (shiftExprCalls offset left) (shiftExprCalls offset right)
     | .ite cond thenValue elseValue =>
@@ -330,6 +331,11 @@ mutual
     | .byteArrayGet ptr len index =>
         .byteArrayGet (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset index)
+    | .byteArrayLoad32 ptr len index =>
+        .byteArrayLoad32 (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset index)
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        .byteArrayGenerate32Ptr (shiftExprCalls offset len) indexSlot (shiftExprCalls offset body)
     | .byteArrayPushPtr ptr len value =>
         .byteArrayPushPtr (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset value)
@@ -464,6 +470,22 @@ def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .f64MulBits => [Instr.mulF64]
   | .f64SubBits => [Instr.subF64]
   | .f64DivBits => [Instr.divF64]
+  | .f32AddBits => [Instr.addF32]
+  | .f32SubBits => [Instr.subF32]
+  | .f32MulBits => [Instr.mulF32]
+  | .f32DivBits => [Instr.divF32]
+
+def emitFloatUnary : LeanExe.IR.FloatUnaryOp → List Instr
+  | .f32SqrtBits =>
+      [.wrapI64, .f32ReinterpretI32, .sqrtF32, .i32ReinterpretF32, .extendUI32]
+  | .f32ToF64Bits =>
+      [.wrapI64, .f32ReinterpretI32, .f64PromoteF32, .i64ReinterpretF64]
+  | .f64ToF32Bits =>
+      [.f64ReinterpretI64, .f32DemoteF64, .i32ReinterpretF32, .extendUI32]
+
+def isF32Binary : LeanExe.IR.U64Op → Bool
+  | .f32AddBits | .f32SubBits | .f32MulBits | .f32DivBits => true
+  | _ => false
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
@@ -746,6 +768,7 @@ mutual
     | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
     | .f64SqrtBits value => exprScratch value
+    | .floatUnary _ value => exprScratch value
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
@@ -832,6 +855,10 @@ mutual
     | .arrayReverseSlots _ _ array => 6 + max 6 (exprScratch array)
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
+    | .byteArrayLoad32 ptr len index =>
+        3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
+    | .byteArrayGenerate32Ptr len _ body =>
+        2 + max 6 (max (exprScratch len) (exprScratch body))
     | .byteArrayPushPtr ptr len value =>
         6 + max 6 (max (exprScratch ptr) (max (exprScratch len) (exprScratch value)))
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
@@ -1413,6 +1440,8 @@ mutual
       localGet newLocal
 
   partial def emitArrayFoldMultiSlot
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch sourceWidth resultWidth : Nat)
       (reverse : Bool)
       (array start stop : Expr)
@@ -1444,11 +1473,11 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -1462,9 +1491,9 @@ mutual
             [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.subI64] ++ localSet indexLocal ++
           emitSourceLoads (List.range sourceWidth) ++
-          bodyLets.flatMap (emitLocalLet childScratch) ++
+          bodyLets.flatMap (emitBinding childScratch) ++
           emitBodyStages (enumerate bodyValues) ++
-          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
           i64Const 1 ++ localSet releaseReadyLocal ++
@@ -1476,25 +1505,27 @@ mutual
         ([Instr.block [Instr.loop (localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
             [Instr.brIf 1] ++
           emitSourceLoads (List.range sourceWidth) ++
-          bodyLets.flatMap (emitLocalLet childScratch) ++
+          bodyLets.flatMap (emitBinding childScratch) ++
           emitBodyStages (enumerate bodyValues) ++
-          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
           i64Const 1 ++ localSet releaseReadyLocal ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
           [Instr.br 0])]])
-    emitExpr childScratch array ++ localSet arrayLocal ++
+    emitValue childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
-      emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
+      emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       emitLoop ++
       localGet (accStart + resultSlot)
 
   partial def emitArrayFoldMultiSlotAssign
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch sourceWidth resultWidth : Nat)
       (reverse : Bool)
       (array start stop : Expr)
@@ -1526,11 +1557,11 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -1548,9 +1579,9 @@ mutual
             [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.subI64] ++ localSet indexLocal ++
           emitSourceLoads (List.range sourceWidth) ++
-          bodyLets.flatMap (emitLocalLet childScratch) ++
+          bodyLets.flatMap (emitBinding childScratch) ++
           emitBodyStages (enumerate bodyValues) ++
-          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
           i64Const 1 ++ localSet releaseReadyLocal ++
@@ -1562,19 +1593,19 @@ mutual
         ([Instr.block [Instr.loop (localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
             [Instr.brIf 1] ++
           emitSourceLoads (List.range sourceWidth) ++
-          bodyLets.flatMap (emitLocalLet childScratch) ++
+          bodyLets.flatMap (emitBinding childScratch) ++
           emitBodyStages (enumerate bodyValues) ++
-          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
           i64Const 1 ++ localSet releaseReadyLocal ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
           [Instr.br 0])]])
-    emitExpr childScratch array ++ localSet arrayLocal ++
+    emitValue childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
-      emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
+      emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       emitLoop ++
@@ -1949,6 +1980,42 @@ mutual
       ([Instr.iff true (localGet ptrLocal ++ localGet indexLocal ++ [Instr.addI64] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U) (some ([Instr.unreachable]))])
 
+  partial def emitByteArrayLoad32
+      (emitValue : Nat → Expr → List Instr)
+      (scratch : Nat) (ptr len offset : Expr) : List Instr :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let offsetLocal := scratch + 2
+    let childScratch := scratch + 3
+    emitValue childScratch ptr ++ localSet ptrLocal ++
+      emitValue childScratch len ++ localSet lenLocal ++
+      emitValue childScratch offset ++ localSet offsetLocal ++
+      localGet offsetLocal ++ localGet lenLocal ++ i64LeU ++
+      [Instr.iff true
+        (localGet lenLocal ++ localGet offsetLocal ++ [Instr.subI64] ++ i64Const 4 ++ i64GeU ++
+          [Instr.iff true
+            (localGet ptrLocal ++ localGet offsetLocal ++ [Instr.addI64, Instr.wrapI64,
+              Instr.load32, Instr.extendUI32]) (some [Instr.unreachable])])
+        (some [Instr.unreachable])]
+
+  partial def emitByteArrayGenerate32Ptr
+      (emitValue : Nat → Expr → List Instr)
+      (scratch : Nat) (byteLen : Expr) (indexSlot : Nat) (body : Expr) : List Instr :=
+    let lenLocal := scratch
+    let ptrLocal := scratch + 1
+    let childScratch := scratch + 2
+    emitValue childScratch byteLen ++ localSet lenLocal ++
+      rcAllocRawObject childScratch (localGet lenLocal) ++ localSet ptrLocal ++
+      i64Const 0 ++ localSet indexSlot ++
+      [Instr.block [Instr.loop
+        (localGet indexSlot ++ i64Const 4 ++ [Instr.mulI64] ++
+          localGet lenLocal ++ i64GeU ++ [Instr.brIf 1] ++
+          localGet ptrLocal ++ localGet indexSlot ++ i64Const 4 ++
+          [Instr.mulI64, Instr.addI64, Instr.wrapI64] ++
+          emitValue childScratch body ++ [Instr.wrapI64, Instr.store32] ++
+          localGet indexSlot ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexSlot ++
+          [Instr.br 0])]] ++ localGet ptrLocal
+
   partial def emitByteArrayPushPtr (scratch : Nat) (ptr len value : Expr) : List Instr :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -2187,6 +2254,8 @@ mutual
       localGet resultLocal
 
   partial def emitByteArrayFoldMultiSlot
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (ptr len start stop : Expr)
       (initValues : List Expr)
@@ -2212,19 +2281,19 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
           localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
-    emitExpr childScratch ptr ++ localSet ptrLocal ++
-      emitExpr childScratch len ++ localSet lenLocal ++
-      emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
+    emitValue childScratch ptr ++ localSet ptrLocal ++
+      emitValue childScratch len ++ localSet lenLocal ++
+      emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
@@ -2233,9 +2302,9 @@ mutual
           [Instr.brIf 1] ++
         localGet ptrLocal ++ localGet indexLocal ++ [Instr.addI64] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
+        bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
@@ -2245,6 +2314,8 @@ mutual
       localGet (accStart + resultSlot)
 
   partial def emitByteArrayFoldMultiSlotAssign
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (ptr len start stop : Expr)
       (initValues : List Expr)
@@ -2270,11 +2341,11 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -2283,10 +2354,10 @@ mutual
       | [] => []
       | (offset, target) :: rest =>
           localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
-    emitExpr childScratch ptr ++ localSet ptrLocal ++
-      emitExpr childScratch len ++ localSet lenLocal ++
-      emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
+    emitValue childScratch ptr ++ localSet ptrLocal ++
+      emitValue childScratch len ++ localSet lenLocal ++
+      emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
@@ -2295,9 +2366,9 @@ mutual
           [Instr.brIf 1] ++
         localGet ptrLocal ++ localGet indexLocal ++ [Instr.addI64] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
+        bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
@@ -2361,6 +2432,8 @@ mutual
       ([Instr.iff true (i64Const 0) (some (localGet leftLocal ++ localGet rightLocal ++ [Instr.subI64]))])
 
   partial def emitRangeFoldMultiSlot
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (start stop step : Expr)
       (initValues : List Expr)
@@ -2384,35 +2457,37 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
           localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
-    emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
-      emitExpr childScratch step ++ localSet stepLocal ++
+    emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
+      emitValue childScratch step ++ localSet stepLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ [Instr.brIf 1] ++
         localGet indexLocal ++ localSet itemSlot ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
+        bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
-        emitExpr childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
+        emitValue childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
           localSet indexLocal ++
         [Instr.br 0])]]) ++
       localGet (accStart + resultSlot)
 
   partial def emitRangeFoldMultiSlotAssign
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (start stop step : Expr)
       (initValues : List Expr)
@@ -2436,11 +2511,11 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -2449,26 +2524,28 @@ mutual
       | [] => []
       | (offset, target) :: rest =>
           localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
-    emitExpr childScratch start ++ localSet indexLocal ++
-      emitExpr childScratch stop ++ localSet stopLocal ++
-      emitExpr childScratch step ++ localSet stepLocal ++
+    emitValue childScratch start ++ localSet indexLocal ++
+      emitValue childScratch stop ++ localSet stopLocal ++
+      emitValue childScratch step ++ localSet stepLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ [Instr.brIf 1] ++
         localGet indexLocal ++ localSet itemSlot ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
+        bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
-        emitExpr childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
+        emitValue childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
           localSet indexLocal ++
         [Instr.br 0])]]) ++
       emitTargetCopies (enumerate targets)
 
   partial def emitLoopFoldMultiSlot
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (initValues : List Expr)
       (accStart : Nat)
@@ -2488,20 +2565,20 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
           localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
     emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
-      ([Instr.block [Instr.loop (bodyLets.flatMap (emitLocalLet childScratch) ++
+      ([Instr.block [Instr.loop (bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
@@ -2510,6 +2587,8 @@ mutual
       localGet (accStart + resultSlot)
 
   partial def emitLoopFoldMultiSlotAssign
+      (emitValue : Nat → Expr → List Instr)
+      (emitBinding : Nat → LocalLet → List Instr)
       (releaseIndex scratch resultWidth : Nat)
       (initValues : List Expr)
       (accStart : Nat)
@@ -2529,11 +2608,11 @@ mutual
     let rec emitInitStores : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+          emitValue childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
     let rec emitBodyStages : List (Nat × Expr) → List Instr
       | [] => []
       | (offset, value) :: rest =>
-          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+          emitValue childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
     let rec emitTempCopies : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -2544,9 +2623,9 @@ mutual
           localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
     emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
-      ([Instr.block [Instr.loop (bodyLets.flatMap (emitLocalLet childScratch) ++
+      ([Instr.block [Instr.loop (bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
         i64Const 1 ++ localSet releaseReadyLocal ++
@@ -2612,7 +2691,14 @@ mutual
     | .f64SqrtBits value =>
         emitExpr scratch value ++
           [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
-    | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
+    | .floatUnary op value => emitExpr scratch value ++ emitFloatUnary op
+    | .u64Bin op left right =>
+        if isF32Binary op then
+          emitExpr scratch left ++ [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+            emitExpr scratch right ++ [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+            emitU64Op op ++ [Instr.i32ReinterpretF32, Instr.extendUI32]
+        else
+          emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ([Instr.iff true (emitExpr scratch thenValue) (some (emitExpr scratch elseValue))])
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
@@ -2642,7 +2728,7 @@ mutual
           array itemStart bodyValues bodyLets
     | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
-        emitArrayFoldMultiSlot 0 scratch sourceWidth resultWidth reverse array start stop initValues
+        emitArrayFoldMultiSlot emitExpr emitLocalLet 0 scratch sourceWidth resultWidth reverse array start stop initValues
           accStart itemStart bodyValues bodyLets bodyDone [] resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         emitArrayFindIdxSlots scratch sourceWidth array itemStart predicate returnPayload
@@ -2662,6 +2748,9 @@ mutual
         emitArraySwapIfInBoundsSlots scratch width childMask array left right
     | .arrayReverseSlots width childMask array => emitArrayReverseSlots scratch width childMask array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
+    | .byteArrayLoad32 ptr len offset => emitByteArrayLoad32 emitExpr scratch ptr len offset
+    | .byteArrayGenerate32Ptr len indexSlot body =>
+        emitByteArrayGenerate32Ptr emitExpr scratch len indexSlot body
     | .byteArrayPushPtr ptr len value => emitByteArrayPushPtr scratch ptr len value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
         emitByteArrayAppendPtr scratch leftPtr leftLen rightPtr rightLen
@@ -2676,15 +2765,15 @@ mutual
         emitByteArrayFindIdx scratch ptr len start byteSlot predicate returnPayload
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
-        emitByteArrayFoldMultiSlot 0 scratch resultWidth ptr len start stop initValues accStart
+        emitByteArrayFoldMultiSlot emitExpr emitLocalLet 0 scratch resultWidth ptr len start stop initValues accStart
           byteSlot bodyValues bodyLets bodyDone [] resultSlot
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
         bodyLets bodyDone _releaseOffsets resultSlot =>
-        emitRangeFoldMultiSlot 0 scratch resultWidth start stop step initValues accStart itemSlot
+        emitRangeFoldMultiSlot emitExpr emitLocalLet 0 scratch resultWidth start stop step initValues accStart itemSlot
           bodyValues bodyLets bodyDone [] resultSlot
     | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
         _releaseOffsets resultSlot =>
-        emitLoopFoldMultiSlot 0 scratch resultWidth initValues accStart bodyValues bodyLets
+        emitLoopFoldMultiSlot emitExpr emitLocalLet 0 scratch resultWidth initValues accStart bodyValues bodyLets
           bodyDone [] resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
         stopWhenTrue terminalValue =>
@@ -2709,7 +2798,7 @@ mutual
                 itemStart bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            emitArrayFoldMultiSlotAssign 0 scratch sourceWidth resultWidth reverse array start stop
+            emitArrayFoldMultiSlotAssign emitExpr emitLocalLet 0 scratch sourceWidth resultWidth reverse array start stop
               initValues accStart itemStart bodyValues bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
@@ -2724,7 +2813,7 @@ mutual
                 byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            emitByteArrayFoldMultiSlotAssign 0 scratch resultWidth ptr len start stop initValues
+            emitByteArrayFoldMultiSlotAssign emitExpr emitLocalLet 0 scratch resultWidth ptr len start stop initValues
               accStart byteSlot bodyValues bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
@@ -2739,7 +2828,7 @@ mutual
                 bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            emitRangeFoldMultiSlotAssign 0 scratch resultWidth start stop step initValues accStart
+            emitRangeFoldMultiSlotAssign emitExpr emitLocalLet 0 scratch resultWidth start stop step initValues accStart
               itemSlot bodyValues bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
@@ -2754,7 +2843,7 @@ mutual
                 releaseOffsets offset
                 : Expr)
           if values == expected then
-            emitLoopFoldMultiSlotAssign 0 scratch resultWidth initValues accStart bodyValues
+            emitLoopFoldMultiSlotAssign emitExpr emitLocalLet 0 scratch resultWidth initValues accStart bodyValues
               bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
@@ -2818,9 +2907,18 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .f64SqrtBits value =>
       emitExprWithReleaseFallback releaseIndex scratch value ++
         [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
+  | .floatUnary op value =>
+      emitExprWithReleaseFallback releaseIndex scratch value ++ emitFloatUnary op
   | .u64Bin op left right =>
-      emitExprWithReleaseFallback releaseIndex scratch left ++
-        emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
+      if isF32Binary op then
+        emitExprWithReleaseFallback releaseIndex scratch left ++
+          [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+          emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.wrapI64, Instr.f32ReinterpretI32] ++
+          emitU64Op op ++ [Instr.i32ReinterpretF32, Instr.extendUI32]
+      else
+        emitExprWithReleaseFallback releaseIndex scratch left ++
+          emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
   | .ite cond thenValue elseValue =>
       emitCondWithReleaseFallback releaseIndex scratch cond ++ ([Instr.iff true (emitExprWithReleaseFallback releaseIndex scratch thenValue) (some (emitExprWithReleaseFallback releaseIndex scratch elseValue))])
   | .letE slot value body =>
@@ -2836,24 +2934,28 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .release ptr =>
       emitExprWithReleaseFallback releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
+  | .byteArrayLoad32 ptr len offset =>
+      emitByteArrayLoad32 (emitExprWithReleaseFallback releaseIndex) scratch ptr len offset
+  | .byteArrayGenerate32Ptr len indexSlot body =>
+      emitByteArrayGenerate32Ptr (emitExprWithReleaseFallback releaseIndex) scratch len indexSlot body
   | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
       emitArrayMapSlots (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex)
         scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets
   | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
-      emitArrayFoldMultiSlot releaseIndex scratch sourceWidth resultWidth reverse array start stop
+      emitArrayFoldMultiSlot (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch sourceWidth resultWidth reverse array start stop
         initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
-      emitByteArrayFoldMultiSlot releaseIndex scratch resultWidth ptr len start stop initValues
+      emitByteArrayFoldMultiSlot (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth ptr len start stop initValues
         accStart byteSlot bodyValues bodyLets bodyDone releaseOffsets resultSlot
   | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
       bodyLets bodyDone releaseOffsets resultSlot =>
-      emitRangeFoldMultiSlot releaseIndex scratch resultWidth start stop step initValues accStart
+      emitRangeFoldMultiSlot (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth start stop step initValues accStart
         itemSlot bodyValues bodyLets bodyDone releaseOffsets resultSlot
   | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone releaseOffsets
       resultSlot =>
-      emitLoopFoldMultiSlot releaseIndex scratch resultWidth initValues accStart bodyValues bodyLets
+      emitLoopFoldMultiSlot (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth initValues accStart bodyValues bodyLets
         bodyDone releaseOffsets resultSlot
   | expr => emitExpr scratch expr
 
@@ -2887,7 +2989,7 @@ partial def emitSlotsAssignWithRelease
               itemStart bodyValues bodyLets bodyDone releaseOffsets offset
               : Expr)
         if values == expected then
-          emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth reverse array
+          emitArrayFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch sourceWidth resultWidth reverse array
             start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
@@ -2904,7 +3006,7 @@ partial def emitSlotsAssignWithRelease
               byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
               : Expr)
         if values == expected then
-          emitByteArrayFoldMultiSlotAssign releaseIndex scratch resultWidth ptr len start stop
+          emitByteArrayFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth ptr len start stop
             initValues accStart byteSlot bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
@@ -2921,7 +3023,7 @@ partial def emitSlotsAssignWithRelease
               bodyValues bodyLets bodyDone releaseOffsets offset
               : Expr)
         if values == expected then
-          emitRangeFoldMultiSlotAssign releaseIndex scratch resultWidth start stop step initValues
+          emitRangeFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth start stop step initValues
             accStart itemSlot bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
@@ -2938,7 +3040,7 @@ partial def emitSlotsAssignWithRelease
               releaseOffsets offset
               : Expr)
         if values == expected then
-          emitLoopFoldMultiSlotAssign releaseIndex scratch resultWidth initValues accStart
+          emitLoopFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth initValues accStart
             bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
@@ -3033,19 +3135,19 @@ partial def emitStmtFallback (releaseIndex scratch : Nat) : Stmt → List Instr
   | .release ptr => emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets targets =>
-      emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth reverse array start stop
+      emitArrayFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch sourceWidth resultWidth reverse array start stop
         initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets targets =>
-      emitByteArrayFoldMultiSlotAssign releaseIndex scratch resultWidth ptr len start stop initValues
+      emitByteArrayFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth ptr len start stop initValues
         accStart byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
   | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot bodyValues
       bodyLets bodyDone releaseOffsets targets =>
-      emitRangeFoldMultiSlotAssign releaseIndex scratch resultWidth start stop step initValues accStart
+      emitRangeFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth start stop step initValues accStart
         itemSlot bodyValues bodyLets bodyDone releaseOffsets targets
   | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
       releaseOffsets targets =>
-      emitLoopFoldMultiSlotAssign releaseIndex scratch resultWidth initValues accStart bodyValues
+      emitLoopFoldMultiSlotAssign (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex) releaseIndex scratch resultWidth initValues accStart bodyValues
         bodyLets bodyDone releaseOffsets targets
   | .ite cond thenStmt elseStmt =>
       emitCondWithRelease releaseIndex scratch cond ++ ([Instr.iff false (emitStmtFallback releaseIndex scratch thenStmt) (some (emitStmtFallback releaseIndex scratch elseStmt))])

@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Content-Disposition: inline; filename="2609.00005v3.pdf"
+Content-Length: 369932
+Content-Type: application/pdf
+Last-Modified: Fri, 18 Sep 2026 16:19:56 GMT
+Date: Fri, 18 Sep 2026 16:21:37 GMT
+

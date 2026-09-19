@@ -6,6 +6,13 @@
 -/
 
 import Project.Runtime.Defs
+import Project.Gpt2RowMean.Program
+import Project.Gpt2RowInvStd.Program
+import Project.Gpt2AttentionScore.Program
+import Project.Gpt2LinearRows.Program
+import Project.Gpt2CachedStep.Program
+import Project.PackedRead.Program
+import Project.PackedGenerate.Program
 import Project.SequenceSoftmax.Program
 import Project.TinyGpt2Seq.Program
 import Project.TinyGpt2Checked.Program
@@ -70,6 +77,31 @@ import Project.SharedPair.Program
 import Project.Validate.Program
 
 namespace Project.Runtime
+
+example : eraseTypeIdx Project.Gpt2RowMean.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowMean.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowMean.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowMean.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.Gpt2RowInvStd.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowInvStd.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowInvStd.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2RowInvStd.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.Gpt2AttentionScore.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2AttentionScore.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2AttentionScore.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2AttentionScore.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.Gpt2LinearRows.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2LinearRows.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2LinearRows.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2LinearRows.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
+
+example : eraseTypeIdx Project.Gpt2CachedStep.func39Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2CachedStep.func40Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2CachedStep.func41Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2CachedStep.func42Def = eraseTypeIdx (releaseFuncDef 42) := rfl
 
 example : eraseTypeIdx Project.AppendBang.func1Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.AppendBang.func2Def = eraseTypeIdx resetFuncDef := rfl
@@ -381,5 +413,15 @@ example : eraseTypeIdx Project.TinyGpt2Seq.func79Def = eraseTypeIdx allocFuncDef
 example : eraseTypeIdx Project.TinyGpt2Seq.func80Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Seq.func81Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.TinyGpt2Seq.func82Def = eraseTypeIdx (releaseFuncDef 82) := rfl
+
+example : eraseTypeIdx Project.PackedRead.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PackedRead.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PackedRead.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PackedRead.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.PackedGenerate.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PackedGenerate.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
 end Project.Runtime

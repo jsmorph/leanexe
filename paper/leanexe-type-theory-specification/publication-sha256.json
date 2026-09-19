@@ -4,23 +4,23 @@
   "files": [
     {
       "path": "paper/leanexe-type-theory-specification/README.md",
-      "bytes": 3723,
-      "sha256": "7f4ab29539d2fa04e3a2536f387b4c9d4c5b111f05316658d0686e31517fff02"
+      "bytes": 5064,
+      "sha256": "b7a9f0961e75b72718b0bf0d9f685e44f1425955ec42cad4a1bd3c5902298879"
     },
     {
       "path": "paper/leanexe-type-theory-specification/publication-record.md",
-      "bytes": 5021,
-      "sha256": "8f08b9bd1c4741c495cc60ecfac6cbda69f51faaa65824e5fe0c878cce1afcfd"
+      "bytes": 6657,
+      "sha256": "540d5322ab16545105a1e9140bcc4277c44d52bea17461fcc195d6445dee2bca"
     },
     {
       "path": "paper/leanexe-type-theory-specification/publication-files.txt",
-      "bytes": 2447,
-      "sha256": "9ae8a4833d88e5c1210a6a16b01821cb6c315735092ab380eb7fdb49c661bee6"
+      "bytes": 6770,
+      "sha256": "c1403dc9b24f6adf813a3ed0befc91773b9082882f6b0000920dd7184a2a8ab9"
     },
     {
       "path": "paper/leanexe-type-theory-specification/notes.md",
-      "bytes": 3818,
-      "sha256": "f4a324f33880483657e53c8ba77d780f4cbe41d42d6f0b88159a091193689cb6"
+      "bytes": 6955,
+      "sha256": "287d3c52aad4d7a2c359ee7160219d4b0f18e1b6a2e0d7d06e4a0c0a04d21531"
     },
     {
       "path": "paper/leanexe-type-theory-specification/standards-2026-09-11.md",
@@ -191,6 +191,341 @@
       "path": "paper/leanexe-type-theory-specification/submission-02/verification.json",
       "bytes": 649,
       "sha256": "14dde56887587109fe2658c302844311b46f2000e4d8fd446cbb5060603c161c"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/standards-2026-09-18.md",
+      "bytes": 4279,
+      "sha256": "edd5086ae582e673b14a02a0eb2550e7b7bef9604db0dc78b1ffe06e032b4c45"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/style-2026-09-18.md",
+      "bytes": 14649,
+      "sha256": "f791d8fca0f988be486a34441b039e2ed2059ca07030fa3ed72e31e6889bcff6"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/evidence/source-identities-v3.json",
+      "bytes": 7086,
+      "sha256": "429c5fc26e9a2285be3ee2806a8c9e7c2f46d1137a66273998c2dd7a638632bc"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/evidence/comparison-v3.txt",
+      "bytes": 1037,
+      "sha256": "6c42654de45d807285f4818dddda929f611ec35d77e1f72373e693a177a3bb35"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/main.tex",
+      "bytes": 56185,
+      "sha256": "5ad35f04cc142111cc967ea1ff82bdbd78521d97ceebee0a33ef87028086273a"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/revision-notes.md",
+      "bytes": 2730,
+      "sha256": "42aa4395f7f777bfe1374cb0b2b180422ecc5f0a69fd8fabc74040219e082327"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/pass-01/main.pdf",
+      "bytes": 369932,
+      "sha256": "d31f45dfe8f8eb138a6c3999f8195d1cbe02fa73d9b37a7683734193325aa5d7"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/pass-01/main.log",
+      "bytes": 24904,
+      "sha256": "ed449d3ee59ece5992c7ec923f1726d025352317712652b91aa6f4d73ef2e665"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/metadata.json",
+      "bytes": 1641,
+      "sha256": "3d2ea31d3ed31a0ec77f9e04337941de6b5590a41e11a86086ebb04276a0788b"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/text.txt",
+      "bytes": 48922,
+      "sha256": "57de6db36f6b3479ce0025c4b5581bd02a2021457808c6e2650e92362fddae8d"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v6/pdfinfo.txt",
+      "bytes": 693,
+      "sha256": "982537b19417e7617a009f8ea36914a0a993f4e4d74616eab917555493dcf70e"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/request.json",
+      "bytes": 1641,
+      "sha256": "3d2ea31d3ed31a0ec77f9e04337941de6b5590a41e11a86086ebb04276a0788b"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/upload-attempts.md",
+      "bytes": 728,
+      "sha256": "0079aef0d288dee69faf8819c968a46a6461a5b710634fe4bfa53fde3a6414b5"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/retry-response-headers.txt",
+      "bytes": 114,
+      "sha256": "435b5392d54b247f0f2fad0fb51e1de30647d0ee0810b2d3f8ac1228113db763"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/status-url.txt",
+      "bytes": 42,
+      "sha256": "cae4eae242cb1f761dc5617d357b56c21739554b1e0c5438bf5b96498e2b50a4"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/prior-archive-page.html",
+      "bytes": 3900,
+      "sha256": "919c44fa6372ba342df965391d073d8ba1f78489726ff426e6dbf5acbcdec168"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/accepted-status.html",
+      "bytes": 2517,
+      "sha256": "cc139eab7d1b8cf42334dc3112c524950e8534bf237094142463777946a44e0a"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/review.txt",
+      "bytes": 221,
+      "sha256": "6ced3c5cf2be1b0f83403c19734f1b120884aa5614c1ece298eb8102b322048f"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/archive-paper.html",
+      "bytes": 4131,
+      "sha256": "fe13a7ab9e5c633b54bba26f468d958ef010ce879048ebd9c4d0b34b60510b2c"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/archive-pdf-headers.txt",
+      "bytes": 237,
+      "sha256": "929e8e09b8342d154386539d47016dd2b8b68c9bf1019f47e5ddd45acafbf697"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-03/verification.json",
+      "bytes": 250,
+      "sha256": "376a7225e9865d49e91eaa8f92ef2e2f767bdf14e75f883367016a70cd6d78d3"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/main.tex",
+      "bytes": 56242,
+      "sha256": "8e248cc9923db9ebdc1da12cfe9b711e4ed72c955ee4d47d88b93e78f97bb0b0"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/revision-notes.md",
+      "bytes": 379,
+      "sha256": "8183e85a09067f350a00d3b20ff82ac1e570c48e76dd0072ea01c42026ad7f86"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/pass-01/main.pdf",
+      "bytes": 370363,
+      "sha256": "e5e28a951a471c97490cd95a2b1a9c10cac5109db49587d9b8209c0499fbbc2c"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/pass-01/main.log",
+      "bytes": 24909,
+      "sha256": "90cd4dc0836469d20dc9fe4c3b5f5f024f91dd90ebb15028ced2a27f7fe4e905"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/metadata.json",
+      "bytes": 1641,
+      "sha256": "5defb0b7bf563c75bd5d41a49ade6f10bbaa8dbfda292ea92257e2b9b7b1c3d3"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/text.txt",
+      "bytes": 48983,
+      "sha256": "54248532a30c73519b0c294d1d9c16903189bcc5103c34ddf0ec21eb550ab04f"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v7/pdfinfo.txt",
+      "bytes": 693,
+      "sha256": "d366c11d54b808c06a9db0e00d1a2dded26f5d2c5f808b296f3df3f084337c23"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/request.json",
+      "bytes": 1641,
+      "sha256": "5defb0b7bf563c75bd5d41a49ade6f10bbaa8dbfda292ea92257e2b9b7b1c3d3"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/response-headers.txt",
+      "bytes": 114,
+      "sha256": "2a42a1635c531b2fc53fb4291e3a36ed727930c06f78c86b0470f721ae3d8077"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/status-url.txt",
+      "bytes": 42,
+      "sha256": "fa4f085f1912c753869e7a2f0e25eaa3f8759e3b9b4754c5a4431713c7bbd77e"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/accepted-status.html",
+      "bytes": 2834,
+      "sha256": "8104afddd2c2900a6705df668212ba7036d62ad1e51966ed5f4f4b46313f89b7"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/review.txt",
+      "bytes": 538,
+      "sha256": "4dc8956dc9d3d7eb2db73c7fa2f0bde1fd2a55be00b44b02c9b57a92e172237e"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/archive-paper.html",
+      "bytes": 4232,
+      "sha256": "2e10c4edc55197328b66544f5e947a5aed802d56f8d4d3e647aa5e2977617df8"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/archive-pdf-headers.txt",
+      "bytes": 237,
+      "sha256": "79ec18edc68822970b1e1b21d449746a25e871573b2c45b40e973f58a39d33d5"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-04/verification.json",
+      "bytes": 871,
+      "sha256": "238181a8c1983bdab4a2521ddaae07a6a0b93bc92f9a72e89c82e79b77bca239"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/main.tex",
+      "bytes": 56646,
+      "sha256": "527273044dd7d6cceba9a662800ca3a35e6580afeb2c8517955dbd8757ec38ab"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/revision-notes.md",
+      "bytes": 473,
+      "sha256": "9e76b6cef7b20daa0fb44f94bd9cb7f81cb7b367ffde3a2f2ae4bb53248b1729"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/pass-01/main.pdf",
+      "bytes": 370934,
+      "sha256": "23e2fa3059e5b748e0ab8a6c09272d1ff8b2cd6445cbc6219765784dd9ea6ce7"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/pass-01/main.log",
+      "bytes": 24909,
+      "sha256": "bf4c7fae339f9010efd4f1343bdef19f9bb7aed76287f67818f4469d94e9612f"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/metadata.json",
+      "bytes": 1641,
+      "sha256": "1318a47db3e6c7325fb806b0f785a823ec2a16cf1c06080d4978821ae16fb604"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/text.txt",
+      "bytes": 49328,
+      "sha256": "12d0f0333d8c1e07419ea5899b8310116fdff7bdba00e0e83301358aa4c168d2"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v8/pdfinfo.txt",
+      "bytes": 693,
+      "sha256": "789b07a0c3b3bc9c966f6828aa52578a4905c2e301ceb7f298cb8fcdd2ca5ec6"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/request.json",
+      "bytes": 1641,
+      "sha256": "1318a47db3e6c7325fb806b0f785a823ec2a16cf1c06080d4978821ae16fb604"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/response-headers.txt",
+      "bytes": 114,
+      "sha256": "93f54759877de6993cb8a04424e2639468a53bd73bcdc67b7affb65cfa6a002c"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/status-url.txt",
+      "bytes": 42,
+      "sha256": "5d8f77c4171b59c249da720569738b84efdaa356938518875c31f2586a64f2e2"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/accepted-status.html",
+      "bytes": 2559,
+      "sha256": "ee0a2a4cb88033d7d10e64cad72bc02b034226309924672a37c595ead7cacad9"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/review.txt",
+      "bytes": 263,
+      "sha256": "e1889c60ce4d8fbcce000adca663cdf846c824c6be91a63862c003fe06fd0991"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/archive-paper.html",
+      "bytes": 4333,
+      "sha256": "b7f54a2c2f7fc655196e6ebbd762c8ee59cfe7ea53e2b1b17bc7382080255ead"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/archive-pdf-headers.txt",
+      "bytes": 237,
+      "sha256": "5369ea21b052ddc7b539fb7b543bc6a79ab0ef0d4d2d68aba99553468f7f8fad"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-05/verification.json",
+      "bytes": 290,
+      "sha256": "52556c8d4192a3378bc0b5eb1464b40e4b64181a47a243e39b528ae2f935d97b"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/main.tex",
+      "bytes": 56676,
+      "sha256": "95c5308dac3834aa4274ff4641c4a4e08b3ba20179125df47f984102845090b6"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/revision-notes.md",
+      "bytes": 331,
+      "sha256": "8057df00c8fd9a4dc481f2813349c1d377b271209584dce3c3ed2b0c28ec4fe3"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/pass-01/main.pdf",
+      "bytes": 370965,
+      "sha256": "20eb9f570d15616e6bb0688b9dd2280c2ec10fbe1ef02610473b89d4486e9873"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/pass-01/main.log",
+      "bytes": 24909,
+      "sha256": "e0062796593175dc25694803472e1854ed456136e1491e9e90cae786715909f7"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/metadata.json",
+      "bytes": 1641,
+      "sha256": "0be7ec0db2d1dab3e0b6a674de83a38ae970a23e86f8a3ed5d78c8546e90b497"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/text.txt",
+      "bytes": 49358,
+      "sha256": "68edd4a64480ddabcd0cb6efafb273afc37a4c1b76fcc35e7c443fd79d23511b"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/v9/pdfinfo.txt",
+      "bytes": 693,
+      "sha256": "a11dd61d95e0305bf0db4936d7492ba0b5f0380b86f810e43f22c883afa3d053"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/request.json",
+      "bytes": 1641,
+      "sha256": "0be7ec0db2d1dab3e0b6a674de83a38ae970a23e86f8a3ed5d78c8546e90b497"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/response-headers.txt",
+      "bytes": 114,
+      "sha256": "0262d76ebe4c71022ddef8c493c876fef2ce6a8ab6e71ba5e096760b670644ea"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/status-url.txt",
+      "bytes": 42,
+      "sha256": "00799f573473497769c1efe7d4109393349dc77a2cf344e563cfc1b1e929866e"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/accepted-status.html",
+      "bytes": 2347,
+      "sha256": "594a787c7a4e3f3e13ea8e9338250437841f6c13562bd1d0ba00c7fa270edffc"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/review.txt",
+      "bytes": 51,
+      "sha256": "534e319447ba1dd0fe0e3716169b26671d1592fce237094bc31d7a5d739ea831"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/archive-paper.html",
+      "bytes": 4434,
+      "sha256": "1721fefc9b9772893eb6fcbc89b8751b13723ca7d74df4ec070e6d737e8af9a7"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/archive-pdf-headers.txt",
+      "bytes": 237,
+      "sha256": "4bbb4cc0c3170faa2a58fd39e240f6a443f504bbe630f378e8319a62ed37c45b"
+    },
+    {
+      "path": "paper/leanexe-type-theory-specification/submission-06/verification.json",
+      "bytes": 323,
+      "sha256": "fa5333d516df5aafa127fc064dc24150fafac557cd69ee58c3b9944bb739b720"
+    },
+    {
+      "path": "paper/README.md",
+      "bytes": 2937,
+      "sha256": "a5186d6b8f397d9ebc96603730804130d507bdab7a6875c1ca760388c52abc34"
     }
   ]
 }

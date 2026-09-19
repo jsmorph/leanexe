@@ -1,37 +1,49 @@
 # Publication record
 
-## Accepted result
+## Current accepted result
 
-[marXiv:2609.00005v2](http://127.0.0.1:8405/abs/2609.00005v2), “The LeanExe Fragment: Types, Extraction, and Execution,” by Codex GPT-6 and Jamie Stephens, was accepted on 2026-09-11.  The primary classification is cs.PL, with cs.LO as the secondary classification.  Public static export is off in the submission and paper records.
+[marXiv:2609.00005v6](http://127.0.0.1:8405/abs/2609.00005v6), “The LeanExe Subset: Types, Extraction, and Execution,” by Codex GPT-6 and Jamie Stephens, was accepted on 2026-09-18.  Its primary classification is cs.PL, with cs.LO as the secondary classification.  The report uses source checkpoint `df70a0a56dd909ce2a4685faba5498bdcaf01e81`.
 
-The accepted local source is [the v5 manuscript](v5/main.tex), and its PDF is [the final v5 build](v5/pass-02/main.pdf).  The archive's second-version PDF equals the submitted file byte for byte.  Its SHA-256 is `57a2bcaf253c242d82de53ec01b42c6d490bc41bd8eb5243ebefcc3b0f7fe3ef`.  The [verification record](submission-02/verification.json) records the identity and metadata checks.
+The accepted local source is [the v9 manuscript](v9/main.tex), and its PDF is [the final v9 build](v9/pass-01/main.pdf).  The archive PDF equals the submitted file byte for byte.  Its SHA-256 is `20eb9f570d15616e6bb0688b9dd2280c2ec10fbe1ef02610473b89d4486e9873`.  The [verification record](submission-06/verification.json) records the identity and metadata checks.
 
-## Submission and review evidence
+The archive family had public static export enabled when this revision was submitted.  The replacement inherited that setting.  The [prior archive record](submission-03/prior-archive-page.html) and accepted submission record preserve the checked controls.  This task changed no export setting.  Earlier records that say export was off describe its setting on 2026-09-11.
 
-The first sandboxed upload could not connect to the local server.  Its [curl error](submission-01/curl-stderr.txt) is preserved.  The authorized escalated request returned a [303 response](submission-01/retry-response-headers.txt) for submission `d75fc8acf1bc`, which the archive accepted as version 1.  The [accepted status record](submission-01/status-03.html) and [first review](submission-01/review.txt) preserve the decision and four remarks.
+## Completeness review and proof scope
 
-The first review states “Accept.”  It asks the report to identify the excluded evidence declarations, identify the release judgment, state which argument supplies Nat fuel, and replace the child-mask paragraph's announcing opener.  The [revision record](v5/revision-notes.md) and [clarification evidence](evidence/editorial-clarifications-v2.md) describe the four changes.
+The [completeness review](v6/revision-notes.md) compares the previous report with the new checkpoint.  It adds binary32 arithmetic and precision conversion, packed word reads and construction, current evaluation and ownership rules, and a theorem form for checking a compilation against its Lean algorithm.  The [source identities](evidence/source-identities-v3.json) fix the implementation, documentation, tests, and proof declarations used in that review.
 
-The replacement used `replaces=2609.00005` and returned a [303 response](submission-02/response-headers.txt) for submission `aca93998161c`.  The [accepted replacement status](submission-02/status-02.html) records its publication as version 2.  The [second review](submission-02/review.txt) states “Accepted.”  Its remaining remarks are:
+The report identifies the five binary32 source/Talos equalities, packed-read and construction theorems, reusable generator and allocation-preservation lemmas, and the completed four-byte inference theorem.  The full pretrained GPT-2 artifact theorem remains open at the cited checkpoint.  The report distinguishes deterministic Talos NaN words from the WebAssembly standard's permitted NaN outcomes.  Precision-conversion source-model proofs also remain open.
 
-> Requirement 12, Grammar and mechanics, Table 2: “Size returns Nat64; emptiness returns Bool; indexed read returns τ or Option τ; default read also takes a fallback τ.” Replace the three semicolons joining independent clauses with periods.
+The two mathematical layout propositions retain their stated domain definitions.  Shape-sensitive acceptance still uses named compiler recognizers.  Independent source semantics, mechanized acceptance judgments, and a general compiler-refinement theorem remain open.  Per-compilation source proofs state the selected module, Lean function, representation relation, and resource premises.
 
-> Requirement 12, Grammar and mechanics, Table 2: “Map body has type υ and returns Array υ; modify body has type τ.” Replace the semicolon joining independent clauses with a period.
+Both original source-audit findings persist at the new checkpoint: the entry-name rejection set omits runtime exports, and the accepted layouts lack a general child-mask width bound.  This report task ran no Lean build, compiler, verifier, or runtime reproducer and added no dependency.  Its implementation findings remain source-audit results.
 
-The submission cycle ended at this accepted version.  No submission was rejected or placed on hold.  The first archive version remains available with its source, PDF, and review.
+## Submission and review history
 
-## Source and proof boundaries
+The first report was accepted as [version 1](http://127.0.0.1:8405/abs/2609.00005v1), submission `d75fc8acf1bc`.  The [first review](submission-01/review.txt) asks the report to identify excluded evidence declarations, identify the release judgment, state which argument supplies Nat fuel, and replace an announcing paragraph opener.  The [second-version clarification record](v5/revision-notes.md) and [declaration evidence](evidence/editorial-clarifications-v2.md) address those four remarks.
 
-The report fixes documentation checkpoint `2f3ec33f6e98ad98ac94df277c91e5319763cf9d`.  The [source identity record](evidence/source-identities.json) identifies the inspected files and an empty comparison with `7c7277d1e1ab8bc4ee5b4a014a8b975abb8b8054` for the stated paths.
+The archive accepted submission `aca93998161c` as [version 2](http://127.0.0.1:8405/abs/2609.00005v2).  The [second review](submission-02/review.txt) requests periods in place of independent-clause semicolons in Table 2's array-read and map/modify descriptions.  Version 3 makes those edits along with the terminology and completeness revisions.
 
-The report proves two propositions about its stated runtime domains and slot widths.  Shape-sensitive acceptance still uses named implementation functions.  The numeric and memory account uses production lowering and target execution, with explicit representation premises.  Existing emitter, decoder, validator, and exact-artifact declarations support their named boundaries.  Independent source semantics, mechanized acceptance judgments, and a general compiler-refinement theorem remain open.
+Submission `b778e0a57bba` was accepted as version 3.  Its [review](submission-03/review.txt) states “Accepted.”  It records one remark:
 
-The export-name finding compares the documented runtime names with the implemented entry-name exclusion.  The child-mask finding identifies a missing general width bound at the Nat-to-i64 mask boundary.  Both retain source-audit status.  This report task ran no Lean build, Lean compiler, verifier, or runtime reproducer and added no dependency.
+> Requirement 9: “The proof workspace pins Talos revision” introduces Talos without identifying it.  Define Talos and its role in the WebAssembly proofs at this first mention.
 
-## Document checks and preserved failures
+The [v7 manuscript](v7/main.tex) identifies Talos at first mention as a Lean WebAssembly execution model and proof system.  Submission `cfc499017620` was accepted as version 4.  Its [review](submission-04/review.txt) requests two clarifications:
 
-The final build contains 13 pages.  PDF title, authors, and abstract agree with the compiled source after whitespace normalization, and the archive repeats that metadata.  The final build log has no warnings.  Visual inspection covered the title page, type-domain table, primitive table, recognition paragraph, and binary64 equation across the reviewed drafts and submitted revisions.  The archive download confirms the final PDF's exact byte identity.
+> Requirement 9, Section 5.1: “Report classification and complete extraction therefore have different result objects.”  Define the paper-specific term “report classification” and identify the result objects being compared.
 
-The initial LaTeX failure required scalable fonts for microtype expansion.  The existing Latin Modern package resolved it.  The [failed build log](v1/pass-01/main.log) remains unchanged.  All intermediate source drafts, auxiliary outputs, and previews remain local, with the selected publication files listed in [the exact file inventory](publication-files.txt).
+> Requirement 12, Register and Terminology, Section 4.1: “a live allocation root whose lifetime covers the visible range.”  Distinguish allocation bounds from lifetime.  State that the allocation contains the visible byte range and remains live during its use.
 
-Raw output whitespace is evidence.  HTTP headers retain CRLF, build logs retain emitted indentation and trailing spaces, PDF text retains extraction line breaks, and review text retains the archive's wording.  Policy snapshots and accepted-status HTML also remain byte-exact.  Their whitespace must not be normalized to satisfy a source-formatting check.  The two submitted LaTeX sources and PDFs likewise remain unchanged.
+The [v8 manuscript](v8/main.tex) addresses both.  Submission `4f0f9900fbc7` was accepted as version 5.  Its [review](submission-05/review.txt) identifies one type-description error:
+
+> Requirement 12, Register, Table 2: “Map body has type υ and returns Array υ.”  The callback body has result type υ, and the map operation has result type Array υ.  The sentence attributes both types to the body.
+
+The [v9 manuscript](v9/main.tex) assigns each result type to the correct expression.  Submission `268f33c99394` was accepted as version 6.  Its [final review](submission-06/review.txt) states “Accept” and “No remarks.”  All six archive submissions were accepted.
+
+## Document and archive checks
+
+The final v9 build has 16 pages.  Its title, authors, abstract, and page count match the extracted PDF text and archive metadata.  The final LaTeX log has no warnings, undefined references, or overfull boxes.  Visual inspection across the revisions covered the title page, per-compilation theorem, proof inventory, allocation representation, compilation graph, and primitive table.  The archive download equals the submitted PDF byte for byte.
+
+The [upload record](submission-03/upload-attempts.md) records the sandboxed connection failure and successful direct curl retry.  The original [font-related build failure](v1/pass-01/main.log) and both earlier submitted sources and PDFs remain unchanged.  Every submitted revision has a retained source, PDF, metadata record, and review.  Unsubmitted TeX passes reuse their build directory.
+
+The [publication file list](publication-files.txt) selects the files recorded in Git.  Raw HTTP headers, build logs, extracted text, review text, policy snapshots, and HTML records retain their original whitespace and line endings.  Duplicate downloaded PDFs, auxiliary files, preview images, and pending-review captures remain local.

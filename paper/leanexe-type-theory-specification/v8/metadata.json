@@ -1,0 +1,13 @@
+{
+  "title": "The LeanExe Subset: Types, Extraction, and Execution",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "LeanExe compiles checked Lean declarations to WebAssembly through a restricted first-order extraction path. The LeanExe subset is specified here by runtime typing and layout rules together with an implementation-indexed relation from checked declarations to WebAssembly execution. The report separates kernel typing, static specialization, extraction acceptance, ownership analysis, binary validity, and artifact behavior. It defines the internal and public type domains, proves two layout propositions, and states the numeric, collection, memory, and fixed-adapter semantics, including binary32 arithmetic and packed word storage. It also states the proof obligation for checking a compilation against its Lean algorithm. A source audit identifies incomplete runtime export-name rejection and a child-mask width obligation. The reference IR evaluator has a narrower comparison domain than compiled execution. Existing emitter, decoder, validator, packed-memory, and arithmetic theorems support their named boundaries. An independent source operational semantics, mechanized acceptance judgments, and a general source-to-WebAssembly refinement theorem remain open.",
+  "subject": "cs.PL",
+  "secondary": "cs.LO",
+  "comments": "16 pages",
+  "replaces": "2609.00005",
+  "public_static_export": true,
+  "pdf": "pass-01/main.pdf",
+  "pdf_sha256": "23e2fa3059e5b748e0ab8a6c09272d1ff8b2cd6445cbc6219765784dd9ea6ce7",
+  "public_export_source": "Inherited from paper 2609.00005. The request omitted the public field."
+}
