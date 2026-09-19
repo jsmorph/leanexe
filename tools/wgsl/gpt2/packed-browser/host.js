@@ -3,26 +3,32 @@ const need=(ok,message)=>{if(!ok)throw Error(message);};
 const shapes={qkv:[768,2304],attention:[768,768],expansion:[768,3072],projection:[3072,768],
   vocabularyLeft:[768,25129],vocabularyRight:[768,25128]};
 class GPUHost {
-  static async create(cpu,shared,notify){
+  static async create(cpu,shared,notify,signal){
     need(navigator.gpu&&crossOriginIsolated,"WebGPU and an isolated localhost/HTTPS page are required");
     const adapter=await navigator.gpu.requestAdapter({forceFallbackAdapter:cpu});need(adapter,"Requested WebGPU adapter is unavailable");
+    signal?.throwIfAborted();
     const info=adapter.info;need(!cpu||info.isFallbackAdapter,"A CPU fallback adapter was requested");
     const device=await adapter.requestDevice();
-    const host=new GPUHost();Object.assign(host,{device,shared,views:new Map(),dispatches:0,weights:null,closed:false});
+    const host=new GPUHost();Object.assign(host,{device,shared,views:new Map(),dispatches:0,bufferBytes:0,weights:null,closed:false});
+    try{
+    signal?.throwIfAborted();
     host.info={vendor:info.vendor,architecture:info.architecture,device:info.device,description:info.description,isFallbackAdapter:info.isFallbackAdapter};
     notify({type:"adapter",info:host.info});
     const buffer=(size,usage)=>device.createBuffer({size,usage});
     host.a=buffer(12288,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);
     host.c=buffer(201028,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC);
     host.read=buffer(201028,GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ);
+    host.bufferBytes=12288+201028*2;
     host.pipelines={};device.addEventListener("uncapturederror",event=>{host.failure=event.error;});
     device.lost.then(info=>{if(!host.closed)host.failure=Error(`WebGPU device lost: ${info.message}`);});
     for(const role of Object.keys(shapes)){
       const response=await fetch(`/bundle/shaders/${role}/kernel.wgsl`);need(response.ok,`Cannot load ${role} shader`);
       const module=device.createShaderModule({code:await response.text()});
       host.pipelines[role]=await device.createComputePipelineAsync({layout:"auto",compute:{module,entryPoint:"lean_kernel"}});
+      signal?.throwIfAborted();
     }
     return host;
+    }catch(error){host.close();throw error;}
   }
   view(role,weightOffset=0,biasOffset=0){
     const key=`${role}:${weightOffset}:${biasOffset}`;if(this.views.has(key))return this.views.get(key);
@@ -44,7 +50,7 @@ class GPUHost {
     const group=this.device.createBindGroup({layout:this.pipelines[role].getBindGroupLayout(0),entries:[
       {binding:0,resource:{buffer:this.a,size:inner*4}},{binding:1,resource:{buffer:b}},
       {binding:2,resource:{buffer:this.c,size:cols*4}}]});
-    const view={b,group};this.views.set(key,view);return view;
+    const view={b,group};this.views.set(key,view);this.bufferBytes+=data.byteLength;return view;
   }
   async product(role,weightOffset,biasOffset,outputOffset){
     if(this.failure)throw this.failure;need(!this.closed,"GPU host was closed");
@@ -70,33 +76,51 @@ class GPUHost {
   close(){if(this.closed)return;this.closed=true;this.device.destroy();this.weights=null;this.views.clear();}
 }
 export async function runPacked(options,onEvent=()=>{}){
-  const shared=new SharedArrayBuffer(16384+201028),control=new Int32Array(shared,0,1);
-  const host=await GPUHost.create(options.cpu!==false,shared,onEvent);
-  const worker=new Worker(new URL("worker.js",import.meta.url),{type:"module"});
-  let settled=false;
+  const backend=options.backend||"wgsl";need(["wasm","wgsl"].includes(backend),"Unknown execution backend");
+  const start=performance.now();
+  let settled=false,host,worker,control,setupMs=null;
   return new Promise((resolve,reject)=>{
-    const cleanup=()=>{settled=true;worker.terminate();host.close();options.signal?.removeEventListener("abort",abort);};
-    const fail=error=>{if(settled)return;Atomics.store(control,0,-1);Atomics.notify(control,0);cleanup();reject(error);};
+    const cleanup=()=>{settled=true;worker?.terminate();host?.close();options.signal?.removeEventListener("abort",abort);};
+    const fail=error=>{if(settled)return;if(control){Atomics.store(control,0,-1);Atomics.notify(control,0);}cleanup();reject(error);};
     const abort=()=>fail(new DOMException("Generation stopped","AbortError"));
     options.signal?.addEventListener("abort",abort,{once:true});
     if(options.signal?.aborted){abort();return;}
+    const enrich=stats=>({...stats,setupMs,totalMs:performance.now()-start,dispatches:host?.dispatches||0,views:host?.views.size||0,
+      memory:{...stats.memory,gpuBufferBytes:host?.bufferBytes||0,hostWeightBytes:host?.weights?.byteLength||0,
+        sharedStagingBytes:control?16384+201028:0}});
+    (async()=>{
+    let shared;
+    if(backend==="wgsl"){
+      need(globalThis.SharedArrayBuffer&&globalThis.crossOriginIsolated,"WGSL requires an isolated localhost/HTTPS page");
+      shared=new SharedArrayBuffer(16384+201028);control=new Int32Array(shared,0,1);
+      const created=await GPUHost.create(options.cpu!==false,shared,event=>{if(!settled)onEvent(event);},options.signal);
+      if(settled){created.close();return;}host=created;
+    }
+    // The CPU-only path never requests WebGPU, fetches shaders or creates shared staging.
+    worker=new Worker(new URL("worker.js",import.meta.url),{type:"module"});
     worker.onerror=event=>fail(Error(event.message));
     worker.onmessage=async({data})=>{
       if(settled)return;
       try{
         if(data.type==="weights"){
+          need(host,"CPU-only execution must not send GPU weights");
           need(data.bytes.byteLength===497759232,"Checkpoint byte length");
           need(new Uint8Array(new Uint32Array([1]).buffer)[0]===1,"Little-endian host required");
           host.weights=new Uint32Array(data.bytes);
         }else if(data.type==="dispatch"){
-          await host.dispatch(data.request);Atomics.store(control,0,1);Atomics.notify(control,0);
+          need(host,"CPU-only execution must not dispatch shaders");
+          await host.dispatch(data.request);if(!settled){Atomics.store(control,0,1);Atomics.notify(control,0);}
         }else if(data.type==="error")fail(Error(data.message));
+        else if(data.type==="ready"){
+          setupMs=performance.now()-start;onEvent({...data,stats:enrich(data.stats)});
+        }else if(data.type==="stats")onEvent({...data,stats:enrich(data.stats)});
         else if(data.type==="done"){
-          const result={...data,dispatches:host.dispatches,views:host.views.size,adapter:host.info};
+          const result={...data,stats:enrich(data.stats),dispatches:host?.dispatches||0,views:host?.views.size||0,adapter:host?.info||null};
           onEvent(result);cleanup();resolve(result);
         }else onEvent(data);
       }catch(error){fail(error);}
     };
-    const {signal,...serializable}=options;worker.postMessage({...serializable,shared});
+    const {signal,...serializable}=options;worker.postMessage({...serializable,backend,shared});
+    })().catch(fail);
   });
 }

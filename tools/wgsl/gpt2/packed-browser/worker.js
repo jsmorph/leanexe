@@ -1,4 +1,4 @@
-// Wasm host bindings. No floating-point model, tokenization, or sampling math.
+// Wasm host bindings and timing only. Model, tokenization and sampling math is Wasm/WGSL.
 const need=(ok,message)=>{if(!ok)throw Error(message);};
 const INPUT=64,OUTPUT=16384,LOGITS=201028,WEIGHTS=497759232;
 const temperatures={"0":0n,"0.7":0x3fe6666666666666n,"0.8":0x3fe999999999999an,"1":0x3ff0000000000000n};
@@ -31,11 +31,13 @@ let started=false;
 self.onmessage=async ({data:options})=>{
   if(started)return;started=true;
   try {
+    const backend=options.backend||"wgsl";need(["wasm","wgsl"].includes(backend),"Unknown execution backend");
     const count=options.generate,settings=[temperatures[options.temperature],40n,BigInt(options.seed)];
     need(Number.isInteger(count)&&count>0&&count<128,"Generation count must be 1–127");
     need(settings[0]!==undefined&&settings[2]>0n&&settings[2]<2n**64n,"Invalid sampler settings");
     const prompt=new TextEncoder().encode(options.prompt);need(prompt.length>0&&prompt.length<=16384,"Prompt byte length");
-    const shared=options.shared,control=new Int32Array(shared,0,1);let model,weightsPtr;
+    const shared=backend==="wgsl"?options.shared:null,control=shared?new Int32Array(shared,0,1):null;
+    let model,weightsPtr;
     const invoke=(kind,args)=>{
       need(args[1]===weightsPtr&&args[2]===BigInt(WEIGHTS),"Unexpected weight allocation");
       const size=kind==="linear"?Number(args[8])*4:3072;
@@ -51,7 +53,8 @@ self.onmessage=async ({data:options})=>{
     };
     const instantiate=async(name,imports={})=>new Wasm((await WebAssembly.instantiate(await artifact(name),imports)).instance.exports);
     self.postMessage({type:"status",text:"Loading Wasm and tokenizer"});
-    model=await instantiate("model.wasm",{wgsl:{linear:(...args)=>invoke("linear",args),vocabulary:(...args)=>invoke("vocabulary",args)}});
+    model=backend==="wasm"?await instantiate("model-cpu.wasm"):
+      await instantiate("model.wasm",{wgsl:{linear:(...args)=>invoke("linear",args),vocabulary:(...args)=>invoke("vocabulary",args)}});
     const tokenizer=await instantiate("tokenizer.wasm"),sampler=await instantiate("sampler.wasm"),transfer=await instantiate("transfer.wasm");
     const table=new Uint8Array(await artifact("tokenizer.bin"));
     const tokens=(op,input)=>{
@@ -61,34 +64,57 @@ self.onmessage=async ({data:options})=>{
     need(encoded.length>0&&encoded.every(t=>t<50257n),"Tokenizer rejected prompt");
     need(encoded.length+count<=128,"Prompt and requested completion exceed 128 tokens");
     self.postMessage({type:"status",text:"Loading 124M checkpoint"});
-    const weightBytes=await artifact("weights.bin");need(weightBytes.byteLength===WEIGHTS,"Checkpoint byte length");
+    let weightBytes=await artifact("weights.bin");need(weightBytes.byteLength===WEIGHTS,"Checkpoint byte length");
     model.w.reset();weightsPtr=model.w.alloc(BigInt(WEIGHTS));model.region(weightsPtr,WEIGHTS).set(new Uint8Array(weightBytes));
-    // The GPU host receives the same immutable source bytes just written to Wasm.
-    self.postMessage({type:"weights",bytes:weightBytes},[weightBytes]);
+    // Only the WGSL backend needs a second immutable copy for GPU weight views.
+    if(backend==="wgsl")self.postMessage({type:"weights",bytes:weightBytes},[weightBytes]);
+    weightBytes=null;
+    const stats={promptTokens:encoded.length,prefillCompleted:0,prefillMs:0,decodeSteps:0,decodeMs:0,
+      samplingMs:0,detokenizeMs:0,produced:0,timeToFirstTokenMs:null,generationMs:0,
+      memory:{modelWasmBytes:0,auxiliaryWasmBytes:0,cacheBytes:0}};
+    const memory=()=>{
+      stats.memory.modelWasmBytes=Math.max(stats.memory.modelWasmBytes,model.w.memory.buffer.byteLength);
+      stats.memory.auxiliaryWasmBytes=Math.max(stats.memory.auxiliaryWasmBytes,
+        tokenizer.w.memory.buffer.byteLength+sampler.w.memory.buffer.byteLength+transfer.w.memory.buffer.byteLength);
+    };
+    memory();self.postMessage({type:"ready",stats});
+    const generationStart=performance.now();
+    const progress=()=>{memory();stats.generationMs=performance.now()-generationStart;self.postMessage({type:"stats",stats});};
     let cache=0n,cacheSize=0n,logits;
     const forward=(token,position)=>{
       const result=model.w.cachedStep(weightsPtr,BigInt(WEIGHTS),cache,cacheSize,token,BigInt(position));
       need(result[1]===BigInt((position+1)*73728)&&result[3]===BigInt(LOGITS),"Wasm output lengths");
       const output=model.region(result[2],LOGITS).slice();
-      if(cache)model.w.release(cache);model.w.release(result[2]);[cache,cacheSize]=result;return output;
+      if(cache)model.w.release(cache);model.w.release(result[2]);[cache,cacheSize]=result;
+      stats.memory.cacheBytes=Math.max(stats.memory.cacheBytes,Number(cacheSize));return output;
     };
     for(let i=0;i<encoded.length;i++){
-      self.postMessage({type:"status",text:`Prompt token ${i+1}/${encoded.length}`});logits=forward(encoded[i],i);
+      self.postMessage({type:"status",text:`Prefill ${i+1}/${encoded.length}`});
+      const start=performance.now();logits=forward(encoded[i],i);stats.prefillMs+=performance.now()-start;
+      stats.prefillCompleted++;progress();
     }
-    let reason="count",produced=0;
+    let reason="count";
     for(let i=0;i<count;i++){
+      const sampleStart=performance.now();
       transfer.region(161000000n,LOGITS).set(logits);transfer.w.convert(1n,50257n);sampler.w.reset();
       const result=words(sampler.result(sampler.w.compute(5n,sampler.array(transfer.region(160000000n,50257*8)),
         sampler.array(new Uint8Array()),sampler.array(bytes(settings)),0n),2));
       need(result.length===2&&result[0]<50257n,"Wasm sampler rejected logits");
-      const [token,seed]=result;settings[2]=seed;
+      const [token,seed]=result;settings[2]=seed;stats.samplingMs+=performance.now()-sampleStart;
       if(options.trace){const copy=logits.slice();self.postMessage({type:"trace",token:Number(token),logits:copy.buffer},[copy.buffer]);}
       if(token===50256n){reason="eos";break;}
+      const textStart=performance.now();
       const decoded=words(tokens(1,bytes([token])));need(decoded.every(b=>b<256n),"Decoded byte range");
-      const output=new Uint8Array(decoded.map(Number));self.postMessage({type:"token",token:Number(token),bytes:output.buffer},[output.buffer]);produced++;
-      if(i+1<count)logits=forward(token,encoded.length+i);
+      const output=new Uint8Array(decoded.map(Number));stats.detokenizeMs+=performance.now()-textStart;
+      stats.produced++;stats.timeToFirstTokenMs??=performance.now()-generationStart;
+      self.postMessage({type:"token",token:Number(token),bytes:output.buffer},[output.buffer]);progress();
+      if(i+1<count){
+        self.postMessage({type:"status",text:`Decode ${i+1}/${count-1}`});
+        const start=performance.now();logits=forward(token,encoded.length+i);stats.decodeMs+=performance.now()-start;
+        stats.decodeSteps++;progress();
+      }
     }
-    if(cache)model.w.release(cache);model.w.release(weightsPtr);
-    self.postMessage({type:"done",reason,produced,promptTokens:encoded.length});
+    if(cache)model.w.release(cache);model.w.release(weightsPtr);memory();stats.generationMs=performance.now()-generationStart;
+    self.postMessage({type:"done",backend,reason,produced:stats.produced,promptTokens:encoded.length,stats});
   } catch(error){self.postMessage({type:"error",message:error.message});}
 };
