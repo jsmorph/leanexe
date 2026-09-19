@@ -10,6 +10,12 @@ compiler. Older bundles retain the original template-artifact checker.
 
 ## Current verification focus
 
+The completed parent FP32 cached-GPT-2 result was fetched on 2026-09-18.
+The [parent integration plan](docs/wgsl/parent-integration-plan.md) records
+its exact theorem scope, merge conflicts, source/ABI differences, and the
+staged work to incorporate the compiled WGSL products into that model.
+The parent is fetched but not yet merged into this branch.
+
 The current implementation work is the [restricted Lean body compiler](docs/wgsl/body-compiler.md),
 including a checked connection from parsed statement execution to its Lean
 source. The [WGSL artifact fidelity work for pretrained GPT-2](docs/wgsl/gpt2-verification.md)
