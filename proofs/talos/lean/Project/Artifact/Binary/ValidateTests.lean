@@ -165,4 +165,33 @@ example : rejectedWith
     (.duplicateExportName "f") = true := by
   native_decide
 
+example : accepted
+    { baseModule with
+      types := [{ params := [.f32], results := [.i32] }]
+      codes := [{ locals := [{ count := 1, type := .f32 }], body :=
+        [.localGet 0, .localTee 1,
+         .i32Const 0, .f32ReinterpretI32, .f32Add,
+         .localGet 1, .f32Sub,
+         .localGet 1, .f32Mul,
+         .localGet 1, .f32Div,
+         .block (.value .f32) [.localGet 1, .f32Sqrt], .f32Add,
+         .i32ReinterpretF32] }] } = true := by
+  decide +kernel
+
+example : [.f32Add, .f32Sub, .f32Mul, .f32Div].all (fun op =>
+    rejectedWith
+      { baseModule with codes := [{ locals := [], body := [.i32Const 0, .i32Const 0, op] }] }
+      (.typeMismatch .f32 .i32)) = true := by
+  decide +kernel
+
+example : rejectedWith
+    { baseModule with codes := [{ locals := [], body := [.i64Const 0, .f32ReinterpretI32] }] }
+    (.typeMismatch .i32 .i64) = true := by
+  decide +kernel
+
+example : rejectedWith
+    { baseModule with codes := [{ locals := [], body := [.i32Const 0, .f32Sqrt] }] }
+    (.typeMismatch .f32 .i32) = true := by
+  decide +kernel
+
 end Wasm.Binary.Tests

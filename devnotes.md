@@ -15833,3 +15833,34 @@ The user requested an account of our floating-point extensions and definitions o
 The review compared Talos's earlier evaluator at `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` with the pinned `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` source.  It inspected the cited definitions and theorem statements and preserved their identities in [the Talos review record](paper/gpt2-verification-report/evidence/talos-fp-review.json).  The text distinguishes the Talos extensions from the later LeanExe correspondence proofs.  The source checkpoint and GPT-2 theorem remain unchanged, so the report retains the previous proof-check evidence.  The updated PDF builds without reference or layout warnings and defines both names at first use in the abstract and body.
 
 marXiv accepted [version 5](http://127.0.0.1:8405/abs/2609.00011v5) with “No remarks.”  The archive copy matches the submitted PDF with SHA-256 `ef90808b58b923d220da4d7a655b59f6f348ef21930f5f18572948c3c38bbb52`.  The publication record and review history identify the accepted ten-page version.
+
+## GPT-2 exact-binary proof
+
+The user authorized the byte-to-model proof for the existing GPT-2/128
+artifact.  Its 19,083 bytes have SHA-256
+`e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.
+Runtime weights remain inputs to the existing inference theorem.
+The binary checker requires FP32 addition, subtraction, multiplication,
+division, square root, and both integer reinterpretations.  Packed integer
+loads and stores already have decoder, validation, and translation support.
+The extension follows the WebAssembly [instruction encodings](https://webassembly.github.io/spec/core/binary/instructions.html)
+and [typing rules](https://webassembly.github.io/spec/core/valid/instructions.html).
+
+- [x] Extend FP32 decoding, typing, translation, and general soundness proofs.
+- [ ] Generate kernel-checked byte, decoding, validation, and model-equality certificates.
+- [ ] Connect the decoded module to the complete GPT-2 session theorem.
+- [ ] Run the independent artifact checks, update documentation, commit, and push.
+
+Existing Euler artifacts supply checked parser-composition examples.  The
+certificate generator is untrusted.  Lean must check every generated
+certificate using the kernel, with no native-evaluation axiom in the new
+public artifact theorem.
+
+The FP32 syntax, instruction decoding, validation, translation, instruction
+equality, and general soundness proofs pass.  The focused build checked
+3,357 targets with cached dependencies.  New tests cover all seven encodings,
+FP32 types and block results, accepted typed arithmetic, wrong integer widths,
+and rejected operands.  Two first-draft tests used the opaque derived
+instruction Boolean equality and could not reduce in the kernel.  Stating
+parser-result equality as a proposition let `rfl` check both cases.  All
+focused tests now pass.  Existing FP64 translation tests also pass.

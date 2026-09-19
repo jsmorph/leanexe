@@ -30,7 +30,15 @@ theorem valType_sound :
         simp at hi64
         rw [hbytes, hi64] at hconsumed
         exact ⟨[126], hconsumed, Grammar.ValType.i64⟩
-      · contradiction
+      · split at hrun
+        · rename_i hf32
+          cases hrun
+          rcases readByte_sound start code middle hstart hread with
+            ⟨bytes, hconsumed, hbytes⟩
+          simp at hf32
+          rw [hbytes, hf32] at hconsumed
+          exact ⟨[125], hconsumed, Grammar.ValType.f32⟩
+        · contradiction
 
 theorem blockType_sound :
     Sound blockType Grammar.BlockType := by
@@ -65,7 +73,15 @@ theorem blockType_sound :
           simp at hi64
           rw [hbytes, hi64] at hconsumed
           exact ⟨[126], hconsumed, Grammar.BlockType.i64⟩
-        · contradiction
+        · split at hrun
+          · rename_i hf32
+            cases hrun
+            rcases readByte_sound start code middle hstart hread with
+              ⟨bytes, hconsumed, hbytes⟩
+            simp at hf32
+            rw [hbytes, hf32] at hconsumed
+            exact ⟨[125], hconsumed, Grammar.BlockType.f32⟩
+          · contradiction
 
 theorem mutability_sound :
     Sound mutability Grammar.Mutability := by
@@ -816,18 +832,33 @@ theorem instructionPair_sound (fuel : Nat) :
             | i64ShrU =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i64ShrU
+            | f32Add =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32Add
             | f64Add =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Add
+            | f32Mul =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32Mul
             | f64Mul =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Mul
+            | f32Sub =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32Sub
             | f64Sub =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Sub
+            | f32Div =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32Div
             | f64Div =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Div
+            | f32Sqrt =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32Sqrt
             | f64Sqrt =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Sqrt
@@ -837,9 +868,15 @@ theorem instructionPair_sound (fuel : Nat) :
             | i64ExtendI32U =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i64ExtendI32U
+            | i32ReinterpretF32 =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.i32ReinterpretF32
             | i64ReinterpretF64 =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i64ReinterpretF64
+            | f32ReinterpretI32 =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f32ReinterpretI32
             | f64ReinterpretI64 =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64ReinterpretI64
