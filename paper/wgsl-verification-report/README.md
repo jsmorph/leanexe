@@ -18,4 +18,4 @@ pdftotext main.pdf text.txt
 
 Run these commands in this directory.  The compiler review harness takes a checkout path and invokes its resource-limited `tools/leanrun`.  It extracts the existing proof corpus and omits GPU execution.  Its recorded first certificate timed out under the repository's one-core limit.  The smaller Lean files in `evidence` preserve the split diagnostics.
 
-Submission status is recorded in `publication.json` after editorial review.
+marXiv accepted [version 4 of 2609.00012](http://127.0.0.1:8405/abs/2609.00012v4) with “No remarks.”  The archive PDF equals the reviewed submission.  The [publication record](publication.json) preserves its identity and submission history.

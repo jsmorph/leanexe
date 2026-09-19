@@ -1,0 +1,10 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 12, Redundancy: The abstract’s “The outcome is a checked source-to-shader method and a conditional proof for the combined inference program” repeats the preceding compiler and session-theorem claims.  Omit this repeated summary.
+- Requirement 12, Throat-clearing and announcements: “The report records the scope and results of a source review and fresh proof checks” announces content without stating a finding.  State the review’s finding or omit the sentence.
+- Requirement 12, Headings: Section 1.2, “Implemented and checked result,” does not identify the implementation or theorem.  A heading such as “Hybrid GPT-2 implementation and conditional session theorem” names the section’s content.
+
