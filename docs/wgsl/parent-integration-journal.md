@@ -233,3 +233,22 @@ using the replacement-call contracts. The first generated proof used an
 unavailable tactic and failed; explicit constructor proofs and normalized
 membership cases passed in `build/gpt2/packed-region-check-02/results.json`.
 The generic theorem build is recorded in `build/gpt2/region-imports-01.log`.
+
+## All matrix wrapper contracts
+
+`PackedLinear.exact` generalizes the QKV instruction proof to any certified
+one-row biased product whose output byte count fits the 32-bit memory bound.
+It preserves the actual allocator's rounded capacity and the returned byte
+length. `PackedVocabulary.exact` checks the second wrapper, composing both
+shader halves and distinguishing the 201,028-byte result from its 201,032-byte
+allocation capacity. All public dependencies are the standard Lean axioms.
+The generic linear proof required explicitly normalizing the call frame before
+rewriting its byte-count multiplication; the retained failed/successful logs
+are `packed-linear-01.log`, `packed-calls-02.log`, and `packed-linear-03.log`.
+
+The expanded `packed-check.js` independently parses the hybrid Wasm and applies
+these contracts to all four concrete biased shaders and both vocabulary halves.
+All five operation checks passed in `build/gpt2/packed-wrapper-check-02/`.
+Each check discharges its shader certificate premise using the generated
+certificate, and leaves the completed host execution/transfer assumption
+explicit. The full controller/session proof is still pending.
