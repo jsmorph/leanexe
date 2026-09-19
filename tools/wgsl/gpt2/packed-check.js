@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 // Parse the experimental Wasm independently with Talos, then check that its
-// real wrapper/allocator declarations satisfy the proved QKV call theorem.
+// real wrapper/allocator declarations satisfy all proved matrix call contracts.
 const fs=require("node:fs"),path=require("node:path");
 const {spawnSync}=require("node:child_process");
 const {spawnResultAsync}=require("../../run-process");
@@ -27,28 +27,42 @@ async function check(wasm,shaders,attempt) {
   if(emitted.status!==0)throw Error(`Talos emission failed: ${attempt}/emit.log`);
   const source=fs.readFileSync(path.join(attempt,"lean/Project/Gpt2PackedRuntime/Program.lean"),"utf8");
   const normalized=normalizeExpandedProgram(source,name);
-  const theorem=`${namespace}.checkedQkv`;
-  const generated=path.join(attempt,"Check.lean");
-  write(generated,normalized.replace("import Project.TalosPrelude","import Project.TalosPrelude\nimport Project.Gpt2.PackedWrapper")+"\n"+
-    fs.readFileSync(path.join(shaders,"qkv/source-equality.lean.txt"),"utf8")+`\n
+  await lean("packed wrapper dependencies",["lake","-d",proofRoot,"build",
+    "Project.Gpt2.PackedLinear","Project.Gpt2.PackedVocabulary"],path.join(attempt,"dependencies.log"));
+  const cases=[["qkv",768,2304],["attention",768,768],["expansion",768,3072],["projection",3072,768],["vocabulary",768,50257]];
+  const proofs=[];
+  for(const [role,inner,cols] of cases) {
+    const vocabulary=role==="vocabulary";
+    const roles=vocabulary?["vocabularyLeft","vocabularyRight"]:[role];
+    const theorem=`${namespace}.checked${role}`;
+    const generated=path.join(attempt,`${role}.lean`);
+    const certificate=roles.map(r=>fs.readFileSync(path.join(shaders,r,"source-equality.lean.txt"),"utf8")).join("\n");
+    const application=vocabulary ?
+      `Project.Gpt2.PackedVocabulary.exact «module» env rfl rfl rfl rfl rfl
+        imp host hImp hHost hParams hResults _ _
+        LeanExe.WGSL.Gpt2.vocabularyLeft.wgslExecutionCorrect LeanExe.WGSL.Gpt2.vocabularyRight.wgslExecutionCorrect` :
+      `Project.Gpt2.PackedLinear.exact «module» env rfl rfl rfl rfl rfl
+        imp host hImp hHost hParams hResults _ ${inner} ${cols}
+        LeanExe.WGSL.Gpt2Packed.${role}.wgslExecutionCorrect (by decide)`;
+    write(generated,normalized.replace("import Project.TalosPrelude",
+      "import Project.TalosPrelude\nimport Project.Gpt2.PackedLinear\nimport Project.Gpt2.PackedVocabulary")+"\n"+certificate+`\n
 namespace ${namespace}
 open Wasm
-def checkedQkv (env : HostEnv Unit) (imp : ImportDecl) (host : HostFn Unit)
-    (hImp : «module».imports[0]? = some imp) (hHost : env.funcs[0]? = some host)
-    (hParams : imp.params = List.replicate 12 .i64) (hResults : imp.results = []) :=
-  Project.Gpt2.PackedWrapper.qkv_exact «module» env rfl rfl rfl rfl rfl
-    imp host hImp hHost hParams hResults _ LeanExe.WGSL.Gpt2Packed.qkv.wgslExecutionCorrect
-#print axioms checkedQkv
+def checked${role} (env : HostEnv Unit) (imp : ImportDecl) (host : HostFn Unit)
+    (hImp : «module».imports[${vocabulary?1:0}]? = some imp) (hHost : env.funcs[${vocabulary?1:0}]? = some host)
+    (hParams : imp.params = List.replicate ${vocabulary?7:12} .i64) (hResults : imp.results = []) :=
+  ${application}
+#print axioms checked${role}
 end ${namespace}
 `);
-  await lean("packed wrapper dependencies",["lake","-d",proofRoot,"build","Project.Gpt2.PackedWrapper"],path.join(attempt,"dependencies.log"));
-  const output=await lean("actual hybrid module QKV wrapper",["lake","-d",proofRoot,"env","lean",generated],path.join(attempt,"check.log"));
-  const axioms=audit(output,[theorem]);
-  write(path.join(attempt,"results.json"),JSON.stringify({status:"pass",theorem,axioms,
-    subject:"actual hybrid QKV wrapper allocation, completed shader transfer and parent packed output",
+    const output=await lean(`actual hybrid module ${role} wrapper`,["lake","-d",proofRoot,"env","lean",generated],path.join(attempt,`${role}.log`));
+    proofs.push({role,theorem,axioms:audit(output,[theorem])});
+  }
+  write(path.join(attempt,"results.json"),JSON.stringify({status:"pass",proofs,
+    subject:"actual hybrid wrapper allocation, completed shader transfer and parent packed output for all matrix roles",
     hostAssumption:"synchronous invocation copies the modeled shader result and preserves all other store fields",
     fullHybridSessionProved:false,universalWebGPUConformanceProved:false},null,2)+"\n");
-  console.log(`Checked actual QKV wrapper: ${attempt}`);
+  console.log(`Checked all actual matrix wrapper roles: ${attempt}`);
 }
 if(require.main===module) {
   const args=process.argv.slice(2);
