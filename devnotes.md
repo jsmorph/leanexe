@@ -15951,3 +15951,19 @@ by GPT-2 and the aggregate behavioral and declaration checks.  The extended
 verifier has required no edits to those frozen binaries or their existing
 proofs.  The GPT-2 roadmap now records the completed focused proof and
 runtime checks separately from the pending aggregate.
+
+The aggregate stopped at the reconstructed solver's decoder target with
+exit status 124 after 30 minutes of cumulative dependency builds.  Nineteen
+function groups and several components of the twentieth had passed, with
+no Lean proof error.  The artifact driver previously built only a few
+top-level certificate modules.  It now uses the existing local-import
+traversal to build each dependency as a separate bounded target, sharing
+the completed-target set with the behavioral checks.  This divides the
+build boundary without changing the proofs or increasing process limits.
+Dependency checks precede the parent target in the revised schedule.
+
+The identity test caught a stale exported function name during that
+refactoring.  The corrected test passes and now checks dependency
+completeness and order for a behavioral specification, the GPT-2 artifact,
+and the reconstructed decoder.  The restarted aggregate uses the divided
+build schedule and reuses the accepted component proofs through Lake's cache.
