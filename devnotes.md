@@ -15921,3 +15921,25 @@ equality uses propext.  The complete theorem uses only propext,
 Classical.choice, and Quot.sound.  No native-evaluation or program-specific
 axiom enters the result.  The independent package checks and runtime tests
 are next.
+
+The independent GPT-2 package check passed.  It compared all 19,083 external
+bytes with the embedded value, checked the decoder, validator, model equality,
+and artifact theorem, rebuilt the behavioral specification, and audited all
+seven manifest declarations.  The manifest audits use only standard logical
+axioms.  The source-regeneration check and runtime tests remain next.
+
+The focused source-regeneration check passed without changing the GPT-2
+program cache or binary.  The packed-storage and GPT-2 runtime suite passed:
+6,432,896 logits across contexts one through 128, invalid-input rejection,
+context reset, exact cached/full-prefix logits at nine tokens, and allocation
+cleanup.  The maximum observed difference from PyTorch was
+0.0014495849609375, within the existing test tolerance.  All three CLI
+completion tests passed, including exact greedy-token agreement with
+PyTorch.  Both seeded sampled completions used the frozen binary's digest.
+Repository-wide source and exact-artifact checks are next.
+
+The repository-wide source check stops at the previously recorded `gcd`
+cache mismatch: current compiler output differs from its tracked
+`Program.lean`.  This reproduces the 2026-09-17 failure, before the GPT-2
+binary work.  The focused GPT-2 regeneration and proof checks pass.  The
+aggregate exact-artifact check is running against all 43 frozen packages.
