@@ -32,6 +32,10 @@
     "sha256": "7234fc50e8551dc2019a38247a12c9e47200503dea4c520b09986c7fa563504c"
   },
   {
+    "path": "WGSL.md",
+    "sha256": "761456987e4c133b1fc11c2deb581b2f94352ff60845976ffb1ec6c56b802fe5"
+  },
+  {
     "path": "docs/wgsl/README.md",
     "sha256": "c426e0949bbb917e8dd5236d7b57b6ec3e2aa7a50de4035e6ec07904702777c4"
   },
@@ -54,6 +58,10 @@
   {
     "path": "docs/wgsl/parent-integration-journal.md",
     "sha256": "00da1ef5e9a49ed4e35775cc8ba355721612ebe74dca8cc94bb147387b057108"
+  },
+  {
+    "path": "docs/wgsl/parent-integration-plan.md",
+    "sha256": "ff65d975bd9281b6f05e4875371c928d399f37f43334d195ec636f3703744656"
   },
   {
     "path": "proofs/talos/lean/Project/FunctionRegion/Imports.lean",
