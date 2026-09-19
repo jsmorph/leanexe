@@ -1,5 +1,5 @@
 {
-  "status": "submitted to marXiv, under editorial review",
+  "status": "accepted as marXiv:2609.00014v1",
   "review_date": "2026-09-19",
   "title": "GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence",
   "authors": "Jamie Stephens",
@@ -88,7 +88,8 @@
     ],
     "submission_revision_pages_reinspected": [
       1
-    ]
+    ],
+    "archive_matches_submitted_and_local_pdf": true
   },
   "proof_evidence": "Prior proof-check and execution records are attributed in the manuscript. This drafting task reviewed source statements and document evidence without rebuilding the Lean proofs or running model inference.",
   "source_sha256": {
@@ -109,5 +110,6 @@
     "related-references.tex": "16fa516b0cf8ff383a5354a87d46c01b54dd322f28a9a2e2a6cbda4523f0b211"
   },
   "image_record_sha256": "dc05ec26fdd1fa40647104806467d263ac381a13f7981493039f0adb63b4a35d",
-  "submission_id": "87ff5328fe18"
+  "submission_id": "87ff5328fe18",
+  "archive_url": "http://127.0.0.1:8405/abs/2609.00014v1"
 }

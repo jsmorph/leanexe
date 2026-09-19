@@ -1,6 +1,8 @@
 # GPT-2 inference from Lean to WebAssembly and WGSL
 
-The 42-page [standalone technical report](main.pdf) covers LeanExe's compilation and verification method, the complete CPU GPT-2 artifact theorem, the WGSL kernel and conditional hybrid proofs, the proof structure, native execution records, browser comparison images, and related verification research.  Publication status: [submission 87ff5328fe18](http://127.0.0.1:8405/status/87ff5328fe18) under editorial review.
+The 42-page [standalone technical report](main.pdf) covers LeanExe's compilation and verification method, the complete CPU GPT-2 artifact theorem, the WGSL kernel and conditional hybrid proofs, the proof structure, native execution records, browser comparison images, and related verification research.  Publication status: accepted as [marXiv:2609.00014v1](http://127.0.0.1:8405/abs/2609.00014v1).
+
+The [publication record](publication.json) identifies the accepted version.  The archived PDF equals the submitted and local PDFs.  The [editorial review](submission-01/editorial-review.md) records nine style remarks.
 
 The CPU proof checkpoint is `4360920c3060d1c625b1860229b5116804d177c8`.  The WGSL and browser source checkpoint is `9c7c7898ecae5f636cf1047142c8a68c1936e041`.  The [source identities](evidence/cited-sources.json) identify the cited files.  The [review record](review.md) distinguishes prior checked proofs, recorded runs, supplied images, and document checks.
 

@@ -39,4 +39,6 @@ The rebuilt PDF retains 42 pages and has no LaTeX or layout warnings.  Inspectio
 
 The current submission skill specifies Jamie Stephens as author, with Morphism affiliation and contact `js@morphism.com`.  The title page and PDF metadata now use that authorship.  The submission title, author, and abstract were extracted from the rebuilt PDF and checked against its text.  Only the title page changed.  Its rendered page was inspected, and the build has no LaTeX warnings.  The paper retains 42 pages.
 
-Submission `87ff5328fe18` names the CPU, WGSL, and LeanExe subset reports as related work.  The submission directory retains the PDF, source snapshot, extracted metadata, current archive standards and style manual, and server responses.  Editorial review is pending.
+Submission `87ff5328fe18` names the CPU, WGSL, and LeanExe subset reports as related work.  The submission directory retains the PDF, source snapshot, extracted metadata, current archive standards and style manual, and server responses.
+
+marXiv accepted the submission as `2609.00014v1`.  The [editorial review](submission-01/editorial-review.md) is retained verbatim and records nine style remarks.  The downloaded archive PDF equals the submitted snapshot and local PDF, with SHA-256 `eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb`.
