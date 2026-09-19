@@ -20,7 +20,11 @@ The first editorial pass removed repeated component summaries, a second definiti
 
 ## Final document checks
 
-- [ ] Complete technical and prose reread.
-- [ ] Resolve all LaTeX layout and reference warnings.
-- [ ] Inspect every rendered page and both embedded images.
-- [ ] Record final PDF identity, page count, and metadata.
+The second pass checked the theorem quantifiers, session observations, release order, memory estimates, shader arithmetic, and distinction between a theorem hypothesis and an axiom dependency.  It also checked the literature comparisons and the attribution of prior test and proof records.  The priority statement remains qualified by the search coverage.
+
+All 42 rendered pages were inspected, with separate inspection of the full-page screenshots on pages 26 and 27.  Tables, equations, source identifiers, captions, and bibliography entries fit the page.  The final LaTeX log contains no warnings, overfull boxes, or underfull boxes.  Extracted PDF text and metadata retain the title, authors, section structure, and references.  The [document record](evidence/document.json) preserves the PDF identity and the checks performed for this draft.
+
+- [x] Complete technical and prose reread.
+- [x] Resolve all LaTeX layout and reference warnings.
+- [x] Inspect every rendered page and both embedded images.
+- [x] Record final PDF identity, page count, and metadata.
