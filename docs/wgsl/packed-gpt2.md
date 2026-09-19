@@ -48,10 +48,39 @@ The browser source is available through:
 tools/gpt2-packed serve 8080
 ```
 
-Open `http://127.0.0.1:8080`. The page offers CPU WebGPU and an available GPU,
-streamed text, generation settings and Stop. Browser execution testing is
-pending: the automation tool reported the Mac locked. The UI and host source
-must not be treated as browser runtime evidence until that test succeeds.
+Open `http://127.0.0.1:8080`. `tools/gpt2 serve` and `tools/gpt2-wgsl serve`
+also launch this page, defaulting to port 8766.
+
+The page offers **CPU only (Wasm, no WGSL)** and **Wasm + WGSL**, with either
+an available GPU or a CPU WebGPU adapter for the latter. The CPU-only backend
+loads the unchanged, checked parent `model-cpu.wasm` and requires neither
+WebGPU nor shared-memory APIs. Both backends use the same checkpoint,
+tokenizer, sampler, conversion adapter and generation loop.
+
+**Compare both** runs CPU Wasm then WGSL with identical prompt/settings and
+retains both completions. It checks the generated token IDs and stopping reason;
+different inputs or different completions are explicitly identified. Metrics
+update during each run:
+
+- Setup, prefill, decode, first-token, sampling, text-decoding and total time.
+- Prefill tokens/second and decode model steps/second. The first generated token
+  uses the last prefill logits, so 16 generated tokens normally require 15
+  decode steps. A one-token completion has no decode throughput measurement.
+- Peak model and auxiliary Wasm linear-memory capacity, KV cache payload,
+  WebGPU buffer bytes, extra host weight bytes, shared staging and dispatches.
+
+Each run uses a fresh worker/device. Setup includes loading, compilation and
+tokenization; WGSL's lazy weight uploads are part of prefill. Model-call timing
+includes host transfer/wait time, but sampling/text decoding have separate
+counters. Memory figures describe explicit capacities, not process RAM or
+physical GPU residency; the KV cache is already included in Wasm memory.
+Browser and OS caches can affect setup timing between runs.
+
+Actual browser execution testing is pending. The desktop automation previously
+reported the Mac locked; an installed headless Chromium also failed before
+startup because the sandbox denied its macOS Mach-port service. The actual
+host/worker CPU path has been executed under Node worker bindings and compared
+exactly with the native science trace; this is not browser/WebGPU evidence.
 
 ## What the proof establishes
 
@@ -93,6 +122,12 @@ passed. The complete comparison took 113.98 seconds.
 Three greedy prompt comparisons and a paired sampled completion also passed.
 The sampled pair used the same Wasm tokenizer/sampler, temperature 0.8 and seed
 42; both the generated text and all recorded logit bytes were identical.
+
+The browser worker's CPU-only science run matched all 16 selected tokens and
+804,112 logit words against the native trace, with WebGPU and SharedArrayBuffer
+unavailable. The focused `packed-browser-test.mjs` also checks cancellation,
+one-token decode counters, and cleanup after a simulated GPU setup failure.
+It runs the real worker in Node; the simulated failure is not a shader test.
 
 The [integration journal](parent-integration-journal.md) records proof attempts,
 runtime measurements and remaining work. Generated models, shaders, weights,

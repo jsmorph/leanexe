@@ -7,6 +7,7 @@ import path from 'node:path';
 import {Worker as NodeWorker} from 'node:worker_threads';
 import {pathToFileURL} from 'node:url';
 const [bundleArg,traceArg,outputArg]=process.argv.slice(2);
+const nativeSharedArrayBuffer=globalThis.SharedArrayBuffer;
 assert(bundleArg&&traceArg&&outputArg,'usage: packed-browser-test.mjs BUNDLE SCIENCE_TRACE FRESH_OUTPUT');
 const bundle=path.resolve(bundleArg),expected=fs.readFileSync(traceArg),output=path.resolve(outputArg);
 assert(!fs.existsSync(output),'output must be fresh');fs.mkdirSync(output,{recursive:true});
@@ -61,7 +62,24 @@ const preAbort=new AbortController();preAbort.abort();
 await assert.rejects(runPacked({...options,signal:preAbort.signal}),{name:'AbortError'});assert.equal(active,0);
 const stop=new AbortController();
 await assert.rejects(runPacked({...options,signal:stop.signal},event=>{if(event.type==='status')stop.abort();}),{name:'AbortError'});assert.equal(active,0);
+const one=await runPacked({...options,generate:1,trace:false});
+assert.equal(one.produced,1);assert.equal(one.stats.decodeSteps,0);assert.equal(one.stats.decodeMs,0);assert.equal(active,0);
+const stopDecode=new AbortController();let emitted=0;
+await assert.rejects(runPacked({...options,signal:stopDecode.signal},event=>{
+  if(event.type==='token'){emitted++;stopDecode.abort();}
+}),{name:'AbortError'});assert.equal(emitted,1);assert.equal(active,0);
 await assert.rejects(runPacked({...options,backend:'unknown'}),/Unknown execution backend/);
+// Failure-path test doubles: check partial GPU setup cleanup, without claiming
+// these mocks execute or validate a shader.
+globalThis.SharedArrayBuffer=nativeSharedArrayBuffer;globalThis.crossOriginIsolated=true;
+globalThis.GPUBufferUsage={STORAGE:1,COPY_DST:2,COPY_SRC:4,MAP_READ:8};
+let destroyed=0;
+const device={destroy:()=>destroyed++,createBuffer:()=>({}),addEventListener:()=>{},lost:new Promise(()=>{}),
+  createShaderModule:()=>({}),createComputePipelineAsync:async()=>{throw Error('test pipeline failure');}};
+Object.defineProperty(globalThis,'navigator',{value:{gpu:{requestAdapter:async()=>({info:{isFallbackAdapter:true},requestDevice:async()=>device})}}});
+globalThis.fetch=async()=>({ok:true,text:async()=>''});
+await assert.rejects(runPacked({...options,backend:'wgsl'}),/test pipeline failure/);assert.equal(destroyed,1);assert.equal(active,0);
 fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({status:'pass',environment:'Node worker bindings; no browser execution',
-  comparedLogits:16*50257,tokenIds:tokens,text,result,requests,cancellation:'pre-start and loading passed'},null,2)+'\n');
+  comparedLogits:16*50257,tokenIds:tokens,text,result,oneTokenStats:one.stats,requests,
+  cancellation:'pre-start, loading and token emission passed',gpuSetupFailureCleanup:'test double passed'},null,2)+'\n');
 console.log(JSON.stringify({status:'pass',text,stats:result.stats,output},null,2));

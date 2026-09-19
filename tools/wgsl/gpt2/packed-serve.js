@@ -18,4 +18,8 @@ const server=http.createServer((req,res)=>{
   res.setHeader("Content-Type",types[path.extname(file)]||"application/octet-stream");res.setHeader("Content-Length",fs.statSync(file).size);
   if(req.method==="HEAD")res.end();else fs.createReadStream(file).on("error",()=>res.destroy()).pipe(res);
 });
+server.on("error",error=>{
+  console.error(error.code==="EADDRINUSE"?`Port ${port} is in use. Choose another port: tools/gpt2-packed serve ${port+1}`:error.message);
+  process.exitCode=1;
+});
 server.listen(port,"127.0.0.1",()=>console.log(`Packed GPT-2 browser: http://127.0.0.1:${server.address().port}`));
