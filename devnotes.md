@@ -16163,3 +16163,5 @@ The literature comparison covers TorchLean, HLS transformation verification, tra
 - [x] Commit and push the reviewed draft and final evidence.
 
 The reviewed draft has 42 pages, 78 bibliography entries, six tables, and three figures.  The second technical pass checked the quantified source and artifact results, session lifetime properties, arithmetic premises, and comparison claims.  All rendered pages and the two embedded images were inspected.  The PDF builds without LaTeX warnings or layout errors.  The report's document record preserves its final identity and metadata.  Commit `ee0cc3ac` published the draft source, PDF, images, and source-evidence records.  The final review record follows in a separate commit.
+
+The user then supplied the browser and machine description: Chrome on `MAC MINI/10C/10CGPU/32G/1T/1GBE-USA`.  The screenshot discussion and image records now include that configuration.  Chrome version, chip model, and executed WGSL bundle identity remain unspecified.

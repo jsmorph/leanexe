@@ -4,8 +4,8 @@
   "title": "GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence",
   "authors": "Codex GPT-6, Jamie Stephens",
   "pdf": "main.pdf",
-  "sha256": "e8eb0bc1c16cf83230eddf56006c55064f05c55546b313b792e54250aeab2a9f",
-  "bytes": 840266,
+  "sha256": "e9ad44f78a0698841b15f0b128e64368b10ca720e92024d50dae9168bdca3f69",
+  "bytes": 840511,
   "pages": 42,
   "bibliography_entries": 78,
   "tables": 6,
@@ -67,7 +67,25 @@
     "overfull_or_underfull_boxes": 0,
     "undefined_or_unused_bibliography_entries": 0,
     "original_screenshot_bytes_preserved": true,
-    "pdf_text_and_metadata_checked": true
+    "pdf_text_and_metadata_checked": true,
+    "environment_revision_pages_reinspected": [
+      3,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42
+    ]
   },
   "proof_evidence": "Prior proof-check and execution records are attributed in the manuscript. This drafting task reviewed source statements and document evidence without rebuilding the Lean proofs or running model inference.",
   "source_sha256": {
@@ -80,11 +98,12 @@
     "sections/06-shaders.tex": "391dfd849cf977dcf90caede4348cac061f2d02ec19166d7f12081f200659304",
     "sections/07-hybrid.tex": "b3b57041a6d0d5a6879c017f1ee9a63ded8398c5d6df377ecf62142d95edc0c7",
     "sections/08-native-results.tex": "dde4c30c1eff12a936a9ce168a575c3fdffb2846c42c8bd423e40f2c7a991a8c",
-    "sections/09-browser.tex": "2522b70bc368103e392787d0c3b9676824b24be61f3d0e271570686da0319d17",
+    "sections/09-browser.tex": "6229f40f8de81a1df94b6695f5fe80f2ff5cc3746dde39b0afd81f0c26de7810",
     "sections/10-related.tex": "092137e761f3e247ae7b2359a2602883676b30c30dad60fc0cdb9fef813c576e",
     "sections/11-assurance.tex": "b81f7efc40588020b87102d1557e3db2a720cf96170a43c666412e0ec3371c76",
     "sections/12-reference.tex": "9ca3b3661822b7fed308e66cfff94c6a2de4da847f3caaa95c4011dd4f50f820",
     "references.tex": "66299602efc144356ab9e0fa1b7ee16b11b4f2ae4c3fdcadf52c5a1a69855d4d",
     "related-references.tex": "16fa516b0cf8ff383a5354a87d46c01b54dd322f28a9a2e2a6cbda4523f0b211"
-  }
+  },
+  "image_record_sha256": "dc05ec26fdd1fa40647104806467d263ac381a13f7981493039f0adb63b4a35d"
 }
