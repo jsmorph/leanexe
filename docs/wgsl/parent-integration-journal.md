@@ -332,3 +332,40 @@ words were byte-identical to the previously executed artifacts. Evidence is
 `packed-assets-01/` and `packed-assets-01.log`. This is offline data preparation;
 inference and tokenization remain in Wasm/WGSL. The source build gate is being
 assembled separately and has not yet passed end to end.
+
+## Full hybrid controller and 128-token session
+
+The twelve-block traversal passed in `packed-compose-02/logs/run-6.json`.
+The complete cached-step and initialization-to-session proofs then passed in
+`run-9.json`. The public declarations are
+`Project.Gpt2Hybrid.Spec.cachedStep_exact`, `gpt2_128_exact`, and
+`gpt2_128_exact_for`. Their axiom reports contain only `propext`,
+`Classical.choice`, and `Quot.sound`. The proof includes rejected inputs,
+embedding, all twelve blocks, final normalization, both vocabulary halves,
+cache/logit ownership, initialization, allocation budgets and releases.
+The vocabulary-call replay needed an explicit normalization of the rounded
+201,032-byte capacity; failed logs 7 and 8 remain alongside the successful run.
+
+The host premise is explicit: completed execution of the six certified shaders
+under the declared separate FP32 semantics, exact output-byte transfer, and
+preservation of other store fields. Matrix equality to the parent algorithm is
+proved from the concrete shader certificates. This does not prove C, JavaScript,
+WebGPU driver conformance, GPU allocation success, tokenizer correctness or
+sampling correctness. The imported shader/module declarations are independently
+prepared from the generated artifacts; the external binary parser/emitter is
+still a translation trust boundary, as agreed for this integration.
+
+The host reuses 50 GPU weight views during GPT-2 execution. The Wasm controller
+allocates the same packed outputs as the parent, so the checked resource
+derivation carries through without adding Wasm staging allocations. Browser
+staging is in a separate shared buffer. Its implementation and actual browser
+execution remain to be tested; the browser-control tool reported the Mac locked
+and unable to unlock, and a user unlock request is pending.
+
+A concurrent-parent check found `origin/main` at `d8777fcd`. Its algorithm and
+controller were unchanged; new work concerned binary certificates and session
+API generalization. Commit `ea73d3c6` was selectively incorporated as `1cd17438`
+and the updated parent session theorem rechecked. The other parent binary and
+publication artifacts were not imported. The hybrid session replay uses that
+new module-parameterized API with the two imported-function indices accounted
+for explicitly.
