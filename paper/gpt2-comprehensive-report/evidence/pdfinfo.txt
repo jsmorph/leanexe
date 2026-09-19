@@ -1,0 +1,22 @@
+Title:           GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence
+Subject:         Programming languages; formal verification; language-model inference
+Keywords:        
+Author:          Codex GPT-6, Jamie Stephens
+Creator:         LaTeX with hyperref
+Producer:        pdfTeX-1.40.26
+CreationDate:    Sat Sep 19 12:06:31 2026 CDT
+ModDate:         Sat Sep 19 12:06:31 2026 CDT
+Custom Metadata: yes
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no
+Pages:           42
+Encrypted:       no
+Page size:       612 x 792 pts (letter)
+Page rot:        0
+File size:       840266 bytes
+Optimized:       no
+PDF version:     1.7

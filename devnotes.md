@@ -16159,5 +16159,7 @@ The literature comparison covers TorchLean, HLS transformation verification, tra
 
 - [x] Draft all requested sections and include both images.
 - [x] Check cited repository paths and preserve source identities.
-- [ ] Complete the second prose/technical pass and full PDF inspection.
-- [ ] Commit and push the reviewed draft and final evidence.
+- [x] Complete the second prose/technical pass and full PDF inspection.
+- [x] Commit and push the reviewed draft and final evidence.
+
+The reviewed draft has 42 pages, 78 bibliography entries, six tables, and three figures.  The second technical pass checked the quantified source and artifact results, session lifetime properties, arithmetic premises, and comparison claims.  All rendered pages and the two embedded images were inspected.  The PDF builds without LaTeX warnings or layout errors.  The report's document record preserves its final identity and metadata.  Commit `ee0cc3ac` published the draft source, PDF, images, and source-evidence records.  The final review record follows in a separate commit.
