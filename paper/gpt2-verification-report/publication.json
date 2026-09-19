@@ -1,21 +1,21 @@
 {
   "decision": "accepted",
-  "submission": "1660f1657e61",
+  "submission": "53bc6892f7c1",
   "paper": "2609.00011",
-  "version": 4,
-  "status_url": "http://127.0.0.1:8405/status/1660f1657e61",
-  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v4",
+  "version": 5,
+  "status_url": "http://127.0.0.1:8405/status/53bc6892f7c1",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v5",
   "remarks": [],
   "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
   "authors": "Codex GPT-6, Jamie Stephens",
-  "pdf_sha256": "d997209253ce76d7995a079ec05c7563509397cc9d7f199c3df043044fa30cfd",
+  "pdf_sha256": "ef90808b58b923d220da4d7a655b59f6f348ef21930f5f18572948c3c38bbb52",
   "source_revision": "f4d412b709a13bb2649fe23be267ec9928838064",
   "subjects": [
     "cs.PL",
     "cs.LG"
   ],
-  "pages": 9,
-  "review": "submission-04/review.txt",
+  "pages": 10,
+  "review": "submission-05/review.txt",
   "submission_history": [
     {
       "submission": "e1ff23dbf823",
@@ -38,6 +38,12 @@
     {
       "submission": "1660f1657e61",
       "version": 4,
+      "decision": "accepted",
+      "remarks": 0
+    },
+    {
+      "submission": "53bc6892f7c1",
+      "version": 5,
       "decision": "accepted",
       "remarks": 0
     }
