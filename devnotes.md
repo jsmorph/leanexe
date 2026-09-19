@@ -15976,3 +15976,11 @@ definitions were unchanged by the byte-proof work.  Splitting the mappings
 into ranges 0–23, 24–47, and 48–70 produced three checked helper lemmas and
 the same final `Shift` theorem.  The module passes in 17 seconds with the
 default heartbeat budget and only propext, Classical.choice, and Quot.sound.
+
+The restarted aggregate accepted all 43 artifact targets and has reached
+the behavioral specifications.  The documentation review corrected broad
+claims that package checking needs no source code: source-agreement proofs
+import the Lean definitions used as their specification.  Binary decoding
+and the checked model equality remain independent of compiler correctness.
+The development guide now describes the complete dependency build schedule.
+The documentation and whitespace checks pass.
