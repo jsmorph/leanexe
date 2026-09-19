@@ -214,3 +214,22 @@ tools/gpt2-packed --prompt 'The purpose of science is' --generate 16 --temperatu
 ```
 
 The prompt runner reports that the full hybrid session proof is pending.
+
+## Reusing unchanged Wasm function proofs
+
+`FunctionRegion.ImportShift` permits host imports outside a closed region of
+Wasm-defined functions. Its checked execution theorem transports the same
+store/return behavior after renaming calls, and its total-correctness theorem
+transports `TerminatesWith` specifications. Memory declarations must match;
+every called function must remain in the closed region. It does not assume
+matrix-call equivalence or permit the region to call an unchecked import.
+
+Applied to the independently parsed hybrid artifact, this passed for all 38
+unchanged functions outside the two matrix replacements and three controllers
+(original indices 21, 33, 36, 37 and 38 are excluded). This covers the retained
+arithmetic operations, normalization, attention, activations, residuals, layout,
+allocation and release functions. The controller proofs remain to be composed
+using the replacement-call contracts. The first generated proof used an
+unavailable tactic and failed; explicit constructor proofs and normalized
+membership cases passed in `build/gpt2/packed-region-check-02/results.json`.
+The generic theorem build is recorded in `build/gpt2/region-imports-01.log`.
