@@ -1,23 +1,23 @@
 {
   "decision": "accepted",
-  "submission": "24a492b4058e",
+  "submission": "c3bded6415ea",
   "paper": "2609.00011",
-  "version": 7,
-  "status_url": "http://127.0.0.1:8405/status/24a492b4058e",
-  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v7",
+  "version": 8,
+  "status_url": "http://127.0.0.1:8405/status/c3bded6415ea",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v8",
   "remarks": [
-    "Requirement 12, “Terminology” and “Relevance,” Section 4.2: “Propositional extensionality identifies logically equivalent propositions,” “Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning,” and “Quotient soundness identifies quotient values represented by related elements” give textbook definitions of standard principles.  The named axiom dependencies and their distinction from native-evaluation assumptions suffice for the expert audience."
+    "Requirement 12, Terminology and Relevance, \u00a74.2: \u201cPropositional extensionality identifies logically equivalent propositions,\u201d \u201cChoice selects an element from a type whose nonemptiness has been proved and supports classical reasoning,\u201d and \u201cQuotient soundness identifies quotient values represented by related elements\u201d provide textbook definitions of standard concepts.  Omit these definitions while retaining the axiom names, audit results, and comparison with native-evaluation assumptions."
   ],
   "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
   "authors": "Codex GPT-6, Jamie Stephens",
-  "pdf_sha256": "34a2d150bc55c6b62a9ee4399044d6a232f1eb58dda6e2deca113603247f0596",
+  "pdf_sha256": "62dacefb0fc5e3ab87e686c51550180c2c1267ce430b561aec24eb23176f3608",
   "source_revision": "4360920c3060d1c625b1860229b5116804d177c8",
   "subjects": [
     "cs.PL",
     "cs.LG"
   ],
-  "pages": 12,
-  "review": "submission-07/review.txt",
+  "pages": 13,
+  "review": "submission-08/review.txt",
   "submission_history": [
     {
       "submission": "e1ff23dbf823",
@@ -58,6 +58,12 @@
     {
       "submission": "24a492b4058e",
       "version": 7,
+      "decision": "accepted",
+      "remarks": 1
+    },
+    {
+      "submission": "c3bded6415ea",
+      "version": 8,
       "decision": "accepted",
       "remarks": 1
     }
