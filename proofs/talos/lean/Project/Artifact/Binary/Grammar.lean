@@ -79,11 +79,13 @@ inductive Sized (relation : List UInt8 → α → Prop) : List UInt8 → α → 
 inductive ValType : List UInt8 → Binary.ValType → Prop
   | i32 : ValType [byte 127] .i32
   | i64 : ValType [byte 126] .i64
+  | f32 : ValType [byte 125] .f32
 
 inductive BlockType : List UInt8 → Binary.BlockType → Prop
   | empty : BlockType [byte 64] .empty
   | i32 : BlockType [byte 127] (.value .i32)
   | i64 : BlockType [byte 126] (.value .i64)
+  | f32 : BlockType [byte 125] (.value .f32)
 
 inductive FuncType : List UInt8 → Binary.FuncType → Prop
   | intro (paramBytes resultBytes : List UInt8) (params results : List Binary.ValType)
@@ -214,14 +216,21 @@ mutual
     | i64Xor : Instr [byte 133] .i64Xor
     | i64Shl : Instr [byte 134] .i64Shl
     | i64ShrU : Instr [byte 136] .i64ShrU
+    | f32Add : Instr [byte 146] .f32Add
     | f64Add : Instr [byte 160] .f64Add
+    | f32Mul : Instr [byte 148] .f32Mul
     | f64Mul : Instr [byte 162] .f64Mul
+    | f32Sub : Instr [byte 147] .f32Sub
     | f64Sub : Instr [byte 161] .f64Sub
+    | f32Div : Instr [byte 149] .f32Div
     | f64Div : Instr [byte 163] .f64Div
+    | f32Sqrt : Instr [byte 145] .f32Sqrt
     | f64Sqrt : Instr [byte 159] .f64Sqrt
     | i32WrapI64 : Instr [byte 167] .i32WrapI64
     | i64ExtendI32U : Instr [byte 173] .i64ExtendI32U
+    | i32ReinterpretF32 : Instr [byte 188] .i32ReinterpretF32
     | i64ReinterpretF64 : Instr [byte 189] .i64ReinterpretF64
+    | f32ReinterpretI32 : Instr [byte 190] .f32ReinterpretI32
     | f64ReinterpretI64 : Instr [byte 191] .f64ReinterpretI64
 
   inductive Instrs : List UInt8 → List Binary.Instr → Prop

@@ -10,6 +10,8 @@ def valType : Parser ValType := do
     pure .i32
   else if code = 126 then
     pure .i64
+  else if code = 125 then
+    pure .f32
   else
     fail (.unsupportedType code)
 
@@ -70,6 +72,8 @@ def blockType : Parser BlockType := do
     pure (.value .i32)
   else if code = 126 then
     pure (.value .i64)
+  else if code = 125 then
+    pure (.value .f32)
   else
     fail (.unsupportedType code)
 
@@ -122,12 +126,19 @@ inductive Op where
   | i64ShrU
   | i32WrapI64
   | i64ExtendI32U
+  | f32Add
   | f64Add
+  | f32Mul
   | f64Mul
+  | f32Sub
   | f64Sub
+  | f32Div
   | f64Div
+  | f32Sqrt
   | f64Sqrt
+  | i32ReinterpretF32
   | i64ReinterpretF64
+  | f32ReinterpretI32
   | f64ReinterpretI64
   deriving DecidableEq
 
@@ -175,14 +186,21 @@ def Op.opcode : Op → UInt8
   | .i64Xor => 133
   | .i64Shl => 134
   | .i64ShrU => 136
+  | .f32Add => 146
   | .f64Add => 160
+  | .f32Mul => 148
   | .f64Mul => 162
+  | .f32Sub => 147
   | .f64Sub => 161
+  | .f32Div => 149
   | .f64Div => 163
+  | .f32Sqrt => 145
   | .f64Sqrt => 159
   | .i32WrapI64 => 167
   | .i64ExtendI32U => 173
+  | .i32ReinterpretF32 => 188
   | .i64ReinterpretF64 => 189
+  | .f32ReinterpretI32 => 190
   | .f64ReinterpretI64 => 191
 
 def Op.all : List Op :=
@@ -192,7 +210,8 @@ def Op.all : List Op :=
     .memoryGrow, .i32Const, .i64Const, .i32Eqz, .i32Eq, .i64Eqz, .i64Eq,
     .i64Ne, .i64LtU, .i64LeU, .i64GeU, .i32And, .i64Add, .i64Sub,
     .i64Mul, .i64DivU, .i64RemU, .i64And, .i64Or, .i64Xor, .i64Shl,
-    .i64ShrU, .f64Add, .f64Mul, .f64Sub, .f64Div, .f64Sqrt,
+    .i64ShrU, .f32Add, .f32Mul, .f32Sub, .f32Div, .f32Sqrt,
+    .i32ReinterpretF32, .f32ReinterpretI32, .f64Add, .f64Mul, .f64Sub, .f64Div, .f64Sqrt,
     .i32WrapI64, .i64ExtendI32U,
     .i64ReinterpretF64, .f64ReinterpretI64]
 
@@ -279,14 +298,21 @@ mutual
           | .i64Xor => pure .i64Xor
           | .i64Shl => pure .i64Shl
           | .i64ShrU => pure .i64ShrU
+          | .f32Add => pure .f32Add
           | .f64Add => pure .f64Add
+          | .f32Mul => pure .f32Mul
           | .f64Mul => pure .f64Mul
+          | .f32Sub => pure .f32Sub
           | .f64Sub => pure .f64Sub
+          | .f32Div => pure .f32Div
           | .f64Div => pure .f64Div
+          | .f32Sqrt => pure .f32Sqrt
           | .f64Sqrt => pure .f64Sqrt
           | .i32WrapI64 => pure .i32WrapI64
           | .i64ExtendI32U => pure .i64ExtendI32U
+          | .i32ReinterpretF32 => pure .i32ReinterpretF32
           | .i64ReinterpretF64 => pure .i64ReinterpretF64
+          | .f32ReinterpretI32 => pure .f32ReinterpretI32
           | .f64ReinterpretI64 => pure .f64ReinterpretI64
 
   def instructionSequence : Nat → Bool → Parser (List Instr × Terminator)

@@ -278,14 +278,21 @@ mutual
     | .i64Xor => binary context path base .i64 .i64 state
     | .i64Shl => binary context path base .i64 .i64 state
     | .i64ShrU => binary context path base .i64 .i64 state
+    | .f32Add => binary context path base .f32 .f32 state
     | .f64Add => binary context path base .f64 .f64 state
+    | .f32Mul => binary context path base .f32 .f32 state
     | .f64Mul => binary context path base .f64 .f64 state
+    | .f32Sub => binary context path base .f32 .f32 state
     | .f64Sub => binary context path base .f64 .f64 state
+    | .f32Div => binary context path base .f32 .f32 state
     | .f64Div => binary context path base .f64 .f64 state
+    | .f32Sqrt => unary context path base .f32 .f32 state
     | .f64Sqrt => unary context path base .f64 .f64 state
     | .i32WrapI64 => unary context path base .i64 .i32 state
     | .i64ExtendI32U => unary context path base .i32 .i64 state
+    | .i32ReinterpretF32 => unary context path base .f32 .i32 state
     | .i64ReinterpretF64 => unary context path base .f64 .i64 state
+    | .f32ReinterpretI32 => unary context path base .i32 .f32 state
     | .f64ReinterpretI64 => unary context path base .i64 .f64 state
     | .i64Load arg => do
         checkMemory context path

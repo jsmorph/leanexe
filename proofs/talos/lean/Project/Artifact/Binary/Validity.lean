@@ -68,8 +68,11 @@ inductive UnaryOp : Instr → ValType → ValType → Prop
   | i64Eqz : UnaryOp .i64Eqz .i64 .i32
   | i32WrapI64 : UnaryOp .i32WrapI64 .i64 .i32
   | i64ExtendI32U : UnaryOp .i64ExtendI32U .i32 .i64
+  | f32Sqrt : UnaryOp .f32Sqrt .f32 .f32
   | f64Sqrt : UnaryOp .f64Sqrt .f64 .f64
+  | i32ReinterpretF32 : UnaryOp .i32ReinterpretF32 .f32 .i32
   | i64ReinterpretF64 : UnaryOp .i64ReinterpretF64 .f64 .i64
+  | f32ReinterpretI32 : UnaryOp .f32ReinterpretI32 .i32 .f32
   | f64ReinterpretI64 : UnaryOp .f64ReinterpretI64 .i64 .f64
 
 inductive BinaryOp : Instr → ValType → ValType → Prop
@@ -90,9 +93,13 @@ inductive BinaryOp : Instr → ValType → ValType → Prop
   | i64Xor : BinaryOp .i64Xor .i64 .i64
   | i64Shl : BinaryOp .i64Shl .i64 .i64
   | i64ShrU : BinaryOp .i64ShrU .i64 .i64
+  | f32Add : BinaryOp .f32Add .f32 .f32
   | f64Add : BinaryOp .f64Add .f64 .f64
+  | f32Mul : BinaryOp .f32Mul .f32 .f32
   | f64Mul : BinaryOp .f64Mul .f64 .f64
+  | f32Sub : BinaryOp .f32Sub .f32 .f32
   | f64Sub : BinaryOp .f64Sub .f64 .f64
+  | f32Div : BinaryOp .f32Div .f32 .f32
   | f64Div : BinaryOp .f64Div .f64 .f64
 
 mutual

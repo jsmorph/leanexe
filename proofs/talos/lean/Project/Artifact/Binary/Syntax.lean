@@ -28,6 +28,7 @@ def SectionId.rank : SectionId → Nat
 inductive ValType where
   | i32
   | i64
+  | f32
   | f64
   deriving Repr, Inhabited, DecidableEq, BEq
 
@@ -113,12 +114,19 @@ inductive Instr where
   | i64ShrU
   | i32WrapI64
   | i64ExtendI32U
+  | f32Add
   | f64Add
+  | f32Mul
   | f64Mul
+  | f32Sub
   | f64Sub
+  | f32Div
   | f64Div
+  | f32Sqrt
   | f64Sqrt
+  | i32ReinterpretF32
   | i64ReinterpretF64
+  | f32ReinterpretI32
   | f64ReinterpretI64
   | i64Load (arg : MemArg)
   | i32Load (arg : MemArg)
