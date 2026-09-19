@@ -1,56 +1,60 @@
 Exact Execution Verification of Cached GPT-2 in Lean and
 WebAssembly
 Codex GPT-6, Jamie Stephens
-18 September 2026
+19 September 2026
 
 Abstract
 Compiling a neural-network implementation requires preserving its arithmetic order, tensor
-representation, and memory behavior. We present a Lean specification and a checked execution
-proof for a cached GPT-2 implementation with 124,439,808 parameters and a 128-token context.
-In the semantics of the WebAssembly interpreter and proof library Talos, written in Lean,
-the generated module terminates and returns exactly the cache and logit bytes of the Lean
-token-step recurrence for every weight array of the required length and every valid token sequence
-of length at most 128. The proof includes initialization, packed input representation, all twelve
-transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases. Our Talos
-extensions define binary32 and binary64 arithmetic through integer operations and explicit
-rounding. Arithmetic lemmas connect Lean’s logical Float32 operations to Talos for all input
-words. The standalone WebAssembly runtime Wasmtime executes the module with arithmetic
-NaN canonicalization enabled. Tests against CPU PyTorch compare 6,432,896 logits across
-all supported context lengths, with a maximum observed absolute difference of 0.001450, and
-produce text completions. The formal result concerns the corresponding Lean algorithm. The
-translator from the artifact to its model, the native host, and Wasmtime remain trusted. We
-defer proofs connecting emitted binary bytes to the Talos model and bounds on numerical error.
+representation, and memory behavior. We present a checked proof connecting a 19,083-byte
+WebAssembly artifact to a Lean specification of cached GPT-2 with 124,439,808 parameters and
+a 128-token context. In the semantics of the WebAssembly interpreter and proof library Talos,
+written in Lean, the decoded artifact terminates and returns exactly the cache and logit bytes
+of the Lean token-step recurrence for every weight array of the required length and every valid
+token sequence of length at most 128. The proof establishes binary decoding, validation, and
+equality with the execution model, then composes initialization, packed input representation,
+all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases.
+Our Talos extensions define binary32 and binary64 arithmetic through integer operations and
+explicit rounding. Arithmetic lemmas connect Lean’s logical Float32 operations to Talos for
+all input words. The standalone WebAssembly runtime Wasmtime executes the module with
+arithmetic NaN canonicalization enabled. Tests against CPU PyTorch compare 6,432,896 logits
+across all supported context lengths, with a maximum observed absolute difference of 0.001450,
+and produce text completions. The final theorem uses three standard logical axioms. Applying
+the formal result to native execution relies on the interpretation of the formal semantics, the
+host’s byte I/O, and Wasmtime. The report records the artifact-identity and axiom-policy checks
+needed to preserve this assurance after future edits.
 
 1
 
 The checked execution result
 
 In the semantics of the WebAssembly interpreter and proof library Talos, written in Lean, the
-generated module terminates and returns exactly the cache and logit bytes of the Lean token-step
-recurrence for every weight array of the required length and every valid token sequence of length at
-most 128. The public theorem is Project.Gpt2CachedStep.Spec.gpt2_128_exact. It composes
-the module’s reset and allocation exports, the mathematical encoding of weight bytes, and successive
-calls to the cached inference export [2]. The proof derives the memory conditions needed by every
-token call from initialization and a uniform allocation budget.
+decoded artifact terminates and returns exactly the cache and logit bytes of the Lean token-step
+recurrence for every weight array of the required length and every valid token sequence of length
+at most 128. The public theorem is Project.Gpt2CachedStep.Artifact.artifact_gpt2_128_e
+xact. It starts from the frozen binary bytes, proves decoding and validation, and establishes the
+execution specification for their Talos translation [2]. The session proof composes the module’s
+reset and allocation exports, the mathematical encoding of weight bytes, and successive calls to
+the cached inference export [8]. It derives the memory conditions needed by every token call from
+initialization and a uniform allocation budget.
 The specification is the executable Lean function LeanExe.Models.Gpt2.cachedStep, including
 its selected FP32 operation order and polynomial numerical routines. LeanExe compiles that
-function to WebAssembly. The proof uses Talos’s instruction rules for the generated output [3, 4].
+function to WebAssembly. The proof uses Talos’s instruction rules for the decoded output [9, 10].
 Each arithmetic, tensor, and control-flow result therefore connects to a definition used by the
-compiler’s input. The terminal postconditions describe returned bytes and heap state.
-This report describes repository revision f4d412b709a13bb2649fe23be267ec9928838064 [1].
+compiler’s input. Per-call postconditions describe returned bytes and heap state, and the session
+induction preserves the weights and current cache across releases.
+1
+
+This report describes repository revision 4360920c3060d1c625b1860229b5116804d177c8 [1].
 The compiler and proof workspace use Lean 4.34.0-rc2 at revision 6a10ac8c22beadecabdbb0919c2
 b50214762f91d. The Talos revision is 87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47. For native
 execution we use the Bytecode Alliance’s standalone WebAssembly runtime, Wasmtime 44.0.0, with
-
-1
-
-its Cranelift code generator and arithmetic NaN canonicalization enabled [25, 21]. Section 4 specifies
+its Cranelift code generator and arithmetic NaN canonicalization enabled [31, 27]. Section 4 specifies
 the connection between the checked execution model and that runtime.
 The implementation loads the pretrained GPT-2 checkpoint as external data. The theorem
 quantifies over arbitrary bytes of the required weight length, including exceptional FP32 encodings.
 Consequently, replacing weight values preserves the applicability of the execution proof. The
 command-line demonstration separately checks the identity of the pretrained checkpoint and rejects
-a non-finite returned logit before sampling [22]. Those host checks belong to the demonstration’s
+a non-finite returned logit before sampling [28]. Those host checks belong to the demonstration’s
 behavior.
 
 2
@@ -63,9 +67,9 @@ Model dimensions and interface
 
 The implementation retains the original GPT-2 block organization: pre-normalized attention and
 feed-forward sublayers, residual additions, final normalization, and a vocabulary projection tied to
-the token embedding [5]. Table 1 gives the dimensions that determine loop bounds and buffer sizes.
+the token embedding [11]. Table 1 gives the dimensions that determine loop bounds and buffer sizes.
 The checkpoint contains 1,024 position embeddings, while the implemented cached entry accepts
-positions zero through 127 [6, 7].
+positions zero through 127 [12, 13].
 Quantity
 
 Value
@@ -98,21 +102,21 @@ Table 1: Dimensions used by the implementation and proof.
 A token is a vocabulary index represented by UInt32. Context length counts these indices.
 Weights, activations, cached keys and values, and logits use little-endian packed 32-bit words in Lean
 ByteArray values. The source operations word and generateUInt32LE read and construct those
-words. The compiler emits scalar FP32 instructions and packed memory operations for them [8, 9].
+words. The compiler emits scalar FP32 instructions and packed memory operations for them [14, 15].
 The source entry has the type
 ByteArray → ByteArray → UInt32 → Nat → CachedResult.
 Its arguments are weights, the prior cache, a token, and its position. A CachedResult contains
 the extended cache and the next-token logit vector. At position p, the entry checks weight length,
-token range, p < 128, and cache length 73,728p. A failed check returns two empty byte arrays. The
-separate rejected-entry theorem proves four zero result words and complete store preservation under
-the public entry’s representation conditions [10].
-The host API passes the weight pointer and byte length, cache pointer and byte length, token,
-and position, in that order. The export returns cache pointer, cache byte length, logit pointer, and
 2
 
-logit byte length. Talos represents call arguments and results in operand-stack order, which reverses
+token range, p < 128, and cache length 73,728p. A failed check returns two empty byte arrays. The
+separate rejected-entry theorem proves four zero result words and complete store preservation under
+the public entry’s representation conditions [16].
+The host API passes the weight pointer and byte length, cache pointer and byte length, token,
+and position, in that order. The export returns cache pointer, cache byte length, logit pointer, and
+logit byte length. Talos represents call arguments and results in operand-stack order, which reverses
 these lists. Checked equalities identify cachedStep, alloc, reset, and release with function
-indices 38, 39, 40, and 42 [11].
+indices 38, 39, 40, and 42 [17].
 
 2.2
 
@@ -124,7 +128,7 @@ is a prior position, ℓ is a layer, and o < 1536 selects a key or value compone
 ((12s + ℓ)1536) + o.
 For the current position, cachedKv reads the key or value from the newly computed QKV projection.
 The source calculates attention scores by a 64-term ordered dot product, scales by 1/8, normalizes
-over positions zero through the current position, and computes the weighted value sum [7].
+over positions zero through the current position, and computes the weighted value sum [13].
 Each block returns a new hidden vector and its current key/value vectors. The enclosing twelvelayer loop concatenates those key/value vectors and appends them to the old cache. Token and
 position embedding precede that loop. Final layer normalization and the tied 50,257-row vocabulary
 projection follow it. The cached Lean function specifies this entire token step. The formal target
@@ -151,22 +155,23 @@ Matrix projections accumulate each output component in source loop order, with a
 multiplication and addition at each step, followed by bias addition. Layer normalization computes
 an ordered mean, an ordered sum of squared deviations, division by 768, addition of the FP32 word
 0x3727C5AC for epsilon, square root, and reciprocal. It then applies the centered value, inverse
-standard deviation, scale, and bias in the written order [8]. These choices determine the exact
+standard deviation, scale, and bias in the written order [14]. These choices determine the exact
 source result.
 The source implements exponential evaluation by a degree-18 Horner polynomial with explicit
 coefficient words. For finite nonpositive arguments, expNeg returns zero below −64, halves an
 argument below −1 at most six times, evaluates the polynomial, and squares the result once per
 halving. GELU uses an exponential form of the tanh approximation and a magnitude cutoff at eight.
 Beyond that cutoff, the finite positive tail returns the input and the finite negative tail returns
-zero [12]. The bitwise comparisons and branch definitions in the cited source determine behavior on
+zero [18]. The bitwise comparisons and branch definitions in the cited source determine behavior on
 all other input words. The execution proof includes those branches.
-The polynomial, constants, cutoff tests, and rounding order form part of the algorithm specification. The PyTorch reference uses its own tensor and transcendental implementations. The
+3
+
+The polynomial, constants, cutoff tests, and rounding order form part of the algorithm specification. The PyTorch reference uses its own tensor and transcendental implementations. The
 report’s numerical comparisons measure their agreement on the recorded checkpoint and token
 sequences. Proving a real-valued approximation bound would require a separate statement relating
 these numerical routines to real formulas.
-3
 
-3
+3
 
 Statement and construction of the proof
 
@@ -181,22 +186,26 @@ and postcondition P , write TW(E, M, i, S, a, P ) for Talos’s TerminatesWith. 
 run(f, M, i, S, a, E) = Success(v, S ′ ) ∧ P (S ′ , v).
 
 The natural number f is interpreter fuel. This predicate proves eventual successful execution and
-the postcondition for every sufficiently large fuel value [13]. The generated GPT-2 module has no
+the postcondition for every sufficiently large fuel value [19]. The generated GPT-2 module has no
 imported functions, and the theorem quantifies over the host environment.
-Theorem 1 (Cached GPT-2 invocation). Fix the generated module M at the report’s source revision.
-Let W be a byte array of length 497,759,232, and let T = [t0 , . . . , tn−1 ] be a list of UInt32 tokens
-with n ≤ 128 and tp < 50,257 for every p < n. Starting from M ’s initial store, reset and weight
-allocation terminate successfully. After the specified byte copy of W into the allocated payload, the
-token calls and releases described below terminate successfully. At each position p, their observable
-cache and logit bytes equal Cp+1 and Lp in Equation (1).
-The checked declaration for Theorem 1 is Project.Gpt2CachedStep.Spec.gpt2_128_exact [2].
-Its only input restrictions are the three conditions in the statement. The result includes the empty
-token list. For a nonempty list, Session.Runs calls cachedStep, observes the new cache, releases
-the previous cache when its pointer is nonzero, observes the logits, releases the logit buffer, and
-continues with the returned cache. The final cache and weights remain available in the instance.
-The source trace specifies the outputs of this call sequence.
+Theorem 1 (Cached GPT-2 artifact execution). Let B be the frozen 19,083-byte artifact at the
+report’s source revision. Decoding and validation succeed for B. Its decoded module satisfies the
+formal binary grammar and validation rules of the supported profile. Let M be its Talos translation,
+W a byte array of length 497,759,232, and T = [t0 , . . . , tn−1 ] a list of UInt32 tokens with n ≤ 128
+and tp < 50,257 for every p < n. Starting from M ’s initial store, reset and weight allocation
+terminate successfully. After the specified byte copy of W into the allocated payload, the token calls
+and releases described below terminate successfully. At each position p, their observable cache and
+logit bytes equal Cp+1 and Lp in Equation (1).
+The checked declaration for Theorem 1 is Project.Gpt2CachedStep.Artifact.artifact_gpt
+2_128_exact [2]. Its execution component transfers Project.Gpt2CachedStep.Spec.gpt2_128_
+exact to the decoded module [8]. The three input conditions in the statement suffice, including
+for the empty token list. For a nonempty list, Session.RunsFor calls cachedStep, observes the
+new cache, releases the previous cache when its pointer is nonzero, observes the logits, releases the
+logit buffer, and continues with the returned cache. The step theorem preserves ownership of the
+weights and current cache through those releases. The source trace specifies the outputs of this call
+sequence.
 The weight-copy step is the pure store update PackedInput.write. Its theorem establishes the
-required byte representation and heap ownership after allocation [14]. This specifies the byte I/O
+required byte representation and heap ownership after allocation [20]. This specifies the byte I/O
 boundary used by the execution theorem. The native host performs the corresponding copy with
 memcpy. The proof’s trust boundary includes that implementation.
 
@@ -206,34 +215,36 @@ Floating-point extensions to Talos
 
 Our extensions give Talos executable binary32 and binary64 arithmetic definitions over integers
 and raw words. The earlier evaluator stored floating-point values as UInt32 and UInt64 words,
-then called Lean’s native Float32 and Float operations to evaluate arithmetic [26]. We added the
+then called Lean’s native Float32 and Float operations to evaluate arithmetic [32]. We added the
 Wasm.IEEE32 and Wasm.IEEE64 definitions and changed the interpreter’s arithmetic dispatch to use
-them [27, 28]. These definitions expose the arithmetic computation to Lean proofs.
+them [33, 34]. These definitions expose the arithmetic computation to Lean proofs.
 The models decode sign, exponent, and fraction fields. Finite binary32 values have the form
-z 2−149 for an integer z, and finite binary64 values have the form z 2−1074 . Addition forms the exact
-integer sum at that scale. Multiplication forms an exact dyadic product, and division forms an
+−149
+z2
+for an integer z, and finite binary64 values have the form z 2−1074 . Addition forms the exact
+4
+
+integer sum at that scale. Multiplication forms an exact dyadic product, and division forms an
 exact rational quotient. Output rounding selects the nearest representable value and resolves ties
 toward an even significand. The square-root implementation compares the exact radicand with a
-squared halfway point to choose the rounded result [27]. The integer definitions include subnormal
+squared halfway point to choose the rounded result [33]. The integer definitions include subnormal
 values, gradual underflow, overflow, signed zeros, infinities, and canonical arithmetic NaNs.
 The extension also gives integer definitions for comparisons, minimum and maximum, sign
 operations, rounding to an integer, and signed and unsigned integer conversions. Trapping and
 saturating conversions have explicit range and exceptional-value branches. Sign operations preserve
 the other word bits, including a NaN payload. The big-step evaluator, small-step evaluator, and
-weakest-precondition rules use the corresponding arithmetic definitions and NaN classifiers [28, 29].
-4
-
-At the pinned revision, cross-format promotion and demotion use Lean’s conversion functions. The
+weakest-precondition rules use the corresponding arithmetic definitions and NaN classifiers [34, 35].
+At the pinned revision, cross-format promotion and demotion use Lean’s conversion functions. The
 generated GPT-2 module uses scalar binary32 arithmetic and raw-word reinterpretation.
 We added operation theorems to Talos’s CodeLib proof library for finite arithmetic, exceptional
 values, comparisons, rounding, and conversions. For example, in namespace CodeLib.IEEE32,
 mul_finite_rounder identifies the product word with the dyadic rounder, and sqrt_signed_zero
 establishes the sign-preserving zero case. Total execution theorems connect selected instruction
 sequences to these word functions, including multiplication, division, square root, conversion, and
-SIMD examples [29]. The extension replaced the legacy IEEE32Exec compatibility axioms with
-proved equalities over the integer definitions [30].
+SIMD examples [35]. The extension replaced the legacy IEEE32Exec compatibility axioms with
+proved equalities over the integer definitions [36].
 The extended library also contains real-error bounds under stated input conditions and proofs
-that compose rounding errors through Horner evaluation and dot products [31]. Those results
+that compose rounding errors through Horner evaluation and dot products [37]. Those results
 support numerical analyses of floating-point algorithms. The GPT-2 proof uses the exact operation
 definitions and execution rules, together with the source-correspondence equalities in the next
 subsection. Talos supplies the arithmetic semantics. The LeanExe proof workspace proves equality
@@ -251,7 +262,7 @@ LeanExe.Float32.opBits(a, b) = Wasm.IEEE32.op(a, b).
 
 An analogous theorem covers square root. Here opBits and op stand for the corresponding named
 operation. The source intrinsics reduce to Lean’s logical Float32.Model, and the proofs compare
-its encoding and rounding definitions with Talos’s IEEE32 operations [15, 16].
+its encoding and rounding definitions with Talos’s IEEE32 operations [21, 22].
 The proofs split exceptional values from finite values, including zero and subnormal cases. Shared
 lemmas relate encodings, significands, exponents, scaling, and rounding. Finite multiplication,
 division, and square root require their respective rounding arguments. NaN and infinity cases close
@@ -266,18 +277,18 @@ Tensor loops and ownership
 The packed-memory proofs connect emitted loads and stores to source byte-array reads and
 construction. Loop invariants relate the constructed memory prefix or scalar accumulator to the
 source recurrence, while frame conditions preserve protected input regions. A shared range-loop
-rule supports an arbitrary preserved operand-stack prefix, which the generated matrix projection
-needs because it retains a destination address during dot-product evaluation [17].
-Kernel theorems compose into normalization, cached attention, complete transformer blocks, the
-twelve-layer hidden traversal, and vocabulary projection. Table 2 identifies the main composition
-boundaries. The accepted-entry theorem returns both output buffers’ ownership, their separation
-from each other, and freshness relative to the initial heap [10]. These properties permit the session
-theorem to free the previous cache and the current logits while preserving the weights and new
-cache.
 
 5
 
-Proof boundary
+rule supports an arbitrary preserved operand-stack prefix, which the generated matrix projection
+needs because it retains a destination address during dot-product evaluation [23].
+Kernel theorems compose into normalization, cached attention, complete transformer blocks, the
+twelve-layer hidden traversal, and vocabulary projection. Table 2 identifies the main composition
+boundaries. The accepted-entry theorem returns both output buffers’ ownership, their separation
+from each other, and freshness relative to the initial heap [16]. These properties permit the session
+theorem to free the previous cache and the current logits while preserving the weights and new
+cache.
+Proof boundary
 
 Established result
 
@@ -301,7 +312,7 @@ Vocabulary and entry
 Initialization and session
 
 Table 2: Composition of the checked execution proof. The main proof import identifies the
-component declarations [10].
+component declarations [16].
 
 3.5
 
@@ -310,7 +321,7 @@ Allocation sufficiency through position 127
 The allocation proof bounds heap-top growth by charging each requested allocation, including
 alignment and allocator overhead. A successful free-list reuse preserves the heap top, as does
 release. Thus the argument applies to the existing allocator independently of which reusable block
-it selects [18].
+it selects [24].
 Let Hp be the heap top before token call p, and set
 B0 = 536,870,912,
 
@@ -324,48 +335,102 @@ For p < 128 and a cache of length 73,728p, Entry.budget proves every allocation-
 and bounds the resulting heap top by Hp + D, provided Hp + D < 232 . Equation (2) supplies that
 premise because
 B0 + 128D = 2,684,354,560 < 232 .
-The session induction therefore closes all 128 positions [18, 2].
+The session induction therefore closes all 128 positions [24, 8].
 The memory invariant requires a 65,536-page capacity and bounds the page count by that
 capacity. Each page contains 65,536 bytes, giving a 4 GiB memory bound. The 2.5 GiB expression
 above bounds the charged heap top. The measured linear-memory size in Section 5 is a separate
 observation. Host allocation success within the modeled capacity and sufficient native execution
 resources belong to the runtime assumptions.
+6
 
-4
+4
 
 Artifact and runtime boundary
 
-The source-driven check recompiles cachedStep, renders the resulting binary as WAT with
-wasm-tools, generates a Talos module, and requires the generated Program.lean to match the
-tracked module used by the theorem. It then builds the complete proof import [19]. The proof
-establishes the generated model’s behavior without assuming general compiler correctness. The
-generation and comparison tools remain trusted for the correspondence between the emitted binary
-and that model.
-The recorded runtime binary and the proof check’s generated binary have SHA-256
-6
+4.1
 
-e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade.
+Binary decoding and execution transfer
 
-This hash comparison identifies the tested file. A checked derivation from embedded binary bytes
-through decoding, validation, and translation would close the exact-byte obligation. That obligation
-remains deferred for this GPT-2 report. The present evidence consists of regeneration, model
-comparison, and the checked behavioral theorem.
-Report preparation reran the source-driven check at the stated checkpoint. Artifact generation
-and tracked-model comparison passed, and Lake accepted the complete proof import using cached
-proof objects. The accompanying evidence directory retains the command output and public axiom
-reports. The runtime measurements in Section 5 use the saved canonical-mode test record.
-WebAssembly permits multiple NaN results for some floating-point operations [20]. Lean and
-Talos choose a canonical arithmetic NaN word, 0x7FC00000 for binary32. The C host selects Cranelift
-and enables wasmtime_config_cranelift_nan_canonicalization_set [21, 22]. Wasmtime’s
+The artifact proof embeds all 19,083 bytes as the Lean value artifactBytes. Checked parser
+certificates establish successful decoding of each function body, section, and the complete file. The
+decoder soundness theorem connects that result to the declarative binary grammar. Successful
+validation then yields CoreValid, which states section, memory-limit, global, export, and functiontyping conditions for the supported binary profile [3, 2].
+The translation proof identifies each of the 43 decoded function bodies with the corresponding
+function in the execution model. A whole-module equality also identifies types, exports, globals,
+memory, and the remaining module fields. Equality substitution transfers the module-parameterized
+session specification Spec.ExactSpecFor to the decoded module [2, 8]. With B = artifactBytes,
+the final theorem has the form
+∃R, V. decode(B) = ok(R) ∧ Grammar.Encodes(B, R)
+∧ validate(R) = ok(V ) ∧ CoreValid(R)
+∧ ExactSpecFor(V.toTalos).
+Here R is the raw decoded module, V is its validated representation, Grammar.Encodes is the
+declarative encoding relation, and toTalos is the formal translation. ExactSpecFor states the
+initialization and session behavior in Theorem 1. The compiler’s output is the fixed subject of this
+proof.
+The frozen artifact and the reviewed runtime binary have SHA-256
+e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade.
+
+The package checker compares the external file with both the frozen package and the embedded
+byte array. It then builds the artifact and behavior proofs, checks the registered artifact statements,
+and audits the registered declarations’ axiom dependencies [4]. A byte-for-byte comparison also
+confirmed the identity of the current command-line binary during the statement review [5]. File
+reading and comparison connect the mathematical byte array to the file used for execution.
+The source-driven check remains available: it recompiles cachedStep, renders the binary as
+WAT, generates a Talos module, and compares that module with the tracked execution model [25].
+The recorded focused source check and exact-artifact check passed. The 19 September aggregate
+checked all 43 registered artifact packages, including GPT-2, using the existing build cache [5]. The
+runtime measurements in Section 5 retain the saved 18 September canonical-mode test record.
+
+4.2
+
+Logical foundations and statement review
+
+The Lean kernel checks the proof terms. The final artifact theorem’s axiom report contains exactly
+propext, Classical.choice, and Quot.sound. Propositional extensionality identifies logically
+equivalent propositions. Choice selects an element from a type whose nonemptiness has been proved
+and supports classical reasoning. Quotient soundness identifies quotient values represented by
+related elements. These three principles supply the mathematical foundations used by the proof
+dependencies [7, 5].
+Native-evaluation axioms accept the result of a compiled computation and therefore add trust
+in the compiler and execution machinery used for that computation. The generic package policy
+accepts these additional assumptions. The statement review audited the final GPT-2 theorem
+against the three mathematical axioms [4, 5].
+7
+
+Seven checked review lemmas test consequences of the public statement [6]. They exhibit weights
+and a 128-token list satisfying its premises, transfer the specification to every successful decoding
+and validation of the frozen bytes, and identify the decoded exports used by the proof. They
+establish one source result per token, the required cache size after a valid step, and 50,257 FP32
+logits in every result. The first-token lemma derives explicit successful Wasm.run witnesses for reset,
+allocation, and inference from the final artifact theorem, with the required result lengths and exact
+source cache and logit bytes in memory. All seven lemmas pass with the same three-axiom policy or
+a subset. The full token-list induction derives the memory and cache conditions through position
+127 [8, 6].
+
+4.3
+
+Native execution and automated checks
+
+WebAssembly permits multiple NaN results for some floating-point operations [26]. Lean and Talos
+choose a canonical arithmetic NaN word, 0x7FC00000 for binary32. The C host selects Cranelift
+and enables wasmtime_config_cranelift_nan_canonicalization_set [27, 28]. Wasmtime’s
 implementation of that mode remains trusted. The recorded FP32 tests check its exact NaN words,
-including signaling inputs and negative or noncanonical payloads [23]. The selected runtime mode
+including signaling inputs and negative or noncanonical payloads [29]. The selected runtime mode
 is part of the deployment boundary for exact raw-word agreement.
-The Lean kernel checks the proof terms. The public theorem’s axiom report contains propext,
-Classical.choice, and Quot.sound. Talos’s execution definitions supply the modeled semantics.
-Applying the result to a native run also trusts model translation, Wasmtime, its native-code backend,
-the C host, and the host’s byte I/O. Tokenization and token selection occur outside the proved
-recurrence. The theorem accepts vocabulary indices and produces logit bytes, which lets either a
-user-selected sequence or a generated sequence supply the next valid token.
+The formal binary grammar, validation rules, translation, and Talos execution definitions specify
+the modeled WebAssembly behavior. Applying their result to a native run trusts the correspondence
+of those definitions with WebAssembly, Wasmtime and its native-code backend, the C host, and the
+host’s byte I/O. Tokenization and token selection occur outside the proved recurrence. The theorem
+accepts vocabulary indices and produces logit bytes, which lets either a user-selected sequence or a
+generated sequence supply the next valid token.
+Two automated checks remain open at the report checkpoint [5]. The CLI recompiles the
+current source and executes the result. Enforcing equality with the registered artifact is a manual
+responsibility after a compiler or source edit. The current compiled file passed that comparison. The
+package gate audits the manifest’s artifact-equality and behavior declarations, while the combined
+artifact_gpt2_128_exact theorem receives a separate review audit. Its axiom policy permits
+native-evaluation assumptions used by other packages. Continuing the reviewed assurance requires
+a CLI artifact-identity check and an automated audit of the combined GPT-2 statement restricted
+to its three mathematical axioms [28, 4].
 The theorem fixes the module’s architecture and the 128-token limit and quantifies over weight
 arrays and token lists satisfying the stated conditions. A larger architecture or context needs
 corresponding source, generated-module, and proof updates. The scalar arithmetic and packedmemory lemmas accept inputs beyond this one model. The composed transformer and allocation
@@ -379,32 +444,33 @@ PyTorch comparisons and command-line inference
 
 The runtime tests use the pinned pretrained checkpoint with CPU PyTorch 2.9.1 and Transformers
 4.57.6. The manifest checks model files by hash and records checkpoint revision 607a30d783dfa663
-caf39e06633721c8d4cfcd7e [6]. The CPU reference uses FP32, eager attention, and one PyTorch
+caf39e06633721c8d4cfcd7e [12]. The CPU reference uses FP32, eager attention, and one PyTorch
 thread. The WASM driver keeps weights and cached key/value data in a resident Wasmtime
-instance [22].
-The 128-position test starts with the story prompt “Once upon a time, in a small village” and
+instance [28].
+
+8
+
+The 128-position test starts with the story prompt “Once upon a time, in a small village” and
 appends repetitions of a fixed sentence before taking the first 128 token IDs. For each prefix length
 from one to 128, it compares all 50,257 cached WASM logits with the corresponding CPU PyTorch
-logits [24]. This gives 128 × 50,257 = 6,432,896 comparisons. Every component satisfies the test
+logits [30]. This gives 128 × 50,257 = 6,432,896 comparisons. Every component satisfies the test
 tolerance
 |ℓwasm − ℓtorch | ≤ 0.002 + 10−4 |ℓtorch |.
-The maximum observed absolute difference is approximately 0.001450 [23]. The quantified exactequality theorem concerns the Lean source, while this tolerance test concerns the checkpoint and
+The maximum observed absolute difference is approximately 0.001450 [29]. The quantified exactequality theorem concerns the Lean source, while this tolerance test concerns the checkpoint and
 sequence just described.
 The canonical-mode run took 100.2 seconds and reached approximately 1.03 GiB of WASM
 linear memory. Its allocation counters recorded 33,025 allocations and 33,023 frees, leaving the
-7
-
-weights and current cache. The allocator reuses whole freed blocks. The final cache contains
+weights and current cache. The allocator reuses whole freed blocks. The final cache contains
 128 × 73,728 = 9,437,184 payload bytes. The test also checks the four rejected-input conditions,
 cache reset and replay, and byte-exact agreement between cached and full-prefix WASM logits for
-the nine-token story prompt [23, 24]. These timings describe the recorded local runs and support
+the nine-token story prompt [29, 30]. These timings describe the recorded local runs and support
 execution feasibility. They provide no cross-system speed comparison.
 Three recorded completions generated 64, 32, and 16 tokens in 55.6, 27.8, and 15.4 seconds. The
 16-token greedy completion matched PyTorch’s token sequence. The 64-token sampled completion
 began:
 Once upon a time, in a small village called Hukur. The village is a great expanse of
 white sand and the winds blow fast
-The saved test record includes the complete strings and generation settings [23]. They demonstrate
+The saved test record includes the complete strings and generation settings [29]. They demonstrate
 the command-line path from tokenizer output through the resident WASM module and back to text.
 From a prepared repository checkout, the WASM and PyTorch commands are:
 tools/gpt2 --text 'Once upon a time' --generate 32 --seed 42
@@ -414,12 +480,25 @@ Both use a shared uv project with pinned Python dependencies. The default genera
 top-k 40, temperature 0.8, and seed 42. The WASM client uses the Lean SplitMix64 generator for
 random draws and Python for sampling probabilities. PyTorch uses its own seeded generator, so
 equal seeds produce different draw sequences. Adding --top-k 1 to each command selects greedy
-decoding. Small logit differences can still change an argmax [22].
+decoding. Small logit differences can still change an argmax [28].
 The setup command
 uv run --project training/gpt2 training/gpt2/reference.py fetch
 
 downloads and checks the checkpoint. The reproduction guide lists the compiler and Wasmtime
-prerequisites [32]. The focused commands for the formal result and the numerical comparison are
+prerequisites [38]. After a WASM command has produced build/gpt2-124m/inference/cachedS
+tep.wasm, the focused artifact check is
+tools/artifact-proof.js check \
+build/gpt2-124m/inference/cachedStep.wasm \
+Project.Gpt2CachedStep.ArtifactTranslation
+
+This check enforces binary identity as well as the registered proof checks. The separate statement
+review and final-theorem axiom audit run with
+tools/leanrun --timeout 3m lake -d proofs/talos/lean env lean \
+proofs/talos/reviews/gpt2-2026-09-19.lean
+
+9
+
+The source-regeneration and numerical-comparison commands are
 tools/talos-proof.js check gpt2_cached_step
 node test/packed.js --gpt2-cached --gpt2-completions
 
@@ -432,76 +511,88 @@ with one step theorem carrying output ownership into the next call. Its numerica
 arbitrary weight bits, so the proof’s size depends on algorithm structure and dimensions rather than
 checkpoint values. The heap budget uses allocation sizes to close the concrete invocation premises
 without inspecting numerical weights.
-The earlier LeanExe subset report describes the compiler’s accepted types, packed layouts,
-and per-compilation correspondence obligation [3]. The present result discharges that obligation
-for the named cached GPT-2 module under Talos semantics and the stated byte I/O boundary.
-The original GPT-2 source supplies the architecture and cached-attention organization [5]. The
+The earlier LeanExe subset report describes the compiler’s accepted types, packed layouts, and
+per-compilation correspondence obligation [9]. The present result connects the frozen binary bytes
+to the cached GPT-2 Lean algorithm under Talos semantics and the stated byte I/O boundary.
+The original GPT-2 source supplies the architecture and cached-attention organization [11]. The
 checked Lean algorithm fixes the FP32 numerical choices used here, and the PyTorch tests provide
-checkpoint-specific comparison evidence. Exact-byte closure and a proof of the native runtime would
-address separate links in the execution chain.
+checkpoint-specific comparison evidence. Further verification of native execution would address
+Wasmtime, its code generator, and the host’s implementation of the byte I/O boundary.
 
-8
-
-References
-[1] LeanExe repository. Source checkpoint f4d412b709a13bb2649fe23be267ec9928838064. http
-s://github.com/jsmorph/leanexe/tree/f4d412b709a13bb2649fe23be267ec9928838064.
-[2] LeanExe. Session theorem and source trace and invocation predicates. Report checkpoint.
-[3] Codex GPT-6 and Jamie Stephens. The LeanExe Subset: Types, Extraction, and Execution.
+References
+[1] LeanExe repository. Source checkpoint 4360920c3060d1c625b1860229b5116804d177c8. http
+s://github.com/jsmorph/leanexe/tree/4360920c3060d1c625b1860229b5116804d177c8.
+[2] LeanExe. Embedded GPT-2 binary, complete decoding theorem, validation theorem, and
+translation equality and combined execution theorem. Report checkpoint.
+[3] LeanExe. Binary grammar, validation rules, decoder soundness, validator soundness, and Talos
+translation. Report checkpoint.
+[4] LeanExe. Exact-artifact checker and axiom policy and external-file comparison. Report checkpoint.
+[5] LeanExe. Development journal, entries for the completed artifact proof and the 19 September
+critical review. Report checkpoint.
+[6] LeanExe. Checked review corollaries and final-theorem axiom audit. Report checkpoint.
+[7] Lean contributors. Logical axioms and native evaluation. Lean revision 6a10ac8c22beadecab
+dbb0919c2b50214762f91d. https://github.com/leanprover/lean4/blob/6a10ac8c22bea
+decabdbb0919c2b50214762f91d/src/Init/Prelude.lean and https://github.com/leanp
+rover/lean4/blob/6a10ac8c22beadecabdbb0919c2b50214762f91d/src/Init/Core.lean.
+[8] LeanExe. Session theorem and source trace and invocation predicates. Report checkpoint.
+[9] Codex GPT-6 and Jamie Stephens. The LeanExe Subset: Types, Extraction, and Execution.
 marXiv:2609.00005v6, 2026. http://127.0.0.1:8405/abs/2609.00005v6.
-[4] Talos. Lean WebAssembly execution and proof library. Revision 87e3aa5e8f6e6f3b3eb5e7e4
-c5aba43071002d47. https://github.com/jsmorph/talos/tree/87e3aa5e8f6e6f3b3eb5e7
-e4c5aba43071002d47.
-[5] OpenAI. GPT-2 model source, including cached attention and tied output projection. https:
-//github.com/openai/gpt-2/blob/master/src/model.py.
-[6] LeanExe. Pretrained checkpoint manifest. Report checkpoint. Weights from https://huggin
-gface.co/openai-community/gpt2/tree/607a30d783dfa663caf39e06633721c8d4cfcd7e.
-[7] LeanExe. Cached GPT-2 source and model dimensions and vocabulary projection. Report
-checkpoint.
-[8] LeanExe. FP32 tensor kernels. Report checkpoint.
-[9] LeanExe. Packed word operations and packed-memory proof definitions. Report checkpoint.
-[10] LeanExe. Complete cached-step theorem and component imports. Report checkpoint.
-[11] LeanExe. Module reset, allocation, input, and export identities. Report checkpoint.
-[12] LeanExe. Exponential, GELU, and word-comparison definitions. Report checkpoint.
-[13] Talos. Fuel-free specification predicates. https://github.com/jsmorph/talos/blob/87e3aa
-5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Spec/Defs.le
-an.
-[14] LeanExe. Packed input encoding and exported allocation proof. Report checkpoint.
-[15] LeanExe. Logical Float32 source correspondence, with addition, subtraction, multiplication,
-division, and square-root equalities. Report checkpoint.
-[16] Lean contributors. Float32 logical model. Lean revision 6a10ac8c22beadecabdbb0919c2b5021
-4762f91d. https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2
-b50214762f91d/src/Init/Data/Float/Model/Float32.lean.
-[17] LeanExe. Range-fold loop proofs. Report checkpoint.
-[18] LeanExe. Heap growth and cached-step allocation budget. Report checkpoint.
-[19] LeanExe. Source-driven generation and proof-check driver. Report checkpoint.
-[20] WebAssembly Community Group. WebAssembly Specification: Numerics. https://webassem
-bly.github.io/spec/core/exec/numerics.html.
-
-9
-
-[21] Bytecode Alliance. Wasmtime C API: NaN canonicalization configuration. https://docs.was
-mtime.dev/c-api/config_8h.html.
-[22] LeanExe. WASM command-line client, CPU PyTorch reference, and Wasmtime host. Report
-checkpoint.
-[23] LeanExe. Canonical-mode runtime test record, 18 September 2026. Report checkpoint.
-[24] LeanExe. 128-position comparison test and packed execution and completion tests. Report
-checkpoint.
-[25] Bytecode Alliance. Wasmtime: Introduction. https://docs.wasmtime.dev/introduction.h
-tml.
-[26] Talos. Floating-point evaluator before the integer-arithmetic extensions. Revision fda69ca67a
-81ea4f1fa4e376bdc5861d9fe5479a. https://github.com/jsmorph/talos/blob/fda69ca6
-7a81ea4f1fa4e376bdc5861d9fe5479a/interpreter/Interpreter/Wasm/Float.lean.
-[27] Talos. Integer-defined binary32 arithmetic and binary64 arithmetic. Pinned Talos revision.
-[28] Talos. Floating-point operation dispatch, big-step semantics, small-step semantics, and atomic
-weakest-precondition rules. Pinned Talos revision.
-[29] Talos. Binary32 multiplication, division, square root, conversions, SIMD, and binary64 operation
-theorems. Pinned Talos revision. Development journal records the interpreter and proof-rule
-changes.
-[30] Talos. Proved floating-point compatibility equalities. Pinned Talos revision.
-[31] Talos. Binary32 rounding bounds, binary64 rounding bounds, numerical-kernel composition,
-and generated dot-product specification. Pinned Talos revision.
-[32] LeanExe. Pretrained GPT-2 reproduction guide. Report checkpoint.
 
 10
+
+[10] Talos. Lean WebAssembly execution and proof library. Revision 87e3aa5e8f6e6f3b3eb5e7e4
+c5aba43071002d47. https://github.com/jsmorph/talos/tree/87e3aa5e8f6e6f3b3eb5e7
+e4c5aba43071002d47.
+[11] OpenAI. GPT-2 model source, including cached attention and tied output projection. https:
+//github.com/openai/gpt-2/blob/master/src/model.py.
+[12] LeanExe. Pretrained checkpoint manifest. Report checkpoint. Weights from https://huggin
+gface.co/openai-community/gpt2/tree/607a30d783dfa663caf39e06633721c8d4cfcd7e.
+[13] LeanExe. Cached GPT-2 source and model dimensions and vocabulary projection. Report
+checkpoint.
+[14] LeanExe. FP32 tensor kernels. Report checkpoint.
+[15] LeanExe. Packed word operations and packed-memory proof definitions. Report checkpoint.
+[16] LeanExe. Complete cached-step theorem and component imports. Report checkpoint.
+[17] LeanExe. Module reset, allocation, input, and export identities. Report checkpoint.
+[18] LeanExe. Exponential, GELU, and word-comparison definitions. Report checkpoint.
+[19] Talos. Fuel-free specification predicates. https://github.com/jsmorph/talos/blob/87e3aa
+5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Spec/Defs.le
+an.
+[20] LeanExe. Packed input encoding and exported allocation proof. Report checkpoint.
+[21] LeanExe. Logical Float32 source correspondence, with addition, subtraction, multiplication,
+division, and square-root equalities. Report checkpoint.
+[22] Lean contributors. Float32 logical model. Lean revision 6a10ac8c22beadecabdbb0919c2b5021
+4762f91d. https://github.com/leanprover/lean4/blob/6a10ac8c22beadecabdbb0919c2
+b50214762f91d/src/Init/Data/Float/Model/Float32.lean.
+[23] LeanExe. Range-fold loop proofs. Report checkpoint.
+[24] LeanExe. Heap growth and cached-step allocation budget. Report checkpoint.
+[25] LeanExe. Source-driven generation and proof-check driver. Report checkpoint.
+[26] WebAssembly Community Group. WebAssembly Specification: Numerics. https://webassem
+bly.github.io/spec/core/exec/numerics.html.
+[27] Bytecode Alliance. Wasmtime C API: NaN canonicalization configuration. https://docs.was
+mtime.dev/c-api/config_8h.html.
+[28] LeanExe. WASM command-line client, CPU PyTorch reference, and Wasmtime host. Report
+checkpoint.
+[29] LeanExe. Canonical-mode runtime test record, 18 September 2026. Report checkpoint.
+[30] LeanExe. 128-position comparison test and packed execution and completion tests. Report
+checkpoint.
+11
+
+[31] Bytecode Alliance. Wasmtime: Introduction. https://docs.wasmtime.dev/introduction.h
+tml.
+[32] Talos. Floating-point evaluator before the integer-arithmetic extensions. Revision fda69ca67a
+81ea4f1fa4e376bdc5861d9fe5479a. https://github.com/jsmorph/talos/blob/fda69ca6
+7a81ea4f1fa4e376bdc5861d9fe5479a/interpreter/Interpreter/Wasm/Float.lean.
+[33] Talos. Integer-defined binary32 arithmetic and binary64 arithmetic. Pinned Talos revision.
+[34] Talos. Floating-point operation dispatch, big-step semantics, small-step semantics, and atomic
+weakest-precondition rules. Pinned Talos revision.
+[35] Talos. Binary32 multiplication, division, square root, conversions, SIMD, and binary64 operation
+theorems. Pinned Talos revision. Development journal records the interpreter and proof-rule
+changes.
+[36] Talos. Proved floating-point compatibility equalities. Pinned Talos revision.
+[37] Talos. Binary32 rounding bounds, binary64 rounding bounds, numerical-kernel composition,
+and generated dot-product specification. Pinned Talos revision.
+[38] LeanExe. Pretrained GPT-2 reproduction guide. Report checkpoint.
+
+12
 
 
