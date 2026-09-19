@@ -1,0 +1,47 @@
+\section{Theorem and source reference}
+\label{sec:reference}
+
+\subsection{Public declarations and inspection order}
+
+The CPU artifact declaration provides the narrowest entry point for inspecting the complete executable claim.  Its conclusion names decoding, validation, and the module-parameterized session specification.  Following that specification reveals the initialization sequence and \code{Session.RunsFor}.  The source trace then identifies the exact Lean function whose cache and logits the session observes.  The component entry proof supplies the lower-level output and heap facts~\cite{artifact,session,entry}.
+
+\begin{longtable}{L{0.41\linewidth}L{0.50\linewidth}}
+\caption{Selected declarations and their roles.}\\
+\toprule
+Declaration & Role\\
+\midrule
+\endfirsthead
+\toprule Declaration & Role\\\midrule
+\endhead
+\longcode{LeanExe.Models.Gpt2.cachedStep} & Source algorithm for one accepted or rejected token call.\\
+\longcode{Project.Gpt2CachedStep.Spec.cachedStep\_exact} & Successful target entry with source cache/logit bytes and heap preservation under represented-input and resource premises.\\
+\longcode{Project.Gpt2CachedStep.Session.Ready} & Heap, ownership, cache size, separation, and allocation invariant.\\
+\longcode{Project.Gpt2CachedStep.Session.RunsFor} & Observable sequence of calls, byte reads, and releases for a module parameter.\\
+\longcode{Project.Gpt2CachedStep.Spec.gpt2\_128\_exact} & Initialization and complete source-trace agreement for valid token lists.\\
+\longcode{Project.Gpt2CachedStep.Spec.ExactSpecFor} & Module-parameterized form used to transfer the result through decoded-module equality.\\
+\longcode{Project.Gpt2CachedStep.Artifact.artifact\_gpt2\_128\_exact} & Combined frozen-binary decode, validation, and session theorem.\\
+\longcode{LeanExe.WGSL.Statement.Implements} & Successful invocation result for a shader string under the supported statement semantics.\\
+\longcode{Project.Gpt2.PackedBackend.Kernels} & Six shader texts together with their checked invocation results.\\
+\longcode{Project.Gpt2.PackedBackend.Code} & Imported and defined function identities in the hybrid module.\\
+\longcode{Project.Gpt2.PackedBackend.Host} & External-call execution, output transfer, and store-preservation premise.\\
+\longcode{Project.Gpt2Hybrid.Spec.gpt2\_128\_exact} & Generated conditional complete-session theorem for the hybrid controller.\\
+\bottomrule
+\end{longtable}
+
+The CPU proof sources remain at the CPU checkpoint named in Section~\ref{sec:context}.  Shader, packed replacement, host, and browser references use the WGSL checkpoint.  This separation avoids assigning the CPU artifact's byte identity to a later imported-controller binary.  The companion evidence records the file identities used while preparing this report.
+
+\subsection{Reproduction commands and their subjects}
+
+The CPU command-line and focused artifact-check commands appear in Section~\ref{sec:tests}.  They distinguish model execution, source-driven proof regeneration, exact-file checking, and theorem-statement auditing.  Each command has a different subject.  A successful text completion exercises the host path.  A successful artifact check connects a file with the proved byte sequence and registered proof.  A theorem audit examines the selected declarations' logical dependencies~\cite{guide,artifactgate,reviewlemmas}.
+
+The hybrid source-build and execution entry points at the WGSL checkpoint are
+\begin{verbatim}
+tools/gpt2-packed build build/gpt2/packed-new
+tools/gpt2-packed --prompt 'The purpose of science is' \
+  --generate 16 --temperature 0
+tools/gpt2-packed serve 8080
+\end{verbatim}
+The build destination must be new.  The source-build tool uses the configured Python environment to prepare checkpoint assets and requires the pinned Lean, Wasm, Wasmtime, and native WebGPU dependencies.  Inference executes through the bundled Wasm and WGSL files.  The browser page is available at \code{http://127.0.0.1:8080}.  The bundle selection and supported generation settings are documented in the packed guide~\cite{wg-packedguide,wg-build}.
+
+Every Lean or Lake command in the repository runs through \code{tools/leanrun}.  The runner serializes Lean work and applies the repository's resource limits in its standard mode.  Reproduction records need to include those limits because certificate checking can reach a timeout before yielding a proof result.  The retained WGSL lexical timeout is one example.  A successful cached check and a complete cold build also have different costs and should retain that distinction in their records~\cite{wg-review}.
+

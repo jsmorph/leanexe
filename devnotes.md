@@ -16148,3 +16148,16 @@ The user requested the same context expansion for the original GPT-2 report.  Ve
 marXiv accepted WGSL version 4, submission `05f7275f6514`, with “No remarks.”  The archive, submission, and reviewed PDFs match.  GPT-2 version 8, submission `c3bded6415ea`, is under editorial review.
 
 marXiv accepted GPT-2 version 8, submission `c3bded6415ea`.  Its sole remark asks to omit the explanations of standard logical axioms.  Those explanations remain at the user’s request.  The archived PDF equals the submitted and reviewed copies, with SHA-256 `62dacefb0fc5e3ab87e686c51550180c2c1267ce430b561aec24eb23176f3608`.  Both reports now open with the requested goal, motivation, and outcome.
+
+## Comprehensive GPT-2 report: 19 September 2026
+
+The user requested a standalone report combining the CPU and WGSL work, a detailed literature comparison, the structure of the verification theorems and proofs, a LeanExe account, and the two supplied web-demo images.  The new draft is in [Comprehensive GPT-2 report](paper/gpt2-comprehensive-report/README.md).  It uses the established CPU proof checkpoint and fetched WGSL revision `9c7c7898ecae5f636cf1047142c8a68c1936e041`, whose two latest commits add the comparison page and worker tests.
+
+The source review checked the complete-session predicates, the artifact theorem, shader invocation semantics, the external host premise, and the proof-composition generator.  The manuscript keeps the CPU exact-binary guarantee separate from the hybrid's external parser and strict host-execution premises.  The user images add a browser observation: matching 32-token greedy completions, fourteen prompt calls, thirty-one decode calls, and a displayed 15.72-fold decode-throughput ratio.  The source explains the timing and memory counters, including 2,250 shader dispatches.  The original PNG bytes and provenance are retained.
+
+The literature comparison covers TorchLean, HLS transformation verification, trained-transformer accuracy proofs, algebraic Lean transformer proofs, Rocq shapes, SMT task properties, zkLLM, zkGPT, DeepProve, and LAProof.  The qualified priority claim concerns complete executable-to-source functional correctness.  The [literature-search record](paper/gpt2-comprehensive-report/evidence/literature-search.md) supplies primary sources and comparison boundaries.
+
+- [x] Draft all requested sections and include both images.
+- [x] Check cited repository paths and preserve source identities.
+- [ ] Complete the second prose/technical pass and full PDF inspection.
+- [ ] Commit and push the reviewed draft and final evidence.

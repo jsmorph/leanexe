@@ -1,0 +1,84 @@
+\section{Lean algorithm and packed representation}
+\label{sec:algorithm}
+
+\subsection{Model dimensions and interface}
+
+The implementation retains the original GPT-2 block organization: pre-normalized attention and feed-forward sublayers, residual additions, final normalization, and a vocabulary projection tied to the token embedding~\cite{gpt2}.  Table~\ref{tab:shape} gives the dimensions that determine loop bounds and buffer sizes.  The checkpoint contains 1,024 position embeddings, while the implemented cached entry accepts positions zero through 127~\cite{manifest,cached}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lr}
+\toprule
+Quantity & Value\\
+\midrule
+Parameter words & 124,439,808\\
+Transformer blocks & 12\\
+Hidden width & 768\\
+Attention heads & 12\\
+Channels per head & 64\\
+Feed-forward width & 3,072\\
+Vocabulary size & 50,257\\
+Supported context & 128 tokens\\
+Weight payload & 497,759,232 bytes\\
+One logit vector & 201,028 bytes\\
+Cache increment per token & 73,728 bytes\\
+\bottomrule
+\end{tabular}
+\caption{Dimensions used by the implementation and proof.}
+\label{tab:shape}
+\end{table}
+
+A token is a vocabulary index represented by \code{UInt32}.  Context length counts these indices.  Weights, activations, cached keys and values, and logits use little-endian packed 32-bit words in Lean \code{ByteArray} values.  The source operations \code{word} and \code{generateUInt32LE} read and construct those words.  The compiler emits scalar FP32 instructions and packed memory operations for them~\cite{kernels,packed}.
+
+The source entry has the type
+\[
+\code{ByteArray}\to\code{ByteArray}\to\code{UInt32}\to\code{Nat}\to\code{CachedResult}.
+\]
+Its arguments are weights, the prior cache, a token, and its position.  A \code{CachedResult} contains the extended cache and the next-token logit vector.  At position $p$, the entry checks weight length, token range, $p<128$, and cache length $73{,}728p$.  A failed check returns two empty byte arrays.  The separate rejected-entry theorem proves four zero result words and complete store preservation under the public entry's representation conditions~\cite{entry}.
+
+The host API passes the weight pointer and byte length, cache pointer and byte length, token, and position, in that order.  The export returns cache pointer, cache byte length, logit pointer, and logit byte length.  Talos represents call arguments and results in operand-stack order, which reverses these lists.  Checked equalities identify \code{cachedStep}, \code{alloc}, \code{reset}, and \code{release} with function indices 38, 39, 40, and 42~\cite{initialize}.
+
+\subsection{Cached attention and token recurrence}
+
+The cache stores both 768-component key and value vectors for each layer and prior token.  Within a position, the twelve layers occur in increasing order, with keys preceding values in each layer.  If $s$ is a prior position, $\ell$ is a layer, and $o<1536$ selects a key or value component, its word index is
+\[
+((12s+\ell)1536)+o.
+\]
+For the current position, \code{cachedKv} reads the key or value from the newly computed QKV projection.  The source calculates attention scores by a 64-term ordered dot product, scales by $1/8$, normalizes over positions zero through the current position, and computes the weighted value sum~\cite{cached}.
+
+Each block returns a new hidden vector and its current key/value vectors.  The enclosing twelve-layer loop concatenates those key/value vectors and appends them to the old cache.  Token and position embedding precede that loop.  Final layer normalization and the tied 50,257-row vocabulary projection follow it.  The cached Lean function specifies this entire token step.  The formal target takes its recurrence as the algorithm.  Comparison with the separate full-prefix implementation appears as a runtime test in Section~\ref{sec:tests}.
+
+Let $W$ be a weight byte array and $t_0,\ldots,t_{n-1}$ the input tokens.  Define
+\begin{equation}\label{eq:recurrence}
+C_0=\epsilon,\qquad
+(C_{p+1},L_p)=\code{cachedStep}(W,C_p,t_p,p),\quad 0\leq p<n,
+\end{equation}
+where $\epsilon$ is the empty byte array and $L_p$ is the logit byte array.  The Lean definition \code{Session.sourceTrace} returns the list of these cache/logit pairs.  Every equality to this trace is byte equality, so it includes signed zeros and the numerical routines' exceptional outputs.
+
+\subsection{Arithmetic order and numerical routines}
+
+Matrix projections accumulate each output component in source loop order, with a separate FP32 multiplication and addition at each step, followed by bias addition.  Layer normalization computes an ordered mean, an ordered sum of squared deviations, division by 768, addition of the FP32 word \code{0x3727C5AC} for epsilon, square root, and reciprocal.  It then applies the centered value, inverse standard deviation, scale, and bias in the written order~\cite{kernels}.  These choices determine the exact source result.
+
+The source implements exponential evaluation by a degree-18 Horner polynomial with explicit coefficient words.  For finite nonpositive arguments, \code{expNeg} returns zero below $-64$, halves an argument below $-1$ at most six times, evaluates the polynomial, and squares the result once per halving.  GELU uses an exponential form of the tanh approximation and a magnitude cutoff at eight.  Beyond that cutoff, the finite positive tail returns the input and the finite negative tail returns zero~\cite{numerics}.  The bitwise comparisons and branch definitions in the cited source determine behavior on all other input words.  The execution proof includes those branches.
+
+The polynomial, constants, cutoff tests, and rounding order form part of the algorithm specification.  The PyTorch reference uses its own tensor and transcendental implementations.  The report's numerical comparisons measure their agreement on the recorded checkpoint and token sequences.  Proving a real-valued approximation bound would require a separate statement relating these numerical routines to real formulas.
+
+\subsection{Computation within a cached token step}
+
+For each token, the source first adds its learned token embedding to its learned position embedding, component by component in FP32.  The resulting 768-word vector enters the twelve-block traversal.  Each block applies layer normalization to the current vector and then a linear projection with 2,304 output words.  These words contain query, key, and value vectors in that order, each of width 768.  Splitting each vector into twelve groups of 64 channels determines the attention heads~\cite{cached}.
+
+For head $h$ and source position $s$, the score is an ordered 64-term dot product between the current query and the selected key, followed by multiplication by the binary32 word for $1/8$.  When $s$ precedes the current position, the key comes from the cache.  At the current position, it comes from the new projection.  The same selection rule applies to values.  Thus the current token participates in its attention computation before its key and value are appended to the retained cache~\cite{cached}.
+
+Let $\oplus$, $\ominus$, $\otimes$, and $\oslash$ denote the source's specified word operations.  For a head with scores $a_0,\ldots,a_p$, the source computes a selected maximum $m$ through its comparison loop, then
+\[
+e_s=\operatorname{expNeg}(a_s\ominus m),\qquad
+d=\operatorname{fold}_{s=0}^{p}(\oplus,e_s,0),\qquad
+q_s=e_s\oslash d.
+\]
+The displayed fold denotes increasing-index accumulation from zero.  Each output channel then accumulates $q_s\otimes v_s$ in the same position order.  This notation abbreviates word functions and their branches, including exceptional encodings.  Their precise meaning comes from the Lean definitions~\cite{cached,numerics}.
+
+The attention result undergoes a 768-to-768 projection and bias addition.  A residual addition combines that projection with the block input.  The block then applies its second layer normalization, a 768-to-3072 expansion, the selected GELU routine, and a 3072-to-768 projection.  A final residual addition gives the next hidden vector.  Separately, the block returns the 1,536 key/value words generated for this token~\cite{cached,kernels}.
+
+The hidden traversal concatenates the twelve returned key/value arrays in layer order and appends the resulting per-token payload to the preceding cache.  Final layer normalization transforms the last hidden vector.  Vocabulary projection takes one ordered dot product against each of the 50,257 token-embedding rows.  This ties the output weights to the input token embedding.  The step returns the complete vocabulary-score array together with the new cache~\cite{cached,gpt2}.
+
+Each stage has a corresponding execution-proof boundary.  Normalization and attention require scalar reductions and temporary buffers.  A linear projection requires matrix offsets, bias offsets, output construction, and ordered accumulation.  The block requires both output objects and cleanup.  The traversal requires a relation between the completed layer prefix and the assembled cache prefix.  These are the interfaces described in Section~\ref{sec:proof-structure}.  They align the target proof with the source's decomposition.
