@@ -77,3 +77,37 @@ differences were 0.00032806396484375 (parent versus PyTorch),
 `tools/wgsl/gpt2/compare-parent.py` makes this comparison repeatable using a
 fresh native WGSL trace, the parent artifact, and the same checkpoint. It
 records versions, per-position errors, selected tokens and allocator state.
+
+## Packed FP32 shader/source connection
+
+`Gpt2Packed` defines the four supported biased kernels, with the FP32 bias
+addition after the ascending dot product. `PackedBody` proves the source
+arithmetic connection for all words, the reduction order, contiguous matrix
+and bias views, transposed vocabulary views, and exact packed output equality
+to the parent's `linearRows` and `vocabularyHead`. `PackedShader` applies the
+body compiler's parsed-statement execution certificates to those equalities.
+There is no magnitude bound or real-number approximation.
+
+The first proof build failed at an unfolded recursion rewrite and an
+over-eager congruence tactic on the large vocabulary generator. Keeping the
+recursive fold explicit and using bounded generator extensionality fixed both;
+the second build passed. Logs: `build/gpt2/packed-proof-01.log` and `-02.log`.
+All printed public theorem dependencies are the standard Lean axioms, without
+`sorryAx`. The six concrete shader certificates and packed parent connections
+passed in `build/gpt2/packed-parent-01/results.json`.
+
+The first small runtime-test declaration omitted explicit entry parameters,
+which the documented body compiler rejects. Its retained diagnostic is
+`packed-parent-01/small.log`. After adding the five explicit parameters, the
+small biased kernel and all six full model shapes passed on SwiftShader CPU:
+57,171 output words matched the original Lean definitions exactly. The input
+`[2^24, -2^24, 1, 0, ...]` with unit matrix/bias detects incorrectly placing
+bias before the dot product. Expected words are evaluated in Lean, not in the
+host harness. Evidence: `packed-parent-01/execution.json` and
+`build/gpt2/packed-parent-test-02.log`.
+
+Repeat with `node tools/wgsl/gpt2/packed-shaders.js FRESH_DIRECTORY --test`
+after sourcing the platform environment. `--test-existing` resumes only the
+runtime-test stage after a successful six-shader proof receipt. The complete
+hybrid Wasm caller/session theorem and universal WebGPU conformance remain
+outside this milestone.
