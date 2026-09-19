@@ -76,7 +76,13 @@ tools/artifact-proof.js check \
   Project.<Case>.ArtifactTranslation
 ```
 
-`tools/artifact-proof.js check-artifacts` checks byte identity, embedded bytes, and exact artifact theorems for all registered packages.  `tools/artifact-proof.js check-all` adds every behavioral specification, checks the exact types of the identity, cache-equality, decoder-soundness, validator-soundness, and closed artifact theorems, and audits their logical dependencies.  The declaration audit rejects `sorryAx` and every axiom outside `propext`, `Classical.choice`, `Quot.sound`, `Lean.ofReduceBool`, and Lean's theorem-local `native_decide` or `bv_decide` certificate families; neither mode reads source programs, invokes LeanExe, or invokes `wasm-tools`.
+`tools/artifact-proof.js check-artifacts` checks byte identity, embedded bytes, and exact artifact theorems for all registered packages.  `tools/artifact-proof.js check-all` adds every behavioral specification, checks the exact types of the identity, cache-equality, decoder-soundness, validator-soundness, and closed artifact theorems, and audits their logical dependencies.  The declaration audit rejects `sorryAx` and every axiom outside `propext`, `Classical.choice`, `Quot.sound`, `Lean.ofReduceBool`, and Lean's theorem-local `native_decide` or `bv_decide` certificate families.  Both modes check frozen artifacts without invoking LeanExe or `wasm-tools`.  A source-agreement theorem may import the Lean definitions it uses as its specification.
+
+The checker builds local proof dependencies in import order, giving each
+module a separate resource-limited invocation.  Artifact and behavioral
+checks share the completed dependency set within one run.  Large collections
+of certificates therefore receive individual build limits before the checker
+builds their parent theorem.
 
 ## Implementation Status
 
