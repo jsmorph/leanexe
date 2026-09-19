@@ -19,8 +19,10 @@ equality and requires no real-valued reference or error tolerance.
 The current [packed GPT-2 124M runner](packed-gpt2.md) has checked hybrid
 cached-step and 128-token session proofs under explicit shader execution and
 transfer assumptions. Native CPU WebGPU matched all 6,432,896 parent Wasm logit
-words across 128 contexts. The source build and native completions pass;
-browser execution validation is pending. The earlier [GPT2/128 experiment](gpt128.md)
+words across 128 contexts. The source build and native completions pass.
+Its browser page compares CPU-only Wasm with Wasm/WGSL and displays separate
+prefill/decode and memory measurements. The actual CPU worker passes under
+Node bindings; browser execution validation remains pending. The earlier [GPT2/128 experiment](gpt128.md)
 remains documented separately.
 
 ## Checked foundation

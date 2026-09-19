@@ -50,7 +50,11 @@ async function execute(compare){
   const options={prompt:$('prompt').value,generate:Number($('count').value),temperature:$('temperature').value,seed:$('seed').value,cpu:$('device').value==='cpu'};
   const key=JSON.stringify([options.prompt,options.generate,options.temperature,options.seed]);
   const order=compare?['wasm','wgsl']:[$('backend').value];
-  if(compare){runs.wasm=null;runs.wgsl=null;}
+  if(compare)for(const backend of order){
+    runs[backend]=null;$(`${backend}-output`).textContent='Waiting to run…';
+    $(`${backend}-status`).textContent='Queued';$(`${backend}-settings`).textContent='';
+    $(`${backend}-status`).classList.remove('error');
+  }
   controller=new AbortController();setBusy(true);let failed=false;
   try{
     for(const backend of order){

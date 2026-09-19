@@ -455,3 +455,28 @@ passed. Evidence: `build/gpt2/packed-browser-compare-02/result.json`. This is
 worker execution evidence, not browser/WebGPU evidence. The initial test adapter
 had a missing closure; that test-only syntax error was fixed before the passing
 run. No Lean proof rerun was needed for these host/UI-only changes.
+
+The expanded focused check passed in
+`build/gpt2/packed-browser-compare-03/result.json`: the same full science trace,
+one-token generation with zero decode steps, stop after the first emitted token,
+and partial GPU-setup cleanup using an explicitly identified API test double.
+The test double does not execute shaders. HTTP checks confirmed the served CPU
+module equals the checked parent byte for byte and has no imports; both model
+files, UI modules and isolation headers are served successfully, with unrelated
+paths rejected. UI syntax and `git diff --check` pass. The full proof/model
+suite was not rerun because no inference artifact or Lean definition changed.
+
+An installed Chromium headless shell was tried for actual browser validation.
+It exited before opening a debug socket:
+`bootstrap_check_in ... MachPortRendezvousServer ... Permission denied (1100)`.
+The log is `build/gpt2/packed-headless-compare.log`. This is a sandbox startup
+failure, not an observed model/browser result. Actual browser rendering and
+WebGPU completion validation remain pending; no browser benchmark is claimed.
+
+The old Python demo was still serving port 8766. Its content matched the ignored
+legacy bundle. The sandbox denied terminating that process, so the new packed
+server runs at `http://127.0.0.1:8088/`; the old generated index now redirects
+there, with its original saved in `packed-browser-compare-02/legacy-index.html`.
+This is only a local generated-file update, not a checked-in artifact. Future
+`tools/gpt2 serve` invocations use the new server directly. The server now gives
+a concise alternate-port message when its requested port is occupied.
