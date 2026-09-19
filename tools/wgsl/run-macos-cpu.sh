@@ -16,6 +16,10 @@ VK_ICD_FILENAMES="$driver/vk_swiftshader_icd.json"
 VK_DRIVER_FILES="$VK_ICD_FILENAMES"
 WGPU_BACKEND_TYPE=Vulkan
 export WGPU_LIB_PATH DYLD_LIBRARY_PATH VK_ICD_FILENAMES VK_DRIVER_FILES WGPU_BACKEND_TYPE
+if [ "${1:-}" = "--gpt2-packed" ]; then
+  shift
+  exec "$python" "$repo/tools/wgsl/gpt2/packed-test.py" "$@"
+fi
 if [ "${1:-}" = "--body" ]; then
   shift
   exec "$python" "$repo/tools/wgsl/body/run.py" "$@" --backend Vulkan --adapter SwiftShader
