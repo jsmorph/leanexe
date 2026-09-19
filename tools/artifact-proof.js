@@ -34,7 +34,7 @@ const allowedAxioms = new Set([
 ]);
 const generatedDecisionAxiom =
   /^[A-Za-z0-9_.]+\._native\.(?:native_decide|bv_decide)\.ax_[0-9_]+$/;
-const builtSpecificationInputs = new Set();
+const builtInputs = new Set();
 
 function fail(message) {
   throw new Error(message);
@@ -119,23 +119,13 @@ async function checkEmbedded(packages) {
 }
 
 async function buildArtifact(item) {
-  const artifactPrefix = item.manifest.artifactBytesModule.replace(/\.ArtifactBytes$/u, "");
-  const candidates = [
-    item.manifest.cachedProgramModule,
-    `${artifactPrefix}.ArtifactDecoded`,
-    `${artifactPrefix}.ArtifactRawCache`,
-    `${artifactPrefix}.ArtifactDecode`,
-    `${artifactPrefix}.ArtifactValidation`,
-    `${artifactPrefix}.Artifact`,
-  ];
-  const inputs = candidates.filter((target) => fs.existsSync(
-    path.join(proofRoot, `${target.replaceAll(".", path.sep)}.lean`),
-  ));
-  for (const target of inputs) {
+  for (const target of localModuleInputs(item.entry.proofTarget)) {
+    if (builtInputs.has(target)) continue;
     await run(`artifact proof input ${target}`, [
       "--timeout", "30m",
       "lake", "-d", proofRoot, "build", target,
     ]);
+    builtInputs.add(target);
   }
   await run("artifact proof", [
     "--timeout", "15m",
@@ -206,7 +196,7 @@ function localModuleSource(moduleName) {
   return source;
 }
 
-function specificationInputs(moduleName) {
+function localModuleInputs(moduleName) {
   const ordered = [];
   const visited = new Set();
   const visiting = new Set();
@@ -222,20 +212,20 @@ function specificationInputs(moduleName) {
     if (target !== moduleName) ordered.push(target);
   }
   if (localModuleSource(moduleName) === null) {
-    fail(`missing behavioral specification module: ${moduleName}`);
+    fail(`missing local Lean module: ${moduleName}`);
   }
   visit(moduleName);
   return ordered;
 }
 
 async function buildSpecification(item) {
-  for (const target of specificationInputs(item.manifest.specModule)) {
-    if (builtSpecificationInputs.has(target)) continue;
+  for (const target of localModuleInputs(item.manifest.specModule)) {
+    if (builtInputs.has(target)) continue;
     await run(`behavioral specification input ${target}`, [
       "--timeout", "30m",
       "lake", "-d", proofRoot, "build", target,
     ]);
-    builtSpecificationInputs.add(target);
+    builtInputs.add(target);
   }
   await run("behavioral specification", [
     "--timeout", "60m",
@@ -401,6 +391,6 @@ if (require.main === module) {
 
 module.exports = {
   leanImports,
-  specificationInputs,
+  localModuleInputs,
   talosBoundaryTarget,
 };

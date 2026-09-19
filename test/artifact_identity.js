@@ -15,7 +15,7 @@ const {
 const { currentLocalDate } = require("../tools/date");
 const {
   leanImports,
-  specificationInputs,
+  localModuleInputs,
   talosBoundaryTarget,
 } = require("../tools/artifact-proof");
 const {
@@ -137,33 +137,29 @@ if (JSON.stringify(parsedImports) !== JSON.stringify([
   throw new Error("Lean import parsing failed its comment and multi-import test vector");
 }
 
-const specificationModule = "Project.ClobLimit.Spec";
-const specificationClosure = specificationInputs(specificationModule);
-const specificationPositions = new Map(
-  specificationClosure.map((moduleName, index) => [moduleName, index]),
-);
-if (specificationPositions.has(specificationModule)) {
-  throw new Error("behavioral specification input closure contains its root");
-}
 const specificationRoot = path.join(repoRoot, "proofs", "talos", "lean");
-for (const [moduleName, index] of specificationPositions) {
-  const source = path.join(
-    specificationRoot,
-    `${moduleName.replaceAll(".", path.sep)}.lean`,
+for (const rootModule of [
+  "Project.ClobLimit.Spec",
+  "Project.Gpt2CachedStep.ArtifactTranslation",
+  "Project.EulerReconstructed.ArtifactDecoded",
+]) {
+  const positions = new Map(
+    localModuleInputs(rootModule).map((moduleName, index) => [moduleName, index]),
   );
-  for (const imported of leanImports(fs.readFileSync(source, "utf8"))) {
-    const importedIndex = specificationPositions.get(imported);
-    if (importedIndex !== undefined && importedIndex >= index) {
-      throw new Error(`behavioral specification input order places ${imported} after ${moduleName}`);
-    }
+  if (positions.has(rootModule)) {
+    throw new Error(`local input closure contains its root ${rootModule}`);
   }
-}
-for (const imported of leanImports(fs.readFileSync(path.join(
-  specificationRoot,
-  `${specificationModule.replaceAll(".", path.sep)}.lean`,
-), "utf8"))) {
-  if (!specificationPositions.has(imported)) {
-    throw new Error(`behavioral specification input closure omits ${imported}`);
+  for (const [moduleName, index] of [...positions, [rootModule, positions.size]]) {
+    const source = path.join(specificationRoot, `${moduleName.replaceAll(".", path.sep)}.lean`);
+    for (const imported of leanImports(fs.readFileSync(source, "utf8"))) {
+      const importedSource = path.join(specificationRoot, `${imported.replaceAll(".", path.sep)}.lean`);
+      if (!fs.existsSync(importedSource)) continue;
+      const importedIndex = positions.get(imported);
+      if (importedIndex === undefined) throw new Error(`local input closure omits ${imported}`);
+      if (importedIndex >= index) {
+        throw new Error(`local input order places ${imported} after ${moduleName}`);
+      }
+    }
   }
 }
 
