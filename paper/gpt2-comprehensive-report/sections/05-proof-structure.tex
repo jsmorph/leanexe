@@ -1,0 +1,103 @@
+\section{Structure of the verification theorems and proofs}
+\label{sec:proof-structure}
+
+\subsection{Proof subjects and quantification}
+
+The main result fixes a program while quantifying over its permitted data.  Its fixed objects include the architecture, the 128-token context limit, the packed layout, the numerical routines, and the emitted binary.  Its variable objects include every weight byte, every valid input token, and the token-list length within the limit.  This quantification explains why a new checkpoint of the required length preserves the theorem and why a changed architecture requires a new compiled artifact and corresponding proof~\cite{artifact,session}.
+
+The source-step theorem and the initialized-session theorem expose different premises.  The former accepts an arbitrary represented store, a heap description, weight and cache pointers, a token, and a position.  It assumes that the input bytes occupy protected memory and supplies an allocation-resource condition when the source accepts the inputs.  The latter begins with the module's initial store, calls reset and allocation, performs the specified input-byte update, and derives the conditions needed by successive steps.  The session's public input restrictions reduce to weight length, token range, and token-count bound~\cite{entry,initialize,session}.
+
+At the source level, the step function has a total return value for every Lean input.  Its acceptance checks select a complete inference result or two empty byte arrays.  At the target level, execution has explicit possibilities for traps and resource exhaustion.  The proof must establish a successful target result equal to the selected source value.  In the rejected branch, it proves the four zero return words and preservation of the store.  In the accepted branch, it establishes output allocation, contents, and ownership~\cite{entry}.
+
+The CPU theorem quantifies over the formal host environment even though the checked module has no imported functions.  The hybrid module adds two external matrix imports.  Its theorem therefore uses an environment together with \code{PackedBackend.Host}, a proposition specifying those calls.  This is a semantic premise in the theorem's type.  The permitted logical axioms of the proof checker and the runtime premises of the proposition are separate parts of the assurance statement~\cite{artifact,wg-backend}.
+
+\subsection{Successful execution and postcondition composition}
+
+Equation~\eqref{eq:termination} gives the successful-execution meaning of \code{TerminatesWith}.  Its fuel threshold may depend on the invocation.  A wall-clock deadline or throughput rate would require a cost model relating interpreter steps to a runtime~\cite{termination}.
+
+The proof library's monotonicity rule changes a proved postcondition into a weaker one.  Component proofs use it to expose exactly the facts required by a caller.  For example, a packed-output theorem may contain the final heap, ownership, frame preservation, page count, and output bytes.  A vocabulary caller can retain the ownership and bytes while hiding internal temporary allocations.  A session caller can then retain the next cache and observe the logits.  Each use is an implication between predicates that Lean checks~\cite{entry,session}.
+
+The composition of two calls follows their execution order.  The first call's postcondition supplies the second call's store and premises.  This dependence is essential for retained state: the second token receives the cache returned by the first token in the memory that remains after the required releases.  A proof of two independent calls from unrelated stores would provide a different statement.  The recursive session predicate makes the shared state explicit~\cite{session}.
+
+\subsection{The source trace and observable session}
+
+The definition \code{Session.sourceTrace} recursively applies \code{cachedStep} to the weight array, next token, current position, and preceding result cache.  Its result is a list of \code{CachedResult} values.  The definition \code{Session.RunsFor} relates that list to calls of a selected WebAssembly module.  Its base case requires an empty result list when the token list is empty.  Its recursive case requires a successful token call, representation of the next cache, release of the previous cache, representation of the logits, release of the logit buffer, and the remaining session~\cite{session}.
+
+This observation order establishes useful lifetime properties.  The new cache exists when the call returns.  The logits remain readable after releasing the previous cache.  Releasing the logits leaves a store from which the next token call can use the retained new cache.  The low-level ownership proofs justify these state transitions, and the public session predicate exposes the exact byte observations that result.  The final cache remains available after the last call because the recursive base case performs no further release~\cite{session}.
+
+Talos records call arguments and results in operand-stack order.  The source entry's logical argument order is weights, cache, token, and position, with pointer/length pairs at the ABI.  The theorem lists stack values in the reversed order used by the interpreter.  Checked export identities establish which function index implements each public operation.  This resolves both a representational detail and a possible statement error: a theorem about the wrong index or argument order could prove a different invocation~\cite{initialize,reviewlemmas}.
+
+The final source-agreement result is equality of all bytes at every observed step.  It includes every one of the 50,257 logits and the complete cache, which grows by 73,728 bytes per position.  A downstream sampling procedure may inspect those logits and choose the next valid token.  The theorem applies to any resulting finite token list within the supported limit.  Correctness of the procedure that chooses the list is an additional property of that procedure~\cite{session,reviewlemmas}.
+
+\subsection{The invariant carried between token calls}
+
+The \code{Session.Ready} structure packages the state needed to apply the token-step proof.  Table~\ref{tab:ready} groups its fields by purpose.  The invariant contains both representation and resource information, so the induction can establish a successful next call and retain a state suitable for its successor~\cite{session}.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{L{0.23\linewidth}X}
+\toprule
+Invariant fields & Meaning at position $p$\\
+\midrule
+Heap and weight ownership & The store realizes the abstract heap and the weight allocation owns the supplied byte array of the required size.\\
+Cache size and ownership & The cache has $73{,}728p$ bytes.  At position zero its pointer is zero.  At later positions it has a valid owned allocation.\\
+Separation & At a positive position, weight and cache regions are disjoint.\\
+Heap-top bound & The heap top is at most $536{,}870{,}912+p\,16{,}777{,}216$.\\
+Pages and capacity & The page count is at most 65,536, and the modeled capacity is 65,536 pages.\\
+\bottomrule
+\end{tabularx}
+\caption{The state invariant used by the complete session induction.}
+\label{tab:ready}
+\end{table}
+
+Initialization proves \code{Ready} for an empty cache after reset, weight allocation, and input encoding.  The step lemma consumes \code{Ready} at position $p$, a valid token, and $p<128$.  It produces the exact source result and a continuation with \code{Ready} at $p+1$.  The list induction in \code{runs\_exact} applies that continuation to the remaining tokens.  The arithmetic fact $p+|T|\leq128$ supplies the position bound at each recursive call~\cite{session}.
+
+The allocation estimate charges every requested allocation even when the allocator can reuse a free block.  This choice gives a monotone upper bound without requiring a particular free-list search outcome.  The proof still follows the implemented allocator: a successful reuse preserves the heap top, and growth consumes the charged budget.  The sufficient bound covers all positions through 127 and remains below the 32-bit address limit.  It gives a reusable interface between the tensor proof and allocator behavior~\cite{budget}.
+
+\subsection{From arithmetic words to a complete transformer}
+
+The lowest arithmetic equalities relate Lean's logical FP32 operations to Talos's integer-defined word operations.  Their variables are raw words.  Case analysis handles exceptional encodings, and finite cases establish the relevant rounding equality.  These results can be applied inside any supported tensor computation with the same operations.  Weight-specific inequalities are absent from their premises~\cite{f32,leanfloat}.
+
+Packed-memory lemmas identify a source word with the four bytes read by emitted instructions.  Construction lemmas track the initialized prefix of a new byte array.  A loop invariant combines these representation facts with an arithmetic recurrence.  For a dot product, the target accumulator after $k$ iterations equals the source fold over indices below $k$.  The induction extends the prefix by one multiplication and one addition in the source order.  It also proves the addresses valid and retains the caller's protected memory~\cite{packed,loops}.
+
+Tensor operations add a second level of composition.  Layer normalization combines mean, squared-deviation reduction, inverse standard deviation, scaling, and bias.  Cached attention combines key/value selection, scores, maximum and exponential normalization, and weighted values.  A transformer block combines these operations with four linear products, activation, residual additions, and the key/value result.  Temporary cleanup is checked before the block returns its outputs~\cite{entry}.
+
+The hidden-state traversal iterates the block theorem across twelve layers.  Its invariant relates the hidden vector to the source traversal and the newly assembled per-token cache to the completed layers.  The proof separates layer execution, cache append, releases of temporary cache objects, releases of the prior hidden vector, and loop control.  This decomposition lets each stage use the ownership facts from the preceding stage and keeps the final traversal theorem expressed in terms of the source recurrence~\cite{entry}.
+
+Vocabulary projection then computes all 50,257 scores from the final normalized hidden vector.  The accepted-entry theorem combines hidden traversal and projection, returns both allocated outputs, and proves preservation of protected inputs.  The complete entry theorem splits accepted and rejected inputs.  The session proof repeatedly invokes the accepted result after deriving its premises.  The artifact theorem finally changes the subject from the cached module declaration to the module recovered from the binary~\cite{entry,session,artifact}.
+
+\begin{figure}[ht]
+\centering\small
+\begin{tabular}{c}
+\fbox{\parbox{0.90\linewidth}{\centering Logical FP32 equalities and packed-memory representation}}\\[3pt]
+$\Downarrow$\\[3pt]
+\fbox{\parbox{0.90\linewidth}{\centering Ordered loop invariants, allocation, ownership, and frame preservation}}\\[3pt]
+$\Downarrow$\\[3pt]
+\fbox{\parbox{0.90\linewidth}{\centering Normalization, attention, linear products, activation, and residuals}}\\[3pt]
+$\Downarrow$\\[3pt]
+\fbox{\parbox{0.90\linewidth}{\centering Transformer block, twelve-layer traversal, cache assembly, vocabulary}}\\[3pt]
+$\Downarrow$\\[3pt]
+\fbox{\parbox{0.90\linewidth}{\centering Accepted/rejected entry and initialized 128-token session}}\\[3pt]
+$\Downarrow$\\[3pt]
+\fbox{\parbox{0.90\linewidth}{\centering Binary decoding and validation $+$ whole-module equality\\
+imply the artifact execution theorem}}
+\end{tabular}
+\caption{The main proof dependencies.  Each level exposes result and memory facts for its caller.  The binary connection identifies the program to which the composed execution result applies.}
+\label{fig:proof-structure}
+\end{figure}
+
+\subsection{Replacement proofs for hybrid execution}
+
+The hybrid proof replaces a matrix call with a new implementation that satisfies the caller's required postcondition.  A shader certificate establishes invocation behavior for the emitted string.  A packed-layout proof connects the input views and serialized output to the parent's \code{linearRows} or \code{vocabularyHead} result.  The host hypothesis supplies completed external execution and the required byte transfer.  The wrapper theorem combines these facts with allocation and frame preservation~\cite{wg-packedshader,wg-backend}.
+
+Unchanged helper functions form a closed call region.  Adding the two imports shifts their function indices.  \code{ImportShift} relates the old and new declarations and their renamed direct calls.  A semantic transport theorem preserves execution at each fuel value for functions inside the selected region.  The generator applies this result to existing helper theorems.  Controller segments that call the new matrix implementations are checked again with the replacement postconditions~\cite{wg-transport,wg-composition}.
+
+The composition script prepares Lean source through namespace and index substitution.  Acceptance comes from rechecking the generated declarations against the parsed module and named theorem types.  The script records dependency identities and audits the public cached-step and session results.  A textual substitution that changes an instruction or theorem application inappropriately must still pass those checks.  The resulting hybrid statement carries the explicit host hypothesis through the complete session~\cite{wg-composition}.
+
+\subsection{Review of the theorem's consequences}
+
+The statement review checks consequences that make the public claim concrete.  \longcode{premises\_inhabited} constructs inputs satisfying the required lengths and ranges.  \code{every\_decoding\_has\_spec} transfers the result to every successful decode and validation of the frozen bytes.  \code{decoded\_export\_names} identifies the exported operations.  The trace-length and result-size lemmas establish one result per token, the cache-growth formula, and a complete vocabulary vector~\cite{reviewlemmas}.
+
+\code{first\_token\_observation} derives explicit successful interpreter runs for reset, allocation, and the first inference call from the final artifact theorem.  Its conclusion gives output lengths and byte representations equal to the source result.  This examines the public theorem through an observable execution consequence.  The full list induction supplies the corresponding continuation through all permitted positions~\cite{reviewlemmas,session}.
+
+The final axiom audit examines transitive proof dependencies.  The reviewed CPU artifact theorem and its seven consequence lemmas depend on \code{propext}, \code{Classical.choice}, and \code{Quot.sound}, or a subset.  A separate review of the proposition is still required: a checked implication can contain an unsatisfied runtime premise, and an axiom list reports neither its practical availability nor its intended meaning.  For the hybrid result, that proposition review identifies strict shader execution and host transfer as explicit remaining premises~\cite{review,wg-review}.

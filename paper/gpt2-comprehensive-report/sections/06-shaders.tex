@@ -1,0 +1,101 @@
+\section{Per-compilation shader certificates}
+
+\subsection{Lean source subset}
+
+The compiler accepts a monomorphic annotated Lean definition of type
+\[
+\code{ScalarArithmetic}\to(\mathbb N\to\code{UInt32})\to
+(\mathbb N\to\code{UInt32})\to\mathbb N\to\mathbb N\to\code{UInt32}.
+\]
+The five arguments supply scalar operations, input buffers $A$ and $B$, and output coordinates.  A \code{UInt32} represents a floating-point word.  The \code{add} and \code{mul} fields of \code{ScalarArithmetic} specify its arithmetic~\cite{wg-compiler}.  For example, an ordered matrix cell is expressed by
+\begin{verbatim}
+@[wgsl] def matrix : Source.Kernel := fun ar a b row col =>
+  Source.fold 4 0 fun k acc =>
+    ar.add acc (ar.mul (a (row * 4 + k)) (b (k * 3 + col)))
+\end{verbatim}
+The definition's elaborated body determines the emitted computation.  Transparent helpers, word and index bindings, nested literal-count folds, finite word constants, buffer reads, addition, and multiplication belong to the supported subset.  Index expressions use naturals, coordinates, fold indices, addition, and multiplication.  The implementation bounds normalization and rejects unsupported residual expressions.  Runtime branches, dynamic iteration, barriers, atomics, and shared-memory communication lie outside this grammar~\cite{wg-compiler}.
+
+Every fold count is at most 65,535.  Static access checks bound each index expression and its intermediate arithmetic, preventing u32 overflow and out-of-range reads.  Constants must encode finite binary32 values, including constants in unused bindings.  Input buffer words remain unrestricted.  The emitted wrapper declares two read-only storage buffers, a distinct output buffer, an $8\times8$ workgroup, an edge guard, and one output store per active invocation~\cite{wg-compiler,wg-execution}.
+
+\subsection{Parsing, source equality, and execution}
+
+The checker independently parses the emitted shader string into a statement program.  It checks the declarations, bindings, guard, loop initializer, comparison, increment, accumulator assignment, lexical scope, final store, and complete token consumption.  Parsed locals become indexed slots.  Bindings and loops remain statements in the syntax tree.  The parser accepts the compiler's restricted WGSL grammar~\cite{wg-compiler}.
+
+For source function $f$, shader text $s$, parsed statement program $P$, and shape $S$, the compiler constructs three certificates:
+\begin{gather}
+\operatorname{parse}(s)=\operatorname{ok}(P),\label{eq:parse}\\
+f=\operatorname{interpretSource}(P),\label{eq:source}\\
+\operatorname{Implements}(s,S,f).\label{eq:implements}
+\end{gather}
+Equation~\eqref{eq:source} quantifies over both input buffers, both coordinates, and the scalar interpretation.  Its proof checks equality to the named Lean definition.  An incorrect arithmetic operator or a custom natural-number addition instance therefore has to satisfy the original source equality before the checker can accept the shader~\cite{wg-compiler}.
+
+The \code{Implements} proposition quantifies over scalar interpretation $a$, memory $M$, output size $c$, and u32 coordinates $(r,q)$.  With adequate buffer lengths, it states
+\[
+\operatorname{runShader}(s,a,M,c,r,q)
+=\operatorname{ok}(\operatorname{expected}(S,f,a,M,r,q)).
+\]
+For an active coordinate, \code{expected} is a write of $f(a,M.A,M.B,r,q)$ to $rS.\mathrm{cols}+q$.  For an inactive coordinate, it is no write.  The execution function can fail on a missing local, invalid load or store, or exhausted loop budget.  The theorem rules out each modeled failure~\cite{wg-execution}.
+
+The shared proof establishes agreement between wrapping u32 index calculations and natural-number source indices within the validated bounds.  It then proves statement execution equal to source interpretation, including local bindings and scope restoration.  A loop tests its u32 counter, executes its body, assigns the accumulator, and increments the counter.  Its budget equals the literal count, and the proof establishes that the guard becomes false before an additional body execution is needed.  This is a successful-execution result with bounded termination~\cite{wg-execution}.
+
+Checking finishes synchronously before files are emitted.  The parser reductions use kernel evaluation.  The compiler audits transitive dependencies of all three public certificates and permits only \code{propext}, \code{Classical.choice}, and \code{Quot.sound}.  It saves the shader, metadata, and Lean declarations that can be checked again independently of compilation.  The command \code{\#check\_wgsl} applies the same proof requirements to an existing shader file~\cite{wg-compiler}.  File reading and writing remain external operations around the theorem about the embedded string.
+
+\subsection{Dispatch and arithmetic scope}
+
+The body-compiler proof establishes one invocation's semantics.  Separate geometric lemmas prove coverage by the rounded-up dispatch and distinct output addresses for distinct active cells.  The operational model assumes read-only inputs and a separate output buffer.  A complete refinement to the WebGPU execution model, including an external scheduler, remains outside these certificates~\cite{wg-execution}.
+
+The strict GPT-2 instantiation uses the pure Talos binary32 addition and multiplication functions, with source-ordered accumulation and separate rounding.  Its specification includes signed zeros, subnormals, and exceptional words.  WGSL permits implementation choices involving reassociation, fusion, subnormals, zero signs, and exceptional values~\cite{wg-wgsl}.  Applying the exact theorem to a runtime therefore requires more than acceptance of the shader by that runtime: execution must implement the stated operations and preserve the represented words through loads, copies, and stores.
+
+The branch also contains an earlier fixed-template GEMM development.  That path proves termination and output correspondence under arbitrary interleavings in its own dispatch model, and supports separate or locally fused accumulation.  A fusion theorem characterizes each output by a sequence of explicit per-step choices.  Its numerical bounds and small-model mixed-precision experiments use additional domain premises~\cite{wg-legacy}.  The current body compiler has its own source and statement proofs.  Applying the older scheduler, fusion, and numerical results to the new grammar requires additional correspondence proofs.
+
+\section{Connection to packed GPT-2 operations}
+
+\subsection{Ordered products and byte layouts}
+
+The current integration compiles six kernel definitions.  The four block products append bias words to their matrix input view and perform bias addition after the dot product.  Table~\ref{tab:kernels} gives the shapes, all with one output row~\cite{wg-packedsource}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrc}
+\toprule
+Operation & Inner dimension & Output columns & Final bias\\
+\midrule
+QKV projection & 768 & 2304 & Yes\\
+Attention projection & 768 & 768 & Yes\\
+Feed-forward expansion & 768 & 3072 & Yes\\
+Feed-forward projection & 3072 & 768 & Yes\\
+Vocabulary, first slice & 768 & 25129 & No\\
+Vocabulary, second slice & 768 & 25128 & No\\
+\bottomrule
+\end{tabular}
+\caption{Shader roles in each cached token step.  The four block roles repeat across twelve blocks.}
+\label{tab:kernels}
+\end{table}
+
+Let $\operatorname{word}(W,i)$ read word $i$ from packed byte array $W$.  For matrix offset $o$, bias offset $b$, inner dimension $K$, and column count $N$, the shader's second input view is
+\[
+B(i)=\begin{cases}
+\operatorname{word}(W,o+i),&i<KN,\\
+\operatorname{word}(W,b+i-KN),&i\geq KN.
+\end{cases}
+\]
+The source proof identifies the reads at $kN+q$ with the parent's matrix reads, and the read at $KN+q$ with its bias.  Induction over the fold proves equality to the parent's ordered dot-product prefix.  A separate arithmetic equality connects the Lean source's logical FP32 operations to the pure Talos operations for all input words~\cite{wg-packedsource}.
+
+The tied token embedding is vocabulary-major in the parent weights.  A vocabulary shader uses the transposed view
+\[
+B_s(kN+q)=\operatorname{word}(W,(s+q)768+k),
+\]
+with $(s,N)=(0,25129)$ or $(25129,25128)$.  The split assigns each vocabulary column to one complete 768-term dot product.  The composition theorem selects its shader, local column, and shifted output address, preserving the operation order within every dot product~\cite{wg-packedsource}.
+
+The resulting theorems \code{biasedBytes\_exact} and \code{vocabularyBytes\_exact} identify serialized shader results with the parent's \code{linearRows} and \code{vocabularyHead} byte arrays.  The serializer's total definition maps an unsuccessful shader result to a default word.  The preceding per-column theorem proves success at every serialized column, so the byte equality eliminates that default case~\cite{wg-packedshader}.  These are equalities of word and byte computations without weight-magnitude premises.
+
+\subsection{Host imports and controller reuse}
+
+The hybrid module adds imports \code{wgsl.linear} and \code{wgsl.vocabulary}.  Its Wasm wrappers allocate packed output storage and call the imports.  Function indices shift by two.  The proof generator checks the wrappers and unchanged function declarations against the independently parsed hybrid module~\cite{wg-build,wg-backend}.
+
+The reusable \code{ImportShift} relation identifies a closed set of unchanged functions, their renamed direct calls, and the memory declaration.  Its semantic transport theorem preserves interpreter execution at every fuel value and therefore transports the parent's total-correctness statements.  Functions in the selected set cannot call the changed matrix implementations.  Controller segments outside that set are checked again, with the replacement matrix theorems at their call sites~\cite{wg-transport,wg-composition}.
+
+The interface \code{PackedBackend.Kernels} contains the six shader texts and their \code{Implements} proofs.  \code{PackedBackend.Code} identifies the wrappers, allocator, memory mode, and imports in the module.  \code{PackedBackend.Host} specifies what the external calls do.  For represented and protected input buffers with adequate sizes and allocation resources, it requires the host to return the modeled shader-output bytes in the allocated output and preserve the remaining store~\cite{wg-backend}.
+
+The host premise concerns execution of the certified shader semantics.  Equality of those shader bytes to the parent matrix result follows from the packed-layout and arithmetic theorems.  Combining the two establishes exact returned lengths and bytes, ownership of the output, preservation of protected memory, heap validity, and memory-capacity preservation.  Those postconditions supply the parent's controller proofs with the facts needed for subsequent calls and releases~\cite{wg-packedshader,wg-backend}.
+
