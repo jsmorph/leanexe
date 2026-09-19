@@ -16,9 +16,12 @@ counterpart of “the artifact computes the Lean function,” and an independent
 typed float algorithm for the complete GPT path. Its output contract is word
 equality and requires no real-valued reference or error tolerance.
 
-[GPT2/128 now runs](gpt128.md) with the parent's Lean hidden computation and
-the checked WGSL projection. The complete 128-position hidden-Wasm proof remains
-unfinished; that Wasm is not executed by this path.
+The current [packed GPT-2 124M runner](packed-gpt2.md) has checked hybrid
+cached-step and 128-token session proofs under explicit shader execution and
+transfer assumptions. Native CPU WebGPU matched all 6,432,896 parent Wasm logit
+words across 128 contexts. The source build and native completions pass;
+browser execution validation is pending. The earlier [GPT2/128 experiment](gpt128.md)
+remains documented separately.
 
 ## Checked foundation
 

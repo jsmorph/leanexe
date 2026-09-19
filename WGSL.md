@@ -14,28 +14,29 @@ The completed parent FP32 cached-GPT-2 result was fetched on 2026-09-18.
 The [parent integration plan](docs/wgsl/parent-integration-plan.md) records
 its exact theorem scope, merge conflicts, source/ABI differences, and the
 staged work to incorporate the compiled WGSL products into that model.
-The parent merge passed both baselines. The parent step/session gate, WGSL
-body corpus, and all six installed shader certificates pass in the merged
-checkout. Three full 124M completion comparisons also passed; see the
-[integration journal](docs/wgsl/parent-integration-journal.md) for scope and evidence.
+The [packed 124M runner](docs/wgsl/packed-gpt2.md) now has checked hybrid
+cached-step and initialization-to-128-token session theorems, conditional on
+the stated shader execution/transfer assumptions. All 6,432,896 logits across
+128 contexts matched the parent Wasm bit for bit on native CPU WebGPU; all
+128 argmax choices agreed with PyTorch. The source-build gate passed. Actual
+browser execution remains pending. The [integration journal](docs/wgsl/parent-integration-journal.md)
+records the proof and execution evidence and their separate scopes.
 
+`tools/gpt2-packed --prompt "The purpose of science is"` selects the integrated
+packed FP32 Wasm/WGSL runner, with Wasm tokenization and sampling.
 `tools/gpt2-wasm --text "The purpose of science is"` selects the parent's
-packed FP32 Wasm runner. `tools/gpt2-wgsl build|run|serve|test` selects the
-existing mixed-precision WGSL demo until the integration milestones pass.
+packed FP32 Wasm runner. `tools/gpt2-wgsl build|run|serve|test` retains the
+earlier mixed-precision WGSL demo as a regression reference.
 The compatibility entry `tools/gpt2` routes those four subcommands to WGSL
 and plain flags to Wasm. The current parent CLI samples in Python; it is a
 reference runner, not the sampling implementation for the integrated demo.
 
-The current implementation work is the [restricted Lean body compiler](docs/wgsl/body-compiler.md),
-including a checked connection from parsed statement execution to its Lean
-source. The [WGSL artifact fidelity work for pretrained GPT-2](docs/wgsl/gpt2-verification.md)
-now connects those compiled definitions to the existing packed matrix specification.
-Its objective remains to
-prove that the six delivered shaders execute their selected Lean matrix-product
-definitions over floating-point words, verify the matrix layouts and split
-vocabulary computation, and state the arithmetic choices precisely. Numerical error bounds
-remain outside this workstream. The parent integration plan adds packed
-FP32 Wasm/controller composition to the current agenda.
+The [restricted Lean body compiler](docs/wgsl/body-compiler.md) has a checked
+connection from parsed statement execution to its Lean source. The integration
+also proves the six compiled shaders' relationship to the parent's packed FP32
+operations, their matrix layouts and split vocabulary computation, and the
+hybrid controller/session composition. Numerical error bounds remain outside
+this workstream. The remaining delivery work is browser execution validation.
 The older numerical milestones below are retained as development history.
 
 ## Implementation status

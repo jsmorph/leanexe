@@ -2,7 +2,24 @@
 # Experimental packed FP32 inference; host bindings contain no float arithmetic.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-bundle=${LEANEXE_GPT2_PACKED_BUNDLE:-"$root/build/gpt2/packed-bundle"}
+if [ -n "${LEANEXE_GPT2_PACKED_BUNDLE:-}" ]; then
+  bundle=$LEANEXE_GPT2_PACKED_BUNDLE
+elif [ -f "$root/build/gpt2/packed-current" ]; then
+  IFS= read -r bundle < "$root/build/gpt2/packed-current"
+else
+  bundle="$root/build/gpt2/packed-bundle"
+fi
+case "${1:-}" in
+  build)
+    shift
+    if [ "$(uname -s)" = Darwin ]; then . "$root/tools/macos-env.sh"; fi
+    exec node "$root/tools/wgsl/gpt2/packed-build.js" "$@"
+    ;;
+  serve)
+    shift
+    exec node "$root/tools/wgsl/gpt2/packed-serve.js" "$bundle" "$@"
+    ;;
+esac
 LEANEXE_PACKED_SHADERS="$bundle/shaders"
 export LEANEXE_PACKED_SHADERS
 exec "$root/tools/wgsl/gpt2/packed-cpu.sh" packed-run "$bundle" "$@"

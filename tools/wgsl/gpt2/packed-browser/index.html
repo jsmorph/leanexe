@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPT-2 · Packed FP32</title>
+<style>
+body{font:17px/1.55 system-ui;margin:48px auto;max-width:820px;padding:0 24px;color:#172b36;background:#f5f7f8}
+h1{font-size:32px;margin-bottom:6px}p{color:#48616f}textarea{box-sizing:border-box;width:100%;font:inherit;padding:16px;border:1px solid #bbcbd3;border-radius:8px}
+.controls{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:18px 0}label{display:grid;font-size:14px;gap:5px}input,select,button{font:inherit;padding:8px;border:1px solid #bbcbd3;border-radius:5px}input[type=number]{width:90px}
+button{cursor:pointer;background:#174f64;color:white;padding:10px 22px}button:disabled{opacity:.5;cursor:default}pre{white-space:pre-wrap;background:white;padding:24px;border:1px solid #dae2e6;border-radius:8px;min-height:120px;font:18px/1.7 Georgia,serif}#status{font-size:14px;min-height:24px}
+</style>
+<h1>GPT-2 · 124M</h1><p>Write a prompt and generate a continuation.</p>
+<textarea id="prompt" rows="3">The purpose of science is</textarea>
+<div class="controls"><label>New tokens<input id="count" type="number" min="1" max="127" value="16"></label>
+<label>Temperature<select id="temperature"><option>0</option><option>0.7</option><option>0.8</option><option>1</option></select></label>
+<label>Seed<input id="seed" type="number" min="1" value="42"></label><label>Device<select id="device"><option value="cpu">CPU WebGPU</option><option value="gpu">Available GPU</option></select></label>
+<button id="run">Generate</button><button id="stop" disabled>Stop</button></div>
+<div id="status" role="status">Ready. Prompt and completion together may contain at most 128 tokens.</div><pre id="output"></pre>
+<script type="module">
+import {runPacked} from './host.js';
+const $=id=>document.getElementById(id);let controller;
+// Also exposed for the local browser regression harness; the model is unchanged.
+window.runPacked=runPacked;
+$('run').onclick=async()=>{
+  controller=new AbortController();$('run').disabled=true;$('stop').disabled=false;
+  const decoder=new TextDecoder();$('output').textContent=$('prompt').value;
+  try{
+    const result=await runPacked({prompt:$('prompt').value,generate:Number($('count').value),temperature:$('temperature').value,
+      seed:$('seed').value,cpu:$('device').value==='cpu',signal:controller.signal},event=>{
+      if(event.type==='status')$('status').textContent=event.text;
+      if(event.type==='token')$('output').textContent+=decoder.decode(event.bytes,{stream:true});
+    });
+    $('output').textContent+=decoder.decode();$('status').textContent=`Finished: ${result.produced} tokens · ${result.reason==='eos'?'end-of-text token':'requested count reached'}`;
+  }catch(error){$('status').textContent=error.name==='AbortError'?'Stopped.':error.message;}
+  finally{$('run').disabled=false;$('stop').disabled=true;}
+};
+$('stop').onclick=()=>controller?.abort();
+</script></html>

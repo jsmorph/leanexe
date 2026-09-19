@@ -208,6 +208,11 @@ new exact-byte packaging work are outside this integration agenda.
 - [x] Preview the merge and identify conflicts and ABI/proof differences.
 - [x] Merge and recheck both baselines.
 - [x] Prove compiled biased products and vocabulary against the parent source.
-- [ ] Prove and execute the packed replacement-call boundary.
+- [x] Prove and execute the packed replacement-call boundary on the native CPU backend; implement the browser completion protocol for the final browser test.
 - [x] Compose hybrid cached-step and 128-position execution under the declared host execution/transfer assumptions.
 - [ ] Run native and browser completion evidence for the integrated model.
+
+The full native 128-position comparison, completions and source-build gate
+have passed. The browser implementation is written and its server headers and
+JavaScript syntax checked; actual execution is pending a Mac unlock requested
+after the browser-control tool reported that it could not unlock the machine.
