@@ -1,0 +1,28 @@
+{
+  "status": "accepted",
+  "paper_id": "2609.00014",
+  "version": 1,
+  "submission_id": "87ff5328fe18",
+  "archive_url": "http://127.0.0.1:8405/abs/2609.00014v1",
+  "pdf_url": "http://127.0.0.1:8405/pdf/2609.00014v1",
+  "review_url": "http://127.0.0.1:8405/status/87ff5328fe18",
+  "pdf_sha256": "eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb",
+  "archive_matches_submitted_and_local_pdf": true,
+  "editorial_remarks": 9,
+  "metadata": {
+    "title": "GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence",
+    "authors": "Jamie Stephens",
+    "abstract": "Executing a language model requires agreement between its algorithm, floating-point operations, tensor storage, compiled instructions, and retained state. LeanExe addresses this problem by compiling a restricted subset of Lean and checking proofs about the emitted program. We apply the method to GPT-2 with 124,439,808 parameters and a 128-token context. For the CPU path, a Lean-checked theorem connects a 19,083-byte WebAssembly binary to the source cached-inference recurrence. It proves termination and exact cache and logit bytes for every weight array of the required length and every valid token sequence of length at most 128. The proof includes binary decoding, validation, scalar arithmetic, tensor loops, allocation, and buffer releases. Talos, a WebAssembly interpreter and proof library written in Lean, supplies the execution semantics. Our extensions define binary32 and binary64 arithmetic through integer operations and explicit rounding. Wasmtime, a standalone WebAssembly runtime, executes the CPU module with arithmetic NaN canonicalization enabled. For GPU execution, six kernels compiled to the WebGPU Shading Language (WGSL) replace matrix products while WebAssembly retains the controller and remaining model operations. Checked source, parsing, statement-execution, and packed-layout equalities support a complete hybrid session theorem with explicit shader-execution and host-transfer premises. We describe the theorem structure, proof reuse, deployment assumptions, and related verification results. Recorded native tests compare every logit across 128 contexts. A user-supplied browser run shows matching 32-token completions and a reported 15.72-fold increase in decode throughput with WGSL. Its screenshots and measurement definitions document that observation. The CPU binary theorem and the conditional hybrid theorem have distinct deployment boundaries, which the report states alongside the execution evidence.",
+    "subject": "cs.PL",
+    "secondary": [
+      "cs.LO",
+      "cs.LG"
+    ],
+    "comments": "42 pages, 3 figures, 6 tables",
+    "related": [
+      "2609.00011: Combines and expands the CPU GPT-2 verification report.",
+      "2609.00012: Combines and expands the WGSL verification report.",
+      "2609.00005: Applies the LeanExe compilation and verification approach described here."
+    ]
+  }
+}

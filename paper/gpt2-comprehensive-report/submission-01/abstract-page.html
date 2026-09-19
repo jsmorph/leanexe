@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[2609.00014] GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence</title>
+
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+<div class="banner">
+<a class="logo" href="/">marXiv</a><span class="tagline">personal e-print archive</span>
+<form class="search" action="/search"><input type="search" name="q" value="" placeholder="Search"><button type="submit">Search</button></form>
+</div>
+<nav><a href="/">home</a> · <a href="/list/all/recent">browse</a> · <a href="/submit">submit</a> · <a href="/submissions">submissions</a> · <a href="/public-export">public export</a> · <a href="/docs">docs</a><a class="mdlink" href="/docs.md">.md</a></nav>
+</header>
+<main>
+
+<div class="abs">
+<div class="subheader">
+Computer Science &gt; Programming Languages ·
+<a href="/list/cs.PL/new">new</a> |
+<a href="/list/cs.PL/recent">recent</a> |
+<a href="/list/cs.PL/2609">2026-09</a>
+<span class="prevnext">
+<a href="/abs/2609.00012">&lsaquo; prev</a>
+
+</span>
+</div>
+
+<div class="dateline">[Submitted on 19 Sep 2026]</div>
+<h1 class="title"><span class="descriptor">Title:</span>GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence</h1>
+<div class="authors"><span class="descriptor">Authors:</span>Jamie Stephens</div>
+<blockquote class="abstract"><span class="label">Abstract:</span> Executing a language model requires agreement between its algorithm, floating-point operations, tensor storage, compiled instructions, and retained state. LeanExe addresses this problem by compiling a restricted subset of Lean and checking proofs about the emitted program. We apply the method to GPT-2 with 124,439,808 parameters and a 128-token context. For the CPU path, a Lean-checked theorem connects a 19,083-byte WebAssembly binary to the source cached-inference recurrence. It proves termination and exact cache and logit bytes for every weight array of the required length and every valid token sequence of length at most 128. The proof includes binary decoding, validation, scalar arithmetic, tensor loops, allocation, and buffer releases. Talos, a WebAssembly interpreter and proof library written in Lean, supplies the execution semantics. Our extensions define binary32 and binary64 arithmetic through integer operations and explicit rounding. Wasmtime, a standalone WebAssembly runtime, executes the CPU module with arithmetic NaN canonicalization enabled. For GPU execution, six kernels compiled to the WebGPU Shading Language (WGSL) replace matrix products while WebAssembly retains the controller and remaining model operations. Checked source, parsing, statement-execution, and packed-layout equalities support a complete hybrid session theorem with explicit shader-execution and host-transfer premises. We describe the theorem structure, proof reuse, deployment assumptions, and related verification results. Recorded native tests compare every logit across 128 contexts. A user-supplied browser run shows matching 32-token completions and a reported 15.72-fold increase in decode throughput with WGSL. Its screenshots and measurement definitions document that observation. The CPU binary theorem and the conditional hybrid theorem have distinct deployment boundaries, which the report states alongside the execution evidence.</blockquote>
+<table class="meta">
+<tr><td>Comments:</td><td>42 pages, 3 figures, 6 tables</td></tr>
+<tr><td>Subjects:</td><td>Programming Languages (cs.PL); Logic in Computer Science (cs.LO); Machine Learning (cs.LG)</td></tr>
+
+
+
+
+<tr><td>Cite as:</td><td><a href="/abs/2609.00014">marXiv:2609.00014</a> [cs.PL]<br>
+(or <a href="/abs/2609.00014v1">marXiv:2609.00014v1</a> [cs.PL] for this version)</td></tr>
+</table>
+<h2>Submission history</h2>
+
+
+<p><strong>[v1]</strong>
+Sat, 19 Sep 2026 17:28:54 UTC (868 KB)</p>
+
+
+<h2>Public static export</h2>
+<form method="post" action="/public-export/paper/2609.00014" class="public-export">
+<label><input type="checkbox" name="public" value="true"> Include this paper ID and all its versions in public static sites</label>
+<button type="submit">Save</button>
+</form>
+<h2>Retraction</h2>
+
+<form method="post" action="/retract/2609.00014" class="retract">
+<label>Withdraw this paper, giving the reason readers need:<br>
+<input name="note" size="70" placeholder="why the paper is withdrawn"></label>
+<button type="submit">Retract</button>
+</form>
+
+
+
+
+<h2>Related work</h2>
+<dl class="relations">
+
+<dt><a href="/abs/2609.00005">marXiv:2609.00005</a></dt>
+<dd>Applies the LeanExe compilation and verification approach described here.</dd>
+
+<dt><a href="/abs/2609.00011">marXiv:2609.00011</a></dt>
+<dd>Combines and expands the CPU GPT-2 verification report.</dd>
+
+<dt><a href="/abs/2609.00012">marXiv:2609.00012</a></dt>
+<dd>Combines and expands the WGSL verification report.</dd>
+
+</dl>
+
+
+
+<h2>Full text and citation</h2>
+<p><a href="/pdf/2609.00014v1">View PDF</a> ·
+<a href="/bibtex/2609.00014">Export BibTeX citation</a></p>
+</div>
+
+</main>
+<footer>marXiv, a personal e-print archive.</footer>
+</body>
+</html>

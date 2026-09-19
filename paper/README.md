@@ -1,6 +1,6 @@
 # LeanExe research papers
 
-This directory contains the main research paper, seven focused reports, and a comprehensive GPT-2 draft covering LeanExe's language, WebAssembly and shader verification, numerical computation, and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each report retains its source, references, and PDF in a separate directory, with publication records for accepted reports.
+This directory contains the main research paper, seven focused reports, and a comprehensive GPT-2 report covering LeanExe's language, WebAssembly and shader verification, numerical computation, and proof-generation system.  The main manuscript describes the implemented theorem boundary, architecture, evaluation, trust assumptions, related systems, and roadmap.  Each report retains its source, references, and PDF in a separate directory, with publication records for accepted reports.
 
 | Work | Subject | Record |
 |------|---------|--------|
@@ -12,7 +12,7 @@ This directory contains the main research paper, seven focused reports, and a co
 | [Reconstructed Euler report](euler-reconstructed-report/README.md) | Exact-binary solver proof, physical numerical guarantees, and 192-grid and 800-grid results. | [marXiv:2609.00006](http://127.0.0.1:8405/abs/2609.00006) |
 | [Cached GPT-2 verification report](gpt2-verification-report/README.md) | Exact execution of the Lean GPT-2/128 recurrence, packed FP32 arithmetic, allocation sufficiency, and command-line inference. | [marXiv:2609.00011](http://127.0.0.1:8405/abs/2609.00011) |
 | [WGSL verification report](wgsl-verification-report/README.md) | Checked shader compilation, packed matrix equalities, and conditional hybrid GPT-2/128 execution. | [marXiv:2609.00012](http://127.0.0.1:8405/abs/2609.00012) |
-| [Comprehensive GPT-2 report](gpt2-comprehensive-report/README.md) | LeanExe, CPU artifact and WGSL proofs, theorem structure, literature comparison, and browser execution images. | Standalone draft for marXiv. |
+| [Comprehensive GPT-2 report](gpt2-comprehensive-report/README.md) | LeanExe, CPU artifact and WGSL proofs, theorem structure, literature comparison, and browser execution images. | [marXiv:2609.00014](http://127.0.0.1:8405/abs/2609.00014) |
 
 The root manuscript consists of four publication files:
 
