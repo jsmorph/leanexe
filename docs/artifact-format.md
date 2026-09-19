@@ -1,16 +1,10 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty-five registered artifacts.  The proof workspace and
-checked-in draft release record now identify exact Lean 4.34.0-rc2,
-Talos revision
-`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release inputs.
-The current release-input digest is
-`dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
-The 2026-09-04 twenty-one-package aggregate artifact receipt belongs to its
-earlier exact input and is not reused.  Matching aggregate artifact proof,
-semantic conformance, immutable source revision, and cold-checkout evidence are
-the draft's four current blockers.  The successful 2026-08-26 warm-gate
-receipts likewise remain historical evidence only.
+The registry contains forty-three binary packages.  The checked profile
+includes the FP32 operations used by GPT-2 and the existing FP64 operations.
+Both workspaces pin Lean 4.34.0-rc2, and the proof workspace pins Talos
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The historical release draft
+and its receipts identify their own earlier inputs.
 
 ## Formal Subject and Claim
 
@@ -53,11 +47,11 @@ Signed constant instructions contain mathematical integers within the signed wid
 
 `CoreValid raw` states the WebAssembly typing and structural rules for the restricted profile.  The executable validator checks function and code agreement, index bounds, local and global types, global mutability, memory requirements, export uniqueness, branch depths, block results, calls, and operand-stack typing.  `validate_sound` connects every successful validation result to `CoreValid` without treating a test corpus as proof.
 
-`ValidatedModule` exposes translation only after validation.  Translation preserves functions, declared function type indices, memory, globals, and instruction meanings required by the behavioral specifications; the Talos execution representation omits export lookup data that its semantics never reads.  `local.tee i` remains Talos's distinct `localTee i` instruction rather than being expanded into a write-and-read sequence.
+`ValidatedModule` exposes translation after validation.  Translation preserves functions, declared function types and type indices, memory, globals and their initializers, and function, memory, and global export mappings.  It maps each accepted instruction to its Talos representation.  `local.tee i` maps to Talos's `localTee i` instruction.
 
 ## Artifact Package and Manifest
 
-Each immutable proof package has the path `proofs/artifacts/<case>/<sha256>/` and contains `program.wasm` and `manifest.json`.  The SHA-256 directory name and manifest digest identify the external file, while `Project.<Case>.ArtifactBytes` in the proof tree supplies the complete byte value used by the theorem.  A changed byte sequence receives another digest and directory.
+Each binary package has the path `proofs/artifacts/<case>/<sha256>/` and contains `program.wasm` and `manifest.json`.  The SHA-256 directory name and manifest digest identify the external file, while `Project.<Case>.ArtifactBytes` in the proof tree supplies the complete byte value used by the theorem.  A changed byte sequence receives another digest and directory.
 
 Manifest schema three records the package identity and validation profile, the import modules and declarations for embedded bytes, decoded raw data, and the cached execution module, the closed artifact-correctness theorem, and the concrete source behavioral theorems.  It also records both workspace's Lean toolchain, the Talos revision, `verifierSourceSha256`, and any host assumptions that qualify the specification.  Registry validation checks the digest-shaped directory, exact field set, file identities, declaration-name relationships, case registry, toolchain pins, Talos pin, and verifier digest before Lean starts.
 
