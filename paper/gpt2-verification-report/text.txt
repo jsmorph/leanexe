@@ -4,8 +4,8 @@ Codex GPT-6, Jamie Stephens
 19 September 2026
 
 Abstract
-Compiling a neural-network implementation requires preserving its arithmetic order, tensor
-representation, and memory behavior. We present a checked proof connecting a 19,083-byte
+This verification requires the compiled neural-network implementation to reproduce the cache
+and logit bytes specified by the Lean source. We present a checked proof connecting a 19,083-byte
 WebAssembly artifact to a Lean specification of cached GPT-2 with 124,439,808 parameters and
 a 128-token context. In the semantics of the WebAssembly interpreter and proof library Talos,
 written in Lean, the decoded artifact terminates and returns exactly the cache and logit bytes
@@ -327,8 +327,8 @@ B0 = 536,870,912,
 
 D = 16,777,216.
 
-These are 512 MiB and 16 MiB, respectively, with 1 MiB = 220 bytes. Initialization proves H0 ≤ B0 .
-The session invariant contains
+These are 512 MiB and 16 MiB, respectively. Initialization proves H0 ≤ B0 . The session invariant
+contains
 Hp ≤ B0 + pD.
 (2)
 For p < 128 and a cache of length 73,728p, Entry.budget proves every allocation-capacity premise
@@ -377,9 +377,8 @@ confirmed the identity of the current command-line binary during the statement r
 reading and comparison connect the mathematical byte array to the file used for execution.
 The source-driven check remains available: it recompiles cachedStep, renders the binary as
 WAT, generates a Talos module, and compares that module with the tracked execution model [25].
-The recorded focused source check and exact-artifact check passed. The 19 September aggregate
-checked all 43 registered artifact packages, including GPT-2, using the existing build cache [5]. The
-runtime measurements in Section 5 retain the saved 18 September canonical-mode test record.
+The recorded focused source check and exact-artifact check passed using the existing build cache [5].
+The runtime measurements in Section 5 retain the saved 18 September canonical-mode test record.
 
 4.2
 
@@ -395,6 +394,7 @@ Native-evaluation axioms accept the result of a compiled computation and therefo
 in the compiler and execution machinery used for that computation. The generic package policy
 accepts these additional assumptions. The statement review audited the final GPT-2 theorem
 against the three mathematical axioms [4, 5].
+
 7
 
 Seven checked review lemmas test consequences of the public statement [6]. They exhibit weights
@@ -427,10 +427,10 @@ Two automated checks remain open at the report checkpoint [5]. The CLI recompile
 current source and executes the result. Enforcing equality with the registered artifact is a manual
 responsibility after a compiler or source edit. The current compiled file passed that comparison. The
 package gate audits the manifest’s artifact-equality and behavior declarations, while the combined
-artifact_gpt2_128_exact theorem receives a separate review audit. Its axiom policy permits
-native-evaluation assumptions used by other packages. Continuing the reviewed assurance requires
-a CLI artifact-identity check and an automated audit of the combined GPT-2 statement restricted
-to its three mathematical axioms [28, 4].
+artifact_gpt2_128_exact theorem receives a separate review audit. The package checker’s axiom
+policy permits native-evaluation assumptions used by other packages. Continuing the reviewed
+assurance requires a CLI artifact-identity check and an automated audit of the combined GPT-2
+statement restricted to its three mathematical axioms [28, 4].
 The theorem fixes the module’s architecture and the 128-token limit and quantifies over weight
 arrays and token lists satisfying the stated conditions. A larger architecture or context needs
 corresponding source, generated-module, and proof updates. The scalar arithmetic and packedmemory lemmas accept inputs beyond this one model. The composed transformer and allocation

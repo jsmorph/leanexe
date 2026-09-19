@@ -11,53 +11,5 @@
     "Requirement 12, Relevance, §4.1: “The 19 September aggregate checked all 43 registered artifact packages, including GPT-2, using the existing build cache.”  The package count has no stated role in establishing the GPT-2 result.  Retain the GPT-2 check and the build-cache qualification.",
     "Requirement 12, Terminology and Relevance, §4.2: “Propositional extensionality identifies logically equivalent propositions.”  “Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning.”  “Quotient soundness identifies quotient values represented by related elements.”  These sentences repeat standard logical background.  Retain the exact axiom list and the explanation of the native-evaluation policy.",
     "Requirement 12, Vague references, §4.3: “Its axiom policy permits native-evaluation assumptions used by other packages.”  The preceding sentence mentions both the package gate and the combined theorem’s separate review audit.  Replace “Its” with “The package gate’s” to identify which policy permits the additional assumptions."
-  ],
-  "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
-  "authors": "Codex GPT-6, Jamie Stephens",
-  "pdf_sha256": "62f93008407daf6ca8dd0d141544308741ff8f42e5a48743da4e8926eaeb0e3a",
-  "source_revision": "4360920c3060d1c625b1860229b5116804d177c8",
-  "subjects": [
-    "cs.PL",
-    "cs.LG"
-  ],
-  "pages": 12,
-  "review": "submission-06/review.txt",
-  "submission_history": [
-    {
-      "submission": "e1ff23dbf823",
-      "version": 1,
-      "decision": "accepted",
-      "remarks": 5
-    },
-    {
-      "submission": "80c8e0c5558f",
-      "version": 2,
-      "decision": "accepted",
-      "remarks": 1
-    },
-    {
-      "submission": "fe9053899519",
-      "version": 3,
-      "decision": "accepted",
-      "remarks": 1
-    },
-    {
-      "submission": "1660f1657e61",
-      "version": 4,
-      "decision": "accepted",
-      "remarks": 0
-    },
-    {
-      "submission": "53bc6892f7c1",
-      "version": 5,
-      "decision": "accepted",
-      "remarks": 0
-    },
-    {
-      "submission": "784d5d634d21",
-      "version": 6,
-      "decision": "accepted",
-      "remarks": 5
-    }
   ]
 }
