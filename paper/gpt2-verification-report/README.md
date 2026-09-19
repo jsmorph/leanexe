@@ -1,8 +1,8 @@
 # Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly
 
-This twelve-page technical report states the checked connection from the frozen GPT-2/128 binary bytes to the Lean cached-step algorithm.  It explains decoding, validation, translation, our floating-point extensions to Talos, and the arithmetic, tensor, ownership, and allocation proofs.  It records the theorem's axiom dependencies, statement-review lemmas, two open automation checks, Wasmtime execution boundary, and PyTorch comparisons.  It describes LeanExe source revision `4360920c3060d1c625b1860229b5116804d177c8`.
+This thirteen-page technical report explains the goal of source-to-artifact verification and its application to complete GPT-2 inference, then states the checked connection from the frozen GPT-2/128 binary bytes to the Lean cached-step algorithm.  It explains decoding, validation, translation, our floating-point extensions to Talos, and the arithmetic, tensor, ownership, and allocation proofs.  It records the theorem's axiom dependencies, statement-review lemmas, two open automation checks, Wasmtime execution boundary, and PyTorch comparisons.  It describes LeanExe source revision `4360920c3060d1c625b1860229b5116804d177c8`.
 
-marXiv accepted [version 7 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v7).  The reviewer records one style remark about explaining standard logical axioms.  The report retains that brief explanation as requested.  The archive PDF matches the reviewed local PDF.
+marXiv accepted [version 8 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v8).  The reviewer records one style remark about explaining standard logical axioms.  The report retains that brief explanation as requested.  The archive PDF matches the reviewed local PDF.
 
 | Material | Contents |
 |----------|----------|
@@ -14,7 +14,7 @@ marXiv accepted [version 7 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v7
 | [Proof-check output](evidence/proof-check.log) | Successful source-driven artifact regeneration and proof check. |
 | [Artifact-check output](evidence/artifact-check-20260919-authorized.log.gz) | Compressed output of the successful exact-artifact package check. |
 | [Statement-review output](evidence/statement-review-20260919.txt) | Seven checked corollaries and the combined theorem's axiom report. |
-| [Submission metadata](submission-07/request.json) | Title and abstract extracted from the revised PDF, categories, relation, and PDF identity. |
+| [Submission metadata](submission-08/request.json) | Title and abstract extracted from the revised PDF, categories, relation, and PDF identity. |
 | [Publication record](publication.json) | Accepted version, archive links, PDF identity, and submission history. |
 
 From the repository root, build the report with two passes:
