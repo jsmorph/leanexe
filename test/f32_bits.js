@@ -60,12 +60,25 @@ const vectors = {
   roundTripBits: [[ [1n], 1n], [[max], max], [[negZero], negZero]],
 };
 
+for (const value of [0x7f800001n, 0xffc12345n]) {
+  for (const entry of ["addBits", "subBits", "mulBits", "divBits"])
+    vectors[entry].push([[value, one], "nan"], [[one, value], "nan"]);
+  vectors.sqrtBits.push([[value], "nan"]);
+  vectors.toFloat64Bits.push([[value], "nan"]);
+}
+for (const value of [0x7ff0000000000001n, 0xfff8123456789abcn])
+  vectors.ofFloat64Bits.push([[value], "nan"]);
+
 function checkResult(actual, expected, entry, label) {
   if (expected !== "nan") {
     assert.equal(actual, expected, `${label}: ${entry}`);
     return;
   }
   const wide = entry === "toFloat64Bits";
+  if (label === "Wasmtime") {
+    assert.equal(actual, wide ? 0x7ff8000000000000n : nan, `${entry}: canonical NaN bits`);
+    return;
+  }
   const exponent = wide ? 0x7ff0000000000000n : inf;
   const fraction = wide ? 0xfffffffffffffn : 0x7fffffn;
   assert.equal(actual & exponent, exponent, `${label}: NaN exponent`);
@@ -74,6 +87,7 @@ function checkResult(actual, expected, entry, label) {
 
 function main() {
   run(["lake", "build", "lean-wasm", moduleName]);
+  run(["tools/build-wasmtime-host.sh"]);
   fs.mkdirSync("tmp", { recursive: true });
   const output = fs.mkdtempSync(path.join("tmp", "f32-bits-"));
   const nativeSource = path.join(output, "Reference.lean");

@@ -164,7 +164,13 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
   size_t wasm_len = 0;
   uint8_t *wasm_bytes = read_file(wasm_path, &wasm_len);
 
-  runtime->engine = wasm_engine_new();
+  wasm_config_t *config = wasm_config_new();
+  if (config == NULL) {
+    die("failed to create Wasmtime configuration");
+  }
+  wasmtime_config_strategy_set(config, WASMTIME_STRATEGY_CRANELIFT);
+  wasmtime_config_cranelift_nan_canonicalization_set(config, true);
+  runtime->engine = wasm_engine_new_with_config(config);
   if (runtime->engine == NULL) {
     die("failed to create Wasmtime engine");
   }
