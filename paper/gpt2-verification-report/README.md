@@ -2,7 +2,7 @@
 
 This twelve-page technical report states the checked connection from the frozen GPT-2/128 binary bytes to the Lean cached-step algorithm.  It explains decoding, validation, translation, our floating-point extensions to Talos, and the arithmetic, tensor, ownership, and allocation proofs.  It records the theorem's axiom dependencies, statement-review lemmas, two open automation checks, Wasmtime execution boundary, and PyTorch comparisons.  It describes LeanExe source revision `4360920c3060d1c625b1860229b5116804d177c8`.
 
-marXiv accepted [version 6 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v6) with five remarks.  The current revision addresses four and retains the requested brief explanation of the logical axioms.  It is prepared for submission as version 7.
+marXiv accepted [version 7 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v7).  The reviewer records one style remark about explaining standard logical axioms.  The report retains that brief explanation as requested.  The archive PDF matches the reviewed local PDF.
 
 | Material | Contents |
 |----------|----------|

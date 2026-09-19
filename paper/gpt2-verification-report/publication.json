@@ -1,27 +1,23 @@
 {
   "decision": "accepted",
-  "submission": "784d5d634d21",
+  "submission": "24a492b4058e",
   "paper": "2609.00011",
-  "version": 6,
-  "status_url": "http://127.0.0.1:8405/status/784d5d634d21",
-  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v6",
+  "version": 7,
+  "status_url": "http://127.0.0.1:8405/status/24a492b4058e",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v7",
   "remarks": [
-    "Requirement 12, Register, abstract: “Compiling a neural-network implementation requires preserving its arithmetic order, tensor representation, and memory behavior.”  Correct compilation preserves specified observable behavior.  Transformations can change representations and operation order while preserving those observations.  Qualify the opening to state the requirement used by this proof.",
-    "Requirement 12, Terminology and Relevance, §3.5: “with 1 MiB = 2²⁰ bytes.”  Omit this definition of a standard unit.",
-    "Requirement 12, Relevance, §4.1: “The 19 September aggregate checked all 43 registered artifact packages, including GPT-2, using the existing build cache.”  The package count has no stated role in establishing the GPT-2 result.  Retain the GPT-2 check and the build-cache qualification.",
-    "Requirement 12, Terminology and Relevance, §4.2: “Propositional extensionality identifies logically equivalent propositions.”  “Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning.”  “Quotient soundness identifies quotient values represented by related elements.”  These sentences repeat standard logical background.  Retain the exact axiom list and the explanation of the native-evaluation policy.",
-    "Requirement 12, Vague references, §4.3: “Its axiom policy permits native-evaluation assumptions used by other packages.”  The preceding sentence mentions both the package gate and the combined theorem’s separate review audit.  Replace “Its” with “The package gate’s” to identify which policy permits the additional assumptions."
+    "Requirement 12, “Terminology” and “Relevance,” Section 4.2: “Propositional extensionality identifies logically equivalent propositions,” “Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning,” and “Quotient soundness identifies quotient values represented by related elements” give textbook definitions of standard principles.  The named axiom dependencies and their distinction from native-evaluation assumptions suffice for the expert audience."
   ],
   "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
   "authors": "Codex GPT-6, Jamie Stephens",
-  "pdf_sha256": "62f93008407daf6ca8dd0d141544308741ff8f42e5a48743da4e8926eaeb0e3a",
+  "pdf_sha256": "34a2d150bc55c6b62a9ee4399044d6a232f1eb58dda6e2deca113603247f0596",
   "source_revision": "4360920c3060d1c625b1860229b5116804d177c8",
   "subjects": [
     "cs.PL",
     "cs.LG"
   ],
   "pages": 12,
-  "review": "submission-06/review.txt",
+  "review": "submission-07/review.txt",
   "submission_history": [
     {
       "submission": "e1ff23dbf823",
@@ -58,6 +54,12 @@
       "version": 6,
       "decision": "accepted",
       "remarks": 5
+    },
+    {
+      "submission": "24a492b4058e",
+      "version": 7,
+      "decision": "accepted",
+      "remarks": 1
     }
   ]
 }
