@@ -1,0 +1,8 @@
+#!/bin/sh
+# Experimental packed FP32 inference; host bindings contain no float arithmetic.
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+bundle=${LEANEXE_GPT2_PACKED_BUNDLE:-"$root/build/gpt2/packed-bundle"}
+LEANEXE_PACKED_SHADERS="$bundle/shaders"
+export LEANEXE_PACKED_SHADERS
+exec "$root/tools/wgsl/gpt2/packed-cpu.sh" packed-run "$bundle" "$@"
