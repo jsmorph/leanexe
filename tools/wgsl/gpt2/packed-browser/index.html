@@ -1,36 +1,38 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GPT-2 · Packed FP32</title>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPT-2 · Wasm & WebGPU</title>
 <style>
-body{font:17px/1.55 system-ui;margin:48px auto;max-width:820px;padding:0 24px;color:#172b36;background:#f5f7f8}
-h1{font-size:32px;margin-bottom:6px}p{color:#48616f}textarea{box-sizing:border-box;width:100%;font:inherit;padding:16px;border:1px solid #bbcbd3;border-radius:8px}
-.controls{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:18px 0}label{display:grid;font-size:14px;gap:5px}input,select,button{font:inherit;padding:8px;border:1px solid #bbcbd3;border-radius:5px}input[type=number]{width:90px}
-button{cursor:pointer;background:#174f64;color:white;padding:10px 22px}button:disabled{opacity:.5;cursor:default}pre{white-space:pre-wrap;background:white;padding:24px;border:1px solid #dae2e6;border-radius:8px;min-height:120px;font:18px/1.7 Georgia,serif}#status{font-size:14px;min-height:24px}
-</style>
-<h1>GPT-2 · 124M</h1><p>Write a prompt and generate a continuation.</p>
-<textarea id="prompt" rows="3">The purpose of science is</textarea>
-<div class="controls"><label>New tokens<input id="count" type="number" min="1" max="127" value="16"></label>
+:root{color-scheme:light;--ink:#182d38;--muted:#526873;--line:#d4e0e5;--accent:#09695f;--paper:#fff}
+*{box-sizing:border-box}body{font:16px/1.55 system-ui;margin:0;color:var(--ink);background:#f2f6f7}main{max-width:1120px;margin:42px auto;padding:0 24px 60px}h1{font-size:38px;letter-spacing:-1.2px;margin:5px 0}h2{font-size:20px;margin:0 0 12px}.eyebrow{color:var(--accent);font-size:12px;font-weight:750;letter-spacing:1.8px;text-transform:uppercase}.intro{color:var(--muted);max-width:760px;margin:8px 0 26px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:24px;margin-top:22px}fieldset{padding:0;margin:0;border:0;min-width:0}label{display:grid;font-size:13px;font-weight:650;gap:6px}textarea,input,select,button{font:inherit;border:1px solid #b7cbd3;border-radius:6px;padding:9px 11px;color:var(--ink)}textarea{width:100%;font-size:17px;padding:15px;resize:vertical}input[type=number]{width:92px}#seed{width:110px}.controls,.actions{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-top:17px}button{cursor:pointer;font-weight:650;background:white}button.primary{background:var(--accent);border-color:var(--accent);color:white}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #75c7bb;outline-offset:2px}#stop{margin-left:auto;color:#9f382d}#status{font-size:14px;min-height:24px;margin-top:14px;color:var(--muted)}.results{display:grid;grid-template-columns:1fr 1fr;gap:20px}.result{min-width:0}.result.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}.badge{font-size:12px;color:var(--muted);display:block;min-height:38px}.output{white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.65 Georgia,serif;min-height:145px;margin:16px 0}.echo{color:#74858d}.result-status{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}.error{color:#9f382d}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}th,td{padding:10px 14px;border-bottom:1px solid #e7edef;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left;padding-left:0}thead th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}tbody tr:last-child td{border-bottom:0}.comparison{padding:13px 16px;background:#edf7f4;border-radius:7px;font-size:14px;margin-bottom:15px}.note,details{color:var(--muted);font-size:13px}details{margin-top:18px}summary{cursor:pointer;font-weight:650}details p{margin:10px 0}code{font-size:12px}.run-settings{font-size:12px;color:var(--muted)}@media(max-width:720px){main{padding:0 16px;margin-top:25px}.panel{padding:18px}.results{grid-template-columns:1fr;gap:0}h1{font-size:31px}th,td{padding:9px}#stop{margin-left:0}}
+</style></head>
+<body><main>
+<div class="eyebrow">124M parameters · Packed FP32 · 128-token context</div>
+<h1>GPT-2, two ways to run</h1>
+<p class="intro">Compare the same model running entirely in CPU Wasm, or with its matrix products in WGSL. Both use the same checkpoint, Wasm tokenizer and Wasm sampler.</p>
+<section class="panel" aria-label="Generation settings">
+<fieldset id="settings"><label for="prompt">Prompt</label><textarea id="prompt" rows="3">The purpose of science is</textarea>
+<div class="controls">
+<label>Execution<select id="backend"><option value="wgsl">Wasm + WGSL</option><option value="wasm">CPU only · Wasm · no WGSL</option></select></label>
+<label>WebGPU device<select id="device"><option value="cpu">CPU WebGPU · software</option><option value="gpu">Available GPU</option></select></label>
+<label>New tokens<input id="count" type="number" min="1" max="127" value="16"></label>
 <label>Temperature<select id="temperature"><option>0</option><option>0.7</option><option>0.8</option><option>1</option></select></label>
-<label>Seed<input id="seed" type="number" min="1" value="42"></label><label>Device<select id="device"><option value="cpu">CPU WebGPU</option><option value="gpu">Available GPU</option></select></label>
-<button id="run">Generate</button><button id="stop" disabled>Stop</button></div>
-<div id="status" role="status">Ready. Prompt and completion together may contain at most 128 tokens.</div><pre id="output"></pre>
-<script type="module">
-import {runPacked} from './host.js';
-const $=id=>document.getElementById(id);let controller;
-// Also exposed for the local browser regression harness; the model is unchanged.
-window.runPacked=runPacked;
-$('run').onclick=async()=>{
-  controller=new AbortController();$('run').disabled=true;$('stop').disabled=false;
-  const decoder=new TextDecoder();$('output').textContent=$('prompt').value;
-  try{
-    const result=await runPacked({prompt:$('prompt').value,generate:Number($('count').value),temperature:$('temperature').value,
-      seed:$('seed').value,cpu:$('device').value==='cpu',signal:controller.signal},event=>{
-      if(event.type==='status')$('status').textContent=event.text;
-      if(event.type==='token')$('output').textContent+=decoder.decode(event.bytes,{stream:true});
-    });
-    $('output').textContent+=decoder.decode();$('status').textContent=`Finished: ${result.produced} tokens · ${result.reason==='eos'?'end-of-text token':'requested count reached'}`;
-  }catch(error){$('status').textContent=error.name==='AbortError'?'Stopped.':error.message;}
-  finally{$('run').disabled=false;$('stop').disabled=true;}
-};
-$('stop').onclick=()=>controller?.abort();
-</script></html>
+<label>Seed<input id="seed" inputmode="numeric" value="42"></label>
+</div></fieldset>
+<div class="actions"><button id="run" class="primary">Run selected</button><button id="compare">Compare both</button><button id="stop" disabled>Stop</button></div>
+<div id="status" role="status">Ready. Prompt and completion together may contain at most 128 tokens.</div>
+</section>
+<div class="results">
+<section class="panel result" id="wasm-card"><h2>CPU only · Wasm</h2><span class="badge" id="wasm-adapter">All model operations execute in Wasm. No WebGPU or shaders.</span><div class="output" id="wasm-output">No run yet.</div><div class="result-status" id="wasm-status">—</div><div class="run-settings" id="wasm-settings"></div></section>
+<section class="panel result" id="wgsl-card"><h2>Wasm + WGSL</h2><span class="badge" id="wgsl-adapter">Matrix products use the selected WebGPU device.</span><div class="output" id="wgsl-output">No run yet.</div><div class="result-status" id="wgsl-status">—</div><div class="run-settings" id="wgsl-settings"></div></section>
+</div>
+<section class="panel"><h2>Runtime comparison</h2>
+<div id="comparison" class="comparison">Run both implementations to compare their outputs and speed.</div>
+<div class="table-wrap"><table><thead><tr><th scope="col">Measurement</th><th scope="col">CPU only · Wasm</th><th scope="col">Wasm + WGSL</th></tr></thead><tbody id="metrics"></tbody></table></div>
+<details open><summary>What these measurements include</summary>
+<p><strong>Prefill</strong> processes the prompt one token at a time. Its rate is prompt tokens divided by model-call time. <strong>Decode</strong> measures subsequent model calls, including synchronous host transfers for WGSL. The first generated token comes from the last prefill call, so a 16-token completion normally has 15 decode steps. Sampling and text decoding are timed separately.</p>
+<p><strong>First token</strong> starts after loading and tokenization and ends when the worker emits its first text token. <strong>Total elapsed</strong> also includes setup. Each run creates a new worker and, for WGSL, a new device. Shader compilation is setup; lazy GPU weight uploads occur during prefill. Compare both runs CPU Wasm first, then WGSL. Browser and OS caches may affect setup time.</p>
+<p><strong>Memory</strong> reports peak observed Wasm linear-memory capacity and explicitly allocated WebGPU buffer sizes, not total browser RAM or physical GPU residency. Auxiliary Wasm memory covers the tokenizer, sampler and conversion adapter. The KV cache is already included in model Wasm memory. The extra host weight copy is reported separately; JavaScript heap, temporary copies and driver overhead are not measured.</p>
+<p>Temperature 0 uses greedy selection. The page checks generated token IDs when both runs use the same prompt and settings; GPU arithmetic can produce different results. Model and sampling arithmetic execute in Wasm/WGSL; JavaScript handles the interface, transfers and measurements.</p>
+</details></section>
+</main><script type="module" src="./app.js"></script></body></html>

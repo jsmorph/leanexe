@@ -44,7 +44,8 @@ async function build(destination,proofCache){
     await run("conversion-source",[python,path.join(__dirname,"transfer.py"),path.join(destination,"transfer.wat")]);
     await run("conversion-wasm",[process.env.WASM_TOOLS||"wasm-tools","parse",path.join(destination,"transfer.wat"),"-o",path.join(bundle,"transfer.wasm")]);
     fs.copyFileSync(path.join(runtime,"model.wasm"),path.join(bundle,"model.wasm"));
-    for(const name of ["model","sampler","tokenizer","transfer"])
+    fs.copyFileSync(path.join(root,"proofs/talos/.generated/gpt2_cached_step/program.wasm"),path.join(bundle,"model-cpu.wasm"));
+    for(const name of ["model","model-cpu","sampler","tokenizer","transfer"])
       await run(`validate-${name}`,[process.env.WASM_TOOLS||"wasm-tools","validate",path.join(bundle,name+".wasm")]);
     for(const role of ["qkv","attention","expansion","projection","vocabularyLeft","vocabularyRight"]){
       const out=path.join(bundle,"shaders",role);fs.mkdirSync(out,{recursive:true});
@@ -52,6 +53,7 @@ async function build(destination,proofCache){
     }
     await run("native-host",[path.join(__dirname,"compile-packed-host.sh")]);
     const manifest={format:"leanexe-gpt2-packed-v1",contextTokens:128,parameters:124439808,
+      models:{wasm:"model-cpu.wasm",wgsl:"model.wasm"},
       algorithm:"LeanExe.Models.Gpt2.cachedStep",stepTheorem:"Project.Gpt2Hybrid.Spec.cachedStep_exact",
       sessionTheorem:"Project.Gpt2Hybrid.Spec.gpt2_128_exact",proofDirectory:proof,
       assumptions:"The host completes the certified shader execution with the declared separate FP32 operations and copies only output bytes; successful native/browser allocation and driver execution are external assumptions.",

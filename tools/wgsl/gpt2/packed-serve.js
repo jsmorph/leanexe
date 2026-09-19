@@ -3,9 +3,9 @@
 const fs=require("node:fs"),path=require("node:path"),http=require("node:http");
 const bundle=path.resolve(process.argv[2]||"build/gpt2/packed-bundle"),port=Number(process.argv[3]||8080);
 const publicRoot=path.join(__dirname,"packed-browser");
-const files=new Set(["model.wasm","sampler.wasm","tokenizer.wasm","transfer.wasm","tokenizer.bin","weights.bin","manifest.json",
+const files=new Set(["model.wasm","model-cpu.wasm","sampler.wasm","tokenizer.wasm","transfer.wasm","tokenizer.bin","weights.bin","manifest.json",
   ...["qkv","attention","expansion","projection","vocabularyLeft","vocabularyRight"].map(r=>`shaders/${r}/kernel.wgsl`)]);
-const publicFiles=new Set(["index.html","host.js","worker.js"]);
+const publicFiles=new Set(["index.html","app.js","host.js","worker.js"]);
 const types={".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".wasm":"application/wasm",".json":"application/json",".wgsl":"text/plain"};
 const server=http.createServer((req,res)=>{
   res.setHeader("Cross-Origin-Opener-Policy","same-origin");res.setHeader("Cross-Origin-Embedder-Policy","require-corp");

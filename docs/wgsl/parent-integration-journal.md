@@ -427,3 +427,31 @@ during macOS application registration, and the browser-control tool then
 reported the Mac locked and unable to unlock. The unlock request is pending;
 no browser completion or browser numerical comparison has been reported as
 passing. The temporary validation server was stopped.
+
+### 2026-09-19 — CPU-only browser backend and comparison measurements
+
+The packed browser host now accepts either the hybrid WGSL module or the
+unchanged parent CPU Wasm module. The source build includes that parent as
+`model-cpu.wasm`; the existing checked local bundle was extended with a byte
+copy of the already checked parent artifact. No model/shader/proof was changed.
+The CPU branch does not request a WebGPU device, load shaders, send weight
+views, or allocate shared staging. Both branches use the same worker loop,
+checkpoint, Wasm tokenizer, sampler and conversion adapter.
+
+The page retains both completions and reports setup, prefill, decode, first-token,
+sampling, text-decoding and total timings, plus explicitly scoped memory figures.
+Compare both runs the backends sequentially with identical prompt/settings.
+Decode throughput counts model calls after prefill, not the first token selected
+from the final prompt logits. Wasm capacity and GPU buffer sizes are distinct
+from physical process memory. The old `tools/gpt2 serve` / `tools/gpt2-wgsl serve`
+entry now serves this packed comparison page on port 8766.
+
+`packed-browser-test.mjs` exercised the actual browser host and worker under
+Node worker bindings with WebGPU and SharedArrayBuffer unavailable. The science
+prompt produced the same 16 token choices and all 804,112 FP32 logit words as
+`packed-build-01/science.f32.bin`, with zero shader dispatches. Counter consistency,
+monotonic memory observations, and cancellation before startup/during loading
+passed. Evidence: `build/gpt2/packed-browser-compare-02/result.json`. This is
+worker execution evidence, not browser/WebGPU evidence. The initial test adapter
+had a missing closure; that test-only syntax error was fixed before the passing
+run. No Lean proof rerun was needed for these host/UI-only changes.
