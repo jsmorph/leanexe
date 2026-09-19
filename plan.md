@@ -808,4 +808,9 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Parameterize the complete session specification by its WASM module.
 - [x] Prove decoding and validation of the 19,083-byte cached-step binary.
 - [x] Prove equality with the execution model and transfer the complete session theorem.
-- [ ] Complete the independent artifact and source-proof checks.
+- [x] Complete the focused GPT-2 artifact and source-proof checks.
+- [x] Run cached inference and CLI completion tests.
+- [ ] Complete the aggregate artifact check after the shared verifier change.
+
+The repository-wide source check still stops at the existing `gcd` cache
+mismatch.  GPT-2's focused regeneration and proof checks pass.
