@@ -156,3 +156,32 @@ build/gpt128-quality/venv/bin/python tools/wgsl/gpt2/compare-packed.py \
 The shader directory is the output of the preceding certificate gate; use
 its actual path when generating a fresh set. The existing generic Wasmtime
 host remains the parent comparison host. The packed host is a separate build.
+
+## Concrete QKV wrapper proof
+
+`PackedCall` proves allocation plus completed shader-byte transfer gives the
+parent's `Heap.PackedOutput` contract, including ownership, heap/frame state,
+pages and memory capacity. It also proves that the full write frame and
+represented bytes uniquely determine the final store. These are transfer
+lemmas, not by themselves Wasm execution theorems.
+
+`PackedWrapper.qkv_exact` additionally proves execution of the real linear
+wrapper instruction sequence for QKV: Wasm allocation, the completed host
+call, and the returned owner/pointer/length triple. The explicit host premise
+says the import completes the modeled shader execution and copies its bytes
+without other store changes. The certificate, rather than a parent-output
+assumption, supplies the matrix's numeric equality. This leaves actual host
+and driver conformance as an external execution assumption.
+
+Three proof iterations corrected transparent-name and list-normalization
+mismatches in the Wasm stack/frame proof. The fourth passed without additional
+axioms (`build/gpt2/packed-wrapper-01.log` through `-04.log`). The independent
+`packed-check.js` driver parsed the actual hybrid Wasm using Talos, checked
+its wrapper and allocator declarations against the proved functions, replayed
+the concrete QKV shader certificate, and applied the wrapper theorem.
+Evidence: `build/gpt2/packed-wrapper-check-01/results.json`. This checks the
+replacement QKV call; it does not yet prove the complete hybrid token/session.
+
+A separate one-prediction rerun after adding GPU cleanup also passed, with
+250 actual shader dispatches for five prompt tokens and zero differing
+parent logit words (`packed-runtime-01/cleanup.json` and `.log`).
