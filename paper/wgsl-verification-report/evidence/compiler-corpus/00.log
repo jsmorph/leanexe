@@ -1,0 +1,11 @@
+ℹ [11/15] Replayed LeanExe.WGSL.Parse
+info: LeanExe/WGSL/Parse.lean:148:0: 'LeanExe.WGSL.CheckedGemm.config_valid' does not depend on any axioms
+ℹ [12/15] Replayed LeanExe.WGSL.Index
+info: LeanExe/WGSL/Index.lean:99:0: 'LeanExe.WGSL.Index.linear_lt' does not depend on any axioms
+info: LeanExe/WGSL/Index.lean:100:0: 'LeanExe.WGSL.Index.linear_injective' depends on axioms: [propext]
+info: LeanExe/WGSL/Index.lean:101:0: 'LeanExe.WGSL.Index.invocation_covered' depends on axioms: [propext, Quot.sound]
+info: LeanExe/WGSL/Index.lean:102:0: 'LeanExe.WGSL.Index.word_index' depends on axioms: [propext, Quot.sound]
+info: LeanExe/WGSL/Index.lean:103:0: 'LeanExe.WGSL.Index.cell_bounds' depends on axioms: [propext, Quot.sound]
+info: LeanExe/WGSL/Index.lean:104:0: 'LeanExe.WGSL.Index.checked_word_indices' depends on axioms: [propext, Quot.sound]
+info: LeanExe/WGSL/Index.lean:105:0: 'LeanExe.WGSL.Index.loop_progress' depends on axioms: [propext, Quot.sound]
+Build completed successfully (15 jobs).

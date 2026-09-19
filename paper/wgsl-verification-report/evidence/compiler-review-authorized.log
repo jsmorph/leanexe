@@ -1,0 +1,3 @@
+Body compiler corpus: /tmp/leanexe-wgsl-review/build/wgsl/body-check-tyz6A6
+Unexpected result: /tmp/leanexe-wgsl-review/tools/leanrun --timeout 90s lake env lean /tmp/leanexe-wgsl-review/build/wgsl/body-check-tyz6A6/add.lean (124, null)
+Failure evidence retained at /tmp/leanexe-wgsl-review/build/wgsl/body-check-tyz6A6

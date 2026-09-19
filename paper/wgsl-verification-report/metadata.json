@@ -1,0 +1,9 @@
+{
+  "title": "Checked WGSL Compilation and Conditional GPT-2 Execution in LeanExe",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "Moving verified inference operations from WebAssembly to the WebGPU Shading Language (WGSL) introduces shader arithmetic, dispatch, and byte-transfer obligations. We describe a LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks each translation against an independent parser and a statement-execution semantics. Each accepted certificate proves successful execution and equality to the supplied Lean function for every invocation and adequately sized input under a shared scalar interpretation. Packed-layout proofs connect six compiled shaders to the matrix operations of a 124M-parameter GPT-2 implementation. The hybrid session theorem equates cache and logit bytes with the Lean cached-step recurrence for arbitrary weight bytes of the required length and up to 128 valid tokens, assuming completed shader execution with separate FP32 arithmetic and exact host transfers. The branch records a CPU WebGPU comparison in which all 6,432,896 logits match the parent WebAssembly implementation bit for bit. We distinguish those recorded results from fresh review checks, the shader semantics from runtime conformance, and the hybrid module’s external parsing boundary from the parent report’s exact-binary proof. Browser execution validation remains pending.",
+  "subject": "cs.PL",
+  "secondary": "cs.LG",
+  "comments": "8 pages, 2 tables",
+  "related": "2609.00011: Extends the parent GPT-2 WebAssembly verification with per-compilation WGSL certificates and a conditional hybrid session theorem."
+}

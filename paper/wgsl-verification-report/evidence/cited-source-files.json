@@ -1,0 +1,134 @@
+[
+  {
+    "path": "LeanExe/WGSL/BodyExecution.lean",
+    "sha256": "36146b1681aa77cfc26d62110ab2cdd66ab40262e8da0b422aa88fdcaad37557"
+  },
+  {
+    "path": "LeanExe/WGSL/BodyParse.lean",
+    "sha256": "809156c120019b827dde96389a309a6470fc5a1a101c5443e065788e34ad58bf"
+  },
+  {
+    "path": "LeanExe/WGSL/Compile.lean",
+    "sha256": "154ea189cc199cf662101b5daf96a8302792eb93c28491ad0b57dda1651a819a"
+  },
+  {
+    "path": "LeanExe/WGSL/Dispatch.lean",
+    "sha256": "01da6043781499d71daa5968472416104fbdf526fac238aa0063f113546b825c"
+  },
+  {
+    "path": "LeanExe/WGSL/Gpt2Packed.lean",
+    "sha256": "4ec5a20ff66df5d1bf99d30e5732f9db87719e0aecae70599da7302020b6d972"
+  },
+  {
+    "path": "LeanExe/WGSL/SourceBounds.lean",
+    "sha256": "5efe364971f7266ee7d2b587fe1ea366fdcf7839897ef6a2d0200e5060f52dd4"
+  },
+  {
+    "path": "LeanExe/WGSL/StatementProof.lean",
+    "sha256": "5e65e4ae2056c14ab6e90874eed5526484c928041e957bf330fbe4d19723b786"
+  },
+  {
+    "path": "LeanExe/WGSL/StatementRun.lean",
+    "sha256": "7234fc50e8551dc2019a38247a12c9e47200503dea4c520b09986c7fa563504c"
+  },
+  {
+    "path": "docs/wgsl/README.md",
+    "sha256": "c426e0949bbb917e8dd5236d7b57b6ec3e2aa7a50de4035e6ec07904702777c4"
+  },
+  {
+    "path": "docs/wgsl/body-compiler.md",
+    "sha256": "b0e16b639d92c9d1e46686740e730d960c44a6d8703034bd37517673b4668e47"
+  },
+  {
+    "path": "docs/wgsl/gpt2-verification.md",
+    "sha256": "8081e9debab397fdac58b067e4657d7bd6c06db1332f8c396bfe7d464eb079eb"
+  },
+  {
+    "path": "docs/wgsl/lean-source-specification.md",
+    "sha256": "2206e66acbdc8682956032902b34b544690b163cd5d86042984f62642f9482fe"
+  },
+  {
+    "path": "docs/wgsl/packed-gpt2.md",
+    "sha256": "4f2629a9c472b5c0b60ab225d7497ec69b99516c06b0cd2523da5e710dd819f0"
+  },
+  {
+    "path": "docs/wgsl/parent-integration-journal.md",
+    "sha256": "00da1ef5e9a49ed4e35775cc8ba355721612ebe74dca8cc94bb147387b057108"
+  },
+  {
+    "path": "proofs/talos/lean/Project/FunctionRegion/Imports.lean",
+    "sha256": "e76590eb5133ba25055062566c2d1730de4005bd38551fc6289ffadb6e1c12e1"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2/MatrixArithmetic.lean",
+    "sha256": "8800209f89b5afca07f83da3abf0417ae3e5afac2e9255763b543b785a8e63a8"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2/PackedBackend.lean",
+    "sha256": "fdef76506dd55dfe50d675a3c913f2a393df13edf9cae137ef41c9e46b939d75"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2/PackedBody.lean",
+    "sha256": "5ace3aa9464563832f0f76febfb66e6686f06f40da2c4aaf28ed2e6b2bbaa105"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2/PackedCall.lean",
+    "sha256": "a7d280adae8f55e4015e47c6ffca5fe8fdd76650d6e99b2d55ff3187bbdcd8f4"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2/PackedShader.lean",
+    "sha256": "c48e2f51e057f2c98606b2a8a9effa546553765b17731388dbc518b8ecdb1c9b"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean",
+    "sha256": "1ed2efae976032136fd28d71d14b56f6874397de51725cf92127e50f1fd7e5bf"
+  },
+  {
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean",
+    "sha256": "f1c0832d8dd1c90ecffb9aed3818443415a928eebde0a085208651ff687089b9"
+  },
+  {
+    "path": "tools/wasmtime-host.c",
+    "sha256": "213d92c8ba9264b5411963e641137634129d4a153e26e25a98a71fb66a9acdaf"
+  },
+  {
+    "path": "tools/wgsl/body-test.js",
+    "sha256": "03f0abf607800c54223bff99a57f5471b29861471399c54579fe344ebe23e56b"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-browser/host.js",
+    "sha256": "683c6ea8dcff35dcf9824aa54849d6bb6c9853ac3ab5f20b5bfb51872e02b51f"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-browser/worker.js",
+    "sha256": "2cf95542378cd6ef209215002da76d4331f1752cb2f30386fb97701c41d38434"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-build.js",
+    "sha256": "17753d155d987ab73ce7b4d909e395fe2e8935f5ce7a1699e1556ca069e9034b"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-check.js",
+    "sha256": "087d34179113fd8597906f853cb55c7adc8e04482c551943f7cae81d5ad01a1e"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-compose.js",
+    "sha256": "7543d5f6ad4691c555a0e518ef2f0eb115a8b9756ff514afebd1d2256e6b84a1"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-host.h",
+    "sha256": "a92ded4c709d0ac96ec4735b51b545d0a9bac12378941866f45dee81d81c8e60"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-module.js",
+    "sha256": "dab9fbd324a5d685bf30df309bdcfbd23232f2a569aa2969f85f4275368d7fe1"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-session-test.py",
+    "sha256": "84f0826f6566b43be1b29df0e4df61bd0201b1e6933283db44fa39fef0a1be3e"
+  },
+  {
+    "path": "tools/wgsl/gpt2/packed-shaders.js",
+    "sha256": "431e2a2779176d80f4119b54acfb4cff3d151574314f62613715b86d7db0442f"
+  }
+]
