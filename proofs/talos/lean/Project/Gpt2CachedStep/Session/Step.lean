@@ -72,9 +72,9 @@ theorem step (env : HostEnv Unit) (weights cache : ByteArray) (token : UInt32) (
       fun _ => regionsDisjoint_symm hCacheWeights, hBound, hP, hCap⟩
   refine ⟨hValues, hCache.buffer.values, ?_⟩
   by_cases hNull : oldCache.root = 0
-  · rw [releaseThen, ite_eq_left hNull]
+  · rw [releaseThen, releaseThenFor, ite_eq_left hNull]
     exact hFinish final _ hFinalHeap hWeights hCache hLogits hTop hPages (hCap.trans hReady.capacity)
-  · rw [releaseThen, ite_eq_right hNull]
+  · rw [releaseThen, releaseThenFor, ite_eq_right hNull]
     have hNonzero : position ≠ 0 := fun h => hNull (hReady.empty h)
     have hOld := hFrame.ownsPacked hFinalHeap (hReady.cache hNonzero)
     have hCacheOld := hCacheFresh.owns_disjoint hCache.buffer.rootBound (hReady.cache hNonzero)

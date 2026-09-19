@@ -15809,3 +15809,12 @@ The user requested uv-runnable Python and an equivalent PyTorch generation comma
 The initial lock and PyTorch runs encountered the sandbox's read-only uv cache.  Running those commands with the required sandbox approval resolved the cache access.  uv 0.10.2 resolved the lock and installed 25 packages into `training/gpt2/.venv`, including PyTorch 2.9.1+cpu and Transformers 4.57.6.  Comparing installed package metadata confirmed that all 25 versions match the previous environment.  The PyTorch one-liner generated 32 tokens from the documented story prompt.
 
 `node test/packed.js --gpt2-completions` passed the packed-memory tests and three WASM completions through the uv project.  The story, science, and greedy completions generated 64, 32, and 16 tokens in 56.3, 27.9, and 15.7 seconds.  The greedy token sequence matched the new PyTorch wrapper's output.  The WASM hash remains `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.  Shell syntax, the 144-file documentation check, and whitespace checks pass.
+
+### Parent session API incorporated on WGSL
+
+The session API change from parent commit `ea73d3c6` was incorporated while
+checking the hybrid controller. `RunsFor` and `releaseThenFor` take an explicit
+module; the old names remain abbreviations for the parent module.
+`ExactSpecFor` supplies a module-dependent session statement. The concurrent
+binary-certificate and publication changes are outside this WGSL integration
+and were not included by this selective cherry-pick.
