@@ -1,8 +1,14 @@
 {
-  "source_revision": "f4d412b709a13bb2649fe23be267ec9928838064",
-  "proof_command": "tools/talos-proof.js check gpt2_cached_step",
-  "proof_result": "passed; generation and model comparison rerun, Lake used cached proof objects",
+  "source_revision": "4360920c3060d1c625b1860229b5116804d177c8",
+  "review_command": "tools/leanrun --timeout 3m lake -d proofs/talos/lean env lean proofs/talos/reviews/gpt2-2026-09-19.lean",
   "runtime_evidence": "data/gpt2-124m/canonical-mode-test.json",
+  "aggregate_artifact_result": {
+    "schemaVersion": 1,
+    "date": "2026-09-19",
+    "result": "passed",
+    "artifactCount": 43,
+    "releaseInputSha256": "d79ae9051a27d9124dc080e170080b777fd26b6c3a762238c112f419e3b5ea37"
+  },
   "files": {
     "LeanExe/Models/Gpt2/Cached.lean": {
       "bytes": 4653,
@@ -25,8 +31,8 @@
       "sha256": "9352aa2899d4517e0a1cf058ec58e82c01ef2096d0506ff38442869320d57e8d"
     },
     "data/gpt2-124m/README.md": {
-      "bytes": 9761,
-      "sha256": "7911640fa39d847727118dcaad010f017094fd73d7a3d4ee01cebe7fcc97b5e2"
+      "bytes": 10937,
+      "sha256": "9235d7df7415d4d40bc89ee2642ac9ee07a595c5bf9a403bc65f101976e12c23"
     },
     "data/gpt2-124m/canonical-mode-test.json": {
       "bytes": 1966,
@@ -35,6 +41,50 @@
     "data/gpt2-124m/manifest.json": {
       "bytes": 666,
       "sha256": "a8cf2c5d2c9269e620b3f914c690455412bd3869ef1e6879a8d667ebe0b91f66"
+    },
+    "devnotes.md": {
+      "bytes": 1601898,
+      "sha256": "a0a82585251e57bf844b68155bf90b7bef59365405f525833cd96f0504817e4f"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean": {
+      "bytes": 5673,
+      "sha256": "428c34ed83d8262a0c1e54deb0e25fd83ecf4fd4a9aa01138960add8d5952ab7"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/Grammar.lean": {
+      "bytes": 16035,
+      "sha256": "2a85234753cc88083dd29adf7a302345891bc2baec362ebc80751c010b53f242"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean": {
+      "bytes": 68336,
+      "sha256": "b23c18b6e1541fba2bd420ef63afb059c1efe4467a5fe08248f11a3918cbd13f"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/Proof/Validate.lean": {
+      "bytes": 50792,
+      "sha256": "2358de7198c86e67447b17292460fb36f24208ca4643c16288fdd82230cfaa11"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/Translate.lean": {
+      "bytes": 6060,
+      "sha256": "38752ebf1ae1dfeb5a1ebd91306b3ee8eb2735948d4d40f67e02e71b494015e8"
+    },
+    "proofs/talos/lean/Project/Artifact/Binary/Validity.lean": {
+      "bytes": 16046,
+      "sha256": "b6cb9ce155ee32d76cea051c7737553a0fe04822da209b009c9bde3d04a7ff08"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactBytes.lean": {
+      "bytes": 80510,
+      "sha256": "b02b0cef4298dd501cd9ef62c4348b30a2d4f7a5bfbd6e45057df701a0cb9683"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactDecode.lean": {
+      "bytes": 310,
+      "sha256": "ac6561caa15c3855d59d289389a613840ac3486ca63bc2c3c034f28b0c9ec346"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean": {
+      "bytes": 13722,
+      "sha256": "1416e97e4612ed393c19ca385e26eeb7d96b07ee98c1b7945d33fa718fa8ab68"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactValidation.lean": {
+      "bytes": 1123,
+      "sha256": "e8de6d34a47b5c5af23df2d2e04ab85dc76aa6c0c2106666484671a90253a53c"
     },
     "proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean": {
       "bytes": 1354,
@@ -45,12 +95,12 @@
       "sha256": "5b6713ac22c9735f81573715678853b51d4c9dc41979485ff83f63e7fc5181e0"
     },
     "proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean": {
-      "bytes": 3539,
-      "sha256": "4cf515f07efbc4cc8d98363f079a5dc9228f617f5f0e0f99e4a6e254368da0a8"
+      "bytes": 4399,
+      "sha256": "1ed2efae976032136fd28d71d14b56f6874397de51725cf92127e50f1fd7e5bf"
     },
     "proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean": {
-      "bytes": 4045,
-      "sha256": "88c78e99c811c1a171f8895500ce1ebf1e1268a28e284df1a4fc4a0748977511"
+      "bytes": 4195,
+      "sha256": "f1c0832d8dd1c90ecffb9aed3818443415a928eebde0a085208651ff687089b9"
     },
     "proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean": {
       "bytes": 4968,
@@ -100,9 +150,17 @@
       "bytes": 5305,
       "sha256": "a890ea1d4c79ad440051381391fc5f19c9cdc6b8d6ac4a72a9db1afdd2256c54"
     },
+    "proofs/talos/reviews/gpt2-2026-09-19.lean": {
+      "bytes": 6314,
+      "sha256": "dcb891fc0af33b398e1e6b2444f71788698d33b872ac7899c000edcc80dcb734"
+    },
     "test/packed.js": {
       "bytes": 18131,
       "sha256": "d1132471912b1cb0e9986bda3d970cf9d6a034c35a92c4ba7de37b81731f1dcb"
+    },
+    "tools/artifact-proof.js": {
+      "bytes": 13965,
+      "sha256": "729c49841c90464fc77879672dbf88537e5e1aabb71b32dbe62a438be99167bc"
     },
     "tools/talos-lib.js": {
       "bytes": 20092,
@@ -128,13 +186,38 @@
       "bytes": 181427,
       "sha256": "1048abac49f95d5803995d2876bbf19eeac980659b9dabda606d206136f03e68"
     },
-    "proofs/talos/.generated/gpt2_cached_step/program.wasm": {
+    "proofs/artifacts/gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/program.wasm": {
       "bytes": 19083,
       "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade"
+    },
+    "proofs/artifacts/gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/manifest.json": {
+      "bytes": 1393,
+      "sha256": "fae7185d244fb5892d72974acc77611d171350cdc1d3a5d1417ea90f127bd04f"
     },
     "build/gpt2-124m/inference/cachedStep.wasm": {
       "bytes": 19083,
       "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade"
     }
-  }
+  },
+  "report_checks": [
+    {
+      "command": "tools/artifact-proof.js check build/gpt2-124m/inference/cachedStep.wasm Project.Gpt2CachedStep.ArtifactTranslation",
+      "exit_status": 0,
+      "build_cache": "warm",
+      "output": "artifact-check-20260919-authorized.log.gz",
+      "uncompressed_output_sha256": "a6d3aa6337f7811126b09faaccf997b95a4931ffefdf64638644962df5b9c3d8",
+      "initial_attempt_exit_status": 1,
+      "initial_attempt_output": "artifact-check-20260919-sandbox-failure.txt"
+    },
+    {
+      "command": "tools/leanrun --timeout 3m lake -d proofs/talos/lean env lean proofs/talos/reviews/gpt2-2026-09-19.lean",
+      "exit_status": 0,
+      "output": "statement-review-20260919.txt",
+      "axiom_policy_checked": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ]
+    }
+  ]
 }

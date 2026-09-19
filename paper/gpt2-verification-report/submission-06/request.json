@@ -1,0 +1,11 @@
+{
+  "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "Compiling a neural-network implementation requires preserving its arithmetic order, tensor representation, and memory behavior. We present a checked proof connecting a 19,083-byte WebAssembly artifact to a Lean specification of cached GPT-2 with 124,439,808 parameters and a 128-token context. In the semantics of the WebAssembly interpreter and proof library Talos, written in Lean, the decoded artifact terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128. The proof establishes binary decoding, validation, and equality with the execution model, then composes initialization, packed input representation, all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases. Our Talos extensions define binary32 and binary64 arithmetic through integer operations and explicit rounding. Arithmetic lemmas connect Lean’s logical Float32 operations to Talos for all input words. The standalone WebAssembly runtime Wasmtime executes the module with arithmetic NaN canonicalization enabled. Tests against CPU PyTorch compare 6,432,896 logits across all supported context lengths, with a maximum observed absolute difference of 0.001450, and produce text completions. The final theorem uses three standard logical axioms. Applying the formal result to native execution relies on the interpretation of the formal semantics, the host’s byte I/O, and Wasmtime. The report records the artifact-identity and axiom-policy checks needed to preserve this assurance after future edits.",
+  "subject": "cs.PL",
+  "secondary": "cs.LG",
+  "comments": "12 pages, 2 tables",
+  "related": "2609.00005: Applies the per-compilation correspondence method to cached GPT-2 inference with packed FP32 runtime weights.",
+  "pdf_sha256": "62f93008407daf6ca8dd0d141544308741ff8f42e5a48743da4e8926eaeb0e3a",
+  "replaces": "2609.00011"
+}
