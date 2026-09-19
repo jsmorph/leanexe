@@ -25,6 +25,8 @@ theorem cachedStep_accepted (env : HostEnv Unit) (initial : Store Unit) (heap : 
         (finalHeap heap position cache.size).OwnsPacked final (logitsNode heap position cache.size) output.logits ∧
         heap.Frame initial (finalHeap heap position cache.size) final ∧
         regionsDisjoint (cacheNode heap position cache.size).region (logitsNode heap position cache.size).region ∧
+        heap.FreshNode (cacheNode heap position cache.size) ∧
+        heap.FreshNode (logitsNode heap position cache.size) ∧
         final.mem.pages ≤ 65536 ∧ final.memoryCap «module» 0 = initial.memoryCap «module» 0) := by
   dsimp only
   refine TerminatesWith.of_wp_entry_for (f := func38Def) rfl ?_
@@ -35,12 +37,13 @@ theorem cachedStep_accepted (env : HostEnv Unit) (initial : Store Unit) (heap : 
   intro checkedFrame hChecked
   apply body_spec env initial heap weightsPtr cachePtr weights cache token position checkedFrame
     hHeap hWeights hCache hWeightsProtected hCacheProtected hValid hResources hPages hChecked
-  intro final result hResult hFinalHeap hFinalCache hFinalLogits hFrame hSeparated hFinalPages hCapacity
+  intro final result hResult hFinalHeap hFinalCache hFinalLogits hFrame hSeparated hCacheFresh hLogitsFresh hFinalPages hCapacity
   rcases hResult with ⟨⟨hParams, hLocals, hValues, _⟩, _, _, _, hCachePtr, hCacheSize, _, hLogitsPtr, hLogitsSize⟩
   simp only [FixedArrayEqNode.branchPost, returnCode]
   wp_packed_frame [hParams, parameters, hLocals, hValues, hCachePtr, hCacheSize, hLogitsPtr, hLogitsSize]
   have hPost := And.intro hFinalHeap (And.intro hFinalCache (And.intro hFinalLogits
-    (And.intro hFrame (And.intro hSeparated (And.intro hFinalPages hCapacity)))))
+    (And.intro hFrame (And.intro hSeparated (And.intro hCacheFresh
+      (And.intro hLogitsFresh (And.intro hFinalPages hCapacity)))))))
   simpa [func38Def, Function.numParams, cachedStep_valid hValid, Vocabulary.vocabularyHead_size,
     CachedHidden.Spec.cachedHidden_cache_size] using hPost
 

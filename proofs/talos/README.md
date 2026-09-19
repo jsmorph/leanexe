@@ -165,9 +165,25 @@ also records ownership and separation of both returned buffers.  The
 proves invalid weight length, token, position, or cache length returns empty
 outputs with the entire store unchanged.  These theorems accept arbitrary
 runtime weight words, including exceptional FP32 values.  Their exactness is
-relative to Lean's logical Float32 model and Talos semantics.  Host execution,
-tokenization, and sampling remain outside this theorem.  Exact-byte packaging
-and a source theorem equating cached and full-prefix inference remain open.
+relative to Lean's logical Float32 model and Talos semantics.
+
+The [128-position invocation theorem](lean/Project/Gpt2CachedStep/Session/Spec.lean)
+`gpt2_128_exact` starts at the module's initial store and composes the host's
+reset and weight-allocation calls, input byte encoding, and up to 128 cached
+token calls.  It proves each returned cache and logit vector equals the Lean
+`cachedStep` recurrence, including the old-cache and logit releases between
+calls.  Its only input conditions are the 497,759,232-byte weight shape,
+vocabulary token IDs, and the 128-token limit.  The proof derives input
+ownership, heap validity, and allocation sufficiency.  It allows 16 MiB of
+heap-top growth per token from a 512 MiB initial allowance.  The public
+theorem checks with `propext`, `Classical.choice`, and `Quot.sound`.
+
+The runtime target is Wasmtime 44.0.0 with Cranelift's NaN canonicalization
+enabled.  The repository C host selects that mode.  The formal theorem
+specifies the sequence of WASM calls and the byte input/output boundary.
+Tokenization, token selection, the native host implementation, and Wasmtime
+remain outside the Lean proof.  Exact-byte packaging and comparison with the
+separate full-prefix Lean algorithm remain outside this proof target.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
