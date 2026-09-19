@@ -15943,3 +15943,11 @@ cache mismatch: current compiler output differs from its tracked
 `Program.lean`.  This reproduces the 2026-09-17 failure, before the GPT-2
 binary work.  The focused GPT-2 regeneration and proof checks pass.  The
 aggregate exact-artifact check is running against all 43 frozen packages.
+
+The aggregate has accepted 41 artifact targets, including the complete
+Riemann solver, reconstruction, outward-rounding kernels, and face step.
+The reconstructed solver's kernel certificates are rebuilding next, followed
+by GPT-2 and the aggregate behavioral and declaration checks.  The extended
+verifier has required no edits to those frozen binaries or their existing
+proofs.  The GPT-2 roadmap now records the completed focused proof and
+runtime checks separately from the pending aggregate.
