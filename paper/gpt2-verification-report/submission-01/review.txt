@@ -1,0 +1,11 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 9, terminology: “Exact-byte proof closure” appears in the abstract without identifying the deferred obligation.  Specify that it concerns proving the correspondence between the emitted binary bytes and the Talos model.
+- Requirement 12, Register: “The formal page-count bound remains 4 GiB” confuses a page count with a byte capacity.  The bound is 65,536 pages, corresponding to 4 GiB.
+- Requirement 12, Grammar and mechanics: “The native host performs the corresponding copy with memcpy; the proof’s trust boundary includes that implementation.”  Replace the semicolon between independent clauses with a period.
+- Requirement 12, Relevance: “1,107,361,792 bytes of WASM linear memory” reports more precision than the feasibility claim uses.  Approximately 1.03 GiB suffices here.  The cited test record can retain the exact measurement.
+- Requirement 12, Terminology and Banned words: “the WASM and PyTorch one-liners” uses developer slang.  Use “the WASM and PyTorch commands.”

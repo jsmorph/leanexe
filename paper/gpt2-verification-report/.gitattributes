@@ -1,1 +1,2 @@
 evidence/*.log -whitespace
+submission-*/response-headers.txt -text -whitespace

@@ -171,7 +171,7 @@ B_0+128D=2{,}684{,}354{,}560<2^{32}.
 \]
 The session induction therefore closes all 128 positions~\cite{budget,session}.
 
-The memory invariant requires a 65,536-page capacity and bounds the page count by that capacity.  Each page contains 65,536 bytes, giving a 4 GiB memory bound.  The $2.5$ GiB expression above bounds the charged heap top.  The measured linear-memory size in Section~\ref{sec:tests} is a separate observation.  Host allocation success within the modeled capacity and sufficient native execution resources belong to the runtime assumptions.
+The proof carries memory capacity of 65,536 WebAssembly pages and a page-count bound of 65,536, with 65,536 bytes per page.  The $2.5$ GiB expression above bounds the charged heap top.  The formal page-count bound is 65,536 pages, corresponding to 4 GiB.  The measured linear-memory size in Section~\ref{sec:tests} is a separate observation.  Host allocation success within the modeled capacity and sufficient native execution resources belong to the runtime assumptions.
 
 \section{Artifact and runtime boundary}\label{sec:boundary}
 

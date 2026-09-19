@@ -16,8 +16,8 @@ to Talos for all input words. Wasmtime’s canonical-NaN mode supplies the selec
 behavior for exceptional arithmetic. Tests against CPU PyTorch compare 6,432,896 logits
 across all supported context lengths, with a maximum observed absolute difference of 0.001450,
 and produce text completions. The formal result concerns the corresponding Lean algorithm.
-Artifact-to-model translation, the native host, and Wasmtime remain trusted. Exact-byte proof
-closure and numerical-error bounds remain deferred.
+Artifact-to-model translation, the native host, and Wasmtime remain trusted. We defer proofs
+connecting emitted binary bytes to the Talos model and bounds on numerical error.
 
 1
 
@@ -194,7 +194,7 @@ The source trace specifies the outputs of this call sequence.
 The weight-copy step is the pure store update PackedInput.write. Its theorem establishes the
 required byte representation and heap ownership after allocation [14]. This specifies the byte I/O
 boundary used by the execution theorem. The native host performs the corresponding copy with
-memcpy; the proof’s trust boundary includes that implementation.
+memcpy. The proof’s trust boundary includes that implementation.
 
 3.2
 
@@ -280,11 +280,11 @@ and bounds the resulting heap top by Hp + D, provided Hp + D < 232 . Equation (2
 premise because
 B0 + 128D = 2,684,354,560 < 232 .
 The session induction therefore closes all 128 positions [18, 2].
-The proof carries memory capacity of 65,536 WebAssembly pages and a page-count bound of
-65,536, with 65,536 bytes per page. The 2.5 GiB expression above bounds the charged heap top.
-The formal page-count bound remains 4 GiB. The measured linear-memory size in Section 5 is a
-separate observation. Host allocation success within the modeled capacity and sufficient native
-execution resources belong to the runtime assumptions.
+The memory invariant requires a 65,536-page capacity and bounds the page count by that
+capacity. Each page contains 65,536 bytes, giving a 4 GiB memory bound. The 2.5 GiB expression
+above bounds the charged heap top. The measured linear-memory size in Section 5 is a separate
+observation. Host allocation success within the modeled capacity and sufficient native execution
+resources belong to the runtime assumptions.
 5
 
 4
@@ -347,13 +347,13 @@ tolerance
 |ℓwasm − ℓtorch | ≤ 0.002 + 10−4 |ℓtorch |.
 The maximum observed absolute difference is approximately 0.001450 [23]. The quantified exactequality theorem concerns the Lean source, while this tolerance test concerns the checkpoint and
 sequence just described.
-The canonical-mode run took 100.2 seconds and reached 1,107,361,792 bytes of WASM linear
-memory. Its allocation counters recorded 33,025 allocations and 33,023 frees, leaving the weights
-and current cache. The allocator reuses whole freed blocks. The final cache contains 128 × 73,728 =
-9,437,184 payload bytes. The test also checks the four rejected-input conditions, cache reset and
-replay, and byte-exact agreement between cached and full-prefix WASM logits for the nine-token
-story prompt [23, 24]. These timings describe the recorded local runs and support execution
-feasibility. They provide no cross-system speed comparison.
+The canonical-mode run took 100.2 seconds and reached approximately 1.03 GiB of WASM
+linear memory. Its allocation counters recorded 33,025 allocations and 33,023 frees, leaving the
+weights and current cache. The allocator reuses whole freed blocks. The final cache contains
+128 × 73,728 = 9,437,184 payload bytes. The test also checks the four rejected-input conditions,
+cache reset and replay, and byte-exact agreement between cached and full-prefix WASM logits for
+the nine-token story prompt [23, 24]. These timings describe the recorded local runs and support
+execution feasibility. They provide no cross-system speed comparison.
 Three recorded completions generated 64, 32, and 16 tokens in 55.6, 27.8, and 15.4 seconds. The
 16-token greedy completion matched PyTorch’s token sequence. The 64-token sampled completion
 began:
@@ -361,7 +361,7 @@ Once upon a time, in a small village called Hukur. The village is a great expans
 white sand and the winds blow fast
 The saved test record includes the complete strings and generation settings [23]. They demonstrate
 the command-line path from tokenizer output through the resident WASM module and back to text.
-From a prepared repository checkout, the WASM and PyTorch one-liners are:
+From a prepared repository checkout, the WASM and PyTorch commands are:
 tools/gpt2 --text 'Once upon a time' --generate 32 --seed 42
 tools/gpt2-pytorch --text 'Once upon a time' --generate 32 --seed 42
 
