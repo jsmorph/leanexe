@@ -2,7 +2,7 @@
 
 This ten-page technical report states the checked GPT-2/128 invocation theorem, explains our floating-point extensions to Talos and the arithmetic, tensor, ownership, and allocation proofs, and records the Wasmtime execution boundary and PyTorch comparisons.  It describes LeanExe source revision `f4d412b709a13bb2649fe23be267ec9928838064`.
 
-marXiv accepted [version 4 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v4) with no remarks.  Revisions address editorial remarks about terminology, memory units, repetition, and the distinction between fixed parameters and quantified inputs.
+marXiv accepted [version 5 of 2609.00011](http://127.0.0.1:8405/abs/2609.00011v5) with no remarks.  This version adds the Talos floating-point extension account and defines Talos and Wasmtime at first use in the abstract and body.
 
 | Material | Contents |
 |----------|----------|
