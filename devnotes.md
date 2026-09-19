@@ -15849,7 +15849,7 @@ and [typing rules](https://webassembly.github.io/spec/core/valid/instructions.ht
 - [x] Extend FP32 decoding, typing, translation, and general soundness proofs.
 - [x] Complete kernel-checked validation and model equality after accepted byte and decoding certificates.
 - [x] Connect the decoded module to the complete GPT-2 session theorem.
-- [ ] Run the independent artifact checks, update documentation, commit, and push.
+- [x] Run the independent artifact checks, update documentation, commit, and push.
 
 Existing Euler artifacts supply checked parser-composition examples.  The
 certificate generator is untrusted.  Lean must check every generated
@@ -15984,3 +15984,22 @@ import the Lean definitions used as their specification.  Binary decoding
 and the checked model equality remain independent of compiler correctness.
 The development guide now describes the complete dependency build schedule.
 The documentation and whitespace checks pass.
+
+The complete `tools/artifact-proof.js check-all` run passed on 2026-09-19.
+It checked all 43 frozen files, embedded bytes, artifact targets, behavioral
+specifications, and registered declaration types and axiom dependencies.
+The receipt records input digest
+`d79ae9051a27d9124dc080e170080b777fd26b6c3a762238c112f419e3b5ea37`.
+The separate dependency invocations completed the older array, order-book,
+and Euler specifications within their existing resource limits.  No further
+proof edits were required after the face-region split.  This was a warm
+workspace check.  Cold-checkout release verification remains deferred.
+
+The GPT-2 byte-to-Lean theorem, focused binary check, source-regeneration
+check, packed-storage tests, 128-position inference comparison, and three
+CLI completion tests all pass.  The complete GPT-2 theorem depends only on
+propext, Classical.choice, and Quot.sound.  The WASM bytes and Lean algorithm
+are unchanged.  The repository-wide source gate still stops at the existing
+`gcd` cache mismatch, and the release-status test still rejects the historical
+21-package draft's input identity.  The `gcd` cache and release draft remain
+unchanged.

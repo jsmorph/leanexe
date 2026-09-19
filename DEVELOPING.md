@@ -189,13 +189,15 @@ derives the unresolved release conditions from the record.  The checked-in
 draft now records the Lean 4.34.0-rc2 and Talos
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` pins and the migrated release-input
 identity.  `tools/artifact-release.js inspect` is authoritative for its current
-warm-receipt state.  The current release-input digest is
+warm-receipt state.  The retained draft's release-input digest is
 `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, and
 `sourceRevision` remains null.  The 2026-09-04 aggregate artifact receipt is
 historical for its earlier exact input; matching aggregate artifact proof,
 semantic conformance, immutable source revision, and cold-checkout evidence are
-the four current release conditions.  The successful 2026-08-26 receipts also
-belong to their earlier input digest.
+the draft's four recorded release conditions.  The successful 2026-08-26
+receipts also belong to their earlier input digest.  The 2026-09-19 aggregate
+artifact check passed all 43 current packages.  The historical release draft
+does not record that run.
 
 `tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator, then computes each artifact theorem's and behavioral specification's repository-local import closure.  It builds those dependencies in order, with a separate limit for every module, before building each root target.  Artifact and behavioral checks share the set of completed dependencies within one run.  These divisions bound each build invocation's dependency work, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
 
