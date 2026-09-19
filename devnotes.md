@@ -16116,3 +16116,11 @@ identify the package checker's axiom policy by name.  The short explanation
 of the three axioms remains because the user requested it.  The revised
 PDF and extracted metadata are retained in `submission-07`.  The proof
 checkpoint and runtime evidence are unchanged.
+
+marXiv accepted submission `24a492b4058e` as `2609.00011v7`.  Its sole
+remark calls the axiom explanations “textbook definitions of standard
+principles.”  The report retains that requested explanation.  The downloaded
+archive copy equals the local and submitted PDFs, with SHA-256
+`34a2d150bc55c6b62a9ee4399044d6a232f1eb58dda6e2deca113603247f0596`.
+The publication record, README, review, submission metadata, and archive
+decision now identify version 7.
