@@ -46,7 +46,7 @@ def prepare(directory, cached=False):
 
 
 class WasmModel:
-    def __init__(self, wasm, weights, cached=False):
+    def __init__(self, wasm, weights, cached=False, host=None):
         if "\n" in str(weights) or "\r" in str(weights):
             raise ValueError("The weights path cannot contain a newline")
         self.weight_bytes = weights.stat().st_size
@@ -54,7 +54,7 @@ class WasmModel:
         self.cache_pointer = 0
         self.cache_size = 0
         self.tokens = []
-        self.process = subprocess.Popen([str(HOST), "session", str(wasm)], cwd=ROOT,
+        self.process = subprocess.Popen([str(host or HOST), "session", str(wasm)], cwd=ROOT,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         text=True, bufsize=1)
         self.send(f"bytes-file 0 {weights}\n" + ("" if cached else "alloc 1 512\n") + "stats")
