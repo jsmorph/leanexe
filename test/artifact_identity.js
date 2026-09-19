@@ -51,7 +51,7 @@ const repoRoot = path.resolve(__dirname, "..");
 if (talosBoundaryTarget !== "Project.TalosPrelude") {
   throw new Error("the artifact proof gate no longer uses LeanExe's focused Talos boundary");
 }
-const expectedVerifierDigest = "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18";
+const expectedVerifierDigest = "9f3a46e5d733dccb0c686a6a4f2ee7213e8b265d5157972794db8569b60ab6fe";
 if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
   throw new Error("the normative verifier source digest changed without updating its test vector");
 }
@@ -101,7 +101,15 @@ const localImports = localLeanImportClosure(repoRoot, [
 const expectedLocalImports = [
   "LeanExe/Examples/AsciiDigits.lean",
   "LeanExe/Examples/EulerRiemann/Grid.lean",
+  "LeanExe/Examples/Packed.lean",
   "LeanExe/Examples/TalosAssocList.lean",
+  "LeanExe/Float32.lean",
+  "LeanExe/Models/Gpt2/Block.lean",
+  "LeanExe/Models/Gpt2/Cached.lean",
+  "LeanExe/Models/Gpt2/Inference.lean",
+  "LeanExe/Models/Gpt2/Kernel.lean",
+  "LeanExe/Models/Gpt2/Numerics.lean",
+  "LeanExe/Packed.lean",
   "LeanExe/Runtime.lean",
 ];
 if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {

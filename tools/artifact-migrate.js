@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { expectedTalosRevision } = require("./artifact-manifest");
 const { verifierSourceSha256 } = require("./artifact-source");
+const { decoderCertificates } = require("./artifact-kernel");
 
 const repoRoot = path.resolve(__dirname, "..");
 const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
@@ -157,6 +158,19 @@ function formatBytes(bytes) {
     lines.push(`    ${values.slice(index, index + 20).join(", ")}`);
   }
   return lines.join(",\n");
+}
+
+function runOffsets(wasm, mode) {
+  const file = path.join(projectRoot, "Artifact", "Binary", "CodeOffsets.lean");
+  const result = childProcess.spawnSync(leanrun, [
+    "--timeout", "5m", "lake", "-d", proofRoot, "env", "lean", "--run", file, wasm, mode,
+  ], { cwd: repoRoot, encoding: "utf8", env: process.env, maxBuffer: 64 * 1024 * 1024 });
+  if (result.error || result.signal || result.status !== 0) {
+    if (result.stdout) process.stderr.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    fail(`decoder metadata ${mode} failed: ${result.error?.message || result.signal || result.status}`);
+  }
+  return result.stdout;
 }
 
 function typeIndices(raw) {
@@ -469,8 +483,32 @@ function migrate(item, { kernel = false } = {}) {
   const packageRoot = path.join(artifactRoot, item.name, sha256);
   if (kernel) {
     outputs.push(textOutput(path.join(moduleRoot, "ArtifactByteLookup.lean"), byteLookupModule(item, bytes)));
+    const certificates = decoderCertificates(item.leanModule, bytes.length,
+      runOffsets(wasm, "--nested"), runOffsets(wasm, "--sections"));
+    for (const [name, source] of certificates) {
+      const output = textOutput(path.join(moduleRoot, `${name}.lean`), source);
+      const existing = outputs.findIndex(candidate => candidate.file === output.file);
+      if (existing < 0) outputs.push(output);
+      else outputs[existing] = output;
+    }
     for (const output of outputs) {
-      output.bytes = Buffer.from(output.bytes.toString("utf8").replaceAll("native_decide", "decide +kernel"));
+      let source = output.bytes.toString("utf8");
+      if (path.basename(output.file) === "ArtifactDecoded.lean") {
+        source = source.replace(`import Project.${item.leanModule}.ArtifactBytes`,
+          `import Project.${item.leanModule}.ArtifactParsed`);
+        source = source.replace("  native_decide", "  unfold decodedRaw?\n  rw [decode_eq_cache_parts]\n  rfl");
+      } else if (path.basename(output.file) === "ArtifactRawCache.lean") {
+        source = `import Project.${item.leanModule}.ArtifactDecoded
+
+namespace Project.${item.leanModule}.Artifact
+
+theorem decodedRaw_eq_cache : decodedRaw = Cache.raw := by
+  exact Except.ok.inj (decode_eq_decodedRaw.symm.trans decode_eq_cache_parts)
+
+end Project.${item.leanModule}.Artifact
+`;
+      }
+      output.bytes = Buffer.from(source.replaceAll("native_decide", "decide +kernel"));
     }
   }
   const manifestValue = manifest(item, sha256, bytes.length);
