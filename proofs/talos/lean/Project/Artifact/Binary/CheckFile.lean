@@ -40,6 +40,7 @@ import Project.EulerOutwardGrid.ArtifactBytes
 import Project.EulerOutwardFlux.ArtifactBytes
 import Project.EulerOutwardFaceStep.ArtifactBytes
 import Project.EulerReconstructed.ArtifactBytes
+import Project.Gpt2CachedStep.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -84,6 +85,7 @@ private def artifactBytes : String → Option ByteArray
   | "euler_outward_flux" => some Project.EulerOutwardFlux.Artifact.artifactBytes
   | "euler_outward_face_step" => some Project.EulerOutwardFaceStep.Artifact.artifactBytes
   | "euler_reconstructed" => some Project.EulerReconstructed.Artifact.artifactBytes
+  | "gpt2_cached_step" => some Project.Gpt2CachedStep.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do

@@ -777,8 +777,9 @@ The user authorized merging `talosfp-euler` into `main`, publishing it, and purs
 The [detailed plan](plans/tiny-transformer.md) records the source definitions,
 proof boundaries, and execution work.  Completion requires a command-line
 WASM demonstration and a checked source-equivalence theorem, including
-termination and memory guarantees.  Further numerical-error proofs and
-frozen exact-byte packages are deferred by the user's revised scope.
+termination and memory guarantees.  Further numerical-error proofs remain
+deferred.  The user authorized exact-binary verification of pretrained
+GPT-2/128 after completing its source-equivalence proof.
 
 - [x] Reproduce the existing guarded Horner proof.
 - [x] Release a bounded scalar exponential with a proved error bound.
@@ -800,3 +801,11 @@ frozen exact-byte packages are deferred by the user's revised scope.
 - [ ] Extend source-equivalent inference to a 128-byte context with a trained checkpoint.
 - [ ] Add seed-controlled top-k sampling using the Lean PRNG, without PRNG proof work.
 - [ ] Complete the final exact-byte package and weight identity evidence.
+
+### Pretrained GPT-2/128 binary verification
+
+- [x] Add FP32 instruction decoding, typing, translation, and soundness proofs.
+- [x] Parameterize the complete session specification by its WASM module.
+- [ ] Prove decoding and validation of the 19,083-byte cached-step binary.
+- [ ] Prove equality with the execution model and transfer the complete session theorem.
+- [ ] Complete the independent artifact and source-proof checks.
