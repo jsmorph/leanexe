@@ -1,0 +1,140 @@
+{
+  "source_revision": "f4d412b709a13bb2649fe23be267ec9928838064",
+  "proof_command": "tools/talos-proof.js check gpt2_cached_step",
+  "proof_result": "passed; generation and model comparison rerun, Lake used cached proof objects",
+  "runtime_evidence": "data/gpt2-124m/canonical-mode-test.json",
+  "files": {
+    "LeanExe/Models/Gpt2/Cached.lean": {
+      "bytes": 4653,
+      "sha256": "8ceefec442dd1bc42871950df6c7405dd0d1c705d036449f7e5765fee97b6b4c"
+    },
+    "LeanExe/Models/Gpt2/Inference.lean": {
+      "bytes": 1898,
+      "sha256": "bcc5a25838da8f57860e6552d0f9235adf8f1aac4b25b58a42283ef6ddf4ca14"
+    },
+    "LeanExe/Models/Gpt2/Kernel.lean": {
+      "bytes": 5453,
+      "sha256": "bba0ccff49f57e3259ac69fe25ace9125423557f78508a3d0a2584bc6c34197d"
+    },
+    "LeanExe/Models/Gpt2/Numerics.lean": {
+      "bytes": 2819,
+      "sha256": "3406eac22a50a05425eba148fdbfbf37f51f58406347e67e083838c57351c0cc"
+    },
+    "LeanExe/Packed.lean": {
+      "bytes": 765,
+      "sha256": "9352aa2899d4517e0a1cf058ec58e82c01ef2096d0506ff38442869320d57e8d"
+    },
+    "data/gpt2-124m/README.md": {
+      "bytes": 9761,
+      "sha256": "7911640fa39d847727118dcaad010f017094fd73d7a3d4ee01cebe7fcc97b5e2"
+    },
+    "data/gpt2-124m/canonical-mode-test.json": {
+      "bytes": 1966,
+      "sha256": "48669ab0d4c7cf7d3860b9b9988656890dc16937c0909e646d4007495c8159fe"
+    },
+    "data/gpt2-124m/manifest.json": {
+      "bytes": 666,
+      "sha256": "a8cf2c5d2c9269e620b3f914c690455412bd3869ef1e6879a8d667ebe0b91f66"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean": {
+      "bytes": 1354,
+      "sha256": "4ade96c544de531b58e260cd1b95e9b31bd09a5443cb9f9cb3fe1609805b612c"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean": {
+      "bytes": 2999,
+      "sha256": "5b6713ac22c9735f81573715678853b51d4c9dc41979485ff83f63e7fc5181e0"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean": {
+      "bytes": 3539,
+      "sha256": "4cf515f07efbc4cc8d98363f079a5dc9228f617f5f0e0f99e4a6e254368da0a8"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean": {
+      "bytes": 4045,
+      "sha256": "88c78e99c811c1a171f8895500ce1ebf1e1268a28e284df1a4fc4a0748977511"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean": {
+      "bytes": 4968,
+      "sha256": "fdeef1292c9d943c75d59982cb011f1619abeb91f5b0a2e11cf989cc1917ac95"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Add.lean": {
+      "bytes": 6206,
+      "sha256": "76d933f081c255021d20145d275c1efdc3070ad511b8c27cc0cc7b505dd63d94"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Div.lean": {
+      "bytes": 3913,
+      "sha256": "74ffd0fe2190a9331d19df39d527fdd36623a365b7fb354df2f4f8caae70b35e"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Mul.lean": {
+      "bytes": 3198,
+      "sha256": "c6d1505f582c63e18b0dec4f84bf5a13283dece450bb0f612b876b6b72c2402e"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Source.lean": {
+      "bytes": 1386,
+      "sha256": "04b3655c46043f736be05608404bd8de57425dd610b629c2524fa5263e2c20e4"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Sqrt.lean": {
+      "bytes": 2033,
+      "sha256": "4bad2905f70948e15a9e127f1548c5490510eb8625fd63d608933c61af68f561"
+    },
+    "proofs/talos/lean/Project/ProofKit/F32Sub.lean": {
+      "bytes": 1733,
+      "sha256": "592e1615af364a8a8698aa3a0fb0324700276e127fd30143629a4130bdf84074"
+    },
+    "proofs/talos/lean/Project/ProofKit/HeapGrowth.lean": {
+      "bytes": 660,
+      "sha256": "ad06b0fa93839f109d8ab8754a3be14c3bcf0aebe51a214a146b368897f34733"
+    },
+    "proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean": {
+      "bytes": 2558,
+      "sha256": "93b4bc4fd6d57056606151aacf7a60cc9490638b68064be0610bf03cdd147fc8"
+    },
+    "proofs/talos/lean/Project/ProofKit/PackedInput.lean": {
+      "bytes": 2100,
+      "sha256": "cd0f8f0ab66c2d232581952a7275f8e8ea27a116d23ecde3c15300b842aaa3dd"
+    },
+    "proofs/talos/lean/Project/ProofKit/PackedMemory.lean": {
+      "bytes": 4473,
+      "sha256": "df562426c51a16cf3220653a96e79e5e23d0253ad1bf773830615b77e6e425b3"
+    },
+    "proofs/talos/lean/Project/ProofKit/RangeFoldLoop.lean": {
+      "bytes": 5305,
+      "sha256": "a890ea1d4c79ad440051381391fc5f19c9cdc6b8d6ac4a72a9db1afdd2256c54"
+    },
+    "test/packed.js": {
+      "bytes": 18131,
+      "sha256": "d1132471912b1cb0e9986bda3d970cf9d6a034c35a92c4ba7de37b81731f1dcb"
+    },
+    "tools/talos-lib.js": {
+      "bytes": 20092,
+      "sha256": "f3939680f42e5a226125a302c2fd230b19736e5dece7ec47ba3a244bef3f69df"
+    },
+    "tools/wasmtime-host.c": {
+      "bytes": 35659,
+      "sha256": "f4b88822b188eb5502298afbef40d4ea2bde798f5b3741bf593304d9c4ed13bc"
+    },
+    "training/gpt2/reference.py": {
+      "bytes": 12670,
+      "sha256": "af4d8500490549ded7fdbd31f912f033a8d367e4c9ae566adf259cf04b878665"
+    },
+    "training/gpt2/test_wasm.py": {
+      "bytes": 3497,
+      "sha256": "fac1c967e205cf9bcc71af188b0fcbd113ae4b0616dcff99f5cb56151d1c6022"
+    },
+    "training/gpt2/wasm.py": {
+      "bytes": 11035,
+      "sha256": "cd39b5afd3c1ffbe44ed0891893a9c4980456a5ae03977ffb21eac45dfe71540"
+    },
+    "proofs/talos/lean/Project/Gpt2CachedStep/Program.lean": {
+      "bytes": 181427,
+      "sha256": "1048abac49f95d5803995d2876bbf19eeac980659b9dabda606d206136f03e68"
+    },
+    "proofs/talos/.generated/gpt2_cached_step/program.wasm": {
+      "bytes": 19083,
+      "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade"
+    },
+    "build/gpt2-124m/inference/cachedStep.wasm": {
+      "bytes": 19083,
+      "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade"
+    }
+  }
+}
