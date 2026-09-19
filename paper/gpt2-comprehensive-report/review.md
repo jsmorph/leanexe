@@ -34,3 +34,9 @@ All 42 rendered pages were inspected, with separate inspection of the full-page 
 The user identified Chrome and the Mac mini configuration `MAC MINI/10C/10CGPU/32G/1T/1GBE-USA`.  Section 11.5 and the image record now include that description: a 10-core CPU, a 10-core GPU, 32 GB of memory, 1 TB of storage, and Gigabit Ethernet.  The Chrome version, chip model, and executed bundle identity remain unspecified.  The image record preserves the supplied configuration label.
 
 The rebuilt PDF retains 42 pages and has no LaTeX or layout warnings.  Inspection covered all pages whose text or pagination changed: page 3 and pages 28 through 42.  The PDF identity, source hashes, and metadata record were updated.
+
+## Submission
+
+The current submission skill specifies Jamie Stephens as author, with Morphism affiliation and contact `js@morphism.com`.  The title page and PDF metadata now use that authorship.  The submission title, author, and abstract were extracted from the rebuilt PDF and checked against its text.  Only the title page changed.  Its rendered page was inspected, and the build has no LaTeX warnings.  The paper retains 42 pages.
+
+Submission `87ff5328fe18` names the CPU, WGSL, and LeanExe subset reports as related work.  The submission directory retains the PDF, source snapshot, extracted metadata, current archive standards and style manual, and server responses.  Editorial review is pending.
