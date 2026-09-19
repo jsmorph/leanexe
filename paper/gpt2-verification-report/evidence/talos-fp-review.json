@@ -1,0 +1,81 @@
+{
+  "talos_revision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "baseline_revision": "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a",
+  "baseline_path": "interpreter/Interpreter/Wasm/Float.lean",
+  "baseline_sha256": "5af4bace344e00dd3155c80d6f3c5285bd455ebb7efba1fcb10d47eefef2dd37",
+  "review": "Compared arithmetic dispatch before and after the extensions. Inspected cited definitions and theorem statements. Reused the retained GPT-2 proof-check result.",
+  "files": {
+    "codelib/CodeLib/IEEE32/Conversions.lean": {
+      "bytes": 2599,
+      "sha256": "da9d838c481910fde6f54b6c822d650284dfb89da1057320b343301315f65cdc"
+    },
+    "codelib/CodeLib/IEEE32/Division.lean": {
+      "bytes": 8631,
+      "sha256": "ceab0e1fc0648cb9df7e8c5be02870b1b6efdf0dcdd565ded92c48a71c07ee79"
+    },
+    "codelib/CodeLib/IEEE32/Exec.lean": {
+      "bytes": 5085,
+      "sha256": "c1e0d404276f087e2c4b204c8dd054e10712608b3120976381679f17f468820a"
+    },
+    "codelib/CodeLib/IEEE32/Multiplication.lean": {
+      "bytes": 8081,
+      "sha256": "bb77baafe625c9a0bef4992919259e1d9c4c3347b34074a341b8596567d88118"
+    },
+    "codelib/CodeLib/IEEE32/Roundoff.lean": {
+      "bytes": 33192,
+      "sha256": "aea74eae704d81c8e9d2f5da41c470cac7e0c1a6cbf80560ca6d4456ee777ed5"
+    },
+    "codelib/CodeLib/IEEE32/SIMD.lean": {
+      "bytes": 2001,
+      "sha256": "6af5a648dd72fcf15256c9e78d3b8a2550c77e74426810a2b3a43521cb57cef2"
+    },
+    "codelib/CodeLib/IEEE32/SquareRoot.lean": {
+      "bytes": 6132,
+      "sha256": "9f791e70c6c55f748e6425cfe55168686030f5921d31c96be8f8183e5b1588d6"
+    },
+    "codelib/CodeLib/IEEE64/Operations.lean": {
+      "bytes": 26994,
+      "sha256": "bbd2e7fa8378571efeba035d46bd0afe955a83ddd14fc526ba46c5fc2405230b"
+    },
+    "codelib/CodeLib/IEEE64/Roundoff.lean": {
+      "bytes": 30724,
+      "sha256": "0e0756bd88a2a015493a82ae3a96afdbac708345553777aefbc5606cd353224e"
+    },
+    "codelib/CodeLib/Numerical/Kernels.lean": {
+      "bytes": 74831,
+      "sha256": "406835785432c0fc6225f377c1f7b64db7facc665445f245f6f51b9f07edd192"
+    },
+    "interpreter/Interpreter/Wasm/Float.lean": {
+      "bytes": 6959,
+      "sha256": "9e205a7b5801128b44bd2ef45c32a8b1efa4a2a7b19983f5d6a5b1d3195b828b"
+    },
+    "interpreter/Interpreter/Wasm/IEEE32.lean": {
+      "bytes": 14961,
+      "sha256": "9dfc57e08576ab105a03ccdd1ffe7411755799ac971adc01a8155a93e1bee3d5"
+    },
+    "interpreter/Interpreter/Wasm/IEEE64.lean": {
+      "bytes": 10548,
+      "sha256": "bb322e5cd267bc9ffc3063a4c6df3c7f982b5c48f872ac4c6f6d8d2d1adf54e4"
+    },
+    "interpreter/Interpreter/Wasm/Semantics.lean": {
+      "bytes": 130786,
+      "sha256": "d28f828f4f3ed750915adb33d286b2e12764f0a0dd5fbbd41daf5e296ce34e09"
+    },
+    "interpreter/Interpreter/Wasm/SmallStep.lean": {
+      "bytes": 376598,
+      "sha256": "2c318c4038cca62c331845e8fe0f2e0a30c1bd8bb2605403f44953c6be4afe8e"
+    },
+    "interpreter/Interpreter/Wasm/Wp/Atomic.lean": {
+      "bytes": 72757,
+      "sha256": "9ea79c0cb17c17782b8b321ddc302d6b10a49692b7ccba15d67e10a54d7ad06e"
+    },
+    "journal.md": {
+      "bytes": 67773,
+      "sha256": "d0fd5e3cc3b5628aa86b921738269d8b2ef37701a3edd2bebd29e542a67634f5"
+    },
+    "programs/lean/Project/F64Dot/Spec.lean": {
+      "bytes": 11413,
+      "sha256": "8ad86484c41e351bfdc7cd3acac138e672b8a3a93f076bbce2b4bb7caeaf0a8e"
+    }
+  }
+}
