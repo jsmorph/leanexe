@@ -1,0 +1,3 @@
+Artifact identity passed: gpt2_cached_step e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade
+Failed to connect to user scope bus via local transport: Operation not permitted (consider using --machine=<user>@.host --user to connect to bus of other user)
+artifact-proof.js: LeanExe Talos boundary: "/home/somebody/src/leanexe/tools/leanrun" "--timeout" "60m" "lake" "-d" "/home/somebody/src/leanexe/proofs/talos/lean" "build" "Project.TalosPrelude" exited with status 1

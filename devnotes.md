@@ -16079,3 +16079,31 @@ proofs, and verification tools remain unchanged.  The earlier 43-package
 aggregate result remains the package evidence.  This review added the focused
 Lean checks and binary comparison rather than repeating that aggregate or
 the runtime suite.
+
+## GPT-2 report revision: 2026-09-19
+
+The user requested an updated marXiv submission covering the completed binary
+proof and the critical review.  The archive's current acceptance standards
+and style manual were fetched and read before drafting.  The revised report
+pins source revision `4360920c3060d1c625b1860229b5116804d177c8` and promotes
+`artifact_gpt2_128_exact` to the main theorem.  Its statement starts with the
+frozen binary and retains the established token, weight, and runtime scope.
+The report explains the logical axioms, the seven checked review corollaries,
+and the two open automation findings.  The recorded runtime measurements
+retain their 18 September provenance.
+
+The PDF has twelve pages.  Two review passes checked the new statements,
+citations, scope, terminology, and repetition.  Visual inspection covered all
+pages.  A long inline path caused one layout warning, resolved by breakable
+typesetting.  The final build has no citation or layout warnings.  A file
+identity check matched 46 cited and supporting files to the source checkpoint
+and confirmed the current runtime binary equals the frozen artifact.
+
+A fresh focused package check passed for the report evidence.  Its first
+invocation failed because the sandbox denied access to the systemd user bus.
+The authorized retry used the required resource-limited runner.  Both logs
+are retained, with the successful output compressed.  A separate Lean run
+accepted the seven review corollaries and audited the combined artifact
+theorem.  All eight axiom reports contain only the three standard logical
+axioms or a subset.  Submission metadata and a PDF/source snapshot are
+prepared in `paper/gpt2-verification-report/submission-06`.
