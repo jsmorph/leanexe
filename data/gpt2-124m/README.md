@@ -189,6 +189,12 @@ equality.  Its logical dependencies are `propext`, `Classical.choice`, and
 `Quot.sound`.  Runtime weights remain universally quantified inputs of the
 required size.  Replacing those weights requires no new proof.
 
+The focused binary and source-regeneration checks pass.  The 2026-09-19
+aggregate also passed all 43 frozen artifact packages, their behavioral
+specifications, and registered declaration audits.  The packed-storage,
+128-position inference, and three CLI completion tests pass for the unchanged
+GPT-2 binary.
+
 The [canonical-mode test record](canonical-mode-test.json) records 86 FP32
 cases, all 6,432,896 logits across contexts one through 128, rejection and
 reset checks, and three text completions.  The greedy completion matches

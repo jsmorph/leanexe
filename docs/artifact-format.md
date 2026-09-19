@@ -86,18 +86,26 @@ builds their parent theorem.
 
 ## Implementation Status
 
-All twenty packages then registered passed the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries for the recorded 2026-08-26 release-input identity.  A later `tools/artifact-proof.js check-all` receipt dated 2026-09-04 passed those boundaries for all twenty-one packages under Lean 4.34.0-rc2, Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and release-input digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`; it is historical for that exact input, while the current aggregate receipt is pending.
+`tools/artifact-proof.js check-all` passed all forty-three packages on
+2026-09-19.  The run checked file identity, embedded bytes, decoding,
+validation, exact Talos translation, behavioral specifications, declaration
+types, and permitted axioms under Lean 4.34.0-rc2 and the pinned Talos revision.
+Its receipt records input digest
+`d79ae9051a27d9124dc080e170080b777fd26b6c3a762238c112f419e3b5ea37`.
+Earlier twenty-package and twenty-one-package receipts remain historical
+evidence for their own inputs.
 
 The pinned twenty-five-file official execution slice produced 3,853 Talos passes, six known assertion failures, 627 skipped commands, and no cascades, decoder errors, interpreter errors, or fuel exhaustion, while Wasmtime 44.0.0 passed every selected file.  The six failures concern imported memory in `memory_grow.wast`: Talos uses the importing declaration's maximum instead of the exported memory instance's maximum.  The gate records their exact rows as an upstream warning outside the accepted no-import profile and treats every changed or additional failure as fatal.
 
 The same gate matched fifteen official invalid modules against exact artifact decoder or validator error constructors on 2026-08-26.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record now binds all twenty-one artifact and package identities, every
+The retained release draft binds twenty-one artifact and package identities, every
 theorem name, the verifier source digest, the migrated release-input digest, and
 the Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`
-tool pins.  Its current aggregate artifact-proof and semantic-conformance
-results are pending and its `sourceRevision` is null.  Lean 4.31.0 accepts the archived
-kernel reproduction, and the owner accepted that defect for the historical
+tool pins.  Its artifact-proof and semantic-conformance fields remain pending,
+its `sourceRevision` is null, and it does not record the new forty-three-package
+check.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner
+accepted that defect for the historical
 inputs after the recorded local lexical audit; this qualification does not
 repair that kernel.  On 2026-08-26, the previous draft recorded input digest
 `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and
