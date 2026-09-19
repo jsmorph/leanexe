@@ -11,28 +11,31 @@ def sourceTrace (weights : ByteArray) : List UInt32 → ByteArray → Nat → Li
     let output := cachedStep weights cache token position
     output :: sourceTrace weights tokens output.cache (position + 1)
 
-def releaseThen (env : HostEnv Unit) (pointer : UInt64) (store : Store Unit)
+def releaseThenFor (module_ : Wasm.Module) (env : HostEnv Unit) (pointer : UInt64) (store : Store Unit)
     (Q : Store Unit → Prop) : Prop :=
   if pointer = 0 then Q store else
-    TerminatesWith env «module» 42 store [.i64 pointer] (fun final values => values = [] ∧ Q final)
+    TerminatesWith env module_ 42 store [.i64 pointer] (fun final values => values = [] ∧ Q final)
 
-def Runs (env : HostEnv Unit) (weightsPtr : UInt64) (weightsSize : Nat) :
+def RunsFor (module_ : Wasm.Module) (env : HostEnv Unit) (weightsPtr : UInt64) (weightsSize : Nat) :
     List UInt32 → Nat → UInt64 → Nat → Store Unit → List CachedResult → Prop
   | [], _, _, _, _, outputs => outputs = []
   | _ :: _, _, _, _, _, [] => False
   | token :: tokens, position, cachePtr, cacheSize, initial, output :: outputs =>
-    TerminatesWith env «module» 38 initial
+    TerminatesWith env module_ 38 initial
       [.i64 (UInt64.ofNat position), .i64 token.toUInt64, .i64 (UInt64.ofNat cacheSize), .i64 cachePtr,
        .i64 (UInt64.ofNat weightsSize), .i64 weightsPtr]
       (fun final values => ∃ outputCachePtr outputLogitsPtr : UInt64,
         values = [.i64 (UInt64.ofNat output.logits.size), .i64 outputLogitsPtr,
           .i64 (UInt64.ofNat output.cache.size), .i64 outputCachePtr] ∧
         ByteArrayAt final.mem outputCachePtr.toNat output.cache ∧
-        releaseThen env cachePtr final (fun released =>
+        releaseThenFor module_ env cachePtr final (fun released =>
           ByteArrayAt released.mem outputLogitsPtr.toNat output.logits ∧
-          TerminatesWith env «module» 42 released [.i64 outputLogitsPtr]
+          TerminatesWith env module_ 42 released [.i64 outputLogitsPtr]
             (fun next returned => returned = [] ∧
-              Runs env weightsPtr weightsSize tokens (position + 1) outputCachePtr output.cache.size next outputs)))
+              RunsFor module_ env weightsPtr weightsSize tokens (position + 1) outputCachePtr output.cache.size next outputs)))
+
+abbrev releaseThen := releaseThenFor «module»
+abbrev Runs := RunsFor «module»
 
 structure Ready (weights cache : ByteArray) (position : Nat) (store : Store Unit)
     (heap : Heap) (weightNode cacheNode : FreeNode) : Prop where
