@@ -19,7 +19,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-Moving verified inference operations from WebAssembly to the WebGPU Shading Language (WGSL) introduces shader arithmetic, dispatch, and byte-transfer obligations.  We describe a LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks each translation against an independent parser and a statement-execution semantics.  Each accepted compilation establishes successful execution and equality to the supplied Lean function for every invocation and adequately sized input under a shared scalar interpretation.  Packed-layout proofs connect six compiled shaders to the matrix operations of a 124M-parameter GPT-2 implementation.  The hybrid session theorem equates cache and logit bytes with the Lean cached-step recurrence for arbitrary weight bytes of the required length and up to 128 valid tokens, assuming completed shader execution with separate FP32 arithmetic and exact host transfers.  The branch records a CPU WebGPU comparison in which all 6,432,896 logits match the parent WebAssembly implementation bit for bit.  We distinguish those recorded results from fresh review checks, the shader semantics from runtime conformance, and the hybrid module's external parsing boundary from the parent report's exact-binary proof.  Browser execution validation remains pending.
+Moving verified inference operations from WebAssembly to the WebGPU Shading Language (WGSL) introduces shader arithmetic, dispatch, and byte-transfer obligations.  We describe a LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks each translation against an independent parser and a statement-execution semantics.  Each accepted certificate proves successful execution and equality to the supplied Lean function for every invocation and adequately sized input under a shared scalar interpretation.  Packed-layout proofs connect six compiled shaders to the matrix operations of a 124M-parameter GPT-2 implementation.  The hybrid session theorem equates cache and logit bytes with the Lean cached-step recurrence for arbitrary weight bytes of the required length and up to 128 valid tokens, assuming completed shader execution with separate FP32 arithmetic and exact host transfers.  The branch records a CPU WebGPU comparison in which all 6,432,896 logits match the parent WebAssembly implementation bit for bit.  We distinguish those recorded results from fresh review checks, the shader semantics from runtime conformance, and the hybrid module's external parsing boundary from the parent report's exact-binary proof.  Browser execution validation remains pending.
 \end{abstract}
 
 \section{Result and relation to the WebAssembly proof}
@@ -147,10 +147,26 @@ Wasmtime is the standalone WebAssembly runtime used by the native host.  The hos
 
 The browser implementation runs Wasm in a worker.  Each import copies input words to shared staging, sends a dispatch request, and waits for completion notification.  The WebGPU host writes result bytes to staging before waking the worker.  Each browser run creates its own host and copies the same weight bytes into Wasm and the host's source buffer.  The source and syntax checks exist, but the branch records no completed browser execution test~\cite{host,journal}.
 
-Tokenization, sampling, and the FP32-to-FP64 adapter that presents logit words to the Wasm sampler lie outside the inference theorem~\cite{build}.
+Table~\ref{tab:boundary} separates checked statements from premises and external components.  The hybrid theorem's axiom audit permits the same three standard logical axioms as the parent.  Its explicit \code{Host} hypothesis is additional to that logical axiom list.  An axiom audit alone cannot discharge the hypothesis~\cite{composition}.
 
-The hybrid theorem's axiom audit permits the same three standard logical axioms as the parent.  Its explicit \code{Host} hypothesis is additional to that logical axiom list.  An axiom audit alone cannot discharge the hypothesis~\cite{composition}.
-
+\begin{table}[ht]
+\small
+\begin{tabularx}{\textwidth}{L{0.29\textwidth}>{\raggedright\arraybackslash}X}
+\toprule
+Component & Assurance at the reviewed revision\\
+\midrule
+Shader text and source function & Per-compilation parsing, source equality, and statement-execution certificates.\\
+Packed GPT-2 matrix result & Word order, offsets, bias, vocabulary split, and byte equality proved.\\
+Wasm controller and token session & Generated proof over the parsed hybrid module, conditional on the host interface.\\
+Hybrid binary to Lean module & External parser/emitter boundary.  The parent's exact-binary certificate concerns different bytes.\\
+GPU execution and transfers & Completed execution under the declared arithmetic and store-preservation assumptions.\\
+Native and browser host code & Implementations reviewed as source.  Their full correctness remains external.\\
+Tokenizer, sampling, and conversion adapter & Runtime components outside the inference theorem.\\
+\bottomrule
+\end{tabularx}
+\caption{Proof and deployment boundaries of the packed hybrid implementation.}
+\label{tab:boundary}
+\end{table}
 
 \section{Execution evidence and review findings}
 
@@ -188,7 +204,7 @@ tools/gpt2-packed build build/gpt2/packed-new
 tools/gpt2-packed --prompt 'The purpose of science is' \
   --generate 16 --temperature 0
 \end{verbatim}
-The build destination must be fresh.  The source-build tool uses its configured Python environment to prepare checkpoint assets.  Inference uses Wasm and WGSL.  The packed guide documents bundle selection and generation settings~\cite{packedguide,build}.  The review evidence records the focused Lean commands, resource limits, and certificate timeout~\cite{review}.
+The build destination must be fresh.  Its configured Python environment prepares checkpoint assets.  Inference uses Wasm and WGSL.  The packed guide documents bundle selection and generation settings~\cite{packedguide,build}.  The review evidence records the focused Lean commands, resource limits, and certificate timeout~\cite{review}.
 
 \begin{thebibliography}{16}
 \bibitem{parent} Codex GPT-6 and Jamie Stephens.  \emph{Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly}.  \href{http://127.0.0.1:8405/abs/2609.00011v7}{marXiv:2609.00011v7}, 2026.
