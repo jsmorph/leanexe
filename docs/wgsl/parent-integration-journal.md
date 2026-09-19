@@ -185,3 +185,32 @@ replacement QKV call; it does not yet prove the complete hybrid token/session.
 A separate one-prediction rerun after adding GPU cleanup also passed, with
 250 actual shader dispatches for five prompt tokens and zero differing
 parent logit words (`packed-runtime-01/cleanup.json` and `.log`).
+
+## Native prompt runner with Wasm sampling
+
+`tools/gpt2-packed` now runs the experimental packed model on a prompt.
+`packed-cli.h` invokes the parent hybrid Wasm for every token, the existing
+Lean-generated tokenizer for BPE/decoding, and the existing Wasm sampler.
+FP32-to-FP64 conversion for that sampler is performed by `transfer.wasm`.
+The C host performs no floating-point model or sampling arithmetic. It releases
+each old cache and each logits allocation and stops at EOS, the requested
+generation count, or rejects a request exceeding the context before inference.
+
+The assembled local bundle is `build/gpt2/packed-bundle`; it includes references
+to the existing checkpoint and generated tokenizer/sampler artifacts. Assemble
+a fresh bundle with `prepare-packed.js RUNTIME CHECKED_SHADERS FRESH_BUNDLE`.
+This is an assembly command, not a full clean source rebuild or proof gate.
+The source rebuild/verification entry point and browser delivery remain pending.
+
+The actual native CLI produced the sixteen-token science completion, executing
+1,000 GPU dispatches. Its f32 logit trace passed `compare-parent.py --trace-float
+f32`: all 804,112 words were bit-identical to the parent, and all greedy token
+choices agreed with both parent and PyTorch. Evidence is
+`packed-runtime-01/native-science.f32.bin`, `native-science.txt`, and
+`native-science-compare.json`. Run locally with:
+
+```sh
+tools/gpt2-packed --prompt 'The purpose of science is' --generate 16 --temperature 0
+```
+
+The prompt runner reports that the full hybrid session proof is pending.
