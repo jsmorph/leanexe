@@ -16003,3 +16003,79 @@ are unchanged.  The repository-wide source gate still stops at the existing
 `gcd` cache mismatch, and the release-status test still rejects the historical
 21-package draft's input identity.  The `gcd` cache and release draft remain
 unchanged.
+
+## GPT-2 critical review: 2026-09-19
+
+The review examines commit `c0f6877c` within the agreed byte-to-Lean scope:
+the frozen GPT-2 cached-step module, its Talos execution semantics, and
+sessions of at most 128 valid token IDs.  The deployment uses Wasmtime's
+canonical-NaN mode.  Tokenization, sampling, numerical approximation bounds,
+and verification of the native host and Wasmtime remain outside that scope.
+
+The review followed the binary decoder and validator, all 43 translated
+function equalities, the whole-module equality, and the transfer into
+`Spec.ExactSpecFor`.  That specification uses the decoded module for reset,
+allocation, inference, and release.  Its source trace calls
+`LeanExe.Models.Gpt2.cachedStep`.  The session induction derives cache sizes,
+ownership, and allocation bounds from initialization through position 127.
+`TerminatesWith` requires successful execution for every sufficiently large
+fuel value.  `ByteArrayAt` requires address bounds and equality of every
+output byte.  Inspection also covered the cached attention and block source,
+the FP32 source correspondence, export indices, ABI argument and result
+order, and the host's cache and logit release sequence.
+
+[The checked review lemmas](proofs/talos/reviews/gpt2-2026-09-19.lean)
+establish seven consequences of the existing definitions and theorems:
+
+- The public input premises admit a 128-token input.
+- Every successful decoding and validation of the frozen bytes yields a
+  module satisfying the session specification.
+- The decoded exports resolve to the inference, allocation, reset, and
+  release indices used by that specification.
+- The source trace has one result per input token.
+- A valid source step produces 50,257 FP32 logits and the required cache size.
+- Every result in a valid source trace has that logit count.
+- For arbitrary correctly sized weights and any valid first token, the final
+  artifact theorem yields explicit successful `Wasm.run` witnesses for reset,
+  allocation, and inference, with the required returned lengths and exact
+  source cache and logit bytes in memory.
+
+The local command
+`tools/leanrun --timeout 3m lake -d proofs/talos/lean env lean proofs/talos/reviews/gpt2-2026-09-19.lean`
+passed under the standard runner limits.  All seven corollaries and the final
+artifact theorem depend only on `propext`, `Classical.choice`, and `Quot.sound`
+or a subset.  The first temporary review run failed because `by decide`
+could not discharge a singleton-list length goal containing a free token
+variable.  Replacing that proof with `by simp` resolved the error.  The
+production proof was unchanged.  The review reused the source-size,
+initialization, and artifact theorems without LTG retrieval or new tactics.
+The seven corollaries are retained as statement-level checks for this model.
+
+Two enforcement findings remain:
+
+1. [CLI compilation](training/gpt2/wasm.py#L38) runs the current compiler and
+   source, then executes the resulting binary without comparing it with the
+   registered proved artifact.  A later compiler or source edit can therefore
+   change the executed bytes without requiring a new certificate.  The
+   current built binary and frozen artifact compare byte for byte with `cmp`
+   and both have SHA-256
+   `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.
+   A verified CLI mode needs to enforce that identity or execute the frozen
+   artifact.
+2. [The declaration gate](tools/artifact-proof.js#L236) checks the manifest's
+   registered artifact and behavior declarations.  The combined
+   `artifact_gpt2_128_exact` theorem is compiled but omitted from that
+   manifest audit set.  The generic axiom policy also accepts
+   `Lean.ofReduceBool` and generated native-decision axioms.  Consequently,
+   the gate does not enforce the GPT-2 claim of dependence on only the three
+   standard logical axioms.  The review checked the combined theorem directly
+   and confirmed that claim for this revision.  A GPT-2-specific audit should
+   enforce its complete statement and three-axiom policy.
+
+The review found no failure of the current theorem to express and establish
+the agreed execution claim.  The two findings concern continued application
+and enforcement of that claim after edits.  The production implementation,
+proofs, and verification tools remain unchanged.  The earlier 43-package
+aggregate result remains the package evidence.  This review added the focused
+Lean checks and binary comparison rather than repeating that aggregate or
+the runtime suite.
