@@ -19,6 +19,7 @@ pnpm-debug.log*
 
 # Local configuration
 /.venv-tiny-gpt2/
+/training/gpt2/.venv/
 __pycache__/
 .env
 .env.*
