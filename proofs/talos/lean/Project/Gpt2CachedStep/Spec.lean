@@ -35,6 +35,7 @@ import Project.Gpt2CachedStep.CachedHidden.Spec
 import Project.Gpt2CachedStep.Vocabulary.Spec
 import Project.Gpt2CachedStep.Entry.Accepted
 import Project.Gpt2CachedStep.Entry.Rejected
+import Project.Gpt2CachedStep.Entry.Budget
 
 namespace Project.Gpt2CachedStep.Spec
 open Wasm Project.ProofKit PackedMemory Project.EulerRiemann.Execution LeanExe.Models.Gpt2
