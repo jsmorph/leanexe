@@ -63,7 +63,7 @@ repeated-step proof and [maintained Sod data](../data/euler-sod-v2/README.md)
 are complete: 100 cells reach t=0.2 in93 accepted steps, and100–800-cell
 refinement errors decrease. The requested true2D visualization is [published](../data/euler-2d-v1/README.md). See [the grid proof](../proofs/talos/lean/Project/EulerGridStep/README.md).
 
-The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
+The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without invoking LeanExe or Codex and without a compiler-correctness premise.  Source-agreement specifications import their Lean source definitions.
 
 The additional `euler_certificate_flux` case proves exact generated-WASM
 execution and outward enclosure of real pressure and Rusanov interface
