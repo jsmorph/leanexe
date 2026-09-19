@@ -196,8 +196,13 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
   wasm_trap_t *trap = NULL;
 #ifdef LEANEXE_WGSL_PACKED_HOST
   wasmtime_extern_t imports[2];
-  packed_imports(runtime, imports);
-  error = wasmtime_instance_new(runtime->context, module, imports, 2, &runtime->instance, &trap);
+  wasm_importtype_vec_t declared;
+  wasmtime_module_imports(module, &declared);
+  size_t import_count = declared.size;
+  wasm_importtype_vec_delete(&declared);
+  packed_need(import_count == 0 || import_count == 2, "unsupported packed module imports");
+  if (import_count) packed_imports(runtime, imports);
+  error = wasmtime_instance_new(runtime->context, module, imports, import_count, &runtime->instance, &trap);
 #else
   error = wasmtime_instance_new(runtime->context, module, NULL, 0, &runtime->instance, &trap);
 #endif
@@ -1058,6 +1063,10 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
   }
 }
 
+#ifdef LEANEXE_WGSL_PACKED_HOST
+#include "wgsl/gpt2/packed-cli.h"
+#endif
+
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
@@ -1071,6 +1080,11 @@ int main(int argc, char **argv) {
     usage();
   }
   Runtime runtime;
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  if (strcmp(argv[1], "packed-run") == 0) {
+    command_packed_run(&runtime, argc - 2, argv + 2);
+  } else
+#endif
   if (strcmp(argv[1], "call") == 0) {
     if (argc < 5) {
       usage();
