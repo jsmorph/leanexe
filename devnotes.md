@@ -15967,3 +15967,12 @@ refactoring.  The corrected test passes and now checks dependency
 completeness and order for a behavioral specification, the GPT-2 artifact,
 and the reconstructed decoder.  The restarted aggregate uses the divided
 build schedule and reuses the accepted component proofs through Lake's cache.
+
+The divided schedule completed reconstructed-solver decoding and validation.
+Its next failure was the existing `EulerReconstructed.FaceRegion.shift`
+proof, which enumerated 71 function mappings in one command and exceeded
+the default 200,000-heartbeat budget.  That file and its imported execution
+definitions were unchanged by the byte-proof work.  Splitting the mappings
+into ranges 0–23, 24–47, and 48–70 produced three checked helper lemmas and
+the same final `Shift` theorem.  The module passes in 17 seconds with the
+default heartbeat budget and only propext, Classical.choice, and Quot.sound.
