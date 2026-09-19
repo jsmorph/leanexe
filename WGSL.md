@@ -14,7 +14,17 @@ The completed parent FP32 cached-GPT-2 result was fetched on 2026-09-18.
 The [parent integration plan](docs/wgsl/parent-integration-plan.md) records
 its exact theorem scope, merge conflicts, source/ABI differences, and the
 staged work to incorporate the compiled WGSL products into that model.
-The parent is fetched but not yet merged into this branch.
+The parent merge passed both baselines. The parent step/session gate, WGSL
+body corpus, and all six installed shader certificates pass in the merged
+checkout. Three full 124M completion comparisons also passed; see the
+[integration journal](docs/wgsl/parent-integration-journal.md) for scope and evidence.
+
+`tools/gpt2-wasm --text "The purpose of science is"` selects the parent's
+packed FP32 Wasm runner. `tools/gpt2-wgsl build|run|serve|test` selects the
+existing mixed-precision WGSL demo until the integration milestones pass.
+The compatibility entry `tools/gpt2` routes those four subcommands to WGSL
+and plain flags to Wasm. The current parent CLI samples in Python; it is a
+reference runner, not the sampling implementation for the integrated demo.
 
 The current implementation work is the [restricted Lean body compiler](docs/wgsl/body-compiler.md),
 including a checked connection from parsed statement execution to its Lean
@@ -24,7 +34,8 @@ Its objective remains to
 prove that the six delivered shaders execute their selected Lean matrix-product
 definitions over floating-point words, verify the matrix layouts and split
 vocabulary computation, and state the arithmetic choices precisely. Numerical error bounds
-and general Wasm/controller proof development are outside this workstream.
+remain outside this workstream. The parent integration plan adds packed
+FP32 Wasm/controller composition to the current agenda.
 The older numerical milestones below are retained as development history.
 
 ## Implementation status

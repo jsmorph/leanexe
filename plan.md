@@ -1,9 +1,22 @@
 # Development Plan
 
-The current target is [pretrained GPT-2 124M through LeanExe](plans/gpt2-124m.md)
-with a 128-token context.  The user paused proof development on 2026-09-17
-and approved FP32 arithmetic and packed binary tensors.  The CPU reference
-already produces text completions.  The earlier
+The [pretrained GPT-2 124M implementation](plans/gpt2-124m.md) now generates
+text through LeanExe/WASM with FP32, packed binary tensors, resident weights,
+and cached attention.  Tests compare every logit at context lengths one
+through 128 with PyTorch.  Run it with
+`tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
+The user resumed formal proof development on 2026-09-17, prioritizing
+agreement between generated WASM and the Lean algorithm.  Exact execution
+proofs now cover all transformer kernels and the complete hidden-state
+function, including embedding, all twelve blocks, cache assembly, and cleanup.
+Vocabulary projection and the complete exported cached step now have checked
+execution proofs, including invalid-input rejection, exact output bytes,
+allocation, and cleanup.  The 128-position invocation theorem derives the
+input and resource premises, starting with reset and weight loading, then
+composing token calls and cache/logit releases.  The runtime target is
+Wasmtime's canonical-NaN mode.  Source-artifact regeneration, canonical-NaN
+tests, all 128 contexts, and three text completions pass.  Numerical bounds and exact-byte
+packaging remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.

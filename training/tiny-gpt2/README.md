@@ -76,9 +76,9 @@ bit-for-bit with the native Talos evaluator.  The
 PyTorch differences and proof status.
 
 The training and export code uses tensor operations and standard-library
-binary packing.  The shared environment now also contains the approved
-pretrained-model dependencies, including NumPy, pinned in
-`training/gpt2/requirements.txt`.
+binary packing.  The pretrained model uses a separate
+[uv project](../gpt2/pyproject.toml) with the approved PyTorch, NumPy, and
+Transformers dependencies.
 
 The [pinned TorchLean architecture](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/API/Models/CausalTransformer/Architecture.lean)
 and [attention implementation](https://github.com/lean-dojo/TorchLean/blob/4ec1f62bf8308e2dc7f4d73e64205e66270ccfd1/NN/Runtime/Autograd/Model/Layers/Attention.lean)

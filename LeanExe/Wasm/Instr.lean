@@ -55,6 +55,15 @@ inductive Instr where
   | sqrtF64
   | i64ReinterpretF64
   | f64ReinterpretI64
+  | addF32
+  | subF32
+  | mulF32
+  | divF32
+  | sqrtF32
+  | i32ReinterpretF32
+  | f32ReinterpretI32
+  | f32DemoteF64
+  | f64PromoteF32
   | block (body : List Instr)
   | loop (body : List Instr)
   | iff (resultI64 : Bool) (thn : List Instr) (els : Option (List Instr))

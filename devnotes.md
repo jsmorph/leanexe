@@ -14881,3 +14881,931 @@ and starts with compiler primitives and a GPT-sized matrix multiplication.
 Array push and set currently copy their inputs, while array map allocates
 one result.  Indexed tensor construction and resident binary weight input
 need explicit implementation before the full model.  Proof work stays paused.
+
+### Binary32 compiler operations
+
+LeanExe.Float32 now exposes add, subtract, multiply, divide, and square root
+over UInt32 bit patterns, plus conversions to and from binary64 words.
+The existing UInt32 ABI uses zero-extended i64 slots.  WASM lowering wraps
+to i32, reinterprets to f32, executes one arithmetic instruction, and
+returns the zero-extended result bits.  Binary32 multiply and add remain
+separate operations.  The [WASM instruction encoding](https://webassembly.github.io/spec/core/binary/instructions.html)
+and the pinned Lean Float32 source define the opcode and native-reference
+boundaries.  Unary traversal uses one shared IR constructor for square
+root and precision conversions.  The experimental image schema continues
+to reject floating-point modules.
+
+The focused test passes 64 cases in native Lean, the scalar IR evaluator,
+and Wasmtime, plus a captured-value array map.  Cases cover rounding ties,
+subnormals, signed zero, overflow, infinities, NaN classes, nested operations,
+and a multiply-add example that distinguishes separate rounding from FMA.
+Two test-driver errors concerned the existing host's array-result API and
+JSON encoding.  Correcting the driver produced the passing result without
+compiler changes.  Node child-process launches initially failed with
+sandbox EPERM and succeeded after the required prefix approvals.
+
+The twelve-case WAT/binary round-trip gate passes, including new FP32
+arithmetic and conversion examples.  The aggregate execution test remains
+blocked at the pre-existing release input identity mismatch, before its
+compiler tests run.  Documentation checks pass.  Binary32 model proofs
+remain deferred as requested.
+
+The existing FP64 execution, lowering, annotation, and image-rejection
+test also passes.  The root library, scalar compiler certificates, and
+image codec/integration tests build successfully.  The required existing
+Talos gate reaches the previously recorded assoc_list generated-cache
+mismatch and stops.  No proof source or tracked artifact cache was changed.
+
+### Packed tensors and pretrained projection
+
+The user directed development away from release bookkeeping and confirmed
+the approvals for reference dependencies, FP32, packed tensors, and the
+degree-eighteen exponential with GELU tails at magnitude eight.  Further
+release-record investigation is deferred.  The existing tiny-model
+arithmetic already implements the approved numerical methods.  The new
+FP32 model will use those methods at its declared precision.
+
+LeanExe.Packed adds little-endian UInt32 reads at byte offsets and indexed
+generation into one four-byte-per-word allocation.  Generation checks byte
+count overflow, supports captured values and loops, and records fresh
+ownership for automatic release.  Its read lowers to a bounds-checked
+i32.load, including unaligned offsets.  The Wasmtime host accepts binary
+files as ByteArray arguments.  A missing Nat.toUInt32 extraction case
+appeared in the first generator test.  It now shares UInt32.ofNat lowering.
+
+The packed test passes native Lean comparisons, empty and unaligned reads,
+bounds and multiplication-overflow traps, binary input paths with spaces,
+empty generation, one-allocation construction, nested loops, FP32 mapping,
+and release of a generated temporary.  The native test needed explicit
+JSON output and its Lean import because Lean's pretty printer wraps lists.
+
+The first GPT-2 attention projection uses the pinned checkpoint's
+768-by-2304 matrix, bias, and normalized first-token embedding.  All 2,304
+WASM outputs match a serial FP32 PyTorch accumulation bit-for-bit.  The
+maximum absolute difference from standard PyTorch matrix multiplication
+is 2.6226043701171875e-6.  The host call took 0.03369425 seconds, including
+module startup and two binary input loads.  Allocation counters report the
+two inputs and one packed output.  The test records hashes and measurements
+under build/gpt2-124m/kernel, with its result retained in the data directory.
+
+The root library build, thirteen-case WAT/binary round-trip gate, and
+documentation checks pass with packed storage enabled.
+
+### First pretrained transformer block
+
+The FP32 model now implements LayerNorm, causal twelve-head attention,
+biased projections, residual additions, and the approved exponential/GELU
+methods.  The reference exporter records all first-block intermediate
+tensors and checks its manual composition against Transformers' block.
+The WASM test feeds each stage's output into the next stage and also runs
+the complete composed Lean block.
+
+The first compilation exposed evidence normalization in the inliner.
+rowInvStd compiled as a function, but inlining it with a potentially
+trapping mean argument expanded ForIn.forIn into the proof-indexed iterator
+implementation.  The extractor recognizes the ForIn interface.  Evidence
+normalization now preserves that interface.  A reduced packed-generator
+test calls a loop helper with a packed-read argument and passes both native
+Lean and Wasmtime comparisons.
+
+All first-block stages pass the declared comparison tolerance of
+1e-4 + 2e-5 times the reference magnitude.  The maximum absolute difference
+is 0.00026702880859375, in the feed-forward projection and final output.
+The composed block matches separate WASM stage calls bit-for-bit.  Its
+nine-token host call took 0.291381042 seconds.  Twenty-one allocations and
+eighteen frees leave only two borrowed host inputs and the output.  These
+are execution measurements for the pinned checkpoint and prompt.
+
+### Full pretrained inference and loop ownership
+
+The complete model loads 497,759,232 bytes of packed FP32 parameters and
+returns 50,257 logits for one to 128 BPE token IDs.  The nine-token story
+prompt matches PyTorch with maximum absolute difference
+0.00009918212890625 and RMS difference 0.000040563035721151586.  Both choose
+token 11.  The measured call took 3.873877877 seconds, including host
+startup and input loading.  Formal proof work remains paused.
+
+The first run passed every logit comparison but retained the final hidden
+buffer.  Helper ownership summaries omitted loop results.  Inferring
+freshness from the loop's release annotations was insufficient because
+the first extraction pass precedes those annotations.  The analysis now
+checks the initial value and body result with the current helper summaries.
+
+A reduced zero-iteration test exposed a second error: result materialization
+released the initial owner even when the loop returned that owner.  Internal
+helper cleanup now compares temporary owners with returned owner slots
+before releasing them.  Tests cover zero, one, and four iterations, with
+all fresh allocations freed, and a borrowed zero-iteration input that stays
+owned by its caller.  Native Lean and WASM results agree.  The full model's
+235 allocations and 232 frees leave exactly the two inputs and one output.
+
+### Resident pretrained text generation
+
+The thirteen-case WAT/binary comparison passes after the loop-ownership
+changes.  Commit 2d4198a0 records the complete model and is pushed.
+
+The host now has a persistent session mode that accepts repeated export
+calls, binary file inputs, memory reads, allocation counters, and memory
+size queries.  It flushes each response for interactive clients.  A test
+uses a binary file path containing spaces, performs two reads with different
+arguments, and frees the input.  Existing single-call script behavior stays
+available.
+
+tools/gpt2 compiles the Lean model through the runner, checks the packed
+checkpoint and tokenizer hashes, and generates text with resident weights.
+Its Python client handles tokenization and top-k probabilities.  Random
+draws come from the existing Lean SplitMix64 WASM program.  All model
+arithmetic executes in the generated model module.  The sandbox blocked
+the new driver's systemd user-bus access.  The GPT-2 driver prefix is now
+approved for subsequent runs.
+
+The first sixteen-token completion was " called Hukur. The village is a
+great expanse of white sand and" after the nine-token story prompt.
+Generation took 93.09486704398296 seconds and used 514,654,208 bytes of WASM
+linear memory.  After the final result was read and freed, 3,730 allocations
+and 3,728 frees left the resident weights and token buffer.  Prefix
+recomputation dominates runtime.  A per-position, per-layer key/value cache
+is the next implementation step.
+
+### Cached pretrained inference
+
+The cached Lean entry accepts packed weights, the prior key/value cache,
+one token ID, and its position.  It returns an updated cache and all 50,257
+logits.  Cache words follow position, layer, key/value, and channel order.
+The entry rejects incorrect weight and cache lengths, token IDs outside
+the vocabulary, and positions at or beyond 128.  The command defaults to
+cached execution.  --full retains the full-prefix comparison path.
+
+Cache integration exposed compiler errors that the single-array model
+result did not exercise.  Id bind substituted an aggregate loop expression
+into each field use, causing five executions of the twelve-layer loop.
+It now materializes the fold result once.  Per-iteration temporary cleanup
+was absent.  The new cleanup protects the next accumulator's owners and
+releases other fresh nonrecursive buffers.  Fold emitters also needed the
+release-aware expression and binding callbacks already used by array map.
+Without those callbacks, a release in a fold body emitted a trap.
+
+The final accumulated updates buffer needed ownership tracking across
+local bindings, including a null initial owner.  The collector now follows
+those bindings.  A reduced test transforms a pair of loop results and
+checks zero, one, and four iterations, allocation counts, and preserved
+borrowed input.  An earlier version of that diagnostic also allocated a
+prefix inside an append expression and exposed an additional nested
+temporary leak.  The retained reduced test uses a borrowed prefix, matching
+the cache operation.  The nested-temporary case still needs a focused test
+after the subsequent return-materialization changes.
+
+The public cached result exposed two more errors: an owned returned cache
+was freed after its owner slot disappeared during ABI projection, and an
+inline logit-producing call ran separately for the pointer and length.
+Plain exported heap results now materialize their internal slots first,
+then project the ABI.  A reduced public-structure test checks exact
+allocation counts, both byte-array contents, and successful release and
+reuse of each returned allocation.
+
+Cached inference passed all 6,432,896 PyTorch logit comparisons over prefix
+lengths one through 128.  The maximum absolute difference was
+0.0014495849609375.  Cached and full-prefix WASM logits match bit-for-bit
+at nine tokens.  Cache replay is exact, and invalid weight lengths, token
+IDs, cache lengths, and position 128 return empty results.  The run took
+63.23945640499005 seconds.  Its 33,025 allocations and 33,023 frees leave
+the resident weights and final 9,437,184-byte cache.  Linear memory reached
+1,107,361,792 bytes because the allocator retains whole free blocks while
+successive cache buffers grow.  The data directory preserves the record.
+
+The cached CLI produced three recorded completions.  The story prompt
+generated 64 tokens in 35.38210839199019 seconds and used 692,387,840 bytes
+of linear memory.  Its first sixteen tokens match the earlier uncached
+sample exactly.  The science prompt generated 32 tokens in 17.679409634001786
+seconds.  The sixteen-token greedy France completion matches PyTorch's
+token IDs exactly and took 9.866739504999714 seconds.  Each run leaves only
+the resident weights and current cache after its logits are read and freed.
+
+Final checks pass: the packed ownership and host-session tests, sixty-four
+FP32 Lean/IR/Wasmtime cases, the existing FP64 execution tests, thirteen
+WAT/binary comparisons, scalar compiler certificates, and image codec and
+integration targets.  The documentation checker accepts 137 maintained
+Markdown files.  Release bookkeeping and the paused model proof work were
+not resumed.
+
+## Resumed pretrained GPT-2 execution proofs
+
+The user resumed formal proof work on 2026-09-17 and deferred numerical
+bounds.  The existing pretrained implementation and cached text completions
+provide the execution baseline.  The first proof target is the existing
+`LeanExe.Examples.Packed.readWord` entry.  Its emitted bounds checks and
+`i32.load` must return the source `LeanExe.Packed.getUInt32LE!` word for
+all valid byte arrays and offsets while preserving the complete store.
+
+The pinned Talos dependency already supplies binary32 execution semantics.
+The GPT-2 source currently uses opaque native Lean `Float32` operations.
+The old tiny model compiles proof-visible `Wasm.IEEE64` operations from the
+proof workspace.  That distinction must remain explicit: a theorem against
+Talos arithmetic alone will not connect the present GPT-2 source to it.
+The plan keeps that source-arithmetic connection as an open obligation.
+
+The new shared packed-memory predicate records contiguous source bytes,
+the 32-bit address limit, and available memory.  Its first theorem connects
+Talos `Mem.read32` to the source packed read and checks in Lean.  The first
+entry proof attempt exposed an explicit-argument requirement in the core
+subtraction lemma and the need to add natural-number reductions to
+`wp_run`.  Neither failure required a compiler change.
+
+The completed entry proof checks in 1.9 seconds, and the shared memory
+lemma in 1.4 seconds.  Both are input-generic.  The proof reuses the Talos
+entry, branch, and straight-line execution rules and the existing unsigned
+integer bridges.  No LTG retrieval or generated-proof agent was used.
+A trial `bv_decide` for the return mask introduced a native-decider axiom.
+It was replaced by the core natural-number mask theorem.  The final
+`readWord_exact` theorem reports only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+`tools/talos-proof.js check packed_read` regenerates the artifact and passes
+the proof.  `node test/packed.js` passes the packed, ownership, and host-file
+tests.  The aggregate proof attempt passes registration consistency but
+stops at the existing `gcd` generated-cache mismatch.  Inspection shows
+that current emission uses two additional local slots in its loop: the
+loop-control local moves from 19 to 21.  This proof change does not modify
+the compiler or that cache.  The focused packed-read result remains the
+accepted result for this milestone.
+
+## Packed tensor construction proofs
+
+The source proof now gives the exact size, every output byte, and read-back
+of every generated word for arbitrary counts and word functions.  It
+rewrites the source range loop to a list fold and uses a prefix recurrence.
+The existing tiny-model output proof supplied the range-to-fold identity.
+`ByteArray.emptyWithCapacity` is definitionally empty in the proof model,
+so capacity needs no additional source hypothesis.
+
+The memory extension theorem proves that one `Mem.write32` extends that
+source prefix by one word.  Its range theorem preserves every byte outside
+the write.  These facts support loop invariants without repeating byte
+extraction in each tensor proof.  A first byte proof used `simp_all` after
+splitting conditions and reached the recursion limit.  Keeping the proof
+to explicit conditional reductions and `omega` resolved that elaboration
+problem.  The source module builds in 2.7 seconds and the memory module in
+1.7 seconds.  Their axiom reports contain only the standard three axioms.
+
+### Generated packed construction loop
+
+The shared [packed loop proof](proofs/talos/lean/Project/ProofKit/PackedGenerateLoop.lean)
+now proves termination and exact source bytes for arbitrary word counts
+and word functions.  Its word-computation premise permits scratch-local
+changes while preserving the counter, length, pointer, and a caller-selected
+predicate.  It preserves the page count, non-memory store fields, and all
+bytes outside the output interval.  The output must fit in current memory
+and the 32-bit address range.
+
+The proof reuses the fixed-array copy counter frame, Talos's block and loop
+rules, and the preceding packed-prefix write theorem.  Three remaining
+diagnostics concerned reduction of the taken branch, an ambiguous integer
+conversion lemma, and the reconstructed local frame in the termination
+measure.  Reducing the branch, qualifying the lemma, and exposing the
+definitionally equal frame discharged them.  The shared module checks in
+3.5 seconds after removing unused simplification arguments.
+
+The [generated example proof](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+checks that instruction 42 of the emitted `makeWords` entry is this loop,
+then proves its output equals the Lean source bytes for every count and
+offset.  The word proof uses the core mask and narrowing-conversion
+theorems.  Its first conversion attempt required an explicit `ofNat`
+narrowing lemma.  The next run rejected a trailing `rfl` because the
+simplification had closed the goal.  Removing it completed the proof.
+
+`tools/talos-proof.js check packed_generate` passes regeneration equality
+and builds the example in 1.4 seconds.  The region equality has no axioms.
+The execution theorem uses only `propext`, `Classical.choice`, and
+`Quot.sound`.  The handwritten shared proof is 164 lines, and the example
+is 61 lines.  No LTG retrieval or generated-proof agent was used.
+The registration remains incomplete until allocation and the public return
+are composed with the loop.  The next shared obligation is raw-buffer
+allocation, whose object header differs from the fixed-array header.
+
+The shared-runtime equality checks and registry-import consistency pass.
+The documentation checker accepts 137 maintained Markdown files, and
+`git diff --check` passes.  The registry contains 64 cases, 62 complete.
+
+### Packed-buffer allocation
+
+The [allocation preparation theorem](proofs/talos/lean/Project/ProofKit/FixedArrayBump.lean)
+now separates heap growth and pointer assignment from object-header writes.
+The existing fixed-array theorem composes this preparation with its header
+proof and retains its statement.  The first refactoring attempt exposed
+a local variable that shadowed the new store definition.  Naming the store
+`preparedStore` and retaining the grown store's global projection resolved
+the mismatch.  The refactored module checks in 2.1 seconds, and its existing
+no-fit allocator consumer rebuilds in 3.2 seconds.
+
+The [packed header theorem](proofs/talos/lean/Project/ProofKit/PackedHeader.lean)
+uses the existing checked constant/local word stores.  It establishes the
+raw-buffer kind, reference count, capacity, exact metadata reads, and
+preservation outside the 48-byte header.  The
+[packed allocator theorem](proofs/talos/lean/Project/ProofKit/PackedAllocate.lean)
+composes initialization, traversal of a represented free list with no
+sufficient block, conditional growth, raw-header writes, and allocation
+counting.  It supports arbitrary saved parameters and locals.  The header
+and allocator modules check in 2.2 and 2.6 seconds, with standard axioms.
+The next constructor proof can apply these results after its size and
+capacity calculations.  Free-block reuse remains a separate obligation.
+
+### Complete packed constructor on the no-fit path
+
+The [constructor theorem](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+now proves generated-entry termination, its pointer/length return, every
+source byte, and preservation outside the output writes relative to the
+specified allocation effects.  It quantifies over counts, offsets, stores,
+and represented free lists with no sufficiently large block.  Its memory
+assumptions bound the rounded allocation in the 32-bit address range and
+the runtime memory cap.  The theorem includes conditional memory growth.
+
+The shared capacity proof relates the emitted word arithmetic to
+`max 8 (((bytes + 7) / 8) * 8)` and proves the allocation covers the requested
+bytes.  It checks in 1.6 seconds.  The constructor body composes this result,
+checked natural multiplication, the packed allocator, and the construction
+loop.  The loop adapter now preserves a caller-selected local predicate,
+which retains the byte length and local-frame dimensions for the return.
+The body checks in 3.6 seconds, and the public theorem in 1.0 second.
+
+Failed iterations exposed unreduced word-size constants, a simplification
+that expanded `UInt64.ofNat` multiplication across the loop boundary,
+optional versus indexed local getters, and a residual argument-count
+condition in the public entry rule.  Explicit word-size reductions,
+preserving the multiplication expression, the existing indexed frame
+lemma, and unfolding `Function.numParams` resolved those diagnostics.
+No compiler change or increased proof-resource limit was needed.
+
+`tools/talos-proof.js check packed_generate` passes regeneration equality
+and the full public theorem.  Its axiom report contains only `propext`,
+`Classical.choice`, and `Quot.sound`.  Registry/import consistency and the
+137-file documentation check pass.  The registry now has 64 cases and
+63 completed specifications.  The constructor's sufficient-free-block
+path remains open for later GPT-2 allocator composition.
+
+### Correction to the FP32 source assessment
+
+The earlier claim that the pinned source arithmetic was opaque was wrong.
+Lean 4.34.0-rc2's `Init.Data.Float.Float32` defines addition, subtraction,
+multiplication, division, square root, and bit conversion through the pure
+`Float32.Model`.  Its `extern` annotations select native implementations
+for execution while retaining logical definitions.  Precision conversions
+between FP32 and FP64 remain opaque, but GPT-2 does not call them.
+
+The next arithmetic obligation is equivalence between that source model
+and Talos's `Wasm.IEEE32`.  Both have explicit integer arithmetic and
+rounding definitions.  This permits work on the existing GPT-2 source.
+The plan now records this corrected boundary.  NaN canonicalization and
+rounding must be checked as part of the equivalence proof.
+
+### Source-model rounding correspondence
+
+The [source arithmetic adapters](proofs/talos/lean/Project/ProofKit/F32Source.lean)
+prove that the five GPT-2 intrinsics reduce to explicit `Float32.Model`
+operations.  The [comparison test](proofs/talos/lean/Project/F32Source/Checks.lean)
+evaluates those pure operations against Talos, avoiding native floating-point
+extern calls.  All 8,000 results agree across an edge-word matrix and 1,024
+deterministic word pairs.  The edge words include subnormal boundaries,
+signed zeros, infinities, and noncanonical NaN payloads.
+
+The [rounding proof](proofs/talos/lean/Project/ProofKit/F32Rounding.lean)
+establishes the mantissa, round bit, and sticky bit after arbitrary shifts,
+including initial residual bits.  Its `round_exact_shift` theorem proves
+that Lean's nearest-even rounding of an exact mantissa agrees with Talos's
+`roundShift` for every mantissa and positive shift.  This is a component
+of arithmetic equivalence.  Exponent selection, packing, and the complete
+operations remain open.
+
+The first proof attempts needed explicit Boolean-to-proposition conversion,
+the definition of `Nat.repeat`, and reduction of local definitions before
+rewriting the quotient calculation.  The final proof uses induction and
+quotient/remainder identities.  It checks in 1.3 seconds and uses only
+standard axioms.  The source adapters and comparison test check in 1.3 and
+1.1 seconds.  No source algorithm or compiler change was required.
+
+### FP32 encoding and source input conversion
+
+The [encoding lemmas](proofs/talos/lean/Project/ProofKit/F32Encoding.lean)
+relate Lean's unpacked sign, exponent, and significand to Talos's raw-word
+fields for every input.  They also relate field concatenation to Talos's
+encoder.  The [packing lemmas](proofs/talos/lean/Project/ProofKit/F32Packing.lean)
+prove that packing a decoded word preserves it except for the specified
+canonicalization of NaNs.  Consequently, decoding `Float32.Model.ofBits`
+agrees with direct decoding of the supplied word.  All five source
+operations now have checked equations over that shared decoding.
+
+The field proof required a reusable bit-vector concatenation equation in
+terms of natural addition.  Expanding bitwise OR directly did not expose
+the disjoint fields to arithmetic automation.  The proof now applies
+`Nat.shiftLeft_add_eq_or_of_lt` before arithmetic reasoning.  Explicit
+normalization of powers also prevents simplification from missing field
+bounds.  The encoding module checks in 1.4 seconds and the packing module
+in 1.5 seconds.  Axiom reports contain only standard axioms.
+
+### Exact scaled-magnitude rounding
+
+The [scaled rounding proof](proofs/talos/lean/Project/ProofKit/F32RoundScaled.lean)
+proves that Lean's `round`, followed by packing, equals Talos's
+`roundScaledMagnitude` for either sign and every natural mantissa at
+exponent -149.  It includes zero, subnormal and normal encodings, a carry
+from rounding the significand, and overflow to infinity.  This is exact
+word equality, without an upper-magnitude assumption.
+
+A shared theorem composes the two exponent-selection stages of
+`roundWithAccuracy`.  The proof reuses the checked discarded-bit lemmas and
+Talos's quotient-rounding bounds.  A first simultaneous simplification
+unfolded the extended-mantissa constructor inside a dependent rewrite.
+Separating the first shift, mantissa result, and second shift removed that
+elaboration problem.  Normalizing numeric powers in hypotheses resolved
+the remaining field-comparison rewrites.  The completed module checks in
+1.8 seconds with only standard axioms.  Exponent-alignment invariance and
+the arithmetic-operation theorems remain open.
+
+### Exponent alignment and signed normalization
+
+The [shift lemmas](proofs/talos/lean/Project/ProofKit/F32Shift.lean) prove
+exact cancellation of powers of two through the extended mantissa,
+including its rounding and sticky bits.  The
+[normalization proof](proofs/talos/lean/Project/ProofKit/F32Normalize.lean)
+uses those lemmas to prove that multiplying a nonzero mantissa by a power
+of two and decreasing its exponent preserves Lean's rounded result.
+It then transfers packing to Talos's scaled-magnitude rounder for any
+exponent at least -149 and proves the corresponding signed-normalization
+equation, including the caller-specified sign of zero.
+
+The shared first-shift lemma isolates exponent alignment from the final
+rounding stage.  Composing equal first-shift states avoids duplicating the
+carry proof.  Failed iterations exposed broad simplification of integer
+casts into maxima and constructor-form integers that the arithmetic tactic
+did not normalize.  Restricted simplification and `Int.ofNat_eq_natCast`
+resolved those issues.  The shift and normalization modules check in
+1.4 and 2.1 seconds, with standard axioms.  The next composition relates the
+two aligned signed operands to the exact sum used by Talos.
+
+### Exact source addition for finite nonzero inputs
+
+The [finite-addition proof](proofs/talos/lean/Project/ProofKit/F32AddFinite.lean)
+establishes the scaled value of each aligned operand and then composes
+signed normalization with their exact sum.  The
+[decoded-input proof](proofs/talos/lean/Project/ProofKit/F32Decoded.lean)
+applies it to source words.  `add_eq_talos_finite` proves exact equality
+between `LeanExe.Float32.addBits` and `Wasm.IEEE32.add` for arbitrary finite
+nonzero operands.  The result includes cancellation, subnormal outputs,
+rounding carry, and overflow.  Additional lemmas prove that rounding a
+represented finite nonzero input preserves its word, for use in the
+zero-operand branches.
+
+The finite-addition and decoded-input modules check in 1.9 and 1.3 seconds.
+Their axiom reports contain only standard axioms.  The proof distinguishes
+zero from negative zero at cancellation: two strictly negative operands
+cannot sum to zero.  The remaining addition branches concern signed zero,
+infinities, and NaNs.  Subtraction, multiplication, division, square root,
+and the complete GPT-2 composition remain open.
+
+### Complete source FP32 addition
+
+The [addition correspondence](proofs/talos/lean/Project/ProofKit/F32Add.lean)
+now proves `LeanExe.Float32.addBits a b = Wasm.IEEE32.add a b` for every
+pair of input words.  It composes the finite-input result with signed-zero,
+infinity, and NaN branches.  The proof includes both NaN operands,
+noncanonical NaN payloads, opposite infinities, negative-zero preservation,
+and exact cancellation to positive zero.
+
+The exception proof reuses field decoding and the input-rounding identity.
+Source commutativity avoids duplicating the zero and single-infinity
+branches.  The complete module checks in 1.4 seconds, and `add_eq` uses
+only `propext`, `Classical.choice`, and `Quot.sound`.  No runtime or compiler
+code changed.  The remaining arithmetic correspondences are subtraction,
+multiplication, division, and square root.
+
+### Complete source FP32 subtraction
+
+The [subtraction correspondence](proofs/talos/lean/Project/ProofKit/F32Sub.lean)
+proves exact source/Talos equality for every pair of input words.  It
+reuses addition after proving that Talos's sign-bit change agrees with
+negating Lean's decoded value.  The proof covers NaNs through the same
+decoding equation.  An initial proof unfolded integer negation too far.
+Using the existing double-negation theorem kept that step within its
+algebraic interface.  The module checks in 1.2 seconds with standard axioms.
+
+### Exact dyadic rounding for products
+
+The [final-rounding lemmas](proofs/talos/lean/Project/ProofKit/F32RoundFinish.lean)
+separate the rounded significand from its exponent adjustment and packing.
+The [dyadic correspondence](proofs/talos/lean/Project/ProofKit/F32RoundDyadic.lean)
+proves exact agreement with Talos's `roundDyadicMagnitude` for any nonzero
+mantissa and any number of fractional bits.  It includes gradual underflow
+and rounding to zero.  An exponent-shifting corollary permits direct use
+for products of decoded inputs, whose exponents sum to at least -298.
+
+The proof retains discarded fractional bits until rounding, then reuses
+the checked carry and packing lemmas.  Bounds on the quotient prove which
+packing case applies.  These are internal proof obligations, without a
+numerical-accuracy assumption on model weights.  A dependent rewrite in
+the final constructor needed restricted simplification to preserve its
+nonzero proof.  The final-rounding and dyadic modules check in 1.3 and
+1.6 seconds, with standard axioms.
+
+### Complete source FP32 multiplication
+
+The [finite-product proof](proofs/talos/lean/Project/ProofKit/F32MulFinite.lean)
+relates the decoded product to Talos's numerator over `2^149`.  It proves
+that Lean's product rounder needs no initial left shift and applies the
+general dyadic theorem.  The
+[complete multiplication theorem](proofs/talos/lean/Project/ProofKit/F32Mul.lean)
+then establishes `LeanExe.Float32.mulBits a b = Wasm.IEEE32.mul a b` for
+every pair of input words.  Exceptional branches include zero times
+infinity, NaN operands, and signed-zero results.
+
+The finite and complete multiplication modules check in 1.4 and 1.5 seconds.
+Both use only standard axioms.  The encoding and exception lemmas from the
+addition proof apply without changes.  Addition, subtraction, and
+multiplication now have complete source correspondences.  Division and
+square root remain open before the tensor-loop composition.
+
+### Exact rounding of rational magnitudes
+
+The [rational shift lemmas](proofs/talos/lean/Project/ProofKit/F32RationalRounding.lean)
+prove that shifting a quotient and its rounding state preserves the
+remainder represented by the scaled denominator.  The
+[rational rounder correspondence](proofs/talos/lean/Project/ProofKit/F32RoundRational.lean)
+then proves exact agreement with Talos's `roundRationalMagnitude` at the
+minimum source exponent, for every numerator and positive denominator.
+The result includes ties, underflow, rounding carry, and overflow.
+
+The proof reuses the final-rounding and packing results from multiplication.
+The two modules check in 1.2 and 1.7 seconds with standard axioms.  The next
+step relates the exponent and integer quotient chosen by Lean's division
+core to this common rational representation.
+
+### Complete source FP32 division
+
+The [rational scaling lemmas](proofs/talos/lean/Project/ProofKit/F32RationalScale.lean)
+and [normalization proof](proofs/talos/lean/Project/ProofKit/F32RationalNormalize.lean)
+establish rounding invariance under exponent changes and equivalent
+numerator/denominator representations.  The
+[division-core proof](proofs/talos/lean/Project/ProofKit/F32DivCore.lean)
+shows that Lean's selected exponent retains enough quotient bits, then
+uses equality of cross products to match Talos's scaled rational.
+The [complete division theorem](proofs/talos/lean/Project/ProofKit/F32Div.lean)
+proves `LeanExe.Float32.divBits a b = Wasm.IEEE32.div a b` for every pair
+of input words, including all exceptional cases.
+
+The scaling proof needed an explicit multiplication of a power bound.
+The arithmetic tactic did not infer that multiplication from its factors.
+The final modules check in 1.2 to 2.8 seconds with standard axioms.
+Addition, subtraction, multiplication, and division now have complete
+source correspondences.  Square root remains before tensor composition.
+
+### Complete source FP32 square root
+
+The [square-root rounding lemmas](proofs/talos/lean/Project/ProofKit/F32SqrtRounding.lean)
+prove that Lean's remainder test agrees with Talos's exact midpoint test.
+The [core proof](proofs/talos/lean/Project/ProofKit/F32SqrtCore.lean)
+shows that decoded FP32 inputs produce a 24-bit integer root and relates
+the source radicand to Talos's radicand by power-of-four scaling.  The
+[finite-input composition](proofs/talos/lean/Project/ProofKit/F32SqrtFinite.lean)
+reuses the checked final packing stage.  The
+[complete theorem](proofs/talos/lean/Project/ProofKit/F32Sqrt.lean)
+proves source/Talos equality for every input word, including negative
+values, signed zeros, infinities, and NaNs.
+
+A direct definitional reduction of the carry significand exhausted the
+200,000-heartbeat limit.  Reusing the exact-shift theorem made that step
+explicit and reduced the packing module to 1.9 seconds.  Explicit zero
+shift and integer-cast rewrites removed another expensive failed reduction.
+The square-root modules check in 1.1 to 1.6 seconds with standard axioms.
+All five FP32 arithmetic correspondences are complete.  The generated
+tensor loops and full GPT-2 composition remain open.
+
+### Packed constructor with free-block reuse
+
+The [free-list search proof](proofs/talos/lean/Project/ProofKit/FixedArraySearchFit.lean)
+now accepts a checked block-initialization program.  Its original fixed-array
+theorem remains a specialization and checks against the existing allocator.
+The [packed reuse proof](proofs/talos/lean/Project/ProofKit/PackedReuse.lean)
+composes unlinking, packed-header initialization, and the returned pointer.
+The [complete packed allocator](proofs/talos/lean/Project/ProofKit/PackedAllocation.lean)
+covers either reuse or bump allocation and proves the output region fits
+memory and the 32-bit address range.
+
+The [generated constructor proof](proofs/talos/lean/Project/PackedGenerate/EntryAll.lean)
+composes the allocator with the checked construction loop and return.
+`makeWords_with_reuse_exact` removes the previous no-fit assumption and
+requires bump capacity only when the search finds no sufficient free block.
+The registered `packed_generate` gate checks both constructor theorems.
+It passed with standard axioms.  The new modules check in 1.0 to 2.8 seconds.
+An explicit append-identity rewrite was necessary after the search proof
+became parametric in its initialization program.
+
+### Packed allocation preserves tensor inputs
+
+The [reuse memory proof](proofs/talos/lean/Project/ProofKit/PackedReuseMemory.lean)
+preserves the remaining free list and byte regions disjoint from the free
+blocks.  The [allocation memory proof](proofs/talos/lean/Project/ProofKit/PackedAllocationMemory.lean)
+combines that result with bump allocation and memory growth.  Its final
+theorems preserve represented input byte arrays and remaining free-list
+headers after writes anywhere in the allocated output region.  The
+[byte-array framing lemmas](proofs/talos/lean/Project/ProofKit/PackedMemory.lean)
+also apply to individual tensor-loop steps.
+
+These results assume input/free-region separation and, for bump allocation,
+that existing objects lie below the heap end.  They impose no numerical
+conditions on tensor contents.  The memory modules check in 1.7 seconds
+with standard axioms.  Explicit store arguments distinguish allocation
+counter updates from memory writes when applying the framing theorem.
+
+### Packed-word calls and scalar range loops
+
+`PackedWordRead.exact` proves the compiler's indexed packed-word reader against `Packed.getUInt32LE!`, including multiplication overflow guards, byte bounds, and preservation of the store.  The theorem takes a module and function index so callers can reuse it after checking the emitted function body.  Lean checks the theorem in 2.2 seconds.
+
+`RangeFoldLoop.program_spec` supplies a decreasing-index proof for read-only range reductions.  Clients prove one iteration and state their accumulator invariant.  The rule imposes no particular scalar operation or loop width.  Lean checks it in 1.4 seconds.  Both axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The GPT-2 row-mean proof now has a checked source prefix recurrence using the established FP32 addition and division correspondences.  The generated reader and generic loop rule are ready.  The generated iteration and entry composition remain in progress.  The first iteration proof exposed a generated-instruction pattern mismatch before any execution obligations ran.  That diagnostic is retained in the proof-session output.  No arithmetic or compiler behavior changed.
+
+### Generated GPT-2 row mean
+
+[The row-mean theorem](proofs/talos/lean/Project/Gpt2RowMean/Spec.lean) proves the generated `rowMean` entry terminates, preserves its complete store, and returns the Lean function's result for every represented input and valid 768-word row.  The arithmetic statement uses Talos's binary32 model.  The proof requires no finite-value or weight assumptions.
+
+The source recurrence follows the ordered 768-element fold.  A definitionally checked decomposition identifies the emitted loop.  Its invariant records only the input parameters, accumulator, range bounds, stride, and frame size.  One iteration composes checked address arithmetic, the shared packed-word call, and FP32 addition.  The entry composes that result with the generic range rule and FP32 division.  The iteration checks in 2.6 seconds and the entry in 1.5 seconds, with standard axioms.
+
+A broad final simplification cycled between natural-number injection and UInt64 addition.  Restricted simplification removed that cycle.  Explicit list-update rules and the core UInt32-to-UInt64 lemma resolved the generated frame and bit-conversion obligations.  These were proof elaboration failures.  The compiler and model source remain unchanged.  The generated standalone kernel still needs transfer into the complete inference module when the kernel proofs are composed.
+
+### Generated GPT-2 inverse standard deviation
+
+[The inverse-standard-deviation theorem](proofs/talos/lean/Project/Gpt2RowInvStd/Spec.lean) proves the generated entry against `rowInvStd` for every represented valid row and arbitrary supplied FP32 mean.  It covers the ordered squared-deviation sum, division by 768, epsilon, square root, and reciprocal, with complete store preservation.  All five previously checked arithmetic correspondences now occur in generated GPT-2 kernel proofs.  The iteration checks in 2.9 seconds and the entry in 1.5 seconds with standard axioms.
+
+[The packed-frame tactic](proofs/talos/lean/Project/ProofKit/PackedFloatFrame.lean) collects repeated local-list, bit-conversion, and arithmetic-operation rewrites.  Both row-kernel proofs use it.  The second kernel reused the first kernel's invariant structure and checked range rule.  General tensor allocation and lifetime composition, the remaining kernels, and full inference remain open.
+
+### Generated GPT-2 attention score
+
+[The attention-score theorem](proofs/talos/lean/Project/Gpt2AttentionScore/Spec.lean) proves the generated query/key dot product and final scaling against the Lean source for every head below 12 and any two represented QKV rows.  It preserves the store.  The 64-element fold composes two packed reads and separate FP32 multiplication and addition.  No associativity or reassociation is assumed.  The step checks in 5.5 seconds and the entry in 1.3 seconds with standard axioms.
+
+The range-loop and packed-frame abstractions carried over from the normalization kernels.  Automatic arithmetic failed to eliminate some nested UInt64 moduli.  The new [checked-add lemma](proofs/talos/lean/Project/ProofKit/CheckedNatAddArithmetic.lean) derives the overflow guard from a natural-number sum bound before exposing modulo arithmetic.  Explicit constant-injection equalities let kernel proofs apply it without broad rewriting.  The larger emitted loop required a larger reduction-depth setting for its definitional decomposition.  The instruction proof retained its existing depth setting and default heartbeat limit.
+
+### Nested reductions inside packed construction
+
+The linear-row compiler keeps the destination address on the operand stack during its inner dot-product loop.  `RangeFoldLoop.program_spec_with_stack` now proves the range loop for arbitrary preserved operand-stack contents.  The original empty-stack theorem is a specialization.  The generalized proof checks in 1.6 seconds, and the three completed GPT-2 kernel proofs still check against it.
+
+[The linear-row source decomposition](proofs/talos/lean/Project/Gpt2LinearRows/Source.lean) expresses each output word as the ordered dot-product fold followed by bias addition.  It proves that packed generation of these values is the existing `linearRows` source function.  Its variable loop length required explicit normalization of the range-size expression.  The source proof checks in 1.1 seconds.  Generated weighted reductions and allocation composition remain in progress.
+
+### Generated linear-row construction loop
+
+The [linear-row step](proofs/talos/lean/Project/Gpt2LinearRows/DotStep.lean) composes two packed reads, checked matrix indexing, and FP32 multiplication followed by addition.  The [output-word proof](proofs/talos/lean/Project/Gpt2LinearRows/Word.lean) composes that step into the variable-length dot product and adds the bias.  The [construction-loop proof](proofs/talos/lean/Project/Gpt2LinearRows/Loop.lean) writes every output word and preserves both represented input tensors through disjoint output writes.  Their checks take 5.2, 2.8, and 1.8 seconds, respectively, with standard axioms.  The proof applies to variable matrix dimensions and arbitrary FP32 bit patterns.  Allocation and entry composition remain open.
+
+The shared checked-multiplication lemma now accepts natural operands.  A frame lemma transfers a continuation through an explicit operand-stack replacement, avoiding repetition of generated local updates.  Initial elaboration exposed an unsimplified divide-by-zero branch and an underdetermined frame projection.  Supplying the established nonzero fact to the instruction simplifier and applying the frame lemma resolved those failures.  Restricted simplification keeps local-list observations in the form used by the invariant.
+
+The entry-frame lemmas prove both checked output-size multiplications, capacity rounding, and the returned packed-buffer pointer and byte length.  They reuse the existing checked-multiplication and capacity rules and check in 4.2 seconds.  The allocator has a definitionally checked match with the generated instructions.  Its composition with the input-preservation and construction-loop theorems is next.
+
+### Complete generated linear-row entry
+
+[The linear-row entry theorem](proofs/talos/lean/Project/Gpt2LinearRows/Spec.lean) now proves termination and exact packed output from the generated function.  It covers both free-block reuse and bump allocation, preserves both input tensors, and proves that the remaining free list stays valid.  Its hypotheses describe tensor extents, machine-sized dimensions, memory capacity, and separation from free regions.  It accepts arbitrary FP32 input and weight words.  The body composition checks in 2.7 seconds and the public theorem in 2.2 seconds, with standard axioms.
+
+The proof combines the existing allocator, memory-preservation, and construction rules without changing model or compiler code.  The final postcondition initially encountered inconsistent simplification of natural-number injection inside a nested conjunction.  Constructing the conjunction before simplifying its surrounding return statement resolved the elaboration failure.  Full-module call transfer, the remaining kernels, and complete inference composition remain open.
+
+The `gpt2_linear_rows` source-driven artifact gate regenerated the model and passed its public theorem.  The registry now has 68 cases and 67 completed specifications.  Documentation checks pass for 144 maintained Markdown files.  The separate exact-byte package remains deferred.
+
+### Internal kernels in the cached-inference artifact
+
+The complete `cachedStep` module is now registered and regenerated as `gpt2_cached_step`.  The registration remains incomplete.  Inspection of its emitted instructions confirms that internal byte-array arguments include ownership handles omitted by exported standalone entries.  Internal constructors return an owner, pointer, and length.  Function-index renaming alone therefore cannot transfer the standalone exported-entry proofs.
+
+[The internal row-mean proof](proofs/talos/lean/Project/Gpt2CachedStep/RowMean.lean) and [inverse-standard-deviation proof](proofs/talos/lean/Project/Gpt2CachedStep/RowInvStd.lean) check directly against functions 18 and 19 of this full artifact, with arbitrary ownership arguments.  They reuse the source recurrences, arithmetic correspondences, indexed reader, and range-loop rule.  Their instruction and entry proofs account for the additional parameter.  They check in 3.6 and 2.9 seconds with standard axioms.  The internal matrix projection is next.
+
+The shared function-region transport rule now covers binary32 arithmetic, reinterpretation, and 32-bit memory loads and stores.  Its first no-tail-call check exhausted 200,000 heartbeats.  Separating arithmetic cases did not eliminate that failure.  Restricting the atomic simplifier to the no-tail-call predicate removed the excessive simplification.  The rule still requires checked function-body correspondence, matching parameter and return layouts, and equal memory declarations.
+
+The [internal linear-row theorem](proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Spec.lean) now checks function 21 of the complete artifact.  It accepts both ownership arguments and proves the three-word return, exact packed output, input preservation, and remaining free-list validity.  Its body and entry checks take 2.7 and 2.3 seconds with standard axioms.  The source decomposition, tensor-index lemmas, arithmetic, allocator, memory-framing, and loop rules are shared with the exported-entry proof.  Concrete instruction/frame proofs remain specific to each calling interface.
+
+The narrowed no-tail-call simplifier also checks after removing the temporary per-operation helper lemmas.  Its module takes 3.1 seconds, and function-region execution transport takes 0.6 seconds.  The registry now contains 69 generated cases and 67 completed specifications.  The complete cached-inference theorem remains open.  The next composition is normalization, including temporary packed-buffer ownership and release.
+
+### Packed-buffer release and live headers
+
+The shared raw-buffer release theorem now specifies the complete resulting store.  The original theorem remains available as a weaker specialization.  [Packed release](proofs/talos/lean/Project/ProofKit/PackedRelease.lean) reuses the established release-store representation and its memory/free-list lemmas.  [The cached-module release theorem](proofs/talos/lean/Project/Gpt2CachedStep/Release.lean) checks the emitted runtime function at index 42 and proves that exact effect for a uniquely owned packed buffer.  Both modules check in 1.5 seconds with standard axioms.
+
+The packed-header library now records the four header words needed for release and free-list reinsertion.  Its construction theorem and region-preservation theorem check in 1.8 seconds.  An unsupported tactic suffix in the first construction proof caused a parse error and excessive simplification.  Explicit field proofs resolved both diagnostics.  The next obligation is to preserve these live headers through successive tensor allocations and output writes, then compose normalization's temporary-buffer releases.
+
+### Packed tensor ownership across kernel calls
+
+[Packed heap transitions](proofs/talos/lean/Project/ProofKit/PackedHeap.lean) reuse the heap state and protected-region relation developed for the Euler proofs.  These definitions still reside in the Euler namespace.  Packed allocation has the same global and page transitions, while its distinct header construction has a separate checked theorem.  Both allocation paths preserve protected bytes.  Writing the output preserves the heap state and all protected regions.
+
+[Packed ownership](proofs/talos/lean/Project/ProofKit/OwnedPacked.lean) combines tensor contents, allocation bounds, live headers, and separation from free blocks.  The lemmas establish ownership after construction and preserve it through another allocation, disjoint writes, and release of a separate buffer.  The release rule consumes that ownership and proves exact execution and free-list reinsertion.  The two shared modules check in 1.4 seconds each with standard axioms.
+
+The [internal linear-row theorem with ownership](proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Heap.lean) now returns the represented Lean result, ownership of its complete allocation, the updated heap state, preservation of all protected regions, and page/capacity facts.  Its proof composes the previously checked execution theorem with the shared memory lemmas and checks in 1.2 seconds.  The complete cached-module proof import checks, including the ownership-based release theorem.  Normalization's three construction loops and their composition remain open.
+
+### Normalization temporary-buffer loops
+
+The [mean-buffer loop](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/MeansLoop.lean) proves exact construction of all row means.  It composes the internal row-mean theorem with the packed-generation rule and preserves the input through disjoint writes.  The source decomposition checks in 1.0 second, and the loop checks in 1.8 seconds.
+
+Inspection of function 20 shows that the compiler inlines the variance fold into the inverse-buffer generator.  The emitted loop does not call function 19.  [The inlined step](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/VarianceStep.lean) therefore checks that instruction sequence directly, reusing the variance-prefix recurrence, packed reads, and arithmetic correspondences.  It checks in 4.6 seconds.  [The inverse-buffer loop](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/InversesLoop.lean) composes the step, division, epsilon addition, square root, and reciprocal.  It checks in 1.9 seconds.  All axiom reports contain only the standard axioms.
+
+The source equality needed explicit reduction of local bindings before function extensionality.  A broad frame simplification changed optional local reads into indexed reads and prevented hypothesis matching.  Restricted list-update simplification resolved that failure.  The mean-loop composition also required a larger reduction-depth limit for the full generated instruction term.  The final normalization loop and allocation/release composition remain open.
+
+[The final normalization word proof](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputWord.lean) composes five packed reads, checked parameter indexing, and the exact subtraction, multiplication, and addition sequence.  It checks in 5.2 seconds.  [The output-loop proof](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputLoop.lean) constructs the complete Lean `layerNorm` result and checks in 1.4 seconds.  Both use standard axioms.  All three construction loops now have checked proofs.  Their allocation and release composition remains open.
+
+The existing allocator rule describes its six working locals as scalar words.  Composing a second allocation after a tensor loop therefore needs preservation of those local types.  [Scalar-frame lemmas](proofs/talos/lean/Project/ProofKit/I64Frame.lean) extract the allocator's working region from an arbitrary scalar frame.  [The allocator frame rule](proofs/talos/lean/Project/ProofKit/PackedAllocationFrame.lean) applies the established execution theorem to that frame and preserves the remaining locals.  These modules check in 1.9 and 1.6 seconds.  The three normalization loop invariants now preserve scalar local types, and the complete cached-module import checks.  Conditional simplification needed a discharge depth of 64 to follow the nested local updates.  The execution proofs retain the default heartbeat limit.
+
+[The mean-buffer constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Means.lean) now composes checked byte sizing, capacity rounding, both allocation paths, the mean loop, and its returned local bindings.  It proves exact source bytes, ownership, the updated heap, and preservation of protected regions.  The constructor checks in 2.6 seconds with standard axioms.  The shared packed-output record collects these established postconditions for successive constructors.  The shared size-prefix proof checks in 2.0 seconds.  Initial composition left a definitional equality between the two existing allocator-root names and concrete local-index inequalities.  Explicit definitional reduction and restricted arithmetic simplification resolved them.  The inverse and final-output constructors and cleanup remain open.
+
+[The inverse-buffer constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Inverses.lean) composes allocation, the inlined variance calculation, packed output construction, and returned bindings.  It preserves the input and means through allocation and writes, and returns exact inverse-standard-deviation bytes with heap ownership.  The proof checks in 2.8 seconds with standard axioms.  Simplification of the preserved mean bindings required converting their optional reads to the same indexed form as the generated frame.  The final-output constructor and cleanup remain open.
+
+[The final-output constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Output.lean) now proves allocation and exact construction of the Lean normalization result, preserving weights, input, means, and inverses.  It checks in 3.3 seconds with standard axioms.  The two checked size multiplications needed restricted natural-to-UInt64 rewriting and an explicit element-count bound to avoid exposing nested modular products.  Their proof checks in 2.7 seconds.  All three constructors are complete.  The next step composes them with temporary-buffer release.
+
+[Normalization cleanup](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Cleanup.lean) now proves both guarded releases, free-list reinsertion, preservation of the output allocation, and the three-word return.  It checks in 1.5 seconds.  The reusable [guarded packed release rule](proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) checks in 1.4 seconds for arbitrary local indices and a checked release-function definition.  Packed ownership now supplies payload protection, separation from a subsequent allocation, and distinct-root lemmas.  All checks use standard axioms.  The guarded-release proof required expanding local-read hypotheses to match the instruction tactic and restoring the empty operand stack after the conditional block.
+
+### Complete cached-module normalization
+
+[The normalization body](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Body.lean) composes the three constructors and cleanup without further instruction-level reasoning.  It carries the updated heap, ownership, protected-region preservation, and memory-cap facts through every stage.  It checks in 1.4 seconds.  [The public theorem](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Spec.lean) proves termination and exact source output from function 20 of the complete cached-inference artifact and checks in 1.2 seconds.  Both use standard axioms.  The theorem accepts variable row counts and arbitrary FP32 words, with represented input extents, protected regions, and conditional capacity assumptions for all three allocations.
+
+The full cached-module proof import and all 144 maintained documentation checks pass.  Attention, activation, block composition, and complete inference remain open.  The cached-inference registry entry remains incomplete, and exact-byte packaging remains deferred.
+
+### Cached attention lookup and scores
+
+[The cached key/value theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedKv.lean) proves function 22 selects the Lean-specified word from either an earlier cache position or the current QKV tensor, preserving the complete store.  It checks in 3.2 seconds.  [The cached-score theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedScore/Spec.lean) composes that lookup with the query read, the ordered 64-element FP32 dot product, and final scaling.  Its step and entry check in 4.6 and 1.5 seconds with standard axioms.  The proofs reuse packed reads, checked index arithmetic, and the range-loop rule.  The lookup guards required normalizing natural-number injections in their hypotheses before instruction simplification.  The complete cached-module import passes with both additions.
+
+### Attention comparison, polynomial, and row sum
+
+[The comparison theorem](proofs/talos/lean/Project/Gpt2CachedStep/FiniteLt.lean) proves function 24 implements the source bit-pattern comparison for arbitrary UInt32 inputs.  It checks in 7.3 seconds.  [The polynomial theorem](proofs/talos/lean/Project/Gpt2CachedStep/ExpPolynomial.lean) proves function 26 follows the source's eighteen FP32 Horner stages and checks in 2.4 seconds.  Both preserve the complete store.  These are exact source-agreement statements.
+
+[The row-sum theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedRowSum/Spec.lean) proves function 28 computes the ordered source fold for every represented nonempty row, preserving the store.  Its step and entry check in 3.1 and 1.7 seconds.  All three public theorems use standard axioms.  The comparison's first proof exhausted the default heartbeat limit by splitting conditionals throughout the execution goal.  Splitting only the current guard and reducing constant conditions resolved that failure.  The row fold reused the existing range and packed-read rules.  Its variable stride divisor required supplying the established nonzero fact to the instruction simplifier.  The maximum, range-reduced exponential, attention construction, and complete inference remain open.
+
+[The row-maximum theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean) now proves function 25 against the source fold for arbitrary FP32 words in a represented nonempty row.  It preserves the complete store.  The generated loop repeats its packed read and comparison while constructing the loop-control result.  The step proof checks both emitted occurrences through the same reader and comparison theorems.  It takes 9.4 seconds, and the entry takes 2.1 seconds, with standard axioms.  The source proof factors its conditional yield before applying the shared fold correspondence.  Final frame simplification needed to retain the source word expression until the comparison hypothesis rewrote it.  The range-reduced exponential is next.
+
+### Exact exponential and scalar activation
+
+[The exponential theorem](proofs/talos/lean/Project/Gpt2CachedStep/ExpNeg/Spec.lean) proves function 27 implements `expNeg` for arbitrary UInt32 inputs, with termination and complete store preservation.  The source decomposition gives separate folds for conditional halving and repeated squaring, and proves that the squaring count is at most six.  The emitted halving step checks in 4.5 seconds, the squaring step in 2.3 seconds, and the complete entry in 2.2 seconds.  Both loops use the shared range rule and compose with the checked polynomial call.
+
+The initial source proof exhausted the default heartbeat limit while reducing the unfactored six-iteration loop.  Factoring the conditional yield before applying the fold theorem removed that reduction.  Entry composition also required restoring the named instruction suffix after setup simplification expanded it.  These changes affect the proofs only.
+
+[The scalar GELU theorem](proofs/talos/lean/Project/Gpt2CachedStep/Gelu.lean) composes the exponential theorem, bit operations, and the existing FP32 arithmetic correspondences.  It covers both tail branches and both signs, accepts arbitrary UInt32 inputs, and preserves the complete store.  It checks in 2.6 seconds.  All new public theorems use standard axioms.  Tensor activation, residual addition, attention construction, block composition, and complete inference remain open.
+
+### Complete tensor activation
+
+[The activation theorem](proofs/talos/lean/Project/Gpt2CachedStep/Activate/Spec.lean) proves function 32 terminates and returns the exact packed result of the Lean `activate` function.  It covers checked byte sizing, capacity rounding, free-block reuse or bump allocation, every packed read and GELU call, and the three-word internal return.  Its postcondition supplies output ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  Input lengths need not be multiples of four: the result contains the source-specified number of complete words.
+
+The construction loop checks in 3.6 seconds, the allocation/body composition in 3.7 seconds, and the public entry in 3.3 seconds, with standard axioms.  The proof reuses packed generation, frame typing, capacity, allocation, and ownership lemmas from normalization.  The size proof needed an explicit natural-number multiplication order before rewriting its UInt64 representation.  The public return required the definitional equality between the allocator-root and allocated-node projections.  Residual addition, attention construction, block composition, and complete inference remain open.
+
+[The residual-addition theorem](proofs/talos/lean/Project/Gpt2CachedStep/AddRows/Spec.lean) proves function 30 computes the Lean `addRows` output, with termination, allocation, ownership, and preservation of both protected inputs.  The right input must supply every complete word of the left input.  The construction loop composes two packed reads and exact FP32 addition.  It checks in 3.5 seconds, sizing in 1.8 seconds, the body in 2.0 seconds, and the public entry in 1.5 seconds.  These proofs reuse the same shared construction and heap rules as activation and pass with standard axioms.  Attention's six tensor constructors and temporary-buffer cleanup are next.
+
+### Cached attention tensor construction
+
+[The attention source decomposition](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Source.lean) names scores, maxima, exponentials, sums, probabilities, and the final weighted-value fold, and proves their composition equals `cachedAttention`.  It checks in 1.0 second.  [The score constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Scores.lean) proves the first emitted tensor allocation and construction, including exact bytes, output ownership, and preservation of cache and QKV inputs.  It accepts all twelve layers and positions below 128.  Its construction loop checks in 3.7 seconds, checked sizing in 3.2 seconds, and allocation composition in 3.8 seconds, with standard axioms.
+
+The flattened score index uses natural quotient and remainder bounds before conversion to UInt64.  Automatic linear arithmetic treated the variable-divisor expressions as independent terms.  Applying the natural division and remainder lemmas resolved those obligations.  Size-guard simplification required expressing the established increment bound after the increment rewrite.  The remaining five constructors and cleanup remain open.
+
+[The maxima constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Maxima.lean) proves allocation and construction of all twelve row maxima, with exact bytes, output ownership, and preservation of the score tensor.  The loop checks in 2.8 seconds, the fixed-size prefix in 2.1 seconds, and the constructor in 3.1 seconds with standard axioms.  The fixed-size proof also matches the later sum and weighted-output prefixes.  The first constructor check reported two redundant closing tactics.  Removing them resolved both diagnostics.
+
+Inspection of the complete attention function identified a frame-size error in the early proof assumptions: its declaration has 114 locals, while the score proofs assumed 109.  Those theorems checked for the shorter frame but could not instantiate the complete entry.  The score and maxima proofs now use the declared 114-local frame, and a checked signature equality records that count.  The score constructor checks again in 3.6 seconds.  Exponentials, sums, probabilities, weighted values, and cleanup remain open.
+
+[The exponential constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Exponentials.lean) now proves exact packed output, allocation, ownership, and preservation of both score and maximum tensors.  Its loop composes the two packed reads, source-index division, FP32 subtraction, and checked exponential call, and checks in 5.0 seconds.  The shared matrix-size prefix checks in 4.2 seconds and also matches probability construction.  Allocation composition checks in 5.0 seconds with standard axioms.  Initial loop composition required the explicit emitted division guard before the second call.  The final local-state proof needed explicit normalization of the constant UInt64 byte count.  Sums, probabilities, weighted values, and cleanup remain open.
+
+[Row-sum construction](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Sums.lean) and [probability construction](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Probabilities.lean) now have complete allocation and exact-output proofs.  The sum loop and constructor check in 3.4 and 3.2 seconds.  The probability loop and constructor check in 4.0 and 3.4 seconds.  Both preserve ownership bindings for earlier tensors through a single local-prefix equality.  A shared prefix-read lemma transfers those bindings back to the constructor postcondition, avoiding a growing list of unused tensor bindings in each loop invariant.
+
+The prefix proof initially used a reserved identifier and then an incorrect simplifier name.  The corrected proof uses the library's list-prefix preservation theorem and natural-order simplifier.  Probability composition needed an explicit import for the packed instruction tactic after removing the exponential dependency.  All accepted proofs use standard axioms and retain the default heartbeat limit.  The weighted-value constructor and cleanup remain open.
+
+[The weighted-value constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Mixed.lean) proves the final 768-word attention tensor.  Its inner fold checks the probability index, cached value selection, and ordered FP32 multiplication and addition.  The outer loop applies that fold to every output coordinate.  The inner step checks in 8.6 seconds, the loop composition in 2.6 seconds, and the complete constructor in 4.3 seconds with standard axioms.  The proof preserves the cache, QKV tensor, probabilities, and earlier ownership bindings.
+
+The variable-divisor guard needed its nonzero hypothesis in the instruction simplifier before multiplication-overflow branch composition.  Guard hypotheses also needed the same natural-to-UInt64 normalization as the emitted arithmetic.  A temporary state trace identified that boundary and was removed after the proof passed.  All six attention constructors are complete.  Temporary-buffer release and their final composition remain open.
+
+### Complete cached attention
+
+[Attention cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Cleanup.lean) proves all five guarded temporary-buffer releases, the resulting free list, output ownership, and the three-word return.  It checks in 3.2 seconds.  [The body composition](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Body.lean) carries allocation resources, ownership, region separation, and input preservation through the six constructors and cleanup, and checks in 4.6 seconds.  Its source transfer needed explicit expansion of the named intermediate byte arrays.  The first composition also exposed a tactic subgoal-order mismatch, resolved with explicit proof holes.
+
+[The public cached-attention theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Spec.lean) checks function 29 of the complete artifact against `cachedAttention` for all twelve layers and positions below 128.  It proves termination, the exact 768-word packed output, ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  It assumes represented cache and QKV extents and sufficient capacity for each allocation when reuse fails.  The theorem checks in 1.3 seconds with standard axioms.  Transformer-block composition, cache assembly, hidden traversal, vocabulary projection, and the complete exported entry remain open.
+
+### Transformer-block cache update
+
+[The block cache constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cache.lean) proves exact construction of the 1,536 key/value words copied from QKV, including checked sizing, both allocation paths, ownership, and preservation of protected tensors.  The loop preserves earlier temporary-owner bindings and the hidden-output bindings needed by cleanup.  Its complete allocation proof checks in 5.0 seconds with standard axioms.  [The shared guarded-release rule](proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) now covers two retained outputs and checks in 2.0 seconds.
+
+The first loop check exposed an incorrect import name.  The next exceeded reduction depth while expanding the full block instruction list.  Naming the short emitted word body and proving its equality to the generated loop resolved that boundary without increasing limits.  Constructor composition then reported a redundant closing tactic, which was removed.  The complete block still needs kernel-call composition and nine temporary releases before its six-word return.
+
+[The block cleanup proof](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cleanup.lean) now checks all nine temporary releases and the six-word return, preserving both output buffers and every original protected region.  It applies a shared [list-based release theorem](proofs/talos/lean/Project/ProofKit/PackedReleaseMany.lean), which proves ownership and frame preservation by induction over separated temporary allocations.  This replaces repeated pairwise ownership transport with one reusable argument.  The block theorem checks in 2.6 seconds with standard axioms.  The initial generic check needed explicit reduction of its empty store fold.  The instruction-list equality then needed the library's map/flat-map theorem.  Kernel-call composition remains open.
+
+[The layout theorems](proofs/talos/lean/Project/Gpt2CachedStep/Layout.lean) prove all seventeen emitted constant functions return their Lean source values and preserve the store.  This covers vocabulary size, every tensor offset, block stride, total parameter count, and cache-position stride.  They check together in 5.6 seconds.  [The block-base prefix](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Base.lean) composes two layout calls with checked multiplication and addition for all twelve layers, and checks in 3.1 seconds.  All proofs use standard axioms.
+
+Broad final simplification in the first layout proofs exceeded reduction depth.  A temporary trace located the failure after instruction execution, at a return equality that holds by definitional reduction.  Replacing that simplification with reflexivity resolved the failure.  The traces and temporary depth increases were removed.  All seventeen layout proofs pass with default limits.
+
+### Transformer-block kernel calls
+
+[The first normalization call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized.lean), [QKV projection call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Qkv.lean), and [attention call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Attention.lean) now have checked proofs within function 33.  Each theorem verifies the emitted argument preparation and returned local bindings, reuses the existing kernel theorem, and carries output ownership, the resulting heap, protected-region preservation, page limits, and unchanged memory capacity.  They check in 6.1, 3.9, and 4.1 seconds with standard axioms.
+
+Arithmetic automation exceeded reduction depth on normalization's adjacent scale/bias extents and QKV's matrix/bias boundary.  Direct addition-associativity and multiplication-monotonicity lemmas resolved those obligations.  Return-state simplification needed explicit byte-count equalities and the named QKV allocation capacity.  The remaining seven calls, complete block composition, and outer inference traversal remain open.
+
+The remaining seven block calls now have checked proofs: [attention projection](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projection.lean), [first residual addition](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Residual.lean), [second normalization](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized2.lean), [feed-forward expansion](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Expanded.lean), [activation](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Activated.lean), [feed-forward projection](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projected2.lean), and [final residual addition](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Hidden.lean).  Checks took 3.1, 3.6, 3.7, 3.0, 2.7, 2.8, and 2.9 seconds respectively, with standard axioms.  Every call proves its emitted argument preparation, exact source result, returned bindings, ownership, and memory postconditions.
+
+The shared block state records the unchanged prefix of locals, avoiding repeated lists of all earlier owner bindings.  Source review caught stale tensor names and an incorrect expansion width before their checks.  The first residual check required the known input size when reconstructing the unchanged parameter list.  A redundant simplifier argument was removed from the projection proof.  All ten calls, base calculation, cache construction, and cleanup are checked individually.  Their complete block composition remains open.
+
+### Transformer-block composition
+
+[The first block section](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Front.lean) now composes base calculation, normalization, QKV projection, and cached attention.  It checks in 3.2 seconds and returns ownership, separation, and local bindings for all three temporary buffers, with protected-input preservation.  [Shared ownership-list lemmas](proofs/talos/lean/Project/ProofKit/PackedOwners.lean) carry these facts across subsequent calls and establish separation from each new allocation.  Separate checked freshness lemmas cover the internal allocations of normalization and attention.  Tensor-size and complete-block weight-extent lemmas also pass.
+
+The first separation proof required the allocated node's header bound to convert between region length and end-address representations.  Supplying the established ownership bound resolved it.  The first composition check needed deeper simplifier discharge for six typed local updates and explicit elimination of empty-list membership.  All accepted proofs use standard axioms.  The remaining seven calls and final cache/cleanup composition remain open.
+
+[The complete block body](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Body.lean) composes all ten kernel calls, cache construction, and nine temporary releases.  It checks in 2.4 seconds.  [The function-entry theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Spec.lean) proves function 33 computes both fields of the Lean `cachedBlock` result, with termination, exact bytes, ownership, output separation, and preservation of protected input memory.  It covers all twelve layers and positions below 128, assumes represented tensor extents and sufficient allocation capacity, and checks in 2.1 seconds with standard axioms.
+
+The composition uses the shared ownership list for pairwise separation and release obligations.  Each kernel's preserved local prefix carries earlier owner bindings.  Initial checks found local aliases that the restricted simplifier did not unfold and a natural-number injection in a cached byte count.  Explicit equalities resolved those diagnostics.  The entry proof's broad simplification of the initialized local count exceeded reduction depth.  Applying the list-length theorem directly resolved it.  No instruction-level proof had to be repeated.  Cache assembly, hidden traversal, vocabulary projection, and exported inference remain open.
+
+### Hidden traversal and byte copying
+
+[The hidden-state source decomposition](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Source.lean) expresses embedding construction and the twelve-layer loop as a prefix fold and proves that fold equals `cachedHidden`.  It proves each prefix retains a 3,072-byte hidden vector and adds 6,144 cache bytes per layer.  The source proof checks in 2.6 seconds.  Inspection of the generated function identified byte-wise copying in both per-layer update concatenation and final cache extension.  Functions 34 and 35 are unused record-field projections.
+
+[The shared packed-byte copy theorem](proofs/talos/lean/Project/ProofKit/PackedCopy.lean) proves termination, exact copied bytes, and the written memory range, with arbitrary local indices and an optional destination offset.  It checks in 2.5 seconds.  [The concatenation theorem](proofs/talos/lean/Project/ProofKit/PackedAppendCopy.lean) composes two copies and proves their output represents the Lean byte-array append, checking in 2.2 seconds.  Both emitted copy regions match these programs through checked instruction equalities.  Allocation and traversal composition remain open.
+
+The first copy check exposed an unavailable conversion lemma in the selected imports and the projected frame at the loop's termination measure.  Using the existing memory conversion lemma and restoring the named counter frame resolved both.  Concatenation's indexed-byte rewrite required explicit container arguments.  All accepted proofs use standard axioms and retain default heartbeat limits.
+
+[The packed append theorem](proofs/talos/lean/Project/ProofKit/PackedAppend.lean) composes checked capacity calculation, free-list reuse or heap growth, and both byte copies.  It proves exact concatenation, output ownership, preservation of protected memory and earlier locals, and termination under the allocation-capacity hypotheses.  The theorem accepts arbitrary modules and scratch-local indices, and checks in 3.4 seconds.  Both complete append regions in function 36 match its instruction program through checked equalities.  The complete GPT-2 proof import passes with 3,642 jobs.
+
+[Allocator frame lemmas](proofs/talos/lean/Project/ProofKit/PackedAllocationState.lean) expose preserved prefixes, returned fields, local lengths, and types for this composition.  Initial checks required explicit frame arguments and allocation-root aliases before arithmetic reasoning.  All accepted proofs use standard axioms.  Embedding construction and the layer traversal remain open.
+
+### Token and position embedding
+
+[The embedding constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Embedding.lean) proves the first 49 instructions of function 36 produce the Lean token-plus-position embedding.  It covers all vocabulary tokens and positions below 128, exact FP32 addition for all 768 words, checked index arithmetic, both allocation paths, ownership, and protected-memory preservation.  The word proof checks in 13 seconds, its loop in 1.5 seconds, sizing in 3.4 seconds, and complete allocation composition in 3.0 seconds.  All use standard axioms and default heartbeat limits.
+
+The instruction simplifier converted the token's natural-number injection to `UInt32.toUInt64` and retained literal multipliers.  Explicit index equalities connected these expressions to the packed-reader theorem.  The same conversion lemma closed the final parameter-preservation obligation.  The constructor's first check also required an explicit proof of the allocator's scratch-local bound.  The twelve-layer execution loop, vocabulary projection, and exported entry remain open.
+
+### Hidden-loop body
+
+[The layer-call theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCall.lean) verifies argument preparation, the complete transformer-block call, and both returned tensors inside function 36.  It checks in 14 seconds.  [The layer append theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerAppend.lean) extends the accumulated cache updates and prepares the next iteration's result buffers, checking in 5.9 seconds.  Both preserve the current loop state and use standard axioms.
+
+The loop's cleanup flag occupies a local after the append allocator's scratch region.  The shared allocator and append theorems now preserve locals on both sides of that region.  Their checks took 2.6 and 3.5 seconds.  This supplies the flag needed by the pending release and iteration proofs without repeating allocation reasoning.
+
+[Cache cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCacheRelease.lean) checks the three release guards after concatenation.  The guards retain the new hidden and update buffers and release the copied block-cache buffer.  [Previous-iteration cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerOldRelease.lean) proves the first iteration retains its input and later iterations release both previous buffers.  The proofs check in 1.9 and 1.8 seconds.  [Loop-control proofs](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerControl.lean) cover initialization, result transfer, and checked counter advancement, and check together in 3.7 seconds.
+
+The shared [retained-buffer filter](proofs/talos/lean/Project/ProofKit/PackedReleaseFilter.lean) supports arbitrary lists of retained owners and both outcomes of the emitted guard.  Its first action specification omitted the enclosing conditional's stack and branch behavior.  The corrected specification passes the conditional's continuation to the action proof.  Continuation case analysis connects the two match expressions.  Other diagnostics required Boolean-expression association, explicit branch selection, empty-list membership simplification, and the release theorem's import.  All accepted proofs use standard axioms.  Complete iteration composition, final cache extension, vocabulary projection, and the exported inference theorem remain open.
+
+[The complete layer step](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerStep.lean) composes the block call, cache append, temporary releases, previous-iteration releases, and counter advance.  It proves the new hidden vector and accumulated cache updates agree exactly with the Lean algorithm, preserving their ownership, separation, protected memory, and memory capacity.  It checks in 3.1 seconds with standard axioms.  Its resource assumptions describe each allocation along the checked heap sequence.
+
+The composition needed explicit names for the final store and heap aliases, and an explicit split between the first iteration and later iterations for release-store preservation.  The next proof uses the heap after embedding construction as its preserved baseline.  This keeps the embedding available through all twelve iterations while allowing each later iteration to release its predecessor's buffers.  Loop induction, final cache extension, vocabulary projection, and exported inference remain open.
+
+[The twelve-layer loop](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerLoop.lean) now proves termination and exact agreement with the source prefix fold after all twelve transformer blocks.  Its [invariant](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/TraversalState.lean) preserves the embedding baseline and represented inputs while tracking output ownership, separation, allocation resources, and memory capacity.  The invariant and loop check in 1.5 and 1.9 seconds with standard axioms.  Initial checks needed constant addition in the local-read simplifier and reduction of the taken branch's encoded Boolean.  The loop composes the checked step without repeating its memory proof.  Final cache extension, hidden-function entry composition, vocabulary projection, and exported inference remain open.
+
+### Complete hidden-state function
+
+[Final cache preparation](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CachePrepare.lean) and [concatenation](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CacheAppend.lean) check in 5.9 and 3.4 seconds.  [Cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Cleanup.lean) reuses the list-based release theorem to free the accumulated updates and initial embedding while retaining both returned buffers.  The [body composition](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Body.lean) checks in 2.9 seconds.  The [public theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Spec.lean) checks in 2.2 seconds and proves function 36 computes the Lean `cachedHidden` result for every vocabulary token and position below 128, under its represented-input and allocation-capacity assumptions.  It includes termination, exact hidden and cache bytes, ownership, separation, and preservation of protected input memory.
+
+Composition diagnostics required the explicit parameter list, unfolding the allocated-node root, reducing the empty continuation, and expanding freshness in the release-list premise.  Entry composition needed the same UInt64 injection as the parameter definition and explicit source-prefix sizes after source decomposition.  All accepted proofs use standard axioms and default heartbeat limits.  Vocabulary projection and the exported cached-step composition remain open.
+
+### Vocabulary projection
+
+[The vocabulary theorem](proofs/talos/lean/Project/Gpt2CachedStep/Vocabulary/Spec.lean) proves function 37 computes the Lean `vocabularyHead` result for represented runtime weights and inputs with sufficient extents.  Each of the 50,257 scores uses the source's ordered 768-term FP32 sum.  The theorem includes termination, both allocation paths, exact output bytes, ownership, and preservation of protected inputs.  The arithmetic step checks in 6.4 seconds, the inner loop in 3.3 seconds, the outer loop in 1.4 seconds, allocation composition in 4.5 seconds, and the public entry in 2.9 seconds.  The main proof import passes with 3,670 jobs.
+
+The proof reuses the range-fold and packed-generation rules.  The first checks needed the typed-local import, an explicit numeral injection, and restricted local-state simplification with enough discharge depth for the nested updates.  A misplaced record-field indentation was corrected in the sizing helper.  All accepted proofs use standard axioms.  The exported cached step's validation, three calls, final releases, and return remain open.
+
+### Exported accepted-input branch
+
+[The accepted-input body](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Body.lean) composes hidden-state execution, final normalization, vocabulary projection, and release of the hidden and normalized temporary buffers.  It proves both owned outputs equal the fields of the Lean `cachedStep` result and preserves protected inputs and memory capacity.  The normalization call checks in 2.0 seconds, the vocabulary call in 3.3 seconds, cleanup in 1.7 seconds, and complete branch composition in 1.6 seconds.  The main proof import passes with 3,677 jobs.
+
+The hidden-call check initially left parameter-list reads unreduced before the token mask.  A state trace identified those reads.  Explicit list-read simplification followed by the existing mask lemma resolved the call, and the trace was removed.  Cache sizing needed multiplication association, and final ownership transfer needed the named final heap unfolded.  All accepted proofs use standard axioms.  Input validation, rejected-input branches, and the public function-return theorem remain open.
+
+[Accepted-input validation](proofs/talos/lean/Project/Gpt2CachedStep/Entry/GuardValid.lean) checks the weight length, masked token, position limit, and cache length before the inference branch.  The [accepted public entry](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Accepted.lean) then proves termination and exact source cache and logits, including returned pointers and lengths, ownership, output separation, protected-memory preservation, and temporary cleanup.  The proofs check in 3.5 and 2.1 seconds with standard axioms.  The cache-size multiplication uses the shared checked-natural multiplication lemma after direct modular arithmetic automation failed.  Invalid inputs and the combined public theorem remain open.
+
+### Complete cached inference
+
+[Rejected-input execution](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Rejected.lean) covers invalid weight length, token, position, and cache length.  Every case returns zero pointers and lengths and preserves the entire store.  The proof relates represented natural sizes to their UInt64 encodings and checks the cache-length multiplication guards.  It checks in 5.1 seconds.  Initial diagnostics exposed a nonexistent namespaced injection lemma, a closed multiplication that needed explicit reduction, and completed branch goals that still required conjunction introduction.  A temporary goal trace located the last issue and was removed.  The source-rejection lemma required reassociation of the four guard conditions.
+
+The [combined public theorem](proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean) checks in 1.4 seconds, and the complete proof import passes with 3,682 jobs.  It proves termination, exact source cache and logit bytes, represented output buffers, final heap validity, protected-region preservation, and unchanged memory capacity.  Its memory premises require represented protected inputs, a valid heap, a UInt64-representable position, at most 65,536 initial pages, and sufficient capacity for accepted-input allocations.  The theorem accepts arbitrary runtime weight words.  Both public execution theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  Cached/full-prefix source equivalence, numerical error bounds, and exact-byte packaging remain separate tasks.
+
+`tools/talos-proof.js check gpt2_cached_step` passed after regenerating the artifact from the current source and compiler, comparing the decoded model with the tracked cache, and checking the full proof import.  The registry now marks the cached entry complete and includes it in the aggregate import: sixty-eight of sixty-nine source-driven cases are complete.  The runtime implementation did not change during this proof work.  The recorded 128-context PyTorch comparisons remain its execution evidence.
+
+The final registry/import check found that five GPT-2 registrations lacked entries in the shared runtime comparison module.  Their allocator, reset, retain, and release equalities are now included and check by reflexivity.  `Project.Runtime.Checks` passes with 3,411 jobs, with its changed module checking in 2.6 seconds.  Registry/import consistency, the 144-file documentation check, and whitespace checks pass.  This focused result does not replace the separately pending repository-wide regeneration gate.
+
+### GPT-2 invocation proof obligations
+
+The user requires complete emitted-WASM agreement with its corresponding Lean source, with tokenization in and out assumed and exact-byte packaging deferred.  My completion claim at the conditional cached-step milestone exceeded the evidence.  The theorem still assumes input representation, initial heap validity, and capacity at every allocation.  The remaining work derives those conditions from the supported input encoding and a concrete memory bound, then composes calls and releases through 128 positions.  I also added cached/full-prefix source equivalence to the requested scope.  That comparison concerns two Lean algorithms and is outside the requested compilation proof.
+
+The memory proof will first bound heap growth by the sum of requested allocations, without credit for free-block reuse.  Released blocks preserve the heap top, and reuse also preserves it.  This permits a uniform bound over the existing allocator and arbitrary runtime weight values.  The exact bound and its sufficiency remain to be proved.
+
+[The shared heap-growth lemma](proofs/talos/lean/Project/ProofKit/HeapGrowth.lean) and [cached-step budget](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean) now check.  For a valid position and cache size, a heap top with 16 MiB of room below the 32-bit address limit supplies every allocation premise when memory capacity is 65,536 pages.  The resulting heap top grows by at most 16 MiB.  The proof composes normalization, attention, transformer-block, twelve-layer traversal, cache append, and vocabulary allocation bounds.  It gives no credit for reuse.  The hidden-state and entry budget modules check in 1.5 and 1.4 seconds, with `propext` and `Quot.sound` as their only axioms.
+
+Initial checks required explicit refolding of heap definitions, correct branch order for allocator reuse, and case analysis of the previous-layer release flag.  Arithmetic sufficiency then used the named intermediate heap bounds.  Initial input encoding and composition of calls with host-requested releases remain open.  The 16 MiB theorem alone does not discharge those obligations.
+
+### GPT-2 initialization and 128-position invocation
+
+[Packed input encoding](proofs/talos/lean/Project/ProofKit/PackedInput.lean) proves that copying an arbitrary byte array into its allocated payload establishes ownership and preserves the heap.  [The exported allocator theorem](proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean) reuses the checked capacity, free-list search, allocation, and counter rules.  [GPT-2 initialization](proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean) applies it to the 497,759,232-byte weight allocation and proves that the host's initial reset preserves the module's initial store.  The input theorem derives heap validity, ownership, memory capacity, and a heap top below 512 MiB.
+
+The accepted entry now exposes both output buffers' freshness relative to the initial heap.  [Session composition](proofs/talos/lean/Project/Gpt2CachedStep/Session/Step.lean) uses that result to release the old cache, retain weights and new outputs, read all logits, and release the logits.  [The public invocation theorem](proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean), `Project.Gpt2CachedStep.Spec.gpt2_128_exact`, composes reset, allocation, byte input encoding, and up to 128 token calls.  Each returned cache and logit vector equals the Lean `cachedStep` recurrence.  Its input conditions specify only weight length, vocabulary token IDs, and the token-count limit.  Allocation sufficiency follows from the 16 MiB per-token budget.  The proof permits arbitrary weight words and uses only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The initialization, session state, session step, session theorem, and main proof module check in 2.7, 1.4, 1.6, 1.4, and 1.4 seconds.  Early checks found a record-field name that shadowed the weight parameter, an unresolved final-heap argument, and unreduced addition by zero.  Explicit heap arguments also avoided unfolding the entire transformer heap while checking release preservation.  No increased recursion or heartbeat limit was needed.  The public theorem is registered and imported by the source-artifact gate.  `tools/talos-proof.js check gpt2_cached_step` regenerated the compiler output, matched the tracked decoded module, and passed all 3,694 proof jobs.
+
+### Canonical NaNs in Wasmtime
+
+The boundary review found that the C host used Wasmtime's default engine configuration while Lean and Talos return canonical arithmetic NaNs.  [The WASM specification](https://www.w3.org/TR/wasm-core/) permits NaN sign and payload choices.  The user selected Wasmtime's canonical-NaN mode on 2026-09-18.  The host now selects Cranelift and enables `wasmtime_config_cranelift_nan_canonicalization_set`, as documented in the [Wasmtime C API](https://docs.wasmtime.dev/c-api/config_8h.html).  This makes canonical NaNs part of the execution target.
+
+The host builds with `-Wall -Wextra -Werror`.  `node test/f32_bits.js` passes 86 cases and an array map.  The tests require exact canonical words from Wasmtime, including signaling NaNs, negative NaNs, noncanonical payloads, invalid arithmetic, and precision conversions.  Native Lean and IR checks retain NaN-class comparison.  The 128-position GPT-2 and completion tests are running after the host change.  The formal boundary covers the WASM call sequence and byte input/output encoding.  Tokenization, token selection, the native host implementation, and Wasmtime remain outside the Lean proof.
+
+The [canonical-mode runtime tests](data/gpt2-124m/canonical-mode-test.json) passed.  `node test/packed.js --gpt2-cached --gpt2-completions` compared 6,432,896 logits across contexts one through 128 against PyTorch, with maximum absolute difference 0.0014495849609375 under the existing test tolerance.  The 128-context run took 100.2 seconds and used 1,107,361,792 bytes of WASM memory.  It left two live allocations: weights and cache.  All four rejected-input cases, cache reset, and the nine-token cached/full-prefix comparison passed.  Three completions of 64, 32, and 16 tokens passed.  The greedy 16-token completion matched PyTorch's tokens exactly.  These comparisons are execution tests.  The formal equality is between the generated module and its Lean source.
+
+The runtime module and the source-artifact gate's generated module both have SHA-256 `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.  The final interface audit adds a reflexive check that the host's export names select the four proved function indices.  The initialization module checks in 2.4 seconds, and the complete proof import passes with 3,694 jobs.  The public theorem still uses only the three standard axioms listed above.  The documentation check passes for 144 maintained files, and whitespace checks pass.
+
+### GPT-2 completion review
+
+The 2026-09-18 review traced the public invocation theorem through input encoding, the token-step proof, allocation budgets, output ownership, and releases.  Its three input conditions are the 497,759,232-byte weight length, vocabulary token IDs, and at most 128 tokens.  The induction derives the heap and capacity conditions for each call.  Talos's `TerminatesWith` requires successful execution and the stated result for every sufficiently large fuel value.  Each output in `Session.Runs` equals the corresponding result of the imported Lean `cachedStep` recurrence.
+
+The host review checked initialization, export indices, argument and result order, the weight copy, old-cache release, logit reading, and logit release against that call sequence.  Talos lists operands in stack order, which reverses the host API's parameter and result lists.  The default CLI uses the proved cached entry and enables Cranelift's canonical NaNs.  The proof's execution semantics, the generated-model translation, and the native runtime remain trust boundaries.  The agreed exact-byte deferral leaves the translation checked by regeneration and comparison.
+
+The review reran `tools/talos-proof.js check gpt2_cached_step`.  Regeneration matched the tracked model, and the 3,694-job build passed using cached proof objects.  Both public theorems report only `propext`, `Classical.choice`, and `Quot.sound`.  The regenerated and CLI modules retain the same SHA-256 recorded above.  The prior canonical-mode runtime tests supply the execution evidence.  The review found no remaining proof obligation within the requested cached-WASM-to-Lean scope and required no implementation or theorem changes.
+
+### GPT-2 commands through uv
+
+The user requested uv-runnable Python and an equivalent PyTorch generation command.  The [shared Python project](training/gpt2/pyproject.toml) preserves the approved package versions, selects Python 3.13, and uses PyTorch's explicit CPU index on Linux and Windows.  Its lockfile supplies the environment for both generation programs and the existing comparison tests.  This follows uv's [project execution](https://docs.astral.sh/uv/concepts/projects/run/) and [PyTorch index](https://docs.astral.sh/uv/guides/integration/pytorch/) documentation.  `tools/gpt2` now invokes uv, and `tools/gpt2-pytorch` invokes the reference generator through the same project.  The reference accepts `--generate`, retains `--max-new-tokens`, and defaults to 32 new tokens to match the WASM client.
+
+The initial lock and PyTorch runs encountered the sandbox's read-only uv cache.  Running those commands with the required sandbox approval resolved the cache access.  uv 0.10.2 resolved the lock and installed 25 packages into `training/gpt2/.venv`, including PyTorch 2.9.1+cpu and Transformers 4.57.6.  Comparing installed package metadata confirmed that all 25 versions match the previous environment.  The PyTorch one-liner generated 32 tokens from the documented story prompt.
+
+`node test/packed.js --gpt2-completions` passed the packed-memory tests and three WASM completions through the uv project.  The story, science, and greedy completions generated 64, 32, and 16 tokens in 56.3, 27.9, and 15.7 seconds.  The greedy token sequence matched the new PyTorch wrapper's output.  The WASM hash remains `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.  Shell syntax, the 144-file documentation check, and whitespace checks pass.

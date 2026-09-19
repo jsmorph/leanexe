@@ -1,0 +1,23 @@
+{
+  "checkpoint_sha256": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707",
+  "parameters": 124439808,
+  "tokens": [
+    7454,
+    2402,
+    257,
+    640,
+    11,
+    287,
+    257,
+    1402,
+    7404
+  ],
+  "argmax": 11,
+  "argmax_text": ",",
+  "max_abs_difference": 0.00009918212890625,
+  "rms_difference": 0.000040563035721151586,
+  "host_call_seconds": 3.873877877,
+  "allocations": 235,
+  "frees": 232,
+  "wasm_sha256": "6a368a3c2ffc7b0afb311444b99951b0aeaf7b73be46f6d191f527623c118b7c"
+}

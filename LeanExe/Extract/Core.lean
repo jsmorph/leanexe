@@ -17,6 +17,26 @@ structure ExtractedForInStepBody where
   bodyDone : IRExpr
   nextLocal : Nat
 
+def releaseForInStepTemporaries (ctx : Context) (ty : Ty)
+    (step : ExtractedForInStepBody) : ExtractedForInStepBody :=
+  let released := addLiveSlots (localLetsReleasedSlots step.bodyLets) (exprReleasedSlots step.bodyDone)
+  let owners := (localLetsOwnedNonrecursiveHeapSlots ctx step.bodyLets).filter fun slot =>
+    !released.contains slot
+  if owners.isEmpty then step else
+    let protectedSlots := (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => step.bodyTargets[offset]?
+    let doneSlot := step.nextLocal
+    let releaseSlot := doneSlot + 1
+    let cleanup := owners.foldl (fun (prior, lets) slot =>
+      let cond := prior.foldl
+        (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
+        (.not (.eqU64 (.local slot) (.u64 0)))
+      (slot :: prior, lets ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
+      (protectedSlots, [])
+    { step with
+      bodyLets := step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
+      bodyDone := .local doneSlot
+      nextLocal := releaseSlot + 1 }
+
 def valueIteConst
     (cond : IRCond)
     (thenValue elseValue : ExtractedValue) :
@@ -642,17 +662,19 @@ mutual
       (itemLocals : List Binding)
       (bodyExpr : Expr) :
       Except String ExtractedForInStepBody := do
-    match monad with
-    | .id =>
-        let accValue :=
-          valueFromInternalSlots payloadTy (fun offset => .local (accStart + offset))
-        extractForInStepBody ctx (.value accValue :: itemLocals) nextLocal payloadTy bodyExpr
-    | .option =>
-        extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
-          itemLocals bodyExpr
-    | .except _ =>
-        extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
-          itemLocals bodyExpr
+    let step ← match monad with
+      | .id =>
+          let accValue :=
+            valueFromInternalSlots payloadTy (fun offset => .local (accStart + offset))
+          extractForInStepBody ctx (.value accValue :: itemLocals) nextLocal payloadTy bodyExpr
+      | .option =>
+          extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
+            itemLocals bodyExpr
+      | .except _ =>
+          extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
+            itemLocals bodyExpr
+    let accumulatorTy ← forInAccumulatorType monad payloadTy
+    .ok (releaseForInStepTemporaries ctx accumulatorTy step)
 
   partial def extractMonadicFoldStep
       (ctx : Context)
@@ -1785,7 +1807,21 @@ mutual
                       match collectLambdas bindFn 1 with
                       | some body => .ok body
                       | none => .error "unsupported Id bind function"
-                    extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
+                    if valueContainsFoldMultiSlot valueResult.fst then
+                      let sourceTy ← match sourceTy? with
+                        | some ty => .ok ty
+                        | none => .error "unsupported Id bind source type"
+                      let width := internalSlots sourceTy
+                      let targets := (List.range width).map fun offset => valueResult.snd + offset
+                      let lets ← materializeInternalValueLets sourceTy valueResult.fst targets
+                        ctx.freshResultOwnerOffsets
+                      let localValue :=
+                        valueFromInternalSlots sourceTy (fun offset => .local (valueResult.snd + offset))
+                      let bodyResult ← extractValueFrom ctx (.value localValue :: locals)
+                        (valueResult.snd + width) body
+                      .ok (wrapValueLocalLets lets bodyResult.fst, bodyResult.snd)
+                    else
+                      extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
                 | some .option =>
                     match sourceTy?, resultTy? with
                     | some sourceTy, some resultTy =>
@@ -2487,6 +2523,24 @@ mutual
                               (.byteArray (.local ownerSlot) slicePtr sliceLen)))))),
                     stopSlot + 1)
             | _ => .error "unsupported ByteArray.extract application"
+        | (.const ``LeanExe.Packed.generateUInt32LE _, args) =>
+            match args with
+            | [size, generator] =>
+                let sizeResult ← extractExprFrom ctx locals nextLocal size
+                let lenSlot := sizeResult.snd
+                let indexSlot := lenSlot + 1
+                let body ←
+                  match collectLambdas generator 1 with
+                  | some body => .ok body
+                  | none => .error "packed generation requires a direct lambda"
+                let bodyResult ← extractExprFrom ctx (.slot indexSlot :: locals) (indexSlot + 1) body
+                let ptrSlot := bodyResult.snd
+                .ok
+                  (.letE lenSlot (.u64Bin .natMul sizeResult.fst (.u64 4))
+                    (.letE ptrSlot (.byteArrayGenerate32Ptr (.local lenSlot) indexSlot bodyResult.fst)
+                      (.byteArray (.local ptrSlot) (.local ptrSlot) (.local lenSlot))),
+                    ptrSlot + 1)
+            | _ => .error "unsupported packed generator application"
         | (.const ``ByteArray.push _, args) =>
             match args.reverse with
             | value :: array :: _ =>
@@ -4595,7 +4649,7 @@ mutual
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 value, nextLocal)
                 | none => extractExprFrom ctx locals nextLocal arg
-            | (.const ``UInt32.ofNat _, [arg]) =>
+            | (.const ``UInt32.ofNat _, [arg]) | (.const ``Nat.toUInt32 _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 (value % (2 ^ 32)), nextLocal)
                 | none =>
@@ -4752,13 +4806,28 @@ mutual
       (primitive : Name)
       (args : List Expr) :
       Except String (IRExpr × Nat) := do
-    if f64SqrtPrimitiveName primitive then
+    if primitive == ``LeanExe.Packed.getUInt32LE! then
+      match args with
+      | [bytes, offset] =>
+          let bytesResult ← extractValueFrom ctx locals nextLocal bytes
+          let parts ← byteArrayPartsWithLets bytesResult.fst
+          let offsetResult ← extractExprFrom ctx locals bytesResult.snd offset
+          .ok (wrapExprLets parts.fst
+            (.byteArrayLoad32 parts.snd.fst parts.snd.snd offsetResult.fst), offsetResult.snd)
+      | _ => .error "packed UInt32 read requires a byte array and byte offset"
+    else if f64SqrtPrimitiveName primitive then
       match args with
       | [value] =>
           let result ← extractExprFrom ctx locals nextLocal value
           .ok (.f64SqrtBits result.fst, result.snd)
       | _ => .error s!"floating-point square root requires exactly one argument: {primitive}"
-    else if let some op := f64BinaryPrimitive? primitive then
+    else if let some op := floatUnaryPrimitive? primitive then
+      match args with
+      | [value] =>
+          let result ← extractExprFrom ctx locals nextLocal value
+          .ok (.floatUnary op result.fst, result.snd)
+      | _ => .error s!"floating-point unary intrinsic requires exactly one argument: {primitive}"
+    else if let some op := (f64BinaryPrimitive? primitive).orElse fun _ => f32BinaryPrimitive? primitive then
       match args with
       | [left, right] =>
           let leftResult ← extractExprFrom ctx locals nextLocal left
@@ -7028,16 +7097,22 @@ def extractPlainFunc
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
   let result ← extractValueFrom ctx paramLocals wasmParamCount body
-  let resultCount := resultSlotCount useAbi resultTy
+  let materializeAbi := useAbi && !tyContainsHeapPointer resultTy
+  let resultCount := resultSlotCount materializeAbi resultTy
   let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
-  let resultBody ← materializeResultValue ctx useAbi resultTy resultTargets result.fst
+  let resultBody ← materializeResultValue ctx materializeAbi resultTy resultTargets result.fst
+  let results ←
+    if useAbi && !materializeAbi then
+      flattenAbiValue resultTy
+        (valueFromInternalSlots resultTy (fun offset => .local (result.snd + offset)))
+    else .ok (resultTargets.map LeanExe.IR.Expr.local)
   .ok {
     sourceName := name,
     exportName := exportName,
     params := wasmParamCount,
     locals := result.snd + resultCount,
     body := resultBody,
-    results := resultTargets.map LeanExe.IR.Expr.local
+    results := results
   }
 
 def shortExportName (name : Name) : String :=

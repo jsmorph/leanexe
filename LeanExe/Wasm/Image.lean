@@ -107,7 +107,7 @@ def errorInstructionTag : ByteArray :=
   "leanexe-image: unknown instruction tag".toUTF8
 
 def errorUnsupportedInstructionV2 : String :=
-  "leanexe-image: image schema v2 does not support f64 instructions"
+  "leanexe-image: image schema v2 does not support f32/f64 instructions"
 
 def errorExportKind : ByteArray :=
   "leanexe-image: unknown export kind".toUTF8
@@ -269,7 +269,9 @@ mutual
     | .ret => .ok (encodeNat 39)
     | .drop => .ok (encodeNat 40)
     | .addF64 | .mulF64 | .subF64 | .divF64 | .sqrtF64
-      | .i64ReinterpretF64 | .f64ReinterpretI64 =>
+      | .i64ReinterpretF64 | .f64ReinterpretI64
+      | .addF32 | .subF32 | .mulF32 | .divF32 | .sqrtF32
+      | .i32ReinterpretF32 | .f32ReinterpretI32 | .f32DemoteF64 | .f64PromoteF32 =>
         .error errorUnsupportedInstructionV2
     | .block body => do
         let bodyBytes ← encodeInstrItems body

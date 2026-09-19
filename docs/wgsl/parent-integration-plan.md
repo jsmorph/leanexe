@@ -6,10 +6,9 @@ Prepared 2026-09-18 against parent `origin/main` at
 
 The parent was fetched and inspected. It contains 79 commits since the shared
 ancestor `fa676032667ce76c6a8710af0f0522ad69341f2b`, changing 382 files.
-The working branch has not been merged with it yet. A merge preview identified
-the three conflicts described below. The parent proof and runtime results in
-this document are inspected source and recorded parent evidence; they have
-not been rerun locally for this planning task.
+The working branch now includes that revision. Both proof baselines and three
+full-model execution comparisons passed locally; the integration journal records
+the evidence. The remaining milestones below are not established by that merge.
 
 ## What the parent now establishes
 
@@ -204,7 +203,7 @@ new exact-byte packaging work are outside this integration agenda.
 - [x] Fetch and pin the parent revision.
 - [x] Read the public step/session theorem, source operations and parent test record.
 - [x] Preview the merge and identify conflicts and ABI/proof differences.
-- [ ] Merge and recheck both baselines.
+- [x] Merge and recheck both baselines.
 - [ ] Prove compiled biased products and vocabulary against the parent source.
 - [ ] Prove and execute the packed replacement-call boundary.
 - [ ] Compose hybrid cached-step and 128-position execution.
