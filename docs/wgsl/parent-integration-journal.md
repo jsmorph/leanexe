@@ -270,3 +270,21 @@ come from the existing Lean fixture. The host supports at most 64 concurrent
 cached views; the full model uses 50. Successful GPU allocation and execution
 remain explicit runtime assumptions rather than Lean-proved properties of C
 or of the driver.
+
+## Controller-facing replacement contracts
+
+`PackedBackend.linear_owned` now exposes the parent's complete linear-call
+postcondition: exact bytes and returned length, owned output, heap state,
+protected-memory frame, page bound and memory-capacity preservation. The
+vocabulary bridge supplies the corresponding packed-output contract. The
+interfaces distinguish checked shader semantics, actual module declarations,
+and the external assumption that a host invocation finishes the declared
+shader execution and copies only its output bytes. They do not assume that
+the matrix result equals the parent: that equality follows from the compiled
+shader certificates and packed-source theorems.
+
+These bridges passed in `packed-backend-04.log`, with only the standard Lean
+axioms. The retained earlier logs include a missing size-lemma import and a
+normalization mismatch in the vocabulary bridge. The full controller proof
+is being replayed against the independently parsed hybrid module in a separate
+generated namespace; it is not yet established by these bridge lemmas.
