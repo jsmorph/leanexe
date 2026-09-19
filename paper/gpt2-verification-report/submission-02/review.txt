@@ -1,0 +1,7 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 12, “Redundancy,” Section 3.4: “The proof carries memory capacity of 65,536 WebAssembly pages and a page-count bound of 65,536” repeats the bound stated in “The formal page-count bound is 65,536 pages, corresponding to 4 GiB.”  Combine these statements, preserving the distinction between the 2.5 GiB heap-top bound and the 4 GiB memory capacity.

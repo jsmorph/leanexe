@@ -1,0 +1,11 @@
+{
+  "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "Compiling a neural-network implementation requires preserving its arithmetic order, tensor representation, and memory behavior. We present a Lean specification and a checked execution proof for a cached GPT-2 implementation with 124,439,808 parameters and a 128-token context. In Talos’s WebAssembly semantics, the generated module terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128. The proof includes initialization, packed input representation, all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases. Arithmetic lemmas connect Lean’s logical Float32 operations to Talos for all input words. Wasmtime’s canonical-NaN mode supplies the selected runtime behavior for exceptional arithmetic. Tests against CPU PyTorch compare 6,432,896 logits across all supported context lengths, with a maximum observed absolute difference of 0.001450, and produce text completions. The formal result concerns the corresponding Lean algorithm. Artifact-to-model translation, the native host, and Wasmtime remain trusted. We defer proofs connecting emitted binary bytes to the Talos model and bounds on numerical error.",
+  "subject": "cs.PL",
+  "secondary": "cs.LG",
+  "comments": "9 pages, 2 tables",
+  "related": "2609.00005: Applies the per-compilation correspondence method to cached GPT-2 inference with packed FP32 runtime weights.",
+  "pdf_sha256": "9ba45a257a9b669a008ffb1e2854b359acd3fb80a3ffcb2018e221051af415f6",
+  "replaces": "2609.00011"
+}
