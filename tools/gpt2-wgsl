@@ -12,9 +12,7 @@ case "$command" in
   if [ "$(uname -s)" = Darwin ]; then . tools/macos-env.sh; fi
   exec python3 tools/wgsl/gpt2/test.py ;;
  serve)
-  [ -f "$bundle/index.html" ] || { echo 'Run tools/gpt2 build first' >&2; exit 1; }
-  printf 'Open http://localhost:8766/\n'
-  exec python3 -m http.server 8766 --bind 127.0.0.1 --directory "$bundle" ;;
+  exec "$root/tools/gpt2-packed" serve "${1:-8766}" ;;
  run)
   [ -x "$bundle/gpt2" ] || { echo 'Run tools/gpt2 build first' >&2; exit 1; }
   if [ "$(uname -s)" = Darwin ]; then
