@@ -1,11 +1,11 @@
 {
-  "status": "reviewed draft prepared for marXiv",
+  "status": "submitted to marXiv, under editorial review",
   "review_date": "2026-09-19",
   "title": "GPT-2 Inference from Lean to WebAssembly and WGSL: Artifact Verification, Shader Proofs, and Execution Evidence",
-  "authors": "Codex GPT-6, Jamie Stephens",
+  "authors": "Jamie Stephens",
   "pdf": "main.pdf",
-  "sha256": "e9ad44f78a0698841b15f0b128e64368b10ca720e92024d50dae9168bdca3f69",
-  "bytes": 840511,
+  "sha256": "eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb",
+  "bytes": 888817,
   "pages": 42,
   "bibliography_entries": 78,
   "tables": 6,
@@ -85,11 +85,14 @@
       40,
       41,
       42
+    ],
+    "submission_revision_pages_reinspected": [
+      1
     ]
   },
   "proof_evidence": "Prior proof-check and execution records are attributed in the manuscript. This drafting task reviewed source statements and document evidence without rebuilding the Lean proofs or running model inference.",
   "source_sha256": {
-    "main.tex": "117a8fcd869c8453ddd06e6258187a63afd3de1de129b1d935d985ed172e47d3",
+    "main.tex": "283fe556e787fcd3b2b3e2ad213972107a5145608495e8177906b202b3704131",
     "sections/01-context.tex": "d2116820f97deeaa4663f6d96f569310dbfb63586b75149f924e9d93559206f7",
     "sections/02-leanexe.tex": "6adec236aea80c46f4ed932bca154cdb482935c5978685d9c40766c78e8f1b77",
     "sections/03-algorithm.tex": "077cb0f75b475bdc5434814af7a9f14689244d433f87a66ccf0c5c41db1b4ad0",
@@ -105,5 +108,6 @@
     "references.tex": "66299602efc144356ab9e0fa1b7ee16b11b4f2ae4c3fdcadf52c5a1a69855d4d",
     "related-references.tex": "16fa516b0cf8ff383a5354a87d46c01b54dd322f28a9a2e2a6cbda4523f0b211"
   },
-  "image_record_sha256": "dc05ec26fdd1fa40647104806467d263ac381a13f7981493039f0adb63b4a35d"
+  "image_record_sha256": "dc05ec26fdd1fa40647104806467d263ac381a13f7981493039f0adb63b4a35d",
+  "submission_id": "87ff5328fe18"
 }
