@@ -252,6 +252,12 @@
       "sha256": "b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb",
       "manifest": "euler_reconstructed/b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb/manifest.json",
       "proofTarget": "Project.EulerReconstructed.ArtifactTranslation"
+    },
+    {
+      "case": "gpt2_cached_step",
+      "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
+      "manifest": "gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/manifest.json",
+      "proofTarget": "Project.Gpt2CachedStep.ArtifactTranslation"
     }
   ]
 }

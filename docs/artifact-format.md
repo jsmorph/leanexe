@@ -61,12 +61,14 @@ Each immutable proof package has the path `proofs/artifacts/<case>/<sha256>/` an
 
 Manifest schema three records the package identity and validation profile, the import modules and declarations for embedded bytes, decoded raw data, and the cached execution module, the closed artifact-correctness theorem, and the concrete source behavioral theorems.  It also records both workspace's Lean toolchain, the Talos revision, `verifierSourceSha256`, and any host assumptions that qualify the specification.  Registry validation checks the digest-shaped directory, exact field set, file identities, declaration-name relationships, case registry, toolchain pins, Talos pin, and verifier digest before Lean starts.
 
-`tools/artifact-migrate.js migrate <case> --kernel` prepares the frozen
-package with `decide +kernel` certificates.  Lean's kernel performs those
-closed computations.  The default generator uses `native_decide`.
-Both modes use the same decoder, validator, and artifact propositions.
-Kernel mode also generates checked byte-lookup equalities over balanced
-list concatenations for proof-generating evaluation with `cbv`.
+`tools/artifact-migrate.js migrate <case> --kernel` prepares the binary
+package with kernel-checked certificates.  It divides decoding into function
+bodies and sections, using parser-derived offsets and checked composition
+lemmas.  Balanced byte-lookup equalities support proof-generating evaluation
+with `cbv`.  Validation certificates compose the metadata and function checks.
+Lean checks the generated offsets, decoded values, and validation results.
+The default generator uses `native_decide`.  Both modes use the same decoder,
+validator, and artifact propositions.
 
 `verifierSourceSha256` covers seventeen named normative files: binary syntax, cursor, LEB parser, primitives, decoder, grammar, validity predicate, validator, translator, equality and evidence support, and their six proof modules.  The hash starts with `leanexe-verifier-source-v1` followed by a NUL byte, then consumes each repository-relative path in code-unit order, a NUL byte, its byte length, another NUL byte, and its raw contents.  Utilities, generated package certificates, tests, and cached modules remain outside this digest and enter the release identity or source revision through separate fields.
 

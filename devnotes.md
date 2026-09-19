@@ -15880,3 +15880,19 @@ resource scope.  Decoder certificates now use the shared parser-composition
 lemmas and parser-derived offsets.  Each function has a separate module.
 The existing package manifests now name the FP32 verifier source digest.
 Their previous receipts remain historical until the aggregate check passes.
+
+The generic kernel migration path now generates per-function and per-section
+certificates using `CodeParts`, `SectionParts`, balanced byte lookup, and
+`cbv`.  The generator reuses the existing Euler proof structure without
+copying artifact-specific offsets.  The GPT-2 type, function-index, memory,
+global, and export section proofs pass.  Function proofs 0–28 pass, including
+normalization and matrix projection.  The remaining function certificates,
+complete-file composition, validation, and execution transfer are still
+being checked.  No GPT-2 source or compiled bytes changed.
+
+Migration and conformance-driver tests pass.  The identity test first rejected
+the changed verifier digest, then exposed a stale import fixture that omitted
+FP32, packed storage, and GPT-2 source modules.  Both fixtures now identify the
+current sources, and the test passes.  The release-status unit test rejects
+the historical release draft's input digest.  That publication record is
+separate from the requested artifact proof and remains unchanged.

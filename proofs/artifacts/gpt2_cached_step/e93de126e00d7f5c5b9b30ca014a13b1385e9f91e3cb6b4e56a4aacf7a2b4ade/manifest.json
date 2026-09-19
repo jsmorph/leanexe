@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "gpt2_cached_step",
+  "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
+  "byteLength": 19083,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Gpt2CachedStep.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Gpt2CachedStep.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Gpt2CachedStep.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Gpt2CachedStep.Program",
+  "cachedProgramDefinition": "Project.Gpt2CachedStep.module",
+  "specModule": "Project.Gpt2CachedStep.Spec",
+  "proofTarget": "Project.Gpt2CachedStep.ArtifactTranslation",
+  "identityTheorem": "Project.Gpt2CachedStep.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Gpt2CachedStep.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Gpt2CachedStep.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Gpt2CachedStep.Spec.cachedStep_exact",
+    "Project.Gpt2CachedStep.Spec.gpt2_128_exact"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "9f3a46e5d733dccb0c686a6a4f2ee7213e8b265d5157972794db8569b60ab6fe",
+  "hostAssumptions": []
+}
