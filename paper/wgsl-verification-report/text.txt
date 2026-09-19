@@ -2,23 +2,22 @@ Checked WGSL Compilation and Conditional GPT-2 Execution in
 LeanExe
 Codex GPT-6, Jamie Stephens
 19 September 2026
+
 Abstract
 The goal of LeanExe is to run an algorithm written in Lean and obtain a checked proof that
 the emitted program performs that algorithm. Previous work established this connection for
-cached GPT-2 inference in a formal WebAssembly execution model. The WGSL work extends
-the approach toward GPU execution by moving matrix products to the WebGPU Shading
-Language (WGSL) while retaining the model controller in WebAssembly. We present a compiler
-for a restricted class of Lean definitions that checks each translation against an independent
-shader parser and a statement-execution semantics. Packed-layout proofs connect six compiled
-shaders to the matrix operations of a 124M-parameter GPT-2 implementation. The hybrid
-session theorem equates cache and logit bytes with the Lean cached-step recurrence for arbitrary
-weight bytes of the required length and up to 128 valid tokens, assuming completed shader
-execution with separate FP32 arithmetic and exact host transfers. The branch supplies a native
-inference runner and records a CPU WebGPU comparison in which all 6,432,896 logits match
-the parent WebAssembly implementation bit for bit. The outcome is a checked source-to-shader
-method and a conditional proof for the combined inference program. Runtime conformance,
-hybrid binary decoding, and browser execution remain separate verification or evaluation tasks.
-The report records the scope and results of a source review and fresh proof checks.
+cached GPT-2 inference in a formal WebAssembly execution model. The WGSL work extends the
+approach toward GPU execution by moving matrix products to the WebGPU Shading Language
+(WGSL) while retaining the model controller in WebAssembly. We present a compiler for a
+restricted class of Lean definitions that checks each translation against an independent shader
+parser and a statement-execution semantics. Packed-layout proofs connect six compiled shaders
+to the matrix operations of a 124M-parameter GPT-2 implementation. The hybrid session
+theorem equates cache and logit bytes with the Lean cached-step recurrence for arbitrary weight
+bytes of the required length and up to 128 valid tokens, assuming completed shader execution
+with separate FP32 arithmetic and exact host transfers. The branch supplies a native inference
+runner and records a CPU WebGPU comparison in which all 6,432,896 logits match the parent
+WebAssembly implementation bit for bit. Runtime conformance, hybrid binary decoding, and
+browser execution remain separate verification or evaluation tasks.
 
 1
 
@@ -44,17 +43,17 @@ preserving a proof connection to the Lean algorithm. The execution evidence in t
 from a CPU implementation of WebGPU.
 Moving a matrix operation to a shader creates proof obligations at both the computation and
 calling interface. The emitted shader must implement the selected Lean operation with the required
+indexing and arithmetic order. The combined program must supply the right bytes, complete the
 1
 
-indexing and arithmetic order. The combined program must supply the right bytes, complete the
-dispatch, return the result to Wasm memory, and preserve the state needed by the next operation.
+dispatch, return the result to Wasm memory, and preserve the state needed by the next operation.
 WGSL’s permitted floating-point choices also require an explicit arithmetic assumption for exact
 word equality [5]. The work therefore develops shader certificates, packed-layout proofs, and
 controller proofs that compose through a stated host interface.
 
 1.2
 
-Implemented and checked result
+Hybrid GPT-2 implementation and conditional session theorem
 
 The branch supplies a compiler for a bounded subset of Lean, a native GPT-2 inference runner
 combining Wasm and WGSL, and generated proofs relating that combined program to the parent
