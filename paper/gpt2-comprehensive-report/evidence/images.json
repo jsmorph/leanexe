@@ -1,0 +1,14 @@
+[
+  {
+    "name": "gpt-1.png",
+    "source": "/media/psf/Downloads/gpt-1.png",
+    "sha256": "d9289a992a737827959af362df0b8fb2ddc8c484205e5d4812c2c0a52815fab6",
+    "description": "User-supplied WGSL branch browser-demo screenshot, 19 September 2026"
+  },
+  {
+    "name": "gpt-2.png",
+    "source": "/media/psf/Downloads/gpt-2.png",
+    "sha256": "cf2937a4623f66eb08148850fd96f22f94e5f2c50311572e4f9a96218e25414d",
+    "description": "User-supplied WGSL branch browser-demo screenshot, 19 September 2026"
+  }
+]

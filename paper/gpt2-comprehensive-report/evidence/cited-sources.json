@@ -1,0 +1,636 @@
+[
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Extract",
+    "git_type": "tree",
+    "git_object": "f62d8a7e866efb6e5d752a4f360149c469b93657"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/IR",
+    "git_type": "tree",
+    "git_object": "1d3c78a9304e2ed08f733e70e4baf164bc6fab4b"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Models/Gpt2/Cached.lean",
+    "git_type": "blob",
+    "git_object": "725367ef670c937698017d0bd5ba73ebf4f0c4b5",
+    "sha256": "8ceefec442dd1bc42871950df6c7405dd0d1c705d036449f7e5765fee97b6b4c"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Models/Gpt2/Inference.lean",
+    "git_type": "blob",
+    "git_object": "f51aa027426d7e46290caa92b6895725a22f921a",
+    "sha256": "bcc5a25838da8f57860e6552d0f9235adf8f1aac4b25b58a42283ef6ddf4ca14"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Models/Gpt2/Kernel.lean",
+    "git_type": "blob",
+    "git_object": "ef9eaefe7198677d65dcc768e77d43439a61cb38",
+    "sha256": "bba0ccff49f57e3259ac69fe25ace9125423557f78508a3d0a2584bc6c34197d"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Models/Gpt2/Numerics.lean",
+    "git_type": "blob",
+    "git_object": "22808f41d58c6d6078764ebd25b847adb6c95003",
+    "sha256": "3406eac22a50a05425eba148fdbfbf37f51f58406347e67e083838c57351c0cc"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Packed.lean",
+    "git_type": "blob",
+    "git_object": "022649c256fc47b53e5ee9d5dd24ea434db823f5",
+    "sha256": "9352aa2899d4517e0a1cf058ec58e82c01ef2096d0506ff38442869320d57e8d"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "LeanExe/Wasm",
+    "git_type": "tree",
+    "git_object": "01bd68d909313c8c5bcd329d3ccc6ba220c6cbfd"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "data/gpt2-124m/README.md",
+    "git_type": "blob",
+    "git_object": "0d8f08731d912dbdfc27d4c6947074c7300339a2",
+    "sha256": "9235d7df7415d4d40bc89ee2642ac9ee07a595c5bf9a403bc65f101976e12c23"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "data/gpt2-124m/canonical-mode-test.json",
+    "git_type": "blob",
+    "git_object": "a92a5d3d6d87e129af1732c7aa8209ad8d8c3bd7",
+    "sha256": "48669ab0d4c7cf7d3860b9b9988656890dc16937c0909e646d4007495c8159fe"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "data/gpt2-124m/manifest.json",
+    "git_type": "blob",
+    "git_object": "cb3175ca5100281e7bc02a09466b1434270ae753",
+    "sha256": "a8cf2c5d2c9269e620b3f914c690455412bd3869ef1e6879a8d667ebe0b91f66"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "devnotes.md",
+    "git_type": "blob",
+    "git_object": "36a3a929669ea6f9c0fd7dfad5519b75fa8c451e",
+    "sha256": "a0a82585251e57bf844b68155bf90b7bef59365405f525833cd96f0504817e4f"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/annotations.md",
+    "git_type": "blob",
+    "git_object": "7ff8775661b28dbbb3ee4940a929c8a6445e84da",
+    "sha256": "6fff508dde71f01bf9e4f13bc91902013642019cf1d0218bf26d9b9685df583c"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/artifact-proving.md",
+    "git_type": "blob",
+    "git_object": "9177c72b7f2624143cf92c446cb5ab6bbf79df8f",
+    "sha256": "8a9b5dd008d3e13942be45c2cc532adb19ed6137e9e7bb044fb2063c3c2dd78b"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/leanexegen.md",
+    "git_type": "blob",
+    "git_object": "3cda6c696b8a3fa76722f5e37738f45796d1e24e",
+    "sha256": "2b05f2dabed8b6d2f69df6543aacdafe316032abbb1adf0b1e286b09c55acdbd"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/ltg.md",
+    "git_type": "blob",
+    "git_object": "bbea8d795af6662465ce297d8d96027f0ffffa8f",
+    "sha256": "b281b5de512e8708d75e13cd6e0415540dd772d377fc10d1be02b1f52bfb27cc"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/manual.md",
+    "git_type": "blob",
+    "git_object": "8e32c231efe0fb055220646fc86761631a5f608d",
+    "sha256": "a1a1a5d9a459de7ff6edc68ea1ac3417cabae6319ff6528d45e9ed76a0389f33"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/spec.md",
+    "git_type": "blob",
+    "git_object": "1371f0350414128fb2616ae2a1327cd98510dc18",
+    "sha256": "6aee0fd0865fe012f617e6f616236d41a92b3968a378b3c6278bd1780256fdf4"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "docs/verifying.md",
+    "git_type": "blob",
+    "git_object": "b0fa6595f11b33792918d5d8c52c1e9b962a7d32",
+    "sha256": "f297d88402044cb2e468901c0c3f27d58a95f30b3ff8be04e8dfc59ee1db4274"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean",
+    "git_type": "blob",
+    "git_object": "ebac3a37931aea32c232dff13d39a4ad53ae9098",
+    "sha256": "428c34ed83d8262a0c1e54deb0e25fd83ecf4fd4a9aa01138960add8d5952ab7"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/Grammar.lean",
+    "git_type": "blob",
+    "git_object": "3a5b616e6acb9ee52b79faf7349d8402957a5019",
+    "sha256": "2a85234753cc88083dd29adf7a302345891bc2baec362ebc80751c010b53f242"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean",
+    "git_type": "blob",
+    "git_object": "0398b53cdcd3e66cce6df8bae6a591addc9d60e5",
+    "sha256": "b23c18b6e1541fba2bd420ef63afb059c1efe4467a5fe08248f11a3918cbd13f"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/Proof/Validate.lean",
+    "git_type": "blob",
+    "git_object": "36a1abcef7cbfb8b936b60ce864ce1e386275759",
+    "sha256": "2358de7198c86e67447b17292460fb36f24208ca4643c16288fdd82230cfaa11"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/Translate.lean",
+    "git_type": "blob",
+    "git_object": "2310b1f5f91040bd25d4b7b2ab3f295a93fc14e0",
+    "sha256": "38752ebf1ae1dfeb5a1ebd91306b3ee8eb2735948d4d40f67e02e71b494015e8"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Artifact/Binary/Validity.lean",
+    "git_type": "blob",
+    "git_object": "1bab25feb41a87bd7da7f4b96b352a42f7200c7f",
+    "sha256": "b6cb9ce155ee32d76cea051c7737553a0fe04822da209b009c9bde3d04a7ff08"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactBytes.lean",
+    "git_type": "blob",
+    "git_object": "8faf700b3528e63bb7b418910bd4bd04e66cd7d7",
+    "sha256": "b02b0cef4298dd501cd9ef62c4348b30a2d4f7a5bfbd6e45057df701a0cb9683"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactDecode.lean",
+    "git_type": "blob",
+    "git_object": "a94f2a8874717f3d375420a9e55093e58cd418d5",
+    "sha256": "ac6561caa15c3855d59d289389a613840ac3486ca63bc2c3c034f28b0c9ec346"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean",
+    "git_type": "blob",
+    "git_object": "522ffde2d11ee0aa3f3321c1b45cb1b3db7ba0fc",
+    "sha256": "1416e97e4612ed393c19ca385e26eeb7d96b07ee98c1b7945d33fa718fa8ab68"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/ArtifactValidation.lean",
+    "git_type": "blob",
+    "git_object": "a6e016de76db9f4b5a03c79a5c84a0bf827ad275",
+    "sha256": "e8de6d34a47b5c5af23df2d2e04ab85dc76aa6c0c2106666484671a90253a53c"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean",
+    "git_type": "blob",
+    "git_object": "07bba899c2e0b3bcbd72d5f3ddbbacfe285b07fa",
+    "sha256": "4ade96c544de531b58e260cd1b95e9b31bd09a5443cb9f9cb3fe1609805b612c"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean",
+    "git_type": "blob",
+    "git_object": "911fbb8c9afc070034340b63dbd0d77f00046251",
+    "sha256": "5b6713ac22c9735f81573715678853b51d4c9dc41979485ff83f63e7fc5181e0"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean",
+    "git_type": "blob",
+    "git_object": "73f4a73b5d7d3f07676597d2a571bd71af79c007",
+    "sha256": "1ed2efae976032136fd28d71d14b56f6874397de51725cf92127e50f1fd7e5bf"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean",
+    "git_type": "blob",
+    "git_object": "3d3754f7b94484647c1c24820aaa19658bf6a3a9",
+    "sha256": "f1c0832d8dd1c90ecffb9aed3818443415a928eebde0a085208651ff687089b9"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean",
+    "git_type": "blob",
+    "git_object": "76534b40f5dc38d7df8659960b438408f2b7d4f0",
+    "sha256": "fdeef1292c9d943c75d59982cb011f1619abeb91f5b0a2e11cf989cc1917ac95"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Add.lean",
+    "git_type": "blob",
+    "git_object": "578573160bf546d7409eefe8c91de82cb4c01d91",
+    "sha256": "76d933f081c255021d20145d275c1efdc3070ad511b8c27cc0cc7b505dd63d94"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Div.lean",
+    "git_type": "blob",
+    "git_object": "0696f3598f71ff6edfe498b773395718c219a137",
+    "sha256": "74ffd0fe2190a9331d19df39d527fdd36623a365b7fb354df2f4f8caae70b35e"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Mul.lean",
+    "git_type": "blob",
+    "git_object": "a2f1c6515c589784f3fd955d59d9eac285dffbc1",
+    "sha256": "c6d1505f582c63e18b0dec4f84bf5a13283dece450bb0f612b876b6b72c2402e"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Source.lean",
+    "git_type": "blob",
+    "git_object": "ba6edd707d563c8a69a2c3d1e35f7e445ba9161a",
+    "sha256": "04b3655c46043f736be05608404bd8de57425dd610b629c2524fa5263e2c20e4"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Sqrt.lean",
+    "git_type": "blob",
+    "git_object": "1c7c9d76e2426a18d7096692e8613a39c06c51d6",
+    "sha256": "4bad2905f70948e15a9e127f1548c5490510eb8625fd63d608933c61af68f561"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/F32Sub.lean",
+    "git_type": "blob",
+    "git_object": "b3b46309bab44745635576d62ee417949d6d86a5",
+    "sha256": "592e1615af364a8a8698aa3a0fb0324700276e127fd30143629a4130bdf84074"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/HeapGrowth.lean",
+    "git_type": "blob",
+    "git_object": "32da25b0cd484ee41994316f66236eddbe2f36f0",
+    "sha256": "ad06b0fa93839f109d8ab8754a3be14c3bcf0aebe51a214a146b368897f34733"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean",
+    "git_type": "blob",
+    "git_object": "6ed3be630c41dc4ade7fba585172de9cb210971d",
+    "sha256": "93b4bc4fd6d57056606151aacf7a60cc9490638b68064be0610bf03cdd147fc8"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/PackedInput.lean",
+    "git_type": "blob",
+    "git_object": "eb3dd4af4cbefaf414c9c9fe7e3934ddeb59ccb3",
+    "sha256": "cd0f8f0ab66c2d232581952a7275f8e8ea27a116d23ecde3c15300b842aaa3dd"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/PackedMemory.lean",
+    "git_type": "blob",
+    "git_object": "f849e88ac1bc7832ee75a12626d2bcc61dc7808f",
+    "sha256": "df562426c51a16cf3220653a96e79e5e23d0253ad1bf773830615b77e6e425b3"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/lean/Project/ProofKit/RangeFoldLoop.lean",
+    "git_type": "blob",
+    "git_object": "4d9a432e06a401a9a61cb07301c0cb78e55bca6e",
+    "sha256": "a890ea1d4c79ad440051381391fc5f19c9cdc6b8d6ac4a72a9db1afdd2256c54"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "proofs/talos/reviews/gpt2-2026-09-19.lean",
+    "git_type": "blob",
+    "git_object": "511932db151c74013917b82068b81be3bc028f27",
+    "sha256": "dcb891fc0af33b398e1e6b2444f71788698d33b872ac7899c000edcc80dcb734"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "test/packed.js",
+    "git_type": "blob",
+    "git_object": "4e581b2d4e87d54281e788e5196571fdd0169899",
+    "sha256": "d1132471912b1cb0e9986bda3d970cf9d6a034c35a92c4ba7de37b81731f1dcb"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "tools/artifact-proof.js",
+    "git_type": "blob",
+    "git_object": "6b33314db8747e8dfd6684242fdc1aa996d7d662",
+    "sha256": "729c49841c90464fc77879672dbf88537e5e1aabb71b32dbe62a438be99167bc"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "tools/talos-lib.js",
+    "git_type": "blob",
+    "git_object": "68141cb6128b70fa84cc1b250e66c4101730f51b",
+    "sha256": "f3939680f42e5a226125a302c2fd230b19736e5dece7ec47ba3a244bef3f69df"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "tools/wasmtime-host.c",
+    "git_type": "blob",
+    "git_object": "95020c3ad5be7998e581acf6393ab8d12f235f93",
+    "sha256": "f4b88822b188eb5502298afbef40d4ea2bde798f5b3741bf593304d9c4ed13bc"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "training/gpt2/reference.py",
+    "git_type": "blob",
+    "git_object": "51f167a8b92a03fb3b80e5ad001e2f36dbddbfa8",
+    "sha256": "af4d8500490549ded7fdbd31f912f033a8d367e4c9ae566adf259cf04b878665"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "training/gpt2/test_wasm.py",
+    "git_type": "blob",
+    "git_object": "1a9f05f65af2a3062da2dd9b260feeccf96f6785",
+    "sha256": "fac1c967e205cf9bcc71af188b0fcbd113ae4b0616dcff99f5cb56151d1c6022"
+  },
+  {
+    "revision": "4360920c3060d1c625b1860229b5116804d177c8",
+    "path": "training/gpt2/wasm.py",
+    "git_type": "blob",
+    "git_object": "9cb6b47b3eea06748c0b3b7e15df036c5b5fc57d",
+    "sha256": "cd39b5afd3c1ffbe44ed0891893a9c4980456a5ae03977ffb21eac45dfe71540"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/BodyExecution.lean",
+    "git_type": "blob",
+    "git_object": "3e03661de86bed9d2b0a4030b8b7150582b08a96",
+    "sha256": "36146b1681aa77cfc26d62110ab2cdd66ab40262e8da0b422aa88fdcaad37557"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/BodyParse.lean",
+    "git_type": "blob",
+    "git_object": "2a035b8c3108c7b0b41e650d88b5758124ecc7e4",
+    "sha256": "809156c120019b827dde96389a309a6470fc5a1a101c5443e065788e34ad58bf"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/Compile.lean",
+    "git_type": "blob",
+    "git_object": "55e6a4712aa2632140096f1a12a207b6d774184b",
+    "sha256": "154ea189cc199cf662101b5daf96a8302792eb93c28491ad0b57dda1651a819a"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/Dispatch.lean",
+    "git_type": "blob",
+    "git_object": "56c0cc418d8cb6bc8605e6100d6a48c0e9896da6",
+    "sha256": "01da6043781499d71daa5968472416104fbdf526fac238aa0063f113546b825c"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/Gpt2Packed.lean",
+    "git_type": "blob",
+    "git_object": "c322a752bdad61eb064a360170727f29913791b3",
+    "sha256": "4ec5a20ff66df5d1bf99d30e5732f9db87719e0aecae70599da7302020b6d972"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/SourceBounds.lean",
+    "git_type": "blob",
+    "git_object": "d3ddaae77eefd133df574b65d197c93bd4679600",
+    "sha256": "5efe364971f7266ee7d2b587fe1ea366fdcf7839897ef6a2d0200e5060f52dd4"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/StatementProof.lean",
+    "git_type": "blob",
+    "git_object": "4783b89d8cff17a92f6431c2a9a91092fdc86397",
+    "sha256": "5e65e4ae2056c14ab6e90874eed5526484c928041e957bf330fbe4d19723b786"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "LeanExe/WGSL/StatementRun.lean",
+    "git_type": "blob",
+    "git_object": "7b10b43b949250617248fd40cdd948a01ad01953",
+    "sha256": "7234fc50e8551dc2019a38247a12c9e47200503dea4c520b09986c7fa563504c"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "WGSL.md",
+    "git_type": "blob",
+    "git_object": "57e33713d4dff9af28281dd3fda67f197d164e8b",
+    "sha256": "4167df67126f3ad060b5cc3599996aea0693b01061d2b096e0ddb398f0eef0ec"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/README.md",
+    "git_type": "blob",
+    "git_object": "fd3faec9dd9f9c660d44185cbf7b9ea4a2220093",
+    "sha256": "0958df080e4bca1006c29cfbe979900f35a5e2f0ac968316c70f01c8d069af12"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/body-compiler.md",
+    "git_type": "blob",
+    "git_object": "e7d701dda3dc5b821d030bdf9b43d2dc16bae7c1",
+    "sha256": "b0e16b639d92c9d1e46686740e730d960c44a6d8703034bd37517673b4668e47"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/gpt2-verification.md",
+    "git_type": "blob",
+    "git_object": "c9ec3a4a1cdb932e39bc71ad1ff37e7ba1b5c8aa",
+    "sha256": "8081e9debab397fdac58b067e4657d7bd6c06db1332f8c396bfe7d464eb079eb"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/lean-source-specification.md",
+    "git_type": "blob",
+    "git_object": "1fcc02a959155ad9ea4a691e8a979857863c3cd9",
+    "sha256": "2206e66acbdc8682956032902b34b544690b163cd5d86042984f62642f9482fe"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/packed-gpt2.md",
+    "git_type": "blob",
+    "git_object": "d7d9e30f14dce043ec4ca2860f2e08e4b2c25703",
+    "sha256": "4f84827042bb831995d5477fae453972c626a27b23354b749b28abd8b6a84890"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/parent-integration-journal.md",
+    "git_type": "blob",
+    "git_object": "f4ab1ec491072fb43477d04b08b2912127e94ac1",
+    "sha256": "e501f716c2ad09c36c8a7871cd6255d97d2e2c4a673b0aff0dd9dc6cfc91219b"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "docs/wgsl/parent-integration-plan.md",
+    "git_type": "blob",
+    "git_object": "1884400bca029b16021540da1da2410f7607e159",
+    "sha256": "7c83f61ba969b50a4b0b1293b595da788d01a9b58def614a5dc78221e5519eba"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/FunctionRegion/Imports.lean",
+    "git_type": "blob",
+    "git_object": "9c9db4c77ad7182f273057df741258a3ad37a852",
+    "sha256": "e76590eb5133ba25055062566c2d1730de4005bd38551fc6289ffadb6e1c12e1"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2/MatrixArithmetic.lean",
+    "git_type": "blob",
+    "git_object": "88bc84efd8531f0a1822330820c5c13c943853fc",
+    "sha256": "8800209f89b5afca07f83da3abf0417ae3e5afac2e9255763b543b785a8e63a8"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2/PackedBackend.lean",
+    "git_type": "blob",
+    "git_object": "88d4f65e013617553e82bccbfe30cdb36f276ce9",
+    "sha256": "fdef76506dd55dfe50d675a3c913f2a393df13edf9cae137ef41c9e46b939d75"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2/PackedBody.lean",
+    "git_type": "blob",
+    "git_object": "7ffc052bbba6b0d1bb3235be5e679ce8ec2b1170",
+    "sha256": "5ace3aa9464563832f0f76febfb66e6686f06f40da2c4aaf28ed2e6b2bbaa105"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2/PackedCall.lean",
+    "git_type": "blob",
+    "git_object": "296d32850e0de988857c774290f8c9031f4220b2",
+    "sha256": "a7d280adae8f55e4015e47c6ffca5fe8fdd76650d6e99b2d55ff3187bbdcd8f4"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2/PackedShader.lean",
+    "git_type": "blob",
+    "git_object": "c0daab1732fb954169216877e7eef4c3335b1b0a",
+    "sha256": "c48e2f51e057f2c98606b2a8a9effa546553765b17731388dbc518b8ecdb1c9b"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean",
+    "git_type": "blob",
+    "git_object": "73f4a73b5d7d3f07676597d2a571bd71af79c007",
+    "sha256": "1ed2efae976032136fd28d71d14b56f6874397de51725cf92127e50f1fd7e5bf"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "proofs/talos/lean/Project/Gpt2CachedStep/Session/State.lean",
+    "git_type": "blob",
+    "git_object": "3d3754f7b94484647c1c24820aaa19658bf6a3a9",
+    "sha256": "f1c0832d8dd1c90ecffb9aed3818443415a928eebde0a085208651ff687089b9"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wasmtime-host.c",
+    "git_type": "blob",
+    "git_object": "4104e6c467f3843daa449a4fdf28d906e91ae90d",
+    "sha256": "213d92c8ba9264b5411963e641137634129d4a153e26e25a98a71fb66a9acdaf"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/body-test.js",
+    "git_type": "blob",
+    "git_object": "2b90201ee167db78f251d1b6b69e902adaf70dec",
+    "sha256": "03f0abf607800c54223bff99a57f5471b29861471399c54579fe344ebe23e56b"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-browser-test.mjs",
+    "git_type": "blob",
+    "git_object": "67753a0ab9b9d1d76e3e9efae9411fe90ee3f9c2",
+    "sha256": "9d23c56c52b8aacf075455db7524a633642b3c4451cff05c84fe6cf13562983c"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-browser/app.js",
+    "git_type": "blob",
+    "git_object": "474290c1225ec08eb009766c8cc27ceb938b2ba0",
+    "sha256": "f91ffa183e1f40a8c913d1efaac2c7ff501d1d7f960012373f7bcb6b9b6a9bd7"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-browser/host.js",
+    "git_type": "blob",
+    "git_object": "a15cda4354c888d7eb684b730213d61d8a7aeb83",
+    "sha256": "52b2da398606177c0224d8b75cdd6e3645225d79dc06547e181bd6acc6002430"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-browser/index.html",
+    "git_type": "blob",
+    "git_object": "3bf565fb8c7867a1899008e4a7eb17385dc7053c",
+    "sha256": "2b2dd0879b3e88f79c0834db06e1704d8fdc0db0531a778a6b492189ec90d809"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-browser/worker.js",
+    "git_type": "blob",
+    "git_object": "1a7a06e5800d0c43fff7ef09e9417803596dcc99",
+    "sha256": "ccae9a2f36e8436daea84c5139011ed329fb09ad18a675ed5cf11da00ad46fe2"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-build.js",
+    "git_type": "blob",
+    "git_object": "ad5aab3dd24b29a21f77143b0a45eaee7b53626d",
+    "sha256": "d75661eaab88ab68684bb2eb1eeea6d45fcb5f45455412ea179e244015188480"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-check.js",
+    "git_type": "blob",
+    "git_object": "3829ae3e4eaff455c57ce4f440dd7d436ea44395",
+    "sha256": "087d34179113fd8597906f853cb55c7adc8e04482c551943f7cae81d5ad01a1e"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-compose.js",
+    "git_type": "blob",
+    "git_object": "bbc4ebf6979fd327afb73aa96339324efc79d78d",
+    "sha256": "7543d5f6ad4691c555a0e518ef2f0eb115a8b9756ff514afebd1d2256e6b84a1"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-host.h",
+    "git_type": "blob",
+    "git_object": "70b7554b75fddf7665124f7fbaa96203d9974924",
+    "sha256": "a92ded4c709d0ac96ec4735b51b545d0a9bac12378941866f45dee81d81c8e60"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-module.js",
+    "git_type": "blob",
+    "git_object": "482e8fcd126af130efb7956b760c0d8899bb1054",
+    "sha256": "dab9fbd324a5d685bf30df309bdcfbd23232f2a569aa2969f85f4275368d7fe1"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-session-test.py",
+    "git_type": "blob",
+    "git_object": "dd7607940656705bb8fc4836980a25b428ee60a5",
+    "sha256": "84f0826f6566b43be1b29df0e4df61bd0201b1e6933283db44fa39fef0a1be3e"
+  },
+  {
+    "revision": "9c7c7898ecae5f636cf1047142c8a68c1936e041",
+    "path": "tools/wgsl/gpt2/packed-shaders.js",
+    "git_type": "blob",
+    "git_object": "516b31175aaf0873dd7b2488bd8e3e7992d43308",
+    "sha256": "431e2a2779176d80f4119b54acfb4cff3d151574314f62613715b86d7db0442f"
+  }
+]
