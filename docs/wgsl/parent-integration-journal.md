@@ -369,3 +369,27 @@ and the updated parent session theorem rechecked. The other parent binary and
 publication artifacts were not imported. The hybrid session replay uses that
 new module-parameterized API with the two imported-function indices accounted
 for explicitly.
+
+## Full 128-position execution comparison
+
+`packed-session-test.py` executed the complete 124M checkpoint through the
+hybrid and parent artifacts at every context length from one through 128.
+All 6,432,896 FP32 logit words matched the parent bit for bit. All 128 argmax
+choices agreed with PyTorch; the maximum absolute PyTorch difference was
+0.0015411376953125, within the recorded `0.002 + 0.0001*abs(reference)` test
+tolerance. No analytical error-bound claim is made by this measurement.
+
+The complete cache byte arrays matched at positions 0, 1, 126 and 127. Both
+artifacts rejected four invalid-input cases without changing allocator
+statistics or memory size. Cache restart/replay was exact. Allocator statistics
+and Wasm memory size matched at every position; at the last position both had
+33,025 allocations and 33,023 frees, retaining only weights and cache, and used
+1,107,361,792 Wasm bytes. The test, including both implementations and reference
+comparison, took 113.98 seconds. The hybrid host logged 6,500 CPU WebGPU
+dispatches, including the two restart calls, with 50 weight views.
+
+Evidence: `packed-runtime-01/session128.json` and `.log`. The candidate Wasm
+SHA-256 is `e509900d8497c8a498ff454bfbe728b1509928cf25f9837132925c7601b6761c`;
+the parent remains `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.
+All generated reports, model binaries, shaders and checkpoint bytes remain
+outside new source commits.
