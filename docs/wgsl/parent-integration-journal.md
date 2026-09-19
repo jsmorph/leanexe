@@ -393,3 +393,37 @@ SHA-256 is `e509900d8497c8a498ff454bfbe728b1509928cf25f9837132925c7601b6761c`;
 the parent remains `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.
 All generated reports, model binaries, shaders and checkpoint bytes remain
 outside new source commits.
+
+## Rebuilt source bundle and delivery status
+
+The complete source gate passed in `packed-build-01/build.json`. It rebuilt
+the parent artifact, prepared the hybrid module, compiled and checked all six
+shaders, independently parsed the hybrid Wasm, checked all wrapper contracts,
+and replayed the controller/session gate. The latter reused matching checked
+proof objects from the development cache and audited the required public
+theorems in `packed-compose-02/logs/run-10.json`. It then rebuilt the tokenizer,
+sampler, conversion adapter and native C host. The model, conversion module,
+weights and tokenizer table were byte-identical to the previously executed
+versions. The tokenizer and sampler Wasm binaries changed under the merged
+compiler, so they received focused execution checks.
+
+The new bundle's sixteen-token science trace was byte-identical to the earlier
+native trace. Its temperature-0.8 story trace was also byte-identical to the
+earlier paired sampled test. Eight tokenizer cases, including whitespace,
+contractions, combining characters, Chinese, Greek and emoji, matched the local
+Transformers tokenizer and decoded to the original UTF-8 bytes. A known-logit
+fixture selected EOS 50256 in the rebuilt Wasm sampler. Four invalid native
+requests were rejected. These are runtime checks of auxiliary artifacts, not
+new semantic proofs of tokenization or sampling. Evidence is
+`packed-build-01/{science,sampled}.{txt,log,f32.bin}` and `aux-test/results.json`.
+
+`tools/gpt2-packed build FRESH_DIRECTORY` is the source build entry point;
+`tools/gpt2-packed --prompt TEXT` uses the most recently selected checked bundle,
+and `serve PORT` starts its browser page. The browser source uses a Wasm worker,
+shared staging and completion notification around the same two imports.
+JavaScript performs host operations and raw-word movement only. Syntax checks
+and localhost HTTP isolation headers passed. A headless Chrome launch aborted
+during macOS application registration, and the browser-control tool then
+reported the Mac locked and unable to unlock. The unlock request is pending;
+no browser completion or browser numerical comparison has been reported as
+passing. The temporary validation server was stopped.

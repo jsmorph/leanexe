@@ -72,7 +72,7 @@ static void command_packed_run(Runtime *model,int argc,char **argv) {
   for(size_t i=0;i<tokens.len;i++)packed_need(tokens.items[i]<50257,"tokenizer rejected input");
   size_t weight_size;packed_path(file,sizeof file,argv[0],"weights.bin");uint8_t *weight_bytes=read_file(file,&weight_size);
   packed_need(weight_size==497759232,"packed checkpoint size");uint64_t weights=alloc_bytes(model,weight_bytes,weight_size);free(weight_bytes);
-  fprintf(stderr,"Packed FP32 GPT-2: full hybrid session proof pending.\n");
+  fprintf(stderr,"Packed FP32 GPT-2: Wasm controller and sampler; WebGPU matrix calls.\n");
   uint64_t cache=0,cache_size=0;uint8_t *logits=NULL;
   for(size_t i=0;i<tokens.len;i++){free(logits);logits=packed_forward_cli(model,weights,&cache,&cache_size,tokens.items[i],i);}
   FILE *trace=NULL;if(trace_path){trace=fopen(trace_path,"wbx");packed_need(trace!=NULL,"trace file must be new and writable");}
