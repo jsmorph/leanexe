@@ -15864,3 +15864,19 @@ and rejected operands.  Two first-draft tests used the opaque derived
 instruction Boolean equality and could not reduce in the kernel.  Stating
 parser-result equality as a proposition let `rfl` check both cases.  All
 focused tests now pass.  Existing FP64 translation tests also pass.
+
+The GPT-2 session predicate now takes an explicit module through `RunsFor`
+and `releaseThenFor`.  The existing names abbreviate the proved generated
+module, preserving existing callers.  `ExactSpecFor` states initialization,
+weight loading, inference, and release against its module argument.
+`gpt2_128_exact_for` passes with only propext, Classical.choice, and Quot.sound.
+This gives the byte-equality theorem a module-dependent behavioral predicate.
+
+The extended executable decoder accepts the unchanged GPT-2 binary.
+Embedded-byte and balanced-lookup proofs pass in 15 and 16 seconds.  A first
+build invocation could not access the systemd user bus in the sandbox.
+The approved runner invocation outside that restriction succeeded with its
+resource scope.  Decoder certificates now use the shared parser-composition
+lemmas and parser-derived offsets.  Each function has a separate module.
+The existing package manifests now name the FP32 verifier source digest.
+Their previous receipts remain historical until the aggregate check passes.
