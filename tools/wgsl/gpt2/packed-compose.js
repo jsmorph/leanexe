@@ -16,7 +16,7 @@ const read=rel=>fs.readFileSync(path.join(sourceRoot,rel+".lean"),"utf8");
 
 function shiftCalls(s) {
   return s.replace(/\.call (\d+)/g,(_,n)=>`.call ${Number(n)+2}`)
-    .replace(/(TerminatesWith env «module» )(\d+)/g,(_,p,n)=>p+(Number(n)+2))
+    .replace(/(TerminatesWith env (?:«module»|module_) )(\d+)/g,(_,p,n)=>p+(Number(n)+2))
     .replace(/(PackedWordRead\.exact «module» )17/g,"$119")
     .replace(/(PackedAllocExport\.exact «module» env )39/g,"$141")
     .replace(/(PackedReleaseMany\.program_spec env «module» )42/g,"$144")
@@ -148,6 +148,10 @@ end ${hybrid}.Vocabulary.Spec
       redirect.has(suffix.replaceAll(".","/"))?`import ${hybrid}.${suffix}`:all);
     text=text.replace(/^(namespace|end) Project\.Gpt2CachedStep(.*)$/gm,`$1 ${hybrid}$2`);
     text=shiftCalls(text);
+    if(rel==="Session/Spec")text=text.replace("∀ (env : HostEnv Unit) (weights : ByteArray)",
+      "∀ (env : HostEnv Unit) [Project.Gpt2.PackedBackend.Host module_ env kernels] (weights : ByteArray)");
+    if(rel==="Entry/Logits")text=text.replace("[LogitsState, State, parameters, hLocals,",
+      "[LogitsState, State, Vocabulary.outputNeed, show PackedCapacity.capacity 201028 = 201032 from rfl, parameters, hLocals,");
     if(text.includes("PackedWordRead.exact «module» 19")) {
       text=text.replaceAll("PackedWordRead.exact «module» 19 (some 17) rfl rfl env","PackedWordReadBridge.exact env");
       text=`import ${hybrid}.WordRead\n`+text;
@@ -217,6 +221,18 @@ end ${hybrid}.Vocabulary.Spec
     }
     await build(through||"Session/Spec");
     if(!through)await build("Spec");
+    if(!through){
+      record.publicTheorems={};
+      for(const [rel,names] of [["Spec",[`${hybrid}.Spec.cachedStep_exact`]],
+        ["Session/Spec",[`${hybrid}.Spec.gpt2_128_exact`,`${hybrid}.Spec.gpt2_128_exact_for`]]]){
+        const receipt=JSON.parse(fs.readFileSync(path.join(lib,"Gpt2Hybrid",rel+".olean.json"),"utf8"));
+        for(const name of names){
+          if(!Object.hasOwn(receipt.axioms,name))throw Error(`missing required public theorem audit: ${name}`);
+          record.publicTheorems[name]=receipt.axioms[name];
+        }
+      }
+      record.assumptions="Completed execution of the six checked shaders under the declared FP32 interpretation, exact output-byte transfer and preservation of the rest of the store. Native/browser host and driver correctness are external.";
+    }
     record.status="pass";record.fullHybridSessionProved=!through;save();
     console.log(`Hybrid composition ${through||"step and session"} checked: ${recordPath}`);
   } catch(error) {record.status="failed";record.error=error.message;save();throw error;}

@@ -127,10 +127,13 @@ allocation and framing lemmas and the existing WGSL transfer lemmas where
 their hypotheses fit the new packed ABI.
 
 Implement and prove a minimal caller containing one QKV replacement before
-rewriting the complete controller. Prefer a Wasm request/resume interface for
-GPU dispatch so the same protocol supports native execution and asynchronous
-browser WebGPU. Native C and browser JavaScript perform API calls, byte copies
-and resume operations. Arithmetic and model-state decisions stay in Wasm/WGSL.
+rewriting the complete controller. The implemented protocol uses synchronous
+Wasm imports, preserving the parent's controller instruction bodies. Native C
+completes the dispatch before returning. The browser implementation places Wasm
+in a worker, which waits on a shared buffer while another host context performs
+the asynchronous WebGPU dispatch. That browser implementation still awaits
+execution testing. Host C and JavaScript perform API calls, byte copies and
+completion notification. Arithmetic and model-state decisions stay in Wasm/WGSL.
 
 This is the principal integration risk. The parent's current call-region
 proofs name a concrete module and function indices. Establish a reusable
@@ -206,5 +209,5 @@ new exact-byte packaging work are outside this integration agenda.
 - [x] Merge and recheck both baselines.
 - [x] Prove compiled biased products and vocabulary against the parent source.
 - [ ] Prove and execute the packed replacement-call boundary.
-- [ ] Compose hybrid cached-step and 128-position execution.
+- [x] Compose hybrid cached-step and 128-position execution under the declared host execution/transfer assumptions.
 - [ ] Run native and browser completion evidence for the integrated model.
