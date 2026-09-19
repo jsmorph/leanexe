@@ -16107,3 +16107,12 @@ accepted the seven review corollaries and audited the combined artifact
 theorem.  All eight axiom reports contain only the three standard logical
 axioms or a subset.  Submission metadata and a PDF/source snapshot are
 prepared in `paper/gpt2-verification-report/submission-06`.
+
+marXiv accepted submission `784d5d634d21` as `2609.00011v6` with five
+remarks.  The downloaded archive PDF equals the submitted file.  A follow-up
+revision addresses four remarks: qualify the abstract's opening requirement,
+remove the standard MiB definition, omit the unrelated package count, and
+identify the package checker's axiom policy by name.  The short explanation
+of the three axioms remains because the user requested it.  The revised
+PDF and extracted metadata are retained in `submission-07`.  The proof
+checkpoint and runtime evidence are unchanged.
