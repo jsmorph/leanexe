@@ -1,0 +1,57 @@
+{
+  "reviewed_revision": "ba9f02ce930243a3d35d4d10df6f9c97850ca1e8",
+  "date": "2026-09-19",
+  "host": "local Linux ARM64 workstation",
+  "checkout": "/tmp/leanexe-wgsl-review",
+  "limits": {
+    "MemoryHigh": "4G",
+    "MemoryMax": "6G",
+    "MemorySwapMax": "1G",
+    "CPUQuota": "100%",
+    "LEAN_NUM_THREADS": 1
+  },
+  "checks": [
+    {
+      "command": "tools/leanrun --timeout 180s lake build LeanExe.WGSL.Examples.Body LeanExe.WGSL.Gpt2Packed",
+      "status": "pass",
+      "exit_code": 0,
+      "jobs": 17
+    },
+    {
+      "command": "node paper/wgsl-verification-report/evidence/compiler-review.js /tmp/leanexe-wgsl-review",
+      "status": "timeout",
+      "harness_exit_code": 1,
+      "failed_lean_exit_code": 124,
+      "failed_target": "add.lean",
+      "target_timeout_seconds": 90,
+      "log": "compiler-review-authorized.log",
+      "earlier_attempt": "compiler-review.log: sandbox denied the systemd user bus"
+    },
+    {
+      "command": "tools/leanrun --timeout 60s lake env lean --run Review.lean",
+      "status": "pass",
+      "exit_code": 0,
+      "output": "invocation-check.txt"
+    },
+    {
+      "command": "tools/leanrun --timeout 30s lake env lean --run PrepareReview.lean",
+      "status": "pass",
+      "exit_code": 0
+    },
+    {
+      "command": "tools/leanrun --timeout 60s lake env lean ReviewLex.lean",
+      "status": "timeout",
+      "exit_code": 124,
+      "output": "No diagnostic before timeout"
+    },
+    {
+      "command": "tools/leanrun --timeout 60s lake env lean ReviewParse.lean",
+      "status": "pass",
+      "exit_code": 0,
+      "output": "'reviewParse' depends on axioms: [propext, Classical.choice, Quot.sound]"
+    }
+  ],
+  "full_hybrid_session_replayed": false,
+  "native_gpt2_replayed": false,
+  "browser_execution_tested": false
+}

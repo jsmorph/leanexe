@@ -1,0 +1,393 @@
+Checked WGSL Compilation and Conditional GPT-2 Execution in
+                        LeanExe
+                                  Codex GPT-6, Jamie Stephens
+
+                                         19 September 2026
+
+
+                                               Abstract
+         Moving verified inference operations from WebAssembly to the WebGPU Shading Language
+     (WGSL) introduces shader arithmetic, dispatch, and byte-transfer obligations. We describe a
+     LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks
+     each translation against an independent parser and a statement-execution semantics. Each
+     accepted certificate proves successful execution and equality to the supplied Lean function for
+     every invocation and adequately sized input under a shared scalar interpretation. Packed-layout
+     proofs connect six compiled shaders to the matrix operations of a 124M-parameter GPT-2
+     implementation. The hybrid session theorem equates cache and logit bytes with the Lean
+     cached-step recurrence for arbitrary weight bytes of the required length and up to 128 valid
+     tokens, assuming completed shader execution with separate FP32 arithmetic and exact host
+     transfers. The branch records a CPU WebGPU comparison in which all 6,432,896 logits match
+     the parent WebAssembly implementation bit for bit. We distinguish those recorded results from
+     fresh review checks, the shader semantics from runtime conformance, and the hybrid module’s
+     external parsing boundary from the parent report’s exact-binary proof. Browser execution
+     validation remains pending.
+
+
+1    Result and relation to the WebAssembly proof
+The hybrid session theorem equates cache and logit bytes with the Lean cached-step recurrence
+for arbitrary weight bytes of the required length and up to 128 valid tokens, assuming completed
+shader execution with separate FP32 arithmetic and exact host transfers. The public declarations
+are Project.Gpt2Hybrid.Spec.cachedStep_exact, gpt2_128_exact, and gpt2_128_exact_for.
+A build generates these declarations by replaying the parent controller proofs against the hybrid
+module and the six shader certificates. The integration journal records their successful Lean checks
+and axiom audits [10, 15].
+    The parent report establishes an exact-binary WebAssembly result for the same Lean algorithm [1].
+Its specification is LeanExe.Models.Gpt2.cachedStep, including the cache layout, scalar FP32
+operation order, and selected exponential and activation routines. Talos is the WebAssembly
+interpreter and proof library written in Lean used by that verification. The WGSL branch reuses the
+parent’s Talos instruction proofs and its binary32 arithmetic extensions. This report concerns the
+additional compilation, matrix-layout, and host-call reasoning needed to replace the dense products
+with WGSL execution.
+    The reviewed source is the wgsl branch at revision ba9f02ce930243a3d35d4d10df6f9c97850c
+a1e8. It pins Lean 4.34.0-rc2 and Talos revision 87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47.
+The earlier report’s version 7 also proves decoding and validation of a frozen parent WebAssembly
+binary. The hybrid changes that binary by adding imports and replacing matrix implementations.
+
+                                                   1
+Its present proof starts from the module declarations produced by an external parser. Extending
+the parent’s binary certificate to those changed bytes remains a separate obligation [1, 12].
+    The runtime keeps embedding, normalization, attention, activations, residuals, cache construction,
+and control flow in Lean-generated WebAssembly. Four products per transformer block and two
+vocabulary slices execute as WGSL. The model has twelve blocks, hidden width 768, feed-forward
+width 3072, and 50,257 vocabulary entries. Weights occupy 497,759,232 bytes. Each token extends
+the cache by 73,728 bytes and returns 201,028 logit bytes [14]. These sizes determine the theorem’s
+memory and index premises.
+
+
+2     Per-compilation shader certificates
+2.1   Lean source subset
+The compiler accepts a monomorphic annotated Lean definition of type
+           ScalarArithmetic → (N → UInt32) → (N → UInt32) → N → N → UInt32.
+The five arguments supply scalar operations, input buffers A and B, and output coordinates. A
+UInt32 represents a floating-point word. The add and mul fields of ScalarArithmetic specify its
+arithmetic [2]. For example, an ordered matrix cell is expressed by
+@[wgsl] def matrix : Source.Kernel := fun ar a b row col =>
+  Source.fold 4 0 fun k acc =>
+    ar.add acc (ar.mul (a (row * 4 + k)) (b (k * 3 + col)))
+The definition’s elaborated body determines the emitted computation. Transparent helpers, word
+and index bindings, nested literal-count folds, finite word constants, buffer reads, addition, and
+multiplication belong to the supported subset. Index expressions use naturals, coordinates, fold
+indices, addition, and multiplication. The implementation bounds normalization and rejects
+unsupported residual expressions. Runtime branches, dynamic iteration, barriers, atomics, and
+shared-memory communication lie outside this grammar [2].
+     Every fold count is at most 65,535. Static access checks bound each index expression and its
+intermediate arithmetic, preventing u32 overflow and out-of-range reads. Constants must encode
+finite binary32 values, including constants in unused bindings. Input buffer words remain unrestricted.
+The emitted wrapper declares two read-only storage buffers, a distinct output buffer, an 8 × 8
+workgroup, an edge guard, and one output store per active invocation [2, 3].
+
+2.2   Parsing, source equality, and execution
+The checker independently parses the emitted shader string into a statement program. It checks
+the declarations, bindings, guard, loop initializer, comparison, increment, accumulator assignment,
+lexical scope, final store, and complete token consumption. Parsed locals become indexed slots.
+Bindings and loops remain statements in the syntax tree. The parser accepts the compiler’s restricted
+WGSL grammar [2].
+    For source function f , shader text s, parsed statement program P , and shape S, the compiler
+constructs three certificates:
+                                          parse(s) = ok(P ),                                       (1)
+                                      f = interpretSource(P ),                                     (2)
+                                        Implements(s, S, f ).                                      (3)
+
+
+                                                  2
+Equation (2) quantifies over both input buffers, both coordinates, and the scalar interpretation. Its
+proof checks equality to the named Lean definition. An incorrect arithmetic operator or a custom
+natural-number addition instance therefore has to satisfy the original source equality before the
+checker can accept the shader [2].
+   The Implements proposition quantifies over scalar interpretation a, memory M , output size c,
+and u32 coordinates (r, q). With adequate buffer lengths, it states
+
+                     runShader(s, a, M, c, r, q) = ok(expected(S, f, a, M, r, q)).
+
+For an active coordinate, expected is a write of f (a, M.A, M.B, r, q) to rS.cols + q. For an inactive
+coordinate, it is no write. The execution function can fail on a missing local, invalid load or store,
+or exhausted loop budget. The theorem rules out each modeled failure [3].
+    The shared proof establishes agreement between wrapping u32 index calculations and natural-
+number source indices within the validated bounds. It then proves statement execution equal to
+source interpretation, including local bindings and scope restoration. A loop tests its u32 counter,
+executes its body, assigns the accumulator, and increments the counter. Its budget equals the literal
+count, and the proof establishes that the guard becomes false before an additional body execution
+is needed. This is a successful-execution result with bounded termination [3].
+    Checking finishes synchronously before files are emitted. The parser reductions use kernel
+evaluation. The compiler audits transitive dependencies of all three public certificates and permits
+only propext, Classical.choice, and Quot.sound. It saves the shader, metadata, and Lean
+declarations that can be checked again independently of compilation. The command #check_wgsl
+applies the same proof requirements to an existing shader file [2]. File reading and writing remain
+external operations around the theorem about the embedded string.
+
+2.3   Dispatch and arithmetic scope
+The body-compiler proof establishes one invocation’s semantics. Separate geometric lemmas prove
+coverage by the rounded-up dispatch and distinct output addresses for distinct active cells. The
+operational model assumes read-only inputs and a separate output buffer. A complete refinement to
+the WebGPU execution model, including an external scheduler, remains outside these certificates [3].
+    The strict GPT-2 instantiation uses the pure Talos binary32 addition and multiplication functions,
+with source-ordered accumulation and separate rounding. Its specification includes signed zeros,
+subnormals, and exceptional words. WGSL permits implementation choices involving reassociation,
+fusion, subnormals, zero signs, and exceptional values [4]. Applying the exact theorem to a runtime
+therefore requires more than acceptance of the shader by that runtime: execution must implement
+the stated operations and preserve the represented words through loads, copies, and stores.
+    The branch also contains an earlier fixed-template GEMM development. That path proves
+termination and output correspondence under arbitrary interleavings in its own dispatch model,
+and supports separate or locally fused accumulation. A fusion theorem characterizes each output
+by a sequence of explicit per-step choices. Its numerical bounds and small-model mixed-precision
+experiments use additional domain premises [5]. The current body compiler has its own source
+and statement proofs. The older scheduler, fusion, and numerical theorems do not supply those
+properties for the new grammar.
+
+
+
+
+                                                  3
+3     Connection to packed GPT-2 operations
+3.1   Ordered products and byte layouts
+The current integration compiles six kernel definitions. The four block products append bias words
+to their matrix input view and perform bias addition after the dot product. Table 1 gives the shapes,
+all with one output row [6].
+
+            Operation                      Inner dimension     Output columns   Final bias
+            QKV projection                               768             2304      Yes
+            Attention projection                         768              768      Yes
+            Feed-forward expansion                       768             3072      Yes
+            Feed-forward projection                     3072              768      Yes
+            Vocabulary, first slice                      768            25129      No
+            Vocabulary, second slice                     768            25128      No
+
+Table 1: Shader roles in each cached token step. The four block roles repeat across twelve blocks.
+
+   Let word(W, i) read word i from packed byte array W . For matrix offset o, bias offset b, inner
+dimension K, and column count N , the shader’s second input view is
+                                      (
+                                          word(W, o + i),       i < KN,
+                             B(i) =
+                                          word(W, b + i − KN ), i ≥ KN.
+
+The source proof identifies the reads at kN + q with the parent’s matrix reads, and the read at
+KN + q with its bias. Induction over the fold proves equality to the parent’s ordered dot-product
+prefix. A separate arithmetic equality connects the Lean source’s logical FP32 operations to the
+pure Talos operations for all input words [6].
+   The tied token embedding is vocabulary-major in the parent weights. A vocabulary shader uses
+the transposed view
+                              Bs (kN + q) = word(W, (s + q)768 + k),
+with (s, N ) = (0, 25129) or (25129, 25128). The split assigns each vocabulary column to one complete
+768-term dot product. The composition theorem selects its shader, local column, and shifted output
+address, preserving the operation order within every dot product [6].
+    The resulting theorems biasedBytes_exact and vocabularyBytes_exact identify serialized
+shader results with the parent’s linearRows and vocabularyHead byte arrays. The serializer’s total
+definition maps an unsuccessful shader result to a default word. The preceding per-column theorem
+proves success at every serialized column, so the byte equality eliminates that default case [7]. These
+are equalities of word and byte computations without weight-magnitude premises.
+
+3.2   Host imports and controller reuse
+The hybrid module adds imports wgsl.linear and wgsl.vocabulary. Its Wasm wrappers allocate
+packed output storage and call the imports. Function indices shift by two. The proof generator
+checks the wrappers and unchanged function declarations against the independently parsed hybrid
+module [12, 8].
+    The reusable ImportShift relation identifies a closed set of unchanged functions, their renamed
+direct calls, and the memory declaration. Its semantic transport theorem preserves interpreter
+
+
+                                                    4
+execution at every fuel value and therefore transports the parent’s total-correctness statements.
+Functions in the selected set cannot call the changed matrix implementations. Controller segments
+outside that set are checked again, with the replacement matrix theorems at their call sites [9, 10].
+   The interface PackedBackend.Kernels contains the six shader texts and their Implements
+proofs. PackedBackend.Code identifies the wrappers, allocator, memory mode, and imports in the
+module. PackedBackend.Host specifies what the external calls do. For represented and protected
+input buffers with adequate sizes and allocation resources, it requires the host to return the modeled
+shader-output bytes in the allocated output and preserve the remaining store [8].
+   The host premise concerns execution of the certified shader semantics. Equality of those shader
+bytes to the parent matrix result follows from the packed-layout and arithmetic theorems. Combining
+the two establishes exact returned lengths and bytes, ownership of the output, preservation of
+protected memory, heap validity, and memory-capacity preservation. Those postconditions supply
+the parent’s controller proofs with the facts needed for subsequent calls and releases [7, 8].
+
+
+4    Conditional session theorem and deployment boundary
+Let W be any 497,759,232-byte array and let t0 , . . . , tn−1 satisfy ti < 50257 and n ≤ 128. Define
+the source trace by
+                      C0 = ϵ,     (Ci+1 , Li ) = cachedStep(W, Ci , ti , i).
+Here ϵ is the empty cache, and Li is the complete logit byte array. Under PackedBackend.Host,
+the generated gpt2_128_exact theorem composes reset, weight allocation, the mathematical write
+of W , successive inference calls, logit availability, and releases with this source trace. Its session
+predicate observes cache and logit bytes in memory. Its call predicate, TerminatesWith, requires
+success for every sufficiently large interpreter fuel [10, 11].
+    The session derives its heap and buffer preconditions from initialization and preserves them
+across token calls. The cached-step proof also covers rejected input lengths, token IDs, and positions.
+The algorithm uses arbitrary weight words, including exceptional encodings. Consequently, the host
+premise must hold for the corresponding strict word semantics if the theorem is applied on that full
+domain. The source theorem supplies no assertion that a particular GPU satisfies this premise on
+all weight arrays.
+    Wasmtime is the standalone WebAssembly runtime used by the native host. The host enables its
+Cranelift arithmetic NaN canonicalization mode, as in the parent implementation. Native WebGPU
+dispatch and readback finish before an import returns to Wasm. GPU weight views use the matrix
+offsets passed by Wasm, and the host invalidates cached views after overlapping external writes or
+reset. A model session uses fifty matrix views [13].
+    The browser implementation runs Wasm in a worker. Each import copies input words to shared
+staging, sends a dispatch request, and waits for completion notification. The WebGPU host writes
+result bytes to staging before waking the worker. Each browser run creates its own host and copies
+the same weight bytes into Wasm and the host’s source buffer. The source and syntax checks exist,
+but the branch records no completed browser execution test [13, 15].
+    Table 2 separates checked statements from premises and external components. The hybrid
+theorem’s axiom audit permits the same three standard logical axioms as the parent. Its explicit
+Host hypothesis is additional to that logical axiom list. An axiom audit alone cannot discharge the
+hypothesis [10].
+
+
+
+
+                                                  5
+ Component                         Assurance at the reviewed revision
+ Shader text and source function   Per-compilation parsing, source equality, and statement-execution
+                                   certificates.
+ Packed GPT-2 matrix result        Word order, offsets, bias, vocabulary split, and byte equality proved.
+ Wasm controller and token         Generated proof over the parsed hybrid module, conditional on the host
+ session                           interface.
+ Hybrid binary to Lean module      External parser/emitter boundary. The parent’s exact-binary certificate
+                                   concerns different bytes.
+ GPU execution and transfers       Completed execution under the declared arithmetic and
+                                   store-preservation assumptions.
+ Native and browser host code      Implementations reviewed as source. Their full correctness remains
+                                   external.
+ Tokenizer, sampling, and          Runtime components outside the inference theorem.
+ conversion adapter
+
+        Table 2: Proof and deployment boundaries of the packed hybrid implementation.
+
+
+5     Execution evidence and review findings
+5.1   Recorded native tests
+The integration journal records execution of the pretrained checkpoint on SwiftShader’s CPU
+WebGPU device. Across a forced 128-token sequence, all 6,432,896 candidate logit words matched
+the parent Wasm outputs. Complete cache arrays matched at positions 0, 1, 126, and 127. Invalid-
+input tests preserved allocator statistics and memory size, and cache restart tests reproduced the
+outputs. The test implementation checks word equality explicitly [15, 16].
+    The recorded PyTorch comparison reported agreement of all 128 argmax choices and a maximum
+absolute logit difference of approximately 0.001541. Every logit satisfied the test tolerance 0.002 +
+0.0001|reference|. The combined parent, hybrid, and reference comparison took approximately 114
+seconds. This timing describes that test workload. It supplies no physical-GPU throughput estimate
+or general numerical error bound [15, 16].
+    The journal also records greedy text completions and a sampled parent/hybrid pair using the
+same Wasm tokenizer and sampler, temperature 0.8, and seed 42. Both the sampled text and
+logged logit bytes matched. The rebuilt source bundle reproduced these traces and passed focused
+tokenizer, sampler, and invalid-request tests. Tokenization and sampling remain outside the formal
+inference claim [15].
+    The branch records eleven body-compiler examples with three certificates each and 63 exact CPU
+WebGPU output checks. Twenty-four rejection cases cover unsupported source constructs, invalid
+dimensions and accesses, non-finite constants, changed operations, altered loops, and malformed
+stores. These tests inspect source dependence and rejection behavior in addition to ordinary matrix
+execution [17].
+
+5.2   Fresh review checks
+The review rebuilt the shared body compiler, statement semantics, index proofs, and GPT-2 kernel
+definitions in an isolated checkout of the cited revision. A focused Lean check proved source equality,
+static validity, and invocation correctness for the pointwise-add example and audited the shared
+index, execution, coverage, and disjoint-store theorems. Every printed dependency belonged to the
+three-axiom allowance. Executable parsing accepted the emitted review shader [18].
+
+
+                                                    6
+    The extracted certificate corpus timed out on its first positive example after 90 seconds under
+the repository’s one-core resource limit. A split diagnostic then checked the token-parser certificate
+successfully, while the separate lexical certificate exceeded 60 seconds. This identifies lexical
+certification as one reproduction bottleneck under these limits. The corpus therefore provides no
+fresh all-cases pass on this machine. The full hybrid session replay and native checkpoint execution
+were also not repeated during this review. Their reported outcomes above come from the branch’s
+integration journal, whose generated proof objects and execution reports reside in ignored build
+directories [18, 15].
+
+5.3   Assurance and reproducibility findings
+The examined Implements statement excludes the execution model’s failure cases, establishes
+bounded loop execution, and specifies the output address. The packed connection then identifies
+those results with the parent byte-array functions. The controller interface assumes shader execution
+and transfer, while the matrix equivalence follows from checked lemmas. These distinctions support
+the conditional session claim [3, 7, 8].
+    The strongest portability limit is the strict arithmetic and host-execution premise. The sampled
+CPU agreement supports the recorded executions. A browser or physical GPU needs separate
+evidence for its behavior, and a universal claim would require a proof or enforced implementation
+of the stated word semantics. The body compiler also needs a refinement theorem and dispatch
+semantics before its invocation result can be presented as a theorem of a complete formal WGSL
+execution model [4, 3].
+    Reproducing the whole result requires rebuilding the generated certificates and preserving
+their association with the files executed. The source gate checks the parent, generates the hybrid
+module and shaders, checks wrapper and controller proofs, audits named public theorems, and
+copies the artifacts into a bundle. The runner subsequently loads bundle files. Its manifest records
+theorem names and assumptions, but supplies no independent proof that later file changes preserve
+the checked program [12, 13]. The exact hybrid binary certificate and runtime artifact-identity
+enforcement are open assurance tasks.
+    Some status descriptions predate the completed controller proof. The older GPT-2 verification
+guide still describes full-model composition as pending, and the module-generation CLI prints
+the same status. The later packed guide, composition gate, and integration journal describe
+the conditional complete-session result. Consolidating those descriptions and retaining portable
+generated certificates and machine-readable test reports would make the branch’s current claim
+easier to reproduce [14, 15, 12, 17].
+
+
+6     Reproduction entry points
+On a host with the repository’s pinned Lean toolchain and installed native dependencies, the
+source-build and inference entry points are
+tools/gpt2-packed build build/gpt2/packed-new
+tools/gpt2-packed --prompt 'The purpose of science is' \
+  --generate 16 --temperature 0
+The build destination must be fresh. Its configured Python environment prepares checkpoint assets.
+Inference uses Wasm and WGSL. The packed guide documents bundle selection and generation
+settings [14, 12]. The review evidence records the focused Lean commands, resource limits, and
+certificate timeout [18].
+
+                                                  7
+References
+ [1] Codex GPT-6 and Jamie Stephens. Exact Execution Verification of Cached GPT-2 in Lean
+     and WebAssembly. marXiv:2609.00011v7, 2026.
+
+ [2] LeanExe. Body compiler, independent statement parser, and supported source specification.
+     Revision ba9f02ce, 2026.
+
+ [3] LeanExe. Shader execution and Implements, statement semantics, statement correctness, and
+     index bounds. Revision ba9f02ce.
+
+ [4] W3C. WebGPU Shading Language. Candidate Recommendation Draft, 17 August 2026, Section
+     15.7. https://www.w3.org/TR/2026/CRD-WGSL-20260817/#floating-point-evaluation.
+
+ [5] LeanExe. Template dispatch semantics, fusion-choice correspondence, and earlier numerical
+     and mixed-precision results. Revision ba9f02ce.
+
+ [6] LeanExe. Packed kernel definitions and arithmetic, layout, and source-byte equalities. Revision
+     ba9f02ce.
+
+ [7] LeanExe. Shader execution to parent byte results and six-shader certificate generator. Revision
+     ba9f02ce.
+
+ [8] LeanExe. Kernel, code, and host interfaces and output and store-preservation lemmas. Revision
+     ba9f02ce.
+
+ [9] LeanExe. Function-region transport with imports. Revision ba9f02ce.
+
+[10] LeanExe. Hybrid controller and session proof generator. Revision ba9f02ce.
+
+[11] LeanExe. Parent session theorem and source trace and observable session predicate. Revision
+     ba9f02ce.
+
+[12] LeanExe. Source build gate, hybrid module construction, and external parsing and wrapper
+     checks. Revision ba9f02ce.
+
+[13] LeanExe. Wasmtime host, native WebGPU imports, browser host, and Wasm worker. Revision
+     ba9f02ce.
+
+[14] LeanExe. Packed GPT-2 usage and proof scope. Revision ba9f02ce.
+
+[15] LeanExe. Parent integration journal, especially “Full hybrid controller and 128-token session,”
+     “Full 128-position execution comparison,” and “Rebuilt source bundle and delivery status.”
+     Revision ba9f02ce.
+
+[16] LeanExe. Full-context comparison test. Revision ba9f02ce.
+
+[17] LeanExe. Body-compiler corpus, recorded outcomes, and earlier GPT-2 verification record.
+     Revision ba9f02ce.
+
+[18] Codex GPT-6. WGSL branch review and report evidence, 19 September 2026. LeanExe report
+     sources and evidence.
+
+
+
+
+                                                 8
+

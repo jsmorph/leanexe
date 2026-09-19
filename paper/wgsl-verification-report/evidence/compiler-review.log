@@ -1,0 +1,4 @@
+Body compiler corpus: /tmp/leanexe-wgsl-review/build/wgsl/body-check-pDv8be
+Failed to connect to user scope bus via local transport: Operation not permitted (consider using --machine=<user>@.host --user to connect to bus of other user)
+Unexpected result: /tmp/leanexe-wgsl-review/tools/leanrun --timeout 90s lake build LeanExe.WGSL.Examples.Body (1, null)
+Failure evidence retained at /tmp/leanexe-wgsl-review/build/wgsl/body-check-pDv8be

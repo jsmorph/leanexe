@@ -1,0 +1,6 @@
+*.aux
+*.out
+main.log
+preview/
+!evidence/*.log
+!evidence/compiler-corpus/*.log

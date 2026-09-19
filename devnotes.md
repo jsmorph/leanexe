@@ -16124,3 +16124,13 @@ archive copy equals the local and submitted PDFs, with SHA-256
 `34a2d150bc55c6b62a9ee4399044d6a232f1eb58dda6e2deca113603247f0596`.
 The publication record, README, review, submission metadata, and archive
 decision now identify version 7.
+
+## WGSL branch review and report: 19 September 2026
+
+The requested review uses fetched `origin/wgsl` at `ba9f02ce930243a3d35d4d10df6f9c97850ca1e8`, with an isolated checkout under `/tmp`.  The local `wgsl` pointer was older.  The new report cites the preceding GPT-2 report, marXiv:2609.00011v7, and distinguishes its exact-binary theorem from the hybrid's external parsing boundary.
+
+The source review followed the body compiler, parser, invocation semantics, packed matrix equalities, external host interface, helper-function transport, and controller/session proof generator.  The host premise requires strict separate FP32 execution and exact transfers.  The matrix equality follows from checked source and layout lemmas.  Browser execution remains pending in the branch record.  Older status text still describes controller composition as pending despite the newer complete conditional session gate.
+
+Fresh shared compiler/proof builds passed through `tools/leanrun`.  The extracted proof corpus timed out on its first positive certificate after 90 seconds.  A split diagnostic isolated a 60-second lexical-certificate timeout, while the token-parser certificate passed.  Source equality, static validity, invocation correctness, and shared theorem audits passed with only the standard three logical axioms.  The original sandbox failure, authorized retry, timeouts, and diagnostic sources are retained in the report evidence.  Full hybrid-session and checkpoint execution outcomes are attributed to the branch journal, not to this review.
+
+The draft covers the compilation method, packed matrices, host and session assumptions, recorded native tests, and remaining assurance tasks.  Its review record and source links identify the evidence for each claim.  Publication will follow two document-review passes and PDF inspection.

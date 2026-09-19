@@ -1,0 +1,14 @@
+Captured tool output from the focused review invocation:
+tools/leanrun --timeout 60s lake env lean --run Review.lean
+Exit status: 0
+
+'LeanExe.WGSL.Source.Index.bound_le' depends on axioms: [propext, Quot.sound]
+'LeanExe.WGSL.Source.Index.word_eq' depends on axioms: [propext, Quot.sound]
+'LeanExe.WGSL.Statement.Code.run_eq' depends on axioms: [propext, Quot.sound]
+'LeanExe.WGSL.Statement.shader_implements' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.WGSL.Statement.dispatch_covers' depends on axioms: [propext, Quot.sound]
+'LeanExe.WGSL.Statement.stores_disjoint' depends on axioms: [propext]
+'reviewSource' depends on axioms: [propext, Quot.sound]
+'reviewValid' depends on axioms: [propext]
+'reviewInvocation' depends on axioms: [propext, Classical.choice, Quot.sound]
+Executable parser accepted the review shader.
