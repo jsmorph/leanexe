@@ -14,7 +14,7 @@
 <fieldset id="settings"><label for="prompt">Prompt</label><textarea id="prompt" rows="3">The purpose of science is</textarea>
 <div class="controls">
 <label>Execution<select id="backend"><option value="wgsl">Wasm + WGSL</option><option value="wasm">CPU only · Wasm · no WGSL</option></select></label>
-<label>WebGPU device<select id="device"><option value="cpu">CPU WebGPU · software</option><option value="gpu">Available GPU</option></select></label>
+<label>WebGPU device<select id="device"><option value="gpu">Available GPU</option><option value="cpu">CPU WebGPU · software</option></select></label>
 <label>New tokens<input id="count" type="number" min="1" max="127" value="16"></label>
 <label>Temperature<select id="temperature"><option>0</option><option>0.7</option><option>0.8</option><option>1</option></select></label>
 <label>Seed<input id="seed" inputmode="numeric" value="42"></label>

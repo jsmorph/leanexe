@@ -1,4 +1,5 @@
-// WebGPU API calls and raw word movement only; numerical work is Wasm/WGSL.
+// WebGPU API calls, raw word transfers and runtime measurements.
+// Inference arithmetic runs in Wasm/WGSL.
 const need=(ok,message)=>{if(!ok)throw Error(message);};
 const shapes={qkv:[768,2304],attention:[768,768],expansion:[768,3072],projection:[3072,768],
   vocabularyLeft:[768,25129],vocabularyRight:[768,25128]};
@@ -22,7 +23,7 @@ class GPUHost {
     host.pipelines={};device.addEventListener("uncapturederror",event=>{host.failure=event.error;});
     device.lost.then(info=>{if(!host.closed)host.failure=Error(`WebGPU device lost: ${info.message}`);});
     for(const role of Object.keys(shapes)){
-      const response=await fetch(`/bundle/shaders/${role}/kernel.wgsl`);need(response.ok,`Cannot load ${role} shader`);
+      const response=await fetch(`/bundle/shaders/${role}/kernel.wgsl`,{signal});need(response.ok,`Cannot load ${role} shader`);
       const module=device.createShaderModule({code:await response.text()});
       host.pipelines[role]=await device.createComputePipelineAsync({layout:"auto",compute:{module,entryPoint:"lean_kernel"}});
       signal?.throwIfAborted();

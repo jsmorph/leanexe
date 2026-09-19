@@ -25,8 +25,10 @@ records the proof and execution evidence and their separate scopes.
 `tools/gpt2-packed --prompt "The purpose of science is"` selects the integrated
 packed FP32 Wasm/WGSL runner, with Wasm tokenization and sampling.
 `tools/gpt2-wasm --text "The purpose of science is"` selects the parent's
-packed FP32 Wasm runner. `tools/gpt2-wgsl build|run|serve|test` retains the
-earlier mixed-precision WGSL demo as a regression reference.
+packed FP32 Wasm runner. `tools/gpt2-wgsl build|run|test` retains the
+earlier mixed-precision WGSL demo as a regression reference. `tools/gpt2 serve`
+and `tools/gpt2-wgsl serve` now serve the packed model comparison page, with
+CPU-only Wasm and Wasm/WGSL execution plus prefill/decode and memory statistics.
 The compatibility entry `tools/gpt2` routes those four subcommands to WGSL
 and plain flags to Wasm. The current parent CLI samples in Python; it is a
 reference runner, not the sampling implementation for the integrated demo.

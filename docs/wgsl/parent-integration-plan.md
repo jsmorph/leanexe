@@ -213,6 +213,10 @@ new exact-byte packaging work are outside this integration agenda.
 - [ ] Run native and browser completion evidence for the integrated model.
 
 The full native 128-position comparison, completions and source-build gate
-have passed. The browser implementation is written and its server headers and
-JavaScript syntax checked; actual execution is pending a Mac unlock requested
-after the browser-control tool reported that it could not unlock the machine.
+have passed. The browser page now compares the integrated WGSL path with the
+unchanged parent CPU Wasm path and reports prefill/decode and memory statistics.
+The real CPU worker matches the native completion trace when executed through
+Node worker bindings. Server headers and JavaScript syntax checks pass. Actual
+browser execution is pending: desktop automation reported the Mac locked, and
+headless Chromium startup was separately blocked by the sandbox's Mach-port
+service restriction.
