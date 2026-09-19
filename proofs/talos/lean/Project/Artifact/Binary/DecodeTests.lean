@@ -67,4 +67,20 @@ example : resultEq (Parser.runAll expression (bytes [68, 11]))
     (.error { offset := 1, kind := .unsupportedOpcode 68 }) = true := by
   native_decide
 
+example : Parser.runAll expression (bytes [146, 148, 147, 149, 145, 188, 190, 11]) =
+    .ok [.f32Add, .f32Mul, .f32Sub, .f32Div, .f32Sqrt,
+      .i32ReinterpretF32, .f32ReinterpretI32] := by
+  rfl
+
+example : resultEq (Parser.runAll valType (bytes [125])) (.ok .f32) = true := by
+  decide +kernel
+
+example : Parser.runAll expression (bytes [2, 125, 11, 11]) =
+    .ok [.block (.value .f32) []] := by
+  rfl
+
+example : resultEq (Parser.runAll expression (bytes [67, 11]))
+    (.error { offset := 1, kind := .unsupportedOpcode 67 }) = true := by
+  decide +kernel
+
 end Wasm.Binary.Tests
