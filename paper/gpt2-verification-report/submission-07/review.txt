@@ -1,0 +1,7 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 12, “Terminology” and “Relevance,” Section 4.2: “Propositional extensionality identifies logically equivalent propositions,” “Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning,” and “Quotient soundness identifies quotient values represented by related elements” give textbook definitions of standard principles.  The named axiom dependencies and their distinction from native-evaluation assumptions suffice for the expert audience.
