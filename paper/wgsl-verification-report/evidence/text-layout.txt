@@ -8,9 +8,9 @@ Checked WGSL Compilation and Conditional GPT-2 Execution in
                                                Abstract
          Moving verified inference operations from WebAssembly to the WebGPU Shading Language
      (WGSL) introduces shader arithmetic, dispatch, and byte-transfer obligations. We describe a
-     LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks
-     each translation against an independent parser and a statement-execution semantics. Each
-     accepted certificate proves successful execution and equality to the supplied Lean function for
+     LeanExe compiler that translates a restricted class of Lean definitions to WGSL and checks each
+     translation against an independent parser and a statement-execution semantics. Each accepted
+     compilation establishes successful execution and equality to the supplied Lean function for
      every invocation and adequately sized input under a shared scalar interpretation. Packed-layout
      proofs connect six compiled shaders to the matrix operations of a 124M-parameter GPT-2
      implementation. The hybrid session theorem equates cache and logit bytes with the Lean
@@ -227,34 +227,17 @@ staging, sends a dispatch request, and waits for completion notification. The We
 result bytes to staging before waking the worker. Each browser run creates its own host and copies
 the same weight bytes into Wasm and the host’s source buffer. The source and syntax checks exist,
 but the branch records no completed browser execution test [13, 15].
-    Table 2 separates checked statements from premises and external components. The hybrid
-theorem’s axiom audit permits the same three standard logical axioms as the parent. Its explicit
-Host hypothesis is additional to that logical axiom list. An axiom audit alone cannot discharge the
-hypothesis [10].
+    Tokenization, sampling, and the FP32-to-FP64 adapter that presents logit words to the Wasm
+sampler lie outside the inference theorem [12].
+    The hybrid theorem’s axiom audit permits the same three standard logical axioms as the parent.
+Its explicit Host hypothesis is additional to that logical axiom list. An axiom audit alone cannot
+discharge the hypothesis [10].
 
 
 
 
                                                   5
- Component                         Assurance at the reviewed revision
- Shader text and source function   Per-compilation parsing, source equality, and statement-execution
-                                   certificates.
- Packed GPT-2 matrix result        Word order, offsets, bias, vocabulary split, and byte equality proved.
- Wasm controller and token         Generated proof over the parsed hybrid module, conditional on the host
- session                           interface.
- Hybrid binary to Lean module      External parser/emitter boundary. The parent’s exact-binary certificate
-                                   concerns different bytes.
- GPU execution and transfers       Completed execution under the declared arithmetic and
-                                   store-preservation assumptions.
- Native and browser host code      Implementations reviewed as source. Their full correctness remains
-                                   external.
- Tokenizer, sampling, and          Runtime components outside the inference theorem.
- conversion adapter
-
-        Table 2: Proof and deployment boundaries of the packed hybrid implementation.
-
-
-5     Execution evidence and review findings
+5     Execution evidence and review findings
 5.1   Recorded native tests
 The integration journal records execution of the pretrained checkpoint on SwiftShader’s CPU
 WebGPU device. Across a forced 128-token sequence, all 6,432,896 candidate logit words matched
@@ -283,10 +266,7 @@ definitions in an isolated checkout of the cited revision. A focused Lean check 
 static validity, and invocation correctness for the pointwise-add example and audited the shared
 index, execution, coverage, and disjoint-store theorems. Every printed dependency belonged to the
 three-axiom allowance. Executable parsing accepted the emitted review shader [18].
-
-
-                                                    6
-    The extracted certificate corpus timed out on its first positive example after 90 seconds under
+    The extracted certificate corpus timed out on its first positive example after 90 seconds under
 the repository’s one-core resource limit. A split diagnostic then checked the token-parser certificate
 successfully, while the separate lexical certificate exceeded 60 seconds. This identifies lexical
 certification as one reproduction bottleneck under these limits. The corpus therefore provides no
@@ -301,7 +281,11 @@ bounded loop execution, and specifies the output address. The packed connection 
 those results with the parent byte-array functions. The controller interface assumes shader execution
 and transfer, while the matrix equivalence follows from checked lemmas. These distinctions support
 the conditional session claim [3, 7, 8].
-    The strongest portability limit is the strict arithmetic and host-execution premise. The sampled
+
+
+
+                                                  6
+    The strongest portability limit is the strict arithmetic and host-execution premise. The sampled
 CPU agreement supports the recorded executions. A browser or physical GPU needs separate
 evidence for its behavior, and a universal claim would require a proof or enforced implementation
 of the stated word semantics. The body compiler also needs a refinement theorem and dispatch
@@ -322,35 +306,32 @@ generated certificates and machine-readable test reports would make the branch�
 easier to reproduce [14, 15, 12, 17].
 
 
-6     Reproduction entry points
+6    Reproduction entry points
 On a host with the repository’s pinned Lean toolchain and installed native dependencies, the
 source-build and inference entry points are
 tools/gpt2-packed build build/gpt2/packed-new
 tools/gpt2-packed --prompt 'The purpose of science is' \
   --generate 16 --temperature 0
-The build destination must be fresh. Its configured Python environment prepares checkpoint assets.
-Inference uses Wasm and WGSL. The packed guide documents bundle selection and generation
-settings [14, 12]. The review evidence records the focused Lean commands, resource limits, and
-certificate timeout [18].
+The build destination must be fresh. The source-build tool uses its configured Python environment
+to prepare checkpoint assets. Inference uses Wasm and WGSL. The packed guide documents bundle
+selection and generation settings [14, 12]. The review evidence records the focused Lean commands,
+resource limits, and certificate timeout [18].
 
-                                                  7
-References
+
+References
  [1] Codex GPT-6 and Jamie Stephens. Exact Execution Verification of Cached GPT-2 in Lean
      and WebAssembly. marXiv:2609.00011v7, 2026.
-
  [2] LeanExe. Body compiler, independent statement parser, and supported source specification.
      Revision ba9f02ce, 2026.
-
  [3] LeanExe. Shader execution and Implements, statement semantics, statement correctness, and
      index bounds. Revision ba9f02ce.
-
  [4] W3C. WebGPU Shading Language. Candidate Recommendation Draft, 17 August 2026, Section
      15.7. https://www.w3.org/TR/2026/CRD-WGSL-20260817/#floating-point-evaluation.
-
  [5] LeanExe. Template dispatch semantics, fusion-choice correspondence, and earlier numerical
      and mixed-precision results. Revision ba9f02ce.
 
- [6] LeanExe. Packed kernel definitions and arithmetic, layout, and source-byte equalities. Revision
+                                                 7
+ [6] LeanExe. Packed kernel definitions and arithmetic, layout, and source-byte equalities. Revision
      ba9f02ce.
 
  [7] LeanExe. Shader execution to parent byte results and six-shader certificate generator. Revision
