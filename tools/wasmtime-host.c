@@ -251,6 +251,9 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
 }
 
 static wasmtime_func_t get_func(Runtime *runtime, const char *name) {
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  if (strcmp(name, "reset") == 0) packed_clear_weights(runtime);
+#endif
   wasmtime_extern_t item;
   if (!wasmtime_instance_export_get(runtime->context, &runtime->instance, name, strlen(name), &item)) {
     fprintf(stderr, "missing export: %s\n", name);
@@ -348,6 +351,9 @@ static void write_u64_at(Runtime *runtime, uint64_t ptr, uint64_t value) {
     die("u64 write is outside memory");
   }
   uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  packed_memory_write(runtime, ptr, 8);
+#endif
   for (size_t i = 0; i < 8; i++) {
     memory[ptr + i] = (uint8_t)(value >> (i * 8));
   }
@@ -379,6 +385,9 @@ static uint64_t alloc_bytes(Runtime *runtime, const uint8_t *bytes, size_t len) 
     die("allocation is outside memory");
   }
   uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  packed_memory_write(runtime, ptr, len);
+#endif
   memcpy(memory + ptr, bytes, len);
   return ptr;
 }
@@ -807,6 +816,9 @@ static void write_bytes_at(Runtime *runtime, uint64_t ptr, const uint8_t *bytes,
     die("byte write is outside memory");
   }
   uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+#ifdef LEANEXE_WGSL_PACKED_HOST
+  packed_memory_write(runtime, ptr, len);
+#endif
   memcpy(memory + ptr, bytes, len);
 }
 
