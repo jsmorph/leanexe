@@ -177,8 +177,17 @@ The command-line host uses Wasmtime 44.0.0 with Cranelift and canonical NaNs,
 as required for exact NaN words.  Tokenization, token selection, the native
 host implementation, and Wasmtime are outside the Lean proof.  The theorem
 specifies and proves the host's WASM call sequence and byte input/output
-boundary.  Numerical error bounds, exact-byte packaging, and comparison with
-the separate full-prefix Lean algorithm remain outside this proof target.
+boundary.  Numerical error bounds and comparison with the separate
+full-prefix Lean algorithm remain outside this proof target.
+
+The [exact-binary theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean)
+`artifact_gpt2_128_exact` proves that the 19,083 embedded WASM bytes decode,
+satisfy the binary grammar, validate, and execute according to the complete
+session specification.  The proof establishes equality with the Talos
+execution model and transfers the source-agreement theorem through that
+equality.  Its logical dependencies are `propext`, `Classical.choice`, and
+`Quot.sound`.  Runtime weights remain universally quantified inputs of the
+required size.  Replacing those weights requires no new proof.
 
 The [canonical-mode test record](canonical-mode-test.json) records 86 FP32
 cases, all 6,432,896 logits across contexts one through 128, rejection and
@@ -190,6 +199,14 @@ Regenerate the module and check its execution proof with:
 
 ```sh
 tools/talos-proof.js check gpt2_cached_step
+```
+
+Check the distributed binary against its embedded bytes and artifact proof:
+
+```sh
+tools/artifact-proof.js check \
+  proofs/artifacts/gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/program.wasm \
+  Project.Gpt2CachedStep.ArtifactTranslation
 ```
 
 ## Sources

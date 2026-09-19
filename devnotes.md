@@ -15847,8 +15847,8 @@ The extension follows the WebAssembly [instruction encodings](https://webassembl
 and [typing rules](https://webassembly.github.io/spec/core/valid/instructions.html).
 
 - [x] Extend FP32 decoding, typing, translation, and general soundness proofs.
-- [ ] Generate kernel-checked byte, decoding, validation, and model-equality certificates.
-- [ ] Connect the decoded module to the complete GPT-2 session theorem.
+- [x] Complete kernel-checked validation and model equality after accepted byte and decoding certificates.
+- [x] Connect the decoded module to the complete GPT-2 session theorem.
 - [ ] Run the independent artifact checks, update documentation, commit, and push.
 
 Existing Euler artifacts supply checked parser-composition examples.  The
@@ -15896,3 +15896,28 @@ FP32, packed storage, and GPT-2 source modules.  Both fixtures now identify the
 current sources, and the test passes.  The release-status unit test rejects
 the historical release draft's input digest.  That publication record is
 separate from the requested artifact proof and remains unchanged.
+
+All 43 GPT-2 function-body certificates and six section certificates now
+pass.  Complete code-section composition took 2 seconds, complete-file
+composition 4.3 seconds, and the final decode bridge 1.4 seconds.  The largest
+function certificate was cached attention at 118 seconds.  Normalization
+and hidden-state decoding took 66 seconds each.  Every function certificate
+depends only on propext.  Complete-file decoding uses the three standard
+logical axioms.  The 53 generated certificate modules reproduce byte for
+byte from the parser metadata.  No local LTG retrieval or new tactic was
+needed.  Existing checked parser composition handled the full module.
+
+Commit a52d7a94 omitted the generated function and section modules after a
+sandbox error blocked that staging command.  Commit 3fbd6acb added the
+missing modules, and both commits are pushed.  Validation and final
+execution transfer remain under test.
+
+`Project.Gpt2CachedStep.Artifact.artifact_gpt2_128_exact` now passes.  It
+establishes successful decoding, the declarative binary grammar, successful
+validation, CoreValid, and the complete module-parameterized GPT-2 session
+specification for the decoded module.  Function validation took 28 seconds.
+Translation equality and the final theorem took 4.4 seconds.  Translation
+equality uses propext.  The complete theorem uses only propext,
+Classical.choice, and Quot.sound.  No native-evaluation or program-specific
+axiom enters the result.  The independent package checks and runtime tests
+are next.
