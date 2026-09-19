@@ -313,3 +313,22 @@ was handled by the existing semantic transport theorem, preserving its original
 proof instead of weakening the import premise.
 
 The twelve-block traversal and complete token/session theorem remain pending.
+
+## Sampled completion and independent packed assets
+
+A paired native test used the same Wasm tokenizer and sampler with both the
+unchanged parent module and the hybrid module. Temperature 0.8, seed 42 and
+sixteen requested tokens produced byte-identical token/logit traces and text:
+`Once upon a time, in a small village, the city seemed a lot like a city, like a city with a lot of`.
+The hybrid run performed 1,250 shader dispatches with 50 weight views. Evidence
+is `packed-runtime-01/{parent,hybrid}-sampled.{txt,log,f32.bin}`. Both trace and
+text comparisons passed. This tests the actual delivered Wasm sampler path;
+it does not add a sampler theorem.
+
+`packed-assets.py` now creates the parent's packed weight layout and tokenizer
+table directly from the pinned checkpoint. The table encoder is shared with
+the earlier demo packer. Its 497,759,232 weight bytes and 1,747,605 tokenizer
+words were byte-identical to the previously executed artifacts. Evidence is
+`packed-assets-01/` and `packed-assets-01.log`. This is offline data preparation;
+inference and tokenization remain in Wasm/WGSL. The source build gate is being
+assembled separately and has not yet passed end to end.
