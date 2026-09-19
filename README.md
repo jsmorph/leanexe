@@ -137,6 +137,9 @@ PyTorch bit-for-bit.  All twelve blocks and the tied vocabulary projection
 now run in WASM.  The nine-token reference prompt's 50,257 logits differ
 from PyTorch by at most 0.0000992.  Run pretrained WASM text generation with
 `tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
+The equivalent CPU PyTorch command is
+`tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32`.
+Both commands use the shared `uv` project for their Python dependencies.
 Weights and cached attention keys and values stay resident.  Tests compare
 6,432,896 logits with PyTorch across context lengths one through 128 and
 check cleanup after each call.  Formal proof development has resumed,

@@ -8,14 +8,21 @@ entries.  The reference limits the prompt and completion together to
 
 ## Run WASM inference
 
-The [reference setup](#run-the-reference) installs the dependencies and
-downloads the checkpoint.  From the repository root:
+The [reference setup](#run-the-reference) downloads the checkpoint.  Both
+commands use `uv` to install their pinned Python dependencies.  From the
+repository root:
 
 ```sh
 tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
 ```
 
-The command compiles the Lean model, keeps its packed weights and attention
+The equivalent CPU PyTorch command is:
+
+```sh
+tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32
+```
+
+The WASM command compiles the Lean model, keeps its packed weights and attention
 cache in one Wasmtime instance, and prints the prompt and completion.
 The original tokenizer handles text.  Model arithmetic runs in WASM.  Top-k sampling
 uses the Lean SplitMix64 WASM generator for random draws and Python for
@@ -40,19 +47,29 @@ completion matches PyTorch's token sequence exactly.
 
 ## Run the reference
 
-The approved environment already contains PyTorch 2.9.1+cpu.  Install the
-pinned reference dependencies and download the pinned model files:
+The [uv project](../../training/gpt2/pyproject.toml) and its lockfile pin
+PyTorch 2.9.1, Transformers 4.57.6, and their dependencies.  Linux and Windows
+use PyTorch's CPU wheel index.  `uv` creates `training/gpt2/.venv` on the
+first invocation.  The project selects Python 3.13.  Download the pinned
+model files once:
 
 ```sh
-.venv-tiny-gpt2/bin/python -m pip install -r training/gpt2/requirements.txt
-.venv-tiny-gpt2/bin/python training/gpt2/reference.py fetch
-.venv-tiny-gpt2/bin/python training/gpt2/reference.py generate \
-  --text 'Once upon a time, in a small village' --max-new-tokens 64 --seed 42
+uv run --project training/gpt2 training/gpt2/reference.py fetch
+```
+
+Both Python programs also run through `uv` directly:
+
+```sh
+uv run --project training/gpt2 training/gpt2/wasm.py --text 'Once upon a time, in a small village' --generate 32
+uv run --project training/gpt2 training/gpt2/reference.py generate --text 'Once upon a time, in a small village' --generate 32
 ```
 
 Generation uses CPU PyTorch FP32 and Transformers 4.57.6.  The default
-sampling parameters are top-k 40 and temperature 0.8.  `--top-k 1` selects
-greedy generation.  `--json` includes token IDs, checkpoint identity,
+count is 32 new tokens, with top-k 40, temperature 0.8, and seed 42, matching
+the WASM command's settings.  `--max-new-tokens` remains an alias for
+`--generate`.  PyTorch uses its seeded sampler, while the WASM command uses
+Lean SplitMix64 draws.  `--top-k 1` selects greedy generation.  `--json`
+includes token IDs, checkpoint identity,
 settings, elapsed time, and the stopping condition.  Generation stops at
 the requested count, the end-of-text token, or the 128-token boundary.
 

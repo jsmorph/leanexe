@@ -234,7 +234,7 @@ def main():
     parser.add_argument("command", choices=["fetch", "generate", "export-kernel", "export-block", "export-model"])
     parser.add_argument("--model-dir", type=Path, default=ROOT / "build/gpt2-124m")
     parser.add_argument("--text")
-    parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--generate", "--max-new-tokens", dest="max_new_tokens", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--top-k", type=int, default=40)
     parser.add_argument("--temperature", type=float, default=0.8)
