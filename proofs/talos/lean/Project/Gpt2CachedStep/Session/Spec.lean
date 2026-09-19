@@ -15,7 +15,7 @@ theorem runs_exact (env : HostEnv Unit) (weights : ByteArray) (tokens : List UIn
   | nil => rfl
   | cons token tokens ih =>
     simp only [List.length_cons] at hLength
-    simp only [sourceTrace, Runs]
+    simp only [sourceTrace, Runs, RunsFor]
     apply (step env weights cache token position initial heap weightNode cacheNode hReady
       (hTokens token (by simp)) (by omega)
       (fun next => Runs env weightNode.root weights.size tokens (position + 1)
@@ -59,6 +59,23 @@ theorem gpt2_128_exact (env : HostEnv Unit) (weights : ByteArray) (tokens : List
   apply (Initialize.allocate_exact env).mono
   rintro allocated values ⟨rfl, rfl⟩
   exact ⟨rfl, Session.initialized_runs_exact env weights tokens hWeights hTokens hLength⟩
+
+
+def ExactSpecFor (module_ : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (weights : ByteArray) (tokens : List UInt32),
+    weights.size = 497759232 →
+    (∀ token ∈ tokens, token.toNat < 50257) → tokens.length ≤ 128 →
+    TerminatesWith env module_ 40 (module_.initialStore (α := Unit)) []
+      (fun reset returned => returned = [] ∧
+        TerminatesWith env module_ 39 reset [.i64 Initialize.weightNeed]
+      (fun allocated values => values = [.i64 Initialize.weightNode.root] ∧
+        Session.RunsFor module_ env Initialize.weightNode.root weights.size tokens 0 0 0
+          (PackedInput.write allocated Initialize.weightNode.root.toNat weights)
+          (Session.sourceTrace weights tokens ByteArray.empty 0)))
+
+theorem gpt2_128_exact_for : ExactSpecFor «module» := gpt2_128_exact
+
+#print axioms gpt2_128_exact_for
 
 #print axioms gpt2_128_exact
 
