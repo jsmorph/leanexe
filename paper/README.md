@@ -10,7 +10,7 @@ This directory contains the main research paper and six focused reports on LeanE
 | [Tactic-retrieval note](tactic-retrieval-note/README.md) | Goal-shape tactic indexing, selection, and accepted proof evidence. | [marXiv:2608.00036](http://localhost:8000/abs/2608.00036) |
 | [The LeanExe Subset](leanexe-type-theory-specification/README.md) | Runtime typing, extraction, packed storage, and per-compilation proof obligations. | [marXiv:2609.00005](http://127.0.0.1:8405/abs/2609.00005) |
 | [Reconstructed Euler report](euler-reconstructed-report/README.md) | Exact-binary solver proof, physical numerical guarantees, and 192-grid and 800-grid results. | [marXiv:2609.00006](http://127.0.0.1:8405/abs/2609.00006) |
-| [Cached GPT-2 verification report](gpt2-verification-report/README.md) | Exact execution of the Lean GPT-2/128 recurrence, packed FP32 arithmetic, allocation sufficiency, and command-line inference. | Reviewed for marXiv submission. |
+| [Cached GPT-2 verification report](gpt2-verification-report/README.md) | Exact execution of the Lean GPT-2/128 recurrence, packed FP32 arithmetic, allocation sufficiency, and command-line inference. | [marXiv:2609.00011](http://127.0.0.1:8405/abs/2609.00011) |
 
 The root manuscript consists of four publication files:
 
