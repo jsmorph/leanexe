@@ -1,0 +1,54 @@
+{
+  "date": "2026-09-18",
+  "wasmtime_version": "44.0.0",
+  "backend": "Cranelift",
+  "nan_canonicalization": true,
+  "wasm_sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
+  "fp32_test_cases": 86,
+  "commands": [
+    "node test/f32_bits.js",
+    "tools/talos-proof.js check gpt2_cached_step",
+    "node test/packed.js --gpt2-cached --gpt2-completions"
+  ],
+  "cached_inference": {
+    "compared_logits": 6432896,
+    "max_abs_difference": 0.0014495849609375,
+    "seconds": 100.19876688101795,
+    "wasm_memory_bytes": 1107361792,
+    "allocations": 33025,
+    "frees": 33023,
+    "context_boundary_and_invalid_inputs": true,
+    "context_reset_exact": true,
+    "cached_full_nine_token_exact": true
+  },
+  "completions": [
+    {
+      "prompt": "Once upon a time, in a small village",
+      "completion": " called Hukur. The village is a great expanse of white sand and the winds blow fast, so that the whole town is like a thundercloud. The whole village is a storm with a low level of power, and the sky in the village is dark and cold. The village is a city built on stones",
+      "seed": 42,
+      "top_k": 40,
+      "seconds": 55.61688994301949,
+      "generated_tokens": 64,
+      "live_allocations": 2
+    },
+    {
+      "prompt": "The purpose of science is",
+      "completion": " to discover new phenomena. For example, this is the basic principle of quantum physics. The human will not know what quantum mechanics means until it uses what has been",
+      "seed": 7,
+      "top_k": 40,
+      "seconds": 27.776978929992765,
+      "generated_tokens": 32,
+      "live_allocations": 2
+    },
+    {
+      "prompt": "The capital of France is",
+      "completion": " the capital of the French Republic, and the capital of the French Republic is the",
+      "seed": 42,
+      "top_k": 1,
+      "seconds": 15.43900242401287,
+      "generated_tokens": 16,
+      "live_allocations": 2
+    }
+  ],
+  "greedy_tokens_match_pytorch": true
+}

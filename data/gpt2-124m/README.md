@@ -163,6 +163,12 @@ specifies and proves the host's WASM call sequence and byte input/output
 boundary.  Numerical error bounds, exact-byte packaging, and comparison with
 the separate full-prefix Lean algorithm remain outside this proof target.
 
+The [canonical-mode test record](canonical-mode-test.json) records 86 FP32
+cases, all 6,432,896 logits across contexts one through 128, rejection and
+reset checks, and three text completions.  The greedy completion matches
+PyTorch's token sequence.  The tested module has the same SHA-256 hash as
+the source-artifact gate's generated module.
+
 Regenerate the module and check its execution proof with:
 
 ```sh
