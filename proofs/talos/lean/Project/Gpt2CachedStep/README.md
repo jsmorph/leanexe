@@ -28,7 +28,13 @@ empty outputs with the store unchanged.
 
 The session theorem derives the heap, ownership, representation, and
 allocation premises from three input conditions: 497,759,232 weight bytes,
-token IDs below 50,257, and at most 128 tokens.  Its allocation argument uses
+token IDs below 50,257, and at most 128 tokens.  It starts at position zero
+with an empty cache and carries each returned cache into the next call,
+using the same weights throughout.  This establishes the sequence represented
+by the cache.  The standalone token step accepts any cache contents of the
+required length and computes the specified result from those bytes.
+
+The session's allocation argument uses
 a 512 MiB initial heap-top allowance plus 16 MiB per token within the module's
 4 GiB address limit.  The artifact theorem transfers that result to the
 decoded binary through checked equality of execution models.
@@ -71,6 +77,9 @@ tools/artifact-proof.js check \
 ```
 
 The artifact check reads the frozen binary and its proof package.  The
-source check additionally regenerates compiler output.  Both drivers use
-the repository's Lean runner.  The [Talos guide](../../../README.md)
-describes the shared runtime proofs and verification tools.
+source check regenerates compiler output and checks its execution model.
+The CLI also compiles current source and reports that binary's hash with
+`--json`.  Exact-byte coverage applies to the binary identified by the
+artifact proof.  Both proof drivers use the repository's Lean runner.  The
+[Talos guide](../../../README.md) describes the shared runtime proofs and
+verification tools.
