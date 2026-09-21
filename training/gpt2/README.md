@@ -47,9 +47,12 @@ tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
 The WASM command compiles the model and builds the C host before generation.
 Its Lean subprocesses use `tools/leanrun`.  Defaults are top-k 40,
 temperature 0.8, and seed 42.  `--top-k 1` selects the highest logit.
-`--json` records token IDs, settings, timing, allocation counts, and stopping
-conditions.  `--logits PATH` saves the last evaluated vector as raw binary32
-words.  PyTorch and WASM use different random-number generators for sampling.
+`--json` records token IDs, settings, timing, allocation counts, stopping
+conditions, and the compiled module's `wasm_sha256`.  `--logits PATH` saves
+the last evaluated vector as raw binary32 words.  Generation accepts a prompt
+of one to 127 tokens, leaving room for at least one output token.  The
+`WasmModel.infer` API accepts a prefix of up to 128 tokens.  PyTorch and WASM
+use different random-number generators for sampling.
 
 The repository test driver prepares inputs, builds the selected WASM modules,
 and runs the comparison programs:
@@ -73,3 +76,8 @@ remain outside the formal proof.  The
 errors, memory use, and completions.  The formal session theorem accepts
 arbitrary correctly sized weights.  This client additionally checks the
 pinned pretrained checkpoint's identity.
+
+The WASM CLI compiles current Lean source on each invocation.  The exact-binary
+theorem covers the frozen module identified in the
+[artifact proof instructions](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md#checking-and-evidence).
+The recorded `wasm_sha256` identifies which binary a generation run used.
