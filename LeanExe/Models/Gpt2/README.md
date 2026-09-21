@@ -42,10 +42,17 @@ and returns the final row's 50,257 logits.  An invalid weight length or
 token array returns an empty byte array.
 
 `cachedStep weights cache token position` computes one token at the supplied
-position.  The incoming cache contains 12 × 1,536 binary32 words per prior
-position: keys and values for each layer.  The result contains an extended
-cache and all 50,257 logits.  An invalid weight length, token, position, or
-cache length returns two empty byte arrays.
+position.  The incoming cache has `position × 12 × 1536 × 4` bytes, ordered
+by prior token position, then layer, then 768 keys and 768 values.  Word
+`offset` for layer `layer` at prior position `source` is at index
+`(source * 12 + layer) * 1536 + offset`.  The result appends the current
+position's twelve key/value rows and returns all 50,257 logits.  An invalid
+weight length, token, position, or cache length returns two empty byte arrays.
+
+The entry checks the cache's length.  Its computation uses the supplied
+cache contents.  The session proof starts with an empty cache at position
+zero and passes each returned cache to the next position with the same
+weights.  This recurrence establishes which prior tokens the cache represents.
 
 The execution theorem quantifies over every weight byte array of the required
 size, including exceptional binary32 values.  The

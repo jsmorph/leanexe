@@ -42,14 +42,18 @@ the smaller of a composed error formula and the magnitude estimate
 1,260 + 12B² + B.
 
 The composed formula takes lower bounds for the denominators in the three
-normalization stages.  They cover both the real inputs and the decoded
-computed inputs.  The square root of the epsilon floor always supplies
-such a bound.  At B = 10, the resulting minimum proves absolute error at
-most 2,470 per logit.  This estimate is too coarse to certify precision.
+normalization stages.  These bounds concern the real quantity
+`sqrt(variance + epsilon)`, where epsilon is 1/100000.  Each bound must hold
+for both the ideal real input row and the row obtained by decoding computed
+binary64 values.  The square root of epsilon always qualifies.  At B = 10,
+the composed formula with these floors evaluates to about 2.934 × 10¹⁴.
+The magnitude estimate gives the smaller bound, 2,470 per logit.  This
+estimate is too coarse to certify precision.
 
 For the stored checkpoint, `Checkpoint.infer_bounded` proves finite logits
 with magnitude at most 117 for every four-byte input.  That theorem uses
-facts about the specific checkpoint.  The
+facts about the original checkpoint words.  It applies to a checked call
+when clipping preserves those words.  The
 [checkpoint record](../../../../../data/tiny-gpt2-v1/README.md) includes the
 supporting range certificates, adversarial token search, and cancellation
 audit.  Sampled audit errors and universally quantified Lean bounds have

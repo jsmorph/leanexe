@@ -113,63 +113,34 @@ The knowledge forest selects versioned LTG packages containing checked lemmas, t
 
 ## Current work
 
-The [GPT inference and verification guide](docs/gpt/README.md) explains the
-models, goals, data flow, source directories, and proof boundaries.
+The [GPT inference and verification guide](docs/gpt/README.md) describes the
+models, goals, data flow, and source and proof directories.  The work covers
+small byte-token models and pretrained GPT-2 124M.
 
-The [trained tiny GPT-2 demonstration](data/tiny-gpt2-v1/README.md) accepts
-four byte tokens and returns all 256 next-byte logits in one WASM call:
-`tools/tiny-gpt2.js --text 'To b'`.  Tests match 1,536 logits against the
-native Talos bit model.  Numerical component proofs are complete.
-The complete generated-WAT inference theorem proves termination, all 256
-raw-bit logits, checkpoint preservation, and a fixed page count under its
-memory assumptions.  Checkpoint certificates prove finite logits for every
-four-byte input.  The composed numerical theorem takes the weight cap and
-normalization lower bounds as parameters.  Its unconditional error estimate
-is too coarse to certify precision.  The combined weight-checking and
-inference entry now has exact execution and numerical proofs.  The CLI accepts replacement checkpoints and a bound through the verified entry.
+The [four-byte model](data/tiny-gpt2-v1/README.md) returns 256 next-byte logits
+from 2,488 binary64 weights.  Its checked entry validates and clips runtime
+weights, with exact generated-WAT execution and numerical proofs.  Every
+accepted input produces finite logits.  At weight cap ten, the universal
+absolute error bound is 2,470 against real inference using the clipped weights.
+The bound is too coarse to certify numerical precision.  The
+[128-position tiny model](data/tiny-gpt2-128-v1/README.md)
+generates byte-token text in WASM.  Its complete execution proof remains paused.
 
-The [tiny GPT-2/128 CLI](data/tiny-gpt2-128-v1/README.md) generates text
-with `tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160`.
-The user paused proof work to develop
-[pretrained GPT-2 124M inference](data/gpt2-124m/README.md) through LeanExe
-with a 128-token context.  Its CPU FP32 reference produces text completions.
-The compiler now supports FP32 arithmetic, precision conversions, and
-packed tensor reads and construction.  The pretrained model's first
-768 × 2,304 attention projection runs in WASM and matches serial FP32
-PyTorch bit-for-bit.  All twelve blocks and the tied vocabulary projection
-now run in WASM.  The nine-token reference prompt's 50,257 logits differ
-from PyTorch by at most 0.0000992.  Run pretrained WASM text generation with
-`tools/gpt2 --text 'Once upon a time, in a small village' --generate 32`.
-The equivalent CPU PyTorch command is
-`tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32`.
-Both commands use the shared `uv` project for their Python dependencies.
-Weights and cached attention keys and values stay resident.  Tests compare
-6,432,896 logits with PyTorch across context lengths one through 128 and
-check cleanup after each call.  Formal proof development has resumed,
-prioritizing exact agreement with the Lean algorithm.  Packed access and
-construction, row mean, inverse standard deviation, attention score,
-linear matrix projection, complete layer normalization, cached key/value
-lookup and scores, row maximum and sum, exponential evaluation, and tensor
-activation, residual addition, complete cached attention, and complete cached
-transformer blocks have checked execution theorems.  The block theorem includes
-both returned buffers, all ten kernel calls, and temporary-buffer cleanup.
-The complete hidden-state theorem includes token and position embedding,
-all twelve blocks, cache assembly, output ownership, and temporary-buffer
-cleanup.  Vocabulary projection now has a checked theorem for all 50,257
-output scores, allocation, and input preservation.  The complete cached-step
-theorem now proves termination, exact cache and logit bytes, and protected-input
-preservation for runtime weights under its memory and allocation assumptions.
-It includes all four input-rejection paths.  The
-[128-position invocation theorem](proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean)
-derives the heap, input-encoding, and allocation premises, and composes reset,
-weight loading, token calls, and cache/logit releases.  It proves every
-returned cache and logit vector equals the Lean token-step recurrence for
-arbitrary runtime weights of the required size.  The execution target is
-Wasmtime with canonical NaNs.  The
-[exact-binary theorem](proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean)
-connects the 19,083-byte WASM binary to this complete session specification
-through kernel-checked decoding, validation, and execution-model equality.
-Numerical error bounds remain deferred.
+[Pretrained GPT-2 124M](data/gpt2-124m/README.md) generates text in binary32
+with weights and attention caches resident in Wasmtime.  It supports up to
+128 tokens.  The cached-step proof establishes exact agreement with the Lean
+algorithm.  The session proof includes initialization, input encoding,
+repeated calls, and buffer releases.  The binary proof connects those results
+to the distributed 19,083-byte module.  Numerical error bounds remain deferred.
+Retained tests compare 6,432,896 logits with CPU PyTorch over prefixes of one
+to 128 tokens.
+
+```sh
+tools/tiny-gpt2.js --text 'To b'
+tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160
+tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
+tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32
+```
 
 The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
 
