@@ -113,6 +113,9 @@ The knowledge forest selects versioned LTG packages containing checked lemmas, t
 
 ## Current work
 
+The [GPT inference and verification guide](docs/gpt/README.md) explains the
+models, goals, data flow, source directories, and proof boundaries.
+
 The [trained tiny GPT-2 demonstration](data/tiny-gpt2-v1/README.md) accepts
 four byte tokens and returns all 256 next-byte logits in one WASM call:
 `tools/tiny-gpt2.js --text 'To b'`.  Tests match 1,536 logits against the

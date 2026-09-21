@@ -1,13 +1,34 @@
 # Tiny GPT-2 training
 
-This directory trains the architecture in the
-[inference plan](../../plans/tiny-transformer.md).  It supports four, 64, or 128
+This directory trains small GPT-2-style transformers, exports their
+binary64 parameter words, and compares numerical behavior with LeanExe's
+WASM implementation.  The models provide a tractable target for inference
+and numerical proofs.  The [GPT guide](../../docs/gpt/README.md) explains
+the development goals and proof boundaries.
+
+The [architecture](../../plans/tiny-transformer.md) supports four, 64, or 128
 byte-token positions, with 2,488, 2,728, or 2,984 parameters.
 Each setting has vocabulary 256, one pre-normalized block, two
 heads of width two, model width four, feed-forward width eight, tanh GELU,
 and a final LayerNorm.  Query, key, and value projections have no biases.
 The attention output, both feed-forward projections, and the independent
 vocabulary head have biases.  LayerNorm uses epsilon 1/100000.
+
+## Programs and outputs
+
+| Program | Responsibility |
+|---------|----------------|
+| [PyTorch model](model.py) | Define embeddings, causal attention, feed-forward computation, normalization, and vocabulary projection. |
+| [Training](train.py) and [checkpoint support](checkpoint.py) | Train on a byte corpus and preserve tensor shapes, raw parameter words, losses, corpus identity, and training settings. |
+| [Model tests](test_model.py) | Check supported dimensions, causal prefixes, finite gradients, and input rejection. |
+| [Four-byte fixtures](fixture.py) and [sequence fixtures](sequence_fixture.py) | Export reference tensors consumed by WASM comparison tests. |
+| [Attention audit](attention_audit.py) | Search token pairs at active positions for extreme attention-score differences. |
+| [Numerical audit](numerical_audit.py) | Reproduce constructed weight cancellation and compare approximation errors against high-precision arithmetic. |
+
+The training program writes a checkpoint.  The inference CLI reads that
+checkpoint and passes its parameter words to the generated WASM model.
+The [four-byte checkpoint record](../../data/tiny-gpt2-v1/README.md) contains
+run commands, retained audits, and the numerical theorems that apply to it.
 
 ## Environment and commands
 
@@ -50,8 +71,9 @@ from 5.5676 to 2.6964.
 The [128-position checkpoint](../../data/tiny-gpt2-128-v1/README.md) has
 validation cross-entropy 2.6916 after the same number of training steps.
 The four-byte CLI now has checkpoint-independent checking, exact execution,
-and numerical-error theorems.  Proof work is paused while development
-proceeds to [pretrained GPT-2 124M inference](../../data/gpt2-124m/README.md).
+and numerical-error theorems.  Complete execution proof work for the longer
+tiny model is paused.  [Pretrained GPT-2 124M](../../data/gpt2-124m/README.md)
+has separate cached-step, session, and exact-binary execution proofs.
 The sampled intermediate ranges in an exported checkpoint are measurements.
 The source-equivalence proof takes the Lean computation as its specification.
 

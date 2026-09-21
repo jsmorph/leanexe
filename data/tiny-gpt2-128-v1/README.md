@@ -3,7 +3,9 @@
 This checkpoint has 128 byte-token positions, 2,984 binary64 parameters,
 model width four, two attention heads, feed-forward width eight, and one
 block.  The WASM implementation produces text completions.  Its complete
-source-equivalence proof is paused.
+source-equivalence proof is paused.  The
+[GPT guide](../../docs/gpt/README.md) explains how this byte-token model
+relates to four-byte numerical verification and pretrained GPT-2 execution.
 
 ## Command-line generation
 
