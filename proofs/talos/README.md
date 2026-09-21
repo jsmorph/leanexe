@@ -39,6 +39,12 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
+The [GPT guide](../../docs/gpt/README.md) explains the model families and
+execution and numerical goals.  Directory guides describe the
+[four-byte numerical model](lean/Project/TinyGpt2/README.md), its
+[checked execution proof](lean/Project/TinyGpt2Checked/README.md), and the
+[pretrained cached-inference proofs](lean/Project/Gpt2CachedStep/README.md).
+
 The [packed tensor read](lean/Project/PackedRead/Spec.lean) proves that the
 generated `readWord` entry returns `LeanExe.Packed.getUInt32LE!` for every
 represented byte array and valid offset.  It terminates and preserves the

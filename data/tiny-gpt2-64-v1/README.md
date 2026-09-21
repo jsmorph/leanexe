@@ -4,6 +4,9 @@ This checkpoint extends the [four-byte model](../tiny-gpt2-v1/README.md)
 to 64 byte-token positions.  It has 2,728 binary64 parameters, model width
 four, two attention heads, feed-forward width eight, and one block.
 The inference implementation and its proofs remain in progress.
+The [GPT guide](../../docs/gpt/README.md) explains the model families and
+verification goals.  The [training programs](../../training/tiny-gpt2/README.md)
+produce this checkpoint and its CPU measurements.
 
 ## Training record
 

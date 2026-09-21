@@ -1,9 +1,15 @@
-# Tiny GPT-2 checkpoint
+# Four-byte GPT-2 checkpoint and inference
 
-This checkpoint contains 2,488 binary64 parameters for the
-[agreed architecture](../../plans/tiny-transformer.md).  The user approved
-Tiny Shakespeare and a command-line interface returning all 256 next-byte
-logits on 2026-09-16.  The complete generated-WAT execution proof passes.
+This directory contains a trained GPT-2-style model, its WASM inference
+modules, and numerical evidence.  The model takes four byte tokens and
+returns 256 next-byte logits.  Its 2,488 binary64 parameters define one
+width-four transformer block with two attention heads and a width-eight
+feed-forward layer.  Training uses Tiny Shakespeare.
+
+The [GPT guide](../../docs/gpt/README.md) explains the development goals and
+related models.  The [model and numerical proofs](../../proofs/talos/lean/Project/TinyGpt2/README.md)
+define the computation and its real-arithmetic comparison.  The complete
+generated-WAT execution proof passes.
 Checkpoint certificates establish finite outputs for every four-byte input.
 The composed numerical theorem is proved.  Its unconditional error estimate
 is too coarse to certify precision.  The CLI uses the proved runtime
