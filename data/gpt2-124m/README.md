@@ -1,10 +1,18 @@
 # Pretrained GPT-2 124M
 
-The CPU reference runs the original 124,439,808-parameter GPT-2 checkpoint
-with its byte-pair tokenizer.  It has twelve layers, width 768, twelve
-attention heads, a 3,072-wide feed-forward layer, and 50,257 vocabulary
-entries.  The reference limits the prompt and completion together to
-128 tokens.  The checkpoint retains its original 1,024 positional rows.
+This directory records the pretrained GPT-2 124M checkpoint, WASM and
+PyTorch execution results, and the formal proof of cached inference.
+The model generates text using 124,439,808 binary32 parameters and a
+byte-pair tokenizer.  It has twelve layers, width 768, twelve attention
+heads, a 3,072-wide feed-forward layer, and 50,257 vocabulary entries.
+The implementation limits the prompt and completion together to 128 tokens.
+The checkpoint retains its original 1,024 positional rows.
+
+The [GPT guide](../../docs/gpt/README.md) explains the goals and data flow.
+The [Lean model](../../LeanExe/Models/Gpt2/README.md),
+[host and reference](../../training/gpt2/README.md), and
+[cached-inference proofs](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md)
+describe the implementation and its verification boundaries.
 
 ## Run WASM inference
 

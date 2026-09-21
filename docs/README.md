@@ -35,6 +35,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 
 | Document | Authority |
 |----------|-----------|
+| [GPT Inference and Verification](gpt/README.md) | Model families, goals, checkpoint-to-output data flow, source and proof directories, and current verification scope. |
 | [Development Status](status.md) | Current checked capabilities, known limitations, and release state. |
 | [LTG and CLOB Retrospective](retro-1.md) | Measured LTG results, structured-retrieval limits, CLOB findings, and the relationship between them. |
 | [Development Plan](../plan.md) | Ordered active work and completion conditions. |
