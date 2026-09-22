@@ -16,6 +16,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [Architecture Diagram](leanexe.png) | High-level source, compilation, annotation, LTG, execution, and proof flow. |
 | [JSON Tree WASI Example](demo.md) | Source, compilation, command execution, and verification for a typed tree-processing program. |
 | [Pseudorandom Number Generator](prng.md) | Lean SplitMix64 example, seed/count/modulus CLI, and execution tests. |
+| [Trace Policy Example](trace-policy.md) | Pure Lean filesystem policy, request/result model, and synthetic trace harness. |
 
 ## Artifact verification and proving
 

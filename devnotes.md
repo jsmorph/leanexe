@@ -16169,3 +16169,38 @@ The user then supplied the browser and machine description: Chrome on `MAC MINI/
 The user requested submission.  The current submission skill specifies Jamie Stephens as author with Morphism affiliation, so the title page and metadata were updated before submission.  The submitted title and abstract were extracted from the rebuilt PDF.  The 42-page PDF and source snapshot are retained in `paper/gpt2-comprehensive-report/submission-01`.  Submission `87ff5328fe18` is under editorial review and records relationships to the earlier CPU, WGSL, and LeanExe subset reports.
 
 marXiv accepted the comprehensive report as `2609.00014v1`.  The editorial review records nine style remarks and is preserved verbatim.  The downloaded archive PDF matches the submitted and local files, with SHA-256 `eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb`.  The publication record, bibliography entry, README, and document evidence now identify the accepted version.
+
+## 2026-09-22: First trace-policy source example
+
+Added `LeanExe.Examples.TracePolicy`, a pure request/result state machine for
+reads below `/job/input`, creation/truncation/writes below `/job/output`, a
+one-MiB completed-file-write budget, and explicit standard-stream capabilities.
+The model has one pending request, a bounded descriptor table, byte-component
+paths relative to `/job`, and terminal rejection. Permissions, filesystem
+lookup, ptrace, and other host integration are deferred by the requested scope.
+
+`tools/trace-policy` builds the example and runs editable synthetic samples in
+`test/TracePolicyHarness.lean`. All 46 traces and the direct admission/completion
+state checks pass under pinned Lean 4.34.0-rc2 (6a10ac8c22beadecabdbb0919c2b50214762f91d).
+`node test/trace_policy.js` also passes sample selection and unknown-sample exit
+status checks. These are native Lean regression results, not a formal policy
+proof or WASM execution comparison.
+
+The first compile report rejected a `Path` type abbreviation inside the state
+layout. Replacing it with an ordinary structure made the entry accepted;
+`lean-wasm compile` then emitted `build/trace-policy/policy.wasm`. The compiler
+itself is unchanged. Initial Lean syntax diagnostics in multiline records and
+a test variable named `partial` were corrected before the passing checks.
+
+This Work Mode checkout recovered the earlier local execution envelope from
+project history. The official Lean archive SHA-256 matched
+`3d011041203acacf300d343a39673f7d233743397993797c941346ae9e5df1a8`.
+All Lean-family commands used `tools/leanrun`, `LEANRUN_LOCAL=1`, the pinned
+local toolchain, one thread, and explicit timeouts. Standard systemd execution
+was unavailable; the runner reported the absent cgroup limits. No process-path
+preload was needed with `LEAN_SYSROOT` set here. Archive extraction was repeated
+with `--no-same-owner` after container UID mapping rejected archive ownership.
+
+Shell and JavaScript syntax checks and focused documentation-link checks pass.
+The full documentation gate cannot run in this sparse checkout because its
+required `plans` tree is absent; no aggregate documentation pass is claimed.
