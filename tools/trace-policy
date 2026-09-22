@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+cd "$repo_root"
+tools/leanrun --timeout 120s lake build LeanExe.Examples.TracePolicy
+exec tools/leanrun --timeout 120s lake env lean --run test/TracePolicyHarness.lean "$@"
