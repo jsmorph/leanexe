@@ -160,7 +160,7 @@ theorem normalized_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
       · constructor <;> simp (config := { maxDischargeDepth := 64 }) only [parameters, CachedHidden.parameters,
           hState.length, List.length_set, I64Values.set, hState.typed]
       all_goals simp only [hState.length, List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-        Nat.reduceLT, reduceIte, hState.releaseHidden, hState.status, hState.hiddenOwner, hState.hiddenPtr,
+        Nat.reduceLT, reduceIte, hState.releaseHidden, hState.releaseCache, hState.status, hState.hiddenOwner, hState.hiddenPtr,
         hState.hiddenSize, hState.cacheOwner, hState.cachePtr, hState.cacheSize]
     all_goals simp only [hState.length, List.length_set, List.getElem?_set, Nat.reduceEqDiff,
       Nat.reduceLT, reduceIte, show UInt64.ofNat (4 * (1 * 768)) = 3072 from rfl]
