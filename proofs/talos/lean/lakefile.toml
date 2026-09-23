@@ -34,3 +34,7 @@ root = "Project.Gpt2QuantizedCached.CheckGelu"
 [[lean_exe]]
 name = "gpt2-attention-check"
 root = "Project.Gpt2QuantizedCached.CheckAttention"
+
+[[lean_exe]]
+name = "gpt2-projection-check"
+root = "Project.Gpt2QuantizedCached.CheckProjections"

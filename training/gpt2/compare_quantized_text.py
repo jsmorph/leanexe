@@ -35,8 +35,12 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "build/gpt2-124m/quantized/completions.json")
     parser.add_argument("--prng-wasm", type=Path, default=ROOT / "build/prng/prng.wasm")
     parser.add_argument("--grouped", action="store_true")
+    parser.add_argument("--evaluation", type=Path,
+                        default=ROOT / "data/gpt2-quantized-v1/evaluation.json")
     args = parser.parse_args()
-    evaluation = json.loads((ROOT / "data/gpt2-quantized-v1/evaluation.json").read_text())
+    evaluation = json.loads(args.evaluation.read_text())
+    if "quantized_wasm_sha256" in evaluation and digest(args.wasm) != evaluation["quantized_wasm_sha256"]:
+        raise ValueError("Quantized binary identity mismatch")
     fp32_digest = evaluation["fp32_wasm_sha256"]
     fp32_binary = ROOT / f"proofs/artifacts/gpt2_cached_step/{fp32_digest}/program.wasm"
     fp32_weights = args.model_dir / "inference/weights.bin"
@@ -77,7 +81,8 @@ def main():
             results.append(result)
             print(json.dumps(result), flush=True)
     record = {
-        "schema": 1, "status": "candidate-tested-full-model-proof-pending",
+        "schema": 1, "status": "comparison-complete",
+        "evaluation_sha256": digest(args.evaluation),
         "scheme": 2 if args.grouped else 1,
         "quantized_wasm_sha256": digest(args.wasm), "fp32_wasm_sha256": fp32_digest,
         "quantized_weights_sha256": digest(quantized_dir / "weights.bin"),
