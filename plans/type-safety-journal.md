@@ -249,3 +249,13 @@ modules, including helpers. All passed with no axioms beyond propext. Eight buil
 jobs and 170 examples passed with the pinned Lean version. The source scan,
 whitespace check, and Node syntax check passed. Declaration-checker soundness and
 completeness are proved; a general expression/program type checker remains next.
+
+2026-09-23: Continued immediately after publishing the nominal milestone. Sum
+introductions now carry the other summand type before the payload. This is an
+explicit source-syntax choice for machine-written programs; runtime sum values
+and evaluation behavior are unchanged. The parent migrated the affected source
+examples while the agent migrated the calculus and proofs. The maintained gate
+passed eight build jobs, all 170 examples, and all 103 audits. Typing.lean is being
+developed separately and is not yet imported by the umbrella or included in this
+annotation checkpoint. Its intended public boundary includes full ambient
+formation; raw structural inference alone will not be called source admission.

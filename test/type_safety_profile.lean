@@ -39,7 +39,7 @@ example : ProfileTyped [] [] [] (.unitCase .unit (.nat 9)) .nat64 :=
   ⟨.unitCase .unit (.nat (by decide)), rfl⟩
 
 example : ProfileTyped [] [] []
-    (.sumCase (.inl .unit)
+    (.sumCase (.inl .unit .unit)
       (.unitCase (.var 0) (.nat 7)) (.unitCase (.var 0) (.nat 9))) .nat64 :=
   ⟨.sumCase (.inl .unit .unit) (.unitCase (.var rfl) (.nat (by decide)))
     (.unitCase (.var rfl) (.nat (by decide))), rfl⟩
@@ -55,8 +55,8 @@ example : run [] 40 (initial
 example : admissible (.split (.pair (.nat 1) (.nat 2)) (.var 0)) = false := by rfl
 example : admissible (.split (.pair (.nat 1) (.nat 2)) (.var 1)) = false := by rfl
 example : admissible (.letE (.nat 1) (.letE (.nat 2) (.var 0))) = false := by rfl
-example : admissible (.sumCase (.inl (.nat 1)) (.nat 7) (.var 0)) = false := by rfl
-example : admissible (.sumCase (.inr (.nat 1)) (.var 0) (.nat 7)) = false := by rfl
+example : admissible (.sumCase (.inl .nat64 (.nat 1)) (.nat 7) (.var 0)) = false := by rfl
+example : admissible (.sumCase (.inr .nat64 (.nat 1)) (.var 0) (.nat 7)) = false := by rfl
 
 -- Projections are rejected recursively, not only on visible pair literals.
 example : admissible (.fst (.var 0)) = false := by rfl
@@ -69,8 +69,8 @@ example : uses 0 (.letE (.nat 1) (.var 1)) = true := by rfl
 example : uses 0 (.split (.pair .unit .unit) (.var 0)) = false := by rfl
 example : uses 0 (.split (.pair .unit .unit) (.var 1)) = false := by rfl
 example : uses 0 (.split (.pair .unit .unit) (.var 2)) = true := by rfl
-example : uses 0 (.sumCase (.inl .unit) (.var 0) (.var 0)) = false := by rfl
-example : uses 0 (.sumCase (.inl .unit) (.var 1) (.var 0)) = true := by rfl
+example : uses 0 (.sumCase (.inl .unit .unit) (.var 0) (.var 0)) = false := by rfl
+example : uses 0 (.sumCase (.inl .unit .unit) (.var 1) (.var 0)) = true := by rfl
 example : uses 0 (.unitCase .unit (.var 0)) = true := by rfl
 
 -- Syntactic occurrence permits duplication and does not assert all-path use.

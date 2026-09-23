@@ -207,10 +207,12 @@ into this core. Fixed-width modular operations, other arithmetic, additional
 array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
-Unannotated sum introductions can have multiple typings because the unused
-summand is not specified. Progress and preservation hold for every given typing
-derivation; type uniqueness and principal inference are not claimed. A future
-checker needs a deliberate annotation or bidirectional-checking design.
+Sum introductions now explicitly state the other alternative's type:
+`inl otherTy payload` and `inr otherTy payload`. This removes the unspecified
+summand from the source syntax; runtime values remain unannotated. The existing
+safety proofs and examples pass after this syntax change. Algorithmic typing
+and expression type-uniqueness proofs are in progress and are not yet claimed
+at this annotation checkpoint.
 
 The [runtime-language contract](runtime-language.md) adopts strict evaluation and
 a syntactic relevance profile for machine-written programs. It deliberately
@@ -241,9 +243,9 @@ The first persistent-array increment is checked. Additional collection forms
 such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
-checked. The next increment will make sum introductions explicit enough for
-deterministic inference and prove an algorithmic checker against the declarative
-judgments. That checker is not yet implemented at this checkpoint.
+checked. Sum introductions are explicit, and the next increment proves an
+algorithmic checker against the declarative judgments. The checker and its
+correctness proofs are not yet part of the maintained gate at this checkpoint.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;
