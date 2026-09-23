@@ -54,7 +54,7 @@ example : ¬ ExprTyped [] [] [] (.arraySize (.arrayEmpty (.data 0))) .nat64 := b
           cases formed with
           | data bounded => exact Nat.not_lt_zero _ bounded
 
-example : ¬ ExprTyped [] [] [] (.inl (.nat 7)) (.sum .nat64 (.data 0)) := by
+example : ¬ ExprTyped [] [] [] (.inl (.data 0) (.nat 7)) (.sum .nat64 (.data 0)) := by
   intro typed
   cases typed with
   | inl _ formed =>

@@ -27,11 +27,11 @@ example : run [] 30 (initial
 
 -- Each sum branch binds its payload in front of its lexical environment.
 example : run [] 30 (initial
-    (.letE (.nat 10) (.sumCase (.inl (.nat 7))
+    (.letE (.nat 10) (.sumCase (.inl .nat64 (.nat 7))
       (.add (.var 0) (.var 1)) (.nat 0)))) = .ret (.nat 17) [] := by rfl
 
 example : run [] 30 (initial
-    (.letE (.nat 10) (.sumCase (.inr (.nat 7))
+    (.letE (.nat 10) (.sumCase (.inr .nat64 (.nat 7))
       (.nat 0) (.add (.var 0) (.var 1))))) = .ret (.nat 17) [] := by rfl
 
 -- An unselected branch is not evaluated.

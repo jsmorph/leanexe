@@ -242,3 +242,28 @@ typing rules carry result-formation evidence, and formation transfers through
 frames and continuations. `StateTyped.wellFormed` establishes the result for every
 state typed under an admitted program. Arithmetic overflow cannot be used to
 assign an undeclared nominal result type.
+
+## Explicit sums and the next typing-checker increment
+
+Sum introductions are `inl otherTy payload` and `inr otherTy payload`. The other
+alternative is explicit in the expression and must be well formed. Values still
+store only their tag and payload. The syntax migration has passed the maintained
+safety gate; this section's checker proofs are the next increment, in progress.
+
+Raw structural inference will correspond exactly to the declarative expression
+judgment. Argument checking must enforce exact arity and types; branch checking
+must enforce exact constructor coverage, field arities, and a common result.
+These checks recurse over finite syntax. They do not execute recursive functions
+or unfold recursive declarations.
+
+Public admission must additionally validate every declaration, signature, and
+context type, including unused entries. Raw inference alone is insufficient:
+the raw variable rule can refer to a malformed type in an unvalidated context.
+The public expression-checker characterization must include formed ambient inputs,
+and the program checker must agree with the complete `ProgramTyped` judgment.
+Profile checking also requires the existing syntactic relevance checks.
+
+Required results are raw inference soundness and completeness, expression type
+uniqueness, exact public expression/program admission characterizations, and
+reachable-state safety for checker-accepted programs and closed entries. These
+results concern the independently specified language, not compiler acceptance.

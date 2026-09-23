@@ -30,7 +30,7 @@ def uses (index : Nat) : Expr → Bool
   | .fst pair | .snd pair => uses index pair
   | .split pair body => uses index pair || uses (index + 2) body
   | .unitCase scrutinee body => uses index scrutinee || uses index body
-  | .inl payload | .inr payload => uses index payload
+  | .inl _ payload | .inr _ payload => uses index payload
   | .sumCase scrutinee left right =>
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
   | .add left right => uses index left || uses index right
@@ -72,7 +72,7 @@ def admissible : Expr → Bool
   | .split pair body =>
       admissible pair && (admissible body && (uses 0 body && uses 1 body))
   | .unitCase scrutinee body => admissible scrutinee && admissible body
-  | .inl payload | .inr payload => admissible payload
+  | .inl _ payload | .inr _ payload => admissible payload
   | .sumCase scrutinee left right =>
       admissible scrutinee &&
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
