@@ -79,6 +79,8 @@ Choose the compile command from the entry type.  The Lean source stays pure in e
 
 Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before releasing owned root pointers or calling `reset`.  Command-mode programs hide that host ABI behind WASI.
 
+`compile --module <module> --entries <name,...> --out <path>` exports several declarations from one loaded Lean environment.  Names are comma-separated and must have distinct final components, which become the WASM export names.  Each entry must satisfy the public ABI restrictions.  The compiler extracts their shared helper functions once and adds an ABI wrapper for each entry.  The wrappers pass borrowed input owners and return the public result slots.  Calls between the declarations use their internal representations.  All exports share the module's memory, heap, and runtime counters.  `--annotations <path>` is also supported for this command.
+
 ## Memory Management
 
 LeanExe modules use a small reference-counted heap inside growable WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
@@ -157,6 +159,9 @@ constructs `size` words in one allocation, evaluating a direct lambda at
 indices zero through `size - 1`.  Its result is a `ByteArray` containing
 four bytes per word.  The generator may capture supported scalar and heap
 values.  It checks the output byte-count multiplication for overflow.
+
+`LeanExe.Packed.generateUInt8 size (fun i => value)` constructs `size`
+bytes in one allocation with the same direct-lambda and ownership rules.
 
 These operations store FP32 bit patterns without expanding each value to
 an eight-byte array slot.  The Wasmtime host accepts `bytes-file:PATH`

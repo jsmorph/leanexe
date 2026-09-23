@@ -24,6 +24,7 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile --module <module> --entries <name,...> --out <path>",
     "  lean-wasm compile --module <module> --entry <name> --out <path> --annotations <path>",
     "  lean-wasm compile-image --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
@@ -326,6 +327,17 @@ def dispatch : List String → IO UInt32
             ("annotations", annotationsOut)])
         out annotationsOut
         (LeanExe.Extract.Core.compile moduleName entryName)
+  | ["compile", "--module", moduleName, "--entries", entries, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile" [("module", moduleName), ("entries", entries), ("output", out)])
+        out (LeanExe.Extract.Core.compileExports moduleName entries)
+        (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
+  | ["compile", "--module", moduleName, "--entries", entries, "--out", out,
+      "--annotations", annotationsOut] =>
+      compileAnnotatedResult
+        (commandContext "compile" [("module", moduleName), ("entries", entries), ("output", out),
+          ("annotations", annotationsOut)])
+        out annotationsOut (LeanExe.Extract.Core.compileExports moduleName entries)
   | ["compile-image", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile-image"
