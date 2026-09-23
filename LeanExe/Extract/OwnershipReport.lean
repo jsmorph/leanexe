@@ -398,6 +398,7 @@ mutual
   partial def scanLocalLet (path : String) : IRLocalLet → Scan
     | .expr slot value =>
         scanExpr (childPath path s!"expr[{slot}]") value
+    | .effectCall slots _ args
     | .call slots _ args =>
         scanExprListFrom (childPath path s!"call{natListText slots}.arg") 0 args
     | .slots slots values =>

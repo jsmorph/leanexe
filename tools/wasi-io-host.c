@@ -125,7 +125,7 @@ static wasm_trap_t *hostcall(void *data, wasmtime_caller_t *caller,
   uint8_t *mem = wasmtime_memory_data(context, &memory.of.memory);
   size_t size = wasmtime_memory_data_size(context, &memory.of.memory);
   uint32_t a = (uint32_t)args[0].of.i32;
-  uint32_t b = (uint32_t)args[1].of.i32;
+  uint32_t b = op == CLOCK ? 0 : (uint32_t)args[1].of.i32;
   if (op == FLAGS) {
     if (a > 1) error = BADF;
     else if (b != 4) error = NOTSUP;

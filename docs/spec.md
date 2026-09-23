@@ -2,7 +2,7 @@
 
 LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for one selected entry declaration.  Lean remains the parser, elaborator, type checker, and proof checker.  The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits WASM only for accepted programs.
 
-The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  Lean effects such as `IO`, file access, user-defined host calls, concurrency, randomness, and time remain outside the accepted source language; WASI command mode adds fixed adapters for byte output, bounded byte input, stderr error output, and process exit status.
+The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  `ByteIO` adds ordered byte reads and writes with explicit errors and timeouts.  Other Lean effects, file access, user-defined host calls, concurrency, randomness, and direct clock access remain outside the accepted source language.  The older WASI command modes provide fixed adapters around pure entries.
 
 ## Compilation Model
 
@@ -10,7 +10,7 @@ The compiler input is a module name and a fully qualified Lean declaration name.
 
 An entry declaration must be a named constant with an executable value.  It must be safe, non-`partial`, monomorphic at runtime, first-order, and closed after Lean elaboration.  Helper declarations should live under the same root namespace as the imported module; external declarations compile only when LeanExe implements them as primitives.
 
-Proofs may appear in source files and in proof fields of supported structures or inductives.  Proof arguments and proof fields are erased when they have no runtime content.  A theorem, proposition, quotient, axiom, opaque executable constant, unsafe declaration, or effectful declaration cannot contribute executable behavior to an accepted program.
+Proofs may appear in source files and in proof fields of supported structures or inductives.  Proof arguments and proof fields are erased when they have no runtime content.  A theorem, proposition, quotient, axiom, opaque executable constant, unsafe declaration, or unsupported effectful declaration cannot contribute executable behavior to an accepted program.  The compiler recognizes the two opaque `ByteIO` primitives described below.
 
 The command-line entry point for generic compilation is:
 
@@ -22,6 +22,64 @@ tools/leanrun .lake/build/bin/lean-wasm compile \
 ```
 
 `compile-wat` writes the module as WAT text from the same structured instructions the binary encoder serializes, and `tools/check-wat.sh` verifies that parsing the text reproduces the binary byte for byte.  `compile-wasi` emits a WASI command module for a zero-argument entry whose result type is `ByteArray`; the generated `_start` wrapper calls the pure Lean entry and writes the returned bytes to stdout.  `compile-wasi-stdin --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> ByteArray`; the generated `_start` wrapper reads stdin through `fd_read` up to the configured limit, calls the pure Lean entry, and writes the returned bytes to stdout.  `compile-wasi-stdin-except --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> Except ByteArray ByteArray`; `Except.ok` writes stdout and returns success, while `Except.error` writes stderr and exits with status `1`.  `compile-wasi-argv-except --max-args n --max-argv-bytes n` emits a WASI command module for an entry of type `Array ByteArray -> Except ByteArray ByteArray`; the wrapper reads WASI argv, skips `argv[0]`, and passes user arguments as an internal array of byte strings.  `compile-wasi-stdin-argv-except --max-input-bytes n --max-args n --max-argv-bytes n` emits a WASI command module for an entry of type `ByteArray -> Array ByteArray -> Except ByteArray ByteArray`; the wrapper passes bounded stdin and user arguments to the pure Lean entry.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  `dump-ir --module Module.Name --entry Module.Name.entry` prints the extracted IR for an accepted entry.  `ownership-report --module Module.Name --entry Module.Name.entry` compiles the entry to IR and prints ownership data for each extracted function, including result owner offsets, helper-result fresh-owner offsets, compiler-emitted releases, returned owner expressions, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  A program that Lean accepts but LeanExe rejects lies outside this language.
+
+## Byte Input and Output
+
+Import `LeanExe.ByteIO` for these two operations:
+
+```lean
+abbrev ByteIO (α : Type) := BaseIO α
+
+read (maxBytes : Nat) (timeoutNs : UInt64) : ByteIO (Except UInt32 ByteArray)
+write (bytes : ByteArray) (timeoutNs : UInt64) : ByteIO UInt32
+```
+
+`ByteIO` supplies sequencing through Lean's existing `do` notation.  Errors
+are ordinary return values: `read` returns `.ok bytes` or `.error code`, and
+`write` returns zero on success or a nonzero error code.  There is no automatic
+error propagation.  Each sequenced operation executes once, including when
+its result is ignored.  Binding an action with `let action := ...` does not
+execute it; `let result ← action` executes it each time.
+
+`read` returns at most `maxBytes` bytes and may return fewer.  An empty
+successful result means EOF.  Capacity must be positive and fit the WASM
+address range; invalid capacity returns `28`.  Each result is a `ByteArray`
+value, and later reads cannot change its contents.  `write` completes the
+whole array or returns an error; a failing write may already have emitted a
+prefix.  An empty write succeeds.
+
+The timeout is a monotonic duration in nanoseconds for the whole operation.
+Zero means no waiting.  Partial writes and interrupted calls do not restart
+the timeout.  Expiry returns `73`, independently of EOF; clock and scheduling
+resolution can make completion later than the requested duration.  The WASI
+backend uses Preview 1 error numbers, including `8` for a bad descriptor,
+`28` for invalid input, `29` for an I/O failure, and `64` for a broken pipe.
+
+`compile-wasi-io` accepts a zero-argument entry of type `ByteIO UInt32` and
+uses its returned value as the process exit status.  The two operations use
+stdin and stdout.  Source data and parameters retain the ordinary supported
+value types; I/O actions cannot be stored in arrays or passed as runtime
+function arguments.  The primitives are implemented by this compiler and
+have no native Lean implementation.
+
+```sh
+tools/leanrun lake build lean-wasm LeanExe.Examples.ByteIO
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-io \
+  --module LeanExe.Examples.ByteIO \
+  --entry LeanExe.Examples.ByteIO.echo \
+  --out build/echo.wasm
+tools/build-wasi-io-host.sh
+printf 'abcd' | build/tools/leanexe-wasi-io-host build/echo.wasm
+```
+
+The host must support nonblocking stdin/stdout, `clock_time_get`, and
+`poll_oneoff`.  If setting nonblocking mode fails, the operation returns that
+error.  The pinned Wasmtime 44 CLI rejects nonblocking flags on its standard
+streams.  The repository's test host uses the same Wasmtime engine with WASI
+imports implemented over native pipes.  Build it after installing the pinned
+C API with `tools/download-wasmtime.sh`; run `node test/byte_io.js` to exercise
+source programs and `node test/wasi_io_host.js` to exercise the host imports.
+
 
 ## WASM Module ABI
 
@@ -169,7 +227,7 @@ Checked loops compile when Lean elaborates them to `ForIn.forIn` over `ByteArray
 
 The source loop accumulator may be a scalar, a `ByteArray`, an `Array` pointer value with supported fixed-width elements, a product, a structure, a nonrecursive tagged value, or a recursive-inductive pointer value.  Products, structures, and tagged values may contain `ByteArray` fields when their other fields are supported; the internal owner slot follows the value through the loop.  In `Option` and `Except ε` loops, the compiler carries the accumulator as `Option α` or `Except ε α`, unwraps the successful payload before evaluating the body, and stops after the first `none`, `Except.error`, or `ForInStep.done`.
 
-The accepted loop body may use `let mut` assignments that elaborate to local lets, nested accepted computations including nested accepted loops, byte-array and array indexing, pure byte-array or array updates, generated first-order continuation lambdas, `continue` branches that yield the current accumulator, and `break` branches that return `ForInStep.done`.  Conditional `break` or `continue` may appear before later assignments in the same loop body.  Maps, polymorphic iterators, runtime callback values, and monads other than `Id`, `Option`, and `Except ε` are unsupported.
+The accepted loop body may use `let mut` assignments that elaborate to local lets, nested accepted computations including nested accepted loops, byte-array and array indexing, pure byte-array or array updates, generated first-order continuation lambdas, `continue` branches that yield the current accumulator, and `break` branches that return `ForInStep.done`.  Conditional `break` or `continue` may appear before later assignments in the same loop body.  Maps, polymorphic iterators, runtime callback values, and monads other than `Id`, `Option`, `Except ε`, and `ByteIO` are unsupported.
 
 Helper calls may return supported structured values, including structures, byte arrays, arrays, `Option`, `Except`, and user-defined tagged values.  The call result uses the same flattened ABI slots as an entry result, then the extractor reconstructs the source-level value shape for projections and matches.  This rule matters for parser-style code, where a bounded recursive helper often returns a tagged parse result that later code matches before producing a public `ByteArray`.
 
@@ -179,7 +237,7 @@ Pattern matching is supported for `Bool`, nonrecursive `Nat` zero/successor matc
 
 The generated monadic fold stops after the first `none` or `Except.error`, so callback code for later elements is not evaluated.  Lean `do` notation over `Option` and `Except ε` compiles when it elaborates to accepted `Pure.pure`, `Bind.bind`, and `ForIn.forIn` forms.  An `Except` `do` body may call accepted helpers, use accepted monadic `for` or `while` loops, and return supported structured, tagged, array, or byte-array payloads.
 
-An error result skips later binds and loop iterations, and therefore skips later trapping computations.  The compiler rejects `ExceptT`, `OptionT`, `IO`, `EIO`, named callback values that survive as runtime data, and monads other than `Id`, `Option`, and `Except ε`.  `foldlM` through `Id` is not part of the accepted surface; use `foldl` for pure folds.
+An error result skips later binds and loop iterations, and therefore skips later trapping computations.  The compiler rejects `ExceptT`, `OptionT`, `IO`, `EIO`, named callback values that survive as runtime data, and monads other than `Id`, `Option`, `Except ε`, and `ByteIO`.  `foldlM` through `Id` is not part of the accepted surface; use `foldl` for pure folds.
 
 The accepted fuel-recursive function shape uses a first `Nat` fuel parameter that decreases on each recursive call.  The function may carry scalar values, byte arrays, arrays, structures, nonrecursive tagged values, and internal recursive inductive pointers through the loop.  This admits state-passing parser loops whose cursor, accumulator, and flags live in a supported structure.
 
@@ -287,7 +345,7 @@ Products are supported as internal values.  `Prod.mk`, `.1`, `.2`, `Prod.casesOn
 
 ## Unsupported Features
 
-Unsupported runtime features include polymorphic executable code beyond inline-specialized first-order helpers, class dictionaries or method projections that survive static specialization, higher-order functions that survive as runtime values, closures, structural recursion beyond the supported direct recursive result projections, closed fold, closed predicate, generated array-descent, and nested `PSum` mutual-recursion forms described above, arbitrary Lean or Std library calls, function-valued structural-recursion motives that cannot be defunctionalized into direct lambdas and accepted first-order carried parameters, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include runtime `String`, runtime `Char`, public arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, unspecialized polymorphic structures or inductives, and polymorphic values at runtime.  Concrete instantiations of supported parametric structures and inductives are accepted, and simple first-order polymorphic or type-class-constrained helper calls may inline-specialize, but LeanExe does not compile one shared generic runtime function body for all type arguments and does not emit runtime dictionary dispatch.  Direct-lambda arguments may specialize transparent helpers only when the lambda is substituted into the helper before extraction and every remaining runtime binder has a supported concrete type.  Unsupported numeric features include signed integers, general floating-point arithmetic beyond the five raw-bit operations described above, and arbitrary-precision runtime `Nat`.
+Unsupported runtime features include polymorphic executable code beyond inline-specialized first-order helpers, class dictionaries or method projections that survive static specialization, higher-order functions that survive as runtime values, closures, structural recursion beyond the supported direct recursive result projections, closed fold, closed predicate, generated array-descent, and nested `PSum` mutual-recursion forms described above, arbitrary Lean or Std library calls, function-valued structural-recursion motives that cannot be defunctionalized into direct lambdas and accepted first-order carried parameters, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, general `BaseIO` operations beyond the two `ByteIO` primitives, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include runtime `String`, runtime `Char`, public arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, unspecialized polymorphic structures or inductives, and polymorphic values at runtime.  Concrete instantiations of supported parametric structures and inductives are accepted, and simple first-order polymorphic or type-class-constrained helper calls may inline-specialize, but LeanExe does not compile one shared generic runtime function body for all type arguments and does not emit runtime dictionary dispatch.  Direct-lambda arguments may specialize transparent helpers only when the lambda is substituted into the helper before extraction and every remaining runtime binder has a supported concrete type.  Unsupported numeric features include signed integers, general floating-point arithmetic beyond the five raw-bit operations described above, and arbitrary-precision runtime `Nat`.
 
 Unsupported features should produce a rejection during `report` or `compile`.  They should not be emulated through hidden Lean runtime calls.  A missing rejection is a compiler bug, because accepted WASM must be explainable through this specification.
 
