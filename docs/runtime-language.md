@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 465 semantic examples and audits all 222 declared
-theorems across the ten development modules, including helper proofs. It
+The maintained gate checks 512 semantic examples and audits all 246 declared
+theorems across the eleven development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -137,7 +137,7 @@ The following work remains separately tracked:
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
 | U8/U32/U64 operations | Arithmetic, comparisons, conversions, bitwise operations, complement, and masked shifts are checked. Raw binary64 is tracked separately below. |
-| Boolean derived APIs and structural equality | Boolean elimination and numeric equality are checked. Named Boolean helpers and equality for compound values require definitions and proofs. |
+| Compound structural equality | Boolean helpers and numeric equality are checked. Equality for compound values still requires definitions and proofs. |
 | Option/Except combinators | Sum/data elimination supplies ingredients; map/bind/default/filter/tests/fallback and conversion APIs still need proved expansions. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
@@ -410,3 +410,19 @@ step equations and occurrence/admission characterizations record these exact
 rules; all safety, formation, and algorithmic typing results include the form.
 This does not assert termination of recursive calls or correctness of a source
 recursion recognizer.
+
+
+## Checked Boolean source expansions
+
+`boolNot e` expands to `ifE e false true`. Binary `boolAnd`, `boolOr`,
+`boolXor`, and `boolEq` construct a strict pair of their operands and split it
+into a closed two-field Boolean body. Both operands must have Boolean type and
+evaluate once, left to right, even when the left Boolean determines the result.
+Use `ifE` for conditional evaluation. These definitions introduce no machine
+forms and make no compiler-recognition claim.
+
+Checked laws cover typing, exact raw inference, relevance, evaluation stages,
+and truth-table execution for supplied Boolean values in arbitrary environments
+and continuations. Both generated fields occur syntactically; caller variables
+remain in the original operand scopes. Boolean equality does not cover compound
+structural equality.
