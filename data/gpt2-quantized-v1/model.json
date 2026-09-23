@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "scheme": 2,
+  "status": "candidate-tested-full-model-proof-pending",
+  "wasm_path": "data/gpt2-quantized-v1/candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm",
+  "wasm_sha256": "9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075",
+  "wasm_bytes": 28315,
+  "weights_sha256": "9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314",
+  "weight_bytes": 127695972
+}
