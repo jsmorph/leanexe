@@ -38,3 +38,7 @@ root = "Project.Gpt2QuantizedCached.CheckAttention"
 [[lean_exe]]
 name = "gpt2-projection-check"
 root = "Project.Gpt2QuantizedCached.CheckProjections"
+
+[[lean_exe]]
+name = "gpt2-pointwise-check"
+root = "Project.Gpt2QuantizedCached.CheckPointwise"

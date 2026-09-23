@@ -31,7 +31,9 @@ All 5,496 captured attention calls pass the native checker.  It reconstructs bot
 
 All forty-nine projection matrices and 22,442 captured input/output records pass the native range checker.  The learned-projection and vocabulary conversion theorems supply the complete paired range premises from checked vectors, exported coefficients, activation reconstruction, conservative ordered-sum bounds, and retained biases.  The vocabulary conversion accounts for its distinct weight orientation.
 
-The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Embedding/residual range instances and evaluation of the propagated bound remain open.  Captured operand identity with the source intermediates remains an assumption.  Reproducing the final logit hashes supplies execution evidence but does not establish that identity in the kernel.
+All 229 embeddings and 5,496 paired residual additions pass the pointwise checker.  It recomputes every captured output word and checks the arithmetic ranges.  Its soundness theorems supply the corresponding `EmbeddingPair.Ranges` and `Add.Ranges` premises.
+
+The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Evaluation of the propagated bound remains open.  Captured operand identity with the source intermediates remains an assumption.  Reproducing the final logit hashes supplies execution evidence but does not establish that identity in the kernel.
 
 ## Checking
 

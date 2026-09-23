@@ -14,7 +14,7 @@ The common-offset check subtracts `zq[k] - z[k]` from every quantized logit, usi
 
 The capture reproduces all 229 previously recorded group64 logit hashes and all 128 previously recorded FP32 fixed-prefix hashes.  The record identifies both weight files, both binaries, the native host, the capture program, and the Lean checker sources.  Native execution of Wasmtime and the compiled Lean checker remains within the repository's existing runtime trust boundary.
 
-The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Captured nonlinear ranges pass the native checkers.  Embedding/residual range instances and evaluation of the propagated bound remain open.
+The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Captured nonlinear ranges pass the native checkers.  Evaluation of the propagated bound remains open.
 
 ## Checkpoint export
 
@@ -56,6 +56,12 @@ The [paired conversion theorems](../../../proofs/talos/lean/Project/Gpt2Quantize
 
 The [initial failure](projection-check-failure.log) occurred at the first activation group after all matrices passed.  The scale profiler passed the group index where the source function expects the word offset.  Correcting it to `group * 64` produced the successful run.  Captured output magnitudes are checked data.  The checker does not recompute every full projection or establish captured operand identity with the complete source recurrence.
 
+## Embeddings and residual additions
+
+The [pointwise record](pointwise-check.json) covers all 229 embeddings and 5,496 paired residual additions.  The native Lean checker recomputes both models' captured outputs bit for bit and checks finite operands, valid embedding coefficients, multiplication/addition ranges, and positional-word equality.  It passes in 6.521 seconds.  The [embedding profiles](pointwise-embedding.txt.gz) and [residual profiles](pointwise-residual.txt.gz) retain every arithmetic exponent.
+
+The [soundness theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/PointwiseRange.lean) supplies the embedding and residual premises used by the paired numerical recurrence.  Embedding reconstruction also uses the checked checkpoint-export relation.  Record preparation extracts the operands from the hash-verified normalization and projection captures.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -80,6 +86,9 @@ tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-attention-che
 training/gpt2/.venv/bin/python training/gpt2/capture_projection_ranges.py
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-projection-check Project.Gpt2QuantizedCached.Numerical.ProjectionRange
 tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-projection-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/projection-ranges/rows.bin build/gpt2-124m/quantized-group64/projection-ranges/ranges
+training/gpt2/.venv/bin/python training/gpt2/prepare_pointwise_ranges.py
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-pointwise-check Project.Gpt2QuantizedCached.Numerical.PointwiseRange
+tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-pointwise-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/pointwise/embedding.bin build/gpt2-124m/quantized-group64/pointwise/residual.bin build/gpt2-124m/quantized-group64/pointwise/ranges
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.
