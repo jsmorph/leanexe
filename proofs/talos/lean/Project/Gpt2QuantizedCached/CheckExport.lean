@@ -1,4 +1,4 @@
-import Project.Gpt2QuantizedCached.Export
+import Project.Gpt2QuantizedCached.ExportCheck
 
 open Project.Gpt2QuantizedCached
 
@@ -15,11 +15,14 @@ def main (args : List String) : IO UInt32 := do
   let mut scales := 0
   for i in [:projections.size] do
     let projection := projections[i]!
+    IO.println s!"checking projection {i} rows {projection.outputWidth} width {projection.inputWidth}"
+    (← IO.getStdout).flush
     if !Export.checkProjection source target projection then
       throw (IO.userError s!"quantized projection {i} differs from the specified export")
     coefficients := coefficients + projection.inputWidth * projection.outputWidth
     scales := scales + projection.outputWidth
     IO.println s!"projection {i} rows {projection.outputWidth} width {projection.inputWidth} checked"
+    (← IO.getStdout).flush
   let tensors := Export.retained.toArray
   let mut retained := 0
   for i in [:tensors.size] do

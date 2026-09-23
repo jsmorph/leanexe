@@ -51,6 +51,13 @@ theorem roundedMagnitude_mul_power (n k : Nat) (hN : n < 2 ^ 24) :
       _ = n * 2 ^ k := hRestore
   · exact hRestore
 
+theorem roundedMagnitude_mul_power_le (n k : Nat) (hN : n ≤ 2 ^ 24) :
+    roundedMagnitude (n * 2 ^ k) = n * 2 ^ k := by
+  rcases lt_or_eq_of_le hN with hLt | rfl
+  · exact roundedMagnitude_mul_power n k hLt
+  · rw [← pow_add]
+    simpa only [one_mul] using roundedMagnitude_mul_power 1 (24 + k) (by decide)
+
 theorem fromInt_exact (value : Int) (hAbs : value.natAbs < 2 ^ 24) :
     CodeLib.IEEE32.Finite (Wasm.IEEE32.fromInt value) ∧
       CodeLib.IEEE32.value (Wasm.IEEE32.fromInt value) = value := by
