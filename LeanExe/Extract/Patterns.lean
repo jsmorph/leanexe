@@ -476,6 +476,31 @@ partial def exceptArmTarget? (expr : Expr) : Option Bool :=
       | _ => none
   | _ => none
 
+partial def patternProjectionBindings? (env : Environment) (pattern value : Expr) :
+    Option (List (Nat × Expr)) := do
+  match pattern.consumeMData with
+  | .bvar index => some [(index, value)]
+  | _ =>
+      let (.const name _, args) := appFnArgs pattern | none
+      let some (.ctorInfo info) := env.find? name | none
+      if !isStructure env info.induct then none else do
+        let fields := args.drop info.numParams
+        if fields.length != info.numFields then none else do
+          let bindings ← fields.zipIdx.mapM fun (field, index) =>
+            patternProjectionBindings? env field (.proj info.induct index value)
+          some bindings.flatten
+
+def exceptPayloadArm? (env : Environment) (payloadTy armType arm : Expr) : Option Expr := do
+  let (domains, result) := peelForall armType
+  let .app _ constructor := result.consumeMData | none
+  let (_, args) := appFnArgs constructor
+  let some pattern := args.getLast? | none
+  let bindings ← patternProjectionBindings? env pattern (.bvar 0)
+  let values ← (List.range domains.length).mapM fun index =>
+    (bindings.find? (fun item => item.fst == domains.length - index - 1)).map Prod.snd
+  some (.lam `payload payloadTy
+    (betaReduceExpr 32 (rebuildApp (arm.liftLooseBVars 0 1) values)) .default)
+
 def exceptMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
   let generatedExceptArgs? (name : Name) : Option (Expr × Expr × Expr) :=
@@ -495,13 +520,24 @@ def exceptMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
                       [errorTy.liftLooseBVars 0 1, okTy.liftLooseBVars 0 1, .bvar 0]
                     some (.lam `payload payloadTy
                       (betaReduceExpr 32 (.app (arm.liftLooseBVars 0 1) value)) .default)
+                let adapt (armTy arm : Expr) (ok : Bool) : Option Expr := do
+                  let some domain := (peelForall info.type).fst[scrutineeIndex]? | none
+                  let domain := domain.instantiateRev (args.take scrutineeIndex).toArray
+                  let (.const ``Except _, [errorTy, okTy]) := appFnArgs domain | none
+                  exceptPayloadArm? env (if ok then okTy else errorTy) armTy arm
                 match exceptArmTarget? firstArmTy, exceptArmTarget? secondArmTy with
-                | some false, some true => some (scrutinee, firstArm, secondArm)
-                | some true, some false => some (scrutinee, secondArm, firstArm)
-                | some false, none => (fallback secondArm true).map (scrutinee, firstArm, ·)
-                | some true, none => (fallback secondArm false).map (scrutinee, ·, firstArm)
-                | none, some false => (fallback firstArm true).map (scrutinee, secondArm, ·)
-                | none, some true => (fallback firstArm false).map (scrutinee, ·, secondArm)
+                | some false, some true => do
+                    some (scrutinee, ← adapt firstArmTy firstArm false, ← adapt secondArmTy secondArm true)
+                | some true, some false => do
+                    some (scrutinee, ← adapt secondArmTy secondArm false, ← adapt firstArmTy firstArm true)
+                | some false, none => do
+                    some (scrutinee, ← adapt firstArmTy firstArm false, ← fallback secondArm true)
+                | some true, none => do
+                    some (scrutinee, ← fallback secondArm false, ← adapt firstArmTy firstArm true)
+                | none, some false => do
+                    some (scrutinee, ← adapt secondArmTy secondArm false, ← fallback firstArm true)
+                | none, some true => do
+                    some (scrutinee, ← fallback firstArm false, ← adapt secondArmTy secondArm true)
                 | _, _ => none
             | _ => none
         | _, _, _ => none
@@ -892,5 +928,17 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (VariantLayout × Expr × List Expr × List Bool) :=
   variantMatcherInfo? env fn args |>.map fun info =>
     (info.layout, info.scrutinee, info.arms, info.fallbackArms)
+
+def handledMatcher (env : Environment) (name : Name) (args : List Expr) : Bool :=
+  let fn := Expr.const name []
+  isMatcherName name &&
+    ((boolMatcherArgs? env fn args).isSome ||
+      (exceptMatcherArgs? env fn args).isSome ||
+      (optionMatcherArgs? env fn args).isSome ||
+      (natMatcherArgs? env fn args).isSome ||
+      (psumMatcherArgs? env fn args).isSome ||
+      (productMatcherArgs? env fn args).isSome ||
+      (structureMatcherArgs? env fn args).isSome ||
+      (variantMatcherArgs? env fn args).isSome)
 
 end LeanExe.Extract.Core
