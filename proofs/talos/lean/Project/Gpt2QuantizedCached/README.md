@@ -38,6 +38,7 @@ The registration remains incomplete.
 | [Complete cached hidden function](CachedHidden/Spec.lean) and [allocation bound](CachedHidden/Budget.lean) | Exact callable function 58, embedding and twelve-layer traversal, status propagation, final cache construction, returned bytes, owned outputs, complete temporary cleanup, and heap-top growth bounded by incoming cache bytes plus 1,736,456. |
 | [Token-step hidden call](Entry/Hidden.lean), [final normalization](Entry/Normalized.lean), and [vocabulary projection](Entry/Logits.lean) | Exact calls, status and buffer assignments, preserved live bindings, and the 50,257-logit output. |
 | [Entry input test](Entry/InputTest.lean), [cache test](Entry/CacheTest.lean), [normalized guard](Entry/FiniteGuard.lean), and [output guard](Entry/OutputGuard.lean) | Header and input rejection, bounded cache-length arithmetic, all finite-word probes, short-circuit output checks, and preserved live owners. |
+| [Complete public token step](Entry/Public.lean) | Exact status, cache and logit bytes for public function 61, arbitrary 64-bit token masking, all input and numerical rejection branches, ownership, protected-input preservation, and temporary cleanup. |
 | [Result assignment and return](Entry/Result.lean) | Exact status, cache and logit result words, and empty failed outputs. |
 | [Model representation](Model.lean) and [source validation](ModelSource.lean) | Accepted tensor predicates, block extents, token coefficient and scale properties, and equivalence between validation status zero and the complete representation predicate. |
 | [Public model validator](Validation/Public.lean) | Exact status, termination, and unchanged store for every represented input, including header rejection, global checks, and the early-exit twelve-block scan. |
@@ -60,10 +61,10 @@ through the full cached recurrence remain open.
 ## Remaining proof and evaluation
 
 The complete proof must compose the checked validator, model representation,
-and cached-hidden function with all token-step branches, cached sessions,
-address bounds, and a complete memory bound.  The resulting theorem must
+and public token-step theorem with cached sessions, address bounds, and a
+complete memory bound.  The resulting theorem must
 then transfer to the exact decoded binary.  No
-complete-model execution or binary theorem is claimed here.
+complete-session or binary theorem is claimed here.
 
 The [evaluation record](../../../../../data/gpt2-quantized-v1/README.md)
 contains the retained grouped binary, all 6,432,896 bitwise logit comparisons,
