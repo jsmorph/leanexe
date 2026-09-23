@@ -18,6 +18,7 @@ mutual
     | .letCall _ _ args body => args.any Expr.hasEffects || Expr.hasEffects body
     | .letLets lets body => lets.any LocalLet.hasEffects || Expr.hasEffects body
     | .runtimeStat _ => false
+    | .retain _ _ => true
     | .release _ => true
     | .arrayAllocSlots _ _ cells => Expr.hasEffects cells
     | .heapAllocSlots _ _ values => values.any Expr.hasEffects

@@ -57,13 +57,24 @@ def random : Action UInt32 := do
     | .ok n => return if n == 64 then 0 else 99
 
 def timer : Action UInt32 := do
-  let result ← poll_oneoff #[Subscription.clock 123 Clock.monotonic 20000000 0 0]
+  let .ok start ← clock_time_get Clock.monotonic 0 | return 95
+  let result ← poll_oneoff #[Subscription.clock 0x100000000000007b Clock.monotonic 20000000 0 0]
+  let .ok stop ← clock_time_get Clock.monotonic 0 | return 96
+  if stop - start < 20000000 then return 99
   match result with
   | .error e => return e
   | .ok events =>
     if events.size != 1 then return 97
     let event := events[0]!
-    return if event.userdata == 123 && event.error == 0 && event.eventType == 0 then 0 else 98
+    return if event.userdata == 0x100000000000007b && event.error == 0 && event.eventType == 0 then 0 else 98
+
+def absoluteTimer : Action UInt32 := do
+  let .ok now ← clock_time_get Clock.monotonic 0 | return 1
+  let deadline := now + 1000000
+  let .ok events ← poll_oneoff #[Subscription.clock 123 Clock.monotonic deadline 0
+    Subclockflags.subscription_clock_abstime] | return 2
+  let .ok after ← clock_time_get Clock.monotonic 0 | return 3
+  return if after >= deadline && events.size == 1 && events[0]!.error == 0 then 0 else 4
 
 def ready : Action UInt32 := do
   let result ← poll_oneoff #[Subscription.read 456 0]
@@ -95,9 +106,9 @@ def errors : Action UInt32 := do
   match ← fd_write 4294967295 "x".toUTF8 with
   | .ok _ => return 6
   | .error e => if e != Errno.badf then return 7
-  match ← clock_res_get 4294967295 with
+  match ← clock_res_get Clock.process_cputime_id with
   | .ok _ => return 8
-  | .error e => if e != Errno.inval then return 9
+  | .error e => if e != Errno.badf then return 9
   return ← sched_yield
 
 def filesystem : Action UInt32 := do
@@ -129,7 +140,8 @@ def filesystem : Action UInt32 := do
   if (← fd_fdstat_set_flags fd Fdflags.append) != 0 then return 22
   if (← fd_fdstat_set_flags fd 0) != 0 then return 23
   if (← fd_advise fd 0 6 Advice.normal) != 0 then return 24
-  if (← fd_allocate fd 0 10) != 0 then return 25
+  let allocated ← fd_allocate fd 0 10
+  if allocated != 0 && allocated != Errno.notsup then return 25
   if (← fd_filestat_set_size fd 4) != 0 then return 26
   if (← fd_filestat_set_times fd 1000000000 2000000000 (Fstflags.atim ||| Fstflags.mtim)) != 0 then return 27
   let .ok info ← fd_filestat_get fd | return 28
@@ -137,10 +149,12 @@ def filesystem : Action UInt32 := do
       info.atim != 1000000000 || info.mtim != 2000000000 then return 29
   if (← fd_datasync fd) != 0 then return 30
   if (← fd_sync fd) != 0 then return 31
-  if (← fd_fdstat_set_rights fd Rights.fd_read 0) != 0 then return 32
-  match ← fd_write fd "x".toUTF8 with
-  | .ok _ => return 33
-  | .error e => if e != Errno.notcapable && e != Errno.badf then return 34
+  let reduced ← fd_fdstat_set_rights fd Rights.fd_read 0
+  if reduced == 0 then
+    match ← fd_write fd "x".toUTF8 with
+    | .ok _ => return 33
+    | .error e => if e != Errno.notcapable && e != Errno.badf then return 34
+  else if reduced != Errno.badf && reduced != Errno.notsup then return 32
   if (← fd_close fd) != 0 then return 35
   if (← path_link 3 0 "dir/file".toUTF8 3 "hard".toUTF8) != 0 then return 36
   let .ok linked ← path_filestat_get 3 0 "hard".toUTF8 | return 37
@@ -172,10 +186,13 @@ def renumber : Action UInt32 := do
   if n != 10 then return 4
   return ← fd_close 1
 
+def zeroRead : Action UInt32 := do
+  match ← fd_read 0 0 with
+  | .error e => return e
+  | .ok bytes => return if bytes.size == 0 then 0 else 99
+
 def empty : Action UInt32 := do
-  let .ok bytes ← fd_read 0 0 | return 1
-  if bytes.size != 0 then return 2
-  let .ok n ← fd_write 1 bytes | return 3
+  let .ok n ← fd_write 1 (ByteArray.mk #[]) | return 3
   if n != 0 then return 4
   let .ok random ← random_get 0 | return 5
   return if random.size == 0 then 0 else 6
@@ -187,11 +204,92 @@ def released : Action UInt32 := do
     let _ ← fd_read 4294967295 32
     let _ ← args_get
     let _ ← environ_get
+    let _ ← poll_oneoff #[Subscription.clock 1 Clock.monotonic 0 0 0]
   let after := LeanExe.Runtime.allocCount - LeanExe.Runtime.freeCount
   return if before == after then 0 else 99
 
+def firstArgument : Action (Except UInt32 ByteArray) := do
+  let .ok args ← args_get | return .error 1
+  if args.size == 0 then return .error 2
+  return .ok args[0]!
+
+def localChild : ByteArray :=
+  let bytes := ByteArray.mk #[107, 101, 101, 112]
+  let values := #[bytes, bytes]
+  values[0]!
+
+def localRetained : Action UInt32 := do
+  let bytes := localChild
+  let _ ← random_get 4096
+  let .ok n ← fd_write 1 bytes | return 1
+  return if n == 4 then 0 else 2
+
+def argumentPair : Action (Except UInt32 (ByteArray × ByteArray)) := do
+  let .ok args ← args_get | return .error 1
+  if args.size == 0 then return .error 2
+  let first := args[0]!
+  let last := if args.size > 1 then args[args.size - 1]! else first
+  return .ok (first, last)
+
+def retainedPair : Action UInt32 := do
+  let .ok (first, last) ← argumentPair | return 1
+  let _ ← random_get 4096
+  let .ok _ ← fd_write 1 first | return 2
+  let .ok _ ← fd_write 1 last | return 3
+  return 0
+
+def consumeArguments : Action UInt32 := do
+  let .ok first ← firstArgument | return 1
+  let .ok (left, right) ← argumentPair | return 2
+  let localBytes := localChild
+  return if first.size == 4 && left.size == 4 && right.size == 4 && localBytes.size == 4 then 0 else 3
+
+def retainedReleased : Action UInt32 := do
+  let beforeAlloc := LeanExe.Runtime.allocCount
+  let beforeFree := LeanExe.Runtime.freeCount
+  for _ in [:100] do
+    if (← consumeArguments) != 0 then return 1
+  let allocs := LeanExe.Runtime.allocCount - beforeAlloc
+  let frees := LeanExe.Runtime.freeCount - beforeFree
+  return if allocs == frees then 0 else 2
+
+def retained : Action UInt32 := do
+  let .ok first ← firstArgument | return 1
+  let .ok second ← fd_read 0 4 | return 2
+  for _ in [:10] do
+    let _ ← args_get
+    let _ ← random_get 4096
+  let .ok a ← fd_write 1 first | return 3
+  let .ok b ← fd_write 1 second | return 4
+  let .ok c ← fd_write 1 first | return 5
+  return if a.toNat == first.size && b.toNat == second.size && c == a then 0 else 6
+
+def streaming : Action UInt32 := do
+  for _ in [:65536] do
+    let .ok bytes ← fd_read 0 4096 | return 1
+    if bytes.size == 0 then return 0
+    let .ok n ← fd_write 1 bytes | return 2
+    if n.toNat != bytes.size then return 3
+  return 4
+
+def pollBadFd : Action UInt32 := do
+  match ← poll_oneoff #[Subscription.read 765 4294967295] with
+  | .error e => return e
+  | .ok events =>
+    if events.size != 1 then return 2
+    let event := events[0]!
+    return if event.userdata == 765 && event.error == Errno.badf && event.eventType == 1 then 0 else 3
+
+def invalidPollTag : Action UInt32 := do
+  match ← poll_oneoff #[⟨0, 256, 0, 0, 0, 0⟩] with
+  | .ok _ => return 4
+  | .error e => return if e == Errno.inval then 0 else 5
+
 def socket : Action UInt32 := do
+  let .ok _ ← fd_write 2 "ready\n".toUTF8 | return 8
+  let .ok _ ← poll_oneoff #[Subscription.read 1 3] | return 9
   let .ok fd ← sock_accept 3 0 | return 1
+  let .ok _ ← poll_oneoff #[Subscription.read 2 fd] | return 10
   let .ok (bytes, flags) ← sock_recv fd 4 Riflags.recv_waitall | return 2
   if bytes.size != 4 || flags != 0 then return 3
   let .ok n ← sock_send fd bytes 0 | return 4
