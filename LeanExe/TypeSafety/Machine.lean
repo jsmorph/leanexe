@@ -27,6 +27,8 @@ inductive Frame where
   | pairRight (left : Value)
   | fst
   | snd
+  | splitBody (body : Expr) (env : Env)
+  | unitBody (body : Expr) (env : Env)
   | inl
   | inr
   | sumBranches (left right : Expr) (env : Env)
@@ -63,6 +65,10 @@ def step (program : Program) : State → Option State
       some (.eval left env (.pairLeft right env :: kont))
   | .eval (.fst pair) env kont => some (.eval pair env (.fst :: kont))
   | .eval (.snd pair) env kont => some (.eval pair env (.snd :: kont))
+  | .eval (.split pair body) env kont =>
+      some (.eval pair env (.splitBody body env :: kont))
+  | .eval (.unitCase scrutinee body) env kont =>
+      some (.eval scrutinee env (.unitBody body env :: kont))
   | .eval (.inl payload) env kont => some (.eval payload env (.inl :: kont))
   | .eval (.inr payload) env kont => some (.eval payload env (.inr :: kont))
   | .eval (.sumCase scrutinee left right) env kont =>
@@ -82,6 +88,9 @@ def step (program : Program) : State → Option State
   | .ret right (.pairRight left :: kont) => some (.ret (.pair left right) kont)
   | .ret (.pair left _) (.fst :: kont) => some (.ret left kont)
   | .ret (.pair _ right) (.snd :: kont) => some (.ret right kont)
+  | .ret (.pair left right) (.splitBody body env :: kont) =>
+      some (.eval body (left :: right :: env) kont)
+  | .ret .unit (.unitBody body env :: kont) => some (.eval body env kont)
   | .ret value (.inl :: kont) => some (.ret (.inl value) kont)
   | .ret value (.inr :: kont) => some (.ret (.inr value) kont)
   | .ret (.inl payload) (.sumBranches left _ env :: kont) =>
@@ -121,6 +130,10 @@ inductive FrameTyped (signatures : Signatures) : Frame → Ty → Ty → Prop wh
   | pairRight : ValueTyped left α → FrameTyped signatures (.pairRight left) β (.prod α β)
   | fst : FrameTyped signatures .fst (.prod α β) α
   | snd : FrameTyped signatures .snd (.prod α β) β
+  | splitBody : ExprTyped signatures (α :: β :: Γ) body τ → EnvTyped env Γ →
+      FrameTyped signatures (.splitBody body env) (.prod α β) τ
+  | unitBody : ExprTyped signatures Γ body τ → EnvTyped env Γ →
+      FrameTyped signatures (.unitBody body env) .unit τ
   | inl : FrameTyped signatures .inl α (.sum α β)
   | inr : FrameTyped signatures .inr β (.sum α β)
   | sumBranches : ExprTyped signatures (α :: Γ) left τ → ExprTyped signatures (β :: Γ) right τ →

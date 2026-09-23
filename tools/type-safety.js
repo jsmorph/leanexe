@@ -15,6 +15,19 @@ const auditedTheorems = [
   "LeanExe.TypeSafety.return_type",
   "LeanExe.TypeSafety.overflow_is_justified",
   "LeanExe.TypeSafety.step_deterministic",
+  "LeanExe.TypeSafety.profile_type_safety",
+  "LeanExe.TypeSafety.profile_return_type",
+  "LeanExe.TypeSafety.profile_overflow_is_justified",
+  "LeanExe.TypeSafety.usesArgs_iff",
+  "LeanExe.TypeSafety.parametersUsed_iff",
+  "LeanExe.TypeSafety.admissible_let_iff",
+  "LeanExe.TypeSafety.admissible_split_iff",
+  "LeanExe.TypeSafety.admissible_sumCase_iff",
+  "LeanExe.TypeSafety.admissible_unitCase_iff",
+  "LeanExe.TypeSafety.admissibleArgs_iff",
+  "LeanExe.TypeSafety.programAdmissible_cons_iff",
+  "LeanExe.TypeSafety.programAdmissible_length",
+  "LeanExe.TypeSafety.programAdmissible_lookup",
 ];
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -51,6 +64,7 @@ function main() {
 
   run(["lake", "build", "LeanExe.TypeSafety"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_profile.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

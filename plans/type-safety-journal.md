@@ -118,3 +118,26 @@ existing safety proofs, and a Profile module combining ordinary typing with
 admission checks. The parent owns the contract, gate, tests, and publication.
 At this specification checkpoint those new cases have not yet been checked;
 the previously published strict-calculus theorem remains the checked baseline.
+
+2026-09-23: Completed product-pattern and Unit elimination, including expression
+typing, captured frames, environment extension, canonical forms, and all existing
+safety proofs. Profile admission checks every nested binding and every function
+parameter. Its safety results use ordinary configuration typing; they do not
+claim that syntactic relevance survives runtime reduction. Added explicit check
+characterizations and a program lookup theorem. No all-path usage, linearity,
+ownership, termination, or compiler correspondence claim is made.
+
+Added 41 semantic examples covering product binding order, nested lexical shifts,
+Unit elimination, ignored lets/fields/payloads/parameters, nested projection
+rejection, duplicated uses, and syntactic use in an unselected branch. They also
+separate admission from typing and exhibit malformed eliminations as stuck.
+Together with the existing 26 examples, all 67 passed.
+
+The first expanded gate caught Quot.sound in profile helper proofs, while core
+and profile safety results still depended only on propext. The agent traced this
+to standard library helper proofs, including Bool.or_eq_true_iff, and replaced
+them with direct equations and membership induction. Parameter checking now uses
+equivalent Nat recursion with its universal-index characterization proved
+directly. No statement or axiom allowlist was weakened. The final full gate
+passed: six build jobs, both example files with warnings as errors, and 20
+transitive theorem audits, each reporting only propext.
