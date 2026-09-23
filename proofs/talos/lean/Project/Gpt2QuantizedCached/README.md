@@ -19,6 +19,8 @@ The registration remains incomplete.
 | [Layout constants](Layout.lean) | Exact values and store preservation for model offsets, lengths, and cache-position size. |
 | [Finite-word helper](Finite.lean) and [finite-word scan](FiniteWords.lean) | Exact FP32 finiteness tests and bounded scans, with unchanged store. |
 | [Coefficient scan](Coefficients.lean) and [scale scan](Scales.lean) | Exact bounded validation and store preservation, including coefficient short-circuiting and eager scale reads. |
+| [Header validation](Header.lean) | Exact format-header acceptance with short-circuit field reads and unchanged store. |
+| [Projection allocation budget](GroupedProjection/Budget.lean) | Sufficient address and page bounds for the scale buffer, byte buffer, and projection output. |
 | [Model representation](Model.lean) | Accepted tensor predicates, block extents, and token coefficient and scale properties. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
 
