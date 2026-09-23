@@ -33,6 +33,17 @@ mode, retaining serialization, one Lean thread, timeout, and priority limits.
 Pinned Lean, Wasmtime, wasm-tools, and Node archives were installed under the
 ignored build directory with their published checksums verified.
 
+The first timed read exposed a pre-existing `i32.const` encoding error: both
+instruction emission and the legacy byte helper used unsigned LEB128, so
+address 64 decoded as -64.  The [WASM integer encoding](https://webassembly.github.io/spec/core/binary/values.html#integers)
+requires signed LEB128 for these constants.  The repair sign-extends the low
+32 bits and uses the existing signed encoder.  Boundary tests cover 63/64,
+127/128, 8191/8192, and both signed 32-bit endpoints; self-emission also checks
+high input bits are discarded.
+
+The signed-constant boundary guards passed, and Wasmtime passed all 75
+self-emitted LEB128 cases, including the new 32-bit boundaries.
+
 ## 2026-09-16: Tiny transformer implementation
 
 The user authorized implementation of the tiny GPT-2-style model, beginning
