@@ -1,4 +1,5 @@
 import LeanExe.TypeSafety.ArrayValues
+import LeanExe.TypeSafety.ValueEquality
 
 /-!
 # Explicit call-by-value operational semantics
@@ -23,6 +24,8 @@ array operations evaluate all operands from left to right; bounds and growth
 failures return `inl unit` as ordinary data. Nominal construction evaluates fields
 in order. Matching checks both nominal identity and the selected branch arity,
 then prepends fields in declaration order to the captured lexical environment.
+Structural equality evaluates both operands completely before comparing their
+raw values; static typing separately requires homogeneity and equality admission.
 Word operations check runtime width tags; their modular results and conversions
 produce ordinary values and introduce no failure terminal.
 -/
@@ -46,6 +49,8 @@ inductive Frame where
   | natCmpLeft (operation : NatCmpOp) (right : Expr) (env : Env)
   | natBinRight (operation : NatBinOp) (left : Value)
   | natCmpRight (operation : NatCmpOp) (left : Value)
+  | structEqLeft (right : Expr) (env : Env)
+  | structEqRight (left : Value)
   | wordBinLeft (width : WordWidth) (operation : WordBinOp) (right : Expr) (env : Env)
   | wordBinRight (width : WordWidth) (operation : WordBinOp) (left : Value)
   | wordCmpLeft (width : WordWidth) (operation : NatCmpOp) (right : Expr) (env : Env)
@@ -111,6 +116,8 @@ def step (program : Program) : State → Option State
       some (.eval left env (.natBinLeft operation right env :: kont))
   | .eval (.natCmp operation left right) env kont =>
       some (.eval left env (.natCmpLeft operation right env :: kont))
+  | .eval (.structEq left right) env kont =>
+      some (.eval left env (.structEqLeft right env :: kont))
   | .eval (.wordBin width operation left right) env kont =>
       some (.eval left env (.wordBinLeft width operation right env :: kont))
   | .eval (.wordCmp width operation left right) env kont =>
@@ -171,6 +178,9 @@ def step (program : Program) : State → Option State
       some (.eval right env (.natCmpRight operation value :: kont))
   | .ret (.nat right) (.natCmpRight operation (.nat left) :: kont) =>
       some (.ret (.bool (operation.apply left right)) kont)
+  | .ret value (.structEqLeft right env :: kont) =>
+      some (.eval right env (.structEqRight value :: kont))
+  | .ret right (.structEqRight left :: kont) => some (.ret (.bool (valueEq left right)) kont)
   | .ret value (.wordBinLeft width operation right env :: kont) =>
       some (.eval right env (.wordBinRight width operation value :: kont))
   | .ret (.word rightWidth right) (.wordBinRight width operation (.word leftWidth left) :: kont) =>
@@ -253,6 +263,26 @@ theorem step_natCase_succ :
     step program (.ret (.nat (predecessor + 1)) (.natBranches zeroBody succBody env :: kont)) =
       some (.eval succBody (.nat predecessor :: env) kont) := rfl
 
+theorem step_structEq : step program (.eval (.structEq left right) env kont) =
+    some (.eval left env (.structEqLeft right env :: kont)) := rfl
+
+theorem step_structEq_right : step program (.ret left (.structEqLeft right env :: kont)) =
+    some (.eval right env (.structEqRight left :: kont)) := rfl
+
+theorem step_structEq_result : step program (.ret right (.structEqRight left :: kont)) =
+    some (.ret (.bool (valueEq left right)) kont) := rfl
+
+/-- Raw equality returns true exactly for identical finite values, without a typing assumption. -/
+theorem step_structEq_true_iff :
+    step program (.ret right (.structEqRight left :: kont)) = some (.ret (.bool true) kont) ↔
+      left = right := by
+  simpa [step_structEq_result] using (valueEq_eq_true_iff (left := left) (right := right))
+
+theorem step_structEq_false_iff :
+    step program (.ret right (.structEqRight left :: kont)) = some (.ret (.bool false) kont) ↔
+      left ≠ right := by
+  simpa [step_structEq_result] using (valueEq_eq_false_iff (left := left) (right := right))
+
 def Step (program : Program) (before after : State) : Prop := step program before = some after
 
 /-- A return or an arithmetically justified overflow, never arbitrary stuckness. -/
@@ -297,6 +327,12 @@ inductive FrameTyped (declarations : DataDecls) (signatures : Signatures) : Fram
       FrameTyped declarations signatures (.natCmpLeft operation right env) .nat64 .bool
   | natCmpRight (operation : NatCmpOp) : ValueTyped declarations left .nat64 →
       FrameTyped declarations signatures (.natCmpRight operation left) .nat64 .bool
+
+  | structEqLeft : ExprTyped declarations signatures Γ right α → EqTy declarations α →
+      EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.structEqLeft right env) α .bool
+  | structEqRight : ValueTyped declarations left α → EqTy declarations α →
+      FrameTyped declarations signatures (.structEqRight left) α .bool
 
   | wordBinLeft (width : WordWidth) (operation : WordBinOp) :
       ExprTyped declarations signatures Γ right (.word width) → EnvTyped declarations env Γ →
@@ -419,7 +455,7 @@ theorem FrameTyped.wellFormed (typed : FrameTyped declarations signatures frame 
   | natBranches zeroBody _ env =>
       exact zeroBody.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed
   | natBinLeft _ _ _ | natBinRight _ _ => exact .nat64
-  | natCmpLeft _ _ _ | natCmpRight _ _ => exact .bool
+  | natCmpLeft _ _ _ | natCmpRight _ _ | structEqLeft _ _ _ | structEqRight _ _ => exact .bool
   | wordBinLeft _ _ _ _ | wordBinRight _ _ _ | wordOfNat _ | wordCast _ _ => exact .word
   | wordCmpLeft _ _ _ _ | wordCmpRight _ _ _ => exact .bool
   | wordToNat _ => exact .nat64

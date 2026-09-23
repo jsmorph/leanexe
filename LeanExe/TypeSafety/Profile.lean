@@ -35,7 +35,7 @@ def uses (index : Nat) : Expr → Bool
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
   | .natCase scrutinee zeroBody succBody =>
       uses index scrutinee || uses index zeroBody || uses (index + 1) succBody
-  | .natBin _ left right | .natCmp _ left right |
+  | .structEq left right | .natBin _ left right | .natCmp _ left right |
     .wordBin _ _ left right | .wordCmp _ _ left right => uses index left || uses index right
   | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => uses index value
   | .call _ arguments => usesArgs index arguments
@@ -82,7 +82,7 @@ def admissible : Expr → Bool
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
   | .natCase scrutinee zeroBody succBody =>
       admissible scrutinee && (admissible zeroBody && (admissible succBody && uses 0 succBody))
-  | .natBin _ left right | .natCmp _ left right |
+  | .structEq left right | .natBin _ left right | .natCmp _ left right |
     .wordBin _ _ left right | .wordCmp _ _ left right => admissible left && admissible right
   | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => admissible value
   | .call _ arguments => admissibleArgs arguments
@@ -115,6 +115,12 @@ theorem uses_natCase_iff : uses index (.natCase scrutinee zeroBody succBody) = t
     (uses index scrutinee = true ∨ uses index zeroBody = true) ∨
       uses (index + 1) succBody = true := by
   simp only [uses_natCase, Bool.or_eq_true]
+
+theorem uses_structEq : uses index (.structEq left right) =
+    (uses index left || uses index right) := rfl
+
+theorem admissible_structEq_iff : admissible (.structEq left right) = true ↔
+    admissible left = true ∧ admissible right = true := Bool.and_eq_true_iff
 
 theorem uses_wordNot : uses index (.wordNot width value) = uses index value := by
   simp [uses]

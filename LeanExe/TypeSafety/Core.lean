@@ -1,4 +1,5 @@
 import LeanExe.TypeSafety.WordOperations
+import LeanExe.TypeSafety.EqualityTypes
 
 /-!
 # An independent first-order core
@@ -27,6 +28,8 @@ constructor patterns. Formation is checked separately and required by typing.
 Persistent arrays contain homogeneous finite sequences with length below
 `nat64Limit`. Reads, replacement, growth, and concatenation expose checked sum
 results; their typing is independent of any physical storage representation.
+Structural equality requires homogeneous operands and the independent `EqTy`
+domain, which checks every constructor field and excludes recursive dependencies.
 
 Words have explicit 8/32/64-bit widths and canonical bounded literal values.
 Arithmetic is modular, comparisons are unsigned, and explicit conversions
@@ -59,6 +62,8 @@ inductive Expr where
   | natCase (scrutinee zeroBody succBody : Expr)
   | natBin (operation : NatBinOp) (left right : Expr)
   | natCmp (operation : NatCmpOp) (left right : Expr)
+  /-- Both operands have one equality-admitted type; evaluation is strict left to right. -/
+  | structEq (left right : Expr)
   | wordBin (width : WordWidth) (operation : WordBinOp) (left right : Expr)
   | wordCmp (width : WordWidth) (operation : NatCmpOp) (left right : Expr)
   | wordOfNat (target : WordWidth) (value : Expr)
@@ -152,6 +157,10 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
   | natCmp (operation : NatCmpOp) : ExprTyped declarations signatures Γ left .nat64 →
       ExprTyped declarations signatures Γ right .nat64 →
       ExprTyped declarations signatures Γ (.natCmp operation left right) .bool
+
+  | structEq : ExprTyped declarations signatures Γ left α →
+      ExprTyped declarations signatures Γ right α → EqTy declarations α →
+      ExprTyped declarations signatures Γ (.structEq left right) .bool
 
   | wordBin (width : WordWidth) (operation : WordBinOp) :
       ExprTyped declarations signatures Γ left (.word width) →
@@ -393,7 +402,7 @@ theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr 
       exact left.wellFormed hdeclarations hsignatures (.cons formed.sum_left hcontext)
   | natCase _ zeroBody _ => exact zeroBody.wellFormed hdeclarations hsignatures hcontext
   | natBin _ _ _ => exact .nat64
-  | natCmp _ _ _ => exact .bool
+  | natCmp _ _ _ | structEq _ _ _ => exact .bool
   | wordBin _ _ _ _ | wordOfNat _ _ | wordCast _ _ _ => exact .word
   | wordCmp _ _ _ _ => exact .bool
   | wordToNat _ _ => exact .nat64
