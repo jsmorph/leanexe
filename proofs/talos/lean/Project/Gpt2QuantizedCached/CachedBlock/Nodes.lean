@@ -30,6 +30,11 @@ def hiddenNode (heap : Heap) (position : Nat) : FreeNode :=
 def cacheNode (heap : Heap) (position : Nat) : FreeNode :=
   allocatedNode (hiddenHeap heap position).top cacheNeed (hiddenHeap heap position).nodes
 
+theorem cacheNode_root (heap : Heap) (position : Nat) :
+    (cacheNode heap position).root =
+      allocatedRoot (hiddenHeap heap position).top cacheNeed (hiddenHeap heap position).nodes := by
+  simp only [cacheNode, allocatedNode]
+
 def temporaryItems (heap : Heap) (position : Nat) (values : Tensors) : List PackedReleaseMany.Item :=
   [⟨167, projected2Node heap position, values.projected2⟩,
    ⟨143, activatedNode heap position, values.activated⟩,

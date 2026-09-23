@@ -42,7 +42,7 @@ theorem hidden_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       heap.Frame initial (heap.allocate residualNeed) final →
       final.mem.pages ≤ 65536 → final.memoryCap Project.Gpt2CachedStep.«module» 0 = initial.memoryCap Project.Gpt2CachedStep.«module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((activatedSuccess.drop 81).take 28 ++ rest) Q initial frame env := by
+    wp «module» (hiddenCode ++ rest) Q initial frame env := by
   have hNeed : Gpt2CachedStep.AddRows.need residual = residualNeed := by rw [Gpt2CachedStep.AddRows.need, hResidualSize]; rfl
   have hSize : (addRows residual projected2).size = 3072 := by
     rw [addRows, PackedSource.generate_size, hResidualSize]
@@ -53,7 +53,6 @@ theorem hidden_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     residual projected2 hHeap hResidual hProjected2 (by rw [hResidualSize, hProjected2Size]) hProjected2Protected
     hResidualProtected hBump hPages
   simp only [hResidualSize, hProjected2Size, hSize, hNeed] at hCall
-  rw [emitted_hidden]
   simp only [hiddenCode, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, hParamsLength, hLocals, hValues,
     hResidualOwner, hResidualPtr, hResidualBytes, hProjected2Owner, hProjected2Ptr, hProjected2Bytes]

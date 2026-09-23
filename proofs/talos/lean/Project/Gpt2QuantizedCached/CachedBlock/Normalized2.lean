@@ -133,7 +133,7 @@ theorem normalized2_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       heap.Frame initial (Gpt2CachedStep.LayerNorm.finalHeap heap 1) final →
       final.mem.pages ≤ 65536 → final.memoryCap Project.Gpt2CachedStep.«module» 0 = initial.memoryCap Project.Gpt2CachedStep.«module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((attentionSuccess.drop 107).take 71 ++ rest) Q initial frame env := by
+    wp «module» (normalized2Code ++ rest) Q initial frame env := by
   have hBound := hWeights.1
   have hFit (offset : Nat) (hOffset : offset ≤ blockBytes) : base + offset < UInt64.size := by
     change base + offset < 18446744073709551616
@@ -164,7 +164,6 @@ theorem normalized2_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
     hHeap hWeights hResidual hWeightsProtected hResidualProtected (by rw [hResidualSize])
     hScaleSize hBiasSize hResources hPages
   simp only [hResidualSize] at hCall
-  rw [emitted_normalized2]
   simp only [normalized2Code, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, parameters, hLocals, hValues, hBase, hResidualOwner, hResidualPtr, hResidualBytes]
   refine wp_call_tw (Layout.ln2ScaleOffset_exact env initial) ?_
