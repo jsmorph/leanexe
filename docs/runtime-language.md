@@ -97,8 +97,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 170 semantic examples and audits all 103 declared
-theorems across the six development modules, including helper proofs. It
+The maintained gate checks 235 semantic examples and audits all 120 declared
+theorems across the seven development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -141,7 +141,7 @@ data. The following work remains separately tracked:
 | Collection binders, folds, loops, recursion forms | Replace schematic families with complete rules or justified derived forms, including captured lexical environments and early exits. |
 | Raw-word binary64 primitives | Define permitted results and prove preservation for every allowed result. |
 | Counter reads and explicit release | Define abstract state and a declarative admissibility/ownership discipline. Ordinary relevance does not discharge this obligation. |
-| Algorithmic type checking | Prove agreement with the declarative typing rules. The occurrence checker alone does not discharge this obligation. |
+| Algorithmic type checking | Exact inference/admission correspondence and expression type uniqueness are proved for the current calculus. Every future extension must preserve these results. |
 
 Abstract array lengths must be representable by the specified `Nat64` size
 operation. Growing operations must preserve the length bound or have a precisely
@@ -243,27 +243,28 @@ frames and continuations. `StateTyped.wellFormed` establishes the result for eve
 state typed under an admitted program. Arithmetic overflow cannot be used to
 assign an undeclared nominal result type.
 
-## Explicit sums and the next typing-checker increment
+## Explicit sums and algorithmic typing
 
 Sum introductions are `inl otherTy payload` and `inr otherTy payload`. The other
 alternative is explicit in the expression and must be well formed. Values still
-store only their tag and payload. The syntax migration has passed the maintained
-safety gate; this section's checker proofs are the next increment, in progress.
+store only their tag and payload. Expression types are proved unique.
 
-Raw structural inference will correspond exactly to the declarative expression
-judgment. Argument checking must enforce exact arity and types; branch checking
-must enforce exact constructor coverage, field arities, and a common result.
-These checks recurse over finite syntax. They do not execute recursive functions
-or unfold recursive declarations.
+Raw structural inference corresponds exactly to the declarative expression
+judgment. Argument checking enforces exact arity and types; branch checking
+enforces exact constructor coverage, field arities, and a common result.
+These total checks recurse over finite syntax. They do not execute recursive
+functions or unfold recursive declarations.
 
-Public admission must additionally validate every declaration, signature, and
+Public admission additionally validates every declaration, signature, and
 context type, including unused entries. Raw inference alone is insufficient:
 the raw variable rule can refer to a malformed type in an unvalidated context.
-The public expression-checker characterization must include formed ambient inputs,
-and the program checker must agree with the complete `ProgramTyped` judgment.
-Profile checking also requires the existing syntactic relevance checks.
+`infer_eq_some_iff` includes formed ambient inputs; `programWellTyped_iff`
+agrees with the complete `ProgramTyped` judgment. The profile checker
+characterizations additionally require the syntactic relevance checks.
 
-Required results are raw inference soundness and completeness, expression type
-uniqueness, exact public expression/program admission characterizations, and
+The checked results include raw inference soundness and completeness, expression
+type uniqueness, exact public expression/program admission characterizations, and
 reachable-state safety for checker-accepted programs and closed entries. These
 results concern the independently specified language, not compiler acceptance.
+General recursive programs can pass these checks; termination and absence of
+specified arithmetic failure are separate properties.

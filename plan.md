@@ -837,7 +837,7 @@ memory-management implementation, or compiler correctness.
 - [ ] Extend the remaining numeric, byte, data-declaration, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
-- [ ] Establish algorithmic type-checking results against the declarative rules; state termination obligations separately.
+- [x] Establish total algorithmic typing, exact ordinary/profile admission, and expression type uniqueness for the current calculus; keep program termination separate.
 
 Language type soundness is a property of the language's typing and operational
 semantics. Extraction correctness, compiler refinement, and physical ownership
@@ -849,6 +849,7 @@ the broader documented runtime language is still open.
 Execution cadence: keep advancing this authorized track after each checked
 milestone, with frequent status updates, commits, and pushes. Publishing a
 milestone is a checkpoint, not a reason to stop or wait for renewed permission.
-Nominal recursive-data formation and matching are now checked. The next increment
-is explicit sum annotations and an algorithmic typing discipline, with checker
-soundness/completeness and expression type uniqueness against the declared rules.
+Nominal recursive data and algorithmic typing are now checked, including checker
+soundness/completeness, exact public admission, and expression type uniqueness.
+The next increment specifies remaining bounded-natural operations and their
+failure conditions, then extends the semantics, safety proofs, and checker.
