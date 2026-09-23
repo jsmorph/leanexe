@@ -153,6 +153,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
 | [Safety.lean](../LeanExe/TypeSafety/Safety.lean) | Progress, preservation, finite-execution safety, result typing, and overflow justification. |
 | [Profile.lean](../LeanExe/TypeSafety/Profile.lean) | Syntactic admission checks, their characterizations, and profile safety. |
+| [Typing.lean](../LeanExe/TypeSafety/Typing.lean) | Total inference, exact admission checks, type uniqueness, and checker-to-safety corollaries. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -164,9 +165,10 @@ tools/type-safety.js check
 The gate checks the version against `lean-toolchain`, builds only the independent
 `LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean),
 [41 profile examples](../test/type_safety_profile.lean),
-[46 array examples](../test/type_safety_arrays.lean), and
-[57 nominal-data examples](../test/type_safety_data.lean). It audits the
-transitive axiom dependencies of all 103 declared theorems across the six
+[46 array examples](../test/type_safety_arrays.lean),
+[57 nominal-data examples](../test/type_safety_data.lean), and
+[65 typing-checker examples](../test/type_safety_typing.lean). It audits the
+transitive axiom dependencies of all 120 declared theorems across the seven
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -184,6 +186,8 @@ array parameters, heterogeneous-value rejection, and malformed array frames.
 Nominal examples cover mutual/empty/cyclic declaration formation, malformed
 hidden types, exact field/branch coverage, empty elimination, runtime result
 formation, field binding order, raw mismatches, and a typed recursive list sum.
+Typing examples cover exact inferred types, malformed unused ambient entries,
+whole-program alignment, recursive programs, and combined relevance admission.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -209,10 +213,14 @@ compiler-specific recursion recognizers remain outside the language proved here.
 
 Sum introductions now explicitly state the other alternative's type:
 `inl otherTy payload` and `inr otherTy payload`. This removes the unspecified
-summand from the source syntax; runtime values remain unannotated. The existing
-safety proofs and examples pass after this syntax change. Algorithmic typing
-and expression type-uniqueness proofs are in progress and are not yet claimed
-at this annotation checkpoint.
+summand from the source syntax; runtime values remain unannotated. Expression types are now proved unique (`ExprTyped.unique`).
+`inferRaw_iff` characterizes the raw declarative judgment exactly;
+`infer_eq_some_iff` additionally requires well-formed declarations, signatures,
+and context. `programWellTyped_iff` and the profile checker characterizations
+give exact executable admission criteria. `checked_type_safety` and
+`profile_checked_type_safety` establish safety of every finite execution from
+accepted closed entries under accepted programs. The checks terminate by
+structural recursion on finite syntax; this does not assert program termination.
 
 The [runtime-language contract](runtime-language.md) adopts strict evaluation and
 a syntactic relevance profile for machine-written programs. It deliberately
@@ -236,16 +244,17 @@ The independent language agenda is:
 4. Give runtime counter reads and explicit release their own abstract-state and
    admissibility rules if included in the language claim. Ordinary array typing
    alone does not express permission to release or exclude use after release.
-5. State algorithmic type-checking results against these declarative rules.
-   Keep termination and successful, failure-free execution as separate results.
+5. Preserve the checked algorithmic typing correspondence and type uniqueness
+   with every language extension. Keep termination and successful, failure-free
+   execution as separate results.
 
 The first persistent-array increment is checked. Additional collection forms
 such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
-checked. Sum introductions are explicit, and the next increment proves an
-algorithmic checker against the declarative judgments. The checker and its
-correctness proofs are not yet part of the maintained gate at this checkpoint.
+checked, as are explicit sum annotations and algorithmic typing. The next
+increment specifies the remaining bounded-natural operations and their failure
+conditions, then extends the checked semantics and metatheory.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;

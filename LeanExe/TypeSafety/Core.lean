@@ -43,6 +43,7 @@ inductive Expr where
   | split (pair body : Expr)
   /-- Unit elimination evaluates the scrutinee and introduces no field binders. -/
   | unitCase (scrutinee body : Expr)
+  /-- The absent summand is explicit; the payload determines the inhabited summand. -/
   | inl (otherTy : Ty) (payload : Expr)
   | inr (otherTy : Ty) (payload : Expr)
   /-- Each branch binds its selected payload at index zero. -/
