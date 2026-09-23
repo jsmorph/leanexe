@@ -27,8 +27,12 @@ The normalization checker supplies all `LayerNormPair.Ranges` premises for each 
 
 All 16,883,712 captured GELU inputs pass the native checker.  Its soundness theorem supplies the argument, exponential, and quotient ranges, with a denominator lower bound of one.  The checker includes exact reduction and every Horner and squaring operation.
 
-The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Attention range evaluation, projection range instances, and evaluation of the propagated bound remain open.
+All 5,496 captured attention calls pass the native checker.  It reconstructs both cache histories and checks every score dot, maximum ordering, exponential, softmax sum and quotient, and weighted-value dot.  Its paired conversion supplies `AttentionPair.Ranges`, including the value-magnitude bound and a softmax denominator lower bound of one.
+
+The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Projection range instances and evaluation of the propagated bound remain open.
 
 ## Checking
+
+The [outward arithmetic](../../ProofKit/DyadicUpperSound.lean) represents nonnegative bounds as natural-number numerators with 160 fractional bits.  Multiplication, fraction conversion, and division round upward.  Numerators have no fixed integer-width limit.  The [normalization upper bound](NormalizationUpperSound.lean) bounds the complete mean, centering, variance, square-root, reciprocal, and affine-output error formulas.  It assumes checked arithmetic exponents, component magnitude bounds, and the normalization lower bounds described above.  The remaining stages still need computed upper bounds.
 
 The focused numerical target is `Project.Gpt2QuantizedCached.Numerical.Greedy`.  The complete specification imports it, the checkpoint relation, and the range-checker soundness declarations.  The registered binary package audits `Spec.cached_session_logit_bound` and `Spec.cached_session_greedy` alongside the execution theorems.  Accepted declarations use `propext`, `Classical.choice`, and `Quot.sound`.
