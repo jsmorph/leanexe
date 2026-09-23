@@ -100,11 +100,11 @@ theorem EnvTyped.lookup (henv : EnvTyped env Γ)
     (found : lookup Γ index = some τ) :
     ∃ value, lookup env index = some value ∧ ValueTyped value τ := by
   induction henv generalizing index τ with
-  | nil => simp [lookup] at found
+  | nil => simp [LeanExe.TypeSafety.lookup] at found
   | @cons value α env Γ hvalue henv ih =>
       cases index with
       | zero =>
-          simp only [lookup, Option.some.injEq] at found
+          simp only [LeanExe.TypeSafety.lookup, Option.some.injEq] at found
           subst τ
           exact ⟨value, rfl, hvalue⟩
       | succ index =>

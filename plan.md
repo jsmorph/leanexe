@@ -823,9 +823,9 @@ and verification evidence. This track does not establish extraction, ownership,
 or compiler correctness.
 
 - [x] Declare independent untyped syntax and extrinsic typing for the initial core.
-- [ ] Kernel-check typed environment lookup and canonical-form lemmas.
-- [ ] Define explicit machine transitions and configuration typing.
-- [ ] Prove one-step preservation, progress, and reachable-state safety.
+- [x] Kernel-check typed environment lookup and canonical-form lemmas.
+- [x] Define explicit machine transitions and configuration typing.
+- [x] Prove one-step preservation, progress, and reachable-state safety for the initial core.
 - [ ] Check positive, specified-failure, and ill-typed/stuck examples.
 - [ ] Add a repeatable independent proof gate and public-theorem axiom audit.
 - [ ] Extend the core with typed direct first-order calls and well-formed bodies.
