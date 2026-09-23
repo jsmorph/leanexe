@@ -10,8 +10,17 @@ buffer allocated inside its conditional branch.  The existing loop cleanup
 collects top-level temporaries but does not visit branch bodies.
 
 - [x] Preserve the streaming failure as an execution test.
-- [ ] Repair conditional loop-temporary cleanup and pass sustained copying.
+- [x] Repair conditional loop-temporary cleanup and pass sustained copying.
 - [ ] Finish the sequencing, ownership, and timeout audit.
+
+Loop cleanup now visits nested branches and clears its temporary owner slots
+at the start of every iteration.  The clearing prevents a skipped branch from
+releasing a pointer left by an earlier iteration, while the existing distinct
+owner guards preserve buffers returned in the loop accumulator.  The complete
+4 MiB copy, empty input, a short input, and alternating read/skip iterations
+pass, including allocation/free equality between iterations and on return.
+All 30 byte-I/O execution cases, four pure-mode rejection checks, and the
+existing 41 reference-counting cases pass after the repair.
 
 The user requested implementation on `io`, a WASI stdin/stdout test harness,
 and frequent commits and pushes.  The agreed operations return immutable
