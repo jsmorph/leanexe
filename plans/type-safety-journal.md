@@ -28,3 +28,44 @@ finite reachable states, final-value typing, and arithmetic justification of
 the sole overflow failure. No source-to-core or compiler theorem is claimed.
 The first full build completed all five jobs; the safety proof job took 892 ms.
 Direct-call extension, focused examples, and public-theorem axiom audits follow.
+
+2026-09-23: Extended the core and all safety theorems to direct first-order calls
+with arbitrary finite arity, including self-recursion and mutual recursion.
+The program premise checks each body under its declared parameter context and
+the same global signature table. It does not assert safe execution or
+termination. The call-frame invariant relates accumulated values and remaining
+arguments to the exact parameter list. Calls enter fresh environments; captured
+continuations restore caller bindings. The dedicated agent completed the proof
+extension and returned the Lean execution slot to the parent for verification.
+
+The parent reviewed the runtime/typing separation, every transition and frame
+invariant, program/signature alignment, recursive-call reasoning, and the final
+theorem statements. The review found no circular safety premise. It also
+confirmed that malformed eliminations and missing bindings remain observably
+stuck, while overflow requires actual bounded operands and the overflow
+inequality. The agent identified a scope nuance: unannotated sums intentionally
+have multiple typings, so type uniqueness is not a consequence of this result.
+This limitation is now documented.
+
+Added 26 kernel-checked semantic examples. They cover lexical binding, selected
+branches, strict pairs, checked arithmetic boundaries, malformed states, argument
+order and arity, fresh call environments, continuation restoration, and safe
+recursive looping. Initial example diagnostics required unfolding Terminal
+before deciding the arithmetic proposition and exposing the empty argument
+constructor before simplifying the arity contradiction. Those repairs changed
+proof presentation, not the expected behavior or theorem statements.
+
+Added the repeatable tools/type-safety.js gate. It verifies the pinned version,
+builds the independent core, checks semantic examples, and prints transitive
+axiom dependencies of seven public theorems. The first full gate passed: every
+audited theorem uses only propext. The allowlist was tightened to that observed
+set; missing audit output and every additional axiom fail the gate. Examples
+and audit compilation treat warnings as errors. The source and docs now state
+both the checked result and the remaining source/extraction/heap/compiler gaps.
+
+The final gate also passed after the dependency allowlist was tightened, warning
+failures enabled, and theorem signatures wrapped for review. All five build jobs
+completed, all 26 examples checked, and all seven dependency audits reported
+only propext. Node syntax, whitespace, changed documentation links, and the core
+source scan passed. This completes the checked first-order core milestone;
+abstract arrays and the extraction correspondence are explicitly future work.

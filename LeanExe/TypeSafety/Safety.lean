@@ -7,6 +7,10 @@ The binding argument uses typed environments instead of textual substitution:
 lookup preserves variable types, and extending the environment implements let
 and sum-case binding. Typed continuations record the result type across steps.
 
+The fixed program premise states that every body is typed under its declared
+parameter types, using the same global signature table. It does not assume that
+any execution is safe, terminates, or returns a result.
+
 The one-step theorem proves both existence and preservation of a successor.
 The final theorem covers every finite execution prefix, including open terms
 supplied with well-typed environments. It neither assumes nor claims termination.
@@ -14,10 +18,22 @@ supplied with well-typed environments. It neither assumes nor claims termination
 
 namespace LeanExe.TypeSafety
 
+variable {program : Program} {signatures : Signatures}
+
+/-- A declared call starts its typed body in precisely its argument environment. -/
+theorem enter_call_typed (hprogram : ProgramTyped program signatures)
+    (found : lookup signatures function = some ⟨params, result⟩)
+    (hargs : EnvTyped arguments params) (hkont : KontTyped signatures kont result τ) :
+    ∃ next, enterCall program function arguments kont = some next ∧
+      StateTyped signatures next τ := by
+  obtain ⟨body, hlookup, hbody⟩ := hprogram.lookup found
+  exact ⟨_, by simp [enterCall, hlookup], .eval hbody hargs hkont⟩
+
 /-- Evaluating a typed expression always has a typed successor. -/
-theorem eval_step_typed (typed : ExprTyped Γ expr α) (henv : EnvTyped env Γ)
-    (hkont : KontTyped kont α τ) :
-    ∃ next, Step (.eval expr env kont) next ∧ StateTyped next τ := by
+theorem eval_step_typed (hprogram : ProgramTyped program signatures)
+    (typed : ExprTyped signatures Γ expr α) (henv : EnvTyped env Γ)
+    (hkont : KontTyped signatures kont α τ) :
+    ∃ next, Step program (.eval expr env kont) next ∧ StateTyped signatures next τ := by
   cases typed with
   | var found =>
       obtain ⟨value, hlookup, hvalue⟩ := henv.lookup found
@@ -40,11 +56,18 @@ theorem eval_step_typed (typed : ExprTyped Γ expr α) (henv : EnvTyped env Γ)
         (.cons (.sumBranches hleft hright henv) hkont)⟩
   | add hleft hright =>
       exact ⟨_, rfl, .eval hleft henv (.cons (.addLeft hright henv) hkont)⟩
+  | call found hargs =>
+      cases hargs with
+      | nil => exact enter_call_typed hprogram found .nil hkont
+      | cons harg hrest =>
+          exact ⟨_, rfl, .eval harg henv
+            (.cons (.callArgs found .nil hrest henv rfl) hkont)⟩
 
 /-- A frame consumes a value of its input type without getting stuck. -/
-theorem frame_step_typed (hframe : FrameTyped frame α β)
-    (hvalue : ValueTyped value α) (hkont : KontTyped kont β τ) :
-    ∃ next, Step (.ret value (frame :: kont)) next ∧ StateTyped next τ := by
+theorem frame_step_typed (hprogram : ProgramTyped program signatures)
+    (hframe : FrameTyped signatures frame α β)
+    (hvalue : ValueTyped value α) (hkont : KontTyped signatures kont β τ) :
+    ∃ next, Step program (.ret value (frame :: kont)) next ∧ StateTyped signatures next τ := by
   cases hframe with
   | letBody hbody henv =>
       exact ⟨_, rfl, .eval hbody (.cons hvalue henv) hkont⟩
@@ -80,18 +103,31 @@ theorem frame_step_typed (hframe : FrameTyped frame α β)
       · exact ⟨_, by simp [Step, step, bounded],
           .overflow hleftBound hrightBound (Nat.le_of_not_lt bounded)⟩
 
+  | callArgs found hdone hremaining henv paramsEqual =>
+      have hdone' := hdone.append (EnvTyped.cons hvalue .nil)
+      cases hremaining with
+      | nil =>
+          have hargs : EnvTyped _ _ := hdone'
+          rw [paramsEqual] at hargs
+          exact enter_call_typed hprogram found hargs hkont
+      | cons harg hrest =>
+          exact ⟨_, rfl, .eval harg henv
+            (.cons (.callArgs found hdone' hrest henv (by
+              simpa only [List.append_assoc, List.singleton_append] using paramsEqual)) hkont)⟩
+
 /-- Every typed state is terminal or takes a type-preserving step. -/
-theorem safety_step (typed : StateTyped state τ) :
-    Terminal state ∨ ∃ next, Step state next ∧ StateTyped next τ := by
+theorem safety_step (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures state τ) :
+    Terminal state ∨ ∃ next, Step program state next ∧ StateTyped signatures next τ := by
   cases typed with
-  | eval hexpr henv hkont => exact .inr (eval_step_typed hexpr henv hkont)
+  | eval hexpr henv hkont => exact .inr (eval_step_typed hprogram hexpr henv hkont)
   | ret hvalue hkont =>
       cases hkont with
       | nil => exact .inl trivial
-      | cons hframe hrest => exact .inr (frame_step_typed hframe hvalue hrest)
+      | cons hframe hrest => exact .inr (frame_step_typed hprogram hframe hvalue hrest)
   | overflow hleft hright hoverflow => exact .inl ⟨hleft, hright, hoverflow⟩
 
-theorem terminal_no_step (terminal : Terminal state) : step state = none := by
+theorem terminal_no_step (terminal : Terminal state) : step program state = none := by
   cases state with
   | eval expr env kont => exact False.elim terminal
   | ret value kont =>
@@ -101,65 +137,73 @@ theorem terminal_no_step (terminal : Terminal state) : step state = none := by
   | overflow left right => rfl
 
 /-- One-step preservation for the independently defined machine. -/
-theorem preservation (typed : StateTyped state τ) (transition : Step state next) :
-    StateTyped next τ := by
-  rcases safety_step typed with terminal | ⟨next', hstep, htyped⟩
+theorem preservation (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures state τ) (transition : Step program state next) :
+    StateTyped signatures next τ := by
+  rcases safety_step hprogram typed with terminal | ⟨next', hstep, htyped⟩
   · have impossible : (none : Option State) = some next :=
-      (terminal_no_step terminal).symm.trans transition
+      (terminal_no_step (program := program) terminal).symm.trans transition
     cases impossible
   · have same : next' = next := step_deterministic hstep transition
     cases same
     exact htyped
 
 /-- Progress distinguishes permitted overflow from arbitrary stuckness. -/
-theorem progress (typed : StateTyped state τ) :
-    Terminal state ∨ ∃ next, Step state next := by
-  rcases safety_step typed with terminal | ⟨next, hstep, _⟩
+theorem progress (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures state τ) :
+    Terminal state ∨ ∃ next, Step program state next := by
+  rcases safety_step hprogram typed with terminal | ⟨next, hstep, _⟩
   · exact .inl terminal
   · exact .inr ⟨next, hstep⟩
 
-theorem preservation_steps (typed : StateTyped start τ) (execution : Steps start final) :
-    StateTyped final τ := by
+theorem preservation_steps (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures start τ) (execution : Steps program start final) :
+    StateTyped signatures final τ := by
   induction execution with
   | refl => exact typed
-  | tail history transition ih => exact preservation ih transition
+  | tail history transition ih => exact preservation hprogram ih transition
 
 /-- A stuck state has no successor and is neither a return nor justified overflow. -/
-def Stuck (state : State) : Prop := step state = none ∧ ¬ Terminal state
+def Stuck (program : Program) (state : State) : Prop := step program state = none ∧ ¬ Terminal state
 
-theorem typed_not_stuck (typed : StateTyped state τ) : ¬ Stuck state := by
+theorem typed_not_stuck (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures state τ) : ¬ Stuck program state := by
   intro stuck
-  rcases progress typed with terminal | ⟨next, transition⟩
+  rcases progress hprogram typed with terminal | ⟨next, transition⟩
   · exact stuck.2 terminal
   · have impossible : (none : Option State) = some next := stuck.1.symm.trans transition
     cases impossible
 
 /-- Type safety for every finite execution prefix from a typed configuration. -/
-theorem type_safety (typed : StateTyped start τ) (execution : Steps start final) :
-    StateTyped final τ ∧ ¬ Stuck final := by
-  have finalTyped := preservation_steps typed execution
-  exact ⟨finalTyped, typed_not_stuck finalTyped⟩
+theorem type_safety (hprogram : ProgramTyped program signatures)
+    (typed : StateTyped signatures start τ) (execution : Steps program start final) :
+    StateTyped signatures final τ ∧ ¬ Stuck program final := by
+  have finalTyped := preservation_steps hprogram typed execution
+  exact ⟨finalTyped, typed_not_stuck hprogram finalTyped⟩
 
 /-- Closed source terms inherit the machine theorem through their initial state. -/
-theorem closed_type_safety (typed : ExprTyped [] expr τ)
-    (execution : Steps (initial expr) final) :
-    StateTyped final τ ∧ ¬ Stuck final :=
-  type_safety (initial_typed typed) execution
+theorem closed_type_safety (hprogram : ProgramTyped program signatures)
+    (typed : ExprTyped signatures [] expr τ)
+    (execution : Steps program (initial expr) final) :
+    StateTyped signatures final τ ∧ ¬ Stuck program final :=
+  type_safety hprogram (initial_typed typed) execution
 
 /-- Successful executions return a value of the original result type. -/
-theorem return_type (typed : ExprTyped [] expr τ)
-    (execution : Steps (initial expr) (.ret value [])) : ValueTyped value τ := by
-  have finalTyped := preservation_steps (initial_typed typed) execution
+theorem return_type (hprogram : ProgramTyped program signatures)
+    (typed : ExprTyped signatures [] expr τ)
+    (execution : Steps program (initial expr) (.ret value [])) : ValueTyped value τ := by
+  have finalTyped := preservation_steps hprogram (initial_typed typed) execution
   cases finalTyped with
   | ret hvalue hkont =>
       cases hkont
       exact hvalue
 
 /-- A reached failure proves actual overflow of two represented naturals. -/
-theorem overflow_is_justified (typed : ExprTyped [] expr τ)
-    (execution : Steps (initial expr) (.overflow left right)) :
+theorem overflow_is_justified (hprogram : ProgramTyped program signatures)
+    (typed : ExprTyped signatures [] expr τ)
+    (execution : Steps program (initial expr) (.overflow left right)) :
     left < nat64Limit ∧ right < nat64Limit ∧ nat64Limit ≤ left + right := by
-  have finalTyped := preservation_steps (initial_typed typed) execution
+  have finalTyped := preservation_steps hprogram (initial_typed typed) execution
   cases finalTyped with
   | overflow hleft hright hoverflow => exact ⟨hleft, hright, hoverflow⟩
 
