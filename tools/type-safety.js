@@ -8,6 +8,8 @@ const { spawnSync } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const runner = path.join(root, "tools", "leanrun");
 const auditedTheorems = [
+  "WordWidth.modulus_pos",
+  "WordWidth.modulus_mono",
   "lookup_lt",
   "tyWellFormed_iff",
   "typesWellFormed_iff",
@@ -36,6 +38,32 @@ const auditedTheorems = [
   "NatCmpOp.eq_iff",
   "NatCmpOp.lt_iff",
   "NatCmpOp.le_iff",
+  "WordWidth.modulus_le_nat64",
+  "normalizeWord_eq",
+  "normalizeWord_bounded",
+  "normalizeWord_eq_self_iff",
+  "normalizeWord_idempotent",
+  "normalizeWord_widen",
+  "normalizeWord_roundtrip",
+  "wordToNat_bounded",
+  "evalWordBin_bounded",
+  "evalWordBin_add_eq",
+  "evalWordBin_add_no_wrap",
+  "evalWordBin_add_wrap",
+  "evalWordBin_sub_eq",
+  "evalWordBin_sub_no_underflow",
+  "evalWordBin_sub_underflow",
+  "evalWordBin_mul_eq",
+  "evalWordBin_mul_no_wrap",
+  "evalWordBin_div_eq",
+  "evalWordBin_mod_eq",
+  "evalWordBin_div_zero",
+  "evalWordBin_mod_zero",
+  "evalWordBin_div_mod",
+  "evalWordBin_min_left",
+  "evalWordBin_min_right",
+  "evalWordBin_max_left",
+  "evalWordBin_max_right",
   "ExprTyped.add",
   "ExprTyped.succ",
   "ExprTyped.pred",
@@ -54,6 +82,7 @@ const auditedTheorems = [
   "ValueTyped.bool_canonical",
   "ValueTyped.unit_canonical",
   "ValueTyped.nat_canonical",
+  "ValueTyped.word_canonical",
   "ValueTyped.prod_canonical",
   "ValueTyped.sum_canonical",
   "ValueTyped.array_canonical",
@@ -191,6 +220,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_data.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_typing.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_naturals.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_words.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

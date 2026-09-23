@@ -12,10 +12,30 @@ Formation does not assert inhabitation or termination.
 
 namespace LeanExe.TypeSafety
 
+/-- Supported word widths are explicit, finite, and nonzero. -/
+inductive WordWidth where
+  | w8 | w32 | w64
+  deriving DecidableEq, Repr
+
+def WordWidth.bits : WordWidth → Nat
+  | .w8 => 8
+  | .w32 => 32
+  | .w64 => 64
+
+def WordWidth.modulus (width : WordWidth) : Nat := 2 ^ width.bits
+
+theorem WordWidth.modulus_pos (width : WordWidth) : 0 < width.modulus := by
+  cases width <;> decide
+
+theorem WordWidth.modulus_mono {source target : WordWidth} (ordered : source.bits ≤ target.bits) :
+    source.modulus ≤ target.modulus := by
+  exact Nat.pow_le_pow_right Nat.zero_lt_two ordered
+
 inductive Ty where
   | unit
   | bool
   | nat64
+  | word (width : WordWidth)
   | prod (left right : Ty)
   | sum (left right : Ty)
   | array (item : Ty)
@@ -52,6 +72,7 @@ inductive TyWF (declarations : DataDecls) : Ty → Prop where
   | unit : TyWF declarations .unit
   | bool : TyWF declarations .bool
   | nat64 : TyWF declarations .nat64
+  | word : TyWF declarations (.word width)
   | prod : TyWF declarations α → TyWF declarations β → TyWF declarations (.prod α β)
   | sum : TyWF declarations α → TyWF declarations β → TyWF declarations (.sum α β)
   | array : TyWF declarations α → TyWF declarations (.array α)
@@ -84,7 +105,7 @@ inductive SignaturesWF (declarations : DataDecls) : Signatures → Prop where
       SignaturesWF declarations (signature :: rest)
 
 def tyWellFormed (declarations : DataDecls) : Ty → Bool
-  | .unit | .bool | .nat64 => true
+  | .unit | .bool | .nat64 | .word _ => true
   | .prod α β | .sum α β => tyWellFormed declarations α && tyWellFormed declarations β
   | .array α => tyWellFormed declarations α
   | .data index => decide (index < declarations.length)
@@ -118,6 +139,7 @@ theorem tyWellFormed_iff : tyWellFormed declarations τ = true ↔ TyWF declarat
   | unit => exact ⟨fun _ => .unit, fun _ => rfl⟩
   | bool => exact ⟨fun _ => .bool, fun _ => rfl⟩
   | nat64 => exact ⟨fun _ => .nat64, fun _ => rfl⟩
+  | word _ => exact ⟨fun _ => .word, fun _ => rfl⟩
   | prod α β ihα ihβ =>
       constructor
       · intro checked

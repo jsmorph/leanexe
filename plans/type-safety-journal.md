@@ -320,3 +320,21 @@ both underflow branches, avoiding accidental use of saturating Nat subtraction.
 The parent removed an unnecessary ignored source-width parameter from the proposed
 raw cast helper: normalization takes the target, while source-width validation
 belongs to source typing and dynamics. Implementation and proofs are in progress.
+
+
+2026-09-23: Completed the first word checkpoint. Formation now includes three
+explicit word widths; literal/value typing enforces the corresponding bound.
+The machine checks runtime width tags on operations and conversions. Arithmetic
+has exact modular laws, including both subtraction branches; conversions share
+one normalization helper with proved identity, idempotence, widening, and roundtrip
+laws. The generic safety, formation, inference, uniqueness, and admission results
+now include every new form.
+
+The focused audit found Quot.sound dependencies in six algebraic helper proofs.
+Replacing broad automation with constructive power monotonicity and direct Nat
+inequality/cancellation lemmas removed them without changing the statements or
+the allowlist. The parent reviewed source typing, width checks, pure operations,
+and checker cases and added 73 regression examples. The full maintained gate
+passed eleven build jobs, all 381 examples (new word examples on their first run),
+and all 171 theorem audits. Bitwise operations, complement, shifts, and binary64
+remain outside this checked checkpoint. Continued with bitwise/shift design.
