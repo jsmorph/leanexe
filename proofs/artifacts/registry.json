@@ -260,6 +260,12 @@
       "proofTarget": "Project.Gpt2QuantizedLinearRows.ArtifactTranslation"
     },
     {
+      "case": "gpt2_quantized_grouped_rows",
+      "sha256": "f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b",
+      "manifest": "gpt2_quantized_grouped_rows/f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b/manifest.json",
+      "proofTarget": "Project.Gpt2QuantizedGroupedRows.ArtifactTranslation"
+    },
+    {
       "case": "gpt2_cached_step",
       "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
       "manifest": "gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/manifest.json",
