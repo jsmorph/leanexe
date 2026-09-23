@@ -48,7 +48,8 @@ function run(wasm, input, { drain = true } = {}) {
         else resolve({ status, output: Buffer.concat(output) });
       });
     });
-    if (input !== undefined) child.stdin.end(input);
+    if (typeof input === "function") input(child);
+    else if (input !== undefined) child.stdin.end(input);
   });
 }
 
@@ -104,4 +105,8 @@ async function main() {
   process.stdout.write("checked 7 WASI I/O host cases: binary bytes, EOF, readiness, timeout, bounds, and blocked output\n");
 }
 
-main().catch(error => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });
+module.exports = { run };
+
+if (require.main === module) {
+  main().catch(error => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });
+}

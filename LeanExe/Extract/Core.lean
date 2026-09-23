@@ -396,7 +396,7 @@ mutual
                   }
               | none =>
                   return ← extractForInStepBody ctx (.recursor :: locals) nextLocal resultTy letBody
-            else if isStringType type then
+            else if isStringType type || (byteIOPayload? type).isSome then
               return ← extractForInStepBody ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal resultTy letBody
             else
               match value.consumeMData with
@@ -1068,7 +1068,7 @@ mutual
               .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
           | none =>
               extractValueFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractValueFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -1779,6 +1779,16 @@ mutual
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
             | _ => .error "unsupported Id.run application"
+        | (.const ``LeanExe.ByteIO.read _, args)
+        | (.const ``LeanExe.ByteIO.write _, args) =>
+            if !ctx.allowByteIO then
+              .error "read/write require compile-wasi-io"
+            else
+              let (fn, _) := appFnArgs expr
+              let name := fn.constName!
+              match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
+              | some result => .ok result
+              | none => .error "missing ByteIO primitive"
         | (.const ``Pure.pure _, args) =>
             match args, args.reverse with
             | monadTy :: _, value :: _ =>
@@ -1807,7 +1817,7 @@ mutual
                       match collectLambdas bindFn 1 with
                       | some body => .ok body
                       | none => .error "unsupported Id bind function"
-                    if valueContainsFoldMultiSlot valueResult.fst then
+                    if isByteIOMonad monadTy || valueContainsFoldMultiSlot valueResult.fst then
                       let sourceTy ← match sourceTy? with
                         | some ty => .ok ty
                         | none => .error "unsupported Id bind source type"
@@ -2821,7 +2831,7 @@ mutual
                 .ok (← valueIte condResult.fst trueResult.fst falseResult.fst, trueResult.snd)
             | none => .error "unsupported Bool.casesOn application"
         | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-            match typeAtom? ctx.env ty with
+            match resultTypeAtom? ctx.env ty with
             | some resultTy =>
                 if supportedLocalType resultTy then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -2846,7 +2856,7 @@ mutual
                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                     .ok (.scalar exprResult.fst, exprResult.snd)
         | (.const ``dite _, [ty, condExpr, _, thenArm, elseArm]) =>
-            match typeAtom? ctx.env ty with
+            match resultTypeAtom? ctx.env ty with
             | some resultTy =>
                 if supportedLocalType resultTy then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -3558,7 +3568,7 @@ mutual
     match functionIndex? ctx name with
     | none => .ok none
     | some index =>
-        strictRecursiveCallCheck ctx name args
+        if !byteIOPrimitiveName name then strictRecursiveCallCheck ctx name args
         let sig ←
           match ctx.env.find? name with
           | some info =>
@@ -3572,10 +3582,12 @@ mutual
         let slotStart := argsResult.nextLocal
         let slots := (List.range slotCount).map (fun offset => slotStart + offset)
         let value := valueFromInternalSlots sig.result fun offset => .local (slotStart + offset)
-        .ok
-          (some
-            (wrapValueLets argsResult.lets (.letCall slots index argsResult.args value),
-              slotStart + slotCount))
+        let effectful := (ctx.env.find? name).any fun info =>
+          (byteIOPayload? (peelForall info.type).snd).isSome
+        let callValue := if effectful then
+          .letLocal [.effectCall slots index argsResult.args] value
+        else .letCall slots index argsResult.args value
+        .ok (some (wrapValueLets argsResult.lets callValue, slotStart + slotCount))
 
   partial def extractExprFrom
       (ctx : Context)
@@ -3611,7 +3623,7 @@ mutual
               .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
           | none =>
               extractExprFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractExprFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -3771,7 +3783,7 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-                if typeAtom? ctx.env ty |>.isSome then
+                if resultTypeAtom? ctx.env ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
                   let thenResult ← extractExprFrom ctx locals condResult.snd thenExpr
                   let elseResult ← extractExprFrom ctx locals thenResult.snd elseExpr
@@ -5175,7 +5187,7 @@ mutual
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
           extractCondFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractCondFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -5242,7 +5254,7 @@ mutual
                   "unsupported String equality string: expected ASCII"
               .ok (if leftBytes == rightBytes then .true else .false, nextLocal)
             else
-              match typeAtom? ctx.env ty with
+              match resultTypeAtom? ctx.env ty with
               | some eqTy =>
                   if supportedEqType eqTy then
                     let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal eqTy left right
@@ -6177,7 +6189,7 @@ partial def parseStepBodyAt? (env : Environment) (paramCount recursorIndex : Nat
       let expectedArgs := paramCount - 1
       match appFnArgs body with
       | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-          if typeAtom? env ty |>.isSome then
+          if resultTypeAtom? env ty |>.isSome then
             match recCallArgsAt? recursorIndex expectedArgs thenExpr with
             | some args => .ok (some (condExpr, true), some elseExpr, args)
             | none =>
@@ -6894,7 +6906,7 @@ mutual
                 stmt := .seq (.assign releaseSlot releaseResult.fst) bodyResult.stmt }
           | none =>
               extractNatTailStepStmt lower (.recursor :: locals) (recursorIndex + 1) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractNatTailStepStmt lower
             (.thunk locals lower.extractCtx.inlineStack value :: locals)
             (recursorIndex + 1)
@@ -7380,7 +7392,8 @@ structure CompiledModule where
 def compileEnvironmentWithEntryModeDetailed
     (exportEntry : Bool)
     (env : Environment)
-    (moduleName entry : Name) :
+    (moduleName entry : Name)
+    (allowByteIO : Bool := false) :
     Except String CompiledModule := do
   let entryInfo ←
     match env.find? entry with
@@ -7391,6 +7404,11 @@ def compileEnvironmentWithEntryModeDetailed
     | some sig => .ok sig
     | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
+  if !allowByteIO then
+    for name in namesList do
+      if let some info := env.find? name then
+        if (byteIOPayload? (peelForall info.type).snd).isSome then
+          throw "ByteIO declarations require compile-wasi-io"
   let root := moduleName.getRoot
   let mut synthetics := #[]
   for name in namesList do
@@ -7407,14 +7425,16 @@ def compileEnvironmentWithEntryModeDetailed
       | some value => .ok (betaSpecializeExpr env root 32 value)
       | none => .error s!"declaration has no executable value: {name}"
     synthetics := collectFunctionExpressionStructuralSynthetics env root namesList sig value synthetics
-  let names := (namesList ++ synthetics.toList.map (fun synth => synth.name)).toArray
+  let primitives := if allowByteIO then [``LeanExe.ByteIO.read, ``LeanExe.ByteIO.write] else []
+  let names := (namesList ++ synthetics.toList.map (fun synth => synth.name) ++ primitives).toArray
   let baseCtx : Context :=
     { env := env,
       root := root,
       names := names,
       synthetics := synthetics,
       freshResultOwnerOffsets := #[],
-      inlineStack := [] }
+      inlineStack := [],
+      allowByteIO := allowByteIO }
   let firstPassFuncs ← extractFunctionsWithEntryMode exportEntry baseCtx entry namesList
   let freshResultOwnerOffsets :=
     freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
@@ -7578,3 +7598,27 @@ def compileStdinArgvExceptProgram (moduleText entryText : String) : IO IRModule 
   | .error error => throw <| IO.userError error
 
 end LeanExe.Extract.Core
+
+namespace LeanExe.Extract.Core.ByteIOCompilation
+
+def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String LeanExe.IR.ByteIOProgram := do
+  let info ← match env.find? entry with
+    | some info => .ok info
+    | none => .error s!"entry not found: {entry}"
+  match byteIOPayload? info.type with
+  | some (.const ``UInt32 _) => pure ()
+  | _ => throw "ByteIO entry must have type ByteIO UInt32"
+  let compiled ← compileEnvironmentWithEntryModeDetailed false env moduleName entry true
+  let some entryIndex := functionIndex? compiled.ctx entry
+    | throw "missing ByteIO entry after extraction"
+  .ok { module := compiled.module, entryIndex := entryIndex }
+
+def compile (moduleText entryText : String) : IO LeanExe.IR.ByteIOProgram := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileEnvironment env moduleName entryName with
+  | .ok module_ => pure module_
+  | .error error => throw <| IO.userError error
+
+end LeanExe.Extract.Core.ByteIOCompilation
