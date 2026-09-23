@@ -4238,6 +4238,10 @@ partial def materializeResultValue
       let elseReturned := returnedOwners elseValue
       let cleanup := fun value stmt returned otherReturned =>
         let released := addLiveSlots (valueReleasedSlots value) (stmtReleasedSlots stmt)
+        let released := released.foldl (fun slots slot =>
+          match ownerSourceSlots? ownerSources slot with
+          | some [source] => addLiveSlot slots source
+          | _ => slots) released
         appendDistinctReleases stmt
           (surviving.filter fun slot => otherReturned.contains slot &&
             !returned.contains slot && !released.contains slot) protectedSlots
