@@ -139,3 +139,41 @@ operation. Growing operations must preserve the length bound or have a precisely
 specified failure. That language-level obligation requires no physical allocator
 proof. Conversely, a full language claim including explicit release needs rules
 for permission and subsequent uses; a pure value theorem cannot silently cover it.
+
+## Next increment: persistent arrays
+
+The following is the agreed specification for the next proof increment. Its
+implementation and proof are in progress; the checked profile result above does
+not yet include arrays.
+
+`array α` contains a finite sequence of values of type `α`. Its mathematical
+length must be strictly below `2^64`. This bound belongs to value typing and makes
+the size result representable. Arrays are persistent abstract values: an update
+returns a new value and cannot mutate an earlier one. This definition says
+nothing about physical storage, sharing, allocation, or release.
+
+| Expression | Result type | Behavior after operands evaluate |
+|------------|-------------|----------------------------------|
+| `arrayEmpty α` | `array α` | Empty sequence; the element type is explicit. |
+| `arraySize a` | `nat64` | Mathematical sequence length. |
+| `arrayGet? a i` | `sum unit α` | `inr` selected element if `i < length`; otherwise `inl unit`. |
+| `arraySet? a i x` | `sum unit (array α)` | `inr` sequence with index `i` replaced if in bounds; otherwise `inl unit`. |
+| `arrayPush? a x` | `sum unit (array α)` | `inr` sequence with `x` appended if the new length is below `2^64`; otherwise `inl unit`. |
+| `arrayAppend? a b` | `sum unit (array α)` | `inr` concatenation if the combined length is below `2^64`; otherwise `inl unit`. |
+
+Every operand evaluates strictly in its written order. In particular an invalid
+set index does not skip the replacement expression: if that expression overflows,
+the machine reaches arithmetic overflow before it can return the index failure.
+Checked array failure is ordinary typed data, not a new machine terminal.
+
+These forms introduce no binders. Relevance recursively checks every operand
+under the same context. A sum branch can consume a failed operation's Unit payload
+using `unitCase`. Array size and lookup observe only part of a value; mandatory
+binder occurrence does not prohibit every operation that discards information.
+
+Required operation laws include exact failure conditions, length preservation
+for set, read-after-set, unchanged reads at other indices, and lengths and reads
+after push and append. Universal length-bound proofs must cover growth failure;
+testing small arrays alone cannot establish that boundary. The machine extension
+must then preserve all existing safety results for nested arrays, calls, lexical
+environments, and continuations.

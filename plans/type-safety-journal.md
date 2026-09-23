@@ -141,3 +141,14 @@ equivalent Nat recursion with its universal-index characterization proved
 directly. No statement or axiom allowlist was weakened. The final full gate
 passed: six build jobs, both example files with warnings as errors, and 20
 transitive theorem audits, each reporting only propext.
+
+2026-09-23: Specified the next persistent-array increment before completing its
+implementation. The six forms are explicitly typed empty construction, size,
+checked get, checked set, checked push, and checked append. Checked operations
+return sum Unit payload, with inl Unit for failure and inr for success. Every
+operand evaluates left to right, even when an earlier operand determines that
+the index will be invalid. Value typing requires homogeneous elements and length
+strictly below 2^64; growth either preserves that invariant or returns failure.
+The agent owns pure operation laws and machine/proof integration. Parent-owned
+examples exercise behavior independently. At this specification checkpoint those
+array examples and proofs have not yet been checked.
