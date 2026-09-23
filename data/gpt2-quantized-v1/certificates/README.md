@@ -30,6 +30,12 @@ The maximum scale is the FP32 word `1074517830`, or 2.185014247894287.  The maxi
 
 The capture records contain input words, scale words, and signed coefficients.  Their SHA-256 is `3e578ae5f89bd852a2b778f127418687b640d523352fd3433b4d7e7ac63fba2e`.  Their 75,679,920 bytes remain reproducible under `build`.  Whole-file checking uses the same native Lean compiler/runtime trust boundary as the checkpoint check.
 
+## Normalization ranges
+
+The [normalization record](normalization-check.json) and [compressed arithmetic profiles](normalization-ranges.txt.gz) cover all 11,450 LayerNorm calls across both models and 229 retained prefixes.  Capture reproduces every retained FP32 and group64 logit hash.  The native Lean checker verifies finite inputs and parameters, actual ordered mean and variance sums, every arithmetic-range premise, and a positive denominator lower bound of `1/1000`.  The smallest observed denominator is 0.15138527750968933.
+
+The [checker soundness theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/NormalizationRange.lean) supplies the complete normalization premises used by the paired forward bound.  Its real-reference root lower bound holds for every real input because the specified positive epsilon remains in the reference variance.  The [ordered-sum checker](../../../proofs/talos/lean/Project/ProofKit/F32SumRangeCertificate.lean) relates the checked running sums to the source folds.  Candidate exponent selection remains outside the proof.  Each candidate must pass the checked predicate.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -43,6 +49,9 @@ tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-export-check 
 training/gpt2/.venv/bin/python training/gpt2/capture_activation_certificates.py
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-activation-check Project.ProofKit.QuantizedRangeCertificate
 tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-activation-check build/gpt2-124m/quantized-group64/activations/groups.bin
+training/gpt2/.venv/bin/python training/gpt2/capture_normalization_ranges.py
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-normalization-check Project.Gpt2QuantizedCached.Numerical.NormalizationRange
+tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-normalization-check build/gpt2-124m/quantized-group64/normalization/rows.bin build/gpt2-124m/quantized-group64/normalization/ranges-ordered.txt
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.

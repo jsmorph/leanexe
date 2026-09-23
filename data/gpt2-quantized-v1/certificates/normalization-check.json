@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "width": 768,
+  "records": 11450,
+  "record_bytes": 9216,
+  "record_layout": "768 input FP32 words, 768 gamma words, 768 beta words; little-endian",
+  "order": "Per prefix: quantized 25 normalizations, then FP32 25 normalizations, in source order",
+  "prefixes": 229,
+  "rows_sha256": "82fd812f545bcf5980d6ce8ea41c1894cee1586bebf295acd8c93eacb878848e",
+  "rows_bytes": 105523200,
+  "coverage_sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0",
+  "source_sha256": "4b06a00d3c16b9d0b9e252cdafeddb86060a5ae41c3f68acf01be29e1a6d94aa",
+  "reference_sources": {
+    "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+    "diagnose_quantized.py": "5017bef1398111d27d8702662f2e663607d3784abcab25c660482009e932ff6c"
+  },
+  "seconds": 110.02200701099355,
+  "check_command": "tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-normalization-check build/gpt2-124m/quantized-group64/normalization/rows.bin build/gpt2-124m/quantized-group64/normalization/ranges-ordered.txt",
+  "checker_sha256": "96b9ce69eb2c1d97b529087b652acecfed0d117ee21e22f58576a0c8930a91f7",
+  "checker_source_sha256": "a634aa093e94293dfa13fd1fc98a431bb4abf186f1c6aee8b37a5b20b1ed1b3e",
+  "ranges_sha256": "ff55a1edd6240e411743d38a3f22c7ef3c3aa931ba5df09a2e6775a4ed5889e7",
+  "ranges_gzip_sha256": "7da9fd9ac8cb0d79c6c5d98022de776393cc3f45261a7871627ba09bcbed33d3",
+  "range_columns": [
+    "record",
+    "input_scaled_magnitude",
+    "mean_add",
+    "mean_div",
+    "center_sub",
+    "variance_mul",
+    "variance_add",
+    "variance_div",
+    "epsilon_add",
+    "square_root",
+    "reciprocal",
+    "normalized_mul",
+    "scale_mul",
+    "bias_add",
+    "denominator_bits"
+  ],
+  "exponents": {
+    "mean_add": {
+      "minimum": 150,
+      "maximum": 161
+    },
+    "mean_div": {
+      "minimum": 127,
+      "maximum": 153
+    },
+    "center_sub": {
+      "minimum": 149,
+      "maximum": 161
+    },
+    "variance_mul": {
+      "minimum": 298,
+      "maximum": 322
+    },
+    "variance_add": {
+      "minimum": 154,
+      "maximum": 173
+    },
+    "variance_div": {
+      "minimum": 145,
+      "maximum": 164
+    },
+    "epsilon_add": {
+      "minimum": 144,
+      "maximum": 163
+    },
+    "square_root": {
+      "minimum": 147,
+      "maximum": 156
+    },
+    "reciprocal": {
+      "minimum": 144,
+      "maximum": 153
+    },
+    "normalized_mul": {
+      "minimum": 301,
+      "maximum": 303
+    },
+    "scale_mul": {
+      "minimum": 297,
+      "maximum": 307
+    },
+    "bias_add": {
+      "minimum": 148,
+      "maximum": 158
+    }
+  },
+  "minimum_denominator_bits": 1041958078,
+  "minimum_denominator": 0.15138527750968933,
+  "denominator_lower": {
+    "numerator": 1,
+    "denominator": 1000
+  },
+  "reference_root_lower": {
+    "numerator": 1,
+    "denominator": 1000,
+    "scope": "Kernel theorem for every real reference input"
+  },
+  "runtime_trust": "Native Lean compiler/runtime for record evaluation; Python/NumPy capture tied to every retained quantized and FP32 logit hash. Soundness theorem is kernel checked.",
+  "scope": "All LayerNorm arithmetic and positive-denominator conditions for these captured inputs. Remaining forward-propagation stages require separate range evidence."
+}

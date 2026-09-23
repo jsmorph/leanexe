@@ -60,9 +60,11 @@ scale, and a stated bound on the exact scaled quotient.  The
 multiplications under stated product-range bounds.  Every permitted
 64-coordinate accumulator converts to FP32 exactly because its magnitude is
 at most 1,032,256.  The native Lean export checker accepts every checkpoint coefficient, scale,
-and retained FP32 word.  Conditional forward bounds cover grouped projection,
-width-768 LayerNorm, the exponential, and GELU.  Intermediate-range instances,
-attention, and propagation through the full cached recurrence remain open.
+and retained FP32 word.  [Conditional forward bounds](Numerical/README.md) cover
+every stage of the twelve-layer cached recurrence and every returned logit.
+Checked range records cover all captured activation quantizers and 11,450
+normalizations from both models.  GELU and attention range instances and
+evaluation of the propagated bound remain open.
 
 ## Verification and numerical work
 
