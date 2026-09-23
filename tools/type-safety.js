@@ -111,6 +111,23 @@ const auditedTheorems = [
   "profile_type_safety",
   "profile_return_type",
   "profile_overflow_is_justified",
+  "inferRaw_complete",
+  "checkArgsRaw_complete",
+  "checkBranchesRaw_complete",
+  "inferRaw_sound",
+  "checkArgsRaw_sound",
+  "checkBranchesRaw_sound",
+  "inferRaw_iff",
+  "checkArgsRaw_iff",
+  "checkBranchesRaw_iff",
+  "ExprTyped.unique",
+  "infer_eq_some_iff",
+  "bodiesWellTyped_iff",
+  "programWellTyped_iff",
+  "profileExpressionWellTyped_iff",
+  "profileProgramWellTyped_iff",
+  "checked_type_safety",
+  "profile_checked_type_safety",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -150,6 +167,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_profile.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_arrays.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_data.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_typing.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

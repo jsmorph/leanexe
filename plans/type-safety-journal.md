@@ -259,3 +259,23 @@ passed eight build jobs, all 170 examples, and all 103 audits. Typing.lean is be
 developed separately and is not yet imported by the umbrella or included in this
 annotation checkpoint. Its intended public boundary includes full ambient
 formation; raw structural inference alone will not be called source admission.
+
+
+2026-09-23: Completed the algorithmic typing increment. Raw inference and
+argument/branch checkers are proved sound and complete against the raw judgments.
+Explicit sum annotations give expression type uniqueness. Public expression,
+program, and profile checks have exact characterizations including all ambient
+formation obligations. Checker-accepted closed entries inherit arbitrary-finite-
+execution safety under checker-accepted programs; no termination premise is added.
+
+The focused audit initially found an unnecessary Quot.sound dependency from
+simplifying monadic bind continuations. Replacing those continuations with direct
+structural option matches removed that dependency without changing the accepted
+terms or weakening any statement. The allowlist remains unchanged.
+
+The parent reviewed the definitions and theorem boundaries, added 65 independent
+checker/admission examples, and ran the full maintained gate. Nine build jobs,
+235 examples with warnings as errors, and all 120 theorem audits passed. Each
+new theorem uses only propext. The next coverage increment concerns the remaining
+bounded-natural operations; fixed-width words, bytes, additional collection forms,
+and effects remain explicit unfinished language obligations.
