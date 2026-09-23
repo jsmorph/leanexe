@@ -94,3 +94,27 @@ type-theory document. The review also separates a declarative ownership/effect
 discipline for explicit runtime operations from correctness of its compiler
 implementation. Only documentation and the plan changed; no theorem statement,
 proof, semantics, or verification gate was modified.
+
+2026-09-23: Reviewed maintained lazy-let, ignored-argument, product projection,
+and constructor-tag fixtures, plus thunk capture, inline-call selection, and
+materialization definitions. Initially drafted a pure deferred/strict calculus
+contract. Before implementation, the user explicitly suggested prohibiting
+unused lets and fields, asked for first-principles design, and stated that source
+will be machine-written. The deferred proposal was withdrawn. The agent confirmed
+that it had created no Demand files, edited no Lean source, and started no Lean
+process. The unpublished contract checkpoint was revised to record this choice.
+
+The selected design retains strict evaluation and adds a separate decidable
+syntactic relevance profile. Every let, parameter, product-pattern field, and
+sum-pattern payload binding must occur in its scope. Product elimination uses
+both field bindings, and the profile rejects unrestricted fst/snd. A Unit
+eliminator handles its zero-field constructor without a fabricated binding.
+Repeated uses are permitted; this is not a linearity or ownership rule.
+Syntactic occurrence is not all-path use or semantic necessity. Current compiler
+compatibility is not asserted or needed for the language soundness theorem.
+
+Assigned the agent the split/Unit elimination semantics, extensions of the
+existing safety proofs, and a Profile module combining ordinary typing with
+admission checks. The parent owns the contract, gate, tests, and publication.
+At this specification checkpoint those new cases have not yet been checked;
+the previously published strict-calculus theorem remains the checked baseline.
