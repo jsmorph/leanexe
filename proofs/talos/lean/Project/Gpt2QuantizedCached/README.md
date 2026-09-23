@@ -2,9 +2,11 @@
 
 The registered `gpt2_quantized_cached` case contains `validateModel` and
 `cachedStep` exports from the [quantized Lean model](../../../../../LeanExe/Models/Gpt2/Quantized/README.md).
-Its candidate has 28,315 bytes and SHA-256
+Its verified binary has 28,315 bytes and SHA-256
 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.
-The source-driven execution gate passes.  Exact-binary verification remains in progress.
+The source-driven and independent exact-binary gates pass.  The combined
+`Artifact.artifact_gpt2_128_exact` theorem connects grammar membership,
+decoding, validation, `CoreValid`, and the complete cached session.
 
 ## Checked components
 
@@ -57,10 +59,12 @@ scale, and a stated bound on the exact scaled quotient.  The
 [rescaling bound](../ProofKit/QuantizedRescaleError.lean) includes both FP32
 multiplications under stated product-range bounds.  Every permitted
 64-coordinate accumulator converts to FP32 exactly because its magnitude is
-at most 1,032,256.  Checkpoint-specific range certificates and propagation
-through the full cached recurrence remain open.
+at most 1,032,256.  The native Lean export checker accepts every checkpoint coefficient, scale,
+and retained FP32 word.  Conditional forward bounds cover grouped projection,
+width-768 LayerNorm, the exponential, and GELU.  Intermediate-range instances,
+attention, and propagation through the full cached recurrence remain open.
 
-## Remaining proof and evaluation
+## Verification and numerical work
 
 The complete source session theorem passes with `propext`, `Classical.choice`,
 and `Quot.sound`.  Its input assumptions are the 127,695,972-byte model shape
@@ -68,8 +72,10 @@ and at most 128 requested tokens.  Validation rejection closes the loaded
 model.  Token-step failure ends the trace and releases the preceding cache
 and weights.  Successful completion releases the final cache and weights.
 The formal boundary includes host byte loading and the specified sequence of
-WASM calls.  Transferring this theorem to the exact decoded binary remains
-in progress.
+WASM calls.  The exact-binary package transfers the complete specification
+to the decoded module.  External-byte equality, all sixty-six function
+bodies, validation, translation, and the declaration audit pass.  The audit
+reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 The [evaluation record](../../../../../data/gpt2-quantized-v1/README.md)
 contains the retained grouped binary, all 6,432,896 bitwise logit comparisons,
@@ -81,4 +87,10 @@ quantized reference coexists with substantial differences from FP32 output.
 tools/talos-artifact.js prepare gpt2_quantized_cached
 tools/leanrun --timeout 3m --lock-timeout 5 lake -d proofs/talos/lean build Project.Gpt2QuantizedCached.FP32Region Project.Gpt2QuantizedCached.ProjectionRegion Project.Gpt2QuantizedCached.AnnotationMatches Project.Runtime.Checks
 tools/leanrun --timeout 3m --lock-timeout 5 lake -d proofs/talos/lean build Project.ProofKit.QuantizedValidity Project.Gpt2QuantizedCached.Finite
+```
+
+The frozen package can be checked independently with:
+
+```sh
+tools/artifact-proof.js check proofs/artifacts/gpt2_quantized_cached/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm Project.Gpt2QuantizedCached.ArtifactTranslation
 ```

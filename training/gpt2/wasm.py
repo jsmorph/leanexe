@@ -48,13 +48,18 @@ def prepare(directory, cached=False):
 def prepare_quantized(directory):
     deployment = json.loads((ROOT / "data/gpt2-quantized-v1/model.json").read_text())
     wasm = ROOT / deployment["wasm_path"]
-    if digest(wasm) != deployment["wasm_sha256"]:
+    manifest = json.loads(wasm.with_name("manifest.json").read_text())
+    if (manifest["case"] != "gpt2_quantized_cached"
+            or manifest["sha256"] != deployment["wasm_sha256"]
+            or manifest["byteLength"] != deployment["wasm_bytes"]):
+        raise ValueError("Quantized deployment differs from the verified artifact manifest")
+    if wasm.stat().st_size != deployment["wasm_bytes"] or digest(wasm) != deployment["wasm_sha256"]:
         raise ValueError("Quantized WASM differs from the pinned binary")
     weights = directory / "quantized-group64/weights.bin"
     if not weights.exists():
         run([sys.executable, ROOT / "training/gpt2/quantized.py", "export-model",
              "--scheme", "group64", "--model-dir", directory], timeout=600)
-    if digest(weights) != deployment["weights_sha256"]:
+    if weights.stat().st_size != deployment["weight_bytes"] or digest(weights) != deployment["weights_sha256"]:
         raise ValueError("Quantized weights differ from the pinned checkpoint export")
     for name in ("config.json", "tokenizer.json", "tokenizer_config.json"):
         if digest(directory / name) != MANIFEST["files"][name]:

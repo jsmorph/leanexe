@@ -81,7 +81,7 @@ The [128-prefix comparison](experiments/group64/prefixes.json) gives:
 | Groups of 64 | 120/128 | 0.009023 | 0.251639 |
 | Per-row scales with FP32 vocabulary activations | 120/128 | 0.003522 | 0.150031 |
 
-The grouped maximum centered RMS logit difference is 1.052, compared with 1.862 for the original scheme.  Its largest raw difference is 49.587 at prefix 57, where the mean shift is 43.054, centered RMS difference is 0.868, and KL divergence is 0.000507 nats.  The control's improvement identifies final-projection activation quantization as a major contributor to the original distribution error on this trace.  The compiled grouped model reproduces every grouped logit vector in this reference calculation.  Its complete-model proof remains open.
+The grouped maximum centered RMS logit difference is 1.052, compared with 1.862 for the original scheme.  Its largest raw difference is 49.587 at prefix 57, where the mean shift is 43.054, centered RMS difference is 0.868, and KL divergence is 0.000507 nats.  The control's improvement identifies final-projection activation quantization as a major contributor to the original distribution error on this trace.  The compiled grouped model reproduces every grouped logit vector in this reference calculation.  Its complete-model execution and exact-binary proofs now pass.
 
 The [prompt-prefix comparison](experiments/group64/prompts.json) evaluates all 101 prefixes of the nine previously evaluated prompts:
 
@@ -97,7 +97,7 @@ The [grouped completions](experiments/group64/completions.json) retain all nine 
 
 ### Compiled projection
 
-The [grouped projection binary](experiments/group64/projection.wasm) contains 5,441 bytes, SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  Its outputs match an independent NumPy reference byte for byte on all four checkpoint projection shapes.  The reference accumulates each group in 64-bit integers and checks the bound `64 × 127² = 1,032,256`.  The WASM implementation uses 32-bit integer accumulation and the specified FP32 partial-sum order.  Its exact-binary proof remains open.
+The [grouped projection binary](experiments/group64/projection.wasm) contains 5,441 bytes, SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  Its outputs match an independent NumPy reference byte for byte on all four checkpoint projection shapes.  The reference accumulates each group in 64-bit integers and checks the bound `64 × 127² = 1,032,256`.  The WASM implementation uses 32-bit integer accumulation and the specified FP32 partial-sum order.  Its exact-binary proof and independent package check pass.
 
 The [projection measurements](experiments/group64/projection-benchmark.json) record seven calls after a reference comparison and two warmup calls.  All variants ran in the same runner scope with a one-core CPU quota, 4 GiB memory high, 6 GiB memory maximum, and 1 GiB swap maximum.  The runner lock excluded concurrent Lean work.  These resource limits differ from the earlier unscoped projection measurements.
 
@@ -123,11 +123,11 @@ tools/leanrun --timeout 5m training/gpt2/.venv/bin/python training/gpt2/benchmar
 
 ## Grouped cached candidate
 
-The [current model record](model.json) pins the [28,315-byte binary](candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm), SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.  The [scheme-2 checkpoint manifest](group64-manifest.json) records the same 127,695,972-byte file size and tensor payload as scheme 1.  The changed header distinguishes the grouped arithmetic.  Its weight SHA-256 is `9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314`.
+The [current model record](model.json) pins the [verified 28,315-byte binary](../../proofs/artifacts/gpt2_quantized_cached/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm), SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.  The [scheme-2 checkpoint manifest](group64-manifest.json) records the same 127,695,972-byte file size and tensor payload as scheme 1.  The changed header distinguishes the grouped arithmetic.  Its weight SHA-256 is `9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314`.
 
 The [complete prefix test](candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/cached-test.json) compares all 6,432,896 logits and every cache bit for bit with the independent quantized reference.  Every logit vector also matches the retained grouped experiment's hash.  The [compiled completion comparison](candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/completions.json) reproduces all nine reference token streams using the same sampling draws.
 
-Greedy agreement is 120/128 on the fixed trace.  At position 128, linear memory is 737,673,216 bytes, compared with 1,107,361,792 bytes for FP32.  Each call retains only the weights and current cache.  Session close frees all 45,569 allocations.  Rejection and cleanup tests pass for invalid headers, the other scheme identifier, malformed parameters, invalid tokens and caches, and numerical failures after allocation.  Complete-model execution, session-memory, and exact-binary proofs remain open.
+Greedy agreement is 120/128 on the fixed trace.  At position 128, linear memory is 737,673,216 bytes, compared with 1,107,361,792 bytes for FP32.  Each call retains only the weights and current cache.  Session close frees all 45,569 allocations.  Rejection and cleanup tests pass for invalid headers, the other scheme identifier, malformed parameters, invalid tokens and caches, and numerical failures after allocation.  The [complete session and exact-binary proofs](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md) pass, including every status path, termination, allocation bounds, and buffer release.  Full numerical propagation remains open.
 
 The generation command loads the pinned binary and checks the weight and tokenizer hashes:
 

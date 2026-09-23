@@ -1,6 +1,6 @@
 # Verified quantized GPT-2 124M
 
-This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  Model integration is active.
+This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  The grouped model has complete source-session and exact-binary proofs.  Numerical propagation and final release checks remain active.
 
 The execution milestone is a deployed WebAssembly binary that implements a specified mixed-precision GPT-2 algorithm: eight-bit weights and activations for learned linear projections, wider integer accumulation, and FP32 computation between projections.  It includes cached inference through 128 tokens, termination, allocation bounds, and buffer release.  Evaluation determines the storage reduction, execution speed, and output differences.  A subsequent milestone proves numerical error bounds and sufficient conditions for preserving greedy token choices.
 
@@ -118,9 +118,9 @@ Completion requires termination and exact source agreement for the complete sess
 
 ### 4. Verify and deploy the exact binary
 
-- [ ] Register the quantized case and freeze its compiled WASM bytes.  Complete decoding, grammar membership, validation, `CoreValid`, execution-model equality, and transfer of the session theorem.
+- [x] Register the quantized case and freeze its compiled WASM bytes.  Complete decoding, grammar membership, validation, `CoreValid`, execution-model equality, and transfer of the session theorem.
 - [ ] Run the focused source and artifact checks, declaration/axiom audit, and independent package check.  Apply the required compiler, conformance, and aggregate artifact tests after shared changes.
-- [ ] Make the quantized host command load the verified frozen artifact and check its hash and model manifest before execution.  Record both identities in every result.
+- [x] Make the quantized host command load the verified frozen artifact and check its hash and model manifest before execution.  Record both identities in every result.
 - [ ] Run the retained cached-inference and generation tests against those exact bytes.  Preserve the binary, proof package, model manifest, evaluation records, and cold-checkout reproduction result.
 
 Use the existing repository verification drivers and checked corpus configuration.  Every Lean invocation follows the [development process limits](../DEVELOPING.md#lean-process-limits).  A timeout without a diagnostic requires a smaller proof boundary or a reusable lemma before another attempt.  Review accepted proofs, journals, and telemetry together, including proof effort and shared theorem use.
@@ -172,7 +172,7 @@ to 0.066768.  The FP32 vocabulary-activation control agrees on 87 prefixes.
 The nine retained generated texts include readable sampled continuations and
 repetitive or incorrect greedy results.  The compiled grouped projection
 matches the independent reference byte for byte on four checkpoint shapes
-and runs 3.90–4.04 times as fast as FP32.  The compiled grouped model reproduces all reference logits and caches through 128 tokens and all nine completion streams.  Three measured warm traces give a 3.59× median speedup over FP32.  The complete cached-model and session execution proofs pass.  Exact-binary verification remains in progress.  Any revised model binary needs a distinct scheme
+and runs 3.90–4.04 times as fast as FP32.  The compiled grouped model reproduces all reference logits and caches through 128 tokens and all nine completion streams.  Three measured warm traces give a 3.59× median speedup over FP32.  The complete cached-model and session execution proofs pass.  The complete exact-binary package passes independent verification.  Any revised model binary needs a distinct scheme
 identifier and proof package.  The nine completion prompts have already been
 evaluated and cannot serve as unseen inputs for the revised scheme.
 
@@ -205,10 +205,10 @@ z_k - z_j > ε_k + ε_j    for every j ≠ k,
 
 then `k` is also the quantized winner.  With a uniform bound `ε`, a winning margin greater than `2ε` suffices.  Prove the argmax rule and its tie behavior, then connect it to the returned logit bytes.  A computed certificate uses checked outward bounds for both errors and margins.  Failure to establish the strict inequality returns an inconclusive result.
 
-- [ ] Prove scalar quantization and linear-layer error bounds.
+- [x] Prove scalar quantization and linear-layer error bounds.
 - [ ] Prove a checked checkpoint-export relation and usable range certificates.
 - [ ] Compose a stated cached-session logit bound against the selected reference.
-- [ ] Prove the greedy-margin theorem and produce checked certificates for individual token positions.
+- [x] Prove the greedy-margin theorem and produce checked certificates for individual token positions.
 - [ ] Report certificate coverage and bound sizes on the fixed and held-out inputs.
 
 Identical greedy continuations require induction over the common prefix and successful certification at every generated position, including stopping decisions.  Each accepted step extends that common prefix.  Sampled-token behavior needs a separate numerical statement.
