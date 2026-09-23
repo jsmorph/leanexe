@@ -25,7 +25,8 @@ The registration remains incomplete.
 | [Block validation](BlockValidation.lean) | Exact acceptance for all thirteen coefficient, scale, and FP32 regions, with unchanged store. |
 | [Block allocation budget](CachedBlock/Budget.lean) | Sufficient capacity for the complete allocation sequence within 96 KiB of the initial heap top, at positions below 128. |
 | [First block normalization](CachedBlock/Normalized.lean) | Exact address calculation, call, output ownership, and frame preservation. |
-| [Model representation](Model.lean) | Accepted tensor predicates, block extents, and token coefficient and scale properties. |
+| [Model representation](Model.lean) and [source validation](ModelSource.lean) | Accepted tensor predicates, block extents, token coefficient and scale properties, and equivalence between validation status zero and the complete representation predicate. |
+| [Public model validator](Validation/Public.lean) | Exact status, termination, and unchanged store for every represented input, including header rejection, global checks, and the early-exit twelve-block scan. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
 
 Both region proofs establish portability and `FunctionRegion.Shift`, with
@@ -44,8 +45,8 @@ through the full cached recurrence remain open.
 
 ## Remaining proof and evaluation
 
-The complete proof must cover initialization validation, the represented
-model, checked projection calls, all block and step branches, temporary
+The complete proof must compose the checked validator and represented
+model with projection calls, all block and step branches, temporary
 release, cached sessions, address bounds, and a concrete memory bound.  The
 resulting theorem must then transfer to the exact decoded binary.  No
 complete-model execution or binary theorem is claimed here.
