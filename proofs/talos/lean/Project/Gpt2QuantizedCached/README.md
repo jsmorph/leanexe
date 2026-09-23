@@ -21,6 +21,10 @@ The registration remains incomplete.
 | [Coefficient scan](Coefficients.lean) and [scale scan](Scales.lean) | Exact bounded validation and store preservation, including coefficient short-circuiting and eager scale reads. |
 | [Header validation](Header.lean) | Exact format-header acceptance with short-circuit field reads and unchanged store. |
 | [Projection allocation budget](GroupedProjection/Budget.lean) | Sufficient address and page bounds for the scale buffer, byte buffer, and projection output. |
+| [Quantized embedding](Embedding/Spec.lean) | Exact signed-byte decoding, FP32 rescaling and position addition, packed output ownership, and protected-buffer preservation. |
+| [Block validation](BlockValidation.lean) | Exact acceptance for all thirteen coefficient, scale, and FP32 regions, with unchanged store. |
+| [Block allocation budget](CachedBlock/Budget.lean) | Sufficient capacity for the complete allocation sequence within 96 KiB of the initial heap top, at positions below 128. |
+| [First block normalization](CachedBlock/Normalized.lean) | Exact address calculation, call, output ownership, and frame preservation. |
 | [Model representation](Model.lean) | Accepted tensor predicates, block extents, and token coefficient and scale properties. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
 
@@ -28,9 +32,15 @@ Both region proofs establish portability and `FunctionRegion.Shift`, with
 axiom audits containing only `propext`.  The shared runtime checks pin the
 allocator, reset, retain, and release functions.  The internal projection
 entry proof accounts for both borrowed owners and the returned owner slot.
-The [raw-word quantization error proof](../ProofKit/QuantizedError.lean)
-establishes nearest-even half-unit error and a reconstruction bound under
-explicit division and clipping assumptions.
+The [scalar reconstruction bound](../ProofKit/QuantizedScalarError.lean)
+combines nearest-even half-unit error with explicit quotient-rounding and
+clipping terms.  It assumes finite input and scale words, a positive decoded
+scale, and a stated bound on the exact scaled quotient.  The
+[rescaling bound](../ProofKit/QuantizedRescaleError.lean) includes both FP32
+multiplications under stated product-range bounds.  Every permitted
+64-coordinate accumulator converts to FP32 exactly because its magnitude is
+at most 1,032,256.  Checkpoint-specific range certificates and propagation
+through the full cached recurrence remain open.
 
 ## Remaining proof and evaluation
 
