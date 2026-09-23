@@ -1,4 +1,5 @@
 import LeanExe.Packed
+import LeanExe.Runtime
 
 namespace LeanExe.Examples.HeapLoops
 
@@ -41,5 +42,15 @@ def crossField (count skip : Nat) : UInt64 := Id.run do
     left := next
   return first[0]!.toUInt64 + second[0]!.toUInt64 + left[0]!.toUInt64 + right[0]!.toUInt64 +
     UInt64.ofNat (left.size + right.size)
+
+def freshArray (input : Array UInt64) : Array UInt64 := input.map (fun value => value + 1)
+
+def releaseAlias (replace : Nat) (input : Array UInt64) : Array UInt64 :=
+  let first := freshArray input
+  if replace == 1 then
+    let result := freshArray first
+    let _ := Runtime.release first
+    result
+  else first
 
 end LeanExe.Examples.HeapLoops

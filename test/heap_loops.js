@@ -34,4 +34,13 @@ for (const entry of ["conditional", "initialAlias", "crossField"]) {
     }
   }
 }
-console.log("Checked conditional heap loops, failure branches, initial aliases, and allocation counts");
+const aliasBinary = path.join(directory, "releaseAlias.wasm");
+runChecked([".lake/build/bin/lean-wasm", "compile", "--module", moduleName,
+  "--entry", `${moduleName}.releaseAlias`, "--out", aliasBinary]);
+for (const replace of [0, 1, 2]) {
+  const args = [host.i64(replace), host.arrayU64([7])];
+  const stats = host.callStats(aliasBinary, "releaseAlias", "array-u64", args);
+  assert.deepEqual(JSON.parse(stats.result), replace === 1 ? [9] : [8]);
+  assert.equal(stats.allocs - stats.frees, 2n);
+}
+console.log("Checked heap loops, branch releases through aliases, and allocation counts");
