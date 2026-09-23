@@ -2,6 +2,17 @@
 
 ## 2026-09-23: Byte I/O on branch io
 
+The final streaming test copies 4 MiB plus 137 bytes through a 4,096-byte
+read loop and compares the entire binary output.  It checks allocation and
+free counts before each iteration and after the helper returns.  The first
+nonempty-input run fails: the generated loop has no release for the read
+buffer allocated inside its conditional branch.  The existing loop cleanup
+collects top-level temporaries but does not visit branch bodies.
+
+- [x] Preserve the streaming failure as an execution test.
+- [ ] Repair conditional loop-temporary cleanup and pass sustained copying.
+- [ ] Finish the sequencing, ownership, and timeout audit.
+
 The user requested implementation on `io`, a WASI stdin/stdout test harness,
 and frequent commits and pushes.  The agreed operations return immutable
 `ByteArray` values, carry an explicit `UInt64` timeout in nanoseconds, and
