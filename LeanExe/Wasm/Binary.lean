@@ -759,6 +759,11 @@ def emitRetainArrayRangeWithSpecial
         localGet loopLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet loopLocal ++
         [Instr.br 0])]])
 
+/-- Retain the established scalar-loop encoding when no owners are replaced.
+Owned accumulators reserve a snapshot slot for each result instead. -/
+def accumulatorSnapshotSlots (resultWidth : Nat) (releaseOffsets : List Nat) : Nat :=
+  if releaseOffsets.isEmpty then 1 else resultWidth
+
 mutual
   partial def exprScratch : Expr → Nat
     | .local _ => 0
@@ -816,13 +821,13 @@ mutual
             (max (bodyLets.foldl (fun n item => max n (localLetScratch item)) 0)
               (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)))
     | .arrayFoldMultiSlot sourceWidth resultWidth _reverse array start stop initValues _ _ bodyValues
-        bodyLets bodyDone _ _ =>
+        bodyLets bodyDone releaseOffsets _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
         let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
           max letScratch <|
             max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-        5 + sourceWidth + 2 * resultWidth + 1 +
+        5 + sourceWidth + resultWidth + 1 + accumulatorSnapshotSlots resultWidth releaseOffsets +
           max
             (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
             (max initScratch bodyScratch)
@@ -891,18 +896,18 @@ mutual
           (max (exprScratch ptr) (max (exprScratch len) (exprScratch start)))
           (exprScratch predicate)
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues _ _ bodyValues
-        bodyLets bodyDone _ _ =>
+        bodyLets bodyDone releaseOffsets _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
         let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
           max letScratch <|
             max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-        5 + 2 * resultWidth + 1 +
+        5 + resultWidth + 1 + accumulatorSnapshotSlots resultWidth releaseOffsets +
           max
             (max (exprScratch ptr) (exprScratch len))
             (max (max (exprScratch start) (exprScratch stop))
               (max initScratch bodyScratch))
-    | .rangeFoldMultiSlot resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone _ _ =>
+    | .rangeFoldMultiSlot resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone releaseOffsets _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
         let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
@@ -911,14 +916,14 @@ mutual
         4 +
           max
             (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
-            (max (max initScratch bodyScratch) (max (bodyScratch + 2 * resultWidth) 3))
-    | .loopFoldMultiSlot resultWidth initValues _ bodyValues bodyLets bodyDone _ _ =>
+            (max (max initScratch bodyScratch) (max (bodyScratch + resultWidth + accumulatorSnapshotSlots resultWidth releaseOffsets) 3))
+    | .loopFoldMultiSlot resultWidth initValues _ bodyValues bodyLets bodyDone releaseOffsets _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
         let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
           max letScratch <|
             max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-        1 + 2 * resultWidth + max initScratch bodyScratch
+        1 + resultWidth + accumulatorSnapshotSlots resultWidth releaseOffsets + max initScratch bodyScratch
     | .heapLinearPredicate ptr _ _ _ _ predicate _ _ =>
         2 + max (exprScratch ptr) (exprScratch predicate)
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -957,29 +962,29 @@ partial def stmtScratch : Stmt → Nat
   | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
   | .release ptr => exprScratch ptr
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth _reverse array start stop initValues _ _ bodyValues
-      bodyLets bodyDone _ _ =>
+      bodyLets bodyDone releaseOffsets _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
       let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
         max letScratch <|
           max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-      5 + sourceWidth + 2 * resultWidth + 1 +
+      5 + sourceWidth + resultWidth + 1 + accumulatorSnapshotSlots resultWidth releaseOffsets +
         max
           (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
           (max initScratch bodyScratch)
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues _ _ bodyValues
-      bodyLets bodyDone _ _ =>
+      bodyLets bodyDone releaseOffsets _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
       let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
         max letScratch <|
           max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-      5 + 2 * resultWidth + 1 +
+      5 + resultWidth + 1 + accumulatorSnapshotSlots resultWidth releaseOffsets +
         max
           (max (exprScratch ptr) (exprScratch len))
           (max (max (exprScratch start) (exprScratch stop))
             (max initScratch bodyScratch))
-  | .rangeFoldMultiSlotAssign resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone _ _ =>
+  | .rangeFoldMultiSlotAssign resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone releaseOffsets _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
       let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
@@ -988,14 +993,14 @@ partial def stmtScratch : Stmt → Nat
       4 +
         max
           (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
-          (max (max initScratch bodyScratch) (max (bodyScratch + 2 * resultWidth) 3))
-  | .loopFoldMultiSlotAssign resultWidth initValues _ bodyValues bodyLets bodyDone _ _ =>
+          (max (max initScratch bodyScratch) (max (bodyScratch + resultWidth + accumulatorSnapshotSlots resultWidth releaseOffsets) 3))
+  | .loopFoldMultiSlotAssign resultWidth initValues _ bodyValues bodyLets bodyDone releaseOffsets _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
       let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
         max letScratch <|
           max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-      1 + 2 * resultWidth + max initScratch bodyScratch
+      1 + resultWidth + accumulatorSnapshotSlots resultWidth releaseOffsets + max initScratch bodyScratch
   | .ite cond thenStmt elseStmt =>
       max (condScratch cond) (max (stmtScratch thenStmt) (stmtScratch elseStmt))
   | .seq first second => max (stmtScratch first) (stmtScratch second)
@@ -1064,6 +1069,17 @@ def emitByteRangeCopyLoop
       i32Load8U ++ i32Store8 ++
       localGet loopLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet loopLocal ++
       [Instr.br 0])]])
+
+def emitAccumulatorSnapshot (accStart initialStart : Nat)
+    (releaseOffsets : List Nat) : List Instr :=
+  if releaseOffsets.isEmpty then i64Const 0 ++ localSet initialStart
+  else releaseOffsets.flatMap fun offset =>
+    localGet (accStart + offset) ++ localSet (initialStart + offset)
+
+def emitScalarAccumulatorStep (initialStart : Nat)
+    (releaseOffsets : List Nat) : List Instr :=
+  if releaseOffsets.isEmpty then i64Const 1 ++ localSet initialStart else []
+
 
 mutual
   partial def emitArrayAllocSlots (scratch width childMask : Nat) (cells : Expr) : List Instr :=
@@ -1495,6 +1511,7 @@ mutual
           emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
+          emitScalarAccumulatorStep initialStart releaseOffsets ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           [Instr.br 0])]])
       else
@@ -1508,6 +1525,7 @@ mutual
           emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
+          emitScalarAccumulatorStep initialStart releaseOffsets ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
           [Instr.br 0])]])
@@ -1516,8 +1534,7 @@ mutual
       emitValue childScratch start ++ localSet indexLocal ++
       emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       emitLoop ++
       localGet (accStart + resultSlot)
 
@@ -1582,6 +1599,7 @@ mutual
           emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
+          emitScalarAccumulatorStep initialStart releaseOffsets ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           [Instr.br 0])]])
       else
@@ -1595,6 +1613,7 @@ mutual
           emitValue childScratch bodyDone ++ localSet doneSlot ++
           emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
           emitTempCopies (List.range resultWidth) ++
+          emitScalarAccumulatorStep initialStart releaseOffsets ++
           localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
           localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
           [Instr.br 0])]])
@@ -1603,8 +1622,7 @@ mutual
       emitValue childScratch start ++ localSet indexLocal ++
       emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       emitLoop ++
       emitTargetCopies (enumerate targets)
 
@@ -2292,8 +2310,7 @@ mutual
       emitValue childScratch start ++ localSet indexLocal ++
       emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
       ([Instr.iff true (localGet stopLocal) (some (localGet lenLocal))]) ++ localSet effectiveStopLocal ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
@@ -2305,6 +2322,7 @@ mutual
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
         [Instr.br 0])]]) ++
@@ -2356,8 +2374,7 @@ mutual
       emitValue childScratch start ++ localSet indexLocal ++
       emitValue childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
       ([Instr.iff true (localGet stopLocal) (some (localGet lenLocal))]) ++ localSet effectiveStopLocal ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
@@ -2369,6 +2386,7 @@ mutual
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         localGet indexLocal ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexLocal ++
         [Instr.br 0])]]) ++
@@ -2467,8 +2485,7 @@ mutual
       emitValue childScratch stop ++ localSet stopLocal ++
       emitValue childScratch step ++ localSet stepLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ [Instr.brIf 1] ++
         localGet indexLocal ++ localSet itemSlot ++
         bodyLets.flatMap (emitBinding childScratch) ++
@@ -2476,6 +2493,7 @@ mutual
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         emitValue childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
           localSet indexLocal ++
@@ -2525,8 +2543,7 @@ mutual
       emitValue childScratch stop ++ localSet stopLocal ++
       emitValue childScratch step ++ localSet stepLocal ++
       emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       ([Instr.block [Instr.loop (localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ [Instr.brIf 1] ++
         localGet indexLocal ++ localSet itemSlot ++
         bodyLets.flatMap (emitBinding childScratch) ++
@@ -2534,6 +2551,7 @@ mutual
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         emitValue childScratch (.u64Bin .natAdd (.local indexLocal) (.local stepLocal)) ++
           localSet indexLocal ++
@@ -2572,13 +2590,13 @@ mutual
       | offset :: rest =>
           localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
     emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       ([Instr.block [Instr.loop (bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         [Instr.br 0])]]) ++
       localGet (accStart + resultSlot)
@@ -2619,13 +2637,13 @@ mutual
       | (offset, target) :: rest =>
           localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
     emitInitStores (enumerate initValues) ++
-      releaseOffsets.flatMap (fun offset =>
-        localGet (accStart + offset) ++ localSet (initialStart + offset)) ++
+      emitAccumulatorSnapshot accStart initialStart releaseOffsets ++
       ([Instr.block [Instr.loop (bodyLets.flatMap (emitBinding childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitValue childScratch bodyDone ++ localSet doneSlot ++
         emitAccumulatorReleases releaseIndex accStart initialStart tempStart releaseOffsets ++
         emitTempCopies (List.range resultWidth) ++
+        emitScalarAccumulatorStep initialStart releaseOffsets ++
         localGet doneSlot ++ i64Const 0 ++ i64Ne ++ [Instr.brIf 1] ++
         [Instr.br 0])]]) ++
       emitTargetCopies (enumerate targets)
