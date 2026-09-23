@@ -17,10 +17,23 @@ structure ExtractedForInStepBody where
   bodyDone : IRExpr
   nextLocal : Nat
 
+partial def forInStepOwnedTemporaries (ctx : Context) (owned : List Nat)
+    (lets : List LeanExe.IR.LocalLet) : List Nat :=
+  match lets with
+  | [] => []
+  | localLet :: rest =>
+      let created := match localLet with
+        | .branch _ thenLets elseLets =>
+            addLiveSlots (forInStepOwnedTemporaries ctx owned thenLets)
+              (forInStepOwnedTemporaries ctx owned elseLets)
+        | _ => localLetCreatedNonrecursiveHeapSlots ctx owned localLet
+      let nextOwned := ownedHeapLocalsAfterLocalLet ctx.freshResultOwnerOffsets owned localLet
+      addLiveSlots created (forInStepOwnedTemporaries ctx nextOwned rest)
+
 def releaseForInStepTemporaries (ctx : Context) (ty : Ty)
     (step : ExtractedForInStepBody) : ExtractedForInStepBody :=
   let released := addLiveSlots (localLetsReleasedSlots step.bodyLets) (exprReleasedSlots step.bodyDone)
-  let owners := (localLetsOwnedNonrecursiveHeapSlots ctx step.bodyLets).filter fun slot =>
+  let owners := (forInStepOwnedTemporaries ctx [] step.bodyLets).filter fun slot =>
     !released.contains slot
   if owners.isEmpty then step else
     let protectedSlots := (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => step.bodyTargets[offset]?
@@ -33,7 +46,8 @@ def releaseForInStepTemporaries (ctx : Context) (ty : Ty)
       (slot :: prior, lets ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
       (protectedSlots, [])
     { step with
-      bodyLets := step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
+      bodyLets := owners.map (fun slot => .expr slot (.u64 0)) ++
+        step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
       bodyDone := .local doneSlot
       nextLocal := releaseSlot + 1 }
 

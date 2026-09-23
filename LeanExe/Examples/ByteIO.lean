@@ -121,4 +121,15 @@ def streaming : LeanExe.ByteIO UInt32 := do
   let status ← copyChecked 1000000000
   pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
 
+def alternatingReads : LeanExe.ByteIO UInt32 := do
+  let mut status : UInt32 := 0
+  for i in [:4] do
+    if LeanExe.Runtime.allocCount != LeanExe.Runtime.freeCount then return 98
+    if i % 2 == 0 then
+      match ← read 1 1000000000 with
+      | .error code => status := code
+      | .ok bytes => status ← write bytes 1000000000
+    if status != 0 then break
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
 end LeanExe.Examples.ByteIO
