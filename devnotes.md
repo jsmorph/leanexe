@@ -1,5 +1,38 @@
 # Development Journal
 
+## 2026-09-23: Byte I/O on branch io
+
+The user requested implementation on `io`, a WASI stdin/stdout test harness,
+and frequent commits and pushes.  The agreed operations return immutable
+`ByteArray` values, carry an explicit `UInt64` timeout in nanoseconds, and
+preserve execution order.  A read returns up to its positive capacity, empty
+success means EOF, and timeout is an error.  A write completes all bytes or
+fails, potentially after emitting a prefix.  System-call protocols are outside
+this work.
+
+The pinned Wasmtime 44 CLI rejects `fd_fdstat_set_flags(0, NONBLOCK)` with
+WASI `BADF`.  Its [standard-stream implementation](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs)
+uses blocking reads and writes and changes descriptor flags only for files.
+Consequently, polling before an unrestricted blocking write cannot establish
+the required timeout behavior.  The new C test host uses the pinned Wasmtime
+engine and implements the relevant WASI Preview 1 imports over nonblocking
+native stdin/stdout.  It accepts one iovec and at most two poll subscriptions,
+which are the intended runtime's needs, and preserves descriptor flags on exit.
+
+`test/wasi_io_host.js` exercises actual WASM modules and pipes.  Its seven
+cases passed: an open empty pipe returns `AGAIN`, closed input returns EOF,
+out-of-bounds iovecs return `FAULT`, a clock wins against stalled input,
+binary bytes round-trip unchanged, poll observes EOF, and blocked output
+returns `AGAIN`.  This tests the host imports; source extraction and the
+whole-call timeout loops remain to be implemented.  The unmodified compiler
+also built successfully with the exact pinned Lean commit.
+
+The session's user explicitly authorized direct Lean execution after the
+systemd user scope failed.  This session uses the repository runner's local
+mode, retaining serialization, one Lean thread, timeout, and priority limits.
+Pinned Lean, Wasmtime, wasm-tools, and Node archives were installed under the
+ignored build directory with their published checksums verified.
+
 ## 2026-09-16: Tiny transformer implementation
 
 The user authorized implementation of the tiny GPT-2-style model, beginning
