@@ -21,6 +21,8 @@ array operations evaluate all operands from left to right; bounds and growth
 failures return `inl unit` as ordinary data. Nominal construction evaluates fields
 in order. Matching checks both nominal identity and the selected branch arity,
 then prepends fields in declaration order to the captured lexical environment.
+Word operations check runtime width tags; their modular results and conversions
+produce ordinary values and introduce no failure terminal.
 -/
 
 namespace LeanExe.TypeSafety
@@ -41,6 +43,13 @@ inductive Frame where
   | natCmpLeft (operation : NatCmpOp) (right : Expr) (env : Env)
   | natBinRight (operation : NatBinOp) (left : Value)
   | natCmpRight (operation : NatCmpOp) (left : Value)
+  | wordBinLeft (width : WordWidth) (operation : WordBinOp) (right : Expr) (env : Env)
+  | wordBinRight (width : WordWidth) (operation : WordBinOp) (left : Value)
+  | wordCmpLeft (width : WordWidth) (operation : NatCmpOp) (right : Expr) (env : Env)
+  | wordCmpRight (width : WordWidth) (operation : NatCmpOp) (left : Value)
+  | wordOfNat (target : WordWidth)
+  | wordToNat (source : WordWidth)
+  | wordCast (source target : WordWidth)
   /-- Arguments already computed, remaining argument expressions, and caller environment. -/
   | callArgs (function : Nat) (done : Env) (remaining : List Expr) (env : Env)
   | arraySize
@@ -76,6 +85,7 @@ def step (program : Program) : State → Option State
   | .eval .unit _ kont => some (.ret .unit kont)
   | .eval (.bool b) _ kont => some (.ret (.bool b) kont)
   | .eval (.nat n) _ kont => some (.ret (.nat n) kont)
+  | .eval (.word width n) _ kont => some (.ret (.word width n) kont)
   | .eval (.letE bound body) env kont =>
       some (.eval bound env (.letBody body env :: kont))
   | .eval (.ifE condition yes no) env kont =>
@@ -96,6 +106,14 @@ def step (program : Program) : State → Option State
       some (.eval left env (.natBinLeft operation right env :: kont))
   | .eval (.natCmp operation left right) env kont =>
       some (.eval left env (.natCmpLeft operation right env :: kont))
+  | .eval (.wordBin width operation left right) env kont =>
+      some (.eval left env (.wordBinLeft width operation right env :: kont))
+  | .eval (.wordCmp width operation left right) env kont =>
+      some (.eval left env (.wordCmpLeft width operation right env :: kont))
+  | .eval (.wordOfNat target value) env kont => some (.eval value env (.wordOfNat target :: kont))
+  | .eval (.wordToNat source value) env kont => some (.eval value env (.wordToNat source :: kont))
+  | .eval (.wordCast source target value) env kont =>
+      some (.eval value env (.wordCast source target :: kont))
   | .eval (.call function []) _ kont => enterCall program function [] kont
   | .eval (.call function (argument :: rest)) env kont =>
       some (.eval argument env (.callArgs function [] rest env :: kont))
@@ -144,6 +162,24 @@ def step (program : Program) : State → Option State
       some (.eval right env (.natCmpRight operation value :: kont))
   | .ret (.nat right) (.natCmpRight operation (.nat left) :: kont) =>
       some (.ret (.bool (operation.apply left right)) kont)
+  | .ret value (.wordBinLeft width operation right env :: kont) =>
+      some (.eval right env (.wordBinRight width operation value :: kont))
+  | .ret (.word rightWidth right) (.wordBinRight width operation (.word leftWidth left) :: kont) =>
+      if leftWidth = width ∧ rightWidth = width then
+        some (.ret (.word width (evalWordBin width operation left right)) kont)
+      else none
+  | .ret value (.wordCmpLeft width operation right env :: kont) =>
+      some (.eval right env (.wordCmpRight width operation value :: kont))
+  | .ret (.word rightWidth right) (.wordCmpRight width operation (.word leftWidth left) :: kont) =>
+      if leftWidth = width ∧ rightWidth = width then
+        some (.ret (.bool (operation.apply left right)) kont)
+      else none
+  | .ret (.nat value) (.wordOfNat target :: kont) =>
+      some (.ret (.word target (normalizeWord target value)) kont)
+  | .ret (.word actual value) (.wordToNat source :: kont) =>
+      if actual = source then some (.ret (.nat value) kont) else none
+  | .ret (.word actual value) (.wordCast source target :: kont) =>
+      if actual = source then some (.ret (.word target (normalizeWord target value)) kont) else none
   | .ret value (.callArgs function done [] _ :: kont) =>
       enterCall program function (done ++ [value]) kont
   | .ret value (.callArgs function done (argument :: rest) env :: kont) =>
@@ -236,6 +272,25 @@ inductive FrameTyped (declarations : DataDecls) (signatures : Signatures) : Fram
       FrameTyped declarations signatures (.natCmpLeft operation right env) .nat64 .bool
   | natCmpRight (operation : NatCmpOp) : ValueTyped declarations left .nat64 →
       FrameTyped declarations signatures (.natCmpRight operation left) .nat64 .bool
+
+  | wordBinLeft (width : WordWidth) (operation : WordBinOp) :
+      ExprTyped declarations signatures Γ right (.word width) → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.wordBinLeft width operation right env) (.word width) (.word width)
+  | wordBinRight (width : WordWidth) (operation : WordBinOp) :
+      ValueTyped declarations left (.word width) →
+      FrameTyped declarations signatures (.wordBinRight width operation left) (.word width) (.word width)
+  | wordCmpLeft (width : WordWidth) (operation : NatCmpOp) :
+      ExprTyped declarations signatures Γ right (.word width) → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.wordCmpLeft width operation right env) (.word width) .bool
+  | wordCmpRight (width : WordWidth) (operation : NatCmpOp) :
+      ValueTyped declarations left (.word width) →
+      FrameTyped declarations signatures (.wordCmpRight width operation left) (.word width) .bool
+  | wordOfNat (target : WordWidth) :
+      FrameTyped declarations signatures (.wordOfNat target) .nat64 (.word target)
+  | wordToNat (source : WordWidth) :
+      FrameTyped declarations signatures (.wordToNat source) (.word source) .nat64
+  | wordCast (source target : WordWidth) :
+      FrameTyped declarations signatures (.wordCast source target) (.word source) (.word target)
 
   | callArgs (found : lookup signatures function = some ⟨params, result⟩) :
       EnvTyped declarations done doneTypes →
@@ -331,6 +386,9 @@ theorem FrameTyped.wellFormed (typed : FrameTyped declarations signatures frame 
         (.cons input.sum_left env.wellFormed)
   | natBinLeft _ _ _ | natBinRight _ _ => exact .nat64
   | natCmpLeft _ _ _ | natCmpRight _ _ => exact .bool
+  | wordBinLeft _ _ _ _ | wordBinRight _ _ _ | wordOfNat _ | wordCast _ _ => exact .word
+  | wordCmpLeft _ _ _ _ | wordCmpRight _ _ _ => exact .bool
+  | wordToNat _ => exact .nat64
   | callArgs found _ _ _ _ => exact (hprogram.signaturesWF.lookup found).result
   | arraySize => exact .nat64
   | arrayGetArray _ _ => exact .sum .unit input.array_item

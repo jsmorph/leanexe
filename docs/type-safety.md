@@ -28,7 +28,7 @@ different obligation, not the reason the full language theorem is unfinished.
 
 ## Language and execution
 
-The core has Unit, Bool, bounded natural numbers, products, binary sums,
+The core has Unit, Bool, bounded natural numbers, 8/32/64-bit unsigned words, products, binary sums,
 variables, let bindings, conditionals, projections, complete product patterns,
 Unit elimination, sum case analysis, bounded-natural operations, and direct first-order
 calls with arbitrary finite argument lists, persistent homogeneous arrays, and
@@ -39,6 +39,12 @@ must be below `2^64` when typed. Addition and multiplication check overflow;
 subtraction saturates; division by zero yields zero and remainder by zero yields
 the dividend. Min/max and equality/order comparisons are also defined. Successor,
 predecessor, and Boolean-to-natural conversion are transparent derived forms.
+Words carry explicit widths and canonical bounded values. Word addition,
+subtraction, and multiplication are modular. Division/remainder use unsigned
+arithmetic with the specified zero-divisor conventions; min/max and comparisons
+are unsigned. Explicit conversions normalize when narrowing and preserve values
+when widening. Wrong-width operands are rejected by typing and checked by the
+runtime rules. Word operations introduce no new failure terminal.
 
 Evaluation is a deterministic, left-to-right call-by-value machine with explicit
 lexical environments and continuations. Pairs and call arguments are strict;
@@ -151,6 +157,7 @@ presentation. No premise assumes one of these safety conclusions.
 |--------|---------|
 | [Formation.lean](../LeanExe/TypeSafety/Formation.lean) | Types, nominal declarations, formation judgments, and exact Boolean checker characterizations. |
 | [NatOperations.lean](../LeanExe/TypeSafety/NatOperations.lean) | Pure bounded-natural operations, exact result/failure laws, comparison laws, and bounded outcomes. |
+| [WordOperations.lean](../LeanExe/TypeSafety/WordOperations.lean) | Explicit-width arithmetic, result bounds, modular underflow/wrap laws, and conversion laws. |
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
 | [ArrayValues.lean](../LeanExe/TypeSafety/ArrayValues.lean) | Pure checked array operations, failure/result/length/read laws, and primitive typing. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
@@ -170,9 +177,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [41 profile examples](../test/type_safety_profile.lean),
 [46 array examples](../test/type_safety_arrays.lean),
 [57 nominal-data examples](../test/type_safety_data.lean),
-[65 typing-checker examples](../test/type_safety_typing.lean), and
-[73 bounded-natural examples](../test/type_safety_naturals.lean). It audits the
-transitive axiom dependencies of all 142 declared theorems across the eight
+[65 typing-checker examples](../test/type_safety_typing.lean),
+[73 bounded-natural examples](../test/type_safety_naturals.lean), and
+[73 word examples](../test/type_safety_words.lean). It audits the
+transitive axiom dependencies of all 171 declared theorems across the nine
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -195,6 +203,9 @@ whole-program alignment, recursive programs, and combined relevance admission.
 Natural-operation examples cover representation boundaries, tagged failures,
 saturation, division/remainder by zero, comparisons, strict operand order,
 captured environments, malformed states, and a recursive countdown program.
+Word examples distinguish modular arithmetic from bounded-natural overflow, test
+unsigned comparison and conversion boundaries, reject width mismatches in both
+source admission and raw execution, and compose words with arrays/data/calls.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -214,7 +225,7 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Fixed-width word operations, natural pattern matching, additional
+into this core. Word bitwise operations/shifts, raw binary64, natural pattern matching, additional
 array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
@@ -242,8 +253,9 @@ The independent language agenda is:
    explicit permitted failures. Replace schematic fold and recursion families
    with complete rules, or define and justify their expansion into core forms.
 2. Extend abstract values and primitive semantics to the intended language:
-   fixed-width words, bytes, remaining collection/control operations, and any
-   intended data generalizations. The bounded-natural primitive family, initial
+   word bitwise operations/shifts, raw binary64, bytes, remaining collection/control
+   operations, and any intended data generalizations. Word arithmetic/conversions,
+   the bounded-natural primitive family, initial
    persistent-array forms, and monomorphic nominal recursive data are checked.
    Primitive signatures alone are insufficient; prove primitive progress and
    preservation for the defined behavior.
@@ -261,8 +273,9 @@ such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
 checked, as are explicit sum annotations, algorithmic typing, and the documented
-bounded-natural primitive family. The next numeric increment concerns fixed-width
-words and their arithmetic, bitwise operations, shifts, and conversions. Natural
+bounded-natural primitive family. Word arithmetic, comparisons, and conversions
+are also checked. The next numeric increment concerns bitwise operations and
+masked shifts. Natural
 pattern matching still requires a complete rule or a proved derived expansion.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They

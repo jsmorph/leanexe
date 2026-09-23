@@ -21,6 +21,7 @@ def inferRaw (declarations : DataDecls) (signatures : Signatures) (Γ : Context)
   | .unit => some .unit
   | .bool _ => some .bool
   | .nat value => if value < nat64Limit then some .nat64 else none
+  | .word width value => if value < width.modulus then some (.word width) else none
   | .letE bound body =>
       match inferRaw declarations signatures Γ bound with
       | some α => inferRaw declarations signatures (α :: Γ) body
@@ -78,6 +79,22 @@ def inferRaw (declarations : DataDecls) (signatures : Signatures) (Γ : Context)
   | .natCmp _ left right =>
       if inferRaw declarations signatures Γ left = some .nat64 then
         if inferRaw declarations signatures Γ right = some .nat64 then some .bool else none
+      else none
+  | .wordBin width _ left right =>
+      if inferRaw declarations signatures Γ left = some (.word width) then
+        if inferRaw declarations signatures Γ right = some (.word width) then some (.word width)
+        else none
+      else none
+  | .wordCmp width _ left right =>
+      if inferRaw declarations signatures Γ left = some (.word width) then
+        if inferRaw declarations signatures Γ right = some (.word width) then some .bool else none
+      else none
+  | .wordOfNat target value =>
+      if inferRaw declarations signatures Γ value = some .nat64 then some (.word target) else none
+  | .wordToNat source value =>
+      if inferRaw declarations signatures Γ value = some (.word source) then some .nat64 else none
+  | .wordCast source target value =>
+      if inferRaw declarations signatures Γ value = some (.word source) then some (.word target)
       else none
   | .call function arguments =>
       match lookup signatures function with
@@ -168,7 +185,7 @@ theorem inferRaw_complete (typed : ExprTyped declarations signatures Γ expr τ)
   cases typed with
   | var found => exact found
   | unit | bool => rfl
-  | nat bounded => simp [inferRaw, bounded]
+  | nat bounded | word bounded => simp [inferRaw, bounded]
   | letE bound body => simp [inferRaw, inferRaw_complete bound, inferRaw_complete body]
   | ifE condition yes no =>
       simp [inferRaw, inferRaw_complete condition, inferRaw_complete yes, inferRaw_complete no]
@@ -183,6 +200,10 @@ theorem inferRaw_complete (typed : ExprTyped declarations signatures Γ expr τ)
       simp [inferRaw, inferRaw_complete scrutinee, inferRaw_complete left, inferRaw_complete right]
   | natBin _ left right | natCmp _ left right =>
       simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
+  | wordBin _ _ left right | wordCmp _ _ left right =>
+      simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
+  | wordOfNat _ value | wordToNat _ value | wordCast _ _ value =>
+      simp [inferRaw, inferRaw_complete value]
   | call found arguments => simp [inferRaw, found, checkArgsRaw_complete arguments]
   | arrayEmpty item => simp [inferRaw, tyWellFormed_iff.mpr item]
   | arraySize array => simp [inferRaw, inferRaw_complete array]
@@ -224,6 +245,11 @@ theorem inferRaw_sound (inferred : inferRaw declarations signatures Γ expr = so
       simp only [inferRaw] at inferred
       split at inferred
       · cases inferred; exact .nat (by assumption)
+      · cases inferred
+  | word width value =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      · cases inferred; exact .word (by assumption)
       · cases inferred
   | letE bound body =>
       cases found : inferRaw declarations signatures Γ bound with
@@ -341,6 +367,47 @@ theorem inferRaw_sound (inferred : inferRaw declarations signatures Γ expr = so
           cases inferred
           exact .natCmp operation (inferRaw_sound leftType) (inferRaw_sound rightType)
         next => cases inferred
+      next => cases inferred
+  | wordBin width operation left right =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next leftType =>
+        split at inferred
+        next rightType =>
+          cases inferred
+          exact .wordBin width operation (inferRaw_sound leftType) (inferRaw_sound rightType)
+        next => cases inferred
+      next => cases inferred
+  | wordCmp width operation left right =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next leftType =>
+        split at inferred
+        next rightType =>
+          cases inferred
+          exact .wordCmp width operation (inferRaw_sound leftType) (inferRaw_sound rightType)
+        next => cases inferred
+      next => cases inferred
+  | wordOfNat target value =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next valueType =>
+        cases inferred
+        exact .wordOfNat target (inferRaw_sound valueType)
+      next => cases inferred
+  | wordToNat source value =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next valueType =>
+        cases inferred
+        exact .wordToNat source (inferRaw_sound valueType)
+      next => cases inferred
+  | wordCast source target value =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next valueType =>
+        cases inferred
+        exact .wordCast source target (inferRaw_sound valueType)
       next => cases inferred
   | call function arguments =>
       cases found : lookup signatures function with
