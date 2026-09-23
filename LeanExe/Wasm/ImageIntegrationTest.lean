@@ -84,4 +84,16 @@ def publicEmitterAgrees (module_ : Module) : Bool :=
 #guard publicEmitterAgrees identityModule
 #guard publicEmitterAgrees nestedModule
 
+def i32ConstBoundaries : List (Nat × List UInt8) :=
+  [(0, [65, 0]), (63, [65, 63]), (64, [65, 192, 0]),
+   (127, [65, 255, 0]), (128, [65, 128, 1]),
+   (8191, [65, 255, 63]), (8192, [65, 128, 192, 0]),
+   (2147483647, [65, 255, 255, 255, 255, 7]),
+   (2147483648, [65, 128, 128, 128, 128, 120]),
+   (4294967295, [65, 127])]
+
+#guard i32ConstBoundaries.all fun (value, expected) =>
+  (Image.emitInstr (.constI32 value)).toList == expected &&
+    Binary.i32Const value == expected
+
 end LeanExe.Wasm.ImageIntegrationTest

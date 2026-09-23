@@ -97,9 +97,14 @@ function main() {
   ];
   const u32leb = compile("u32lebU64");
   const s64leb = compile("s64lebU64");
+  const s32leb = compile("s32lebU64");
   let total = 0;
   total += check(u32leb, "u32lebU64", u32lebRef, unsignedCorpus);
   total += check(s64leb, "s64lebU64", s64lebRef, signedBitsCorpus);
+  total += check(s32leb, "s32lebU64", value => s64lebRef(BigInt.asIntN(32, value)), [
+    0n, 63n, 64n, 127n, 128n, 8191n, 8192n, 2147483647n, 2147483648n,
+    4294967295n, 4294967296n, (1n << 64n) - 1n,
+  ]);
 
   // The vector and section combinators with host-marshalable signatures.
   // The array-input combinators (vecBytes, u32VecBytes) are exercised

@@ -170,7 +170,7 @@ def i64Const (n : Nat) : List UInt8 :=
   byte 66 :: s64lebInt signed
 
 def i32Const (n : Nat) : List UInt8 :=
-  byte 65 :: u32leb n
+  byte 65 :: (Leb.s32lebU64 (UInt64.ofNat n)).toList
 
 def localGet (index : Nat) : List UInt8 :=
   ofNats [32] ++ u32leb index
