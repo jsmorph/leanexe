@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 636 semantic examples and audits all 339 declared
-theorems across the fifteen development modules, including helper proofs. It
+The maintained gate checks 663 semantic examples and audits all 357 declared
+theorems across the sixteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -504,7 +504,21 @@ results. They do not establish evaluation equivalence, public checker equivalenc
 under arbitrary maps, or relevance of newly inserted function parameters. Public
 admission still requires formation of the entire ambient context.
 
-Occurrence/admissibility preservation and an operational simulation require
-separate proofs. In particular, noninjective renaming may merge free variables;
+Occurrence/admissibility preservation is checked below. An operational
+simulation remains a separate obligation. In particular, noninjective renaming may merge free variables;
 a forward context map can turn an originally out-of-range raw variable into a
 valid one. Exact checker or runtime correspondence needs stronger hypotheses.
+
+### Checked relevance preservation under renaming
+
+For arbitrary, possibly noninjective maps, the proved exact occurrence law is:
+`uses target (Expr.rename mapping expr) = true` iff there exists a source index
+that maps to `target` and occurs in `expr`. A claim comparing only the occurrence
+of one chosen source index would be false when multiple indices merge.
+
+Lifting gives each protected local index exactly itself as a preimage. The
+proofs establish exact Boolean equality of `admissible` before and after renaming,
+and `parametersUsed` equality only for an explicitly preserved prefix. This does
+not make newly inserted parameters used. `ProfileTyped.rename` and `.weaken`
+combine relevance invariance with raw typing transport. Runtime correspondence
+remains separate.

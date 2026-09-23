@@ -13,6 +13,7 @@ and relevance are normative choices recorded in [the language contract](runtime-
 | Family | Checked independent language | Remaining obligation |
 |--------|------------------------------|----------------------|
 | Scalars and ordinary binding | Unit, Bool, bounded naturals, explicit 8/32/64-bit words, variables, strict lets, conditionals, complete product patterns, Unit elimination. | Any frontend syntax translation remains separate. The profile rejects projections and unused binders. |
+| Binding transport | Capture-avoiding renaming and algebra; raw/profile typing transport and weakening; exact occurrence images and internal relevance invariance. | Operational correspondence still needs proof. These laws do not establish frontend translation, signature changes, or usage of newly inserted parameters. |
 | Sums and nominal data | Annotated sums; monomorphic nominal tables; formation, strict construction, exhaustive matching, finite recursive values. | Account for specialization and any intended type-level generalizations. Empty nominal types are permitted; formation does not prove inhabitance. |
 | Calls and recursion | Fixed global signatures, exact arguments, fresh callee environments, recursive and mutually recursive calls. | General call safety does not prove closure conversion, recognizer coverage, or termination. |
 | Bounded naturals | Add/sub/mul/div/mod/min/max, comparisons, successor/predecessor, Bool-to-Nat, tagged overflow, zero/successor case analysis. | Other unbounded-Lean-Nat operations are not implicitly included. |
