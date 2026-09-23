@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 512 semantic examples and audits all 246 declared
-theorems across the eleven development modules, including helper proofs. It
+The maintained gate checks 537 semantic examples and audits all 265 declared
+theorems across the twelve development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -426,3 +426,19 @@ and truth-table execution for supplied Boolean values in arbitrary environments
 and continuations. Both generated fields occur syntactically; caller variables
 remain in the original operand scopes. Boolean equality does not cover compound
 structural equality.
+
+
+## Raw structural comparison and pending source admission
+
+The checked comparison of finite raw `Value` trees is independent of typing.
+Its proved specification is exact: the Boolean result is true if
+and only if the two values are propositionally equal. Arrays compare length,
+order, and all elements; nominal values compare type identity, constructor, and
+all fields. Scalar tags, word widths, and sum tags are significant.
+
+This is an operation-law checkpoint, not yet an admitted source primitive. The
+raw comparison may be defined on malformed values and finite recursive values
+without admitting their types for source equality. The documented `EqTy` domain
+excludes recursive variants; source integration must give that boundary an
+independent judgment and exact executable check. Bytes are not yet represented
+in the calculus. Arbitrary user-selected `BEq` implementations remain separate.

@@ -3,6 +3,7 @@ import LeanExe.TypeSafety.NatOperations
 import LeanExe.TypeSafety.BitOperations
 import LeanExe.TypeSafety.WordOperations
 import LeanExe.TypeSafety.Core
+import LeanExe.TypeSafety.ValueEquality
 import LeanExe.TypeSafety.ArrayValues
 import LeanExe.TypeSafety.Machine
 import LeanExe.TypeSafety.Safety
@@ -44,4 +45,6 @@ in the successor arm. This eliminates bounded naturals; it adds no termination
 assumption or compiler-recognition claim. Strict Boolean connectives and equality
 are transparent definitions using product elimination; their typing, admission,
 and machine truth tables are proved without extending the transition function.
+A separate raw value comparator is proved correct for finite value trees, including
+malformed inputs. It introduces no source equality primitive or admission policy.
 -/
