@@ -2,21 +2,10 @@ import Project.Gpt2CachedStep.ExpNeg.Perturbation
 import Project.ProofKit.F32PairError
 import Project.ProofKit.F32SumError
 import Project.Softmax.RealPerturbation
+import Project.Gpt2CachedStep.CachedAttention.SoftmaxCompute
 
 namespace Project.Gpt2CachedStep.CachedAttention.SoftmaxError
 open LeanExe.Models.Gpt2 Project.ProofKit CodeLib.IEEE32
-
-def shifted (scores : Nat → UInt32) (maximum : UInt32) (i : Nat) : UInt32 :=
-  LeanExe.Float32.subBits (scores i) maximum
-
-def exponential (scores : Nat → UInt32) (maximum : UInt32) (i : Nat) : UInt32 :=
-  expNeg (shifted scores maximum i)
-
-def denominator (scores : Nat → UInt32) (maximum : UInt32) (n : Nat) : UInt32 :=
-  F32SumError.sumPrefix (exponential scores maximum) n
-
-def probability (scores : Nat → UInt32) (maximum : UInt32) (n i : Nat) : UInt32 :=
-  LeanExe.Float32.divBits (exponential scores maximum i) (denominator scores maximum n)
 
 structure Bounds where
   subBound : Nat → Nat

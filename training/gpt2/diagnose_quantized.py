@@ -22,8 +22,8 @@ def errors(left, right):
             "rms": float(np.sqrt(np.mean(difference * difference)))}
 
 
-class DiagnosticReference(QuantizedReference):
-    def __init__(self, directory, quantized):
+class SerialReference(QuantizedReference):
+    def __init__(self, directory):
         path = directory / "inference/weights.bin"
         if digest(path) != PACKED_SHA256:
             raise ValueError("FP32 checkpoint identity mismatch")
@@ -37,9 +37,18 @@ class DiagnosticReference(QuantizedReference):
                 value = value.T
             self.weights[name] = value
         self.weights["wte.scale"] = np.ones(50257, dtype=np.float32)
-        self.quantized = quantized
         self.grouped = False
         self.cache = []
+
+    def linear(self, values, name, bias=True):
+        return linear_serial(self.weights[name + ".weight"], values,
+                             self.weights[name + ".bias"] if bias else None)
+
+
+class DiagnosticReference(SerialReference):
+    def __init__(self, directory, quantized):
+        super().__init__(directory)
+        self.quantized = quantized
         self.records = []
 
     def linear(self, values, name, bias=True):
