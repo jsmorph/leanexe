@@ -2,17 +2,12 @@ import Project.Gpt2CachedStep.ExpNeg.Perturbation
 import Project.Gpt2RowInvStd.DenominatorError
 import Project.Gelu.GlobalPerturbation
 import Project.ProofKit.F32Absolute
+import Project.Gpt2CachedStep.GeluCompute
 
 set_option exponentiation.threshold 512
 
 namespace Project.Gpt2CachedStep.GeluArgumentError
 open Project.ProofKit CodeLib.IEEE32
-
-def square (a : UInt32) : UInt32 := LeanExe.Float32.mulBits a a
-def weighted (a : UInt32) : UInt32 := LeanExe.Float32.mulBits (square a) 0x3D372713
-def factor (a : UInt32) : UInt32 := LeanExe.Float32.addBits (weighted a) 0x3F800000
-def product (a : UInt32) : UInt32 := LeanExe.Float32.mulBits (factor a) a
-def magnitude (a : UInt32) : UInt32 := LeanExe.Float32.mulBits (product a) 0x3FCC422A
 
 theorem coefficient_finite : CodeLib.IEEE32.Finite 0x3D372713 := by
   change Wasm.IEEE32.isFinite 0x3D372713 = true

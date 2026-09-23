@@ -1,34 +1,10 @@
-import LeanExe.Models.Gpt2.Cached
+import Project.Gpt2CachedStep.CachedAttention.Compute
 import Project.ProofKit.F32Add
 import Project.ProofKit.F32Mul
 import Project.ProofKit.PackedSource
 
 namespace Project.Gpt2CachedStep.CachedAttention
 open LeanExe.Models.Gpt2
-
-def scores (cache qkv : ByteArray) (layer position : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE (12 * (position + 1)) fun index =>
-    cachedScore cache qkv layer position (index % (position + 1)) (index / (position + 1))
-
-def maxima (scores : ByteArray) (size : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE 12 fun head => cachedRowMaximum scores head size
-
-def exponentials (scores maxima : ByteArray) (size : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE (12 * size) fun index =>
-    expNeg (LeanExe.Float32.subBits (word scores index) (word maxima (index / size)))
-
-def sums (exponentials : ByteArray) (size : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE 12 fun head => cachedRowSum exponentials head size
-
-def probabilities (exponentials sums : ByteArray) (size : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE (12 * size) fun index =>
-    LeanExe.Float32.divBits (word exponentials index) (word sums (index / size))
-
-def mixedPrefix (cache qkv probabilities : ByteArray) (layer position index count : Nat) : UInt32 :=
-  (List.range count).foldl (fun total source =>
-    LeanExe.Float32.addBits total
-      (LeanExe.Float32.mulBits (word probabilities (index / 64 * (position + 1) + source))
-        (cachedKv cache qkv layer position source (768 + index)))) 0
 
 @[simp] theorem mixedPrefix_zero (cache qkv probabilities : ByteArray) (layer position index : Nat) :
     mixedPrefix cache qkv probabilities layer position index 0 = 0 := rfl
@@ -40,10 +16,6 @@ theorem mixedPrefix_succ (cache qkv probabilities : ByteArray) (layer position i
           (cachedKv cache qkv layer position count (768 + index))) := by
   simp only [mixedPrefix, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil,
     Project.ProofKit.F32Add.add_eq, Project.ProofKit.F32Mul.mul_eq]
-
-def mixed (cache qkv probabilities : ByteArray) (layer position : Nat) : ByteArray :=
-  LeanExe.Packed.generateUInt32LE 768 fun index =>
-    mixedPrefix cache qkv probabilities layer position index (position + 1)
 
 theorem cachedAttention_eq (cache qkv : ByteArray) (layer position : Nat) :
     cachedAttention cache qkv layer position =

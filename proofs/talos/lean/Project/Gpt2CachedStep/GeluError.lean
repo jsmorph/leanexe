@@ -3,13 +3,6 @@ import Project.Gpt2CachedStep.GeluArgumentError
 namespace Project.Gpt2CachedStep.GeluError
 open Project.ProofKit CodeLib.IEEE32 LeanExe.Models.Gpt2
 
-def argument (a : UInt32) : UInt32 := GeluArgumentError.magnitude a ||| 0x80000000
-def exponential (a : UInt32) : UInt32 := expNeg (argument a)
-def denominator (a : UInt32) : UInt32 := LeanExe.Float32.addBits 0x3F800000 (exponential a)
-def positivePart (a : UInt32) : UInt32 := LeanExe.Float32.divBits a (denominator a)
-def numerator (a : UInt32) : UInt32 := LeanExe.Float32.mulBits (a ||| 0x80000000) (exponential a)
-def negativePart (a : UInt32) : UInt32 := LeanExe.Float32.divBits (numerator a) (denominator a)
-
 noncomputable def referenceExponential (a : UInt32) : ℝ := Real.exp (-Project.Gelu.Real.argument (value a))
 noncomputable def referenceDenominator (a : UInt32) : ℝ := 1 + referenceExponential a
 
