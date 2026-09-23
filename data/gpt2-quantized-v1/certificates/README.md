@@ -14,7 +14,7 @@ The common-offset check subtracts `zq[k] - z[k]` from every quantized logit, usi
 
 The capture reproduces all 229 previously recorded group64 logit hashes and all 128 previously recorded FP32 fixed-prefix hashes.  The record identifies both weight files, both binaries, the native host, the capture program, and the Lean checker sources.  Native execution of Wasmtime and the compiled Lean checker remains within the repository's existing runtime trust boundary.
 
-The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) now covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Trace-level checking of every nonlinear assumption and evaluation of that propagated bound remain open.
+The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Captured nonlinear ranges pass the native checkers.  Projection range instances and evaluation of the propagated bound remain open.
 
 ## Checkpoint export
 
@@ -42,6 +42,12 @@ The [GELU record](gelu-check.json) and [checker result](gelu-check.log) cover al
 
 The [soundness theorem](../../../proofs/talos/lean/Project/Gpt2CachedStep/GeluRangeCertificate.lean) supplies the GELU premises in the forward bound.  The [Horner checker](../../../proofs/talos/lean/Project/ProofKit/F32HornerRangeCertificate.lean) computes each prefix once and relates it to the source recurrence.  Executable definitions have separate modules so the native checker builds without compiling the mathematical proof library into its executable.
 
+## Attention ranges
+
+The [attention record](attention-check.json) and [compressed profiles](attention-ranges.txt.gz) cover 5,496 attention calls: twelve layers, both models, and all 229 prefixes.  The native checker reconstructs each model's key/value cache from its captured updates.  It verifies ordered query–key dots, score scaling, maximum dominance, shifted exponential ranges, the ordered softmax denominator, probability division, and ordered probability–value dots.  Every softmax denominator satisfies the lower bound of one.  The largest captured value magnitude is 13.588044166564941.
+
+The [paired conversion theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/AttentionRange.lean) supplies the attention premises used by the session bound.  The complete data run passes in 521.123 seconds.  An earlier implementation reached its 600-second limit after completing the fixed trace and first prompt.  The record preserves that failure and the partial-file hash.  Retaining each profiled dot result and reusing score arrays reduced the fixed-trace time from 596.508 to 480.818 seconds.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -61,6 +67,8 @@ tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-normalization
 training/gpt2/.venv/bin/python training/gpt2/capture_nonlinear_ranges.py
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-gelu-check Project.Gpt2CachedStep.GeluRangeCertificate
 tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-gelu-check build/gpt2-124m/quantized-group64/nonlinear/gelu.bin
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-attention-check Project.Gpt2QuantizedCached.Numerical.AttentionRange
+tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-attention-check build/gpt2-124m/quantized-group64/nonlinear/attention.bin data/gpt2-quantized-v1/certificates/coverage.json build/gpt2-124m/quantized-group64/nonlinear/attention-ranges.txt
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.

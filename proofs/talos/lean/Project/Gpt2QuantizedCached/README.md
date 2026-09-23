@@ -63,8 +63,8 @@ at most 1,032,256.  The native Lean export checker accepts every checkpoint coef
 and retained FP32 word.  [Conditional forward bounds](Numerical/README.md) cover
 every stage of the twelve-layer cached recurrence and every returned logit.
 Checked range records cover all captured activation quantizers and 11,450
-normalizations and 16,883,712 GELU inputs from both models.  Attention and
-projection range evaluation and evaluation of the propagated bound remain open.
+normalizations, 16,883,712 GELU inputs, and 5,496 attention calls from both models.
+Projection range evaluation and evaluation of the propagated bound remain open.
 
 ## Verification and numerical work
 
