@@ -268,3 +268,40 @@ reachable-state safety for checker-accepted programs and closed entries. These
 results concern the independently specified language, not compiler acceptance.
 General recursive programs can pass these checks; termination and absence of
 specified arithmetic failure are separate properties.
+
+## Bounded-natural extension in progress
+
+The following is the next specified increment, not yet part of the checked
+coverage reported above. It completes the documented bounded-natural primitive
+family; it does not claim every operation on Lean's unbounded `Nat`.
+
+All operands evaluate once, strictly from left to right. `natBin op a b` takes
+two `nat64` operands and returns `nat64` on success. `natCmp op a b` takes two
+`nat64` operands and returns `bool`.
+
+| Operation | Mathematical behavior |
+|-----------|-----------------------|
+| add | Sum if below `2^64`; otherwise addition overflow. |
+| mul | Product if below `2^64`; otherwise multiplication overflow. |
+| sub | Saturating natural subtraction. |
+| div | Natural quotient; divisor zero gives zero. |
+| mod | Natural remainder; divisor zero returns the dividend. |
+| min, max | Lesser or greater operand, respectively. |
+| eq, lt, le | Boolean equality, strict order, or non-strict order. |
+
+Overflow records an addition/multiplication tag and both operands. A permitted
+failure requires bounded operands and the tagged mathematical result to be at
+least `2^64`; malformed error records do not count as terminal outcomes. The
+runtime typing rule must also preserve the original result type's formation.
+No underflow or division-by-zero failure is introduced.
+
+Successor and predecessor are transparent add/sub-by-one expressions. Boolean
+to natural conversion is `ifE b (nat 1) (nat 0)`. These definitions evaluate their
+argument once and introduce no hidden bindings. Source extraction equivalence is
+not implied by these definitions. Natural pattern matching remains a separate
+form to define or derive with proof. Fixed-width words and their modular,
+bitwise, shift, and conversion operations remain outside this increment.
+
+Acceptance requires exact primitive success/failure and bound laws, comparison
+characterizations, and updated machine safety, relevance, and algorithmic typing
+proofs. The primitive definitions themselves must not depend on a safety premise.
