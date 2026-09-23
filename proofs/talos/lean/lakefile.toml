@@ -18,3 +18,7 @@ name = "Project"
 [[lean_exe]]
 name = "gpt2-export-check"
 root = "Project.Gpt2QuantizedCached.CheckExport"
+
+[[lean_exe]]
+name = "gpt2-activation-check"
+root = "Project.Gpt2QuantizedCached.CheckActivations"

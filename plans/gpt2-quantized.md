@@ -207,7 +207,7 @@ then `k` is also the quantized winner.  With a uniform bound `ε`, a winning mar
 
 - [x] Prove scalar quantization and linear-layer error bounds.
 - [ ] Prove a checked checkpoint-export relation and usable range certificates.
-- [ ] Compose a stated cached-session logit bound against the selected reference.
+- [x] Compose a stated cached-session logit bound against the selected reference.
 - [x] Prove the greedy-margin theorem and produce checked certificates for individual token positions.
 - [ ] Report certificate coverage and bound sizes on the fixed and held-out inputs.
 
