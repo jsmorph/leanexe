@@ -16181,3 +16181,7 @@ The user requested a separate `wasi` branch from `main`, with permission to reus
 - [ ] Add effect sequencing and native WASI lowering.
 - [ ] Exercise all operation families on the standard Wasmtime host.
 - [ ] Check failure paths, value ownership, documentation, and final branch state.
+
+The compiler now lowers every registered operation to the Preview 1 ABI.  Buffer results, argument/environment arrays, preopen names, and poll records use owned runtime values.  A compile-time check compares each public declaration with its registered argument count, result width, and ownership slots.  The implementation reuses effect sequencing, loop ownership fixes, and signed i32 constant encoding from `io`, without adding that branch's byte IO API or custom host.
+
+The first Wasmtime executions passed binary echo, EOF, and repeated execution of a stored action.  Further tests exposed an existing omission in sparse `Except` matcher recognition.  An initial eta-expansion attempt did not resolve the matcher classification and was removed.  The extractor now converts a fallback arm into the missing constructor arm.  The next test pass covers clocks, argument/environment arrays, polling, filesystem operations, descriptor errors, and ownership counters.  Full execution coverage and the final audit remain in progress.

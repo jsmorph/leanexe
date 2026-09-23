@@ -234,6 +234,7 @@ mutual
 
   def Stmt.ofLocalLet : LeanExe.IR.LocalLet → Option Stmt
     | .expr slot value => return .assign slot (← Expr.ofIR value)
+    | .effectCall _ _ _
     | .call _ _ _ => none
     | .slots slots values => do
         if slots.length != values.length then none else

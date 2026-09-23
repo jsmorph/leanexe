@@ -90,7 +90,7 @@ mutual
   def emitInstr : Instr → ByteArray
     | .constI64 value =>
         byte 66 ++ LeanExe.Wasm.Leb.s64lebU64 (UInt64.ofNat value)
-    | .constI32 value => byte 65 ++ encodeNat value
+    | .constI32 value => byte 65 ++ LeanExe.Wasm.Leb.s32lebU64 (UInt64.ofNat value)
     | .constI32NegOne => bytes2 65 127
     | .localGet index => byte 32 ++ encodeNat index
     | .localSet index => byte 33 ++ encodeNat index
