@@ -42,8 +42,11 @@ theorem cache_lookup_error (cache qkv cache' qkv' : ByteArray) (layer position s
     (hq : ∀ j, |value (word qkv j) - value (word qkv' j)| ≤ qkvError j) :
     |value (cachedKv cache qkv layer position source offset) - value (cachedKv cache' qkv' layer position source offset)| ≤
       if source < position then cacheError ((source * 12 + layer) * 1536 + offset) else qkvError (768 + offset) := by
-  unfold cachedKv
-  split <;> first | exact hc _ | exact hq _
+  by_cases hh : source < position
+  · simp only [cachedKv, ite_eq_left hh]
+    exact hc ((source * 12 + layer) * 1536 + offset)
+  · simp only [cachedKv, ite_eq_right hh]
+    exact hq (768 + offset)
 
 #print axioms add_error
 #print axioms activate_error
