@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 610 semantic examples and audits all 307 declared
-theorems across the fourteen development modules, including helper proofs. It
+The maintained gate checks 636 semantic examples and audits all 339 declared
+theorems across the fifteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -487,9 +487,9 @@ form. Exact final-step laws connect returned true/false to raw value equality
 and inequality, respectively.
 
 
-## Hygienic renaming under development
+## Checked hygienic renaming and typing transport
 
-Derived callback forms need a proved way to insert bindings around code that
+The checked renaming library supports inserting bindings around code that
 refers to its original context. Renaming maps only free variable indices. A
 lifted map fixes the newly bound prefix and maps the remaining indices beyond
 that prefix. Let and sum arms lift by one, complete product elimination by two,
@@ -497,7 +497,7 @@ natural successor arms by one, and nominal arms by their explicit field count.
 Natural zero arms introduce no binder. Types and declaration/function identities
 are not variable indices and remain unchanged.
 
-The first checkpoint requires total syntax traversal, pointwise congruence,
+The checked results are total syntax traversal, pointwise congruence,
 identity/composition laws on expressions, context lookup preservation under
 lifting, and typing preservation/weakening. These are binding and static typing
 results. They do not establish evaluation equivalence, public checker equivalence
