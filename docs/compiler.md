@@ -24,6 +24,8 @@ Recursive-expression discovery scans each supported first-order helper at its de
 
 The compiler runs extraction twice.  The first pass computes function summaries, including fresh result-owner offsets, and the second pass lowers each function with the complete summaries available.  This structure allows the second pass to distinguish a fresh helper result from a borrowed heap reference and to insert releases only at supported ownership boundaries.
 
+`compile-wasi-api` accepts a nullary `LeanExe.Wasi.Action UInt32` entry.  The primitive registry in `LeanExe/Wasi/Primitives.lean` describes the Preview 1 import signatures, flattened arguments, results, and owner slots.  Extraction preserves action calls as effectful bindings even when their results are unused.  `LeanExe/Wasm/Wasi.lean` emits the imports, buffer and record conversions, and `_start` wrapper.  The [WASI API reference](wasi.md) defines the host behavior and error boundary.
+
 An internal array result has separate owner and data-pointer slots.  When a helper call supplies an operand to an array primitive, expression extraction binds both returned slots before selecting the data pointer.  Nullary and applied calls use this same lowering.
 
 Deferred inline arguments retain the caller's local bindings and inline stack.
