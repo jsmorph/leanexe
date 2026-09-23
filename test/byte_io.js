@@ -25,7 +25,9 @@ async function main() {
   runChecked(["lake", "build", "lean-wasm", source], { stdio: "inherit" });
   runChecked(["tools/build-wasi-io-host.sh"]);
   const entries = ["echo", "ordered", "timeout", "handled", "reused", "unused",
-    "invalid", "immediate", "blocked", "ignored", "emptyWrite", "maxTimeout", "called", "repeated", "discardRead", "ignoreReadError", "released", "streaming", "alternatingReads"];
+    "invalid", "immediate", "blocked", "ignored", "emptyWrite", "maxTimeout", "called", "repeated",
+    "discardRead", "ignoreReadError", "released", "streaming", "alternatingReads", "streamingTimeout",
+    "carried", "chosen"];
   const programs = Object.fromEntries(entries.map(name => [name, compile(name)]));
   let count = 0;
   async function expect(name, input, status, output, options) {
@@ -72,6 +74,21 @@ async function main() {
   for (let i = 0; i < stream.length; i += 1) stream[i] = (i * 73) ^ (i >>> 8) ^ (i >>> 16);
   await expect("streaming", stream, 0, stream);
   await expect("alternatingReads", "ab", 0, "ab");
+  const prefix = stream.subarray(0, 4097);
+  await expect("streamingTimeout", child => child.stdin.write(prefix), 73, prefix);
+  await expect("streamingTimeout", stream, 73, null, { drain: false });
+  await expect("streamingTimeout", child => {
+    child.stdout.destroy();
+    child.stdin.end(prefix);
+  }, 64, "");
+  await expect("carried", "Iabc", 0, "IabcI");
+  await expect("carried", child => child.stdin.write("Ia"), 73, "I");
+  await expect("carried", child => {
+    child.stdout.destroy();
+    child.stdin.end("Iabc");
+  }, 64, "");
+  await expect("chosen", "", 0, "AC");
+  await expect("chosen", "x", 0, "BC");
   await expect("blocked", child => {
     child.stdin.end();
     const timer = setInterval(() => child.stdout.read(4096), 10);
