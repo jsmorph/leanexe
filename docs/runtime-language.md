@@ -56,6 +56,7 @@ environment, without implicit capture of caller locals.
 | `split product body` | Evaluate product; for a pair, prepend left then right. Body context is `α :: β :: Γ`. | Both indices zero and one must occur in body; subexpressions must be admissible. |
 | `unitCase scrutinee body` | Evaluate a Unit scrutinee, then evaluate body in the original environment. No new binder. | Both subexpressions must be admissible. |
 | `sumCase scrutinee left right` | Evaluate the sum, then prepend its payload to the selected branch's environment. | Each branch must use its own index-zero payload binder; all subexpressions must be admissible. |
+| `natCase scrutinee zeroBody succBody` | Evaluate a Nat64 scrutinee once; zero uses the original environment, successor prepends its predecessor. | Both arms must be admissible; the successor arm must use its index-zero predecessor. |
 | Function declaration | Type body in exactly its declared parameter context. | Every parameter index must occur in body; body must be admissible. |
 | `fst`, `snd` | Still defined in the raw strict calculus. | Rejected by the profile, including when nested. |
 
@@ -97,7 +98,7 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 430 semantic examples and audits all 216 declared
+The maintained gate checks 465 semantic examples and audits all 222 declared
 theorems across the ten development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
@@ -130,16 +131,20 @@ that this independent language must reproduce.
 
 The profile applies to the scalar/product/sum/call calculus, complete product
 and Unit elimination, the six array forms below, and monomorphic nominal recursive
-data. The following work remains separately tracked:
+data. The [coverage ledger](type-safety-coverage.md) records every documented family.
+The following work remains separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
 | U8/U32/U64 operations | Arithmetic, comparisons, conversions, bitwise operations, complement, and masked shifts are checked. Raw binary64 is tracked separately below. |
+| Boolean derived APIs and structural equality | Boolean elimination and numeric equality are checked. Named Boolean helpers and equality for compound values require definitions and proofs. |
+| Option/Except combinators | Sum/data elimination supplies ingredients; map/bind/default/filter/tests/fallback and conversion APIs still need proved expansions. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
 | Data generalizations | Monomorphic nominal tables, constructors, exhaustive matches, and recursive value typing are proved. Dependent indexed families and any further type-level features require separate rules. |
 | Collection binders, folds, loops, recursion forms | Replace schematic families with complete rules or justified derived forms, including captured lexical environments and early exits. |
 | Raw-word binary64 primitives | Define permitted results and prove preservation for every allowed result. |
+| Generic traps and bang wrappers | Absent. Only justified arithmetic overflow is a machine failure; checked array failures are ordinary data. Any added traps need explicit rules. |
 | Counter reads and explicit release | Define abstract state and a declarative admissibility/ownership discipline. Ordinary relevance does not discharge this obligation. |
 | Algorithmic type checking | Exact inference/admission correspondence and expression type uniqueness are proved for the current calculus. Every future extension must preserve these results. |
 
@@ -298,9 +303,8 @@ No underflow or division-by-zero failure is introduced.
 Successor and predecessor are transparent add/sub-by-one expressions. Boolean
 to natural conversion is `ifE b (nat 1) (nat 0)`. These definitions evaluate their
 argument once and introduce no hidden bindings. Source extraction equivalence is
-not implied by these definitions. Natural pattern matching remains a separate
-form to define or derive with proof. Fixed-width word operations are specified
-separately below.
+not implied by these definitions. Natural pattern matching is specified below.
+Fixed-width word operations are also specified separately.
 
 Checked primitive laws characterize exact success/failure, bounded outcomes,
 saturation, division/remainder by zero, and comparison results. Machine safety,
@@ -385,3 +389,24 @@ operand once. Its derived typing, inference, step, and relevance equations are c
 along with zero/self/mask identities, XOR cancellation, and complement involution.
 The existing generic word rules cover these operations in all safety and typing
 results; no extra failure outcome is introduced.
+
+
+## Natural-number pattern matching
+
+`natCase scrutinee zeroBody succBody` is checked. Its scrutinee has type Nat64.
+The zero arm has result type `τ` in the current context; the successor arm has
+that same result type under `nat64 :: Γ`. Every arm is checked even if a known
+scrutinee will not select it. No result annotation is needed because the zero
+arm supplies a candidate type checked against the successor arm.
+
+The machine evaluates the scrutinee once and captures the branch environment.
+Zero enters its arm in that environment. A value `n+1` enters the successor arm
+with `n` prepended at index zero. The predecessor is representable because the
+scrutinee was representable. Wrong-shaped scrutinees remain stuck.
+
+Relevance checks both arms and requires a syntactic use of the successor binder.
+Outer-variable occurrence shifts by one only in the successor arm. The checked
+step equations and occurrence/admission characterizations record these exact
+rules; all safety, formation, and algorithmic typing results include the form.
+This does not assert termination of recursive calls or correctness of a source
+recursion recognizer.

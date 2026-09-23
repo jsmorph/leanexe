@@ -837,7 +837,9 @@ memory-management implementation, or compiler correctness.
 - [x] Define and prove the documented bounded-natural primitive family, tagged overflow, comparisons, and derived successor/predecessor/Boolean conversion.
 - [x] Define explicit-width words, modular arithmetic, unsigned comparisons, and conversions with operation laws and extended metatheory.
 - [x] Prove finite-bit semantics, AND/OR/XOR laws, derived complement, and width-masked shifts under the existing dependency limit.
-- [ ] Extend natural pattern matching, raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
+- [x] Prove natural zero/successor elimination, predecessor binding, branch agreement, relevance, and its full metatheory.
+- [ ] Define and prove Boolean derived APIs, compound structural equality, and Option/Except combinators; track them explicitly in the coverage ledger.
+- [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
 - [x] Establish total algorithmic typing, exact ordinary/profile admission, and expression type uniqueness for the current calculus; keep program termination separate.
@@ -855,6 +857,7 @@ milestone is a checkpoint, not a reason to stop or wait for renewed permission.
 Nominal recursive data and algorithmic typing are now checked, including checker
 soundness/completeness, exact public admission, and expression type uniqueness.
 The bounded-natural primitive family and word arithmetic/conversions/bitwise
-operations/shifts are also checked. The next increment is an explicit natural
-zero/successor eliminator with a predecessor binder. This form is not yet covered;
-generic recursive calls alone do not establish its semantics or binding rules.
+operations/shifts and natural pattern matching are also checked. The next
+increment is a proved Boolean derived library with strict operand evaluation.
+The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
+derived families; representation ingredients alone do not establish their APIs.
