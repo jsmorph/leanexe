@@ -28,6 +28,38 @@ const auditedTheorems = [
   "LeanExe.TypeSafety.programAdmissible_cons_iff",
   "LeanExe.TypeSafety.programAdmissible_length",
   "LeanExe.TypeSafety.programAdmissible_lookup",
+  ...[
+    "lookup_none_iff",
+    "lookup_append_left",
+    "lookup_append_right",
+    "replace_none_iff",
+    "replace_length",
+    "replace_lookup_same",
+    "replace_lookup_other",
+    "get_failure_iff",
+    "set_failure_iff",
+    "push_failure_iff",
+    "append_failure_iff",
+    "set_success_iff",
+    "set_success_length",
+    "get_after_set_same",
+    "get_after_set_other",
+    "push_success",
+    "append_success",
+    "push_success_iff",
+    "append_success_iff",
+    "push_success_length",
+    "append_success_length",
+    "get_after_push_last",
+    "get_after_append_left",
+    "get_after_append_right",
+    "empty_typed",
+    "get_typed",
+    "set_typed",
+    "push_typed",
+    "append_typed",
+  ].map(name => `LeanExe.TypeSafety.ArrayValues.${name}`),
+  ...["append", "lookup", "replace"].map(name => `LeanExe.TypeSafety.ValuesTyped.${name}`),
 ];
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -65,6 +97,7 @@ function main() {
   run(["lake", "build", "LeanExe.TypeSafety"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_profile.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_arrays.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

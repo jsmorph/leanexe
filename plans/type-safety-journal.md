@@ -152,3 +152,38 @@ strictly below 2^64; growth either preserves that invariant or returns failure.
 The agent owns pure operation laws and machine/proof integration. Parent-owned
 examples exercise behavior independently. At this specification checkpoint those
 array examples and proofs have not yet been checked.
+
+2026-09-23: Completed the six-form persistent-array increment. Array values have
+an extrinsic homogeneous-list judgment and a length bound. ArrayValues defines
+total raw operations without typing premises, then proves their exact failure
+conditions, checked success and length characterizations, read-after-write,
+unchanged other reads, and append/push ordering laws. The machine evaluates all
+operands strictly and carries element, length, index, and captured-environment
+invariants in its frames. Existing progress, preservation, reachable-state,
+result-type, overflow, and profile theorems now include these forms.
+
+The first focused operation proofs needed explicit Nat normalization and a
+recursive index argument. Lean's direct induction tactic did not support the
+mutual value/list-typing judgment in the attempted form; induction on the raw
+list followed by typing inversion gave the required proofs. A reserved pattern
+identifier in the machine was renamed. No theorem statement was weakened.
+The parent reviewed the raw operations, exact failure/result laws, runtime
+transitions, and typing invariants independently of the agent's implementation.
+
+All 46 new array examples passed on their first gate run. They cover endpoint
+and large invalid indices, unchanged original arrays after set, nested arrays,
+failure order including invalid-set replacement evaluation, restored lexical
+environments, direct array calls, rejected heterogeneous values and wrong index
+types, and malformed array frames. The full gate passed all seven build jobs,
+113 examples with warnings as errors, and 52 transitive theorem audits. Four
+audited array/list lemmas use no axioms; the other 48 results use only propext.
+Node syntax, whitespace, and the source scan for proof holes and unsafe shortcuts
+also passed. These are abstract array results; no storage or compiler theorem
+was added.
+
+Updated the older compiler-dialect overview to remove an unconditional claim
+that source evaluation order is preserved for every accepted expression. The
+replacement distinguishes implemented demand behavior and example coverage from
+the absent general preservation theorem. The older type-theory and compilation
+specifications now link the strict normative contract and identify the compiler
+compatibility boundary explicitly.

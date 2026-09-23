@@ -832,7 +832,8 @@ memory-management implementation, or compiler correctness.
 - [x] Choose strict independent semantics and record the compatibility boundary with the existing deferred-field implementation.
 - [x] Add and verify a syntactic relevance profile for machine-written programs, including complete product patterns and Unit elimination.
 - [ ] Complete declarative type/declaration formation and the schematic collection, binder, and recursion rules.
-- [ ] Extend abstract values and primitive semantics, starting with persistent arrays and their bounds/length invariants.
+- [x] Extend abstract values and primitive semantics with persistent arrays: empty, size, checked get/set/push/append, length bounds, failure laws, and read-after-write laws.
+- [ ] Extend the remaining numeric, byte, data-declaration, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
 - [ ] Establish algorithmic type-checking results against the declarative rules; state termination obligations separately.

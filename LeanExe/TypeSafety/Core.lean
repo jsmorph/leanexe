@@ -15,6 +15,10 @@ sums, bindings, conditionals, checked addition, and direct first-order calls.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
 arithmetic. Function bodies may call any declared function, including themselves;
 typing imposes no termination condition.
+
+Persistent arrays contain homogeneous finite sequences with length below
+`nat64Limit`. Reads, replacement, growth, and concatenation expose checked sum
+results; their typing is independent of any physical storage representation.
 -/
 
 namespace LeanExe.TypeSafety
@@ -25,6 +29,7 @@ inductive Ty where
   | nat64
   | prod (left right : Ty)
   | sum (left right : Ty)
+  | array (item : Ty)
   deriving DecidableEq, Repr
 
 /-- The exclusive upper bound on a represented natural number. -/
@@ -50,6 +55,12 @@ inductive Expr where
   | sumCase (scrutinee left right : Expr)
   | add (left right : Expr)
   | call (function : Nat) (arguments : List Expr)
+  | arrayEmpty (item : Ty)
+  | arraySize (array : Expr)
+  | arrayGet? (array index : Expr)
+  | arraySet? (array index replacement : Expr)
+  | arrayPush? (array value : Expr)
+  | arrayAppend? (left right : Expr)
   deriving Repr
 
 inductive Value where
@@ -59,6 +70,7 @@ inductive Value where
   | pair (left right : Value)
   | inl (payload : Value)
   | inr (payload : Value)
+  | array (elements : List Value)
   deriving Repr
 
 abbrev Context := List Ty
@@ -109,6 +121,20 @@ inductive ExprTyped (signatures : Signatures) : Context → Expr → Ty → Prop
   | call (found : lookup signatures function = some ⟨params, result⟩) :
       ArgsTyped signatures Γ arguments params →
       ExprTyped signatures Γ (.call function arguments) result
+  | arrayEmpty : ExprTyped signatures Γ (.arrayEmpty α) (.array α)
+  | arraySize : ExprTyped signatures Γ array (.array α) →
+      ExprTyped signatures Γ (.arraySize array) .nat64
+  | arrayGet? : ExprTyped signatures Γ array (.array α) →
+      ExprTyped signatures Γ index .nat64 →
+      ExprTyped signatures Γ (.arrayGet? array index) (.sum .unit α)
+  | arraySet? : ExprTyped signatures Γ array (.array α) →
+      ExprTyped signatures Γ index .nat64 → ExprTyped signatures Γ replacement α →
+      ExprTyped signatures Γ (.arraySet? array index replacement) (.sum .unit (.array α))
+  | arrayPush? : ExprTyped signatures Γ array (.array α) → ExprTyped signatures Γ value α →
+      ExprTyped signatures Γ (.arrayPush? array value) (.sum .unit (.array α))
+  | arrayAppend? : ExprTyped signatures Γ left (.array α) →
+      ExprTyped signatures Γ right (.array α) →
+      ExprTyped signatures Γ (.arrayAppend? left right) (.sum .unit (.array α))
 
 inductive ArgsTyped (signatures : Signatures) : Context → List Expr → List Ty → Prop where
   | nil : ArgsTyped signatures Γ [] []
@@ -142,6 +168,7 @@ theorem BodiesTyped.lookup (typed : BodiesTyped signatures program declarations)
           exact ⟨_, rfl, hbody⟩
       | succ function => exact ih found
 
+mutual
 inductive ValueTyped : Value → Ty → Prop where
   | unit : ValueTyped .unit .unit
   | bool : ValueTyped (.bool b) .bool
@@ -150,6 +177,14 @@ inductive ValueTyped : Value → Ty → Prop where
       ValueTyped (.pair left right) (.prod α β)
   | inl : ValueTyped payload α → ValueTyped (.inl payload) (.sum α β)
   | inr : ValueTyped payload β → ValueTyped (.inr payload) (.sum α β)
+  | array : ValuesTyped elements α → elements.length < nat64Limit →
+      ValueTyped (.array elements) (.array α)
+
+/-- An abstract array stores a finite homogeneous sequence of values. -/
+inductive ValuesTyped : List Value → Ty → Prop where
+  | nil : ValuesTyped [] α
+  | cons : ValueTyped value α → ValuesTyped rest α → ValuesTyped (value :: rest) α
+end
 
 inductive EnvTyped : Env → Context → Prop where
   | nil : EnvTyped [] []
@@ -204,5 +239,11 @@ theorem ValueTyped.sum_canonical (h : ValueTyped value (.sum α β)) :
   cases h with
   | inl hpayload => exact .inl ⟨_, rfl, hpayload⟩
   | inr hpayload => exact .inr ⟨_, rfl, hpayload⟩
+
+theorem ValueTyped.array_canonical (h : ValueTyped value (.array α)) :
+    ∃ elements, value = .array elements ∧ ValuesTyped elements α ∧
+      elements.length < nat64Limit := by
+  cases h with
+  | array helements bounded => exact ⟨_, rfl, helements, bounded⟩
 
 end LeanExe.TypeSafety
