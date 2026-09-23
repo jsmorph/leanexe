@@ -279,3 +279,14 @@ checker/admission examples, and ran the full maintained gate. Nine build jobs,
 new theorem uses only propext. The next coverage increment concerns the remaining
 bounded-natural operations; fixed-width words, bytes, additional collection forms,
 and effects remain explicit unfinished language obligations.
+
+
+2026-09-23: Selected the next numeric boundary from the documented primitive
+inventory and reviewed recognition/lowering code only as coverage evidence.
+It supplies no language-to-compiler correspondence theorem. The bounded-natural
+increment uses explicit binary-operation and comparison tags, with a separate
+addition/multiplication overflow tag. This avoids treating multiplication failure
+as an addition error or giving total operations spurious permitted failures.
+The implementation and its proof extensions are now in progress; the new numeric
+contract is explicitly marked unproved at this checkpoint. Word operations,
+natural pattern matching, bytes, collection forms, and effects remain tracked.
