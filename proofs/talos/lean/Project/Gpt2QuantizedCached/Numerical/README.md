@@ -23,7 +23,9 @@ The [raw-word range checkers](../../ProofKit/F32RangeCertificate.lean) supply so
 
 The [checkpoint and activation records](../../../../../../data/gpt2-quantized-v1/certificates/README.md) check the exported weights and every captured group64 activation quantizer across 229 retained prefixes.  The activation record checks 233,580 groups and 14,949,120 coefficients.  Its local reconstruction bound includes clipping and division rounding.
 
-The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace` or establish its nonlinear range premises.  Complete trace-level checking of those premises and evaluation of the propagated bound remain open.
+The normalization checker supplies all `LayerNormPair.Ranges` premises for each of 11,450 captured normalizations.  It checks actual ordered mean and variance sums, centering, both divisions, epsilon addition, square root, reciprocal, normalization, gamma, and beta.  Its proved conversion uses a denominator lower bound of `1/1000`.  A separate theorem proves the corresponding real-reference root lower bound for every reference input.  Capture reproduces every FP32 and quantized retained logit hash.
+
+The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  GELU and attention range evidence and evaluation of the propagated bound remain open.
 
 ## Checking
 
