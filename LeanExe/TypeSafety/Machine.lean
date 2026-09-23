@@ -228,6 +228,9 @@ theorem step_succ : step program (.eval (.succ value) env kont) =
 theorem step_pred : step program (.eval (.pred value) env kont) =
     some (.eval value env (.natBinLeft .sub (.nat 1) env :: kont)) := rfl
 
+theorem step_wordNot : step program (.eval (.wordNot width value) env kont) =
+    some (.eval value env (.wordBinLeft width .bitXor (.word width (wordMask width)) env :: kont)) := rfl
+
 theorem step_boolToNat : step program (.eval (.boolToNat value) env kont) =
     some (.eval value env (.ifBranches (.nat 1) (.nat 0) env :: kont)) := rfl
 

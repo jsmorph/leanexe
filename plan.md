@@ -836,7 +836,8 @@ memory-management implementation, or compiler correctness.
 - [x] Extend abstract values and primitive semantics with persistent arrays: empty, size, checked get/set/push/append, length bounds, failure laws, and read-after-write laws.
 - [x] Define and prove the documented bounded-natural primitive family, tagged overflow, comparisons, and derived successor/predecessor/Boolean conversion.
 - [x] Define explicit-width words, modular arithmetic, unsigned comparisons, and conversions with operation laws and extended metatheory.
-- [ ] Extend word bitwise operations/shifts, raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
+- [x] Prove finite-bit semantics, AND/OR/XOR laws, derived complement, and width-masked shifts under the existing dependency limit.
+- [ ] Extend natural pattern matching, raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
 - [x] Establish total algorithmic typing, exact ordinary/profile admission, and expression type uniqueness for the current calculus; keep program termination separate.
@@ -845,7 +846,7 @@ Language type soundness is a property of the language's typing and operational
 semantics. Extraction correctness, compiler refinement, and physical ownership
 implementation are separate tracks, not prerequisites for this theorem. A
 declarative ownership/effect system, if part of the language, does need its own
-soundness argument. The existing small calculus is type safe; its adequacy for
+soundness argument. The specified calculus is type safe; its adequacy for
 the broader documented runtime language is still open.
 
 Execution cadence: keep advancing this authorized track after each checked
@@ -853,8 +854,7 @@ milestone, with frequent status updates, commits, and pushes. Publishing a
 milestone is a checkpoint, not a reason to stop or wait for renewed permission.
 Nominal recursive data and algorithmic typing are now checked, including checker
 soundness/completeness, exact public admission, and expression type uniqueness.
-The documented bounded-natural primitive family and word arithmetic/conversions
-are also checked. The next numeric increment specifies word bitwise operations
-and masked shifts, proves their laws, and preserves the safety/checker results. Natural pattern matching still
-needs a complete rule or proved expansion; generic recursive calls alone do not
-establish such an expansion.
+The bounded-natural primitive family and word arithmetic/conversions/bitwise
+operations/shifts are also checked. The next increment is an explicit natural
+zero/successor eliminator with a predecessor binder. This form is not yet covered;
+generic recursive calls alone do not establish its semantics or binding rules.
