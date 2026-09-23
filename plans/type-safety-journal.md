@@ -461,3 +461,19 @@ then passed fifteen build jobs, all 537 existing examples, and all 278 audits.
 The equality-domain test draft is intentionally outside that gate until the
 specific checker exists. This checkpoint proves the generic iteration bound;
 it does not yet prove equality admission. EqualityTypes remains in development.
+
+
+Completed equality-domain admission. EqTy/EqTypes/EqConstructors are independent
+inductive judgments; the table checker is proved equivalent without global
+formation, assumed acyclicity, or a fuel-adequacy premise. Local equality-domain
+formation is also proved. The initially implicit mutual recursion for completeness
+failed elaboration because nominal field type syntax need not decrease. Using
+the generated mutual derivation recursor with all three checker motives resolved
+that proof boundary without changing a statement or adding an assumption.
+
+The full gate passed sixteen build jobs, all 575 examples, and all 300 theorem
+audits. The 38 new examples include the sharp declaration-chain bound, reachable
+cycles through arrays/sums/products, nullary alternatives beside recursion,
+unrelated cycles, empty declarations, and local admission versus global malformed
+declarations. Source structural equality and its safety cases remain the next
+increment; no source operation was added in this checkpoint.

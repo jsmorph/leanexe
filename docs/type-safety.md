@@ -175,7 +175,8 @@ presentation. No premise assumes one of these safety conclusions.
 | [Typing.lean](../LeanExe/TypeSafety/Typing.lean) | Total inference, exact admission checks, type uniqueness, and checker-to-safety corollaries. |
 | [BoolDerived.lean](../LeanExe/TypeSafety/BoolDerived.lean) | Strict Boolean source expansions, typing/inference/relevance equations, staging and truth-table execution proofs. |
 | [ValueEquality.lean](../LeanExe/TypeSafety/ValueEquality.lean) | Total raw value/list comparison and exact equality laws; no source equality primitive or admission judgment yet. |
-| [EqualityFlags.lean](../LeanExe/TypeSafety/EqualityFlags.lean) | Constructive monotone Boolean-table saturation and its proved iteration bound; equality admission is still pending. |
+| [EqualityFlags.lean](../LeanExe/TypeSafety/EqualityFlags.lean) | Constructive monotone Boolean-table saturation and its proved iteration bound. |
+| [EqualityTypes.lean](../LeanExe/TypeSafety/EqualityTypes.lean) | Independent equality-domain judgments, formation, exact terminating admission checker. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -194,9 +195,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [73 word examples](../test/type_safety_words.lean),
 [49 bitwise/shift examples](../test/type_safety_bits.lean),
 [35 natural-case examples](../test/type_safety_nat_case.lean),
-[47 Boolean examples](../test/type_safety_booleans.lean), and
-[25 raw equality examples](../test/type_safety_value_equality.lean). It audits the
-transitive axiom dependencies of all 278 declared theorems across the thirteen
+[47 Boolean examples](../test/type_safety_booleans.lean),
+[25 raw equality examples](../test/type_safety_value_equality.lean), and
+[38 equality-domain examples](../test/type_safety_equality_domain.lean). It audits the
+transitive axiom dependencies of all 300 declared theorems across the fourteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -315,11 +317,13 @@ complete finite raw value or value list. This includes tags, widths, nominal
 identities, constructors, field order, and lengths. These are mathematical
 operation laws, not source admission or compiler-correctness results. The
 comparison accepts raw malformed values as inputs; it does not validate them.
-There is not yet a structural-equality expression or proved `EqTy` checker.
+There is not yet a structural-equality expression. The independent `EqTy`
+judgment and its exact checker are now proved: `equalitySupported_iff` states
+that the checker returns true exactly for the inductively specified domain.
 
 
 `EqualityCheck.saturate_stable` proves that a monotone, length-preserving
 transformer on Boolean tables stabilizes from the all-false table within the
 table length. Its proof uses a direct count of true entries. This generic
-iteration bound is checked; the equality-specific closure judgment and checker
-correspondence remain the next obligation.
+iteration bound and the equality-specific checker correspondence are checked.
+The next obligation is source-expression integration with the full metatheory.

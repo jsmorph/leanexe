@@ -1,5 +1,6 @@
 import LeanExe.TypeSafety.Formation
 import LeanExe.TypeSafety.EqualityFlags
+import LeanExe.TypeSafety.EqualityTypes
 import LeanExe.TypeSafety.NatOperations
 import LeanExe.TypeSafety.BitOperations
 import LeanExe.TypeSafety.WordOperations
@@ -47,5 +48,8 @@ assumption or compiler-recognition claim. Strict Boolean connectives and equalit
 are transparent definitions using product elimination; their typing, admission,
 and machine truth tables are proved without extending the transition function.
 A separate raw value comparator is proved correct for finite value trees, including
-malformed inputs. It introduces no source equality primitive or admission policy.
+malformed inputs. Independent `EqTy` admission and its exact saturation checker
+select types whose nominal field dependencies have finite equality derivations.
+This admission includes every constructor field; no source equality primitive
+has yet been introduced.
 -/

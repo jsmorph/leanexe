@@ -841,7 +841,8 @@ memory-management implementation, or compiler correctness.
 - [x] Prove strict Boolean derived APIs, exact typing/relevance, staging, and truth-table execution.
 - [x] Prove total raw structural comparison exactly matches equality of finite values/lists; keep source admission separate.
 - [x] Prove constructive finite Boolean-table saturation within the table length.
-- [ ] Prove independent EqTy admission and its exact checker, then integrate the structural-equality expression with full metatheory.
+- [x] Prove independent EqTy admission and its exact total checker, including the iteration bound.
+- [ ] Integrate the structural-equality expression with full metatheory.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -863,8 +864,8 @@ soundness/completeness, exact public admission, and expression type uniqueness.
 The bounded-natural primitive family and word arithmetic/conversions/bitwise
 operations/shifts, natural pattern matching, and strict Boolean derived APIs
 are also checked. Raw structural comparison has exact equality proofs. Next,
-prove the independent source equality domain and its total exact checker before
-integrating the operation. Option/Except callback hygiene and payload-discard
+integrate structural equality using the now-proved independent domain and exact
+checker. Option/Except callback hygiene and payload-discard
 policy remain explicit obligations.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.
