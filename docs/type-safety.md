@@ -29,8 +29,9 @@ different obligation, not the reason the full language theorem is unfinished.
 ## Language and execution
 
 The core has Unit, Bool, bounded natural numbers, products, binary sums,
-variables, let bindings, conditionals, projections, case analysis, checked
-addition, and direct first-order calls with arbitrary finite argument lists.
+variables, let bindings, conditionals, projections, complete product patterns,
+Unit elimination, sum case analysis, checked addition, and direct first-order
+calls with arbitrary finite argument lists.
 Expressions, values, and machine states are ordinary untyped data. Separate
 inductive judgments describe their types. Natural literals and natural values
 must be below `2^64` when typed; addition uses this bounded-natural interpretation,
@@ -43,6 +44,13 @@ payload is prepended to the lexical environment at variable index zero. Calls
 start with a fresh environment: index zero denotes the first argument, index one
 the second, and so on. Suspended continuations retain the caller bindings they
 need. These conventions specify this core, not Lean's imported-expression format.
+
+`split` prepends the left and right product fields in that order. `unitCase`
+introduces no binder. The syntactic relevance profile requires every introduced
+binding to occur in its scope and rejects `fst`/`snd` recursively. Repeated use is
+allowed; a use in one conditional branch suffices. This is neither a linearity
+discipline nor a claim of semantic necessity. `ProfileTyped` and
+`ProfileProgramTyped` require both ordinary typing and these admission checks.
 
 Function bodies are checked against a fixed signature table. `ProgramTyped`
 requires exactly one body per declared signature, checked under its parameter
@@ -86,6 +94,12 @@ computations supplied with well-typed environments and continuations.
 | `return_type` | A completed execution returns a value of its original result type. |
 | `overflow_is_justified` | A reached overflow contains bounded operands whose mathematical sum exceeds the representation. |
 | `step_deterministic` | Two successors of the same state are equal. |
+| `profile_type_safety`, `profile_return_type`, `profile_overflow_is_justified` | The corresponding execution guarantees for admitted profile programs. |
+
+The profile module also proves exact characterizations of its binding and
+argument checks. `programAdmissible_lookup` establishes that each declared
+function has an admitted body using every parameter index. These Boolean checks
+do not replace ordinary type checking, and relevance is not a runtime invariant.
 
 The proof first constructs a typed successor for each expression and continuation
 frame, using typed lookup and canonical forms. This gives progress and one-step
@@ -101,6 +115,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
 | [Safety.lean](../LeanExe/TypeSafety/Safety.lean) | Progress, preservation, finite-execution safety, result typing, and overflow justification. |
+| [Profile.lean](../LeanExe/TypeSafety/Profile.lean) | Syntactic admission checks, their characterizations, and profile safety. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -110,14 +125,18 @@ tools/type-safety.js check
 ```
 
 The gate checks the version against `lean-toolchain`, builds only the independent
-`LeanExe.TypeSafety` target, checks [26 semantic examples](../test/type_safety.lean),
-and audits the transitive axiom dependencies of all seven public theorems listed
-above. Missing audit results or any axiom other than `propext` fail the gate.
+`LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean)
+and [41 profile examples](../test/type_safety_profile.lean), and audits the
+transitive axiom dependencies of seven core results and all 13 profile theorems.
+Missing audit results or any axiom other than `propext` fail the gate.
 Behavior checks and the audit run with warnings treated as errors. The examples
 exercise lexical capture, both sum branches, branch selection, strict pairs,
 addition boundaries, malformed states, argument order, exact arity, fresh callee
 environments, caller continuation restoration, and a typed recursive self-loop.
 They complement the universal theorems by checking the intended semantics.
+Profile examples additionally cover two-field binding order, lexical shifts,
+Unit elimination, ignored fields and parameters, nested projections, duplicate
+uses, and uses confined to an unselected branch.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends only on
