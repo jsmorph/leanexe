@@ -826,7 +826,7 @@ or compiler correctness.
 - [x] Kernel-check typed environment lookup and canonical-form lemmas.
 - [x] Define explicit machine transitions and configuration typing.
 - [x] Prove one-step preservation, progress, and reachable-state safety for the initial core.
-- [ ] Check positive, specified-failure, and ill-typed/stuck examples.
-- [ ] Add a repeatable independent proof gate and public-theorem axiom audit.
-- [ ] Extend the core with typed direct first-order calls and well-formed bodies.
+- [x] Check positive, specified-failure, and ill-typed/stuck examples.
+- [x] Add a repeatable independent proof gate and public-theorem axiom audit.
+- [x] Extend the core with typed direct first-order calls and well-formed bodies.
 - [ ] Design the next extension for abstract persistent arrays and their operations.
