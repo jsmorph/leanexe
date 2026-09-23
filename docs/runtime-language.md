@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 537 semantic examples and audits all 265 declared
-theorems across the twelve development modules, including helper proofs. It
+The maintained gate checks 537 semantic examples and audits all 278 declared
+theorems across the thirteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -457,8 +457,10 @@ An empty declaration qualifies without implying that it has a value.
 The checker under development starts with a false flag for each declaration and
 repeatedly checks all constructor fields against the previous flags. Its bound
 is the number of declarations. Monotonicity, strict increase in the count of true
-flags when a round changes the table, and the table length bound must prove
-stabilization. Soundness follows by induction on rounds; completeness by
+flags when a round changes the table, and the table length bound now prove
+generic stabilization in `EqualityFlags.lean`. The equality-specific checker
+and correspondence remain under development. Its soundness proof is by
+induction on rounds; completeness by
 induction on the independent judgment against the resulting fixed table.
 
 This is a local property of the queried type. An unrelated recursive declaration

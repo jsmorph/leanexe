@@ -840,6 +840,7 @@ memory-management implementation, or compiler correctness.
 - [x] Prove natural zero/successor elimination, predecessor binding, branch agreement, relevance, and its full metatheory.
 - [x] Prove strict Boolean derived APIs, exact typing/relevance, staging, and truth-table execution.
 - [x] Prove total raw structural comparison exactly matches equality of finite values/lists; keep source admission separate.
+- [x] Prove constructive finite Boolean-table saturation within the table length.
 - [ ] Prove independent EqTy admission and its exact checker, then integrate the structural-equality expression with full metatheory.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
