@@ -4,9 +4,16 @@ namespace Project.Gpt2QuantizedCached.CachedBlock
 open Project.ProofKit Project.EulerRiemann.Execution
 open GroupedProjection
 
-theorem budget (heap : Heap) (position : Nat) (hPosition : position < 128)
+structure AllocationTops (heap : Heap) (position : Nat) : Prop where
+  normalized : (normalizedHeap heap).top.toNat ≤ heap.top.toNat + 98304
+  attention : (attentionHeap heap position).top.toNat ≤ heap.top.toNat + 98304
+  normalized2 : (normalized2Heap heap position).top.toNat ≤ heap.top.toNat + 98304
+  activated : (activatedHeap heap position).top.toNat ≤ heap.top.toNat + 98304
+  cache : (cacheHeap heap position).top.toNat ≤ heap.top.toNat + 98304
+
+theorem budget_with_tops (heap : Heap) (position : Nat) (hPosition : position < 128)
     (h : heap.top.toNat + 98304 < 4294967296) :
-    Resources heap position 65536 ∧ (cacheHeap heap position).top.toNat ≤ heap.top.toNat + 98304 := by
+    Resources heap position 65536 ∧ AllocationTops heap position := by
   have hQkvNeed : Projection.allocationBudget 768 2304 1 = 10176 := rfl
   have hProjectionNeed : Projection.allocationBudget 768 768 1 = 4032 := rfl
   have hExpandedNeed : Projection.allocationBudget 768 3072 1 = 13248 := rfl
@@ -46,9 +53,16 @@ theorem budget (heap : Heap) (position : Nat) (hPosition : position < 128)
   rw [← hiddenHeap, hResidualNeed] at hHiddenTop
   rw [← cacheHeap, hCacheNeed] at hCacheTop
   refine ⟨⟨hNormalized, hQkv, hAttention, hProjection, ?_, hNormalized2, hExpanded,
-    ?_, hProjected2, ?_, ?_⟩, by omega⟩
+    ?_, hProjected2, ?_, ?_⟩, ⟨by omega, by omega, by omega, by omega, by omega⟩⟩
   all_goals apply Gpt2CachedStep.LayerNorm.AllocationFits.of_bound
   all_goals simp only [hResidualNeed, hActivatedNeed, hCacheNeed]; omega
 
+theorem budget (heap : Heap) (position : Nat) (hPosition : position < 128)
+    (h : heap.top.toNat + 98304 < 4294967296) :
+    Resources heap position 65536 ∧ (cacheHeap heap position).top.toNat ≤ heap.top.toNat + 98304 := by
+  have hBounds := budget_with_tops heap position hPosition h
+  exact ⟨hBounds.1, hBounds.2.cache⟩
+
+#print axioms budget_with_tops
 #print axioms budget
 end Project.Gpt2QuantizedCached.CachedBlock

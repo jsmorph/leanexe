@@ -132,6 +132,7 @@ theorem qkv_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hNext : ∀ final result,
       QkvState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) base normalizedPtr (outputNode heap 768 2304 1).root result →
+      result.locals.take 21 = frame.locals.take 21 →
       Output heap initial final weights normalized (base + qkvWeightOffset) (base + qkvScaleOffset)
         (base + qkvBiasOffset) 768 2304 1 true →
       wp «module» rest Q final result env) :
@@ -188,11 +189,13 @@ theorem qkv_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   refine wp_call_tw hCall ?_
   rintro final values ⟨rfl, hOutput⟩
   wp_packed_frame [hParams, parameters, hLocals]
-  apply hNext _ _ ?_ hOutput
-  simp (config := { maxDischargeDepth := 64 }) only [QkvState, NormalizedState, parameters, hLocals,
+  apply hNext _ _ ?_ ?_ hOutput
+  · simp (config := { maxDischargeDepth := 64 }) only [QkvState, NormalizedState, parameters, hLocals,
     List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte, hBase,
     hNormalizedOwner, hNormalizedPtr, hNormalizedBytes, hCopiedOwner, hCopiedPtr, hCopiedBytes,
     I64Values.set, hTyped, show UInt64.ofNat (4 * (1 * 2304)) = 9216 from rfl, and_self]
+
+  · simp only [List.take_set_of_le, Nat.reduceLeDiff]
 
 #print axioms qkv_spec
 end Project.Gpt2QuantizedCached.CachedBlock

@@ -41,6 +41,7 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       AttentionState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) base normalizedPtr qkvPtr
         (Gpt2CachedStep.CachedAttention.outputNode heap position).root result →
+      result.locals.take 40 = frame.locals.take 40 →
       (Gpt2CachedStep.CachedAttention.finalHeap heap position).At final →
       (Gpt2CachedStep.CachedAttention.finalHeap heap position).OwnsPacked final (Gpt2CachedStep.CachedAttention.outputNode heap position)
         (cachedAttention cache qkv layer position) →
@@ -68,6 +69,7 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       hNormalizedOwner, hNormalizedPtr, hNormalizedBytes, hCopiedOwner, hCopiedPtr, hCopiedBytes,
       hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes,
       I64Values.set, hTyped, show UInt64.ofNat 3072 = 3072 from rfl, and_self]
+  · simp only [List.take_set_of_le, Nat.reduceLeDiff]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame
