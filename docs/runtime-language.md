@@ -98,7 +98,7 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 575 semantic examples and audits all 300 declared
+The maintained gate checks 610 semantic examples and audits all 307 declared
 theorems across the fourteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
@@ -137,7 +137,7 @@ The following work remains separately tracked:
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
 | U8/U32/U64 operations | Arithmetic, comparisons, conversions, bitwise operations, complement, and masked shifts are checked. Raw binary64 is tracked separately below. |
-| Compound structural equality | Boolean helpers and numeric equality are checked. Equality for compound values still requires definitions and proofs. |
+| Structural equality | Strict equality is checked for the independent EqTy domain, including acyclic compound/nominal types. Bytes and arbitrary source BEq implementations remain separate. |
 | Option/Except combinators | Sum/data elimination supplies ingredients; map/bind/default/filter/tests/fallback and conversion APIs still need proved expansions. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
@@ -428,7 +428,7 @@ remain in the original operand scopes. Boolean equality does not cover compound
 structural equality.
 
 
-## Raw structural comparison and pending source admission
+## Structural comparison and source admission
 
 The checked comparison of finite raw `Value` trees is independent of typing.
 Its proved specification is exact: the Boolean result is true if
@@ -436,8 +436,7 @@ and only if the two values are propositionally equal. Arrays compare length,
 order, and all elements; nominal values compare type identity, constructor, and
 all fields. Scalar tags, word widths, and sum tags are significant.
 
-This is an operation-law checkpoint, not yet an admitted source primitive. The
-raw comparison may be defined on malformed values and finite recursive values
+The raw comparison is defined on malformed values and finite recursive values
 without admitting their types for source equality. The documented `EqTy` domain
 excludes recursive variants. `EqualityTypes.lean` now provides the independent
 judgment and exact executable check for that boundary. Bytes are not yet
@@ -462,8 +461,27 @@ generic stabilization in `EqualityFlags.lean`. The equality-specific checker
 and correspondence are proved in `EqualityTypes.lean`. Soundness uses induction
 on rounds; completeness uses induction on the independent judgment against the resulting fixed table.
 `equalitySupported_iff` has no unproved fuel-adequacy or acyclicity premise.
-A source expression and its operational/typing rules are still pending.
+The strict source expression described below uses this proved domain.
 
 This is a local property of the queried type. An unrelated recursive declaration
 does not reject an acyclic query. Global declaration formation is still required
 by the public source admission check; local equality admission cannot replace it.
+
+
+### Checked source structural equality
+
+`structEq left right` requires both operands to have the same type `τ` and
+a derivation of `EqTy declarations τ`. It evaluates the left operand first,
+then the right, and returns the Boolean computed by `valueEq`. The operation
+introduces no failure outcome. Failure while evaluating an operand propagates
+through the existing machine rules. Every source field is evaluated before its
+constructed value participates in comparison.
+
+The raw transition is total on two returned values, including malformed values.
+That behavior does not admit heterogeneous or malformed source expressions.
+Static inference must check operand type equality and the independent equality
+domain; public admission must retain the ambient formation checks. Relevance
+checks both operand expressions. Formation, exact inference, type uniqueness,
+progress, preservation, finite-execution safety, and profile safety include this
+form. Exact final-step laws connect returned true/false to raw value equality
+and inequality, respectively.

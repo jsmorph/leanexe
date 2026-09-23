@@ -87,6 +87,13 @@ def inferRaw (declarations : DataDecls) (signatures : Signatures) (Γ : Context)
       if inferRaw declarations signatures Γ left = some .nat64 then
         if inferRaw declarations signatures Γ right = some .nat64 then some .bool else none
       else none
+  | .structEq left right =>
+      match inferRaw declarations signatures Γ left with
+      | some α =>
+          if equalitySupported declarations α then
+            if inferRaw declarations signatures Γ right = some α then some .bool else none
+          else none
+      | none => none
   | .wordBin width _ left right =>
       if inferRaw declarations signatures Γ left = some (.word width) then
         if inferRaw declarations signatures Γ right = some (.word width) then some (.word width)
@@ -210,6 +217,9 @@ theorem inferRaw_complete (typed : ExprTyped declarations signatures Γ expr τ)
         inferRaw_complete succBody]
   | natBin _ left right | natCmp _ left right =>
       simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
+  | structEq left right domain =>
+      simp [inferRaw, inferRaw_complete left, inferRaw_complete right,
+        equalitySupported_iff.mpr domain]
   | wordBin _ _ left right | wordCmp _ _ left right =>
       simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
   | wordOfNat _ value | wordToNat _ value | wordCast _ _ value =>
@@ -393,6 +403,20 @@ theorem inferRaw_sound (inferred : inferRaw declarations signatures Γ expr = so
           exact .natCmp operation (inferRaw_sound leftType) (inferRaw_sound rightType)
         next => cases inferred
       next => cases inferred
+  | structEq left right =>
+      cases leftType : inferRaw declarations signatures Γ left with
+      | none => simp [inferRaw, leftType] at inferred
+      | some α =>
+          simp only [inferRaw, leftType] at inferred
+          split at inferred
+          next domain =>
+            split at inferred
+            next rightType =>
+              cases inferred
+              exact .structEq (inferRaw_sound leftType) (inferRaw_sound rightType)
+                (equalitySupported_iff.mp domain)
+            next => cases inferred
+          next => cases inferred
   | wordBin width operation left right =>
       simp only [inferRaw] at inferred
       split at inferred

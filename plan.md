@@ -842,7 +842,8 @@ memory-management implementation, or compiler correctness.
 - [x] Prove total raw structural comparison exactly matches equality of finite values/lists; keep source admission separate.
 - [x] Prove constructive finite Boolean-table saturation within the table length.
 - [x] Prove independent EqTy admission and its exact total checker, including the iteration bound.
-- [ ] Integrate the structural-equality expression with full metatheory.
+- [x] Integrate strict homogeneous structural equality with full metatheory and exact result laws.
+- [ ] Prove hygienic renaming/weakening and the binding lemmas required for derived callbacks.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -863,9 +864,9 @@ Nominal recursive data and algorithmic typing are now checked, including checker
 soundness/completeness, exact public admission, and expression type uniqueness.
 The bounded-natural primitive family and word arithmetic/conversions/bitwise
 operations/shifts, natural pattern matching, and strict Boolean derived APIs
-are also checked. Raw structural comparison has exact equality proofs. Next,
-integrate structural equality using the now-proved independent domain and exact
-checker. Option/Except callback hygiene and payload-discard
-policy remain explicit obligations.
+are also checked. Structural equality now has an independent admission domain,
+an exact checker, strict source semantics, full metatheory, and exact result
+laws. Next, prove hygienic renaming/weakening for derived callbacks.
+Option/Except payload-discard policy remains an explicit obligation.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.

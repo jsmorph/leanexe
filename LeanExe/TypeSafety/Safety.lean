@@ -68,6 +68,8 @@ theorem eval_step_typed (hprogram : ProgramTyped declarations program signatures
       exact ⟨_, rfl, .eval hleft henv (.cons (.natBinLeft operation hright henv) hkont)⟩
   | natCmp operation hleft hright =>
       exact ⟨_, rfl, .eval hleft henv (.cons (.natCmpLeft operation hright henv) hkont)⟩
+  | structEq hleft hright domain =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.structEqLeft hright domain henv) hkont)⟩
   | wordBin width operation hleft hright =>
       exact ⟨_, rfl, .eval hleft henv (.cons (.wordBinLeft width operation hright henv) hkont)⟩
   | wordCmp width operation hleft hright =>
@@ -172,6 +174,10 @@ theorem frame_step_typed (hprogram : ProgramTyped declarations program signature
       obtain ⟨right, rfl, _⟩ := hvalue.nat_canonical
       exact ⟨_, rfl, .ret .bool hkont⟩
 
+  | structEqLeft hright domain henv =>
+      exact ⟨_, rfl, .eval hright henv (.cons (.structEqRight hvalue domain) hkont)⟩
+  | structEqRight hleft _ =>
+      exact ⟨_, rfl, .ret .bool hkont⟩
   | wordBinLeft width operation hright henv =>
       exact ⟨_, rfl, .eval hright henv (.cons (.wordBinRight width operation hvalue) hkont)⟩
   | wordBinRight width operation hleft =>

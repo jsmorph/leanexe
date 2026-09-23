@@ -50,6 +50,7 @@ and machine truth tables are proved without extending the transition function.
 A separate raw value comparator is proved correct for finite value trees, including
 malformed inputs. Independent `EqTy` admission and its exact saturation checker
 select types whose nominal field dependencies have finite equality derivations.
-This admission includes every constructor field; no source equality primitive
-has yet been introduced.
+`structEq` evaluates homogeneous, equality-admitted operands strictly and returns
+the proved raw comparison. Its domain includes every constructor field and
+excludes recursive nominal dependencies, even beneath arrays or unused alternatives.
 -/
