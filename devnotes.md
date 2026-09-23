@@ -16179,7 +16179,7 @@ The user requested a separate `wasi` branch, with permission to reuse relevant w
 - [x] Create and publish `wasi` from `main`.
 - [x] Define the public API, constants, and primitive ABI descriptions.
 - [x] Add effect sequencing and native WASI lowering.
-- [ ] Exercise all operation families on the standard Wasmtime host.
+- [x] Exercise all operation families on the standard Wasmtime host.
 - [ ] Check failure paths, value ownership, documentation, and final branch state.
 
 The compiler now lowers every registered operation to the Preview 1 ABI.  Buffer results, argument/environment arrays, preopen names, and poll records use owned runtime values.  A compile-time check compares each public declaration with its registered argument count, result width, and ownership slots.  The implementation reuses effect sequencing, loop ownership fixes, and signed i32 constant encoding from `io`, without adding that branch's byte IO API or custom host.
@@ -16191,3 +16191,9 @@ The filesystem test exposed repeated matcher expansion in structural-synthetic d
 A returned argument element initially pointed into freed storage.  WASI had returned an owned array with owned byte slices, but result materialization released the array without acquiring the returned child's reference.  Return-owner analysis now identifies array and heap-field projections, including aliases and branches, and inserts a retain before releasing the container.  Retains compare existing owned references so two returned slices sharing one buffer do not acquire duplicate references.  Focused Wasmtime tests preserve returned bytes after further allocations and balance allocations and frees across 100 cycles, including shared-buffer pairs.
 
 Nested tuple patterns in `Except.ok` exposed a separate matcher error: extraction treated a two-parameter tuple arm as a one-parameter payload arm.  Generated arm normalization now binds constructor-pattern variables to payload projections.  Tests cover `let .ok (first, last)` and shared argument storage.  The complete WASI driver and existing compiler tests remain in progress.
+
+The 38-case WASI driver now passes on Wasmtime 44.  It exercises binary stdin/stdout, EOF, a four-megabyte stream, all descriptor and path operations, argument and environment values, relative and absolute timers, readiness, invalid descriptors, process operations, randomness, and inherited TCP sockets.  The socket example polls before accepting and receiving because the inherited listener can return `again`.  Tests retain the native host results for unsupported operations, rights reduction, and zero-capacity reads.
+
+The local-array test found that owner-source tracking retained a child after transferring its reference into a container.  Refresh now removes consumed references and their aliases before deciding whether a returned child needs a retain.  The 100-cycle accounting test includes both WASI argument slices and locally allocated arrays.  All 41 existing reference-count cases pass, including their seven accounting assertions.
+
+A native CLI build initially omitted a loop that the Lean interpreter compiled correctly.  Rebuilding the CLI's native objects from generated C with the Lake artifact cache disabled removed the discrepancy.  The source tests then exposed and verified the ownership corrections above.  The encoder and matcher checks are the remaining targeted compiler checks.
