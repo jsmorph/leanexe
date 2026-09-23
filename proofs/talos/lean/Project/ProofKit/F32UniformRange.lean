@@ -1,9 +1,8 @@
 import Project.ProofKit.F32DotRanges
+import Project.ProofKit.F32UniformRangeCheck
 
 namespace Project.ProofKit.F32UniformRange
 open CodeLib.IEEE32
-
-def productMagnitude (bound : Nat) : Nat := (2 ^ bound + 2 ^ (bound - 25)) / 2 ^ 149
 
 theorem product_magnitude (a b : UInt32) (bound : Nat)
     (hLower : 173 ≤ bound) (hUpper : bound ≤ 425)
