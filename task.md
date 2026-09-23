@@ -21,13 +21,18 @@ through `LeanExe.Wasi.Action` and the `compile-wasi-api` command.
 - Independent verification of the other session's implementation commit
   `0c5af023`; verification notes published in `1d6e1f6b`.
 
-## Current checkpoint
+## Current checkpoint: implementation ready for review
 
 The ownership fix changed scalar-loop output even where there are no owned
-accumulators. The GCD output consequently differs from its checked-in proof
-model. A compatibility change in `LeanExe/Wasm/Binary.lean` preserves the old
+accumulators. A compatibility change in `LeanExe/Wasm/Binary.lean` preserves the old
 scalar encoding while retaining snapshots for loops that reclaim owners.
 The compiler and both image test modules build with this change.
+
+A clean compiler build of the unchanged base `a4655383` and this branch now
+produce identical 1,257-byte GCD modules (SHA-256
+`202034399188f494471d91426c957a986ffd7ff74d9f72fde330bf47a5daab71`).
+The remaining difference from the tracked proof model therefore predates
+`wasi`. No proof model was changed.
 
 Checks repeated after that change:
 
@@ -44,20 +49,22 @@ Additional checks passed before this last emitter change:
 - Legacy WASI driver: 33 runtime cases, two traps, nine rejections, and
   sixteen compile checks.
 
-## Remaining work and known blockers
+## Next steps and gate limitations
 
-1. Resolve the remaining GCD proof-model difference: extraction adds two
-   locals and result copies. A clean build of the unchanged `main` base is
-   underway to determine whether this difference predates `wasi`.
-2. Finish `tools/talos-proof.js check --all`. This has **not passed yet**.
-   The pinned verifier now builds and generates models. The local compiler
-   override supplies the pinned toolchain's standard include/link flags and
-   disables C optimization only for the generated WAT parser. Bulk Mathlib
-   cache download was stopped; updates use `MATHLIB_NO_CACHE_ON_UPDATE=1`.
-   The aggregate attempt was stopped during proof-source dependency setup
-   to finish the baseline comparison first. The tracked GCD cache remains
-   unchanged; its temporary regenerated candidate is retained under `build/`.
-3. Complete the final audit, update this status, and publish a clean branch.
+1. Review the native WASI implementation and ownership changes on `wasi`.
+2. Resolve the inherited verification-record problems separately, then rerun
+   the full execution, documentation, and source-proof gates. These gates
+   **have not passed**; the successful targeted checks above are narrower.
+
+The pinned Talos verifier builds and generates models. The focused
+`tools/talos-proof.js check gcd` fails because the tracked model is stale,
+including extra locals and result copies emitted by the unchanged base.
+The final `check --all` attempt was stopped during cold proof-source
+dependency setup after this inherited blocker was established. The tracked
+GCD cache remains unchanged; its generated candidate is under `build/`.
+The local verifier compiler override supplies the pinned toolchain's
+standard include/link flags and disables C optimization only for the
+generated WAT parser. Updates use `MATHLIB_NO_CACHE_ON_UPDATE=1`.
 
 The aggregate `test/run_all.js` currently stops at a historical release-input
 identity mismatch. The documentation gate rejects an absolute workspace path
