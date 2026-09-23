@@ -338,3 +338,13 @@ and checker cases and added 73 regression examples. The full maintained gate
 passed eleven build jobs, all 381 examples (new word examples on their first run),
 and all 171 theorem audits. Bitwise operations, complement, shifts, and binary64
 remain outside this checked checkpoint. Continued with bitwise/shift design.
+
+
+2026-09-23: Continued with bitwise operations and masked shifts. The generic word
+binary-operation rules can support these without new frames; complement is a
+transparent XOR-with-mask expression. The early dependency audit found Quot.sound
+in standard Nat bitwise equation/bound laws and Classical.choice in mask laws.
+The agent is investigating direct or structurally recursive finite-bit proofs
+under the existing dependency limit. The contract states pointwise finite-bit
+semantics independently of the host library; no unproved library correspondence
+is claimed. The implementation and proof approach remain in progress.
