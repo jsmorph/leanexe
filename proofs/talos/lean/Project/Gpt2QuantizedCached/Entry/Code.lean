@@ -79,6 +79,7 @@ structure State (params : List Value) (frame : Locals) : Prop where
 structure HiddenState (params : List Value) (status hidden cache : UInt64)
     (hiddenSize cacheSize : Nat) (frame : Locals) : Prop extends State params frame where
   releaseHidden : frame.locals[17]? = some (.i64 hidden)
+  releaseCache : frame.locals[20]? = some (.i64 cache)
   status : frame.locals[23]? = some (.i64 status)
   hiddenOwner : frame.locals[24]? = some (.i64 hidden)
   hiddenPtr : frame.locals[25]? = some (.i64 hidden)
