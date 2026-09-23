@@ -24,21 +24,27 @@ This evaluation strategy belongs to this core. Connecting demand-based LeanExe
 extraction to it requires a separate theorem. The core does not import the
 extractor, diagnostic IR evaluator, emitter, or Talos.
 
-## Initial implementation
+## Checked implementation
 
-[Core.lean](../LeanExe/TypeSafety/Core.lean) declares types, expression and value
-syntax, typing judgments, environment typing, typed lookup, and canonical-form
-lemmas. This first checkpoint is a draft pending the pinned Lean kernel check.
-Machine transitions, preservation, progress, reachable-state safety, and
-regression examples are the next milestone.
+| Module | Content |
+|--------|---------|
+| [Core.lean](../LeanExe/TypeSafety/Core.lean) | Untyped syntax, extrinsic typing, typed environments, lookup, and canonical forms. |
+| [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable step function, typed frames and continuations, configuration typing, and determinism. |
+| [Safety.lean](../LeanExe/TypeSafety/Safety.lean) | Preservation, progress, finite-execution safety, result typing, and overflow justification. |
+| [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
+
+The initial core and its safety proofs passed `lake build LeanExe.TypeSafety`
+through the repository runner on exact Lean `4.34.0-rc2`, commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`, on 2026-09-23. Focused behavioral
+examples and the automated axiom audit are the next verification milestone.
 
 ## Theorem boundary
 
-The intended result is that every configuration reachable from a well-typed
+The proved result is that every configuration reachable from a well-typed
 expression in a matching environment remains well typed and either can step,
 returns a value of its result type, or reaches the specified addition-overflow
-failure. The proof must not assume type preservation or progress as primitive
-contracts for the operations covered by the core.
+failure. The proof establishes type preservation and progress for the actual
+core transitions, rather than assuming them as primitive-operation contracts.
 
 Direct function calls, fixed-width modular arithmetic, arrays, general recursive
 data, physical heaps, ownership analysis, source extraction, and WebAssembly
