@@ -71,9 +71,13 @@ def inferRaw (declarations : DataDecls) (signatures : Signatures) (Γ : Context)
               if inferRaw declarations signatures (β :: Γ) right = some τ then some τ else none
           | none => none
       | _ => none
-  | .add left right =>
+  | .natBin _ left right =>
       if inferRaw declarations signatures Γ left = some .nat64 then
         if inferRaw declarations signatures Γ right = some .nat64 then some .nat64 else none
+      else none
+  | .natCmp _ left right =>
+      if inferRaw declarations signatures Γ left = some .nat64 then
+        if inferRaw declarations signatures Γ right = some .nat64 then some .bool else none
       else none
   | .call function arguments =>
       match lookup signatures function with
@@ -177,7 +181,8 @@ theorem inferRaw_complete (typed : ExprTyped declarations signatures Γ expr τ)
       simp [inferRaw, tyWellFormed_iff.mpr other, inferRaw_complete payload]
   | sumCase scrutinee left right =>
       simp [inferRaw, inferRaw_complete scrutinee, inferRaw_complete left, inferRaw_complete right]
-  | add left right => simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
+  | natBin _ left right | natCmp _ left right =>
+      simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
   | call found arguments => simp [inferRaw, found, checkArgsRaw_complete arguments]
   | arrayEmpty item => simp [inferRaw, tyWellFormed_iff.mpr item]
   | arraySize array => simp [inferRaw, inferRaw_complete array]
@@ -317,14 +322,24 @@ theorem inferRaw_sound (inferred : inferRaw declarations signatures Γ expr = so
                   exact .sumCase (inferRaw_sound scrutineeType) (inferRaw_sound leftType)
                     (inferRaw_sound rightType)
                 next => cases inferred
-  | add left right =>
+  | natBin operation left right =>
       simp only [inferRaw] at inferred
       split at inferred
       next leftType =>
         split at inferred
         next rightType =>
           cases inferred
-          exact .add (inferRaw_sound leftType) (inferRaw_sound rightType)
+          exact .natBin operation (inferRaw_sound leftType) (inferRaw_sound rightType)
+        next => cases inferred
+      next => cases inferred
+  | natCmp operation left right =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next leftType =>
+        split at inferred
+        next rightType =>
+          cases inferred
+          exact .natCmp operation (inferRaw_sound leftType) (inferRaw_sound rightType)
         next => cases inferred
       next => cases inferred
   | call function arguments =>
@@ -508,6 +523,24 @@ theorem infer_eq_some_iff : infer declarations signatures Γ expr = some τ ↔
       signaturesWellFormed_iff.mpr signaturesFormed, typesWellFormed_iff.mpr contextFormed,
       Bool.true_and, ite_true]
     exact inferRaw_complete typed
+
+theorem inferRaw_add : inferRaw declarations signatures Γ (.add left right) =
+    if inferRaw declarations signatures Γ left = some .nat64 then
+      if inferRaw declarations signatures Γ right = some .nat64 then some .nat64 else none
+    else none := rfl
+
+theorem inferRaw_succ : inferRaw declarations signatures Γ (.succ value) =
+    if inferRaw declarations signatures Γ value = some .nat64 then some .nat64 else none := by
+  simp [inferRaw, show 1 < nat64Limit from by decide]
+
+theorem inferRaw_pred : inferRaw declarations signatures Γ (.pred value) =
+    if inferRaw declarations signatures Γ value = some .nat64 then some .nat64 else none := by
+  simp [inferRaw, show 1 < nat64Limit from by decide]
+
+theorem inferRaw_boolToNat : inferRaw declarations signatures Γ (.boolToNat value) =
+    if inferRaw declarations signatures Γ value = some .bool then some .nat64 else none := by
+  simp [inferRaw, show 1 < nat64Limit from by decide,
+    show 0 < nat64Limit from by decide]
 
 /-- Check each body against its signature in the shared global signature table. -/
 def bodiesWellTyped (declarations : DataDecls) (signatures : Signatures) :

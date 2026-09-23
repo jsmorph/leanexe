@@ -60,8 +60,10 @@ theorem eval_step_typed (hprogram : ProgramTyped declarations program signatures
   | sumCase hscrutinee hleft hright =>
       exact ⟨_, rfl, .eval hscrutinee henv
         (.cons (.sumBranches hleft hright henv) hkont)⟩
-  | add hleft hright =>
-      exact ⟨_, rfl, .eval hleft henv (.cons (.addLeft hright henv) hkont)⟩
+  | natBin operation hleft hright =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.natBinLeft operation hright henv) hkont)⟩
+  | natCmp operation hleft hright =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.natCmpLeft operation hright henv) hkont)⟩
   | call found hargs =>
       cases hargs with
       | nil => exact enter_call_typed hprogram found .nil hkont
@@ -128,16 +130,26 @@ theorem frame_step_typed (hprogram : ProgramTyped declarations program signature
         ⟨payload, rfl, hpayload⟩
       · exact ⟨_, rfl, .eval hleft (.cons hpayload henv) hkont⟩
       · exact ⟨_, rfl, .eval hright (.cons hpayload henv) hkont⟩
-  | addLeft hright henv =>
-      exact ⟨_, rfl, .eval hright henv (.cons (.addRight hvalue) hkont)⟩
-  | addRight hleft =>
-      obtain ⟨left, rfl, hleftBound⟩ := hleft.nat_canonical
-      obtain ⟨right, rfl, hrightBound⟩ := hvalue.nat_canonical
-      by_cases bounded : left + right < nat64Limit
-      · exact ⟨_, by simp [Step, step, bounded], .ret (.nat bounded) hkont⟩
-      · exact ⟨_, by simp [Step, step, bounded],
-          .overflow hleftBound hrightBound (Nat.le_of_not_lt bounded)
-            (hkont.wellFormed hprogram .nat64)⟩
+  | natBinLeft operation hright henv =>
+      exact ⟨_, rfl, .eval hright henv (.cons (.natBinRight operation hvalue) hkont)⟩
+  | natBinRight operation hleft =>
+      obtain ⟨left, rfl, leftBound⟩ := hleft.nat_canonical
+      obtain ⟨right, rfl, rightBound⟩ := hvalue.nat_canonical
+      have outcome := evalNatBin_bounded (operation := operation) leftBound rightBound
+      cases computed : evalNatBin operation left right with
+      | value result =>
+          simp only [computed] at outcome
+          exact ⟨_, by simp [Step, step, computed], .ret (.nat outcome) hkont⟩
+      | overflow fault =>
+          simp only [computed] at outcome
+          exact ⟨_, by simp [Step, step, computed],
+            .overflow outcome.1 outcome.2.1 outcome.2.2 (hkont.wellFormed hprogram .nat64)⟩
+  | natCmpLeft operation hright henv =>
+      exact ⟨_, rfl, .eval hright henv (.cons (.natCmpRight operation hvalue) hkont)⟩
+  | natCmpRight operation hleft =>
+      obtain ⟨left, rfl, _⟩ := hleft.nat_canonical
+      obtain ⟨right, rfl, _⟩ := hvalue.nat_canonical
+      exact ⟨_, rfl, .ret .bool hkont⟩
 
   | callArgs found hdone hremaining henv paramsEqual =>
       have hdone' := hdone.append (EnvTyped.cons hvalue .nil)
@@ -221,7 +233,7 @@ theorem terminal_no_step (terminal : Terminal state) : step program state = none
       cases kont with
       | nil => rfl
       | cons frame rest => exact False.elim terminal
-  | overflow left right => rfl
+  | overflow operation left right => rfl
 
 /-- One-step preservation for the independently defined machine. -/
 theorem preservation (hprogram : ProgramTyped declarations program signatures)
@@ -285,11 +297,11 @@ theorem return_type (hprogram : ProgramTyped declarations program signatures)
       cases hkont
       exact hvalue
 
-/-- A reached failure proves actual overflow of two represented naturals. -/
+/-- A reached failure proves actual overflow of the recorded sum or product. -/
 theorem overflow_is_justified (hprogram : ProgramTyped declarations program signatures)
     (typed : ExprTyped declarations signatures [] expr τ)
-    (execution : Steps program (initial expr) (.overflow left right)) :
-    left < nat64Limit ∧ right < nat64Limit ∧ nat64Limit ≤ left + right := by
+    (execution : Steps program (initial expr) (.overflow operation left right)) :
+    Overflow operation left right := by
   have finalTyped := preservation_steps hprogram (initial_typed hprogram typed) execution
   cases finalTyped with
   | overflow hleft hright hoverflow _ => exact ⟨hleft, hright, hoverflow⟩

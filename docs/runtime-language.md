@@ -97,15 +97,15 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 235 semantic examples and audits all 120 declared
-theorems across the seven development modules, including helper proofs. It
+The maintained gate checks 308 semantic examples and audits all 142 declared
+theorems across the eight development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
 
-Checked addition is still the bounded-natural operation: operands and successful
-results are below `2^64`, and an overflow terminal records bounded operands whose
-sum is at least `2^64`. This milestone does not claim overflow-freedom or
+The bounded-natural primitive family below is checked. Operands and successful
+results are below `2^64`; an overflow terminal records bounded operands whose
+tagged sum/product is at least `2^64`. This does not claim overflow-freedom or
 termination. The signature and natural-bound premises remain substantive.
 
 ## Decision evidence
@@ -134,7 +134,7 @@ data. The following work remains separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
-| Remaining natural arithmetic and U8/U32/U64 operations | Define each bounded/modular operation and prove its primitive safety. |
+| U8/U32/U64 operations | The documented bounded-natural primitive family is checked. Define word arithmetic, comparisons, bitwise operations, shifts, and conversions, and prove their laws and safety. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
 | Data generalizations | Monomorphic nominal tables, constructors, exhaustive matches, and recursive value typing are proved. Dependent indexed families and any further type-level features require separate rules. |
@@ -269,11 +269,11 @@ results concern the independently specified language, not compiler acceptance.
 General recursive programs can pass these checks; termination and absence of
 specified arithmetic failure are separate properties.
 
-## Bounded-natural extension in progress
+## Bounded-natural operations
 
-The following is the next specified increment, not yet part of the checked
-coverage reported above. It completes the documented bounded-natural primitive
-family; it does not claim every operation on Lean's unbounded `Nat`.
+The following operations and their metatheory are checked. This covers the
+documented bounded-natural primitive family; it does not claim every operation
+on Lean's unbounded `Nat`.
 
 All operands evaluate once, strictly from left to right. `natBin op a b` takes
 two `nat64` operands and returns `nat64` on success. `natCmp op a b` takes two
@@ -292,7 +292,7 @@ two `nat64` operands and returns `nat64` on success. `natCmp op a b` takes two
 Overflow records an addition/multiplication tag and both operands. A permitted
 failure requires bounded operands and the tagged mathematical result to be at
 least `2^64`; malformed error records do not count as terminal outcomes. The
-runtime typing rule must also preserve the original result type's formation.
+runtime typing rule also preserves the original result type's formation.
 No underflow or division-by-zero failure is introduced.
 
 Successor and predecessor are transparent add/sub-by-one expressions. Boolean
@@ -302,6 +302,8 @@ not implied by these definitions. Natural pattern matching remains a separate
 form to define or derive with proof. Fixed-width words and their modular,
 bitwise, shift, and conversion operations remain outside this increment.
 
-Acceptance requires exact primitive success/failure and bound laws, comparison
-characterizations, and updated machine safety, relevance, and algorithmic typing
-proofs. The primitive definitions themselves must not depend on a safety premise.
+Checked primitive laws characterize exact success/failure, bounded outcomes,
+saturation, division/remainder by zero, and comparison results. Machine safety,
+relevance, and algorithmic typing proofs include all these forms. Derived helpers
+have typing theorems and executable inference/step equations. Primitive definitions
+take raw operands; their bounded-outcome theorem separately requires bounded inputs.

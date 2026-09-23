@@ -15,7 +15,8 @@ needed after the result returns. Recursive calls are allowed.
 `step` returns `none` both for terminal states and for malformed/stuck states.
 Consequently progress is substantive: a missing variable, a non-Boolean
 condition, or a projection from a scalar is not silently relabeled a failure.
-The only failure terminal is checked natural-number addition overflow. Checked
+The only failure terminal is checked natural-number addition or multiplication
+overflow, recording the operation and both operands. Checked
 array operations evaluate all operands from left to right; bounds and growth
 failures return `inl unit` as ordinary data. Nominal construction evaluates fields
 in order. Matching checks both nominal identity and the selected branch arity,
@@ -36,8 +37,10 @@ inductive Frame where
   | inl
   | inr
   | sumBranches (left right : Expr) (env : Env)
-  | addLeft (right : Expr) (env : Env)
-  | addRight (left : Value)
+  | natBinLeft (operation : NatBinOp) (right : Expr) (env : Env)
+  | natCmpLeft (operation : NatCmpOp) (right : Expr) (env : Env)
+  | natBinRight (operation : NatBinOp) (left : Value)
+  | natCmpRight (operation : NatCmpOp) (left : Value)
   /-- Arguments already computed, remaining argument expressions, and caller environment. -/
   | callArgs (function : Nat) (done : Env) (remaining : List Expr) (env : Env)
   | arraySize
@@ -59,7 +62,7 @@ abbrev Kont := List Frame
 inductive State where
   | eval (expr : Expr) (env : Env) (kont : Kont)
   | ret (value : Value) (kont : Kont)
-  | overflow (left right : Nat)
+  | overflow (operation : NatOverflowOp) (left right : Nat)
   deriving Repr
 
 /-- A missing function remains stuck rather than becoming a permitted failure. -/
@@ -89,8 +92,10 @@ def step (program : Program) : State → Option State
   | .eval (.inr _ payload) env kont => some (.eval payload env (.inr :: kont))
   | .eval (.sumCase scrutinee left right) env kont =>
       some (.eval scrutinee env (.sumBranches left right env :: kont))
-  | .eval (.add left right) env kont =>
-      some (.eval left env (.addLeft right env :: kont))
+  | .eval (.natBin operation left right) env kont =>
+      some (.eval left env (.natBinLeft operation right env :: kont))
+  | .eval (.natCmp operation left right) env kont =>
+      some (.eval left env (.natCmpLeft operation right env :: kont))
   | .eval (.call function []) _ kont => enterCall program function [] kont
   | .eval (.call function (argument :: rest)) env kont =>
       some (.eval argument env (.callArgs function [] rest env :: kont))
@@ -129,12 +134,16 @@ def step (program : Program) : State → Option State
       some (.eval left (payload :: env) kont)
   | .ret (.inr payload) (.sumBranches _ right env :: kont) =>
       some (.eval right (payload :: env) kont)
-  | .ret value (.addLeft right env :: kont) =>
-      some (.eval right env (.addRight value :: kont))
-  | .ret (.nat right) (.addRight (.nat left) :: kont) =>
-      if left + right < nat64Limit then
-        some (.ret (.nat (left + right)) kont)
-      else some (.overflow left right)
+  | .ret value (.natBinLeft operation right env :: kont) =>
+      some (.eval right env (.natBinRight operation value :: kont))
+  | .ret (.nat right) (.natBinRight operation (.nat left) :: kont) =>
+      match evalNatBin operation left right with
+      | .value result => some (.ret (.nat result) kont)
+      | .overflow fault => some (.overflow fault left right)
+  | .ret value (.natCmpLeft operation right env :: kont) =>
+      some (.eval right env (.natCmpRight operation value :: kont))
+  | .ret (.nat right) (.natCmpRight operation (.nat left) :: kont) =>
+      some (.ret (.bool (operation.apply left right)) kont)
   | .ret value (.callArgs function done [] _ :: kont) =>
       enterCall program function (done ++ [value]) kont
   | .ret value (.callArgs function done (argument :: rest) env :: kont) =>
@@ -171,15 +180,27 @@ def step (program : Program) : State → Option State
             if arity = fields.length then some (.eval body (fields ++ env) kont) else none
       else none
   | .ret _ (_ :: _) => none
-  | .overflow _ _ => none
+  | .overflow _ _ _ => none
+
+/-- Source conveniences execute through the ordinary generic frames. -/
+theorem step_add : step program (.eval (.add left right) env kont) =
+    some (.eval left env (.natBinLeft .add right env :: kont)) := rfl
+
+theorem step_succ : step program (.eval (.succ value) env kont) =
+    some (.eval value env (.natBinLeft .add (.nat 1) env :: kont)) := rfl
+
+theorem step_pred : step program (.eval (.pred value) env kont) =
+    some (.eval value env (.natBinLeft .sub (.nat 1) env :: kont)) := rfl
+
+theorem step_boolToNat : step program (.eval (.boolToNat value) env kont) =
+    some (.eval value env (.ifBranches (.nat 1) (.nat 0) env :: kont)) := rfl
 
 def Step (program : Program) (before after : State) : Prop := step program before = some after
 
 /-- A return or an arithmetically justified overflow, never arbitrary stuckness. -/
 def Terminal : State → Prop
   | .ret _ [] => True
-  | .overflow left right =>
-      left < nat64Limit ∧ right < nat64Limit ∧ nat64Limit ≤ left + right
+  | .overflow operation left right => Overflow operation left right
   | _ => False
 
 /-- The captured environment is part of each suspended expression's invariant. -/
@@ -205,10 +226,16 @@ inductive FrameTyped (declarations : DataDecls) (signatures : Signatures) : Fram
       ExprTyped declarations signatures (β :: Γ) right τ →
       EnvTyped declarations env Γ →
       FrameTyped declarations signatures (.sumBranches left right env) (.sum α β) τ
-  | addLeft : ExprTyped declarations signatures Γ right .nat64 → EnvTyped declarations env Γ →
-      FrameTyped declarations signatures (.addLeft right env) .nat64 .nat64
-  | addRight : ValueTyped declarations left .nat64 →
-      FrameTyped declarations signatures (.addRight left) .nat64 .nat64
+  | natBinLeft (operation : NatBinOp) :
+      ExprTyped declarations signatures Γ right .nat64 → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.natBinLeft operation right env) .nat64 .nat64
+  | natBinRight (operation : NatBinOp) : ValueTyped declarations left .nat64 →
+      FrameTyped declarations signatures (.natBinRight operation left) .nat64 .nat64
+  | natCmpLeft (operation : NatCmpOp) :
+      ExprTyped declarations signatures Γ right .nat64 → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.natCmpLeft operation right env) .nat64 .bool
+  | natCmpRight (operation : NatCmpOp) : ValueTyped declarations left .nat64 →
+      FrameTyped declarations signatures (.natCmpRight operation left) .nat64 .bool
 
   | callArgs (found : lookup signatures function = some ⟨params, result⟩) :
       EnvTyped declarations done doneTypes →
@@ -266,8 +293,8 @@ inductive StateTyped (declarations : DataDecls) (signatures : Signatures) : Stat
       StateTyped declarations signatures (.eval expr env kont) τ
   | ret : ValueTyped declarations value α → KontTyped declarations signatures kont α τ →
       StateTyped declarations signatures (.ret value kont) τ
-  | overflow : left < nat64Limit → right < nat64Limit → nat64Limit ≤ left + right →
-      TyWF declarations τ → StateTyped declarations signatures (.overflow left right) τ
+  | overflow : left < nat64Limit → right < nat64Limit → nat64Limit ≤ operation.apply left right →
+      TyWF declarations τ → StateTyped declarations signatures (.overflow operation left right) τ
 
 /-- Reflexive, transitive execution; it does not assume termination. -/
 inductive Steps (program : Program) : State → State → Prop where
@@ -302,7 +329,8 @@ theorem FrameTyped.wellFormed (typed : FrameTyped declarations signatures frame 
   | sumBranches left _ env =>
       exact left.wellFormed hprogram.declarationsWF hprogram.signaturesWF
         (.cons input.sum_left env.wellFormed)
-  | addLeft _ _ | addRight _ => exact .nat64
+  | natBinLeft _ _ _ | natBinRight _ _ => exact .nat64
+  | natCmpLeft _ _ _ | natCmpRight _ _ => exact .bool
   | callArgs found _ _ _ _ => exact (hprogram.signaturesWF.lookup found).result
   | arraySize => exact .nat64
   | arrayGetArray _ _ => exact .sum .unit input.array_item

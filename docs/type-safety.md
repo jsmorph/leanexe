@@ -30,13 +30,15 @@ different obligation, not the reason the full language theorem is unfinished.
 
 The core has Unit, Bool, bounded natural numbers, products, binary sums,
 variables, let bindings, conditionals, projections, complete product patterns,
-Unit elimination, sum case analysis, checked addition, and direct first-order
+Unit elimination, sum case analysis, bounded-natural operations, and direct first-order
 calls with arbitrary finite argument lists, persistent homogeneous arrays, and
 nominal recursive data with strict construction and exhaustive matching.
 Expressions, values, and machine states are ordinary untyped data. Separate
 inductive judgments describe their types. Natural literals and natural values
-must be below `2^64` when typed; addition uses this bounded-natural interpretation,
-not modular unsigned arithmetic.
+must be below `2^64` when typed. Addition and multiplication check overflow;
+subtraction saturates; division by zero yields zero and remainder by zero yields
+the dividend. Min/max and equality/order comparisons are also defined. Successor,
+predecessor, and Boolean-to-natural conversion are transparent derived forms.
 
 Evaluation is a deterministic, left-to-right call-by-value machine with explicit
 lexical environments and continuations. Pairs and call arguments are strict;
@@ -60,9 +62,9 @@ Calls must supply exactly the declared argument
 types and arity. Self-recursion and mutual recursion are permitted; program
 typing assumes neither termination nor execution safety.
 
-A successful addition returns the mathematical sum. An overflowing addition
-terminates with both operands recorded. `Terminal` admits only a final return
-or overflow of two bounded operands whose sum is at least `2^64`. Missing
+Successful addition and multiplication return their mathematical result. Overflow
+records the operation and both operands. `Terminal` admits only a final return
+or overflow of two bounded operands whose tagged sum/product is at least `2^64`. Missing
 variables or functions and ill-shaped eliminations have no transition and are
 not permitted failures. Their exclusion is a substantive part of progress.
 
@@ -116,7 +118,7 @@ computations supplied with well-typed environments and continuations.
 | `progress` | Every typed state is terminal or has a successor. |
 | `type_safety`, `closed_type_safety` | Every reachable state remains typed and cannot be stuck. |
 | `return_type` | A completed execution returns a value of its original result type. |
-| `overflow_is_justified` | A reached overflow contains bounded operands whose mathematical sum exceeds the representation. |
+| `overflow_is_justified` | A reached overflow contains bounded operands whose tagged mathematical sum/product exceeds the representation. |
 | `step_deterministic` | Two successors of the same state are equal. |
 | `profile_type_safety`, `profile_return_type`, `profile_overflow_is_justified` | The corresponding execution guarantees for admitted profile programs. |
 | `declarationsWellFormed_iff`, `signaturesWellFormed_iff` | The corresponding Boolean checks accept exactly well-formed declaration/signature tables. |
@@ -148,6 +150,7 @@ presentation. No premise assumes one of these safety conclusions.
 | Module | Content |
 |--------|---------|
 | [Formation.lean](../LeanExe/TypeSafety/Formation.lean) | Types, nominal declarations, formation judgments, and exact Boolean checker characterizations. |
+| [NatOperations.lean](../LeanExe/TypeSafety/NatOperations.lean) | Pure bounded-natural operations, exact result/failure laws, comparison laws, and bounded outcomes. |
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
 | [ArrayValues.lean](../LeanExe/TypeSafety/ArrayValues.lean) | Pure checked array operations, failure/result/length/read laws, and primitive typing. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
@@ -166,9 +169,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 `LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean),
 [41 profile examples](../test/type_safety_profile.lean),
 [46 array examples](../test/type_safety_arrays.lean),
-[57 nominal-data examples](../test/type_safety_data.lean), and
-[65 typing-checker examples](../test/type_safety_typing.lean). It audits the
-transitive axiom dependencies of all 120 declared theorems across the seven
+[57 nominal-data examples](../test/type_safety_data.lean),
+[65 typing-checker examples](../test/type_safety_typing.lean), and
+[73 bounded-natural examples](../test/type_safety_naturals.lean). It audits the
+transitive axiom dependencies of all 142 declared theorems across the eight
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -188,6 +192,9 @@ hidden types, exact field/branch coverage, empty elimination, runtime result
 formation, field binding order, raw mismatches, and a typed recursive list sum.
 Typing examples cover exact inferred types, malformed unused ambient entries,
 whole-program alignment, recursive programs, and combined relevance admission.
+Natural-operation examples cover representation boundaries, tagged failures,
+saturation, division/remainder by zero, comparisons, strict operand order,
+captured environments, malformed states, and a recursive countdown program.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -207,7 +214,7 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Fixed-width modular operations, other arithmetic, additional
+into this core. Fixed-width word operations, natural pattern matching, additional
 array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
@@ -235,8 +242,9 @@ The independent language agenda is:
    explicit permitted failures. Replace schematic fold and recursion families
    with complete rules, or define and justify their expansion into core forms.
 2. Extend abstract values and primitive semantics to the intended language:
-   fixed-width integers, remaining natural operations, arrays, bytes, nominal
-   structures and variants, recursive data, and collection/control operations.
+   fixed-width words, bytes, remaining collection/control operations, and any
+   intended data generalizations. The bounded-natural primitive family, initial
+   persistent-array forms, and monomorphic nominal recursive data are checked.
    Primitive signatures alone are insufficient; prove primitive progress and
    preservation for the defined behavior.
 3. Prove the corresponding canonical forms, binding lemmas, state invariants,
@@ -252,9 +260,10 @@ The first persistent-array increment is checked. Additional collection forms
 such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
-checked, as are explicit sum annotations and algorithmic typing. The next
-increment specifies the remaining bounded-natural operations and their failure
-conditions, then extends the checked semantics and metatheory.
+checked, as are explicit sum annotations, algorithmic typing, and the documented
+bounded-natural primitive family. The next numeric increment concerns fixed-width
+words and their arithmetic, bitwise operations, shifts, and conversions. Natural
+pattern matching still requires a complete rule or a proved derived expansion.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;

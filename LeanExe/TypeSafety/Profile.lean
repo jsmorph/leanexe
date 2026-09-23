@@ -33,7 +33,7 @@ def uses (index : Nat) : Expr → Bool
   | .inl _ payload | .inr _ payload => uses index payload
   | .sumCase scrutinee left right =>
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
-  | .add left right => uses index left || uses index right
+  | .natBin _ left right | .natCmp _ left right => uses index left || uses index right
   | .call _ arguments => usesArgs index arguments
   | .arrayEmpty _ => false
   | .arraySize array => uses index array
@@ -76,7 +76,7 @@ def admissible : Expr → Bool
   | .sumCase scrutinee left right =>
       admissible scrutinee &&
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
-  | .add left right => admissible left && admissible right
+  | .natBin _ left right | .natCmp _ left right => admissible left && admissible right
   | .call _ arguments => admissibleArgs arguments
   | .arrayEmpty _ => true
   | .arraySize array => admissible array
@@ -328,8 +328,8 @@ theorem profile_return_type (hprogram : ProfileProgramTyped declarations program
 
 theorem profile_overflow_is_justified (hprogram : ProfileProgramTyped declarations program signatures)
     (typed : ProfileTyped declarations signatures [] expr τ)
-    (execution : Steps program (initial expr) (.overflow left right)) :
-    left < nat64Limit ∧ right < nat64Limit ∧ nat64Limit ≤ left + right :=
+    (execution : Steps program (initial expr) (.overflow operation left right)) :
+    Overflow operation left right :=
   overflow_is_justified hprogram.1 typed.1 execution
 
 end LeanExe.TypeSafety
