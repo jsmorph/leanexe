@@ -348,3 +348,22 @@ The agent is investigating direct or structurally recursive finite-bit proofs
 under the existing dependency limit. The contract states pointwise finite-bit
 semantics independently of the host library; no unproved library correspondence
 is claimed. The implementation and proof approach remain in progress.
+
+
+2026-09-23: Completed bitwise operations and masked shifts. The chosen independent
+finite-width recursion avoids reproving the host library's well-founded recursion
+machinery. Thirteen foundational lemmas prove arithmetic bit observations,
+reconstruction, universal pointwise operation behavior, bounds, and equality from
+bits. Word operation laws then establish identities, masks, XOR cancellation,
+complement involution, reduced-count periodicity, and exact shift formulas.
+Complement is a transparent expression with typing/checking/step/relevance laws;
+the existing generic machine and type-checker proofs include the extended enum.
+No correspondence to native Nat bitwise functions is assumed or claimed.
+
+The parent reviewed the finite-bit definitions and characterization statements
+and added 49 semantic examples. Three concrete 64-bit traces initially reached
+the elaborator recursion-depth limit; increasing only this test file's limit to
+4096 made their unchanged kernel-checked proofs elaborate. The maintained gate
+then passed twelve build jobs, all 430 examples, and all 216 theorem audits across
+ten modules, with no axioms beyond propext. No timeout or native proof shortcut
+was used. Continued to explicit natural-number pattern matching.

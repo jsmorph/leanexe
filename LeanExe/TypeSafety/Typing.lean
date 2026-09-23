@@ -609,6 +609,11 @@ theorem inferRaw_boolToNat : inferRaw declarations signatures Γ (.boolToNat val
   simp [inferRaw, show 1 < nat64Limit from by decide,
     show 0 < nat64Limit from by decide]
 
+theorem inferRaw_wordNot : inferRaw declarations signatures Γ (.wordNot width value) =
+    if inferRaw declarations signatures Γ value = some (.word width)
+    then some (.word width) else none := by
+  simp [inferRaw, wordMask_bounded]
+
 /-- Check each body against its signature in the shared global signature table. -/
 def bodiesWellTyped (declarations : DataDecls) (signatures : Signatures) :
     Program → Signatures → Bool

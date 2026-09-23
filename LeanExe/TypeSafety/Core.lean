@@ -13,7 +13,8 @@ bind the first field at index zero and prepend all fields to the captured contex
 
 The fragment contains `Unit`, `Bool`, bounded natural numbers, products, binary
 sums, bindings, conditionals, bounded-natural arithmetic and comparisons, and
-direct first-order calls.
+direct first-order calls. Words of widths 8, 32, and 64 support modular arithmetic,
+unsigned comparisons, finite bit operations, masked logical shifts, and conversions.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
 arithmetic: addition and multiplication may overflow; subtraction saturates;
 division and remainder specify their zero-divisor behavior. Function bodies may
@@ -78,6 +79,10 @@ abbrev Expr.add (left right : Expr) : Expr := .natBin .add left right
 abbrev Expr.succ (value : Expr) : Expr := .natBin .add value (.nat 1)
 abbrev Expr.pred (value : Expr) : Expr := .natBin .sub value (.nat 1)
 abbrev Expr.boolToNat (value : Expr) : Expr := .ifE value (.nat 1) (.nat 0)
+
+/-- Finite-width complement evaluates its operand once, then XORs the canonical mask. -/
+abbrev Expr.wordNot (width : WordWidth) (value : Expr) : Expr :=
+  .wordBin width .bitXor value (.word width (wordMask width))
 
 inductive Value where
   | unit
@@ -222,6 +227,10 @@ theorem ExprTyped.pred (typed : ExprTyped declarations signatures Γ value .nat6
 theorem ExprTyped.boolToNat (typed : ExprTyped declarations signatures Γ value .bool) :
     ExprTyped declarations signatures Γ (.boolToNat value) .nat64 :=
   .ifE typed (.nat (by decide)) (.nat (by decide))
+
+theorem ExprTyped.wordNot (typed : ExprTyped declarations signatures Γ value (.word width)) :
+    ExprTyped declarations signatures Γ (.wordNot width value) (.word width) :=
+  .wordBin width .bitXor typed (.word (wordMask_bounded width))
 
 /-- All function bodies use the same global signature table, allowing recursion. -/
 inductive BodiesTyped (declarations : DataDecls) (signatures : Signatures) :
