@@ -16319,3 +16319,17 @@ All layout-constant execution proofs pass.  The finite-word loop and quantized e
 The preserved GCD proof passed, but manifest validation still required the current source cache and specification names.  The manifest checker now accepts a consistent `FrozenProgram`/`FrozenSpec` pair under the case's `Frozen` namespace and requires every behavioral theorem to match the corresponding registered name there.  Tests accept both complete conventions and reject mixed cache, specification, or theorem names.  Release identity now includes the cached quantized source and format imports.
 
 The finite-word scan and checked byte-access lemma pass with the standard logical axioms.  The regenerated GCD source proof passes with its two additional locals.  The association-list frozen specification and exact translation also pass.  The embedding and remaining validator drafts have concrete proof diagnostics and remain outside the completed proof batch.
+
+## 2026-09-23: Grouped binary and validator composition
+
+Pushed `4e7d522c` after the checked projection, finite-word, binary-instruction, and arithmetic work.  The grouped projection's source gate passed.  Migration generated its 5,441-byte package with SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  The combined behavioral binary theorem and package gate are queued.  The manifest retains the repository's module-identity theorem and registered behavioral declarations.
+
+The scale scan now proves exact acceptance, termination, and store preservation.  The coefficient scan and embedding byte reads exposed a control-type annotation mismatch after the WP tactic erased metadata.  The shared byte-read lemma now states the normalized instruction form used by those proofs.  Header composition also needed explicit preservation of the original store and parameter vector.  The revised files await Lean results.
+
+Block validation uses a shared short-circuit Boolean composition lemma.  The draft model predicate records the accepted coefficient, scale, and FP32 regions.  Projection allocation bounds account for its three allocations and two temporary releases.  The complete block, cached-step, and session proofs remain open.
+
+The pinned conformance interpreter is still building cold Mathlib dependencies through the serialized runner.  Manifest binding and input-identity tests pass.  The current edits pass the whitespace check.
+
+The numerical proof needs a wider scaled domain than `CodeLib.IEEE32.roundScaledMagnitude_spec`, whose premise is `n < 2^151`.  A draft [FP32 rounding bound](proofs/talos/lean/Project/ProofKit/F32RoundBounds.lean) generalizes that premise to `n < 2^bound`, with `bound ≤ 276`, while deriving the half-unit error from the selected shift.  Its magnitude and sign theorems now pass with the standard logical axioms.  It preserves the pinned integer arithmetic model.  The rational-rounding and division bounds remain in progress.
+
+The coefficient scan and model-representation lemmas pass.  The shared header-field lemma and regenerated association-list source specification also pass.  Embedding word execution reached the 200,000-heartbeat limit.  Its replacement separates token decoding/rescaling from position lookup/addition, with a shared loop-state predicate.  The header proof has local rewrite diagnostics and remains in progress.

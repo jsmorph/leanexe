@@ -18,6 +18,8 @@ The registration remains incomplete.
 | [Internal grouped projection](GroupedProjection/Linear.lean) | Exact grouped output, owner return, allocation, temporary release, and preservation of protected buffers for the cached calling convention. |
 | [Layout constants](Layout.lean) | Exact values and store preservation for model offsets, lengths, and cache-position size. |
 | [Finite-word helper](Finite.lean) and [finite-word scan](FiniteWords.lean) | Exact FP32 finiteness tests and bounded scans, with unchanged store. |
+| [Coefficient scan](Coefficients.lean) and [scale scan](Scales.lean) | Exact bounded validation and store preservation, including coefficient short-circuiting and eager scale reads. |
+| [Model representation](Model.lean) | Accepted tensor predicates, block extents, and token coefficient and scale properties. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
 
 Both region proofs establish portability and `FunctionRegion.Shift`, with
