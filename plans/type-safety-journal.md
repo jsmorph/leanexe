@@ -69,3 +69,28 @@ completed, all 26 examples checked, and all seven dependency audits reported
 only propext. Node syntax, whitespace, changed documentation links, and the core
 source scan passed. This completes the checked first-order core milestone;
 abstract arrays and the extraction correspondence are explicitly future work.
+
+2026-09-23: The user challenged the parent's repeated conflation of language
+soundness with compiler correctness. A fresh review of the source judgments,
+runtime typing rules, operational specification, and checked theorem statements,
+with a separate read-only critique from the type-safety agent, confirmed the
+error. A compiler bridge is not required for language type soundness. The current
+calculus already has that theorem; the full runtime language still lacks complete
+independent syntax, typing, dynamics, and the corresponding metatheory.
+
+The review identified a concrete model-adequacy issue: strict pairs in the core
+evaluate an unused overflowing component during projection, while the dialect
+documentation describes lazy projection and deferred fields. The core is a
+proved related calculus, not an established semantics-preserving fragment of
+that documented language. Its proof remains valid for its stated semantics.
+The next language task is to resolve and document the intended semantics before
+expanding coverage. Prior chat advice making an extractor bridge the next
+prerequisite for Track 1 is withdrawn.
+
+Updated the reference and plan to keep Lean logical consistency, runtime-language
+type safety, model adequacy, and compiler correctness distinct. Split language
+preservation, progress, compiler refinement, and termination in the original
+type-theory document. The review also separates a declarative ownership/effect
+discipline for explicit runtime operations from correctness of its compiler
+implementation. Only documentation and the plan changed; no theorem statement,
+proof, semantics, or verification gate was modified.
