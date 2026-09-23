@@ -36,6 +36,12 @@ The [normalization record](normalization-check.json) and [compressed arithmetic 
 
 The [checker soundness theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/NormalizationRange.lean) supplies the complete normalization premises used by the paired forward bound.  Its real-reference root lower bound holds for every real input because the specified positive epsilon remains in the reference variance.  The [ordered-sum checker](../../../proofs/talos/lean/Project/ProofKit/F32SumRangeCertificate.lean) relates the checked running sums to the source folds.  Candidate exponent selection remains outside the proof.  Each candidate must pass the checked predicate.
 
+## GELU ranges
+
+The [GELU record](gelu-check.json) and [checker result](gelu-check.log) cover all 16,883,712 captured GELU inputs across both models and 229 prefixes.  Capture reproduces every retained logit hash.  The native Lean run passes in 279.456 seconds.  It checks the argument arithmetic, exact exponential reduction, all eighteen Horner stages, repeated squaring, both quotient branches, and a denominator lower bound of one.  The magnitude-eight cutoff uses the finite-input condition and the existing real tail theorem.
+
+The [soundness theorem](../../../proofs/talos/lean/Project/Gpt2CachedStep/GeluRangeCertificate.lean) supplies the GELU premises in the forward bound.  The [Horner checker](../../../proofs/talos/lean/Project/ProofKit/F32HornerRangeCertificate.lean) computes each prefix once and relates it to the source recurrence.  Executable definitions have separate modules so the native checker builds without compiling the mathematical proof library into its executable.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -52,6 +58,9 @@ tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-activation-ch
 training/gpt2/.venv/bin/python training/gpt2/capture_normalization_ranges.py
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-normalization-check Project.Gpt2QuantizedCached.Numerical.NormalizationRange
 tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-normalization-check build/gpt2-124m/quantized-group64/normalization/rows.bin build/gpt2-124m/quantized-group64/normalization/ranges-ordered.txt
+training/gpt2/.venv/bin/python training/gpt2/capture_nonlinear_ranges.py
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-gelu-check Project.Gpt2CachedStep.GeluRangeCertificate
+tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-gelu-check build/gpt2-124m/quantized-group64/nonlinear/gelu.bin
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.

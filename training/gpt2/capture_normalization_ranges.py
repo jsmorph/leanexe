@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from diagnose_quantized import DiagnosticReference, linear_serial
+from diagnose_quantized import SerialReference
 from quantized_reference import QuantizedReference
 from reference import ROOT, digest
 
@@ -27,16 +27,11 @@ class QuantizedCapture(NormalizationCapture, QuantizedReference):
         self.records = 0
 
 
-class ReferenceCapture(NormalizationCapture, DiagnosticReference):
+class ReferenceCapture(NormalizationCapture, SerialReference):
     def __init__(self, directory, output):
-        super().__init__(directory, None)
+        super().__init__(directory)
         self.output = output
         self.records = 0
-
-    def linear(self, values, name, bias=True):
-        return linear_serial(self.weights[name + ".weight"], values,
-                             self.weights[name + ".bias"] if bias else None)
-
 
 def main():
     parser = argparse.ArgumentParser()
