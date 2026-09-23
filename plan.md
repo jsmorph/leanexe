@@ -813,3 +813,20 @@ GPT-2/128 after completing its source-equivalence proof.
 
 The repository-wide source check still stops at the existing `gcd` cache
 mismatch.  GPT-2's focused regeneration and proof checks pass.
+
+## 15. Establish independent core type safety
+
+Authorized on 2026-09-23, on branch `typesafety`. The
+[core type-safety reference](docs/type-safety.md) defines the fragment and theorem
+boundary. The [development journal](plans/type-safety-journal.md) records proof
+and verification evidence. This track does not establish extraction, ownership,
+or compiler correctness.
+
+- [x] Declare independent untyped syntax and extrinsic typing for the initial core.
+- [ ] Kernel-check typed environment lookup and canonical-form lemmas.
+- [ ] Define explicit machine transitions and configuration typing.
+- [ ] Prove one-step preservation, progress, and reachable-state safety.
+- [ ] Check positive, specified-failure, and ill-typed/stuck examples.
+- [ ] Add a repeatable independent proof gate and public-theorem axiom audit.
+- [ ] Extend the core with typed direct first-order calls and well-formed bodies.
+- [ ] Design the next extension for abstract persistent arrays and their operations.
