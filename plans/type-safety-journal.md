@@ -443,3 +443,21 @@ count. A constructive list relation and true-count argument will establish the
 stabilization bound without assumed fuel adequacy or finite-set axioms.
 The agent owns EqualityFlags/EqualityTypes and their focused Lean checks; the
 parent has prepared boundary examples and the normative design record.
+
+A second workspace interruption removed the local checkout, toolchain, and
+uncommitted files. The parent restored the published branch at b2892f0 and the
+exact pinned toolchain archive; SHA-256 matched the previously verified value.
+Extraction first failed to preserve archive ownership under the environment's
+uid mapping; extraction with --no-same-owner succeeded. The agent reported a
+successful focused EqualityFlags build before the interruption, but no received
+axiom-audit result. That draft and the parent's equality-domain examples are
+being reconstructed from visible context and must be checked again before being
+claimed as a published proof. No published source was lost.
+
+The reconstructed finite-table module rebuilt successfully and all thirteen
+helper theorems passed the dependency audit. The first nine use no axioms; the
+four saturation lemmas use only propext. The restored checkout's maintained gate
+then passed fifteen build jobs, all 537 existing examples, and all 278 audits.
+The equality-domain test draft is intentionally outside that gate until the
+specific checker exists. This checkpoint proves the generic iteration bound;
+it does not yet prove equality admission. EqualityTypes remains in development.
