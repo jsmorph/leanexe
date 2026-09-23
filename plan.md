@@ -819,8 +819,8 @@ mismatch.  GPT-2's focused regeneration and proof checks pass.
 Authorized on 2026-09-23, on branch `typesafety`. The
 [core type-safety reference](docs/type-safety.md) defines the fragment and theorem
 boundary. The [development journal](plans/type-safety-journal.md) records proof
-and verification evidence. This track does not establish extraction, ownership,
-or compiler correctness.
+and verification evidence. This track does not establish extraction, physical
+memory-management implementation, or compiler correctness.
 
 - [x] Declare independent untyped syntax and extrinsic typing for the initial core.
 - [x] Kernel-check typed environment lookup and canonical-form lemmas.
@@ -829,4 +829,16 @@ or compiler correctness.
 - [x] Check positive, specified-failure, and ill-typed/stuck examples.
 - [x] Add a repeatable independent proof gate and public-theorem axiom audit.
 - [x] Extend the core with typed direct first-order calls and well-formed bodies.
-- [ ] Design the next extension for abstract persistent arrays and their operations.
+- [ ] Settle independent runtime-language semantics, including the current strict-core/deferred-field discrepancy; record the precise language coverage.
+- [ ] Complete declarative type/declaration formation and the schematic collection, binder, and recursion rules.
+- [ ] Extend abstract values and primitive semantics, starting with persistent arrays and their bounds/length invariants.
+- [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
+- [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
+- [ ] Establish algorithmic type-checking results against the declarative rules; state termination obligations separately.
+
+Language type soundness is a property of the language's typing and operational
+semantics. Extraction correctness, compiler refinement, and physical ownership
+implementation are separate tracks, not prerequisites for this theorem. A
+declarative ownership/effect system, if part of the language, does need its own
+soundness argument. The existing small calculus is type safe; its adequacy for
+the broader documented runtime language is still open.

@@ -6,6 +6,26 @@ The work is on `typesafety`, starting from compiler revision
 owns the remaining work; the [journal](../plans/type-safety-journal.md) records
 proof and verification history.
 
+## What soundness means here
+
+Operational type soundness relates a language's typing rules to that language's
+execution rules. A compiler-correctness theorem is not a premise or prerequisite
+of this result. The checked core below already has a complete type-safety theorem
+for its own syntax and semantics.
+
+Four subjects must remain distinct:
+
+| Subject | Obligation |
+|---------|------------|
+| Lean source logic | The source uses Lean's dependent theory and the assumptions in its environment. This work does not prove Lean's logical consistency. |
+| Runtime-language type safety | Prove preservation and progress for independently defined typing and execution rules. |
+| Adequacy of the language model | Account for the constructs and intended behavior of the language being specified. A related calculus is not automatically an adequate model. |
+| Compiler correctness | Prove that extraction and compilation respect the specified language. These are separate translation theorems. |
+
+The full runtime-language theorem remains open because its independent language
+definition and metatheory are incomplete. The missing compiler proof is a
+different obligation, not the reason the full language theorem is unfinished.
+
 ## Language and execution
 
 The core has Unit, Bool, bounded natural numbers, products, binary sums,
@@ -126,10 +146,41 @@ summand is not specified. Progress and preservation hold for every given typing
 derivation; type uniqueness and principal inference are not claimed. A future
 checker needs a deliberate annotation or bidirectional-checking design.
 
-The next core extension is abstract persistent arrays, with explicit decisions
-about bounds failures and evaluation order before adding the typing rules and
-proof cases. A separate extraction-preserves-typing theorem must connect accepted
-source declarations to the independent core; operational correspondence must
-also justify the relationship between extraction's demand behavior and this
-core's strict evaluation. Heap representation and compiler simulation can then
-state their own invariants against that source semantics.
+The next Track 1 task is to settle the intended runtime-language semantics and
+record how the current calculus relates to it. There is a concrete unresolved
+strictness discrepancy: the checked core makes a projection from a pair evaluate
+both components, including an overflowing unused component. The
+[dialect account](typetheory.md#evaluation-traps-and-termination) describes lazy
+projection and deferred fields. A semantics-preserving inclusion of the current
+core in that described language has not been established. This limits the
+scope of the result; it does not invalidate the theorem about the core itself.
+
+The independent language agenda is:
+
+1. Specify declarations, type formation, binders, execution order, sharing, and
+   explicit permitted failures. Replace schematic fold and recursion families
+   with complete rules, or define and justify their expansion into core forms.
+2. Extend abstract values and primitive semantics to the intended language:
+   fixed-width integers, remaining natural operations, arrays, bytes, nominal
+   structures and variants, recursive data, and collection/control operations.
+   Primitive signatures alone are insufficient; prove primitive progress and
+   preservation for the defined behavior.
+3. Prove the corresponding canonical forms, binding lemmas, state invariants,
+   preservation, progress, and reachable-state safety in checked increments.
+4. Give runtime counter reads and explicit release their own abstract-state and
+   admissibility rules if included in the language claim. Ordinary array typing
+   alone does not express permission to release or exclude use after release.
+5. State algorithmic type-checking results against these declarative rules.
+   Keep termination and successful, failure-free execution as separate results.
+
+Abstract persistent arrays remain a suitable first extension once evaluation
+and failure behavior are specified. Their length must support the bounded
+`Nat64` size result, including after append or replication; alternatively the
+semantics must explicitly define the corresponding failure. This is a
+language-level obligation and does not require a physical allocator proof.
+
+Extraction-preserves-typing and compiler refinement are separate tracks. They
+use the language definition and transfer its results to implementation artifacts;
+they do not block completion of the language's own soundness theorem. Physical
+ownership implementation should likewise be distinguished from a declarative
+ownership/effect discipline, whose soundness is a language-level question.
