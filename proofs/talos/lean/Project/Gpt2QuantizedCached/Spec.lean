@@ -7,6 +7,9 @@ import Project.Gpt2QuantizedCached.Numerical.GeluRange
 import Project.Gpt2QuantizedCached.Numerical.AttentionRange
 import Project.Gpt2QuantizedCached.Numerical.ProjectionRange
 import Project.Gpt2QuantizedCached.Numerical.PointwiseRange
+import Project.Gpt2CachedStep.GeluUniform
+import Project.Gpt2CachedStep.CachedAttention.UniformError
+import Project.Gpt2CachedStep.CachedScore.UniformError
 import Project.Gpt2QuantizedCached.Export
 import Project.ProofKit.F32RangeCertificate
 import Project.ProofKit.QuantizedRangeCertificate

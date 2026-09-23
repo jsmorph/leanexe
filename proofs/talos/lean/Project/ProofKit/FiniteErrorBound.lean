@@ -22,4 +22,11 @@ theorem component_le (f : Nat → ℝ) (n i : Nat) (hi : i < n) : f i ≤ upper 
     · exact (ih (by omega)).trans (le_max_left _ _)
 
 #print axioms component_le
+theorem upper_le (f : Nat → ℝ) (n : Nat) (bound : ℝ) (hb : 0 ≤ bound)
+    (h : ∀ i < n, f i ≤ bound) : upper f n ≤ bound := by
+  induction n with
+  | zero => exact hb
+  | succ n ih => exact max_le (ih (fun i hi => h i (by omega))) (h n (by omega))
+
+#print axioms upper_le
 end Project.ProofKit.FiniteErrorBound
