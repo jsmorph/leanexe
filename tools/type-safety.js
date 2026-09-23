@@ -26,6 +26,20 @@ const auditedTheorems = [
   "TyWF.sum_left",
   "TyWF.sum_right",
   "TyWF.array_item",
+  "evalNatBin_value_iff",
+  "evalNatBin_overflow_iff",
+  "evalNatBin_no_overflow",
+  "evalNatBin_bounded",
+  "evalNatBin_sub_saturates",
+  "evalNatBin_div_zero",
+  "evalNatBin_mod_zero",
+  "NatCmpOp.eq_iff",
+  "NatCmpOp.lt_iff",
+  "NatCmpOp.le_iff",
+  "ExprTyped.add",
+  "ExprTyped.succ",
+  "ExprTyped.pred",
+  "ExprTyped.boolToNat",
   "BodiesTyped.lookup",
   "EnvTyped.append",
   "EnvTyped.lookup",
@@ -76,6 +90,10 @@ const auditedTheorems = [
   "ArrayValues.set_typed",
   "ArrayValues.push_typed",
   "ArrayValues.append_typed",
+  "step_add",
+  "step_succ",
+  "step_pred",
+  "step_boolToNat",
   "FrameTyped.wellFormed",
   "KontTyped.wellFormed",
   "StateTyped.wellFormed",
@@ -122,6 +140,10 @@ const auditedTheorems = [
   "checkBranchesRaw_iff",
   "ExprTyped.unique",
   "infer_eq_some_iff",
+  "inferRaw_add",
+  "inferRaw_succ",
+  "inferRaw_pred",
+  "inferRaw_boolToNat",
   "bodiesWellTyped_iff",
   "programWellTyped_iff",
   "profileExpressionWellTyped_iff",
@@ -168,6 +190,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_arrays.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_data.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_typing.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_naturals.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

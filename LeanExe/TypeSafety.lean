@@ -1,4 +1,5 @@
 import LeanExe.TypeSafety.Formation
+import LeanExe.TypeSafety.NatOperations
 import LeanExe.TypeSafety.Core
 import LeanExe.TypeSafety.ArrayValues
 import LeanExe.TypeSafety.Machine
@@ -28,6 +29,8 @@ corresponds to the declarative expression judgment without that extra boundary.
 This module makes no extraction, layout, ownership, or WebAssembly correctness
 claim. Persistent abstract arrays have checked operations and a bounded length;
 their physical storage is outside this model. Byte arrays, heap effects,
-compiler-specific recursion recognizers, and all arithmetic other than
-bounded-natural addition remain outside this core.
+compiler-specific recursion recognizers, natural-number pattern elimination,
+fixed-width word operations, and floating-point arithmetic remain outside this core.
+The bounded-natural family covers add/subtract/multiply/divide/remainder/min/max
+and equality/order comparisons with precise operation-tagged overflow.
 -/

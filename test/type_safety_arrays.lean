@@ -78,18 +78,18 @@ example : run [] 20 (initial
 -- Even an invalid set evaluates its replacement before returning failure.
 example : run [] 30 (initial
     (.arraySet? (.arrayEmpty .nat64) (.nat 0) overflowOne)) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 example : run [] 30 (initial
     (.arraySet? (.arrayEmpty .nat64) overflowOne overflowTwo)) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 example : run [] 30 (initial (.arrayGet?
     (.letE overflowOne (.arrayEmpty .nat64)) overflowTwo)) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 example : run [] 40 (initial (.arrayAppend?
     (.letE overflowOne (.arrayEmpty .nat64))
-    (.letE overflowTwo (.arrayEmpty .nat64)))) = .overflow largest 1 := by rfl
+    (.letE overflowTwo (.arrayEmpty .nat64)))) = .overflow .add largest 1 := by rfl
 example : run [] 30 (initial (.arrayPush? (.arrayEmpty .nat64) overflowTwo)) =
-    .overflow largest 2 := by rfl
+    .overflow .add largest 2 := by rfl
 
 -- Admission visits every operand without shifting its lexical index.
 example : uses 0 (.arraySet? (.var 2) (.var 1) (.var 0)) = true := by rfl

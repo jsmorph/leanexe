@@ -1,4 +1,4 @@
-import LeanExe.TypeSafety.Formation
+import LeanExe.TypeSafety.NatOperations
 
 /-!
 # An independent first-order core
@@ -12,9 +12,11 @@ prepend their values to that environment. Nominal constructor patterns similarly
 bind the first field at index zero and prepend all fields to the captured context.
 
 The fragment contains `Unit`, `Bool`, bounded natural numbers, products, binary
-sums, bindings, conditionals, checked addition, and direct first-order calls.
+sums, bindings, conditionals, bounded-natural arithmetic and comparisons, and
+direct first-order calls.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
-arithmetic. Function bodies may call any declared function, including themselves;
+arithmetic: addition and multiplication may overflow; subtraction saturates;
+division and remainder specify their zero-divisor behavior. Function bodies may call any declared function, including themselves;
 typing imposes no termination condition. Nominal declarations admit arbitrary
 mutual recursion through strictly positive first-order fields, with exhaustive
 constructor patterns. Formation is checked separately and required by typing.
@@ -25,9 +27,6 @@ results; their typing is independent of any physical storage representation.
 -/
 
 namespace LeanExe.TypeSafety
-
-/-- The exclusive upper bound on a represented natural number. -/
-def nat64Limit : Nat := 2 ^ 64
 
 inductive Expr where
   | var (index : Nat)
@@ -48,7 +47,8 @@ inductive Expr where
   | inr (otherTy : Ty) (payload : Expr)
   /-- Each branch binds its selected payload at index zero. -/
   | sumCase (scrutinee left right : Expr)
-  | add (left right : Expr)
+  | natBin (operation : NatBinOp) (left right : Expr)
+  | natCmp (operation : NatCmpOp) (left right : Expr)
   | call (function : Nat) (arguments : List Expr)
   | arrayEmpty (item : Ty)
   | arraySize (array : Expr)
@@ -61,6 +61,12 @@ inductive Expr where
   | dataCase (dataId : Nat) (result : Ty) (scrutinee : Expr)
       (branches : List (Nat × Expr))
   deriving Repr
+
+/-- Transparent source conveniences; each operand occurs once in the expanded syntax. -/
+abbrev Expr.add (left right : Expr) : Expr := .natBin .add left right
+abbrev Expr.succ (value : Expr) : Expr := .natBin .add value (.nat 1)
+abbrev Expr.pred (value : Expr) : Expr := .natBin .sub value (.nat 1)
+abbrev Expr.boolToNat (value : Expr) : Expr := .ifE value (.nat 1) (.nat 0)
 
 inductive Value where
   | unit
@@ -113,9 +119,13 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
       ExprTyped declarations signatures (α :: Γ) left τ →
       ExprTyped declarations signatures (β :: Γ) right τ →
       ExprTyped declarations signatures Γ (.sumCase scrutinee left right) τ
-  | add : ExprTyped declarations signatures Γ left .nat64 →
+  | natBin (operation : NatBinOp) : ExprTyped declarations signatures Γ left .nat64 →
       ExprTyped declarations signatures Γ right .nat64 →
-      ExprTyped declarations signatures Γ (.add left right) .nat64
+      ExprTyped declarations signatures Γ (.natBin operation left right) .nat64
+
+  | natCmp (operation : NatCmpOp) : ExprTyped declarations signatures Γ left .nat64 →
+      ExprTyped declarations signatures Γ right .nat64 →
+      ExprTyped declarations signatures Γ (.natCmp operation left right) .bool
 
   | call (found : lookup signatures function = some ⟨params, result⟩) :
       ArgsTyped declarations signatures Γ arguments params →
@@ -165,6 +175,23 @@ inductive BranchesTyped (declarations : DataDecls) (signatures : Signatures)
       BranchesTyped declarations signatures Γ ((arity, body) :: rest) (fields :: constructors) result
 
 end
+
+theorem ExprTyped.add (left : ExprTyped declarations signatures Γ leftExpr .nat64)
+    (right : ExprTyped declarations signatures Γ rightExpr .nat64) :
+    ExprTyped declarations signatures Γ (.add leftExpr rightExpr) .nat64 :=
+  .natBin .add left right
+
+theorem ExprTyped.succ (typed : ExprTyped declarations signatures Γ value .nat64) :
+    ExprTyped declarations signatures Γ (.succ value) .nat64 :=
+  .natBin .add typed (.nat (by decide))
+
+theorem ExprTyped.pred (typed : ExprTyped declarations signatures Γ value .nat64) :
+    ExprTyped declarations signatures Γ (.pred value) .nat64 :=
+  .natBin .sub typed (.nat (by decide))
+
+theorem ExprTyped.boolToNat (typed : ExprTyped declarations signatures Γ value .bool) :
+    ExprTyped declarations signatures Γ (.boolToNat value) .nat64 :=
+  .ifE typed (.nat (by decide)) (.nat (by decide))
 
 /-- All function bodies use the same global signature table, allowing recursion. -/
 inductive BodiesTyped (declarations : DataDecls) (signatures : Signatures) :
@@ -315,7 +342,8 @@ theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr 
   | sumCase scrutinee left _ =>
       have formed := scrutinee.wellFormed hdeclarations hsignatures hcontext
       exact left.wellFormed hdeclarations hsignatures (.cons formed.sum_left hcontext)
-  | add _ _ => exact .nat64
+  | natBin _ _ _ => exact .nat64
+  | natCmp _ _ _ => exact .bool
   | call found _ => exact (hsignatures.lookup found).result
   | arrayEmpty item => exact .array item
   | arraySize _ => exact .nat64

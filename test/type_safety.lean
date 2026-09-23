@@ -43,16 +43,16 @@ example : run [] 20 (initial (.ifE (.bool false) overflowOne (.nat 7))) =
 
 -- The core specifies strict pairs, even when the result is projected.
 example : run [] 30 (initial (.fst (.pair (.nat 7) overflowOne))) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 
 -- The natural boundary is checked, not wrapped modulo 2^64.
 example : run [] 20 (initial (.add (.nat largest) (.nat 0))) =
     .ret (.nat largest) [] := by rfl
 
-example : run [] 20 (initial overflowOne) = .overflow largest 1 := by rfl
+example : run [] 20 (initial overflowOne) = .overflow .add largest 1 := by rfl
 
 example : ExprTyped [] [] [] overflowOne .nat64 :=
-  .add (.nat (by decide)) (.nat (by decide))
+  .natBin .add (.nat (by decide)) (.nat (by decide))
 
 example : ¬ ExprTyped [] signatures Γ (.nat nat64Limit) .nat64 := by
   intro typed
@@ -69,8 +69,8 @@ example : Stuck [] (.ret (.nat 3) [.fst]) := by
 example : Stuck [] (.ret (.nat 3) [.ifBranches .unit .unit []]) := by
   simp [Stuck, step, Terminal]
 
-example : ¬ Terminal (.overflow 1 1) := by
-  unfold Terminal
+example : ¬ Terminal (.overflow .add 1 1) := by
+  unfold Terminal Overflow
   decide
 
 -- Parameter index zero is the first argument; calls use a fresh environment.
@@ -94,7 +94,7 @@ example : run pairProgram 50 (initial (.letE (.nat 99)
 
 -- Argument failures identify left-to-right evaluation, even for unused arguments.
 example : run [.nat 9] 40 (initial (.call 0 [overflowOne, overflowTwo])) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 
 example : run [.nat 9] 20 (initial (.call 0 [])) = .ret (.nat 9) [] := by rfl
 

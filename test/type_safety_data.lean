@@ -167,7 +167,7 @@ def overflowOne : Expr := .add (.nat largest) (.nat 1)
 def overflowTwo : Expr := .add (.nat largest) (.nat 2)
 
 -- Runtime terminal and continuation typing also require a formed result type.
-example : ¬ StateTyped [] [] (.overflow largest 1) (.data 0) := by
+example : ¬ StateTyped [] [] (.overflow .add largest 1) (.data 0) := by
   intro typed
   cases typed with
   | overflow _ _ _ formed =>
@@ -181,7 +181,7 @@ example : ¬ KontTyped [] [] [] (.data 0) (.data 0) := by
       | data bounded => exact Nat.not_lt_zero _ bounded
 
 example : run [] 30 (initial (.dataCtor 0 0 [overflowOne, overflowTwo])) =
-    .overflow largest 1 := by rfl
+    .overflow .add largest 1 := by rfl
 
 -- A complete two-field pattern binds field zero first, then field one.
 def addFields : Expr := .dataCase 0 .nat64 (.dataCtor 0 0 [.nat 11, .nat 22])
@@ -192,7 +192,7 @@ example : admissible addFields = true := by rfl
 example : ProfileTyped pairDecls [] [] addFields .nat64 :=
   ⟨.dataCase rfl .nat64
     (.dataCtor rfl rfl (.cons (.nat (by decide)) (.cons (.nat (by decide)) .nil)))
-    (.cons rfl (.add (.var rfl) (.var rfl)) .nil), rfl⟩
+    (.cons rfl (.natBin .add (.var rfl) (.var rfl)) .nil), rfl⟩
 example : run [] 70 (initial (.letE (.nat 10)
     (.dataCase 0 .nat64 (.dataCtor 0 0 [.nat 2, .nat 3])
       [(2, .add (.var 0) (.add (.var 1) (.var 2)))]))) =
@@ -245,7 +245,7 @@ example : ProfileProgramTyped listDecls sumProgram sumSignatures :=
   ⟨⟨declarationsWellFormed_iff.mp rfl, signaturesWellFormed_iff.mp rfl,
     .cons (.dataCase rfl .nat64 (.var rfl)
       (.cons rfl (.nat (by decide))
-        (.cons rfl (.add (.var rfl) (.call rfl (.cons (.var rfl) .nil))) .nil))) .nil⟩, rfl⟩
+        (.cons rfl (.natBin .add (.var rfl) (.call rfl (.cons (.var rfl) .nil))) .nil))) .nil⟩, rfl⟩
 
 example : ProfileTyped listDecls sumSignatures [] (.call 0 [threeItems]) .nat64 :=
   ⟨.call rfl (.cons
