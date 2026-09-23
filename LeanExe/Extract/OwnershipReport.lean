@@ -115,6 +115,7 @@ mutual
           (scanLocalLetsFrom (childPath path "letLets") 0 lets)
           (scanExpr (childPath path "letLets.body") body)
     | .runtimeStat _ => Scan.empty
+    | .retain ptr _ => scanExpr (childPath path "ptr") ptr
     | .release ptr =>
         Scan.append
           { Scan.empty with explicitReleaseExprs := [{ path := path, ptr := ptr }] }

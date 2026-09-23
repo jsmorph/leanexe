@@ -37,9 +37,11 @@ Operations that return data use `Except UInt32 α`.  Operations with no data res
 
 Descriptors, enum tags, flags, and buffer capacities use `UInt32`.  Rights, timestamps, sizes of files, and offsets use `UInt64`.  `fd_seek` interprets its offset as the signed 64-bit WASI bit pattern, so `0 - 2` seeks backwards by two bytes.  The API defines constants for clocks, rights, file types, whence, advice, flags, events, and signals.
 
+Enum tags and flags must use values permitted by WASI.  A host can trap when decoding an invalid enum tag before calling the operation.  Unsupported operations retain the host's result; Wasmtime 44 returns `notsup` for `fd_allocate` and `proc_raise`.  Its default host returns `badf` for rights reduction through `fd_fdstat_set_rights`, while its legacy Preview 1 host returns `notsup`.
+
 ByteArray arguments remain values.  Reads and other buffer-producing operations allocate an owned result, and a later host call cannot change an earlier result.  The compiler releases temporary buffers after an error or after their last use.  Allocation follows the compiler runtime's existing trap-on-exhaustion behavior.
 
-`fd_read`, `fd_pread`, and `sock_recv` take a maximum byte count and use one WASI iovec.  `fd_write`, `fd_pwrite`, and `sock_send` take one ByteArray and return the transferred byte count.  Calls preserve partial transfers, EOF, `again`, and `intr`.  They do not retry, fill a buffer, or finish a partial write.  A zero-capacity read still calls the host, and a successful empty result is an empty ByteArray.
+`fd_read`, `fd_pread`, and `sock_recv` take a maximum byte count and use one WASI iovec.  `fd_write`, `fd_pwrite`, and `sock_send` take one ByteArray and return the transferred byte count.  Calls preserve partial transfers, EOF, `again`, and `intr`.  They do not retry, fill a buffer, or finish a partial write.  A zero-capacity read still calls the host, and a successful empty result is an empty ByteArray.  Wasmtime 44 returns `intr` for that read through its default host and an empty success through its legacy host.
 
 ## Operations
 
@@ -66,7 +68,7 @@ Paths are length-delimited ByteArrays.  The WASI host applies its path encoding 
 
 ## Tests
 
-`test/wasi_api.js` builds Lean examples, validates the emitted modules with `wasm-tools`, and executes them on Wasmtime.  It uses the standard WASI host.  The test driver invokes `tools/leanrun` for Lean and compiler commands.
+`test/wasi_api.js` builds Lean examples, validates the emitted modules with `wasm-tools`, and executes them on Wasmtime.  The 38 cases cover all operation families, binary data and EOF, a four-megabyte stream, relative and absolute timers, descriptor errors, filesystem changes, inherited TCP sockets, and allocation/free counters.  Socket tests use Wasmtime 44's legacy Preview 1 host and poll its inherited listener before accepting a connection.  The test driver invokes `tools/leanrun` for Lean and compiler commands.
 
 ```sh
 node test/wasi_api.js

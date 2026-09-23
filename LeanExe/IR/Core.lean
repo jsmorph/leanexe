@@ -94,6 +94,8 @@ mutual
     | letCall (slots : List Nat) (index : Nat) (args : List Expr) (body : Expr)
     | letLets (lets : List LocalLet) (body : Expr)
     | runtimeStat (stat : RuntimeStat)
+    /-- Acquire a returned reference unless a listed local already owns it. -/
+    | retain (ptr : Expr) (owned : List Nat)
     | release (ptr : Expr)
     | arrayAllocSlots (width childMask : Nat) (cells : Expr)
     | heapAllocSlots (childMask ownedMask : Nat) (values : List Expr)
@@ -279,6 +281,7 @@ mutual
         body.eval module_ callStore
     | .letLets lets body => body.eval module_ (evalLocalLets module_ lets store)
     | .runtimeStat _ => 0
+    | .retain ptr _ => ptr.eval module_ store
     | .release _ => 0
     | .arrayAllocSlots _ _ _ => 0
     | .heapAllocSlots _ _ _ => 0

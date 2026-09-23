@@ -261,6 +261,7 @@ mutual
     | .letLets lets body =>
         .letLets (lets.map (shiftLocalLetCalls offset)) (shiftExprCalls offset body)
     | .runtimeStat stat => .runtimeStat stat
+    | .retain ptr owned => .retain (shiftExprCalls offset ptr) owned
     | .release ptr => .release (shiftExprCalls offset ptr)
     | .arrayAllocSlots width childMask cells =>
         .arrayAllocSlots width childMask (shiftExprCalls offset cells)
@@ -775,6 +776,7 @@ mutual
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
     | .letE _ value body => max (exprScratch value) (exprScratch body)
     | .runtimeStat _ => 0
+    | .retain ptr _ => 2 + exprScratch ptr
     | .release ptr => exprScratch ptr
     | .arrayAllocSlots _ _ cells => 8 + exprScratch cells
     | .heapAllocSlots _ _ values =>
@@ -2699,6 +2701,10 @@ mutual
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
     | .arrayAllocSlots width childMask cells => emitArrayAllocSlots scratch width childMask cells
     | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
+    | .retain ptr owned =>
+        emitExpr (scratch + 2) ptr ++ localSet scratch ++
+          owned.foldl (fun code slot => code ++ localGet scratch ++ localGet slot ++ i64Ne ++ [Instr.andI32]) (i32Const 1) ++
+          [Instr.iff false (emitRetainLocal scratch (scratch + 1)) none] ++ localGet scratch
     | .release ptr => emitExpr scratch ptr ++ unreachable
     | .heapAllocSlots childMask ownedMask values =>
         emitHeapAllocSlots scratch childMask ownedMask values
@@ -2927,6 +2933,10 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
       lets.flatMap (emitLocalLetWithRelease releaseIndex scratch) ++
         emitExprWithReleaseFallback releaseIndex scratch body
   | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
+  | .retain ptr owned =>
+      emitExprWithReleaseFallback releaseIndex (scratch + 2) ptr ++ localSet scratch ++
+        owned.foldl (fun code slot => code ++ localGet scratch ++ localGet slot ++ i64Ne ++ [Instr.andI32]) (i32Const 1) ++
+        [Instr.iff false (emitRetainLocal scratch (scratch + 1)) none] ++ localGet scratch
   | .release ptr =>
       emitExprWithReleaseFallback releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
