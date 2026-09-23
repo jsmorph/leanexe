@@ -7,7 +7,7 @@ open Wasm PackedMemory PackedFloatFrame
 def guardProgram (ptrLocal offsetLocal : Nat) : Wasm.Program :=
   [.iff 0 1
     [.localGet ptrLocal, .localGet offsetLocal, .addI64, .wrapI64, .load8U 0, .extendUI32]
-    [.unreachable] [] [.i64]]
+    [.unreachable]]
 
 theorem guard_spec (module_ : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (ptr : UInt64) (bytes : ByteArray) (offset ptrLocal offsetLocal : Nat)
