@@ -164,12 +164,14 @@ def knownExternal? (name : Name) : Option Classification :=
   if effectRoots.contains root then
     some { status := "rejected", reason := "unsupported effect dependency" }
   else if LeanExe.Extract.Core.packedPrimitiveName name then
-    some { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
+    some { status := "implemented", reason := "compiler-recognized packed byte-array operation" }
   else if LeanExe.Extract.Core.compilerPrimitiveName name then
     some {
       status := "implemented"
-      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? name).isSome ||
-          (LeanExe.Extract.Core.floatUnaryPrimitive? name).isSome then
+      reason := if name == ``LeanExe.Signed32.extend8Bits then
+        "compiler-recognized signed-byte extension intrinsic"
+      else if (LeanExe.Extract.Core.f32BinaryPrimitive? name).isSome ||
+          (LeanExe.Extract.Core.scalarUnaryPrimitive? name).isSome then
         "compiler-recognized binary32 bit-pattern floating-point intrinsic"
       else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
@@ -286,12 +288,14 @@ def knownExternal? (name : Name) : Option Classification :=
 
 def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) : Classification :=
   if LeanExe.Extract.Core.packedPrimitiveName info.name then
-    { status := "implemented", reason := "compiler-recognized packed UInt32 byte-array operation" }
+    { status := "implemented", reason := "compiler-recognized packed byte-array operation" }
   else if LeanExe.Extract.Core.compilerPrimitiveName info.name then
     {
       status := "implemented"
-      reason := if (LeanExe.Extract.Core.f32BinaryPrimitive? info.name).isSome ||
-          (LeanExe.Extract.Core.floatUnaryPrimitive? info.name).isSome then
+      reason := if info.name == ``LeanExe.Signed32.extend8Bits then
+        "compiler-recognized signed-byte extension intrinsic"
+      else if (LeanExe.Extract.Core.f32BinaryPrimitive? info.name).isSome ||
+          (LeanExe.Extract.Core.scalarUnaryPrimitive? info.name).isSome then
         "compiler-recognized binary32 bit-pattern floating-point intrinsic"
       else "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
     }
