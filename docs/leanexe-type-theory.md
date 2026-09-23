@@ -6,6 +6,11 @@ LeanExe accepts checked Lean declarations through a representation and extractio
 
 The definitions below combine independently stated runtime typing rules with an implementation-indexed acceptance relation.  Central acceptance premises, including recursor recognition and expression extraction, refer to implementation function graphs.  The full runtime calculus lacks a complete independent formalization and type-soundness proof; some collection and recursion rules remain schematic.  The [independent core type-safety development](type-safety.md) proves progress and preservation for a smaller, separately specified first-order language.  Its adequacy for this broader language remains to be established.  Correctness of recognition, extraction, and compilation is a separate set of obligations, not a prerequisite for proving the runtime language's own type soundness.  A rule marked “implemented” names the executable predicate that fixes its premises.
 
+The [strict runtime-language contract](runtime-language.md) records the new
+normative choices for machine-written programs. Its relevance restrictions and
+strict evaluation are not requirements currently enforced by this document's
+implementation-indexed acceptance relation.
+
 Let `E` be a checked Lean environment, `Γ` a Lean local context, `Ξ` a first-order function-signature context, and `Δ` a context of runtime variables.  Let `v` identify the exact compiler source and pinned Lean toolchain.  The judgments have distinct subjects:
 
 | Judgment | Meaning |

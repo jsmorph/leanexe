@@ -1,4 +1,4 @@
-import LeanExe.TypeSafety.Core
+import LeanExe.TypeSafety.ArrayValues
 
 /-!
 # Explicit call-by-value operational semantics
@@ -15,7 +15,9 @@ needed after the result returns. Recursive calls are allowed.
 `step` returns `none` both for terminal states and for malformed/stuck states.
 Consequently progress is substantive: a missing variable, a non-Boolean
 condition, or a projection from a scalar is not silently relabeled a failure.
-The only specified failure is checked natural-number addition overflow.
+The only machine failure is checked natural-number addition overflow. Checked
+array operations evaluate all operands from left to right; bounds and growth
+failures return `inl unit` as ordinary data.
 -/
 
 namespace LeanExe.TypeSafety
@@ -36,6 +38,16 @@ inductive Frame where
   | addRight (left : Value)
   /-- Arguments already computed, remaining argument expressions, and caller environment. -/
   | callArgs (function : Nat) (done : Env) (remaining : List Expr) (env : Env)
+  | arraySize
+  | arrayGetArray (index : Expr) (env : Env)
+  | arrayGetIndex (elements : List Value)
+  | arraySetArray (index replacement : Expr) (env : Env)
+  | arraySetIndex (elements : List Value) (replacement : Expr) (env : Env)
+  | arraySetValue (elements : List Value) (index : Nat)
+  | arrayPushArray (value : Expr) (env : Env)
+  | arrayPushValue (elements : List Value)
+  | arrayAppendLeft (right : Expr) (env : Env)
+  | arrayAppendRight (left : List Value)
   deriving Repr
 
 abbrev Kont := List Frame
@@ -78,6 +90,16 @@ def step (program : Program) : State → Option State
   | .eval (.call function []) _ kont => enterCall program function [] kont
   | .eval (.call function (argument :: rest)) env kont =>
       some (.eval argument env (.callArgs function [] rest env :: kont))
+  | .eval (.arrayEmpty _) _ kont => some (.ret (.array []) kont)
+  | .eval (.arraySize array) env kont => some (.eval array env (.arraySize :: kont))
+  | .eval (.arrayGet? array index) env kont =>
+      some (.eval array env (.arrayGetArray index env :: kont))
+  | .eval (.arraySet? array index replacement) env kont =>
+      some (.eval array env (.arraySetArray index replacement env :: kont))
+  | .eval (.arrayPush? array value) env kont =>
+      some (.eval array env (.arrayPushArray value env :: kont))
+  | .eval (.arrayAppend? left right) env kont =>
+      some (.eval left env (.arrayAppendLeft right env :: kont))
   | .ret _ [] => none
   | .ret value (.letBody body env :: kont) =>
       some (.eval body (value :: env) kont)
@@ -107,6 +129,25 @@ def step (program : Program) : State → Option State
       enterCall program function (done ++ [value]) kont
   | .ret value (.callArgs function done (argument :: rest) env :: kont) =>
       some (.eval argument env (.callArgs function (done ++ [value]) rest env :: kont))
+  | .ret (.array elements) (.arraySize :: kont) => some (.ret (.nat elements.length) kont)
+  | .ret (.array elements) (.arrayGetArray index env :: kont) =>
+      some (.eval index env (.arrayGetIndex elements :: kont))
+  | .ret (.nat index) (.arrayGetIndex elements :: kont) =>
+      some (.ret (ArrayValues.get? elements index) kont)
+  | .ret (.array elements) (.arraySetArray index replacement env :: kont) =>
+      some (.eval index env (.arraySetIndex elements replacement env :: kont))
+  | .ret (.nat index) (.arraySetIndex elements replacement env :: kont) =>
+      some (.eval replacement env (.arraySetValue elements index :: kont))
+  | .ret value (.arraySetValue elements index :: kont) =>
+      some (.ret (ArrayValues.set? elements index value) kont)
+  | .ret (.array elements) (.arrayPushArray value env :: kont) =>
+      some (.eval value env (.arrayPushValue elements :: kont))
+  | .ret value (.arrayPushValue elements :: kont) =>
+      some (.ret (ArrayValues.push? elements value) kont)
+  | .ret (.array left) (.arrayAppendLeft right env :: kont) =>
+      some (.eval right env (.arrayAppendRight left :: kont))
+  | .ret (.array right) (.arrayAppendRight left :: kont) =>
+      some (.ret (ArrayValues.append? left right) kont)
   | .ret _ (_ :: _) => none
   | .overflow _ _ => none
 
@@ -146,6 +187,29 @@ inductive FrameTyped (signatures : Signatures) : Frame → Ty → Ty → Prop wh
       EnvTyped done doneTypes → ArgsTyped signatures Γ remaining remainingTypes →
       EnvTyped env Γ → doneTypes ++ (α :: remainingTypes) = params →
       FrameTyped signatures (.callArgs function done remaining env) α result
+  | arraySize : FrameTyped signatures .arraySize (.array α) .nat64
+  | arrayGetArray : ExprTyped signatures Γ index .nat64 → EnvTyped env Γ →
+      FrameTyped signatures (.arrayGetArray index env) (.array α) (.sum .unit α)
+  | arrayGetIndex : ValuesTyped elements α → elements.length < nat64Limit →
+      FrameTyped signatures (.arrayGetIndex elements) .nat64 (.sum .unit α)
+  | arraySetArray : ExprTyped signatures Γ index .nat64 →
+      ExprTyped signatures Γ replacement α → EnvTyped env Γ →
+      FrameTyped signatures (.arraySetArray index replacement env)
+        (.array α) (.sum .unit (.array α))
+  | arraySetIndex : ValuesTyped elements α → elements.length < nat64Limit →
+      ExprTyped signatures Γ replacement α → EnvTyped env Γ →
+      FrameTyped signatures (.arraySetIndex elements replacement env)
+        .nat64 (.sum .unit (.array α))
+  | arraySetValue : ValuesTyped elements α → elements.length < nat64Limit → index < nat64Limit →
+      FrameTyped signatures (.arraySetValue elements index) α (.sum .unit (.array α))
+  | arrayPushArray : ExprTyped signatures Γ value α → EnvTyped env Γ →
+      FrameTyped signatures (.arrayPushArray value env) (.array α) (.sum .unit (.array α))
+  | arrayPushValue : ValuesTyped elements α → elements.length < nat64Limit →
+      FrameTyped signatures (.arrayPushValue elements) α (.sum .unit (.array α))
+  | arrayAppendLeft : ExprTyped signatures Γ right (.array α) → EnvTyped env Γ →
+      FrameTyped signatures (.arrayAppendLeft right env) (.array α) (.sum .unit (.array α))
+  | arrayAppendRight : ValuesTyped left α → left.length < nat64Limit →
+      FrameTyped signatures (.arrayAppendRight left) (.array α) (.sum .unit (.array α))
 
 /-- A continuation consumes the current type and eventually returns the result type. -/
 inductive KontTyped (signatures : Signatures) : Kont → Ty → Ty → Prop where

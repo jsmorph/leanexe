@@ -66,6 +66,17 @@ theorem eval_step_typed (hprogram : ProgramTyped program signatures)
       | cons harg hrest =>
           exact ⟨_, rfl, .eval harg henv
             (.cons (.callArgs found .nil hrest henv rfl) hkont)⟩
+  | arrayEmpty => exact ⟨_, rfl, .ret (ArrayValues.empty_typed _) hkont⟩
+  | arraySize harray => exact ⟨_, rfl, .eval harray henv (.cons .arraySize hkont)⟩
+  | arrayGet? harray hindex =>
+      exact ⟨_, rfl, .eval harray henv (.cons (.arrayGetArray hindex henv) hkont)⟩
+  | arraySet? harray hindex hreplacement =>
+      exact ⟨_, rfl, .eval harray henv
+        (.cons (.arraySetArray hindex hreplacement henv) hkont)⟩
+  | arrayPush? harray hvalue =>
+      exact ⟨_, rfl, .eval harray henv (.cons (.arrayPushArray hvalue henv) hkont)⟩
+  | arrayAppend? hleft hright =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.arrayAppendLeft hright henv) hkont)⟩
 
 /-- A frame consumes a value of its input type without getting stuck. -/
 theorem frame_step_typed (hprogram : ProgramTyped program signatures)
@@ -125,6 +136,36 @@ theorem frame_step_typed (hprogram : ProgramTyped program signatures)
           exact ⟨_, rfl, .eval harg henv
             (.cons (.callArgs found hdone' hrest henv (by
               simpa only [List.append_assoc, List.singleton_append] using paramsEqual)) hkont)⟩
+  | arraySize =>
+      obtain ⟨elements, rfl, _, bounded⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .ret (.nat bounded) hkont⟩
+  | arrayGetArray hindex henv =>
+      obtain ⟨elements, rfl, helements, bounded⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .eval hindex henv (.cons (.arrayGetIndex helements bounded) hkont)⟩
+  | arrayGetIndex helements _ =>
+      obtain ⟨index, rfl, _⟩ := hvalue.nat_canonical
+      exact ⟨_, rfl, .ret (ArrayValues.get_typed helements) hkont⟩
+  | arraySetArray hindex hreplacement henv =>
+      obtain ⟨elements, rfl, helements, bounded⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .eval hindex henv
+        (.cons (.arraySetIndex helements bounded hreplacement henv) hkont)⟩
+  | arraySetIndex helements bounded hreplacement henv =>
+      obtain ⟨index, rfl, indexBounded⟩ := hvalue.nat_canonical
+      exact ⟨_, rfl, .eval hreplacement henv
+        (.cons (.arraySetValue helements bounded indexBounded) hkont)⟩
+  | arraySetValue helements bounded _ =>
+      exact ⟨_, rfl, .ret (ArrayValues.set_typed helements bounded hvalue) hkont⟩
+  | arrayPushArray hpayload henv =>
+      obtain ⟨elements, rfl, helements, bounded⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .eval hpayload henv (.cons (.arrayPushValue helements bounded) hkont)⟩
+  | arrayPushValue helements _ =>
+      exact ⟨_, rfl, .ret (ArrayValues.push_typed helements hvalue) hkont⟩
+  | arrayAppendLeft hright henv =>
+      obtain ⟨elements, rfl, helements, bounded⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .eval hright henv (.cons (.arrayAppendRight helements bounded) hkont)⟩
+  | arrayAppendRight hleft _ =>
+      obtain ⟨elements, rfl, hright, _⟩ := hvalue.array_canonical
+      exact ⟨_, rfl, .ret (ArrayValues.append_typed hleft hright) hkont⟩
 
 /-- Every typed state is terminal or takes a type-preserving step. -/
 theorem safety_step (hprogram : ProgramTyped program signatures)

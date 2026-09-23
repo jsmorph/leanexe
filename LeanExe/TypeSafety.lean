@@ -1,4 +1,5 @@
 import LeanExe.TypeSafety.Core
+import LeanExe.TypeSafety.ArrayValues
 import LeanExe.TypeSafety.Machine
 import LeanExe.TypeSafety.Safety
 import LeanExe.TypeSafety.Profile
@@ -17,6 +18,8 @@ restriction. The profile uses `split` to bind both product fields, rejects
 invariant or asserting all-path use.
 
 This module makes no extraction, layout, ownership, or WebAssembly correctness
-claim. Arrays, byte arrays, heap effects, compiler-specific recursion recognizers,
-and all arithmetic other than bounded-natural addition remain outside this core.
+claim. Persistent abstract arrays have checked operations and a bounded length;
+their physical storage is outside this model. Byte arrays, heap effects,
+compiler-specific recursion recognizers, and all arithmetic other than
+bounded-natural addition remain outside this core.
 -/

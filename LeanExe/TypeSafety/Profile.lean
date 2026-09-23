@@ -35,6 +35,13 @@ def uses (index : Nat) : Expr → Bool
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
   | .add left right => uses index left || uses index right
   | .call _ arguments => usesArgs index arguments
+  | .arrayEmpty _ => false
+  | .arraySize array => uses index array
+  | .arrayGet? array position => uses index array || uses index position
+  | .arraySet? array position replacement =>
+      uses index array || uses index position || uses index replacement
+  | .arrayPush? array value => uses index array || uses index value
+  | .arrayAppend? left right => uses index left || uses index right
 
 /-- Occurrence in a finite argument list. -/
 def usesArgs (index : Nat) : List Expr → Bool
@@ -59,6 +66,13 @@ def admissible : Expr → Bool
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
   | .add left right => admissible left && admissible right
   | .call _ arguments => admissibleArgs arguments
+  | .arrayEmpty _ => true
+  | .arraySize array => admissible array
+  | .arrayGet? array index => admissible array && admissible index
+  | .arraySet? array index replacement =>
+      admissible array && (admissible index && admissible replacement)
+  | .arrayPush? array value => admissible array && admissible value
+  | .arrayAppend? left right => admissible left && admissible right
 
 /-- Every argument must itself satisfy the source restriction. -/
 def admissibleArgs : List Expr → Bool

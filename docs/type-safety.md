@@ -31,7 +31,7 @@ different obligation, not the reason the full language theorem is unfinished.
 The core has Unit, Bool, bounded natural numbers, products, binary sums,
 variables, let bindings, conditionals, projections, complete product patterns,
 Unit elimination, sum case analysis, checked addition, and direct first-order
-calls with arbitrary finite argument lists.
+calls with arbitrary finite argument lists, and persistent homogeneous arrays.
 Expressions, values, and machine states are ordinary untyped data. Separate
 inductive judgments describe their types. Natural literals and natural values
 must be below `2^64` when typed; addition uses this bounded-natural interpretation,
@@ -63,6 +63,14 @@ terminates with both operands recorded. `Terminal` admits only a final return
 or overflow of two bounded operands whose sum is at least `2^64`. Missing
 variables or functions and ill-shaped eliminations have no transition and are
 not permitted failures. Their exclusion is a substantive part of progress.
+
+Arrays contain finite homogeneous sequences whose lengths are below `2^64`.
+The language provides explicitly typed empty construction, size, and checked
+get, set, push, and append. The checked operations return `inl unit` for an invalid
+index or unrepresentable new length, and `inr payload` for success. All operands
+evaluate left to right, including a set replacement when the index is invalid.
+These errors are ordinary typed data; they introduce no new terminal failure.
+Arrays here are persistent values, with no physical heap or allocation model.
 
 This evaluation strategy belongs to this core. Connecting demand-based LeanExe
 extraction to it requires a separate theorem. The core does not import the
@@ -101,6 +109,13 @@ argument checks. `programAdmissible_lookup` establishes that each declared
 function has an admitted body using every parameter index. These Boolean checks
 do not replace ordinary type checking, and relevance is not a runtime invariant.
 
+The array module proves exact failure conditions and successful result/length
+characterizations. Successful set reads back the replacement at the selected
+index and preserves every other read. Push and append preserve element order,
+with separate lookup laws for the old and appended regions. Primitive typing
+lemmas preserve homogeneous contents and representable lengths; the extended
+machine proofs use these lemmas for every array continuation frame.
+
 The proof first constructs a typed successor for each expression and continuation
 frame, using typed lookup and canonical forms. This gives progress and one-step
 preservation for the independently defined executable transition function.
@@ -113,6 +128,7 @@ presentation. No premise assumes one of these safety conclusions.
 | Module | Content |
 |--------|---------|
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
+| [ArrayValues.lean](../LeanExe/TypeSafety/ArrayValues.lean) | Pure checked array operations, failure/result/length/read laws, and primitive typing. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
 | [Safety.lean](../LeanExe/TypeSafety/Safety.lean) | Progress, preservation, finite-execution safety, result typing, and overflow justification. |
 | [Profile.lean](../LeanExe/TypeSafety/Profile.lean) | Syntactic admission checks, their characterizations, and profile safety. |
@@ -125,9 +141,11 @@ tools/type-safety.js check
 ```
 
 The gate checks the version against `lean-toolchain`, builds only the independent
-`LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean)
-and [41 profile examples](../test/type_safety_profile.lean), and audits the
-transitive axiom dependencies of seven core results and all 13 profile theorems.
+`LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean),
+[41 profile examples](../test/type_safety_profile.lean), and
+[46 array examples](../test/type_safety_arrays.lean). It audits the transitive
+axiom dependencies of seven core results, all 13 profile theorems, and all 32
+array operation and list-typing theorems: 52 audits in total.
 Missing audit results or any axiom other than `propext` fail the gate.
 Behavior checks and the audit run with warnings treated as errors. The examples
 exercise lexical capture, both sum branches, branch selection, strict pairs,
@@ -137,11 +155,14 @@ They complement the universal theorems by checking the intended semantics.
 Profile examples additionally cover two-field binding order, lexical shifts,
 Unit elimination, ignored fields and parameters, nested projections, duplicate
 uses, and uses confined to an unselected branch.
+Array examples exercise invalid and boundary indices, persistent updates,
+nested arrays, left-to-right failure order, captured replacement environments,
+array parameters, heterogeneous-value rejection, and malformed array frames.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
-`6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends only on
-Lean's standard propositional extensionality axiom, `propext`. There are no proof
-holes, added axioms, unsafe definitions, or native-evaluation proof shortcuts in
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
+axioms or only Lean's standard propositional extensionality axiom, `propext`.
+There are no proof holes, added axioms, unsafe definitions, or native-evaluation proof shortcuts in
 these modules. This remains a proof checked by Lean's kernel and standard
 foundation, not a proof of the kernel's consistency.
 
@@ -156,9 +177,9 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Fixed-width modular operations, other arithmetic, arrays, byte
-arrays, general recursive data, physical heaps, and compiler-specific recursion
-recognizers remain outside the language proved here.
+into this core. Fixed-width modular operations, other arithmetic, additional
+array operations, byte arrays, general recursive data, physical heaps, and
+compiler-specific recursion recognizers remain outside the language proved here.
 
 Unannotated sum introductions can have multiple typings because the unused
 summand is not specified. Progress and preservation hold for every given typing
@@ -190,11 +211,11 @@ The independent language agenda is:
 5. State algorithmic type-checking results against these declarative rules.
    Keep termination and successful, failure-free execution as separate results.
 
-Abstract persistent arrays remain a suitable first extension once evaluation
-and failure behavior are specified. Their length must support the bounded
-`Nat64` size result, including after append or replication; alternatively the
-semantics must explicitly define the corresponding failure. This is a
-language-level obligation and does not require a physical allocator proof.
+The first persistent-array increment is checked. Additional collection forms
+such as replication, slicing, folds, and early-exit loops still require complete
+rules or proved expansions into this core. Growth must preserve representable
+lengths or return a specified failure. Recursive nominal declarations and an
+algorithmic typing discipline remain separate foundational work items.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;
