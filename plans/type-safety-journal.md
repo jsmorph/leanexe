@@ -524,3 +524,21 @@ weakening laws use no axioms; fifteen syntax-algebra laws use only propext.
 The 26 regressions cover binder arities, nominal/function identity preservation,
 merged free indices without capture, and limits of public inference claims.
 No profile or execution equivalence is claimed by this checkpoint.
+
+Completed exact occurrence and relevance preservation under arbitrary renaming.
+The first occurrence proof kernel-checked but depended on Quot.sound through
+simplifier-generated function extensionality beneath existential predicates.
+Explicit constructive witness transport and a shared Boolean-disjunction image
+lemma removed that dependency without weakening the statement. Protected-prefix
+preimage laws then gave exact local usage, parameter-prefix usage, and mutual
+admissible-expression/list/branch equalities. Profile typing transport and
+weakening follow. Explicit local equality types resolved simp matching of lift
+versus liftN 1. No injectivity or new parameter-use assumption was introduced.
+
+The full gate passed eighteen build jobs, all 663 examples, and all 357 theorem
+audits. All eighteen new/helper proofs use at most propext; six use no axioms.
+The 27 regressions passed on their first run and distinguish merged free uses
+from protected local uses, retain rejected unused fields/projections, and show
+that inserted unused parameters remain unused. Next is raw operational
+correspondence under exact environment lookup agreement; static/profile laws
+alone are not an execution-equivalence theorem.

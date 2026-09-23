@@ -178,6 +178,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [EqualityFlags.lean](../LeanExe/TypeSafety/EqualityFlags.lean) | Constructive monotone Boolean-table saturation and its proved iteration bound. |
 | [EqualityTypes.lean](../LeanExe/TypeSafety/EqualityTypes.lean) | Independent equality-domain judgments, formation, exact terminating admission checker. |
 | [Renaming.lean](../LeanExe/TypeSafety/Renaming.lean) | Capture-avoiding traversal, pointwise algebra, context transport, typing preservation and weakening. |
+| [RenamingProfile.lean](../LeanExe/TypeSafety/RenamingProfile.lean) | Exact free-occurrence images, protected-prefix use, relevance invariance, and profile typing transport. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -199,9 +200,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [47 Boolean examples](../test/type_safety_booleans.lean),
 [25 raw equality examples](../test/type_safety_value_equality.lean),
 [38 equality-domain examples](../test/type_safety_equality_domain.lean),
-[35 source equality examples](../test/type_safety_structural_equality.lean), and
-[26 renaming examples](../test/type_safety_renaming.lean). It audits the
-transitive axiom dependencies of all 339 declared theorems across the fifteen
+[35 source equality examples](../test/type_safety_structural_equality.lean),
+[26 renaming examples](../test/type_safety_renaming.lean), and
+[27 renaming-profile examples](../test/type_safety_renaming_profile.lean). It audits the
+transitive axiom dependencies of all 357 declared theorems across the sixteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -348,7 +350,17 @@ an arbitrary context. `ExprTyped.rename`, `ArgsTyped.rename`, and
 a preserved prefix.
 
 These are raw typing and syntax results. Public admission still requires
-formation of the inserted context. Relevance preservation, operational
-correspondence, and any signature-changing program transformation require
-separate results. A forward context map alone does not imply inference
+formation of the inserted context. Relevance preservation is checked below.
+Operational correspondence and any signature-changing program transformation
+remain separate obligations. A forward context map alone does not imply inference
 equivalence for originally ill-typed expressions.
+
+
+`uses_rename_iff` gives the exact existential image of free occurrences under
+any map; argument and branch lists have corresponding laws. Protected prefix
+indices each have exactly themselves as a preimage under a lifted map. Hence
+`parametersUsed_rename_liftN` preserves usage of that prefix, and
+`admissible_rename` (with list counterparts) proves exact Boolean invariance of
+internal relevance. `ProfileTyped.rename` and `.weaken` combine those results
+with typing preservation. None of these results makes newly inserted parameters
+used, proves a signature change safe, or establishes runtime equivalence.
