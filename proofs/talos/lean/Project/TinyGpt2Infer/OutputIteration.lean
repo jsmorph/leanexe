@@ -11,8 +11,8 @@ structure OutputLoopLocals (pointer empty : UInt64) (x : Row) (root : UInt64)
     (count : Nat) (frame : Locals) : Prop extends OutputSaved pointer empty x frame where
   current : frame.get 23 = some (.i64 root)
   output : frame.get 24 = some (.i64 root)
-  counter : frame.get 45 = some (.i64 (UInt64.ofNat count))
-  owned : frame.get 66 = some (.i64 (if count = 0 then 0 else 1))
+  counter : frame.get 48 = some (.i64 (UInt64.ofNat count))
+  owned : frame.get 69 = some (.i64 (if count = 0 then 0 else 1))
 
 theorem output_iteration_shape : outputBody.drop 4 =
     (outputBody.drop 4).take 29 ++ (outputBody.drop 33).take 34 ++
@@ -80,7 +80,7 @@ theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame
     (hCur.trans (hCurrent.trans hLocals.current))
     (hOwn.trans (hOwned.trans hLocals.owned)) hFit hMemory hPages hCap
   intro final released hFinal hArray hReleased hCur' hOut' hCtr' hOwn' hPages' hBytes hStore
-  have hCounter' : released.get 45 = some (.i64 (UInt64.ofNat count)) :=
+  have hCounter' : released.get 48 = some (.i64 (UInt64.ofNat count)) :=
     hCtr'.trans (hCtr.trans (hCounter.trans hLocals.counter))
   apply output_advance_spec env final released count hCount hReleased.params hReleased.locals
     hReleased.values hCounter' hReleased.step

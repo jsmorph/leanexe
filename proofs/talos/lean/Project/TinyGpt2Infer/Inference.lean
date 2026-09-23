@@ -88,6 +88,13 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     (freeHead (freed start 256)) releases' frees' (node start 256).root
     hProgress.locals.params hProgress.locals.locals hProgress.locals.values
     hProgress.locals.current hProgress.locals.output hProgress.locals.empty
+    (by
+      intro hEq
+      have hValue := congrArg UInt64.toNat hEq
+      rw [hEmpty.1, (node_toNat start 256 hFit).1] at hValue
+      have hSeparated := separated start (show 0 < 256 by decide)
+      simp only [top, root] at hSeparated hValue
+      omega)
     (by rw [hEmpty.1]; omega) hProgress.heap.emptyHeader hProgress.heap.emptyArray
     (by simp [hCurrentGlobals, OutputMemory.globals])
     (by simp [hCurrentGlobals, OutputMemory.globals])
