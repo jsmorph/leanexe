@@ -106,9 +106,9 @@ activation-error diagnostics.
 | [Grouped completion comparison](compare_grouped_text.py) | Evaluate the reference variants using the retained prompts and shared sampling draws. |
 | [Grouped projection benchmark](benchmark_grouped.py) | Compare the experimental WASM projection with the per-row and FP32 projection binaries. |
 
-`tools/gpt2 --quantized` loads the frozen grouped candidate selected by the
+`tools/gpt2 --quantized` loads the verified frozen grouped binary selected by the
 [deployment record](../../data/gpt2-quantized-v1/model.json).  It verifies the
-WASM, weights, tokenizer, and configuration hashes before generation and
+artifact-manifest identity, file sizes, and WASM, weights, tokenizer, and configuration hashes before generation and
 records those identities in the result.  The grouped checkpoint is exported
 when absent.  FP32 remains the default.
 
@@ -116,7 +116,9 @@ when absent.  FP32 remains the default.
 tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 32
 ```
 
-Complete-model execution and exact-binary proofs remain open.  The original
+The [complete cached-session package](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md)
+passes execution, termination, allocation, release, and exact-binary checks.
+Full numerical propagation remains open.  The original
 per-row projection has a checked [exact-binary package](../../proofs/talos/lean/Project/Gpt2QuantizedLinearRows/README.md).
 The [grouped projection](../../proofs/talos/lean/Project/Gpt2QuantizedGroupedRows/README.md)
-has a checked execution theorem, including allocation and release.
+has a checked exact-binary theorem, including allocation and release.
