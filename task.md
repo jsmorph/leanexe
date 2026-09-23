@@ -35,10 +35,10 @@ Checks repeated after that change:
 - 41 reference-count cases passed; seven allocation-accounting assertions
   passed (six leak-free cases and one deliberately retaining blocks).
 - All 13 WAT/binary comparisons passed.
+- Core correctness: 812 accepted cases, 48 rejections, and 14 expected traps.
 
 Additional checks passed before this last emitter change:
 
-- Core correctness: 812 accepted cases, 48 rejections, and 14 expected traps.
 - Self-emitted LEB128: 75 cases.
 - Matcher extraction: four IR cases and one WAT scan.
 - Legacy WASI driver: 33 runtime cases, two traps, nine rejections, and
@@ -46,16 +46,18 @@ Additional checks passed before this last emitter change:
 
 ## Remaining work and known blockers
 
-1. Confirm the scalar-loop encoding matches the tracked GCD proof model.
+1. Resolve the remaining GCD proof-model difference: extraction adds two
+   locals and result copies. A clean build of the unchanged `main` base is
+   underway to determine whether this difference predates `wasi`.
 2. Finish `tools/talos-proof.js check --all`. This has **not passed yet**.
-   The cold verifier build spent several minutes optimizing its generated
-   WAT parser C file. A local compiler override to reduce that optimization
-   currently fails to locate standard C headers; fix the local build setup
-   before resuming. Bulk Mathlib cache download was stopped; updates use
-   `MATHLIB_NO_CACHE_ON_UPDATE=1`.
-3. Repeat core correctness after the emitter change and assess any concrete
-   remaining regression failures.
-4. Complete the final audit, update this status, and publish a clean branch.
+   The pinned verifier now builds and generates models. The local compiler
+   override supplies the pinned toolchain's standard include/link flags and
+   disables C optimization only for the generated WAT parser. Bulk Mathlib
+   cache download was stopped; updates use `MATHLIB_NO_CACHE_ON_UPDATE=1`.
+   The aggregate attempt was stopped during proof-source dependency setup
+   to finish the baseline comparison first. The tracked GCD cache remains
+   unchanged; its temporary regenerated candidate is retained under `build/`.
+3. Complete the final audit, update this status, and publish a clean branch.
 
 The aggregate `test/run_all.js` currently stops at a historical release-input
 identity mismatch. The documentation gate rejects an absolute workspace path
@@ -71,3 +73,5 @@ Wasmtime 44. Every Lean/Lake invocation goes through `tools/leanrun` with
 the user's authorized `LEANRUN_LOCAL=1`; do not run Lean concurrently.
 Local tool paths are in the ignored `build/wasi-env.sh`. Test/build logs are
 under `build/`; generated modules and comparisons are under `tmp/`.
+`LEANRUN_LOCKDIR` points into the shared workspace because command sessions
+can have separate `/tmp` directories. Run compiler/proof drivers sequentially.
