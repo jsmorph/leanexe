@@ -307,3 +307,47 @@ saturation, division/remainder by zero, and comparison results. Machine safety,
 relevance, and algorithmic typing proofs include all these forms. Derived helpers
 have typing theorems and executable inference/step equations. Primitive definitions
 take raw operands; their bounded-outcome theorem separately requires bounded inputs.
+
+
+## Word arithmetic and conversion increment in progress
+
+This section specifies the next increment; it is not yet included in the checked
+coverage above. Word widths are exactly 8, 32, and 64 bits. Write `M = 2^w` for
+a width's modulus. A word literal carries its width and a natural value strictly
+below `M`. Oversized literals are rejected, rather than implicitly normalized.
+Runtime word values retain their width tag.
+
+`wordBin width operation left right` requires both operands to have that exact
+word type. Arithmetic operations are add, sub, mul, div, mod, min, and max.
+`wordCmp width comparison left right` similarly requires matching widths and
+returns Bool using unsigned equality, strict order, or non-strict order.
+These operations evaluate both operands once, left to right. They introduce no
+new permitted machine failure. A wrong runtime width is a malformed state.
+
+Addition and multiplication return the mathematical result modulo `M`.
+Subtraction is modular, not saturating: on represented operands it returns
+`a-b` when `b ≤ a`, and `M-(b-a)` otherwise. The raw total definition normalizes
+both inputs before subtracting: `(a % M + M - b % M) % M`. Division by zero
+returns zero; remainder by zero returns the dividend. Other division/remainder
+results are the ordinary unsigned quotient/remainder. Min and max select the
+corresponding operand using unsigned order.
+
+`wordOfNat target e` accepts a bounded natural and reduces it modulo the target
+modulus. `wordToNat source e` accepts a word of the stated source width and
+preserves its value; every supported width fits in Nat64. `wordCast source target e`
+checks the source width and reduces modulo the target modulus. Widening preserves
+the value; narrowing may lose information. A same-width cast is the identity on
+represented values. Conversions evaluate their operand before converting: they
+cannot hide an overflow from a bounded-natural operand expression.
+
+Raw normalization needs only the target width. The source width belongs to the
+cast's typing and execution checks and the premises of widening/round-trip laws;
+an ignored source argument is not added to the arithmetic helper.
+
+Required proof obligations include representable outcomes, exact arithmetic
+results, both subtraction branches, zero-divisor behavior, quotient/remainder
+reconstruction, min/max selection, comparison characterizations, exact conversion
+laws, widening identity, and appropriate round trips. Formation, canonical forms,
+machine safety, relevance, and exact algorithmic admission must extend to every
+new form. Bitwise operations, complement, shifts, and raw binary64 operations are
+not part of this first word checkpoint.

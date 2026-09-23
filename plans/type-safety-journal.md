@@ -310,3 +310,13 @@ passed on their first reached run. The full gate passed ten build jobs, all 308
 examples, and all 142 theorem audits, with no axioms beyond propext. No statement
 claims overflow-freedom, termination, fixed-width-word coverage, or compiler
 correspondence. Continued to the next word-operation design review.
+
+
+2026-09-23: Began the first word checkpoint after publishing the natural-number
+result. Widths are explicit and literals canonical; normalization is an explicit
+conversion. The first increment covers arithmetic, comparisons, and conversions;
+bitwise operations and shifts will follow. Modular subtraction is specified with
+both underflow branches, avoiding accidental use of saturating Nat subtraction.
+The parent removed an unnecessary ignored source-width parameter from the proposed
+raw cast helper: normalization takes the target, while source-width validation
+belongs to source typing and dynamics. Implementation and proofs are in progress.
