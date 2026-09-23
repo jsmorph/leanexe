@@ -12,6 +12,7 @@ collects top-level temporaries but does not visit branch bodies.
 - [x] Preserve the streaming failure as an execution test.
 - [x] Repair conditional loop-temporary cleanup and pass sustained copying.
 - [x] Finish the sequencing, ownership, and timeout audit.
+- [x] Reconcile the documented timeout, allocation, and streaming behavior.
 
 Loop cleanup now visits nested branches and clears its temporary owner slots
 at the start of every iteration.  The clearing prevents a skipped branch from
@@ -44,6 +45,12 @@ input timeout after completed chunks, blocked and broken output, cleanup on
 early errors, and branch-selected helpers returning `Unit`.  The existing
 41 reference-counting cases also pass with the new accumulator guards and
 enclosing-scope protection.
+
+The final documentation states the implemented zero-timeout behavior: one
+immediate nonblocking attempt.  It also records that read-buffer memory
+exhaustion follows the allocator's trap behavior and identifies the streaming
+fixture.  No additional language operations or runtime dependencies were
+introduced during this final audit.
 
 The user requested implementation on `io`, a WASI stdin/stdout test harness,
 and frequent commits and pushes.  The agreed operations return immutable

@@ -46,12 +46,13 @@ successful result means EOF.  Capacity must be positive and fit the WASM
 address range; invalid capacity returns `28`.  Each result is a `ByteArray`
 value, and later reads cannot change its contents.  `write` completes the
 whole array or returns an error; a failing write may already have emitted a
-prefix.  An empty write succeeds.
+prefix.  An empty write succeeds.  Read-buffer allocation uses the existing
+runtime allocator; memory exhaustion traps.
 
 The timeout is a monotonic duration in nanoseconds for the whole operation.
-Zero means no waiting.  Partial writes and interrupted calls do not restart
-the timeout.  Expiry returns `73`, independently of EOF; clock and scheduling
-resolution can make completion later than the requested duration.  The WASI
+Zero permits one immediate nonblocking attempt.  Partial writes and interrupted
+calls do not restart the timeout.  Expiry returns `73`, independently of EOF;
+clock and scheduling resolution can make completion later than the requested duration.  The WASI
 backend uses Preview 1 error numbers, including `8` for a bad descriptor,
 `28` for invalid input, `29` for an I/O failure, and `64` for a broken pipe.
 
@@ -80,6 +81,11 @@ imports implemented over native pipes.  Build it after installing the pinned
 C API with `tools/download-wasmtime.sh`; run `node test/byte_io.js` to exercise
 source programs and `node test/wasi_io_host.js` to exercise the host imports.
 
+The `LeanExe.Examples.ByteIO.streaming` entry copies stdin to stdout until EOF.
+Its execution test compares 4 MiB plus a final short chunk byte for byte and
+checks that each iteration releases its read buffer.  Further tests retain
+read results across iterations and check cleanup after timeouts and output
+errors.
 
 ## WASM Module ABI
 
