@@ -191,10 +191,12 @@ function validateArtifactManifest(repoRoot, entry) {
 
   const modulePrefix = manifest.proofTarget.replace(/\.ArtifactTranslation$/, "");
   const artifactNamespace = `${modulePrefix}.Artifact`;
+  const frozenCache = manifest.cachedProgramModule === `${modulePrefix}.FrozenProgram`;
+  const executionNamespace = frozenCache ? `${modulePrefix}.Frozen` : modulePrefix;
   const expectedNames = {
     artifactBytesDefinition: `${artifactNamespace}.artifactBytes`,
     rawModuleDefinition: `${artifactNamespace}.Cache.raw`,
-    cachedProgramDefinition: `${modulePrefix}.module`,
+    cachedProgramDefinition: `${executionNamespace}.module`,
     identityTheorem: `${artifactNamespace}.decode_eq_cache`,
     cacheEqualityTheorem: `${artifactNamespace}.translation_cache_eq`,
     artifactCorrectnessTheorem: `${artifactNamespace}.artifact_module_eq_cache`,
@@ -206,7 +208,7 @@ function validateArtifactManifest(repoRoot, entry) {
     if (manifest[key] !== expected) fail(`${manifestPath}: ${key} must be ${expected}`);
   }
   if (manifest.artifactBytesModule !== `${modulePrefix}.ArtifactBytes` ||
-      manifest.cachedProgramModule !== `${modulePrefix}.Program`) {
+      manifest.cachedProgramModule !== `${modulePrefix}.${frozenCache ? "FrozenProgram" : "Program"}`) {
     fail(`${manifestPath}: artifact or cache module name disagrees with proofTarget`);
   }
   if (manifest.decodeTheorem !== "Wasm.Binary.Proof.decode_sound" ||
@@ -221,10 +223,19 @@ function validateArtifactManifest(repoRoot, entry) {
   }
   const registeredCase = cases.cases.find((item) => item.name === manifest.case);
   if (!registeredCase) fail(`${manifestPath}: case is absent from cases.json`);
-  requireEqual(manifest.specModule, registeredCase.specTarget, `${manifestPath}.specModule`);
+  const specModule = frozenCache ? `${modulePrefix}.FrozenSpec` : registeredCase.specTarget;
+  const behaviorTheorems = frozenCache
+    ? registeredCase.behaviorTheorems.map((name) => {
+      if (!name.startsWith(`${modulePrefix}.`)) {
+        fail(`${manifestPath}: frozen behavior theorem must belong to ${modulePrefix}`);
+      }
+      return `${executionNamespace}.${name.slice(modulePrefix.length + 1)}`;
+    })
+    : registeredCase.behaviorTheorems;
+  requireEqual(manifest.specModule, specModule, `${manifestPath}.specModule`);
   requireEqual(
     manifest.behaviorTheorems,
-    registeredCase.behaviorTheorems,
+    behaviorTheorems,
     `${manifestPath}.behaviorTheorems`,
   );
 

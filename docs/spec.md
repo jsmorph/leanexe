@@ -138,6 +138,10 @@ Supported comparisons and equality include scalar equality for `Unit`, `Bool`, `
 
 The compiler also recognizes Talos's `Wasm.IEEE64.add`, `sub`, `mul`, `div`, and `sqrt` declarations with the same raw-word signatures and instruction mappings.  A source module imports `Interpreter.Wasm.IEEE64` from the pinned proof dependency to use its formal arithmetic definitions.  The compiler recognizes these names without importing Talos into its own build.  Source proofs can then use the arithmetic definitions used by the Talos execution model.  The reference IR evaluator continues to use Lean Float.  Talos returns its canonical NaN, while WASM permits several NaN encodings.  Proofs about exact output words must account for that difference or prove that the results are finite.
 
+`LeanExe.Float32.nearestBits` rounds a binary32 value to an integral binary32 value with ties to even.  It preserves signed zero and infinities and returns canonical NaN for NaN input.  `toInt32Bits` truncates toward zero and saturates to the signed 32-bit range, returning zero for NaN.  `ofInt32Bits` interprets its argument as a signed two's-complement integer and rounds it to binary32 with ties to even.  The compiler emits `f32.nearest`, `i32.trunc_sat_f32_s`, and `f32.convert_i32_s`, respectively.  The proof workspace establishes source/Talos correspondence for every raw input word in its [nearest-even proof](../proofs/talos/lean/Project/ProofKit/F32Nearest.lean), [saturating-conversion proof](../proofs/talos/lean/Project/ProofKit/F32TruncSat.lean), and [signed-to-FP32 proof](../proofs/talos/lean/Project/ProofKit/F32Convert.lean).
+
+`LeanExe.Signed32.extend8Bits` sign-extends the low byte of a `UInt32`, returning the signed result's raw 32-bit encoding.  It emits `i32.extend8_s`.  Callers can perform signed-word addition and multiplication through `UInt32` operations, which preserve the result modulo `2^32`.  Exact integer interpretations require representability proofs.  The public scalar representation remains a constrained `i64`.
+
 ## Terms and Control Flow
 
 The `LeanExe.Packed` operations provide four-byte little-endian words in
@@ -147,7 +151,9 @@ not be aligned.  `generateUInt32LE` accepts a bounded word count and a
 direct `Nat → UInt32` lambda, allocates one byte array, and stores each
 result in index order.  The checked byte count is four times the word
 count.  Empty generation evaluates no lambda body.  Allocation and
-ownership follow the existing byte-array rules.  These operations have
+ownership follow the existing byte-array rules.  `generateUInt8` accepts a
+direct `Nat → UInt8` lambda and constructs one byte per index in one allocation.
+These operations have
 native Lean and Wasmtime tests.  The scalar IR evaluator excludes their
 heap operations.
 

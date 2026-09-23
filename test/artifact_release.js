@@ -7,6 +7,7 @@ const {
   validateEvidence,
 } = require("../tools/artifact-release");
 const conformance = require("../proofs/talos/conformance.json");
+const registry = require("../proofs/artifacts/registry.json");
 
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
@@ -25,7 +26,7 @@ function expectFailure(value, pattern) {
 const { evidence, blockers } = loadEvidence();
 const expectedBlockers = derivedBlockers(evidence);
 const expectedStatus = expectedBlockers.length === 0 ? "ready" : "draft";
-if (evidence.status !== expectedStatus || evidence.packages.length !== 21 ||
+if (evidence.status !== expectedStatus || evidence.packages.length !== registry.artifacts.length ||
     JSON.stringify(blockers) !== JSON.stringify(expectedBlockers)) {
   throw new Error("the release record has the wrong state");
 }
