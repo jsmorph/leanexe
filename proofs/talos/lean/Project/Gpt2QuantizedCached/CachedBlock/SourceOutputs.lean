@@ -21,6 +21,14 @@ theorem cachedBlock_failed (weights input cache : ByteArray) (layer position : N
   · exact False.elim (hStatus hSuccess.1)
   · exact hFailure.2
 
+theorem cachedBlock_cache_le (weights input cache : ByteArray) (layer position : Nat)
+    (hInput : input.size = 3072) :
+    (cachedBlock weights input cache layer position).cache.size ≤ 6144 := by
+  rcases cachedBlock_sizes weights input cache layer position hInput with hSuccess | hFailure
+  · exact hSuccess.2.2.le
+  · rw [hFailure.2.2]
+    exact Nat.zero_le _
+
 theorem Completion.sourcePacked (weights input cache : ByteArray) (layer position : Nat)
     {before heap : Heap} {initial final : Store Unit} {hidden cacheNode : FreeNode}
     (h : Completion before initial heap final (tensors weights input cache layer position).accepted
