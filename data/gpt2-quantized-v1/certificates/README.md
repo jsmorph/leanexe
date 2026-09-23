@@ -62,6 +62,14 @@ The [pointwise record](pointwise-check.json) covers all 229 embeddings and 5,496
 
 The [soundness theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/PointwiseRange.lean) supplies the embedding and residual premises used by the paired numerical recurrence.  Embedding reconstruction also uses the checked checkpoint-export relation.  Record preparation extracts the operands from the hash-verified normalization and projection captures.
 
+## Propagated bounds
+
+The [forward evaluation](forward-evaluation.json) covers all 229 retained prefixes.  Its integer evaluator implements `Numerical.ForwardUpper.trace`, whose soundness theorem compares every returned logit of the two cached Lean recurrences.  It includes embedding reconstruction, all twelve transformer blocks, final normalization, and the vocabulary projection.  Numerators have 160 fractional bits, and multiplication and division round upward.
+
+The bounds range from approximately `1.515968e601` to `8.124149e61429`.  All exceed the range of differences between finite FP32 logits, so forward certification succeeds at zero positions.  The normalization lower bound of `1/1000`, componentwise magnitude estimates, and repeated perturbation factors make this bound too coarse to certify precision.  The [exact compressed numerators](forward-bounds.txt.gz) and evaluator log preserve the result.  The 183 successful common-offset certificates above use observed logit differences and remain a separate result.
+
+The [held-out evaluation](../experiments/group64-heldout/README.md) adds 73 prefixes, with complete range evidence and zero forward certificates.  Across both datasets, 263 of 302 greedy winners agree, and observed-logit certificates establish 232 individual choices.  Captured internal operand identity with the Lean recurrence remains an explicit assumption.  Kernel proofs establish the range conversions and outward recurrence.  The native Lean compiler and runtime evaluate the retained records.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -89,6 +97,9 @@ tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-projection-ch
 training/gpt2/.venv/bin/python training/gpt2/prepare_pointwise_ranges.py
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-pointwise-check Project.Gpt2QuantizedCached.Numerical.PointwiseRange
 tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-pointwise-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/pointwise/embedding.bin build/gpt2-124m/quantized-group64/pointwise/residual.bin build/gpt2-124m/quantized-group64/pointwise/ranges
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-forward-evaluate
+tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-forward-evaluate build/gpt2-124m/quantized-group64 data/gpt2-quantized-v1/certificates/coverage.json build/gpt2-124m/quantized-group64/forward-bounds.txt
+training/gpt2/.venv/bin/python training/gpt2/summarize_forward_bounds.py --directory build/gpt2-124m/quantized-group64 --records data/gpt2-quantized-v1/certificates
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "prefixes": 73,
+  "embedding_records": 73,
+  "residual_records": 1752,
+  "embedding_record_bytes": 6152,
+  "residual_record_bytes": 18432,
+  "embedding_layout": "token and position u32, quantized output, FP32 output",
+  "residual_layout": "quantized left/right/output, FP32 left/right/output; each vector is 768 FP32 words",
+  "order": "prefix, layer, residual stage, model",
+  "source_sha256": "3f7490f43fc55e89ec087082e9f9b2f90f332ac52726c5f6237819f072e65034",
+  "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+  "normalization_sha256": "819f87c68017355d0da78e8b6a0f47f20250d62fb5df589ba0ea9478aa057fba",
+  "projection_sha256": "0bc0e0f5e25d45f25144dae500d914376759b523edce1f0348be00771e9e2e16",
+  "embedding_sha256": "c70dd0ab3345fc47c6e91249609f03ca27b823943468dbe48685d6a4174ae968",
+  "residual_sha256": "3468a6273abde4c2939ec10db4cbc231cf9f5e01c1418534fd6ff2707b229f4f",
+  "exit_code": 0,
+  "runtime_trust": "Native Lean compiler/runtime evaluates captured records. Kernel proofs establish checker soundness. Captured internal operand identity with the complete Lean recurrence remains an assumption. Capture reproduces all 73 paired logit hashes.",
+  "checker_sha256": "5346e39d78c9fcdccccd1294318e569ce996a0b612e817d1dba9c68a099e570a",
+  "checked_sources": {
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/CheckPointwise.lean": "af7c4815ceb588d45fbe13659104a5f6d421acc9fe68509697ec66e3970f4af4",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/PointwiseRangeCheck.lean": "1b09b65b5735f7edcfaefb8c505727556f494874ca3b809011b20bc86bb9e93f",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Embedding/Compute.lean": "5d893a1ee6fd35938af4bfa5abe398d0b47a78685f4c9a1fb030e4cd72e319c2"
+  },
+  "check_milliseconds": 2068,
+  "check_command": "tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-pointwise-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/heldout/pointwise/embedding.bin build/gpt2-124m/quantized-group64/heldout/pointwise/residual.bin build/gpt2-124m/quantized-group64/heldout/pointwise/ranges",
+  "profiles": {
+    "embedding": {
+      "sha256": "c0f93518918a80bfe6a09ead22a9f53784b2edb7b160285141730e24666f0240",
+      "gzip_sha256": "1f5889c4079268ec575400e1bac760314dededd510ed3e35b289780236bfdc7c",
+      "rows": 73,
+      "columns": [
+        "index",
+        "token",
+        "position",
+        "quantized_mul",
+        "quantized_add",
+        "reference_add"
+      ]
+    },
+    "residual": {
+      "sha256": "b22284ec9cc04ba5b05c0714f2dc24584bb83412227d213d66e76f2375896cf9",
+      "gzip_sha256": "9c01cb92e5e733baca8340ab43d33719325e45d4ba79e709c3510fac59582e9f",
+      "rows": 1752,
+      "columns": [
+        "index",
+        "quantized_add",
+        "reference_add"
+      ]
+    }
+  }
+}

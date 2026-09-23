@@ -12,6 +12,10 @@ theorem scale_positive : 0 < scale := by decide
 theorem real_scale_positive : (0 : ℝ) < scale := by exact_mod_cast scale_positive
 theorem nonnegative (a : Nat) : 0 ≤ value a := div_nonneg (Nat.cast_nonneg a) real_scale_positive.le
 
+theorem max_value (a b : Nat) : value (max a b) = max (value a) (value b) := by
+  unfold value
+  rw [Nat.cast_max, max_div_div_right (le_of_lt real_scale_positive)]
+
 theorem ceiling_le (numerator denominator : Nat) (hd : 0 < denominator) :
     numerator ≤ ceilingDivision numerator denominator * denominator := by
   have hm := Nat.mod_lt (numerator + denominator - 1) hd

@@ -1,6 +1,8 @@
 import Project.Gpt2QuantizedCached.Session.Spec
 import Project.Gpt2QuantizedCached.Validation.Public
 import Project.Gpt2QuantizedCached.Numerical.Greedy
+import Project.Gpt2QuantizedCached.Numerical.ForwardSession
+import Project.Gpt2QuantizedCached.Numerical.NormalizationMagnitude
 import Project.Gpt2QuantizedCached.Numerical.NormalizationRange
 import Project.Gpt2QuantizedCached.Numerical.NormalizationUpperSound
 import Project.Gpt2QuantizedCached.Numerical.GeluRange
@@ -24,6 +26,10 @@ alias validateModel_exact := Validation.validateModel_exact
 alias cached_session_logit_bound := Numerical.Session.trace_error
 
 alias cached_session_greedy := Numerical.Session.choices_agree
+
+alias cached_session_outward_bound := Numerical.ForwardUpper.trace_close
+
+alias cached_session_outward_greedy := Numerical.ForwardUpper.choices_agree
 
 def ValidatedRunsFor (module_ : Wasm.Module) (env : HostEnv Unit) (weights : ByteArray)
     (tokens : List UInt32) (loaded : Store Unit) : Prop :=
@@ -77,6 +83,8 @@ theorem gpt2_128_exact_for : ExactSpecFor «module» := gpt2_128_exact
 #print axioms validateModel_exact
 #print axioms cached_session_logit_bound
 #print axioms cached_session_greedy
+#print axioms cached_session_outward_bound
+#print axioms cached_session_outward_greedy
 #print axioms validated_runs_exact
 #print axioms gpt2_128_exact
 #print axioms gpt2_128_exact_for

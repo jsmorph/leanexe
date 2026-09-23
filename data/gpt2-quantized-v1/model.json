@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scheme": 2,
-  "status": "verified-execution-numerical-propagation-in-progress",
+  "status": "verified-execution-conditional-numerical-bounds",
   "wasm_path": "proofs/artifacts/gpt2_quantized_cached/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm",
   "wasm_sha256": "9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075",
   "wasm_bytes": 28315,

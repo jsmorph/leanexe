@@ -45,8 +45,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=Path, default=ROOT / "build/gpt2-124m")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "build/gpt2-124m/quantized-group64/nonlinear")
+    parser.add_argument("--coverage", type=Path, default=ROOT / "data/gpt2-quantized-v1/certificates/coverage.json")
     args = parser.parse_args()
-    coverage_path = ROOT / "data/gpt2-quantized-v1/certificates/coverage.json"
+    coverage_path = args.coverage
     coverage = json.loads(coverage_path.read_text())
     args.output_dir.mkdir(parents=True, exist_ok=True)
     gelu_path = args.output_dir / "gelu.bin"
