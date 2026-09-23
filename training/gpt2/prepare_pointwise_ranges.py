@@ -9,13 +9,16 @@ from reference import ROOT, digest
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--directory", type=Path, default=ROOT / "build/gpt2-124m/quantized-group64")
+    parser.add_argument("--coverage", type=Path, default=ROOT / "data/gpt2-quantized-v1/certificates/coverage.json")
+    parser.add_argument("--normalization-record", type=Path, default=ROOT / "data/gpt2-quantized-v1/certificates/normalization-check.json")
+    parser.add_argument("--projection-record", type=Path, default=ROOT / "data/gpt2-quantized-v1/certificates/projection-check.json")
     args = parser.parse_args()
-    coverage_path = ROOT / "data/gpt2-quantized-v1/certificates/coverage.json"
+    coverage_path = args.coverage
     coverage = json.loads(coverage_path.read_text())
     normalized = args.directory / "normalization/rows.bin"
     projected = args.directory / "projection-ranges/rows.bin"
-    norm_receipt = json.loads((ROOT / "data/gpt2-quantized-v1/certificates/normalization-check.json").read_text())
-    proj_receipt = json.loads((ROOT / "data/gpt2-quantized-v1/certificates/projection-check.json").read_text())
+    norm_receipt = json.loads(args.normalization_record.read_text())
+    proj_receipt = json.loads(args.projection_record.read_text())
     for path, receipt in [(normalized, norm_receipt), (projected, proj_receipt)]:
         if digest(path) != receipt["rows_sha256"] or digest(coverage_path) != receipt["coverage_sha256"]:
             raise ValueError(f"Captured input identity mismatch: {path}")

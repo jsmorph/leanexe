@@ -32,4 +32,16 @@ def component (p : Parameters) (inputError actualCenter referenceCenter gain : N
     (mul (add (roundoff p.normalizedMul 25 298)
       (add (mul actualCenter (inverse p inputError actualCenter referenceCenter)) (1000 * center p inputError))) gain))
 
+structure PairData where
+  quantized : Parameters
+  reference : Parameters
+  quantizedCenter : Nat
+  referenceCenter : Nat
+  realCenter : Nat
+  gain : Nat
+
+def pair (d : PairData) (E : Nat) : Nat :=
+  add (component d.quantized E d.quantizedCenter d.realCenter d.gain)
+    (component d.reference 0 d.referenceCenter d.realCenter d.gain)
+
 end Project.Gpt2QuantizedCached.Numerical.NormalizationUpper

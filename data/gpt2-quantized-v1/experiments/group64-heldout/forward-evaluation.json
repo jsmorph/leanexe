@@ -1,0 +1,628 @@
+{
+  "schema": 1,
+  "status": "outward-evaluation-complete",
+  "prefixes": 73,
+  "fractional_bits": 160,
+  "columns": [
+    "index",
+    "sequence",
+    "position",
+    "logit_numerator",
+    "cache_numerator"
+  ],
+  "forward_margin_certificates": 0,
+  "inconclusive_reason": "Every propagated bound exceeds 2^129. Differences between finite FP32 logits are below 2^129, so no strict winning-margin condition can hold.",
+  "minimum_bound": "1.515968E+601",
+  "maximum_bound": "2.353630E+7765",
+  "bounds_sha256": "cdba2ad28fd056c3c14e9ae7ad5c77acfbdde459771be3960bb26ba429d4cfe9",
+  "bounds_bytes": 500195,
+  "compressed_bounds_sha256": "8a60b72e50317c2be1f532981969f99576e1115be0ebc0dc07200860a6a6f652",
+  "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+  "input_sha256": {
+    "normalization/rows.bin": "819f87c68017355d0da78e8b6a0f47f20250d62fb5df589ba0ea9478aa057fba",
+    "normalization/ranges-ordered.txt": "08bc413dc0f0c1a3c9932d78bca06d5277cff00e4d12771d96bd5d4bc3ac0332",
+    "projection-ranges/ranges.weights.txt": "7a8ba71a60cb3f75297415bafd6291a244891e8783444761c578463b2a0e9df1",
+    "projection-ranges/ranges.rows.txt": "66da2128418b7896c5b5bc79638f2b89ee823e38550130cf8f2d721bb441c209",
+    "pointwise/ranges.embedding.txt": "c0f93518918a80bfe6a09ead22a9f53784b2edb7b160285141730e24666f0240",
+    "pointwise/ranges.residual.txt": "b22284ec9cc04ba5b05c0714f2dc24584bb83412227d213d66e76f2375896cf9",
+    "nonlinear/attention-ranges.txt": "f59562f279041542176c50c7c759dafa7094f321c00aa6d04a0f9b277ecbca52"
+  },
+  "sources": {
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/EvaluateForward.lean": "05c3fc07de1625f68df148e2a4e1dd92dd175208bb50d24bf5691e42ffb65d3b",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ForwardUpper.lean": "9023575094f60b2689305d10fa49a3351d62ea72ac31345882d74ec0f713fb6d",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/OperationUpper.lean": "099f7923676e6d2a7c4ec3b089336caa0ab575360f9527b04962a0ff2fb3e908",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/NormalizationUpper.lean": "a0936c3c2ea2b3f05526fa9d5357c341b2af51cdeddff00f74a2943ace70af14",
+    "proofs/talos/lean/Project/ProofKit/DyadicUpper.lean": "b39211ceb8ac57060a8952ea5f58973a23661448b0157f855c868d23617aa28f"
+  },
+  "evaluator_sha256": "83149b50ba0568b23c807482e4ab95d8be8ee3ae71aeb023a43a8a70e8f7ef93",
+  "theorem": "Project.Gpt2QuantizedCached.Numerical.ForwardUpper.trace_close",
+  "greedy_theorem": "Project.Gpt2QuantizedCached.Numerical.ForwardUpper.choices_agree",
+  "command": "tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-forward-evaluate build/gpt2-124m/quantized-group64/heldout data/gpt2-quantized-v1/experiments/group64-heldout/coverage.json build/gpt2-124m/quantized-group64/heldout/forward-bounds.txt",
+  "trust_boundary": "Kernel-checked operation and full-session bound theorems. Native Lean compiler/runtime evaluates natural-number bounds. Captured operands must equal source-recurrence intermediates. Python validates recorded identities and summarizes the output. Conditions include checked arithmetic ranges, reconstruction inequalities, finite magnitudes, retained parameter equality, valid shapes/tokens, and successful steps.",
+  "measurements": [
+    {
+      "sequence": 0,
+      "position": 0,
+      "logit_bound_approximate": "7.461943E+601",
+      "logit_numerator_digits": 651,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 1,
+      "logit_bound_approximate": "4.608761E+1073",
+      "logit_numerator_digits": 1122,
+      "cache_numerator_digits": 1074,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 2,
+      "logit_bound_approximate": "4.460788E+1552",
+      "logit_numerator_digits": 1601,
+      "cache_numerator_digits": 1553,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 3,
+      "logit_bound_approximate": "3.102192E+2029",
+      "logit_numerator_digits": 2078,
+      "cache_numerator_digits": 2030,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 4,
+      "logit_bound_approximate": "5.922384E+2508",
+      "logit_numerator_digits": 2557,
+      "cache_numerator_digits": 2509,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 5,
+      "logit_bound_approximate": "2.697794E+2989",
+      "logit_numerator_digits": 3038,
+      "cache_numerator_digits": 2989,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 6,
+      "logit_bound_approximate": "1.609697E+3469",
+      "logit_numerator_digits": 3518,
+      "cache_numerator_digits": 3469,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 7,
+      "logit_bound_approximate": "6.553858E+3948",
+      "logit_numerator_digits": 3997,
+      "cache_numerator_digits": 3949,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 8,
+      "logit_bound_approximate": "1.257137E+4428",
+      "logit_numerator_digits": 4477,
+      "cache_numerator_digits": 4429,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 9,
+      "logit_bound_approximate": "1.991381E+4908",
+      "logit_numerator_digits": 4957,
+      "cache_numerator_digits": 4908,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 0,
+      "logit_bound_approximate": "5.674391E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 1,
+      "logit_bound_approximate": "1.969865E+1081",
+      "logit_numerator_digits": 1130,
+      "cache_numerator_digits": 1082,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 2,
+      "logit_bound_approximate": "2.168082E+1561",
+      "logit_numerator_digits": 1610,
+      "cache_numerator_digits": 1561,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 3,
+      "logit_bound_approximate": "1.060852E+2040",
+      "logit_numerator_digits": 2089,
+      "cache_numerator_digits": 2040,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 4,
+      "logit_bound_approximate": "3.239951E+2518",
+      "logit_numerator_digits": 2567,
+      "cache_numerator_digits": 2519,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 5,
+      "logit_bound_approximate": "1.058765E+2998",
+      "logit_numerator_digits": 3047,
+      "cache_numerator_digits": 2998,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 6,
+      "logit_bound_approximate": "9.344680E+3478",
+      "logit_numerator_digits": 3528,
+      "cache_numerator_digits": 3479,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 7,
+      "logit_bound_approximate": "3.665792E+3958",
+      "logit_numerator_digits": 4007,
+      "cache_numerator_digits": 3959,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 0,
+      "logit_bound_approximate": "3.583824E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 1,
+      "logit_bound_approximate": "3.667601E+1077",
+      "logit_numerator_digits": 1126,
+      "cache_numerator_digits": 1077,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 2,
+      "logit_bound_approximate": "6.086190E+1554",
+      "logit_numerator_digits": 1603,
+      "cache_numerator_digits": 1554,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 3,
+      "logit_bound_approximate": "1.136718E+2031",
+      "logit_numerator_digits": 2080,
+      "cache_numerator_digits": 2031,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 4,
+      "logit_bound_approximate": "2.048540E+2507",
+      "logit_numerator_digits": 2556,
+      "cache_numerator_digits": 2507,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 5,
+      "logit_bound_approximate": "1.855176E+2985",
+      "logit_numerator_digits": 3034,
+      "cache_numerator_digits": 2985,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 6,
+      "logit_bound_approximate": "2.074699E+3467",
+      "logit_numerator_digits": 3516,
+      "cache_numerator_digits": 3468,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 7,
+      "logit_bound_approximate": "1.155273E+3947",
+      "logit_numerator_digits": 3996,
+      "cache_numerator_digits": 3947,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 8,
+      "logit_bound_approximate": "5.636739E+4425",
+      "logit_numerator_digits": 4474,
+      "cache_numerator_digits": 4426,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 9,
+      "logit_bound_approximate": "3.109426E+4905",
+      "logit_numerator_digits": 4954,
+      "cache_numerator_digits": 4906,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 10,
+      "logit_bound_approximate": "2.012969E+5384",
+      "logit_numerator_digits": 5433,
+      "cache_numerator_digits": 5384,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 11,
+      "logit_bound_approximate": "5.609674E+5858",
+      "logit_numerator_digits": 5907,
+      "cache_numerator_digits": 5859,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 12,
+      "logit_bound_approximate": "6.656940E+6337",
+      "logit_numerator_digits": 6386,
+      "cache_numerator_digits": 6337,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 0,
+      "logit_bound_approximate": "1.515968E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 1,
+      "logit_bound_approximate": "6.911032E+1075",
+      "logit_numerator_digits": 1125,
+      "cache_numerator_digits": 1076,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 2,
+      "logit_bound_approximate": "1.263052E+1553",
+      "logit_numerator_digits": 1602,
+      "cache_numerator_digits": 1553,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 3,
+      "logit_bound_approximate": "4.371861E+2031",
+      "logit_numerator_digits": 2080,
+      "cache_numerator_digits": 2032,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 4,
+      "logit_bound_approximate": "2.835374E+2509",
+      "logit_numerator_digits": 2558,
+      "cache_numerator_digits": 2509,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 5,
+      "logit_bound_approximate": "4.708136E+2986",
+      "logit_numerator_digits": 3035,
+      "cache_numerator_digits": 2987,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 6,
+      "logit_bound_approximate": "1.006512E+3465",
+      "logit_numerator_digits": 3514,
+      "cache_numerator_digits": 3465,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 7,
+      "logit_bound_approximate": "2.221944E+3943",
+      "logit_numerator_digits": 3992,
+      "cache_numerator_digits": 3943,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 8,
+      "logit_bound_approximate": "3.888174E+4419",
+      "logit_numerator_digits": 4468,
+      "cache_numerator_digits": 4419,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 9,
+      "logit_bound_approximate": "2.845885E+4895",
+      "logit_numerator_digits": 4944,
+      "cache_numerator_digits": 4896,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 10,
+      "logit_bound_approximate": "3.097636E+5373",
+      "logit_numerator_digits": 5422,
+      "cache_numerator_digits": 5374,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 11,
+      "logit_bound_approximate": "5.980636E+5850",
+      "logit_numerator_digits": 5899,
+      "cache_numerator_digits": 5851,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 12,
+      "logit_bound_approximate": "1.658816E+6332",
+      "logit_numerator_digits": 6381,
+      "cache_numerator_digits": 6332,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 13,
+      "logit_bound_approximate": "2.367841E+6809",
+      "logit_numerator_digits": 6858,
+      "cache_numerator_digits": 6809,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 14,
+      "logit_bound_approximate": "6.361895E+7286",
+      "logit_numerator_digits": 7335,
+      "cache_numerator_digits": 7287,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 15,
+      "logit_bound_approximate": "2.353630E+7765",
+      "logit_numerator_digits": 7814,
+      "cache_numerator_digits": 7765,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 0,
+      "logit_bound_approximate": "2.812650E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 1,
+      "logit_bound_approximate": "7.062582E+1078",
+      "logit_numerator_digits": 1128,
+      "cache_numerator_digits": 1079,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 2,
+      "logit_bound_approximate": "5.084222E+1557",
+      "logit_numerator_digits": 1606,
+      "cache_numerator_digits": 1557,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 3,
+      "logit_bound_approximate": "6.986879E+2035",
+      "logit_numerator_digits": 2085,
+      "cache_numerator_digits": 2036,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 4,
+      "logit_bound_approximate": "3.287319E+2509",
+      "logit_numerator_digits": 2558,
+      "cache_numerator_digits": 2510,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 5,
+      "logit_bound_approximate": "4.736192E+2986",
+      "logit_numerator_digits": 3035,
+      "cache_numerator_digits": 2987,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 6,
+      "logit_bound_approximate": "4.548132E+3465",
+      "logit_numerator_digits": 3514,
+      "cache_numerator_digits": 3466,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 7,
+      "logit_bound_approximate": "2.564918E+3944",
+      "logit_numerator_digits": 3993,
+      "cache_numerator_digits": 3945,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 8,
+      "logit_bound_approximate": "3.148713E+4426",
+      "logit_numerator_digits": 4475,
+      "cache_numerator_digits": 4427,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 9,
+      "logit_bound_approximate": "3.067145E+4906",
+      "logit_numerator_digits": 4955,
+      "cache_numerator_digits": 4907,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 10,
+      "logit_bound_approximate": "1.789425E+5385",
+      "logit_numerator_digits": 5434,
+      "cache_numerator_digits": 5385,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 11,
+      "logit_bound_approximate": "1.794609E+5864",
+      "logit_numerator_digits": 5913,
+      "cache_numerator_digits": 5864,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 12,
+      "logit_bound_approximate": "1.228370E+6344",
+      "logit_numerator_digits": 6393,
+      "cache_numerator_digits": 6344,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 0,
+      "logit_bound_approximate": "1.637989E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 1,
+      "logit_bound_approximate": "8.752134E+1077",
+      "logit_numerator_digits": 1127,
+      "cache_numerator_digits": 1078,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 2,
+      "logit_bound_approximate": "1.784215E+1554",
+      "logit_numerator_digits": 1603,
+      "cache_numerator_digits": 1554,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 3,
+      "logit_bound_approximate": "5.866262E+2033",
+      "logit_numerator_digits": 2082,
+      "cache_numerator_digits": 2034,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 4,
+      "logit_bound_approximate": "6.691187E+2515",
+      "logit_numerator_digits": 2564,
+      "cache_numerator_digits": 2516,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 5,
+      "logit_bound_approximate": "2.909673E+2994",
+      "logit_numerator_digits": 3043,
+      "cache_numerator_digits": 2994,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 6,
+      "logit_bound_approximate": "2.800637E+3473",
+      "logit_numerator_digits": 3522,
+      "cache_numerator_digits": 3473,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 7,
+      "logit_bound_approximate": "8.465815E+3951",
+      "logit_numerator_digits": 4001,
+      "cache_numerator_digits": 3952,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 8,
+      "logit_bound_approximate": "7.031675E+4431",
+      "logit_numerator_digits": 4481,
+      "cache_numerator_digits": 4432,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 9,
+      "logit_bound_approximate": "5.447010E+4913",
+      "logit_numerator_digits": 4962,
+      "cache_numerator_digits": 4914,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 10,
+      "logit_bound_approximate": "2.169540E+5391",
+      "logit_numerator_digits": 5440,
+      "cache_numerator_digits": 5391,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 11,
+      "logit_bound_approximate": "2.584879E+5869",
+      "logit_numerator_digits": 5918,
+      "cache_numerator_digits": 5870,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 12,
+      "logit_bound_approximate": "6.891230E+6346",
+      "logit_numerator_digits": 6396,
+      "cache_numerator_digits": 6347,
+      "forward_margin_certified": false
+    }
+  ]
+}

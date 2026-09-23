@@ -1,0 +1,360 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "layout": [
+    {
+      "projection": "h.0.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.0.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.0.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.0.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.1.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.1.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.1.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.1.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.2.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.2.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.2.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.2.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.3.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.3.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.3.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.3.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.4.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.4.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.4.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.4.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.5.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.5.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.5.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.5.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.6.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.6.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.6.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.6.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.7.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.7.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.7.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.7.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.8.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.8.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.8.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.8.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.9.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.9.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.9.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.9.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.10.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.10.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.10.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.10.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.11.attn.c_attn",
+      "input_words": 768,
+      "output_words": 2304,
+      "bias": true
+    },
+    {
+      "projection": "h.11.attn.c_proj",
+      "input_words": 768,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "h.11.mlp.c_fc",
+      "input_words": 768,
+      "output_words": 3072,
+      "bias": true
+    },
+    {
+      "projection": "h.11.mlp.c_proj",
+      "input_words": 3072,
+      "output_words": 768,
+      "bias": true
+    },
+    {
+      "projection": "wte",
+      "input_words": 768,
+      "output_words": 50257,
+      "bias": false
+    }
+  ],
+  "records": 7154,
+  "record_layout": "Input words followed by output words, little-endian FP32",
+  "order": "Per prefix: quantized 49 projections, then FP32 49 projections, in source order",
+  "prefixes": 73,
+  "rows_sha256": "0bc0e0f5e25d45f25144dae500d914376759b523edce1f0348be00771e9e2e16",
+  "rows_bytes": 115912904,
+  "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+  "source_sha256": "9abac1c27b6b11a44a91782e9ce2780b8faa9cac710a81d915be04ace5f8abb9",
+  "reference_sources": {
+    "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+    "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+  },
+  "seconds": 31.467316974070854,
+  "exit_code": 0,
+  "runtime_trust": "Native Lean compiler/runtime evaluates captured records. Kernel proofs establish checker soundness. Captured internal operand identity with the complete Lean recurrence remains an assumption. Capture reproduces all 73 paired logit hashes.",
+  "checker_sha256": "f76d6a5fc0259a2a8cc922d69e04c7c7c42ab29ca0b3ac25b8329795abda861b",
+  "checked_sources": {
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/CheckProjections.lean": "567aa033089f3a2b41731920e9530a6b37534a98d4c4f6902733abfdee41715c",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ProjectionRangeCheck.lean": "0f48525635382e7c01e01ae5f996b89ec3d8bce7ae3acff05559386ef483901b",
+    "proofs/talos/lean/Project/ProofKit/F32UniformRangeCheck.lean": "bbd004ebe6c23b94f42a40cd2b9de2b2959c2d85b971d55190e4fd150e81ba5f"
+  },
+  "weight_columns": [
+    "matrix",
+    "weight_magnitude",
+    "maximum_row_l1",
+    "weight_scale_magnitude",
+    "bias_magnitude"
+  ],
+  "row_columns": [
+    "prefix",
+    "matrix",
+    "q_input_magnitude",
+    "q_input_l1",
+    "r_input_magnitude",
+    "r_input_l1",
+    "q_output_magnitude",
+    "r_output_magnitude",
+    "activation_scale_magnitude",
+    "reference_mul",
+    "reference_add",
+    "reference_bias",
+    "quantized_scale",
+    "quantized_output",
+    "quantized_add",
+    "quantized_bias"
+  ],
+  "check_milliseconds": 79952,
+  "check_command": "tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-projection-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/heldout/projection-ranges/rows.bin build/gpt2-124m/quantized-group64/heldout/projection-ranges/ranges",
+  "profiles": {
+    "weights": {
+      "sha256": "7a8ba71a60cb3f75297415bafd6291a244891e8783444761c578463b2a0e9df1",
+      "gzip_sha256": "1649365c679ac7dcb0a573cdb569f89e07dfd43923ae537526b11090c0161ad1",
+      "rows": 49
+    },
+    "rows": {
+      "sha256": "66da2128418b7896c5b5bc79638f2b89ee823e38550130cf8f2d721bb441c209",
+      "gzip_sha256": "92c1bc81afa7b6434b7ace99c4f54ceda20cbe5a010120dc7dbd0d4cb23f00aa",
+      "rows": 3577
+    }
+  }
+}

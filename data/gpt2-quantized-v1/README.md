@@ -2,7 +2,7 @@
 
 The [evaluation manifest](evaluation.json) fixes the pretrained checkpoint, FP32 binary, 128-prefix sequence, three retained completion cases, and six held-out prompts.  It records the approved quantization rules from the [implementation plan](../../plans/gpt2-quantized.md).  The first quantized candidate has now been evaluated on all nine completion cases.  Subsequent designs must identify those prompts as previously evaluated.
 
-Implementation is active on `gpt2-quantized`.  Runtime, memory, output-quality, and exact-binary results will enter this directory as their checks complete.
+The group64 implementation on `gpt2-quantized` has complete execution and exact-binary proofs, retained runtime and memory measurements, generated texts, and conditional numerical bounds.  Final aggregate and cold-checkout release tests remain active.
 
 ## Scalar projection measurements
 
@@ -127,7 +127,7 @@ The [current model record](model.json) pins the [verified 28,315-byte binary](..
 
 The [complete prefix test](candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/cached-test.json) compares all 6,432,896 logits and every cache bit for bit with the independent quantized reference.  Every logit vector also matches the retained grouped experiment's hash.  The [compiled completion comparison](candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/completions.json) reproduces all nine reference token streams using the same sampling draws.
 
-Greedy agreement is 120/128 on the fixed trace.  At position 128, linear memory is 737,673,216 bytes, compared with 1,107,361,792 bytes for FP32.  Each call retains only the weights and current cache.  Session close frees all 45,569 allocations.  Rejection and cleanup tests pass for invalid headers, the other scheme identifier, malformed parameters, invalid tokens and caches, and numerical failures after allocation.  The [complete session and exact-binary proofs](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md) pass, including every status path, termination, allocation bounds, and buffer release.  Full numerical propagation remains open.
+Greedy agreement is 120/128 on the fixed trace.  At position 128, linear memory is 737,673,216 bytes, compared with 1,107,361,792 bytes for FP32.  Each call retains only the weights and current cache.  Session close frees all 45,569 allocations.  Rejection and cleanup tests pass for invalid headers, the other scheme identifier, malformed parameters, invalid tokens and caches, and numerical failures after allocation.  The [complete session and exact-binary proofs](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md) pass, including every status path, termination, allocation bounds, and buffer release.  Conditional numerical propagation and outward evaluation cover all 302 retained and held-out prefixes.  Propagated bounds are too coarse to certify a greedy margin.  Certificates from measured logits establish 232 individual choices.  The [numerical records](certificates/README.md) state the assumptions, bound sizes, and coverage.
 
 The generation command loads the pinned binary and checks the weight and tokenizer hashes:
 

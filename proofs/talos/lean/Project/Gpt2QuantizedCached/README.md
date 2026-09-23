@@ -64,7 +64,12 @@ and retained FP32 word.  [Conditional forward bounds](Numerical/README.md) cover
 every stage of the twelve-layer cached recurrence and every returned logit.
 Checked range records cover all captured activation quantizers and 11,450
 normalizations, 16,883,712 GELU inputs, and 5,496 attention calls from both models.
-Projection range evaluation and evaluation of the propagated bound remain open.
+Projection and pointwise range checks also pass.  Fresh held-out inputs add 73
+prefixes with complete range evidence.  The checked outward session recurrence
+produces finite bounds for all 302 prefixes.  Those bounds are too coarse to
+certify a greedy margin.  Measured-logit certificates establish 232 individual
+choices.  The numerical theorem retains explicit arithmetic, reconstruction,
+magnitude, and source-intermediate assumptions.
 
 ## Verification and numerical work
 
