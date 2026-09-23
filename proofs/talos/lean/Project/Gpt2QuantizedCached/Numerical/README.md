@@ -29,7 +29,9 @@ All 16,883,712 captured GELU inputs pass the native checker.  Its soundness theo
 
 All 5,496 captured attention calls pass the native checker.  It reconstructs both cache histories and checks every score dot, maximum ordering, exponential, softmax sum and quotient, and weighted-value dot.  Its paired conversion supplies `AttentionPair.Ranges`, including the value-magnitude bound and a softmax denominator lower bound of one.
 
-The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Projection range instances and evaluation of the propagated bound remain open.
+All forty-nine projection matrices and 22,442 captured input/output records pass the native range checker.  The learned-projection and vocabulary conversion theorems supply the complete paired range premises from checked vectors, exported coefficients, activation reconstruction, conservative ordered-sum bounds, and retained biases.  The vocabulary conversion accounts for its distinct weight orientation.
+
+The retained greedy certificates use measured logit pairs and exact integer error bounds.  Their 183 successful common-offset certificates establish individual greedy choices.  These certificates do not instantiate `Session.errorTrace`.  Embedding/residual range instances and evaluation of the propagated bound remain open.  Captured operand identity with the source intermediates remains an assumption.  Reproducing the final logit hashes supplies execution evidence but does not establish that identity in the kernel.
 
 ## Checking
 

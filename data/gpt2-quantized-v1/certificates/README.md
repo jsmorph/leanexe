@@ -14,7 +14,7 @@ The common-offset check subtracts `zq[k] - z[k]` from every quantized logit, usi
 
 The capture reproduces all 229 previously recorded group64 logit hashes and all 128 previously recorded FP32 fixed-prefix hashes.  The record identifies both weight files, both binaries, the native host, the capture program, and the Lean checker sources.  Native execution of Wasmtime and the compiled Lean checker remains within the repository's existing runtime trust boundary.
 
-The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Captured nonlinear ranges pass the native checkers.  Projection range instances and evaluation of the propagated bound remain open.
+The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Captured nonlinear ranges pass the native checkers.  Embedding/residual range instances and evaluation of the propagated bound remain open.
 
 ## Checkpoint export
 
@@ -48,6 +48,14 @@ The [attention record](attention-check.json) and [compressed profiles](attention
 
 The [paired conversion theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/AttentionRange.lean) supplies the attention premises used by the session bound.  The complete data run passes in 521.123 seconds.  An earlier implementation reached its 600-second limit after completing the fixed trace and first prompt.  The record preserves that failure and the partial-file hash.  Retaining each profiled dot result and reusing score arrays reduced the fixed-trace time from 596.508 to 480.818 seconds.
 
+## Projection ranges
+
+The [projection record](projection-check.json), [weight profiles](projection-weights.txt.gz), and [vector profiles](projection-rows.txt.gz) cover forty-nine matrices and 22,442 captured input/output records across both models and 229 prefixes.  The native Lean checker passes in 126.862 seconds.  It checks finite vectors and weights, coefficient validity, activation reconstruction, reference products and sums, grouped rescaling and sums, and bias additions.  The profiles include maximum component magnitudes and input/weight-row sums of absolute values.
+
+The [paired conversion theorems](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ProjectionRange.lean) supply learned-projection and vocabulary range assumptions.  The exported coefficient bound is `scale × (3/2 + 1/65536)`.  The captured activation bound is `scale × (1/2 + 1/65536)`.  The proofs connect extracted activation words to the source quantizer, establish finite partial products and ordered sums, and use the exact integer accumulator bound of 1,032,256.
+
+The [initial failure](projection-check-failure.log) occurred at the first activation group after all matrices passed.  The scale profiler passed the group index where the source function expects the word offset.  Correcting it to `group * 64` produced the successful run.  Captured output magnitudes are checked data.  The checker does not recompute every full projection or establish captured operand identity with the complete source recurrence.
+
 ## Reproduction
 
 The capture requires the retained model files and native host described in the [evaluation instructions](../README.md).  It writes the raw paired words, a deterministic compressed copy, and their hashes under `build`.  The coverage record preserves those identities.
@@ -69,6 +77,9 @@ tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-gelu-check Proj
 tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-gelu-check build/gpt2-124m/quantized-group64/nonlinear/gelu.bin
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-attention-check Project.Gpt2QuantizedCached.Numerical.AttentionRange
 tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-attention-check build/gpt2-124m/quantized-group64/nonlinear/attention.bin data/gpt2-quantized-v1/certificates/coverage.json build/gpt2-124m/quantized-group64/nonlinear/attention-ranges.txt
+training/gpt2/.venv/bin/python training/gpt2/capture_projection_ranges.py
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-projection-check Project.Gpt2QuantizedCached.Numerical.ProjectionRange
+tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-projection-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/projection-ranges/rows.bin build/gpt2-124m/quantized-group64/projection-ranges/ranges
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.
