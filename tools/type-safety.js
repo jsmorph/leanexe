@@ -286,6 +286,28 @@ const auditedTheorems = [
   "EqualityCheck.saturate_le_next",
   "EqualityCheck.saturate_stable_or_count",
   "EqualityCheck.saturate_stable",
+  "EqTy.wellFormed",
+  "EqTypes.wellFormed",
+  "EqConstructors.wellFormed",
+  "EqualityCheck.typeAccepted_mono",
+  "EqualityCheck.typesAccepted_mono",
+  "EqualityCheck.constructorsAccepted_mono",
+  "EqualityCheck.next_length",
+  "EqualityCheck.next_monotone",
+  "EqualityCheck.next_keepsLength",
+  "EqualityCheck.stage_length",
+  "EqualityCheck.stage_stable",
+  "EqualityCheck.lookup_next_iff",
+  "EqualityCheck.typeAccepted_sound",
+  "EqualityCheck.typesAccepted_sound",
+  "EqualityCheck.constructorsAccepted_sound",
+  "EqualityCheck.lookup_bottom_ne_true",
+  "EqualityCheck.next_sound",
+  "EqualityCheck.stage_sound",
+  "EqualityCheck.typeAccepted_complete",
+  "EqualityCheck.typesAccepted_complete",
+  "EqualityCheck.constructorsAccepted_complete",
+  "equalitySupported_iff",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -332,6 +354,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_nat_case.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_booleans.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_value_equality.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_equality_domain.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });
