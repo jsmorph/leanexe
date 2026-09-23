@@ -40,6 +40,10 @@ inductive Expr where
   | pair (left right : Expr)
   | fst (pair : Expr)
   | snd (pair : Expr)
+  /-- The body binds the left field at index zero and the right field at index one. -/
+  | split (pair body : Expr)
+  /-- Unit elimination evaluates the scrutinee and introduces no field binders. -/
+  | unitCase (scrutinee body : Expr)
   | inl (payload : Expr)
   | inr (payload : Expr)
   /-- Each branch binds its selected payload at index zero. -/
@@ -89,6 +93,11 @@ inductive ExprTyped (signatures : Signatures) : Context → Expr → Ty → Prop
       ExprTyped signatures Γ (.pair left right) (.prod α β)
   | fst : ExprTyped signatures Γ pair (.prod α β) → ExprTyped signatures Γ (.fst pair) α
   | snd : ExprTyped signatures Γ pair (.prod α β) → ExprTyped signatures Γ (.snd pair) β
+  | split : ExprTyped signatures Γ pair (.prod α β) →
+      ExprTyped signatures (α :: β :: Γ) body τ →
+      ExprTyped signatures Γ (.split pair body) τ
+  | unitCase : ExprTyped signatures Γ scrutinee .unit → ExprTyped signatures Γ body τ →
+      ExprTyped signatures Γ (.unitCase scrutinee body) τ
   | inl : ExprTyped signatures Γ payload α → ExprTyped signatures Γ (.inl payload) (.sum α β)
   | inr : ExprTyped signatures Γ payload β → ExprTyped signatures Γ (.inr payload) (.sum α β)
   | sumCase : ExprTyped signatures Γ scrutinee (.sum α β) →
@@ -173,6 +182,10 @@ theorem ValueTyped.bool_canonical (h : ValueTyped value .bool) :
     ∃ b, value = .bool b := by
   cases h with
   | bool => exact ⟨_, rfl⟩
+
+theorem ValueTyped.unit_canonical (h : ValueTyped value .unit) : value = .unit := by
+  cases h
+  rfl
 
 theorem ValueTyped.nat_canonical (h : ValueTyped value .nat64) :
     ∃ n, value = .nat n ∧ n < nat64Limit := by

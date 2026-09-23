@@ -78,17 +78,22 @@ Admission is checked on program syntax. Runtime states retain the existing
 configuration-typing judgment; no preservation of source-level relevance across
 individual machine steps is assumed or claimed.
 
-## Proof obligations
+## Checked profile results
 
-The raw language is extended by `split` and `unitCase`. Their environment and
-continuation rules must preserve typing. The existing progress, preservation,
-reachable-state safety, returned-value typing, and overflow-justification proofs
-must check with these cases included.
+The raw language includes `split` and `unitCase`. Their environment and
+continuation rules preserve typing. Progress, preservation, reachable-state
+safety, returned-value typing, and overflow justification have been kernel-checked
+with these cases included.
 
 The profile theorem then uses the ordinary typing component of its admission
 premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
+
+The maintained gate checks 67 semantic examples and audits seven core results
+plus all 13 profile theorems. It passed with the pinned Lean version; every audited
+theorem depends only on `propext`. See [the proof reference](type-safety.md) for
+the exact theorem boundary and verification command.
 
 Checked addition is still the bounded-natural operation: operands and successful
 results are below `2^64`, and an overflow terminal records bounded operands whose

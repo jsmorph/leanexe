@@ -49,6 +49,10 @@ theorem eval_step_typed (hprogram : ProgramTyped program signatures)
       exact ⟨_, rfl, .eval hleft henv (.cons (.pairLeft hright henv) hkont)⟩
   | fst hpair => exact ⟨_, rfl, .eval hpair henv (.cons .fst hkont)⟩
   | snd hpair => exact ⟨_, rfl, .eval hpair henv (.cons .snd hkont)⟩
+  | split hpair hbody =>
+      exact ⟨_, rfl, .eval hpair henv (.cons (.splitBody hbody henv) hkont)⟩
+  | unitCase hscrutinee hbody =>
+      exact ⟨_, rfl, .eval hscrutinee henv (.cons (.unitBody hbody henv) hkont)⟩
   | inl hpayload => exact ⟨_, rfl, .eval hpayload henv (.cons .inl hkont)⟩
   | inr hpayload => exact ⟨_, rfl, .eval hpayload henv (.cons .inr hkont)⟩
   | sumCase hscrutinee hleft hright =>
@@ -86,6 +90,13 @@ theorem frame_step_typed (hprogram : ProgramTyped program signatures)
   | snd =>
       obtain ⟨left, right, rfl, _, hright⟩ := hvalue.prod_canonical
       exact ⟨_, rfl, .ret hright hkont⟩
+  | splitBody hbody henv =>
+      obtain ⟨left, right, rfl, hleft, hright⟩ := hvalue.prod_canonical
+      exact ⟨_, rfl, .eval hbody (.cons hleft (.cons hright henv)) hkont⟩
+  | unitBody hbody henv =>
+      have same := hvalue.unit_canonical
+      cases same
+      exact ⟨_, rfl, .eval hbody henv hkont⟩
   | inl => exact ⟨_, rfl, .ret (.inl hvalue) hkont⟩
   | inr => exact ⟨_, rfl, .ret (.inr hvalue) hkont⟩
   | sumBranches hleft hright henv =>
