@@ -367,3 +367,28 @@ the elaborator recursion-depth limit; increasing only this test file's limit to
 then passed twelve build jobs, all 430 examples, and all 216 theorem audits across
 ten modules, with no axioms beyond propext. No timeout or native proof shortcut
 was used. Continued to explicit natural-number pattern matching.
+
+
+2026-09-23: Completed natural zero/successor elimination. Its zero arm introduces
+no binding; the successor arm prepends the represented predecessor to the captured
+environment. Formation, safety, exact inference, uniqueness, and relevance include
+the new form. Six new public lemmas state the exact step and occurrence/admission
+rules. The parent reviewed the rules and added 35 examples covering nested scopes,
+bounds, unselected ill-typed branches, failures, relevance, and ordinary recursion.
+
+One shell submission failed before process creation and wrote no edits; checking
+the worktree confirmed that fact. The agent then submitted edits and build in
+separate calls. This was infrastructure failure, not a Lean timeout or proof
+failure. The full gate passed twelve build jobs, all 465 examples, and all 222
+audits with no axioms beyond propext. The new examples passed on their first run.
+
+A fresh comparison with the documented primitive/code-binder inventory identified
+families needing clearer tracking: Boolean derived APIs, compound structural
+equality, and Option/Except combinators. Added a coverage ledger distinguishing
+checked forms, representation ingredients, missing language rules/expansions,
+source model adequacy, and compiler correspondence. The next small increment is
+a strict Boolean derived library built from pairs, complete split, and conditionals.
+
+The inventory also records general typed traps and trapping/fallback collection
+wrappers as absent. Justified arithmetic overflow and checked Unit-plus-payload
+array APIs do not establish those different failure conventions.

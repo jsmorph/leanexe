@@ -33,6 +33,8 @@ def uses (index : Nat) : Expr → Bool
   | .inl _ payload | .inr _ payload => uses index payload
   | .sumCase scrutinee left right =>
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
+  | .natCase scrutinee zeroBody succBody =>
+      uses index scrutinee || uses index zeroBody || uses (index + 1) succBody
   | .natBin _ left right | .natCmp _ left right |
     .wordBin _ _ left right | .wordCmp _ _ left right => uses index left || uses index right
   | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => uses index value
@@ -78,6 +80,8 @@ def admissible : Expr → Bool
   | .sumCase scrutinee left right =>
       admissible scrutinee &&
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
+  | .natCase scrutinee zeroBody succBody =>
+      admissible scrutinee && (admissible zeroBody && (admissible succBody && uses 0 succBody))
   | .natBin _ left right | .natCmp _ left right |
     .wordBin _ _ left right | .wordCmp _ _ left right => admissible left && admissible right
   | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => admissible value
@@ -103,6 +107,14 @@ def admissibleBranches : List (Nat × Expr) → Bool
   | (arity, body) :: rest =>
       admissible body && (parametersUsed arity body && admissibleBranches rest)
 end
+
+theorem uses_natCase : uses index (.natCase scrutinee zeroBody succBody) =
+    (uses index scrutinee || uses index zeroBody || uses (index + 1) succBody) := rfl
+
+theorem uses_natCase_iff : uses index (.natCase scrutinee zeroBody succBody) = true ↔
+    (uses index scrutinee = true ∨ uses index zeroBody = true) ∨
+      uses (index + 1) succBody = true := by
+  simp only [uses_natCase, Bool.or_eq_true]
 
 theorem uses_wordNot : uses index (.wordNot width value) = uses index value := by
   simp [uses]
@@ -211,6 +223,11 @@ theorem admissible_split_iff : admissible (.split pair body) = true ↔
 theorem admissible_sumCase_iff : admissible (.sumCase scrutinee left right) = true ↔
     admissible scrutinee = true ∧ admissible left = true ∧ uses 0 left = true ∧
       admissible right = true ∧ uses 0 right = true := by
+  simp [admissible, Bool.and_eq_true]
+
+theorem admissible_natCase_iff : admissible (.natCase scrutinee zeroBody succBody) = true ↔
+    admissible scrutinee = true ∧ admissible zeroBody = true ∧
+      admissible succBody = true ∧ uses 0 succBody = true := by
   simp [admissible, Bool.and_eq_true]
 
 theorem admissible_unitCase_iff : admissible (.unitCase scrutinee body) = true ↔

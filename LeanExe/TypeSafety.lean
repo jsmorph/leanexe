@@ -31,11 +31,14 @@ corresponds to the declarative expression judgment without that extra boundary.
 This module makes no extraction, layout, ownership, or WebAssembly correctness
 claim. Persistent abstract arrays have checked operations and a bounded length;
 their physical storage is outside this model. Byte arrays, heap effects,
-compiler-specific recursion recognizers, natural-number pattern elimination,
-and floating-point arithmetic remain outside this core. Word literals, modular
+compiler-specific recursion recognizers, and floating-point arithmetic remain
+outside this core. Word literals, modular
 arithmetic, unsigned comparisons, finite bit operations, masked logical shifts,
 and explicit conversions are included for widths 8, 32, and 64. Bit operations
 have an independent arithmetic per-bit specification, not a native primitive oracle.
 The bounded-natural family covers add/subtract/multiply/divide/remainder/min/max
-and equality/order comparisons with precise operation-tagged overflow.
+and equality/order comparisons with precise operation-tagged overflow. Explicit
+natural-number case analysis evaluates its scrutinee once and binds a predecessor
+in the successor arm. This eliminates bounded naturals; it adds no termination
+assumption or compiler-recognition claim.
 -/

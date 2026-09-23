@@ -72,6 +72,13 @@ def inferRaw (declarations : DataDecls) (signatures : Signatures) (Γ : Context)
               if inferRaw declarations signatures (β :: Γ) right = some τ then some τ else none
           | none => none
       | _ => none
+  | .natCase scrutinee zeroBody succBody =>
+      if inferRaw declarations signatures Γ scrutinee = some .nat64 then
+        match inferRaw declarations signatures Γ zeroBody with
+        | some τ =>
+            if inferRaw declarations signatures (.nat64 :: Γ) succBody = some τ then some τ else none
+        | none => none
+      else none
   | .natBin _ left right =>
       if inferRaw declarations signatures Γ left = some .nat64 then
         if inferRaw declarations signatures Γ right = some .nat64 then some .nat64 else none
@@ -198,6 +205,9 @@ theorem inferRaw_complete (typed : ExprTyped declarations signatures Γ expr τ)
       simp [inferRaw, tyWellFormed_iff.mpr other, inferRaw_complete payload]
   | sumCase scrutinee left right =>
       simp [inferRaw, inferRaw_complete scrutinee, inferRaw_complete left, inferRaw_complete right]
+  | natCase scrutinee zeroBody succBody =>
+      simp [inferRaw, inferRaw_complete scrutinee, inferRaw_complete zeroBody,
+        inferRaw_complete succBody]
   | natBin _ left right | natCmp _ left right =>
       simp [inferRaw, inferRaw_complete left, inferRaw_complete right]
   | wordBin _ _ left right | wordCmp _ _ left right =>
@@ -348,6 +358,21 @@ theorem inferRaw_sound (inferred : inferRaw declarations signatures Γ expr = so
                   exact .sumCase (inferRaw_sound scrutineeType) (inferRaw_sound leftType)
                     (inferRaw_sound rightType)
                 next => cases inferred
+  | natCase scrutinee zeroBody succBody =>
+      simp only [inferRaw] at inferred
+      split at inferred
+      next scrutineeType =>
+        cases zeroType : inferRaw declarations signatures Γ zeroBody with
+        | none => simp [zeroType] at inferred
+        | some result =>
+            simp only [zeroType] at inferred
+            split at inferred
+            next succType =>
+              cases inferred
+              exact .natCase (inferRaw_sound scrutineeType) (inferRaw_sound zeroType)
+                (inferRaw_sound succType)
+            next => cases inferred
+      next => cases inferred
   | natBin operation left right =>
       simp only [inferRaw] at inferred
       split at inferred

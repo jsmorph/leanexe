@@ -17,8 +17,9 @@ direct first-order calls. Words of widths 8, 32, and 64 support modular arithmet
 unsigned comparisons, finite bit operations, masked logical shifts, and conversions.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
 arithmetic: addition and multiplication may overflow; subtraction saturates;
-division and remainder specify their zero-divisor behavior. Function bodies may
-call any declared function, including themselves;
+division and remainder specify their zero-divisor behavior. Natural case analysis
+distinguishes zero from successor and binds the predecessor only in the successor
+arm. Function bodies may call any declared function, including themselves;
 typing imposes no termination condition. Nominal declarations admit arbitrary
 mutual recursion through strictly positive first-order fields, with exhaustive
 constructor patterns. Formation is checked separately and required by typing.
@@ -54,6 +55,8 @@ inductive Expr where
   | inr (otherTy : Ty) (payload : Expr)
   /-- Each branch binds its selected payload at index zero. -/
   | sumCase (scrutinee left right : Expr)
+  /-- Zero binds nothing; the successor arm binds the predecessor at index zero. -/
+  | natCase (scrutinee zeroBody succBody : Expr)
   | natBin (operation : NatBinOp) (left right : Expr)
   | natCmp (operation : NatCmpOp) (left right : Expr)
   | wordBin (width : WordWidth) (operation : WordBinOp) (left right : Expr)
@@ -138,6 +141,10 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
       ExprTyped declarations signatures (α :: Γ) left τ →
       ExprTyped declarations signatures (β :: Γ) right τ →
       ExprTyped declarations signatures Γ (.sumCase scrutinee left right) τ
+  | natCase : ExprTyped declarations signatures Γ scrutinee .nat64 →
+      ExprTyped declarations signatures Γ zeroBody τ →
+      ExprTyped declarations signatures (.nat64 :: Γ) succBody τ →
+      ExprTyped declarations signatures Γ (.natCase scrutinee zeroBody succBody) τ
   | natBin (operation : NatBinOp) : ExprTyped declarations signatures Γ left .nat64 →
       ExprTyped declarations signatures Γ right .nat64 →
       ExprTyped declarations signatures Γ (.natBin operation left right) .nat64
@@ -384,6 +391,7 @@ theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr 
   | sumCase scrutinee left _ =>
       have formed := scrutinee.wellFormed hdeclarations hsignatures hcontext
       exact left.wellFormed hdeclarations hsignatures (.cons formed.sum_left hcontext)
+  | natCase _ zeroBody _ => exact zeroBody.wellFormed hdeclarations hsignatures hcontext
   | natBin _ _ _ => exact .nat64
   | natCmp _ _ _ => exact .bool
   | wordBin _ _ _ _ | wordOfNat _ _ | wordCast _ _ _ => exact .word

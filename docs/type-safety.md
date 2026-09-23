@@ -4,7 +4,8 @@ Track 1 establishes operational type safety for an independent first-order core.
 The work is on `typesafety`, starting from compiler revision
 `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`. The root [development plan](../plan.md)
 owns the remaining work; the [journal](../plans/type-safety-journal.md) records
-proof and verification history.
+proof and verification history. The [coverage ledger](type-safety-coverage.md)
+tracks each documented operation family, including derived APIs not yet proved.
 
 ## What soundness means here
 
@@ -30,7 +31,7 @@ different obligation, not the reason the full language theorem is unfinished.
 
 The core has Unit, Bool, bounded natural numbers, 8/32/64-bit unsigned words, products, binary sums,
 variables, let bindings, conditionals, projections, complete product patterns,
-Unit elimination, sum case analysis, bounded-natural operations, and direct first-order
+Unit elimination, sum and natural case analysis, bounded-natural operations, and direct first-order
 calls with arbitrary finite argument lists, persistent homogeneous arrays, and
 nominal recursive data with strict construction and exhaustive matching.
 Expressions, values, and machine states are ordinary untyped data. Separate
@@ -56,6 +57,10 @@ payload is prepended to the lexical environment at variable index zero. Calls
 start with a fresh environment: index zero denotes the first argument, index one
 the second, and so on. Suspended continuations retain the caller bindings they
 need. These conventions specify this core, not Lean's imported-expression format.
+
+`natCase` evaluates its scrutinee once. Zero enters its branch without a new
+binding; successor enters its branch with the predecessor at index zero. Both
+branches must have the same type, and the profile requires use of the predecessor.
 
 `split` prepends the left and right product fields in that order. `unitCase`
 introduces no binder. The syntactic relevance profile requires every introduced
@@ -183,9 +188,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [57 nominal-data examples](../test/type_safety_data.lean),
 [65 typing-checker examples](../test/type_safety_typing.lean),
 [73 bounded-natural examples](../test/type_safety_naturals.lean),
-[73 word examples](../test/type_safety_words.lean), and
-[49 bitwise/shift examples](../test/type_safety_bits.lean). It audits the
-transitive axiom dependencies of all 216 declared theorems across the ten
+[73 word examples](../test/type_safety_words.lean),
+[49 bitwise/shift examples](../test/type_safety_bits.lean), and
+[35 natural-case examples](../test/type_safety_nat_case.lean). It audits the
+transitive axiom dependencies of all 222 declared theorems across the ten
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -214,7 +220,9 @@ source admission and raw execution, and compose words with arrays/data/calls.
 Bitwise examples cover exact patterns, complement, masked counts, unsigned right
 shifts, operand order, rejection, and function composition. Closed 64-bit traces
 use a test-local elaborator recursion-depth limit of 4096; they remain ordinary
-kernel-checked proofs, without native evaluation certificates.
+kernel-checked proofs, without native evaluation certificates. Natural-case
+examples cover predecessor bounds, nested/captured scopes, static checking of
+unselected branches, relevance, and recursive calls.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -234,8 +242,8 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Raw binary64, natural pattern matching, additional
-array operations, byte arrays, dependent indexed data, physical heaps, and
+into this core. Raw binary64, Boolean derived APIs, structural equality, Option/Except
+combinators, additional array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
 Sum introductions now explicitly state the other alternative's type:
@@ -283,9 +291,10 @@ rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
 checked, as are explicit sum annotations, algorithmic typing, and the documented
 bounded-natural primitive family. Word arithmetic, comparisons, conversions,
-bitwise operations, complement, and masked shifts are also checked. The next
-increment is explicit natural-number zero/successor elimination with a predecessor
-binder; this form is not yet covered by the current calculus.
+bitwise operations, complement, masked shifts, and natural zero/successor
+elimination are also checked. The next increment is a proved Boolean derived
+library with explicit strict operand evaluation. The coverage ledger keeps the
+remaining derived APIs and larger language extensions separate.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;

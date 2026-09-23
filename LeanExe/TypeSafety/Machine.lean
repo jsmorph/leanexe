@@ -5,8 +5,10 @@ import LeanExe.TypeSafety.ArrayValues
 
 This is a left-to-right environment/continuation machine for the independent
 core. Its evaluation order is a specification choice of this core, not a claim
-about demand-based LeanExe extraction. Only the selected conditional or sum
-branch executes. A let-bound expression evaluates before its body.
+about demand-based LeanExe extraction. Only the selected conditional, sum, or
+natural-number branch executes. Natural successor patterns bind the predecessor
+at index zero; the zero arm introduces no binder. A let-bound expression evaluates
+before its body.
 Call arguments evaluate left to right in the caller environment. The callee
 receives a fresh environment containing exactly those argument values in order:
 the first argument has index zero. Continuations retain any caller bindings
@@ -39,6 +41,7 @@ inductive Frame where
   | inl
   | inr
   | sumBranches (left right : Expr) (env : Env)
+  | natBranches (zeroBody succBody : Expr) (env : Env)
   | natBinLeft (operation : NatBinOp) (right : Expr) (env : Env)
   | natCmpLeft (operation : NatCmpOp) (right : Expr) (env : Env)
   | natBinRight (operation : NatBinOp) (left : Value)
@@ -102,6 +105,8 @@ def step (program : Program) : State → Option State
   | .eval (.inr _ payload) env kont => some (.eval payload env (.inr :: kont))
   | .eval (.sumCase scrutinee left right) env kont =>
       some (.eval scrutinee env (.sumBranches left right env :: kont))
+  | .eval (.natCase scrutinee zeroBody succBody) env kont =>
+      some (.eval scrutinee env (.natBranches zeroBody succBody env :: kont))
   | .eval (.natBin operation left right) env kont =>
       some (.eval left env (.natBinLeft operation right env :: kont))
   | .eval (.natCmp operation left right) env kont =>
@@ -152,6 +157,10 @@ def step (program : Program) : State → Option State
       some (.eval left (payload :: env) kont)
   | .ret (.inr payload) (.sumBranches _ right env :: kont) =>
       some (.eval right (payload :: env) kont)
+  | .ret (.nat 0) (.natBranches zeroBody _ env :: kont) =>
+      some (.eval zeroBody env kont)
+  | .ret (.nat (predecessor + 1)) (.natBranches _ succBody env :: kont) =>
+      some (.eval succBody (.nat predecessor :: env) kont)
   | .ret value (.natBinLeft operation right env :: kont) =>
       some (.eval right env (.natBinRight operation value :: kont))
   | .ret (.nat right) (.natBinRight operation (.nat left) :: kont) =>
@@ -234,6 +243,16 @@ theorem step_wordNot : step program (.eval (.wordNot width value) env kont) =
 theorem step_boolToNat : step program (.eval (.boolToNat value) env kont) =
     some (.eval value env (.ifBranches (.nat 1) (.nat 0) env :: kont)) := rfl
 
+theorem step_natCase : step program (.eval (.natCase scrutinee zeroBody succBody) env kont) =
+    some (.eval scrutinee env (.natBranches zeroBody succBody env :: kont)) := rfl
+
+theorem step_natCase_zero : step program (.ret (.nat 0) (.natBranches zeroBody succBody env :: kont)) =
+    some (.eval zeroBody env kont) := rfl
+
+theorem step_natCase_succ :
+    step program (.ret (.nat (predecessor + 1)) (.natBranches zeroBody succBody env :: kont)) =
+      some (.eval succBody (.nat predecessor :: env) kont) := rfl
+
 def Step (program : Program) (before after : State) : Prop := step program before = some after
 
 /-- A return or an arithmetically justified overflow, never arbitrary stuckness. -/
@@ -265,6 +284,9 @@ inductive FrameTyped (declarations : DataDecls) (signatures : Signatures) : Fram
       ExprTyped declarations signatures (β :: Γ) right τ →
       EnvTyped declarations env Γ →
       FrameTyped declarations signatures (.sumBranches left right env) (.sum α β) τ
+  | natBranches : ExprTyped declarations signatures Γ zeroBody τ →
+      ExprTyped declarations signatures (.nat64 :: Γ) succBody τ → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.natBranches zeroBody succBody env) .nat64 τ
   | natBinLeft (operation : NatBinOp) :
       ExprTyped declarations signatures Γ right .nat64 → EnvTyped declarations env Γ →
       FrameTyped declarations signatures (.natBinLeft operation right env) .nat64 .nat64
@@ -387,6 +409,8 @@ theorem FrameTyped.wellFormed (typed : FrameTyped declarations signatures frame 
   | sumBranches left _ env =>
       exact left.wellFormed hprogram.declarationsWF hprogram.signaturesWF
         (.cons input.sum_left env.wellFormed)
+  | natBranches zeroBody _ env =>
+      exact zeroBody.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed
   | natBinLeft _ _ _ | natBinRight _ _ => exact .nat64
   | natCmpLeft _ _ _ | natCmpRight _ _ => exact .bool
   | wordBinLeft _ _ _ _ | wordBinRight _ _ _ | wordOfNat _ | wordCast _ _ => exact .word
