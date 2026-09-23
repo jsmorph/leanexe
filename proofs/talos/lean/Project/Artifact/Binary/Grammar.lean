@@ -225,6 +225,11 @@ mutual
     | f32Div : Instr [byte 149] .f32Div
     | f64Div : Instr [byte 163] .f64Div
     | f32Sqrt : Instr [byte 145] .f32Sqrt
+    | f32Nearest : Instr [byte 144] .f32Nearest
+    | f32ConvertI32S : Instr [byte 178] .f32ConvertI32S
+    | i32Extend8S : Instr [byte 192] .i32Extend8S
+    | i32TruncSatF32S (bytes : List UInt8) (encoding : U32 bytes 0) :
+        Instr (byte 252 :: bytes) .i32TruncSatF32S
     | f64Sqrt : Instr [byte 159] .f64Sqrt
     | i32WrapI64 : Instr [byte 167] .i32WrapI64
     | i64ExtendI32U : Instr [byte 173] .i64ExtendI32U

@@ -16307,3 +16307,15 @@ The aggregate artifact gate passed all forty-four registered packages on 2026-09
 - [ ] Complete the stated numerical bounds and token-margin result, with measured certificate coverage.
 - [ ] Run the required compiler, source-proof, artifact, and conformance gates and resolve failures.
 - [ ] Finish frozen-artifact loading, documentation, reproduction, commit, and push.
+
+## 2026-09-23: Cached projection and quantizer error proofs
+
+The implementation and retained evaluation commits are pushed as `269ed012` and `f305001f`.  The internal grouped-projection theorem now passes with the cached model's two borrowed owner parameters and three-word owned result.  Its proof covers the integer group sum, ordered FP32 partial sums, bias application, output allocation, both temporary releases, and protected-buffer preservation.  Reusing the public proof required adapting the call frame and returned owner, while the arithmetic and loop invariants remain shared in structure.  The separate modules keep elaboration below the runner's focused limits.
+
+The raw-word quantizer proof establishes that the signed decoded output coefficient equals nearest-even rounding of the clipped FP32 quotient.  Its decoded error is at most one half.  A reconstruction theorem combines that result with explicit quotient-rounding and clipping bounds and a positive scale.  Deriving those premises from checked input ranges, establishing the export relation, and propagating errors through cached inference remain open.  The accepted theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+All layout-constant execution proofs pass.  The finite-word loop and quantized embedding proofs are being checked.  The embedding proof separates checked byte and word reads, signed conversion, rescaling, position addition, output construction, and heap ownership.  The conformance gate is still compiling its pinned interpreter dependencies, and focused jobs wait for its bounded runner calls to release the shared lock.  The documentation gate passes all 163 maintained Markdown files.
+
+The preserved GCD proof passed, but manifest validation still required the current source cache and specification names.  The manifest checker now accepts a consistent `FrozenProgram`/`FrozenSpec` pair under the case's `Frozen` namespace and requires every behavioral theorem to match the corresponding registered name there.  Tests accept both complete conventions and reject mixed cache, specification, or theorem names.  Release identity now includes the cached quantized source and format imports.
+
+The finite-word scan and checked byte-access lemma pass with the standard logical axioms.  The regenerated GCD source proof passes with its two additional locals.  The association-list frozen specification and exact translation also pass.  The embedding and remaining validator drafts have concrete proof diagnostics and remain outside the completed proof batch.

@@ -13,20 +13,20 @@ namespace Project.Gcd.Spec
 open Wasm
 
 private def gcdFrame
-    (a b x y l2 l3 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 : UInt64) :
+    (a b x y l2 l3 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 l20 l21 : UInt64) :
     Locals :=
   { params := [.i64 a, .i64 b],
     locals := [
       .i64 l2, .i64 l3, .i64 x, .i64 y, .i64 l6, .i64 l7,
-      .i64 l8, .i64 l9, .i64 l10, .i64 l11, .i64 l12, .i64 l13,
-      .i64 l14, .i64 l15, .i64 l16, .i64 l17, .i64 l18, .i64 l19],
+      .i64 l8, .i64 l9, .i64 l10, .i64 l11, .i64 l12, .i64 l13, .i64 l14, .i64 l15,
+      .i64 l16, .i64 l17, .i64 l18, .i64 l19, .i64 l20, .i64 l21],
     values := [] }
 
 private def gcdLoopInv (initial : Store Unit) (a b : UInt64) : AssertionF Unit :=
   fun st s =>
     st = initial ∧
-    ∃ l2 l3 x y l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 : UInt64,
-      s = gcdFrame a b x y l2 l3 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 ∧
+    ∃ l2 l3 x y l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 l20 l21 : UInt64,
+      s = gcdFrame a b x y l2 l3 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 l20 l21 ∧
       Nat.gcd x.toNat y.toNat = Nat.gcd a.toNat b.toNat
 
 private def gcdMeasure (_ : Store Unit) (s : Locals) : Nat :=
@@ -70,9 +70,9 @@ theorem gcd_correct : GcdSpec := by
   apply wp_loop_cons
     (Inv := gcdLoopInv initial' a b)
     (μ := gcdMeasure)
-  · refine ⟨rfl, a, b, a, b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, rfl, rfl⟩
-  · rintro st s ⟨rfl, l2, l3, x, y, l6, l7, l8, l9, l10, l11, l12, l13,
-      l14, l15, l16, l17, l18, l19, rfl, hgcd⟩
+  · refine ⟨rfl, a, b, a, b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, rfl, rfl⟩
+  · rintro st s ⟨rfl, l2, l3, x, y, l6, l7, l8, l9, l10, l11, l12, l13, l14, l15,
+      l16, l17, l18, l19, l20, l21, rfl, hgcd⟩
     wp_run
     simp [gcdFrame]
     by_cases hy : y = 0
@@ -107,7 +107,7 @@ theorem gcd_correct : GcdSpec := by
       try wp_peel
       try simp [hy, gcdMeasure]
       refine ⟨?_, ?_⟩
-      · refine ⟨rfl, l2, l3, y, x % y, x, y, x % y, y, x % y, y, x % y, l13,
+      · refine ⟨rfl, l2, l3, y, x % y, x, y, x % y, y, x % y, y, x % y, l13, l14, l15,
           x, y, 0, y, x % y, 1, rfl, ?_⟩
         rw [← hgcd]
         simp [UInt64.toNat_mod]

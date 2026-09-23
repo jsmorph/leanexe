@@ -18,6 +18,7 @@ function main() {
   run([process.execPath, path.join("test", "leanrun_macos.js")]);
   run([process.execPath, path.join("test", "artifact_conformance.js")]);
   run([process.execPath, path.join("test", "artifact_identity.js")]);
+  run([process.execPath, path.join("test", "artifact_manifest.js")]);
   run([process.execPath, path.join("test", "artifact_migrate.js")]);
   run([process.execPath, path.join("test", "artifact_release.js")]);
   run([process.execPath, path.join("test", "talos_cache.js")]);

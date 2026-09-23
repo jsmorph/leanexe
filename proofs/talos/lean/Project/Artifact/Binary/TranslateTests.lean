@@ -82,4 +82,8 @@ example :
     FuncType.toTalos, ValType.toTalos]
   decide
 
+example : Instr.listToTalos [.f32Nearest, .i32TruncSatF32S, .f32ConvertI32S, .i32Extend8S] =
+    [.f32Nearest, .i32TruncSatF32S, .f32ConvertI32S, .extend8S] := by
+  rfl
+
 end Wasm.Binary.Tests

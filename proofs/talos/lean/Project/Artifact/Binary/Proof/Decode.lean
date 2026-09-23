@@ -859,6 +859,33 @@ theorem instructionPair_sound (fuel : Nat) :
             | f32Sqrt =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f32Sqrt
+            | f32Nearest =>
+                exact plainInstruction_sound hstart hread hclassify hrun Grammar.Instr.f32Nearest
+            | f32ConvertI32S =>
+                exact plainInstruction_sound hstart hread hclassify hrun Grammar.Instr.f32ConvertI32S
+            | i32Extend8S =>
+                exact plainInstruction_sound hstart hread hclassify hrun Grammar.Instr.i32Extend8S
+            | i32TruncSatF32S =>
+                dsimp only at hrun
+                split at hrun
+                · contradiction
+                · rename_i parsedSubopcode pair hsubopcode
+                  rcases pair with ⟨subopcode, tail⟩
+                  split at hrun
+                  · rename_i hzero
+                    cases hrun
+                    rcases readByte_sound start byte middle hstart hread with
+                      ⟨opcodeBytes, hopcodeConsumed, hopcodeBytes⟩
+                    rcases Leb.Proof.u32_sound middle subopcode tail
+                        (hopcodeConsumed.finish_wellFormed hstart) hsubopcode with
+                      ⟨operandBytes, hoperandConsumed, hoperandEncoding⟩
+                    have hopcode := classify_sound hclassify
+                    rw [hopcodeBytes, ← hopcode] at hopcodeConsumed
+                    dsimp only at hzero ⊢
+                    subst subopcode
+                    exact ⟨252 :: operandBytes, hopcodeConsumed.trans hoperandConsumed,
+                      Grammar.Instr.i32TruncSatF32S operandBytes hoperandEncoding⟩
+                  · contradiction
             | f64Sqrt =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.f64Sqrt

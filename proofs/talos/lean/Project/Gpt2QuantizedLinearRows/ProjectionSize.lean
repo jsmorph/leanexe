@@ -1,0 +1,60 @@
+import Project.Gpt2QuantizedLinearRows.ProjectionLoop
+
+namespace Project.Gpt2QuantizedLinearRows.Projection
+open Wasm Project.ProofKit PackedFloatFrame
+
+def sizeCode : Wasm.Program :=
+  [.localGet 9, .localSet 74, .localGet 8, .localSet 75] ++ CheckedNatMul.program 74 75 ++
+    [.localSet 72, .constI64 4, .localSet 73] ++ CheckedNatMul.program 72 73 ++
+    [.localSet 28, .localGet 28, .localSet 72]
+
+def sizeFrame (frame : Locals) (outputWidth rows : Nat) : Locals :=
+  { frame with
+    locals := frame.locals
+      |>.set 63 (.i64 (UInt64.ofNat rows))
+      |>.set 64 (.i64 (UInt64.ofNat outputWidth))
+      |>.set 61 (.i64 (UInt64.ofNat (rows * outputWidth)))
+      |>.set 62 (.i64 4)
+      |>.set 17 (.i64 (UInt64.ofNat (4 * (rows * outputWidth))))
+      |>.set 61 (.i64 (UInt64.ofNat (4 * (rows * outputWidth))))
+    values := [] }
+
+theorem sizeCode_spec (env : HostEnv Unit) (store : Store Unit) (frame : Locals) (outputWidth rows : Nat)
+    (hParams : frame.params.length = 11) (hLocals : frame.locals.length = 73)
+    (hValues : frame.values = []) (hRows : frame.params[9]? = some (.i64 (UInt64.ofNat rows)))
+    (hWidth : frame.params[8]? = some (.i64 (UInt64.ofNat outputWidth)))
+    (hCount : 4 * (rows * outputWidth) ≤ 2^32)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q store (sizeFrame frame outputWidth rows) env) :
+    wp «module» (sizeCode ++ rest) Q store frame env := by
+  have hFit : (UInt64.ofNat rows).toNat * (UInt64.ofNat outputWidth).toNat < UInt64.size := by
+    apply lt_of_le_of_lt (Nat.mul_le_mul (Nat.mod_le ..) (Nat.mod_le ..))
+    change rows * outputWidth < 18446744073709551616
+    omega
+  have hFour : UInt64.ofNat (rows * outputWidth) * 4 = UInt64.ofNat (4 * (rows * outputWidth)) := by
+    rw [Nat.mul_comm 4 (rows * outputWidth), UInt64.ofNat_mul (rows * outputWidth) 4,
+      show UInt64.ofNat 4 = 4 from rfl]
+  simp only [sizeCode, List.append_assoc, List.cons_append, List.nil_append]
+  wp_packed_frame [hParams, hLocals, hValues, hRows, hWidth]
+  apply CheckedNatMul.program_spec 74 75 «module» env store _
+    (UInt64.ofNat rows) (UInt64.ofNat outputWidth) []
+  · rfl
+  · simp [Locals.get, hParams, hLocals]
+  · simp [Locals.get, hParams, hLocals]
+  · exact hFit
+  wp_packed_frame [hParams, hLocals, ← UInt64.ofNat_mul]
+  apply CheckedNatMul.program_spec 72 73 «module» env store _ (UInt64.ofNat (rows * outputWidth)) 4 []
+  · rfl
+  · simp [Locals.get, hParams, hLocals]
+  · simp [Locals.get, hParams, hLocals]
+  · apply lt_of_le_of_lt (Nat.mul_le_mul_right 4 (Nat.mod_le (rows * outputWidth) UInt64.size))
+    change rows * outputWidth * 4 < 18446744073709551616
+    omega
+  wp_packed_frame [hParams, hLocals, hFour]
+  exact hNext
+
+theorem emitted_size : (func8.drop 34).take 18 = sizeCode := rfl
+
+#print axioms sizeCode_spec
+
+end Project.Gpt2QuantizedLinearRows.Projection
