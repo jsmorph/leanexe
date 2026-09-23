@@ -36,7 +36,7 @@ theorem activated_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       heap.Frame initial (heap.allocate activatedNeed) final →
       final.mem.pages ≤ 65536 → final.memoryCap Project.Gpt2CachedStep.«module» 0 = initial.memoryCap Project.Gpt2CachedStep.«module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((normalized2Success.drop 79).take 19 ++ rest) Q initial frame env := by
+    wp «module» (activatedCode ++ rest) Q initial frame env := by
   have hNeed : Gpt2CachedStep.Activate.need expanded = activatedNeed := by rw [Gpt2CachedStep.Activate.need, hExpandedSize]; rfl
   have hSize : (activate expanded).size = 12288 := by
     rw [activate, PackedSource.generate_size, hExpandedSize]
@@ -46,7 +46,6 @@ theorem activated_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   have hCall := Activate.activate_exact env initial heap expandedPtr expandedPtr expanded
     hHeap hExpanded hExpandedProtected hBump hPages
   simp only [hExpandedSize, hSize, hNeed] at hCall
-  rw [emitted_activated]
   simp only [activatedCode, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, hParamsLength, hLocals, hValues, hExpandedOwner, hExpandedPtr, hExpandedBytes]
   refine wp_call_tw hCall ?_
