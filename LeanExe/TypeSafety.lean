@@ -8,6 +8,7 @@ import LeanExe.TypeSafety.Machine
 import LeanExe.TypeSafety.Safety
 import LeanExe.TypeSafety.Profile
 import LeanExe.TypeSafety.Typing
+import LeanExe.TypeSafety.BoolDerived
 
 /-!
 An independently specified and proved type-safety core. The theorem
@@ -40,5 +41,7 @@ The bounded-natural family covers add/subtract/multiply/divide/remainder/min/max
 and equality/order comparisons with precise operation-tagged overflow. Explicit
 natural-number case analysis evaluates its scrutinee once and binds a predecessor
 in the successor arm. This eliminates bounded naturals; it adds no termination
-assumption or compiler-recognition claim.
+assumption or compiler-recognition claim. Strict Boolean connectives and equality
+are transparent definitions using product elimination; their typing, admission,
+and machine truth tables are proved without extending the transition function.
 -/

@@ -168,6 +168,7 @@ const auditedTheorems = [
   "step_natCase",
   "step_natCase_zero",
   "step_natCase_succ",
+  "Steps.trans",
   "FrameTyped.wellFormed",
   "KontTyped.wellFormed",
   "StateTyped.wellFormed",
@@ -230,6 +231,29 @@ const auditedTheorems = [
   "profileProgramWellTyped_iff",
   "checked_type_safety",
   "profile_checked_type_safety",
+  "ExprTyped.boolNot",
+  "BoolBinOp.body_typed",
+  "ExprTyped.boolBin",
+  "inferRaw_boolNot",
+  "BoolBinOp.inferRaw_body",
+  "inferRaw_boolBin",
+  "uses_boolNot",
+  "admissible_boolNot",
+  "BoolBinOp.body_uses_left",
+  "BoolBinOp.body_uses_right",
+  "BoolBinOp.body_closed",
+  "BoolBinOp.body_admissible",
+  "uses_boolBin",
+  "admissible_boolBin",
+  "step_boolNot",
+  "step_boolBin",
+  "boolBin_left_stage",
+  "step_boolBin_right_stage",
+  "boolNot_result_steps",
+  "BoolBinOp.body_result_steps",
+  "boolBin_result_steps",
+  "boolNot_value_steps",
+  "boolBin_value_steps",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -274,6 +298,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_words.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_bits.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_nat_case.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_booleans.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

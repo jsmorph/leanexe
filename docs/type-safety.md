@@ -173,6 +173,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [Safety.lean](../LeanExe/TypeSafety/Safety.lean) | Progress, preservation, finite-execution safety, result typing, and overflow justification. |
 | [Profile.lean](../LeanExe/TypeSafety/Profile.lean) | Syntactic admission checks, their characterizations, and profile safety. |
 | [Typing.lean](../LeanExe/TypeSafety/Typing.lean) | Total inference, exact admission checks, type uniqueness, and checker-to-safety corollaries. |
+| [BoolDerived.lean](../LeanExe/TypeSafety/BoolDerived.lean) | Strict Boolean source expansions, typing/inference/relevance equations, staging and truth-table execution proofs. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -189,9 +190,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [65 typing-checker examples](../test/type_safety_typing.lean),
 [73 bounded-natural examples](../test/type_safety_naturals.lean),
 [73 word examples](../test/type_safety_words.lean),
-[49 bitwise/shift examples](../test/type_safety_bits.lean), and
-[35 natural-case examples](../test/type_safety_nat_case.lean). It audits the
-transitive axiom dependencies of all 222 declared theorems across the ten
+[49 bitwise/shift examples](../test/type_safety_bits.lean),
+[35 natural-case examples](../test/type_safety_nat_case.lean), and
+[47 Boolean examples](../test/type_safety_booleans.lean). It audits the
+transitive axiom dependencies of all 246 declared theorems across the eleven
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -242,7 +244,7 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Raw binary64, Boolean derived APIs, structural equality, Option/Except
+into this core. Raw binary64, compound structural equality, Option/Except
 combinators, additional array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
@@ -292,8 +294,8 @@ lengths or return a specified failure. Monomorphic nominal recursive data is now
 checked, as are explicit sum annotations, algorithmic typing, and the documented
 bounded-natural primitive family. Word arithmetic, comparisons, conversions,
 bitwise operations, complement, masked shifts, and natural zero/successor
-elimination are also checked. The next increment is a proved Boolean derived
-library with explicit strict operand evaluation. The coverage ledger keeps the
+elimination are also checked. Boolean NOT and strict AND/OR/XOR/equality now have
+proved expansions, exact typing/relevance equations, and truth-table execution laws. The coverage ledger keeps the
 remaining derived APIs and larger language extensions separate.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
