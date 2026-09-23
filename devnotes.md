@@ -70,9 +70,30 @@ pass.  The ignored-loop test required the pruning analysis to propagate
 effects through loop bodies as well as direct calls.  The analysis covers
 every IR expression constructor without a catch-all case.
 
-The aggregate execution, WAT equality, and Talos gates are pending at this
-checkpoint.  The documentation gate reports an existing absolute `/tmp`
-example in `paper/wgsl-verification-report/review.md`; that file is unchanged.
+The final pruning review also covered effects nested inside ordinary call
+arguments and branch conditions.  Calls retain those arguments when their
+results are unused.  A branch with empty arms still evaluates an effectful
+condition.
+The compiler rebuilt successfully after these changes, and the final source
+suite again passed all 26 runs and four pure-mode rejection checks.
+
+`tools/check-wat.sh` passed all thirteen byte-equality cases.  The aggregate
+execution driver stops at `proofs/artifacts/release.json` with a release input
+identity mismatch.  The same release check fails on the original revision
+`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`.
+
+Running `test/core_correctness.js` separately found an array ownership trap
+in `arraySetIfInBoundsSkipsValueTrap`.  A clean build of the original revision
+produced the identical module, with SHA-256
+`0dd850af132112b6bde0a76bbd66507d4a427a5a8b36866df9cd0f672eb96866`,
+and the same trap.  The generated code aliases an unchanged array and releases
+both aliases; that existing failure remains unresolved.
+
+The documentation gate reports an existing absolute `/tmp` example in
+`paper/wgsl-verification-report/review.md`; that file is unchanged.  The Talos
+gate began fetching its existing pinned dependencies and was stopped during
+the initial mathlib cache download, after 867 of 8,747 files.  It did not reach
+the proof checks, so Talos verification remains uncompleted.
 
 ## 2026-09-16: Tiny transformer implementation
 

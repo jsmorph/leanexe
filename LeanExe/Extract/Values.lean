@@ -739,7 +739,7 @@ mutual
           bodyLive
     | .letCall slots _ args body =>
         let bodyLive := exprUsedSlots body
-        if anyLiveSlot bodyLive slots then
+        if anyLiveSlot bodyLive slots || args.any LeanExe.IR.Expr.hasEffects then
           addLiveSlots (removeLiveSlots bodyLive slots) (exprListUsedSlots args)
         else
           bodyLive
@@ -961,7 +961,7 @@ mutual
           bodyLive
     | .letCall slots _ args body =>
         let bodyLive := valueUsedSlots body
-        if anyLiveSlot bodyLive slots then
+        if anyLiveSlot bodyLive slots || args.any LeanExe.IR.Expr.hasEffects then
           addLiveSlots (removeLiveSlots bodyLive slots) (exprListUsedSlots args)
         else
           bodyLive
@@ -981,7 +981,7 @@ mutual
         (some (.effectCall slots index args), addLiveSlots (removeLiveSlots liveAfter slots)
           (exprListUsedSlots args))
     | .call slots index args =>
-        if anyLiveSlot liveAfter slots then
+        if anyLiveSlot liveAfter slots || args.any LeanExe.IR.Expr.hasEffects then
           (some (.call slots index args), addLiveSlots (removeLiveSlots liveAfter slots)
             (exprListUsedSlots args))
         else
@@ -1006,7 +1006,7 @@ mutual
     | .branch cond thenLets elseLets =>
         let thenResult := pruneLocalLetsWithLive thenLets liveAfter
         let elseResult := pruneLocalLetsWithLive elseLets liveAfter
-        if thenResult.fst.isEmpty && elseResult.fst.isEmpty then
+        if thenResult.fst.isEmpty && elseResult.fst.isEmpty && !cond.hasEffects then
           (none, liveAfter)
         else
           let branchLive := addLiveSlots (addLiveSlots thenResult.snd elseResult.snd)
