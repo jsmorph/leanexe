@@ -13,6 +13,13 @@ remains explicit.
 
 ## Design decisions
 
+Machine-written source makes explicit forms and annotations practical. The
+standard for each extension is a small syntax with independently stated typing
+and execution rules, explicit binding and failure behavior, and checked
+metatheory. Compiler acceptance is not the definition of well-typedness. An
+implementation convenience or a shorter generated program is not evidence that
+a language rule is correct.
+
 Evaluation is strict and ordered. A let-bound expression evaluates before its
 body, constructor fields evaluate left to right, and function arguments evaluate
 in list order. A conditional evaluates its condition and selected branch. A sum
@@ -90,9 +97,10 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 67 semantic examples and audits seven core results
-plus all 13 profile theorems. It passed with the pinned Lean version; every audited
-theorem depends only on `propext`. See [the proof reference](type-safety.md) for
+The maintained gate checks 113 semantic examples and audits seven core results,
+all 13 profile theorems, and all 32 array operation and list-typing theorems. It
+passed with the pinned Lean version; each audited theorem depends on no axioms
+or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
 
 Checked addition is still the bounded-natural operation: operands and successful
@@ -120,13 +128,14 @@ that this independent language must reproduce.
 
 ## Full-language coverage
 
-The profile applies to the initial scalar/product/sum/call calculus plus product
-and Unit elimination. The following work remains separately tracked:
+The profile applies to the scalar/product/sum/call calculus, complete product
+and Unit elimination, and the six array forms below. The following work remains
+separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
 | Remaining natural arithmetic and U8/U32/U64 operations | Define each bounded/modular operation and prove its primitive safety. |
-| Persistent arrays | Define strict construction and updates, exact failure/fallback behavior, and a length invariant supporting the bounded size result. |
+| Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
 | Nominal structures, variants, recursive families | Define declaration well-formedness, constructor fields, tags, matches, and recursive value typing. Extend the chosen pattern-binding discipline explicitly. |
 | Collection binders, folds, loops, recursion forms | Replace schematic families with complete rules or justified derived forms, including captured lexical environments and early exits. |
@@ -140,11 +149,10 @@ specified failure. That language-level obligation requires no physical allocator
 proof. Conversely, a full language claim including explicit release needs rules
 for permission and subsequent uses; a pure value theorem cannot silently cover it.
 
-## Next increment: persistent arrays
+## Persistent array semantics
 
-The following is the agreed specification for the next proof increment. Its
-implementation and proof are in progress; the checked profile result above does
-not yet include arrays.
+The following six forms are implemented in the independent calculus and covered
+by its checked core and profile safety theorems.
 
 `array α` contains a finite sequence of values of type `α`. Its mathematical
 length must be strictly below `2^64`. This bound belongs to value typing and makes
@@ -171,9 +179,9 @@ under the same context. A sum branch can consume a failed operation's Unit paylo
 using `unitCase`. Array size and lookup observe only part of a value; mandatory
 binder occurrence does not prohibit every operation that discards information.
 
-Required operation laws include exact failure conditions, length preservation
+Checked operation laws establish exact failure conditions, length preservation
 for set, read-after-set, unchanged reads at other indices, and lengths and reads
-after push and append. Universal length-bound proofs must cover growth failure;
-testing small arrays alone cannot establish that boundary. The machine extension
-must then preserve all existing safety results for nested arrays, calls, lexical
-environments, and continuations.
+after push and append. Universal failure and length-bound proofs cover growth
+failure; the result does not rely on constructing huge arrays in tests. The
+machine extension preserves the existing safety results for nested arrays,
+calls, lexical environments, and continuations.

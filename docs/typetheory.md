@@ -6,6 +6,12 @@ Compilation and Execution](leanexe-formal-specification.md) defines the
 implementation-indexed compilation and execution relations and records the
 remaining independent formalization work.
 
+This document describes the existing compiler dialect. The independent
+[strict runtime-language contract](runtime-language.md) now specifies a relevance
+profile for machine-written programs, with [checked core safety](type-safety.md).
+The compiler does not yet enforce that profile, and no equivalence between the
+two execution models is asserted.
+
 LeanExe uses exact Lean 4.34.0-rc2 as its source theory, elaborator, and kernel checker.  It does not define a second surface type system or accept unchecked syntax.  Its own language begins after elaboration: an extractor reads a kernel-checked declaration, removes static material, recognizes a restricted executable fragment, and assigns concrete runtime layouts before lowering the result to a first-order IR and WebAssembly.
 
 The phrase *LeanExe dialect* therefore names two related boundaries.  The checked boundary is Lean 4's dependent type theory, including propositions, universe-polymorphic definitions, dependent functions, inductive families, and proofs.  The executable boundary is the smaller set of elaborated terms for which LeanExe implements extraction, representation, evaluation order, memory management, and an ABI.  A source module may contain declarations outside the executable boundary when they do not contribute runtime behavior to the selected entry.
@@ -116,7 +122,13 @@ The public ABI also defines behavior outside Lean's type system.  A host must pr
 
 ### Evaluation, traps, and termination
 
-LeanExe preserves source evaluation order for accepted expressions, including lazy projection, short-circuiting, and single evaluation of a multi-slot helper result.  Demand analysis determines when strict argument materialization is safe and when an unused field or branch must remain unevaluated because it may trap.  Bang indexing and other accepted partial operations lower failure to WASM `unreachable`, while safe indexing returns a tagged `Option` without reading an out-of-bounds payload.
+The implementation handles lazy projection, short-circuiting, and shared
+multi-slot helper results. Demand analysis selects strict argument materialization
+and deferred fields using its occurrence and trap summaries. Maintained examples
+exercise these choices; no general theorem establishes preservation of source
+evaluation for every accepted expression. Bang indexing and other accepted
+partial operations lower failure to WASM `unreachable`, while safe indexing
+returns a tagged `Option` on the out-of-bounds path.
 
 Rejecting `partial` declarations does not supply a general artifact termination theorem.  Structural and well-founded recursive definitions have passed Lean's termination checks, fuel recursion makes exhaustion part of the source behavior, and a generated `while` loop follows its checked elaborated form.  A behavioral artifact theorem can prove termination for an entry under stated input and memory premises.  The general compiler has no theorem proving termination or semantic preservation for every accepted entry.
 

@@ -6,6 +6,11 @@ This specification defines the implemented LeanExe compilation and execution rel
 
 The [Type Theory](leanexe-type-theory.md) defines recognized source types, static specialization, and the first-order runtime presentation.  This document completes that account with numeric operations, memory representation, ownership, collection operations, loops, wrappers, and proof boundaries.  It uses the compiler's exact function graphs for acceptance and lowering, and the selected WebAssembly semantics for execution.  This is an implementation-indexed specification.  A general theorem connecting an independent source semantics to every emitted binary remains an explicit proof obligation.
 
+The independently specified [strict runtime language](runtime-language.md) is a
+separate normative design with [checked core safety](type-safety.md). The current
+compiler does not yet enforce its relevance profile or have a proved
+correspondence to its strict semantics.
+
 Fix a revision `v` containing the relevant Lean source files and pinned dependencies.  An uncommitted change to any of these files changes `v`.  The definitions refer to declarations rather than volatile proof-case counts.  [Compiler Architecture](compiler.md), [Language Specification](spec.md), and [Artifact Verification Format](artifact-format.md) provide the maintained prose accounts.
 
 ## Compilation relation
