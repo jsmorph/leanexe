@@ -7,6 +7,10 @@ This is a left-to-right environment/continuation machine for the independent
 core. Its evaluation order is a specification choice of this core, not a claim
 about demand-based LeanExe extraction. Only the selected conditional or sum
 branch executes. A let-bound expression evaluates before its body.
+Call arguments evaluate left to right in the caller environment. The callee
+receives a fresh environment containing exactly those argument values in order:
+the first argument has index zero. Continuations retain any caller bindings
+needed after the result returns. Recursive calls are allowed.
 
 `step` returns `none` both for terminal states and for malformed/stuck states.
 Consequently progress is substantive: a missing variable, a non-Boolean
@@ -28,6 +32,8 @@ inductive Frame where
   | sumBranches (left right : Expr) (env : Env)
   | addLeft (right : Expr) (env : Env)
   | addRight (left : Value)
+  /-- Arguments already computed, remaining argument expressions, and caller environment. -/
+  | callArgs (function : Nat) (done : Env) (remaining : List Expr) (env : Env)
   deriving Repr
 
 abbrev Kont := List Frame
@@ -38,8 +44,13 @@ inductive State where
   | overflow (left right : Nat)
   deriving Repr
 
+/-- A missing function remains stuck rather than becoming a permitted failure. -/
+def enterCall (program : Program) (function : Nat) (arguments : Env) (kont : Kont) :
+    Option State :=
+  (lookup program function).map (fun body => .eval body arguments kont)
+
 /-- Deterministic one-step execution, with malformed configurations stuck. -/
-def step : State → Option State
+def step (program : Program) : State → Option State
   | .eval (.var index) env kont => (lookup env index).map (.ret · kont)
   | .eval .unit _ kont => some (.ret .unit kont)
   | .eval (.bool b) _ kont => some (.ret (.bool b) kont)
@@ -58,6 +69,9 @@ def step : State → Option State
       some (.eval scrutinee env (.sumBranches left right env :: kont))
   | .eval (.add left right) env kont =>
       some (.eval left env (.addLeft right env :: kont))
+  | .eval (.call function []) _ kont => enterCall program function [] kont
+  | .eval (.call function (argument :: rest)) env kont =>
+      some (.eval argument env (.callArgs function [] rest env :: kont))
   | .ret _ [] => none
   | .ret value (.letBody body env :: kont) =>
       some (.eval body (value :: env) kont)
@@ -80,10 +94,14 @@ def step : State → Option State
       if left + right < nat64Limit then
         some (.ret (.nat (left + right)) kont)
       else some (.overflow left right)
+  | .ret value (.callArgs function done [] _ :: kont) =>
+      enterCall program function (done ++ [value]) kont
+  | .ret value (.callArgs function done (argument :: rest) env :: kont) =>
+      some (.eval argument env (.callArgs function (done ++ [value]) rest env :: kont))
   | .ret _ (_ :: _) => none
   | .overflow _ _ => none
 
-def Step (before after : State) : Prop := step before = some after
+def Step (program : Program) (before after : State) : Prop := step program before = some after
 
 /-- A return or an arithmetically justified overflow, never arbitrary stuckness. -/
 def Terminal : State → Prop
@@ -93,49 +111,55 @@ def Terminal : State → Prop
   | _ => False
 
 /-- The captured environment is part of each suspended expression's invariant. -/
-inductive FrameTyped : Frame → Ty → Ty → Prop where
-  | letBody : ExprTyped (α :: Γ) body β → EnvTyped env Γ →
-      FrameTyped (.letBody body env) α β
-  | ifBranches : ExprTyped Γ yes τ → ExprTyped Γ no τ → EnvTyped env Γ →
-      FrameTyped (.ifBranches yes no env) .bool τ
-  | pairLeft : ExprTyped Γ right β → EnvTyped env Γ →
-      FrameTyped (.pairLeft right env) α (.prod α β)
-  | pairRight : ValueTyped left α → FrameTyped (.pairRight left) β (.prod α β)
-  | fst : FrameTyped .fst (.prod α β) α
-  | snd : FrameTyped .snd (.prod α β) β
-  | inl : FrameTyped .inl α (.sum α β)
-  | inr : FrameTyped .inr β (.sum α β)
-  | sumBranches : ExprTyped (α :: Γ) left τ → ExprTyped (β :: Γ) right τ →
-      EnvTyped env Γ → FrameTyped (.sumBranches left right env) (.sum α β) τ
-  | addLeft : ExprTyped Γ right .nat64 → EnvTyped env Γ →
-      FrameTyped (.addLeft right env) .nat64 .nat64
-  | addRight : ValueTyped left .nat64 → FrameTyped (.addRight left) .nat64 .nat64
+inductive FrameTyped (signatures : Signatures) : Frame → Ty → Ty → Prop where
+  | letBody : ExprTyped signatures (α :: Γ) body β → EnvTyped env Γ →
+      FrameTyped signatures (.letBody body env) α β
+  | ifBranches : ExprTyped signatures Γ yes τ → ExprTyped signatures Γ no τ → EnvTyped env Γ →
+      FrameTyped signatures (.ifBranches yes no env) .bool τ
+  | pairLeft : ExprTyped signatures Γ right β → EnvTyped env Γ →
+      FrameTyped signatures (.pairLeft right env) α (.prod α β)
+  | pairRight : ValueTyped left α → FrameTyped signatures (.pairRight left) β (.prod α β)
+  | fst : FrameTyped signatures .fst (.prod α β) α
+  | snd : FrameTyped signatures .snd (.prod α β) β
+  | inl : FrameTyped signatures .inl α (.sum α β)
+  | inr : FrameTyped signatures .inr β (.sum α β)
+  | sumBranches : ExprTyped signatures (α :: Γ) left τ → ExprTyped signatures (β :: Γ) right τ →
+      EnvTyped env Γ → FrameTyped signatures (.sumBranches left right env) (.sum α β) τ
+  | addLeft : ExprTyped signatures Γ right .nat64 → EnvTyped env Γ →
+      FrameTyped signatures (.addLeft right env) .nat64 .nat64
+  | addRight : ValueTyped left .nat64 → FrameTyped signatures (.addRight left) .nat64 .nat64
+
+  | callArgs (found : lookup signatures function = some ⟨params, result⟩) :
+      EnvTyped done doneTypes → ArgsTyped signatures Γ remaining remainingTypes →
+      EnvTyped env Γ → doneTypes ++ (α :: remainingTypes) = params →
+      FrameTyped signatures (.callArgs function done remaining env) α result
 
 /-- A continuation consumes the current type and eventually returns the result type. -/
-inductive KontTyped : Kont → Ty → Ty → Prop where
-  | nil : KontTyped [] τ τ
-  | cons : FrameTyped frame α β → KontTyped rest β τ →
-      KontTyped (frame :: rest) α τ
+inductive KontTyped (signatures : Signatures) : Kont → Ty → Ty → Prop where
+  | nil : KontTyped signatures [] τ τ
+  | cons : FrameTyped signatures frame α β → KontTyped signatures rest β τ →
+      KontTyped signatures (frame :: rest) α τ
 
-inductive StateTyped : State → Ty → Prop where
-  | eval : ExprTyped Γ expr α → EnvTyped env Γ → KontTyped kont α τ →
-      StateTyped (.eval expr env kont) τ
-  | ret : ValueTyped value α → KontTyped kont α τ →
-      StateTyped (.ret value kont) τ
+inductive StateTyped (signatures : Signatures) : State → Ty → Prop where
+  | eval : ExprTyped signatures Γ expr α → EnvTyped env Γ → KontTyped signatures kont α τ →
+      StateTyped signatures (.eval expr env kont) τ
+  | ret : ValueTyped value α → KontTyped signatures kont α τ →
+      StateTyped signatures (.ret value kont) τ
   | overflow : left < nat64Limit → right < nat64Limit → nat64Limit ≤ left + right →
-      StateTyped (.overflow left right) τ
+      StateTyped signatures (.overflow left right) τ
 
 /-- Reflexive, transitive execution; it does not assume termination. -/
-inductive Steps : State → State → Prop where
-  | refl : Steps state state
-  | tail : Steps first middle → Step middle last → Steps first last
+inductive Steps (program : Program) : State → State → Prop where
+  | refl : Steps program state state
+  | tail : Steps program first middle → Step program middle last → Steps program first last
 
 def initial (expr : Expr) : State := .eval expr [] []
 
-theorem initial_typed (typed : ExprTyped [] expr τ) : StateTyped (initial expr) τ :=
+theorem initial_typed (typed : ExprTyped signatures [] expr τ) :
+    StateTyped signatures (initial expr) τ :=
   .eval typed .nil .nil
 
-theorem step_deterministic (left : Step state next₁) (right : Step state next₂) :
+theorem step_deterministic (left : Step program state next₁) (right : Step program state next₂) :
     next₁ = next₂ := by
   exact Option.some.inj (left.symm.trans right)
 
