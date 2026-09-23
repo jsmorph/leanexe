@@ -33,6 +33,22 @@ mode, retaining serialization, one Lean thread, timeout, and priority limits.
 Pinned Lean, Wasmtime, wasm-tools, and Node archives were installed under the
 ignored build directory with their published checksums verified.
 
+The initial extraction draft used `EIO UInt32` and `try`/`catch`.  The user
+rejected that exception machinery.  It was removed before committing the
+source implementation: `ByteIO` now aliases `BaseIO`, reads return an explicit
+`Except UInt32 ByteArray`, and writes return an explicit `UInt32` status.
+The command entry returns its own exit status.  Sequencing forces a call even
+when the caller ignores its result, while an ordinary let-bound action remains
+unevaluated until sequenced.
+
+An execution test exposed the existing pure-call pruning rule deleting a
+sequenced write whose result was unused.  `IR.LocalLet.effectCall` records
+that the call must execute, keeps its arguments live, and participates in the
+existing ownership analysis.  Its final lowering is an ordinary WASM call.
+The byte-I/O program represents read/write as external runtime functions,
+with no fabricated pure function bodies.  The pure compiler and scalar
+interpreter reject effectful entries.
+
 The first timed read exposed a pre-existing `i32.const` encoding error: both
 instruction emission and the legacy byte helper used unsigned LEB128, so
 address 64 decoded as -64.  The [WASM integer encoding](https://webassembly.github.io/spec/core/binary/values.html#integers)
@@ -43,6 +59,20 @@ high input bits are discarded.
 
 The signed-constant boundary guards passed, and Wasmtime passed all 75
 self-emitted LEB128 cases, including the new 32-bit boundaries.
+
+The source execution suite now passes 26 runs plus four rejection checks for
+pure compilation modes.  It covers binary echo, EOF, short reads, write order,
+ignored results, saved actions, explicit error inspection, invalid capacity,
+zero timeout, delayed input, blocked output, progress during a single write
+deadline, broken pipes, empty writes, saturated deadlines, helper calls,
+unused loop results, and read-buffer release.  All seven host tests still
+pass.  The ignored-loop test required the pruning analysis to propagate
+effects through loop bodies as well as direct calls.  The analysis covers
+every IR expression constructor without a catch-all case.
+
+The aggregate execution, WAT equality, and Talos gates are pending at this
+checkpoint.  The documentation gate reports an existing absolute `/tmp`
+example in `paper/wgsl-verification-report/review.md`; that file is unchanged.
 
 ## 2026-09-16: Tiny transformer implementation
 

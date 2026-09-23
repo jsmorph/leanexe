@@ -171,6 +171,7 @@ mutual
     deriving BEq, Repr
 
   inductive LocalLet where
+    | effectCall (slots : List Nat) (index : Nat) (args : List Expr)
     | expr (slot : Nat) (value : Expr)
     | call (slots : List Nat) (index : Nat) (args : List Expr)
     | slots (slots : List Nat) (values : List Expr)
@@ -387,6 +388,7 @@ mutual
       Store :=
     match localLet with
     | .expr slot value => store.set slot (value.eval module_ store)
+    | .effectCall slots index args
     | .call slots index args =>
         let results :=
           match module_.getFunc? index with

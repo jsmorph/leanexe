@@ -58,6 +58,7 @@ mutual
 
   partial def scalarLocalLet : LeanExe.IR.LocalLet → Bool
     | .expr _ value => scalarExpr value
+    | .effectCall _ _ _ => false
     | .call _ _ args => args.all scalarExpr
     | .slots _ values => values.all scalarExpr
     | .branch cond thenLets elseLets =>

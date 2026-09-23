@@ -399,6 +399,7 @@ mutual
 
   partial def shiftLocalLetCalls (offset : Nat) : LocalLet → LocalLet
     | .expr slot value => .expr slot (shiftExprCalls offset value)
+    | .effectCall slots index args => .effectCall slots (index + offset) (args.map (shiftExprCalls offset))
     | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
     | .slots slots values => .slots slots (values.map (shiftExprCalls offset))
     | .branch cond thenLets elseLets =>
@@ -928,6 +929,7 @@ mutual
 
   partial def localLetScratch : LocalLet → Nat
     | .expr _ value => exprScratch value
+    | .effectCall _ _ args
     | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
     | .slots _ values => values.foldl (fun count value => max count (exprScratch value)) 0
     | .branch cond thenLets elseLets =>
@@ -2854,6 +2856,7 @@ mutual
 
   partial def emitLocalLet (scratch : Nat) : LocalLet → List Instr
     | .expr slot value => emitExpr scratch value ++ localSet slot
+    | .effectCall slots index args
     | .call slots index args =>
         args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
     | .slots slots values => emitSlotsAssign scratch slots values
@@ -3054,6 +3057,7 @@ partial def emitSlotsAssignWithRelease
 
 partial def emitLocalLetWithRelease (releaseIndex scratch : Nat) : LocalLet → List Instr
   | .expr slot value => emitExprWithReleaseFallback releaseIndex scratch value ++ localSet slot
+  | .effectCall slots index args
   | .call slots index args =>
       args.flatMap (emitExprWithReleaseFallback releaseIndex scratch) ++ call index ++
         slots.reverse.flatMap localSet
