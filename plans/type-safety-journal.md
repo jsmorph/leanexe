@@ -433,3 +433,13 @@ all raw values. The focused proof needed one Bool conjunction theorem spelling
 correction; no timeout or semantic change was needed. No source expression,
 typing rule, machine frame, or admission judgment changed in this checkpoint.
 Next is an independent EqTy judgment and an exact terminating admission checker.
+
+
+Equality admission design: independent mutual EqTy/EqTypes/EqConstructors
+judgments describe the least closure under scalar types, products, sums, arrays,
+and every field of every nominal constructor. The checker uses synchronous
+Boolean-table saturation from the all-false table for exactly the declaration
+count. A constructive list relation and true-count argument will establish the
+stabilization bound without assumed fuel adequacy or finite-set axioms.
+The agent owns EqualityFlags/EqualityTypes and their focused Lean checks; the
+parent has prepared boundary examples and the normative design record.
