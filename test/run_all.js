@@ -73,6 +73,7 @@ function main() {
   run([process.execPath, path.join("test", "intmap.js")]);
   run([process.execPath, path.join("test", "json_double.js")]);
   run([process.execPath, path.join("test", "wasi_program.js")]);
+  run([process.execPath, path.join("test", "wasi_api.js")]);
   run([process.execPath, path.join("test", "self_emit.js")]);
   run([process.execPath, path.join("tools", "compare-standard.js"), "--self-test"]);
   run([

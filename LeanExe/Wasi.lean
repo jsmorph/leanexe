@@ -29,6 +29,7 @@ structure Subscription where
   timeout : UInt64
   precision : UInt64
   flags : UInt32
+  deriving Inhabited
 
 def Subscription.clock (userdata : UInt64) (id : UInt32)
     (timeout precision : UInt64) (flags : UInt32) : Subscription :=
@@ -46,6 +47,7 @@ structure Event where
   eventType : UInt32
   nbytes : UInt64
   flags : UInt32
+  deriving Inhabited
 
 namespace Errno
 
@@ -375,7 +377,7 @@ opaque fd_pread (fd : UInt32) (maxBytes : UInt32) (offset : UInt64) : Action (Ex
 opaque fd_prestat_get (fd : UInt32) : Action (Except UInt32 Prestat)
 
 @[extern "leanexe_wasi_fd_prestat_dir_name"]
-opaque fd_prestat_dir_name (fd : UInt32) (nameLength : UInt32) : Action (Except UInt32 ByteArray)
+opaque fd_prestat_dir_name (fd : UInt32) : Action (Except UInt32 ByteArray)
 
 @[extern "leanexe_wasi_fd_pwrite"]
 opaque fd_pwrite (fd : UInt32) (bytes : ByteArray) (offset : UInt64) : Action (Except UInt32 UInt32)

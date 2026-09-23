@@ -68,6 +68,8 @@ build/tools/wasmtime/current/wasmtime run \
 
 Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  WASI command modes provide bounded stdin, argv, stdout, stderr, and explicit error results while keeping the selected Lean entry pure.
 
+The [native WASI API](docs/wasi.md) provides the 46 Preview 1 functions through `LeanExe.Wasi`.  `compile-wasi-api` compiles an `Action UInt32` entry to a WASI command.  Reads return owned byte arrays, writes return byte counts, and calls preserve native WASI error codes.
+
 The [pseudorandom generator](docs/prng.md) runs with
 `tools/prng.js 42 5 100`: seed 42, five results, modulus 100.  It compiles
 the Lean SplitMix64 example and prints the WASM results as decimal integers.

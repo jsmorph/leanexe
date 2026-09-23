@@ -13,6 +13,7 @@ inductive Result where
   | errno
   | values (fields : List (Nat × Nat))
   | buffer (capacitySlot : Nat) (counted recvFlags : Bool)
+  | preopenName
   | strings (sizesFunction : String)
   | events
   | exit
@@ -21,11 +22,12 @@ def Result.width : Result → Nat
   | .errno => 1
   | .values fields => 2 + fields.length
   | .buffer _ _ flags => if flags then 6 else 5
-  | .strings _ | .events => 3
-  | .exit => 0
+  | .preopenName => 5
+  | .strings _ | .events => 4
+  | .exit => 1
 
 def Result.owners : Result → List Nat
-  | .buffer .. | .strings _ | .events => [2]
+  | .buffer .. | .preopenName | .strings _ | .events => [2]
   | _ => []
 
 inductive Iovec where
@@ -62,7 +64,7 @@ def primitives : Array Primitive := #[
   ⟨"fd_filestat_set_times", 4, .errno, [.local32 0, .local64 1, .local64 2, .local32 3], .none⟩,
   ⟨"fd_pread", 3, .buffer 1 true false, [.local32 0, .address 0, .address 1, .local64 2, .address 64], .output⟩,
   ⟨"fd_prestat_get", 1, .values [(0, 1), (4, 4)], [.local32 0, .address 64], .none⟩,
-  ⟨"fd_prestat_dir_name", 2, .buffer 1 false false, [.local32 0, .buffer, .local32 1], .none⟩,
+  ⟨"fd_prestat_dir_name", 1, .preopenName, [.local32 0, .buffer, .local32 1], .none⟩,
   ⟨"fd_pwrite", 5, .values [(0, 4)], [.local32 0, .address 0, .address 1, .local64 4, .address 64], .input 2⟩,
   ⟨"fd_read", 2, .buffer 1 true false, [.local32 0, .address 0, .address 1, .address 64], .output⟩,
   ⟨"fd_readdir", 3, .buffer 1 true false, [.local32 0, .buffer, .local32 1, .local64 2, .address 64], .none⟩,
@@ -81,7 +83,7 @@ def primitives : Array Primitive := #[
   ⟨"path_rename", 8, .errno, [.local32 0, .local32 2, .local32 3, .local32 4, .local32 6, .local32 7], .none⟩,
   ⟨"path_symlink", 7, .errno, [.local32 1, .local32 2, .local32 3, .local32 5, .local32 6], .none⟩,
   ⟨"path_unlink_file", 4, .errno, [.local32 0, .local32 2, .local32 3], .none⟩,
-  ⟨"poll_oneoff", 1, .events, [.address 0, .address 0, .address 0, .address 64], .none⟩,
+  ⟨"poll_oneoff", 2, .events, [.address 0, .address 0, .address 0, .address 64], .none⟩,
   ⟨"proc_exit", 1, .exit, [.local32 0], .none⟩,
   ⟨"proc_raise", 1, .errno, [.local32 0], .none⟩,
   ⟨"sched_yield", 0, .errno, [], .none⟩,

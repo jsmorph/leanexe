@@ -46,6 +46,11 @@ def s64lebFuel : Nat → UInt64 → ByteArray → ByteArray
 def s64lebU64 (n : UInt64) : ByteArray :=
   s64lebFuel 10 n ByteArray.empty
 
+/-- Signed LEB128 over the low 32 bits, sign-extended for the shared encoder. -/
+def s32lebU64 (n : UInt64) : ByteArray :=
+  let bits := n &&& 4294967295
+  s64lebU64 (if bits < 2147483648 then bits else bits ||| 18446744069414584320)
+
 /-- A length-prefixed byte vector. -/
 def byteVecBytes (bytes : ByteArray) : ByteArray :=
   u32lebU64 (UInt64.ofNat bytes.size) ++ bytes
