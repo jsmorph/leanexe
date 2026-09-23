@@ -42,5 +42,11 @@ theorem ValidState.success {count : Nat} {state : LayerState} (h : ValidState co
     rw [hZero] at hImpossible
     contradiction
 
+theorem ValidState.updates_le {count : Nat} {state : LayerState} (h : ValidState count state) :
+    state.2.1.size ≤ count * 6144 := by
+  rcases h with hSuccess | hFailure
+  · exact hSuccess.2.2.le
+  · exact hFailure.2.2
+
 #print axioms ValidState.success
 end Project.Gpt2QuantizedCached.CachedHidden
