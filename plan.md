@@ -822,6 +822,6 @@ The user approved the [quantized GPT-2 plan](plans/gpt2-quantized.md) on 2026-09
 - [x] Approve the quantization rules, scalar compiler API, and [file and session API](plans/gpt2-quantized-format.md).
 - [ ] Select the output-quality criterion for adoption.
 - [x] Prove and measure an exact-binary quantized projection.
-- [ ] Complete the quantized checkpoint, cached model, and session execution and memory proofs.
+- [x] Complete the quantized checkpoint, cached model, and session execution and memory proofs.
 - [ ] Verify and deploy the frozen binary, then record storage, memory, runtime, logits, and generated-text comparisons.
-- [ ] Establish numerical error bounds and conditional greedy-token certificates as a subsequent milestone.
+- [x] Establish numerical error bounds and conditional greedy-token certificates as a subsequent milestone.

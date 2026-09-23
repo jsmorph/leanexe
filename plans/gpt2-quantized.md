@@ -1,6 +1,6 @@
 # Verified quantized GPT-2 124M
 
-This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  The grouped model has complete source-session and exact-binary proofs.  Numerical propagation and final release checks remain active.
+This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  The grouped model has complete source-session and exact-binary proofs.  Conditional numerical propagation and evaluation are complete.  Final release checks remain active.
 
 The execution milestone is a deployed WebAssembly binary that implements a specified mixed-precision GPT-2 algorithm: eight-bit weights and activations for learned linear projections, wider integer accumulation, and FP32 computation between projections.  It includes cached inference through 128 tokens, termination, allocation bounds, and buffer release.  Evaluation determines the storage reduction, execution speed, and output differences.  A subsequent milestone proves numerical error bounds and sufficient conditions for preserving greedy token choices.
 
@@ -206,9 +206,9 @@ z_k - z_j > ε_k + ε_j    for every j ≠ k,
 then `k` is also the quantized winner.  With a uniform bound `ε`, a winning margin greater than `2ε` suffices.  Prove the argmax rule and its tie behavior, then connect it to the returned logit bytes.  A computed certificate uses checked outward bounds for both errors and margins.  Failure to establish the strict inequality returns an inconclusive result.
 
 - [x] Prove scalar quantization and linear-layer error bounds.
-- [ ] Prove a checked checkpoint-export relation and usable range certificates.
+- [x] Prove a checked checkpoint-export relation and usable range certificates.
 - [x] Compose a stated cached-session logit bound against the selected reference.
 - [x] Prove the greedy-margin theorem and produce checked certificates for individual token positions.
-- [ ] Report certificate coverage and bound sizes on the fixed and held-out inputs.
+- [x] Report certificate coverage and bound sizes on the fixed and held-out inputs.
 
 Identical greedy continuations require induction over the common prefix and successful certification at every generated position, including stopping decisions.  Each accepted step extends that common prefix.  Sampled-token behavior needs a separate numerical statement.

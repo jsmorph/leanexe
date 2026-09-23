@@ -118,7 +118,9 @@ tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 
 
 The [complete cached-session package](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md)
 passes execution, termination, allocation, release, and exact-binary checks.
-Full numerical propagation remains open.  The original
+Conditional numerical propagation and outward evaluation cover all 302 retained
+and held-out prefixes.  The propagated bounds certify zero greedy margins.
+Observed-logit certificates establish 232 individual choices.  The original
 per-row projection has a checked [exact-binary package](../../proofs/talos/lean/Project/Gpt2QuantizedLinearRows/README.md).
 The [grouped projection](../../proofs/talos/lean/Project/Gpt2QuantizedGroupedRows/README.md)
 has a checked exact-binary theorem, including allocation and release.

@@ -146,8 +146,10 @@ Groups of 64 activation coordinates raise greedy agreement with FP32 from
 3.59× median speedup and a 34.7% reduction in warm WASM linear memory.
 All nine compiled completions reproduce the grouped reference.
 The complete cached session and exact-binary proofs pass, including validation,
-termination, allocation bounds, and buffer release.  Full numerical propagation
-remains in progress.
+termination, allocation bounds, and buffer release.  Conditional numerical
+bounds and their outward-rounded cached-session evaluator also pass.  Evaluated
+forward bounds are too coarse to certify any token margin.  Separate certificates
+from measured logits establish 232 individual greedy choices across 302 prefixes.
 
 ```sh
 tools/tiny-gpt2.js --text 'To b'
