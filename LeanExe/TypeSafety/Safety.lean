@@ -4,8 +4,9 @@ import LeanExe.TypeSafety.Machine
 # Type safety of the independent core
 
 The binding argument uses typed environments instead of textual substitution:
-lookup preserves variable types, and extending the environment implements let
-and sum-case binding. Typed continuations record the result type across steps.
+lookup preserves variable types, and extending the environment implements let,
+sum, natural, and constructor-pattern binding. Typed continuations record the
+result type across steps.
 
 The fixed program premise requires formed nominal declarations and signatures,
 and states that every body is typed under its declared
@@ -61,6 +62,8 @@ theorem eval_step_typed (hprogram : ProgramTyped declarations program signatures
   | sumCase hscrutinee hleft hright =>
       exact ⟨_, rfl, .eval hscrutinee henv
         (.cons (.sumBranches hleft hright henv) hkont)⟩
+  | natCase hscrutinee hzero hsucc =>
+      exact ⟨_, rfl, .eval hscrutinee henv (.cons (.natBranches hzero hsucc henv) hkont)⟩
   | natBin operation hleft hright =>
       exact ⟨_, rfl, .eval hleft henv (.cons (.natBinLeft operation hright henv) hkont)⟩
   | natCmp operation hleft hright =>
@@ -141,6 +144,13 @@ theorem frame_step_typed (hprogram : ProgramTyped declarations program signature
         ⟨payload, rfl, hpayload⟩
       · exact ⟨_, rfl, .eval hleft (.cons hpayload henv) hkont⟩
       · exact ⟨_, rfl, .eval hright (.cons hpayload henv) hkont⟩
+  | natBranches hzero hsucc henv =>
+      obtain ⟨n, rfl, bounded⟩ := hvalue.nat_canonical
+      cases n with
+      | zero => exact ⟨_, rfl, .eval hzero henv hkont⟩
+      | succ predecessor =>
+          exact ⟨_, rfl, .eval hsucc
+            (.cons (.nat (Nat.lt_trans (Nat.lt_succ_self _) bounded)) henv) hkont⟩
   | natBinLeft operation hright henv =>
       exact ⟨_, rfl, .eval hright henv (.cons (.natBinRight operation hvalue) hkont)⟩
   | natBinRight operation hleft =>
