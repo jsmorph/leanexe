@@ -85,8 +85,8 @@ def step (program : Program) : State → Option State
       some (.eval pair env (.splitBody body env :: kont))
   | .eval (.unitCase scrutinee body) env kont =>
       some (.eval scrutinee env (.unitBody body env :: kont))
-  | .eval (.inl payload) env kont => some (.eval payload env (.inl :: kont))
-  | .eval (.inr payload) env kont => some (.eval payload env (.inr :: kont))
+  | .eval (.inl _ payload) env kont => some (.eval payload env (.inl :: kont))
+  | .eval (.inr _ payload) env kont => some (.eval payload env (.inr :: kont))
   | .eval (.sumCase scrutinee left right) env kont =>
       some (.eval scrutinee env (.sumBranches left right env :: kont))
   | .eval (.add left right) env kont =>

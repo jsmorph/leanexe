@@ -43,8 +43,8 @@ inductive Expr where
   | split (pair body : Expr)
   /-- Unit elimination evaluates the scrutinee and introduces no field binders. -/
   | unitCase (scrutinee body : Expr)
-  | inl (payload : Expr)
-  | inr (payload : Expr)
+  | inl (otherTy : Ty) (payload : Expr)
+  | inr (otherTy : Ty) (payload : Expr)
   /-- Each branch binds its selected payload at index zero. -/
   | sumCase (scrutinee left right : Expr)
   | add (left right : Expr)
@@ -105,9 +105,9 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
       ExprTyped declarations signatures Γ body τ →
       ExprTyped declarations signatures Γ (.unitCase scrutinee body) τ
   | inl : ExprTyped declarations signatures Γ payload α → TyWF declarations β →
-      ExprTyped declarations signatures Γ (.inl payload) (.sum α β)
+      ExprTyped declarations signatures Γ (.inl β payload) (.sum α β)
   | inr : ExprTyped declarations signatures Γ payload β → TyWF declarations α →
-      ExprTyped declarations signatures Γ (.inr payload) (.sum α β)
+      ExprTyped declarations signatures Γ (.inr α payload) (.sum α β)
   | sumCase : ExprTyped declarations signatures Γ scrutinee (.sum α β) →
       ExprTyped declarations signatures (α :: Γ) left τ →
       ExprTyped declarations signatures (β :: Γ) right τ →
