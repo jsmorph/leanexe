@@ -270,6 +270,7 @@ mutual
     | .drop => .ok (encodeNat 40)
     | .addF64 | .mulF64 | .subF64 | .divF64 | .sqrtF64
       | .i64ReinterpretF64 | .f64ReinterpretI64
+      | .nearestF32 | .i32TruncSatF32S | .f32ConvertI32S | .extend8SI32
       | .addF32 | .subF32 | .mulF32 | .divF32 | .sqrtF32
       | .i32ReinterpretF32 | .f32ReinterpretI32 | .f32DemoteF64 | .f64PromoteF32 =>
         .error errorUnsupportedInstructionV2
