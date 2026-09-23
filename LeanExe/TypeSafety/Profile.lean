@@ -104,6 +104,12 @@ def admissibleBranches : List (Nat × Expr) → Bool
       admissible body && (parametersUsed arity body && admissibleBranches rest)
 end
 
+theorem uses_wordNot : uses index (.wordNot width value) = uses index value := by
+  simp [uses]
+
+theorem admissible_wordNot : admissible (.wordNot width value) = admissible value := by
+  simp [admissible]
+
 /-- Check every body, every parameter, and exact program/signature alignment. -/
 def programAdmissible : Program → Signatures → Bool
   | [], [] => true

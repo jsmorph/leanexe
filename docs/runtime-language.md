@@ -97,8 +97,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 381 semantic examples and audits all 171 declared
-theorems across the nine development modules, including helper proofs. It
+The maintained gate checks 430 semantic examples and audits all 216 declared
+theorems across the ten development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -134,7 +134,7 @@ data. The following work remains separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
-| U8/U32/U64 operations | Arithmetic, comparisons, and conversions are checked. Bitwise operations, complement, and masked shifts remain to be defined and proved. |
+| U8/U32/U64 operations | Arithmetic, comparisons, conversions, bitwise operations, complement, and masked shifts are checked. Raw binary64 is tracked separately below. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
 | Data generalizations | Monomorphic nominal tables, constructors, exhaustive matches, and recursive value typing are proved. Dependent indexed families and any further type-level features require separate rules. |
@@ -299,8 +299,8 @@ Successor and predecessor are transparent add/sub-by-one expressions. Boolean
 to natural conversion is `ifE b (nat 1) (nat 0)`. These definitions evaluate their
 argument once and introduce no hidden bindings. Source extraction equivalence is
 not implied by these definitions. Natural pattern matching remains a separate
-form to define or derive with proof. Fixed-width words and their modular,
-bitwise, shift, and conversion operations remain outside this increment.
+form to define or derive with proof. Fixed-width word operations are specified
+separately below.
 
 Checked primitive laws characterize exact success/failure, bounded outcomes,
 saturation, division/remainder by zero, and comparison results. Machine safety,
@@ -349,13 +349,14 @@ both subtraction branches, zero-divisor behavior, quotient/remainder reconstruct
 min/max selection, normalization identity/idempotence, widening, and widening-then-
 narrowing round trips. Comparisons use the same proved unsigned mathematical
 relations as bounded naturals. Formation, canonical forms, machine safety, relevance,
-and exact algorithmic admission include every new form. Bitwise operations, complement, shifts, and raw binary64 operations are
-not part of this first word checkpoint.
+and exact algorithmic admission include every new form. Bitwise operations,
+complement, and shifts are specified next. Raw binary64 remains outside the
+checked language.
 
 
-## Bitwise and masked-shift increment in progress
+## Bitwise operations and masked shifts
 
-This section is the next specified increment, not yet checked coverage. It adds
+This section is included in the checked coverage above. It adds
 `bitAnd`, `bitOr`, `bitXor`, `shiftLeft`, and `shiftRight` to the existing word
 binary-operation family. Both operands, including a shift count, must have the
 stated word width. Existing strict evaluation and width checks apply.
@@ -364,15 +365,23 @@ For every bit position below width `w`, AND/OR/XOR apply the corresponding Boole
 operation to the two input bits. Results are representable words, with no bits
 at or above `w`. This pointwise specification is independent of a host-library
 bitwise implementation. The bit at position `i` of a natural value is determined
-by `(value / 2^i) % 2`. The implementation must prove its finite-bit behavior and
-bounds, not merely provide an operation name and result type.
+by `(value / 2^i) % 2`. The structural `bitwiseBits` definition recurses over the
+finite width.
+`bitwiseBits_bitAt` proves the universal per-bit characterization, and
+`bitwiseBits_bounded` proves its result bound, including for unbounded raw inputs.
+`eq_of_bitAt_eq` proves equality of bounded numbers from their in-range bits.
+These results do not assume equality to the host-library bitwise implementation.
 
 Let `k = count % w` and `M = 2^w`. Left shift returns `(value * 2^k) % M`;
 right shift returns `value / 2^k`. Thus shifting by the width is the identity,
-not a zero result. Right shift is logical/unsigned. Shift-count normalization
-requires positive widths, a reduced count below `w`, and periodicity laws.
+not a zero result. Right shift is logical/unsigned. The checked shift-count laws
+establish positive widths, a reduced count below
+`w`, and periodicity under addition of any multiple of the width. Exact shift
+formulas and zero/width shift identities are proved.
 
 `wordNot width value` is a transparent XOR with the represented mask `M-1`.
 It introduces no new expression constructor or runtime frame and evaluates its
-operand once. Its derived typing, inference, step, and relevance equations must
-be checked, along with mask identities and complement involution.
+operand once. Its derived typing, inference, step, and relevance equations are checked,
+along with zero/self/mask identities, XOR cancellation, and complement involution.
+The existing generic word rules cover these operations in all safety and typing
+results; no extra failure outcome is introduced.

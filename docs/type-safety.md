@@ -44,7 +44,10 @@ subtraction, and multiplication are modular. Division/remainder use unsigned
 arithmetic with the specified zero-divisor conventions; min/max and comparisons
 are unsigned. Explicit conversions normalize when narrowing and preserve values
 when widening. Wrong-width operands are rejected by typing and checked by the
-runtime rules. Word operations introduce no new failure terminal.
+runtime rules. Word operations introduce no new failure terminal. Bitwise
+AND/OR/XOR use a finite structural definition with proved arithmetic per-bit
+semantics. Complement is derived XOR with the width mask. Shift counts are
+reduced modulo the word width; right shifts are logical/unsigned.
 
 Evaluation is a deterministic, left-to-right call-by-value machine with explicit
 lexical environments and continuations. Pairs and call arguments are strict;
@@ -157,7 +160,8 @@ presentation. No premise assumes one of these safety conclusions.
 |--------|---------|
 | [Formation.lean](../LeanExe/TypeSafety/Formation.lean) | Types, nominal declarations, formation judgments, and exact Boolean checker characterizations. |
 | [NatOperations.lean](../LeanExe/TypeSafety/NatOperations.lean) | Pure bounded-natural operations, exact result/failure laws, comparison laws, and bounded outcomes. |
-| [WordOperations.lean](../LeanExe/TypeSafety/WordOperations.lean) | Explicit-width arithmetic, result bounds, modular underflow/wrap laws, and conversion laws. |
+| [BitOperations.lean](../LeanExe/TypeSafety/BitOperations.lean) | Structural finite-bit computation, arithmetic per-bit correctness, bounds, reconstruction, and bit extensionality. |
+| [WordOperations.lean](../LeanExe/TypeSafety/WordOperations.lean) | Explicit-width arithmetic/conversions, bitwise identities and complement, and masked-shift laws. |
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
 | [ArrayValues.lean](../LeanExe/TypeSafety/ArrayValues.lean) | Pure checked array operations, failure/result/length/read laws, and primitive typing. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
@@ -178,9 +182,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [46 array examples](../test/type_safety_arrays.lean),
 [57 nominal-data examples](../test/type_safety_data.lean),
 [65 typing-checker examples](../test/type_safety_typing.lean),
-[73 bounded-natural examples](../test/type_safety_naturals.lean), and
-[73 word examples](../test/type_safety_words.lean). It audits the
-transitive axiom dependencies of all 171 declared theorems across the nine
+[73 bounded-natural examples](../test/type_safety_naturals.lean),
+[73 word examples](../test/type_safety_words.lean), and
+[49 bitwise/shift examples](../test/type_safety_bits.lean). It audits the
+transitive axiom dependencies of all 216 declared theorems across the ten
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -206,6 +211,10 @@ captured environments, malformed states, and a recursive countdown program.
 Word examples distinguish modular arithmetic from bounded-natural overflow, test
 unsigned comparison and conversion boundaries, reject width mismatches in both
 source admission and raw execution, and compose words with arrays/data/calls.
+Bitwise examples cover exact patterns, complement, masked counts, unsigned right
+shifts, operand order, rejection, and function composition. Closed 64-bit traces
+use a test-local elaborator recursion-depth limit of 4096; they remain ordinary
+kernel-checked proofs, without native evaluation certificates.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -225,7 +234,7 @@ installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
-into this core. Word bitwise operations/shifts, raw binary64, natural pattern matching, additional
+into this core. Raw binary64, natural pattern matching, additional
 array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
@@ -253,8 +262,8 @@ The independent language agenda is:
    explicit permitted failures. Replace schematic fold and recursion families
    with complete rules, or define and justify their expansion into core forms.
 2. Extend abstract values and primitive semantics to the intended language:
-   word bitwise operations/shifts, raw binary64, bytes, remaining collection/control
-   operations, and any intended data generalizations. Word arithmetic/conversions,
+   raw binary64, bytes, remaining collection/control operations, and any intended
+   data generalizations. Word arithmetic/conversions/bitwise operations/shifts,
    the bounded-natural primitive family, initial
    persistent-array forms, and monomorphic nominal recursive data are checked.
    Primitive signatures alone are insufficient; prove primitive progress and
@@ -273,10 +282,10 @@ such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
 lengths or return a specified failure. Monomorphic nominal recursive data is now
 checked, as are explicit sum annotations, algorithmic typing, and the documented
-bounded-natural primitive family. Word arithmetic, comparisons, and conversions
-are also checked. The next numeric increment concerns bitwise operations and
-masked shifts. Natural
-pattern matching still requires a complete rule or a proved derived expansion.
+bounded-natural primitive family. Word arithmetic, comparisons, conversions,
+bitwise operations, complement, and masked shifts are also checked. The next
+increment is explicit natural-number zero/successor elimination with a predecessor
+binder; this form is not yet covered by the current calculus.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;
