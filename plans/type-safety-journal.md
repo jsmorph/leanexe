@@ -392,3 +392,20 @@ a strict Boolean derived library built from pairs, complete split, and condition
 The inventory also records general typed traps and trapping/fallback collection
 wrappers as absent. Justified arithmetic overflow and checked Unit-plus-payload
 array APIs do not establish those different failure conventions.
+
+
+2026-09-23: Completed strict Boolean source expansions using pairs, complete
+split, and conditionals. No AST constructor or transition rule was added.
+The agent proved typing, exact raw inference, occurrence/admission equations,
+closed-body scope, strict staging, and supplied-value truth tables for arbitrary
+environments and continuations. Added general finite-execution composition.
+
+The first focused check found a missing operation type annotation and the need
+for execution composition. Broad simplification in body_closed introduced
+Quot.sound; direct reduction removed it without changing the statement or
+dependency policy. The parent reviewed the source and fixed an extra closing
+parenthesis in a new example before running the maintained gate. All thirteen
+build jobs, 512 examples, and 246 theorem audits passed. The 47 new examples
+include failure order, strict false-AND/true-OR, lexical capture, relevance,
+and rejection of wrong operand types even when raw execution happens to return.
+No claim about compound equality or compiler behavior follows from this increment.

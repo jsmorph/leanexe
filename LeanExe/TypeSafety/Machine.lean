@@ -381,6 +381,13 @@ inductive Steps (program : Program) : State → State → Prop where
   | refl : Steps program state state
   | tail : Steps program first middle → Step program middle last → Steps program first last
 
+/-- Concatenating two finite execution prefixes preserves the actual transition relation. -/
+theorem Steps.trans (firstPart : Steps program first middle) (lastPart : Steps program middle last) :
+    Steps program first last := by
+  induction lastPart with
+  | refl => exact firstPart
+  | tail _ last ih => exact .tail ih last
+
 def initial (expr : Expr) : State := .eval expr [] []
 
 /-- A well-formed input type determines a well-formed frame output type. -/
