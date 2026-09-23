@@ -843,7 +843,8 @@ memory-management implementation, or compiler correctness.
 - [x] Prove constructive finite Boolean-table saturation within the table length.
 - [x] Prove independent EqTy admission and its exact total checker, including the iteration bound.
 - [x] Integrate strict homogeneous structural equality with full metatheory and exact result laws.
-- [ ] Prove hygienic renaming/weakening and the binding lemmas required for derived callbacks.
+- [x] Prove hygienic renaming, pointwise algebra, context transport, typing preservation and weakening.
+- [ ] Prove occurrence/relevance preservation under renaming, then operational correspondence for derived callback work.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -866,7 +867,9 @@ The bounded-natural primitive family and word arithmetic/conversions/bitwise
 operations/shifts, natural pattern matching, and strict Boolean derived APIs
 are also checked. Structural equality now has an independent admission domain,
 an exact checker, strict source semantics, full metatheory, and exact result
-laws. Next, prove hygienic renaming/weakening for derived callbacks.
+laws. Hygienic renaming, its algebra, typing transport, and weakening are now
+checked. Next, prove exact occurrence/relevance preservation under renaming;
+operational correspondence remains separate.
 Option/Except payload-discard policy remains an explicit obligation.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.

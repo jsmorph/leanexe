@@ -315,6 +315,38 @@ const auditedTheorems = [
   "EqualityCheck.typesAccepted_complete",
   "EqualityCheck.constructorsAccepted_complete",
   "equalitySupported_iff",
+  "Renaming.lift_congr",
+  "Renaming.liftN_congr",
+  "Renaming.lift_identity",
+  "Renaming.liftN_identity",
+  "Renaming.lift_composes",
+  "Renaming.liftN_composes",
+  "Expr.rename_congr",
+  "renameArgs_congr",
+  "renameBranches_congr",
+  "Expr.rename_identity_of",
+  "renameArgs_identity_of",
+  "renameBranches_identity_of",
+  "Expr.rename_comp_of",
+  "renameArgs_comp_of",
+  "renameBranches_comp_of",
+  "Expr.rename_id",
+  "renameArgs_id",
+  "renameBranches_id",
+  "Expr.rename_comp",
+  "renameArgs_comp",
+  "renameBranches_comp",
+  "RenamingTyped.lookup",
+  "RenamingTyped.refl",
+  "RenamingTyped.comp",
+  "RenamingTyped.lift",
+  "RenamingTyped.liftN",
+  "RenamingTyped.shift",
+  "ExprTyped.rename",
+  "ArgsTyped.rename",
+  "BranchesTyped.rename",
+  "ExprTyped.weaken",
+  "ExprTyped.weakenUnder",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -363,6 +395,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_value_equality.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_equality_domain.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_structural_equality.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });
