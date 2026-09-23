@@ -111,10 +111,10 @@ example : eraseTypeIdx Project.AppendBang.func2Def = eraseTypeIdx resetFuncDef :
 example : eraseTypeIdx Project.AppendBang.func3Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.AppendBang.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : eraseTypeIdx Project.AssocList.func4Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.AssocList.func5Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.AssocList.func6Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.AssocList.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
+example : eraseTypeIdx Project.AssocList.func3Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func4Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func5Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func6Def = eraseTypeIdx (releaseFuncDef 6) := rfl
 
 example : eraseTypeIdx Project.BoxFree.func3Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.BoxFree.func4Def = eraseTypeIdx resetFuncDef := rfl
