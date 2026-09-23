@@ -11,7 +11,7 @@ collects top-level temporaries but does not visit branch bodies.
 
 - [x] Preserve the streaming failure as an execution test.
 - [x] Repair conditional loop-temporary cleanup and pass sustained copying.
-- [ ] Finish the sequencing, ownership, and timeout audit.
+- [x] Finish the sequencing, ownership, and timeout audit.
 
 Loop cleanup now visits nested branches and clears its temporary owner slots
 at the start of every iteration.  The clearing prevents a skipped branch from
@@ -21,6 +21,29 @@ owner guards preserve buffers returned in the loop accumulator.  The complete
 pass, including allocation/free equality between iterations and on return.
 All 30 byte-I/O execution cases, four pure-mode rejection checks, and the
 existing 41 reference-counting cases pass after the repair.
+
+The carried-buffer test exposed a second loop ownership defect.  The release
+analysis required a fresh buffer on every path, so a path preserving the old
+buffer disabled cleanup for replacements too.  It now tracks preserved and
+null owners, and the emitter compares old owners with both the initial and
+next accumulator before releasing them.  Initial owners are saved after
+evaluating all initial expressions, keeping those saved pointers outside
+later loop-body scratch use.
+
+The output-error path can return the initial buffer as the final accumulator.
+Nested result cleanup must then preserve the enclosing scope's owner, or the
+two scopes release the same buffer twice.  Result materialization now includes
+the enclosing owner slots in its release guards.  The final carried-buffer
+fixture obtains its initial buffer from `read`; an earlier string-literal
+seed exposed an unrelated unreleased inner `arrayAllocSlots` in literal
+construction, and that allocation is outside this I/O test.
+
+The final audit run passes all 38 byte-I/O cases and four pure-mode rejection
+checks.  The added cases cover retained buffers across skipped iterations,
+input timeout after completed chunks, blocked and broken output, cleanup on
+early errors, and branch-selected helpers returning `Unit`.  The existing
+41 reference-counting cases also pass with the new accumulator guards and
+enclosing-scope protection.
 
 The user requested implementation on `io`, a WASI stdin/stdout test harness,
 and frequent commits and pushes.  The agreed operations return immutable

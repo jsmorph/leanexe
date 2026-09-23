@@ -132,4 +132,45 @@ def alternatingReads : LeanExe.ByteIO UInt32 := do
     if status != 0 then break
   pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
 
+def streamingTimeout : LeanExe.ByteIO UInt32 := do
+  let status ← copyChecked 50000000
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
+def carryReads : LeanExe.ByteIO UInt32 := do
+  match ← read 1 1000000000 with
+  | .error code => pure code
+  | .ok initial =>
+      let mut previous := initial
+      let mut status : UInt32 := 0
+      for i in [:8] do
+        if i > 1 && i % 2 == 0 then
+          match ← read 1 1000000000 with
+          | .error code =>
+              status := code
+              break
+          | .ok bytes =>
+              status ← write previous 1000000000
+              if status != 0 then break
+              previous := bytes
+      if status != 0 then return status
+      status ← write previous 1000000000
+      if status != 0 then return status
+      write initial 1000000000
+
+def carried : LeanExe.ByteIO UInt32 := do
+  let status ← carryReads
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
+def mark (bytes : ByteArray) : LeanExe.ByteIO Unit := do
+  let _ ← write bytes 1000000000
+  pure ()
+
+def chosen : LeanExe.ByteIO UInt32 := do
+  match ← read 1 1000000000 with
+  | .error code => pure code
+  | .ok bytes =>
+      if bytes.size == 0 then mark "A".toUTF8 else mark "B".toUTF8
+      mark "C".toUTF8
+      pure 0
+
 end LeanExe.Examples.ByteIO

@@ -1815,6 +1815,7 @@ mutual
       (ownedLocals : List Nat)
       (constLocals : List (Nat × Nat)) :
       IRExpr → Bool
+    | .u64 0 => true
     | .local slot => ownedLocals.contains slot
     | .letE slot value body =>
         let valueOwned :=
@@ -3083,7 +3084,11 @@ mutual
       (bodyLets : List LeanExe.IR.LocalLet)
       (bodyDone : IRExpr)
       (offset : Nat) : Bool :=
-    let bodyOwned := ownedHeapLocalsAfterLocalLets summaries [] bodyLets
+    let initialOwned := (initValues.zipIdx).filterMap fun (value, index) =>
+      if exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals value then
+        some (accStart + index)
+      else none
+    let bodyOwned := ownedHeapLocalsAfterLocalLets summaries initialOwned bodyLets
     let released := addLiveSlots (localLetsReleasedSlots bodyLets) (exprReleasedSlots bodyDone)
     !released.contains (accStart + offset) &&
       (match initValues[offset]?, bodyValues[offset]? with
@@ -3155,9 +3160,11 @@ def foldAccumulatorReleaseOffsets
     (bodyDone : IRExpr)
     (bodyTargets : List Nat) :
     List Nat :=
-  let ownedBodyLocals := ownedHeapLocalsFromLocalLetsForAlloc summaries [] bodyLets
+  let ownerOffsets := tyReleaseOwnerSlotOffsets resultTy
+  let ownedBodyLocals := ownedHeapLocalsFromLocalLetsForAlloc summaries
+    (ownerOffsets.map (accStart + ·)) bodyLets
   let released := addLiveSlots (localLetsReleasedSlots bodyLets) (exprReleasedSlots bodyDone)
-  (tyReleaseOwnerSlotOffsets resultTy).filter fun offset =>
+  ownerOffsets.filter fun offset =>
     match bodyTargets[offset]? with
     | some target =>
         ownedBodyLocals.contains target && !released.contains (accStart + offset)
@@ -4098,7 +4105,8 @@ partial def materializeResultValue
     Except String IRStmt := do
   let canReleaseOwnedTemps := !tyContainsHeapPointer ty
   let protectedSlots :=
-    if useAbi then [] else (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => targets[offset]?
+    addLiveSlots (ownerSources.map Prod.fst)
+      (if useAbi then [] else (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => targets[offset]?)
   match value with
   | .letE slot expr body => do
       let expr := refreshOwnerMasksExprForAlloc ctx.freshResultOwnerOffsets ownerSources expr
