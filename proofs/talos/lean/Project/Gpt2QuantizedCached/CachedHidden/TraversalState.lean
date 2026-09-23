@@ -5,39 +5,45 @@ namespace Project.Gpt2QuantizedCached.CachedHidden
 open Wasm Project.Runtime Project.ProofKit PackedMemory Project.EulerRiemann.Execution
 open LeanExe.Models.Gpt2.Quantized
 
-structure TraversalState (initial : Store Unit) (heap : Heap) (embeddingNode : FreeNode)
-    (params : List Value) (weights cache : ByteArray) (token : UInt32) (position index : Nat)
+structure TraversalStateAt (initial : Store Unit) (heap : Heap) (embeddingNode : FreeNode)
+    (params : List Value) (source : LayerState) (machine : Traversal) (index : Nat)
     (current : Store Unit) (frame : Locals) : Prop where
   state : LayerFrame params embeddingNode.root
-    (statusRoot (layerPrefix weights cache token position index).2.2
-      (traversal heap embeddingNode weights cache token position index).hidden)
-    (traversal heap embeddingNode weights cache token position index).updates.root
-    (layerPrefix weights cache token position index).1.size
-    (layerPrefix weights cache token position index).2.1.size
-    (layerPrefix weights cache token position index).2.2 index frame
-  heapAt : (traversal heap embeddingNode weights cache token position index).heap.At current
-  hidden : (traversal heap embeddingNode weights cache token position index).heap.StatusPacked current
-    (layerPrefix weights cache token position index).2.2
-    (traversal heap embeddingNode weights cache token position index).hidden
-    (layerPrefix weights cache token position index).1
-  updates : ByteArrayAt current.mem (traversal heap embeddingNode weights cache token position index).updates.root.toNat
-    (layerPrefix weights cache token position index).2.1
-  updatesProtected : (traversal heap embeddingNode weights cache token position index).heap.Protects
-    (traversal heap embeddingNode weights cache token position index).updates.root.toNat
-    ((traversal heap embeddingNode weights cache token position index).updates.root.toNat +
-      (layerPrefix weights cache token position index).2.1.size)
-  updatesOwned : index ≠ 0 → (traversal heap embeddingNode weights cache token position index).heap.OwnsPacked current
-    (traversal heap embeddingNode weights cache token position index).updates
-    (layerPrefix weights cache token position index).2.1
-  preserved : heap.Frame initial (traversal heap embeddingNode weights cache token position index).heap current
-  hiddenFresh : index ≠ 0 → (layerPrefix weights cache token position index).2.2 = 0 →
-    heap.FreshNode (traversal heap embeddingNode weights cache token position index).hidden
-  updatesFresh : index ≠ 0 → heap.FreshNode (traversal heap embeddingNode weights cache token position index).updates
-  separated : index ≠ 0 → (layerPrefix weights cache token position index).2.2 = 0 →
-    regionsDisjoint (traversal heap embeddingNode weights cache token position index).hidden.region
-      (traversal heap embeddingNode weights cache token position index).updates.region
+    (statusRoot source.2.2
+      machine.hidden)
+    machine.updates.root
+    source.1.size
+    source.2.1.size
+    source.2.2 index frame
+  heapAt : machine.heap.At current
+  hidden : machine.heap.StatusPacked current
+    source.2.2
+    machine.hidden
+    source.1
+  updates : ByteArrayAt current.mem machine.updates.root.toNat
+    source.2.1
+  updatesProtected : machine.heap.Protects
+    machine.updates.root.toNat
+    (machine.updates.root.toNat +
+      source.2.1.size)
+  updatesOwned : index ≠ 0 → machine.heap.OwnsPacked current
+    machine.updates
+    source.2.1
+  preserved : heap.Frame initial machine.heap current
+  hiddenFresh : index ≠ 0 → source.2.2 = 0 →
+    heap.FreshNode machine.hidden
+  updatesFresh : index ≠ 0 → heap.FreshNode machine.updates
+  separated : index ≠ 0 → source.2.2 = 0 →
+    regionsDisjoint machine.hidden.region
+      machine.updates.region
   pages : current.mem.pages ≤ 65536
   capacity : current.memoryCap «module» 0 = initial.memoryCap «module» 0
+
+abbrev TraversalState (initial : Store Unit) (heap : Heap) (embeddingNode : FreeNode)
+    (params : List Value) (weights cache : ByteArray) (token : UInt32) (position index : Nat)
+    (current : Store Unit) (frame : Locals) : Prop :=
+  TraversalStateAt initial heap embeddingNode params (layerPrefix weights cache token position index)
+    (traversal heap embeddingNode weights cache token position index) index current frame
 
 theorem LayerFrame.counter_limit {params : List Value} {embedding input updates : UInt64}
     {inputSize updatesSize index : Nat} {status : UInt64} {frame : Locals}
