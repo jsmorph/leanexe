@@ -290,3 +290,23 @@ as an addition error or giving total operations spurious permitted failures.
 The implementation and its proof extensions are now in progress; the new numeric
 contract is explicitly marked unproved at this checkpoint. Word operations,
 natural pattern matching, bytes, collection forms, and effects remain tracked.
+
+
+2026-09-23: Completed bounded-natural primitive integration. The pure operation
+module defines all seven arithmetic operations and three comparisons without
+typing premises. Exact success/failure laws connect computation to independently
+stated arithmetic results; bounded-input outcome proofs justify every returned
+natural or tagged overflow. Generic strict machine frames replace the bespoke
+addition frames. Source formation, safety, relevance, inference correspondence,
+and type uniqueness extend to the new forms. Transparent derived helpers have
+typing theorems and inference/step equations.
+
+The parent independently reviewed the arithmetic and machine definitions and
+added 73 examples covering bounds, failure tags, strictness, lexical capture,
+malformed frames/failures, admission, and recursive countdown. The first gate run
+exposed an old test needing to unfold the new Overflow predicate before decide;
+this proof migration was fixed without changing its assertion. All 73 new examples
+passed on their first reached run. The full gate passed ten build jobs, all 308
+examples, and all 142 theorem audits, with no axioms beyond propext. No statement
+claims overflow-freedom, termination, fixed-width-word coverage, or compiler
+correspondence. Continued to the next word-operation design review.
