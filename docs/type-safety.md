@@ -177,6 +177,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [ValueEquality.lean](../LeanExe/TypeSafety/ValueEquality.lean) | Total raw value/list comparison and exact equality laws, used by the source equality transition. |
 | [EqualityFlags.lean](../LeanExe/TypeSafety/EqualityFlags.lean) | Constructive monotone Boolean-table saturation and its proved iteration bound. |
 | [EqualityTypes.lean](../LeanExe/TypeSafety/EqualityTypes.lean) | Independent equality-domain judgments, formation, exact terminating admission checker. |
+| [Renaming.lean](../LeanExe/TypeSafety/Renaming.lean) | Capture-avoiding traversal, pointwise algebra, context transport, typing preservation and weakening. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -197,9 +198,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [35 natural-case examples](../test/type_safety_nat_case.lean),
 [47 Boolean examples](../test/type_safety_booleans.lean),
 [25 raw equality examples](../test/type_safety_value_equality.lean),
-[38 equality-domain examples](../test/type_safety_equality_domain.lean), and
-[35 source equality examples](../test/type_safety_structural_equality.lean). It audits the
-transitive axiom dependencies of all 307 declared theorems across the fourteen
+[38 equality-domain examples](../test/type_safety_equality_domain.lean),
+[35 source equality examples](../test/type_safety_structural_equality.lean), and
+[26 renaming examples](../test/type_safety_renaming.lean). It audits the
+transitive axiom dependencies of all 339 declared theorems across the fifteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -332,3 +334,21 @@ iteration bound and the equality-specific checker correspondence are checked.
 Source-expression integration with the full metatheory is also checked.
 `step_structEq_true_iff` and `step_structEq_false_iff` characterize the final
 comparison step for arbitrary raw values and continuations.
+
+
+## Checked renaming and weakening
+
+`Expr.rename` lifts the variable map beneath each binder prefix. Expression,
+argument-list, and branch-list congruence, identity, and composition are proved
+using pointwise map laws. `RenamingTyped` states forward preservation of typed
+context lookups. It lifts beneath one or multiple binders and supports inserting
+an arbitrary context. `ExprTyped.rename`, `ArgsTyped.rename`, and
+`BranchesTyped.rename` preserve the original result/argument types.
+`ExprTyped.weaken` and `weakenUnder` cover insertion before the context or beneath
+a preserved prefix.
+
+These are raw typing and syntax results. Public admission still requires
+formation of the inserted context. Relevance preservation, operational
+correspondence, and any signature-changing program transformation require
+separate results. A forward context map alone does not imply inference
+equivalence for originally ill-typed expressions.

@@ -506,3 +506,21 @@ runtime simulation are separate subsequent obligations. Forward context lookup
 transport alone does not justify inference equivalence: it can map an originally
 out-of-range raw variable to an in-range target variable. The parent prepared
 regressions for that boundary and for each different binding arity.
+
+
+Completed the first renaming checkpoint. Every syntax constructor, argument
+list, and nominal branch traverses the correct binder depth. Pointwise map
+congruence, identity, and composition are proved without function equality.
+Context lookup transport lifts under exact prefixes; mutual typing preservation
+and both ordinary and prefix-preserving weakening are checked. Initial proof
+checks found grouped-constructor parser layout, a reserved identifier, and
+field-notation qualification issues for function-valued propositions. These were
+proof presentation issues; no semantic assumption or theorem changed.
+
+The parent fixed an extra closing parenthesis in a drafted example before its
+first run. The full gate passed seventeen build jobs, all 636 examples, and all
+339 audits. The six lift laws, six context laws, three typing laws and two
+weakening laws use no axioms; fifteen syntax-algebra laws use only propext.
+The 26 regressions cover binder arities, nominal/function identity preservation,
+merged free indices without capture, and limits of public inference claims.
+No profile or execution equivalence is claimed by this checkpoint.
