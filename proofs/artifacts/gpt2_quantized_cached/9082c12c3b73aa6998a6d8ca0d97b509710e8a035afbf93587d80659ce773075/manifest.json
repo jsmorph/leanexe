@@ -20,7 +20,9 @@
   "behaviorTheorems": [
     "Project.Gpt2QuantizedCached.Spec.cachedStep_exact",
     "Project.Gpt2QuantizedCached.Spec.validateModel_exact",
-    "Project.Gpt2QuantizedCached.Spec.gpt2_128_exact"
+    "Project.Gpt2QuantizedCached.Spec.gpt2_128_exact",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_logit_bound",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_greedy"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

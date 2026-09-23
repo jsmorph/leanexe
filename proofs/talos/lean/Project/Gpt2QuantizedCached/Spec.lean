@@ -1,5 +1,9 @@
 import Project.Gpt2QuantizedCached.Session.Spec
 import Project.Gpt2QuantizedCached.Validation.Public
+import Project.Gpt2QuantizedCached.Numerical.Greedy
+import Project.Gpt2QuantizedCached.Export
+import Project.ProofKit.F32RangeCertificate
+import Project.ProofKit.QuantizedRangeCertificate
 
 namespace Project.Gpt2QuantizedCached.Spec
 open Wasm Project.ProofKit LeanExe.Models.Gpt2.Quantized
@@ -7,6 +11,10 @@ open Wasm Project.ProofKit LeanExe.Models.Gpt2.Quantized
 alias cachedStep_exact := Entry.publicStep_exact
 
 alias validateModel_exact := Validation.validateModel_exact
+
+alias cached_session_logit_bound := Numerical.Session.trace_error
+
+alias cached_session_greedy := Numerical.Session.choices_agree
 
 def ValidatedRunsFor (module_ : Wasm.Module) (env : HostEnv Unit) (weights : ByteArray)
     (tokens : List UInt32) (loaded : Store Unit) : Prop :=
@@ -58,6 +66,8 @@ theorem gpt2_128_exact_for : ExactSpecFor «module» := gpt2_128_exact
 
 #print axioms cachedStep_exact
 #print axioms validateModel_exact
+#print axioms cached_session_logit_bound
+#print axioms cached_session_greedy
 #print axioms validated_runs_exact
 #print axioms gpt2_128_exact
 #print axioms gpt2_128_exact_for
