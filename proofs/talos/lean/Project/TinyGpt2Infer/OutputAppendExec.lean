@@ -15,14 +15,14 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
     (hSaved : OutputSaved pointer empty x frame)
     (hState : OutputMemory.State start count initial)
     (hInput : UInt64Array.At initial (node start count).root input) (hSize : input.size = count)
-    (hSource : frame.get 48 = some (.i64 (node start count).root))
-    (hCount : frame.get 50 = some (.i64 (UInt64.ofNat count)))
-    (hLength : frame.get 49 = some (.i64 (UInt64.ofNat count)))
-    (hValue : frame.get 54 = some (.i64 value))
-    (hNextLength : frame.get 51 = some (.i64 (UInt64.ofNat (count + 1))))
-    (hNeed : frame.get 57 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
+    (hSource : frame.get 51 = some (.i64 (node start count).root))
+    (hCount : frame.get 53 = some (.i64 (UInt64.ofNat count)))
+    (hLength : frame.get 52 = some (.i64 (UInt64.ofNat count)))
+    (hValue : frame.get 57 = some (.i64 value))
+    (hNextLength : frame.get 54 = some (.i64 (UInt64.ofNat (count + 1))))
+    (hNeed : frame.get 60 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
     (hCurrent : frame.get 23 = some (.i64 (node start count).root))
-    (hOwned : frame.get 66 = some (.i64 (if count = 0 then 0 else 1)))
+    (hOwned : frame.get 69 = some (.i64 (if count = 0 then 0 else 1)))
     (hFit : top start (count + 1) < 4294967296)
     (hMemory : top start (count + 1) ≤ initial.mem.pages * 65536)
     (hPages : initial.mem.pages ≤ 65536)
@@ -34,7 +34,7 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
       OutputSaved pointer empty x finalFrame →
       finalFrame.get 23 = some (.i64 (node start (count + 1)).root) →
       finalFrame.get 24 = some (.i64 (node start (count + 1)).root) →
-      finalFrame.get 45 = frame.get 45 → finalFrame.get 66 = some (.i64 1) →
+      finalFrame.get 48 = frame.get 48 → finalFrame.get 69 = some (.i64 1) →
       final.mem.pages = initial.mem.pages →
       (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) →
       final = { initial with mem := final.mem, globals := final.globals } →
@@ -60,13 +60,13 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
   have hPreparedPages : preparedStore.mem.pages = initial.mem.pages :=
     OutputMemory.prepare_pages initial start (count + 1) allocations hFit hMemory
   have hPreparedArray := OutputMemory.prepare_array allocations hInput hSize hFit hMemory
-  have hCounter : prepared.validIndex 53 := hPrepared.valid 53 (by decide)
+  have hCounter : prepared.validIndex 56 := hPrepared.valid 56 (by decide)
   apply output_copy_spec env preparedStore prepared (node start count).root
     (node start (count + 1)).root input value hCounter hPrepared.values
-    ((hPreserved 48 (by decide) (by decide)).trans hSource) hTarget
-    (by rw [hSize]; exact (hPreserved 50 (by decide) (by decide)).trans hCount)
-    (by rw [hSize]; exact (hPreserved 49 (by decide) (by decide)).trans hLength)
-    ((hPreserved 54 (by decide) (by decide)).trans hValue)
+    ((hPreserved 51 (by decide) (by decide)).trans hSource) hTarget
+    (by rw [hSize]; exact (hPreserved 53 (by decide) (by decide)).trans hCount)
+    (by rw [hSize]; exact (hPreserved 52 (by decide) (by decide)).trans hLength)
+    ((hPreserved 57 (by decide) (by decide)).trans hValue)
     hPreparedArray (by rw [hEnd]; exact hFit.le)
     (by rw [hEnd, hPreparedPages]; exact hMemory)
     (by rw [hSize]; exact OutputMemory.prepare_length ..)
@@ -91,16 +91,16 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
     exact OutputMemory.allocate_globals initial start (count + 1) allocations
       (freeHead (freed start count)) retains releases frees
       (by simpa only [OutputMemory.globals, top_eq_next_base] using hGlobals)
-  let copied := FixedArrayCopy.counterFrame prepared 53 input.size hCounter
+  let copied := FixedArrayCopy.counterFrame prepared 56 input.size hCounter
   have hCopied : OutputSaved pointer empty x copied := hPrepared.counter input.size hCounter
-  have hCopiedGet (index : Nat) (hIndex : index ≠ 53) : copied.get index = prepared.get index :=
-    FixedArrayCopy.counterFrame_get_ne prepared 53 input.size index hCounter hIndex
+  have hCopiedGet (index : Nat) (hIndex : index ≠ 56) : copied.get index = prepared.get index :=
+    FixedArrayCopy.counterFrame_get_ne prepared 56 input.size index hCounter hIndex
   apply output_release_region_spec env middle copied (node start count).root
     (node start count).capacity (freeHead (freed start count)) releases frees
     (node start (count + 1)).root input count hCopied.params hCopied.locals hCopied.values
     (by rw [hCopiedGet 23 (by decide), hPreserved 23 (by decide) (by decide)]; exact hCurrent)
-    ((hCopiedGet 52 (by decide)).trans hTarget)
-    (by rw [hCopiedGet 66 (by decide), hPreserved 66 (by decide) (by decide)]; exact hOwned)
+    ((hCopiedGet 55 (by decide)).trans hTarget)
+    (by rw [hCopiedGet 69 (by decide), hPreserved 69 (by decide) (by decide)]; exact hOwned)
     (by rw [hOld.1]; omega) hMiddleBuffers.currentHeader hOldArray
     (by simp [hMiddleGlobals]) (by simp [hMiddleGlobals]) (by simp [hMiddleGlobals])
   have hResult := OutputMemory.append_result initial middle start count allocations retains releases frees
@@ -108,7 +108,7 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
   have hGets := outputReleaseFrame_get copied (node start (count + 1)).root hCopied.params hCopied.locals
   apply hNext _ _ hResult.1 hResult.2.1
     (outputReleaseFrame_saved hCopied _) hGets.1 hGets.2.1
-    (hGets.2.2.1.trans ((hCopiedGet 45 (by decide)).trans (hPreserved 45 (by decide) (by decide))))
+    (hGets.2.2.1.trans ((hCopiedGet 48 (by decide)).trans (hPreserved 48 (by decide) (by decide))))
     hGets.2.2.2 hResult.2.2.1 hResult.2.2.2.1 hResult.2.2.2.2
 
 #print axioms output_append_spec

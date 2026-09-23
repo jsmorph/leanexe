@@ -5,7 +5,7 @@ open Wasm Project.ProofKit Project.Runtime UInt64Array Memory Project.F64Clip.Sp
 
 def checkedResult (initial : Store Unit) (pointer base : UInt64)
     (input output : Array UInt64) : AssertionF Unit := fun final frame =>
-  ∃ root : UInt64, frame.get 25 = some (.i64 root) ∧ frame.values = [] ∧
+  ∃ root : UInt64, frame.get 26 = some (.i64 root) ∧ frame.values = [] ∧
     UInt64Array.At final root output ∧ UInt64Array.At final pointer input ∧
     final.mem.pages = initial.mem.pages ∧
     (∀ address : Nat, address < base.toNat → final.mem.bytes address = initial.mem.bytes address) ∧
@@ -41,14 +41,14 @@ theorem token_reject_spec (env : HostEnv Unit) (initial : Store Unit)
     omega
   rw [token_reject_shape]
   simp only [List.append_assoc]
-  apply FixedArrayCapacity.constantProgram_spec 0 1 30 module env initial _
-    rfl (by change 6 ≤ 30; decide) (by change 30 < 36; decide)
+  apply FixedArrayCapacity.constantProgram_spec 0 1 31 module env initial _
+    rfl (by change 6 ≤ 31; decide) (by change 31 < 37; decide)
   change wp module _ Q initial
     (FixedArraySearch.frame (checkedParams pointer bound t0 t1 t2 t3)
-      (List.replicate 24 (.i64 0)) [] 8 0 0 0 0 0) env
+      (List.replicate 25 (.i64 0)) [] 8 0 0 0 0 0) env
   apply FixedArrayAllocateNone.program_spec module env initial
-    (checkedParams pointer bound t0 t1 t2 t3) (List.replicate 24 (.i64 0))
-    [] 30 rfl (FixedArrayReuse.program 30 1) base 8 1 0 0 0 0 0 allocations []
+    (checkedParams pointer bound t0 t1 t2 t3) (List.replicate 25 (.i64 0))
+    [] 31 rfl (FixedArrayReuse.program 31 1) base 8 1 0 0 0 0 0 allocations []
   · simp [hGlobals]
   · simp [hGlobals, freeHead]
   · simp [hGlobals]
@@ -63,7 +63,7 @@ theorem token_reject_spec (env : HostEnv Unit) (initial : Store Unit)
     wp_fixed_frame [FixedArraySearch.frame, checkedParams, List.replicate,
       List.cons_append, List.nil_append]
     apply FixedArrayResult.lengthStore_spec module env
-      (clipAllocate initial base 0 allocations) _ (base+48) 0 26 rfl rfl
+      (clipAllocate initial base 0 allocations) _ (base+48) 0 27 rfl rfl
     · rw [Memory.toUInt32_toNat, hWords.2, Nat.mod_eq_of_lt (by omega), hAllocatedPages]
       omega
     · wp_fixed_frame [List.cons_append, List.nil_append]

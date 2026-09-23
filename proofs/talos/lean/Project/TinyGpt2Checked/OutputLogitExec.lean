@@ -6,7 +6,7 @@ namespace Project.TinyGpt2Checked.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit FixedArrayFold Project.TinyGpt2Hidden.Spec
 
 def outputLogitProgram : Wasm.Program :=
-  [.localGet 47,
+  [.localGet 49,
    .localSet 26,
    .localGet 25,
    .localSet 28,
@@ -53,11 +53,11 @@ theorem outputLogitFrame_saved {frame : Locals} {owner pointer empty : UInt64} {
     | refine OutputSaved.result ?_ _ _ (by decide) (by decide) (by decide)
 
 theorem outputLogitFrame_get (frame : Locals) (owner pointer output token value : UInt64) (x : Row)
-    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 63) :
+    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 65) :
     let next := outputLogitFrame frame owner pointer output token value x
     next.get 36 = some (.i64 value) ∧ next.get 37 = some (.i64 output) ∧
     next.get 24 = frame.get 24 ∧ next.get 25 = frame.get 25 ∧
-    next.get 47 = frame.get 47 ∧ next.get 68 = frame.get 68 := by
+    next.get 49 = frame.get 49 ∧ next.get 70 = frame.get 70 := by
   simp [outputLogitFrame, List.foldl, resultFrame, Locals.get, hParams, hLocals,
     List.getElem?_set]
 
@@ -65,7 +65,7 @@ theorem output_logit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : L
     (owner pointer empty output token : UInt64) (weights : Array UInt64) (x : Row)
     (hSaved : OutputSaved owner pointer empty x frame)
     (hOutput : frame.get 25 = some (.i64 output))
-    (hToken : frame.get 47 = some (.i64 token))
+    (hToken : frame.get 49 = some (.i64 token))
     (hInput : UInt64Array.At initial pointer weights) (hSize : 2488 ≤ weights.size)
     (hBound : token.toNat < 256)
     (Q : Assertion Unit) (rest : Wasm.Program)
@@ -86,7 +86,7 @@ theorem output_logit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : L
     hSaved.params (by rw [hSaved.locals]; decide) hSaved.x3
   have hOut := Frame.internal_getElem?_of_get frame 6 19 (.i64 output)
     hSaved.params (by rw [hSaved.locals]; decide) hOutput
-  have hTok := Frame.internal_getElem?_of_get frame 6 41 (.i64 token)
+  have hTok := Frame.internal_getElem?_of_get frame 6 43 (.i64 token)
     hSaved.params (by rw [hSaved.locals]; decide) hToken
   rw [output_logit_shape]
   unfold outputLogitProgram
