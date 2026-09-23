@@ -16169,3 +16169,15 @@ The user then supplied the browser and machine description: Chrome on `MAC MINI/
 The user requested submission.  The current submission skill specifies Jamie Stephens as author with Morphism affiliation, so the title page and metadata were updated before submission.  The submitted title and abstract were extracted from the rebuilt PDF.  The 42-page PDF and source snapshot are retained in `paper/gpt2-comprehensive-report/submission-01`.  Submission `87ff5328fe18` is under editorial review and records relationships to the earlier CPU, WGSL, and LeanExe subset reports.
 
 marXiv accepted the comprehensive report as `2609.00014v1`.  The editorial review records nine style remarks and is preserved verbatim.  The downloaded archive PDF matches the submitted and local files, with SHA-256 `eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb`.  The publication record, bibliography entry, README, and document evidence now identify the accepted version.
+
+## Native WASI API: 23 September 2026
+
+The user requested a separate `wasi` branch from `main`, with permission to reuse relevant work from `io`.  The branch starts at `a465538`.  The target is the 46 functions in the [Preview 1 WITX specification](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/witx/wasi_snapshot_preview1.witx), with layouts from its [generated documentation](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md).
+
+`LeanExe.Wasi.Action` sequences host calls through `BaseIO`.  Operations return the native numeric errno or an explicit `Except UInt32` value.  ByteArray inputs remain values, buffer outputs are owned values, and descriptor reads and writes retain WASI partial-transfer semantics.  Polling provides the native timeout mechanism.  The API includes descriptor and path operations, arguments and environment, clocks, polling, random data, process operations, and inherited sockets.
+
+- [x] Create and publish `wasi` from `main`.
+- [x] Define the public API, constants, and primitive ABI descriptions.
+- [ ] Add effect sequencing and native WASI lowering.
+- [ ] Exercise all operation families on the standard Wasmtime host.
+- [ ] Check failure paths, value ownership, documentation, and final branch state.
