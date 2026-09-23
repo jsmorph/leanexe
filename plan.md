@@ -831,7 +831,8 @@ memory-management implementation, or compiler correctness.
 - [x] Extend the core with typed direct first-order calls and well-formed bodies.
 - [x] Choose strict independent semantics and record the compatibility boundary with the existing deferred-field implementation.
 - [x] Add and verify a syntactic relevance profile for machine-written programs, including complete product patterns and Unit elimination.
-- [ ] Complete declarative type/declaration formation and the schematic collection, binder, and recursion rules.
+- [x] Define and prove monomorphic nominal declaration formation, strict construction, exhaustive matching, recursive value typing, and source/runtime type formation.
+- [ ] Complete the remaining schematic collection, binder, and recursion rules or prove their expansion into the core.
 - [x] Extend abstract values and primitive semantics with persistent arrays: empty, size, checked get/set/push/append, length bounds, failure laws, and read-after-write laws.
 - [ ] Extend the remaining numeric, byte, data-declaration, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -848,5 +849,6 @@ the broader documented runtime language is still open.
 Execution cadence: keep advancing this authorized track after each checked
 milestone, with frequent status updates, commits, and pushes. Publishing a
 milestone is a checkpoint, not a reason to stop or wait for renewed permission.
-The next increment is nominal recursive-data declaration formation, followed by
-strict constructors, exhaustive matching, and the corresponding safety proofs.
+Nominal recursive-data formation and matching are now checked. The next increment
+is explicit sum annotations and an algorithmic typing discipline, with checker
+soundness/completeness and expression type uniqueness against the declared rules.

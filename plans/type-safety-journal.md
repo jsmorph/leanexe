@@ -225,3 +225,27 @@ canonical forms, exhaustive branch typing, and expression/argument/value/
 environment formation theorems. Machine, array, and profile integration and the
 expanded gate are still in progress at this contract checkpoint. The parent has
 migrated existing examples and is adding independent nominal boundary examples.
+
+2026-09-23: Completed nominal-data integration through the operational semantics,
+array typing lemmas, source relevance, and all safety proofs. During review the
+agent identified that introducing nominal references also requires formation in
+the raw runtime result type: an inherited polymorphic overflow rule would permit
+an undeclared result label. Strengthened empty-continuation and overflow typing
+with explicit formation evidence and proved formation transfer through frames,
+continuations, and states. Execution is unchanged by that strengthening.
+
+The agent's focused builds and all-module audit passed. The parent reviewed the
+actual declaration/type rules, constructor accumulation, nominal and arity guards,
+branch coverage/lookup, and formation premises, then ran the maintained gate.
+All 113 existing examples passed after explicit declaration/formation migration;
+all 57 new examples passed on their first gate run. They include rejection of
+invalid hidden types and malformed whole-program tables, valid empty elimination
+and empty arrays of an empty type, exact constructor/branch arity and coverage,
+an empty-type no-value result, runtime formation rejection, strict field order,
+captured environments, nominal mismatch stuckness, and a typed recursive list sum.
+
+The gate now audits every one of the 103 declared theorems in the six development
+modules, including helpers. All passed with no axioms beyond propext. Eight build
+jobs and 170 examples passed with the pinned Lean version. The source scan,
+whitespace check, and Node syntax check passed. Declaration-checker soundness and
+completeness are proved; a general expression/program type checker remains next.

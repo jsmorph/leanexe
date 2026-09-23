@@ -1,4 +1,4 @@
-import Std
+import LeanExe.TypeSafety.Formation
 
 /-!
 # An independent first-order core
@@ -8,13 +8,16 @@ Expressions and values are untyped syntax; their typing judgments are separate.
 Variables use de Bruijn indices, with index zero denoting the newest binding.
 On entry to a function body, its fresh parameter environment places the first
 argument at index zero, the second at index one, and so on. Local bindings then
-prepend their values to that environment.
+prepend their values to that environment. Nominal constructor patterns similarly
+bind the first field at index zero and prepend all fields to the captured context.
 
 The fragment contains `Unit`, `Bool`, bounded natural numbers, products, binary
 sums, bindings, conditionals, checked addition, and direct first-order calls.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
 arithmetic. Function bodies may call any declared function, including themselves;
-typing imposes no termination condition.
+typing imposes no termination condition. Nominal declarations admit arbitrary
+mutual recursion through strictly positive first-order fields, with exhaustive
+constructor patterns. Formation is checked separately and required by typing.
 
 Persistent arrays contain homogeneous finite sequences with length below
 `nat64Limit`. Reads, replacement, growth, and concatenation expose checked sum
@@ -22,15 +25,6 @@ results; their typing is independent of any physical storage representation.
 -/
 
 namespace LeanExe.TypeSafety
-
-inductive Ty where
-  | unit
-  | bool
-  | nat64
-  | prod (left right : Ty)
-  | sum (left right : Ty)
-  | array (item : Ty)
-  deriving DecidableEq, Repr
 
 /-- The exclusive upper bound on a represented natural number. -/
 def nat64Limit : Nat := 2 ^ 64
@@ -61,6 +55,10 @@ inductive Expr where
   | arraySet? (array index replacement : Expr)
   | arrayPush? (array value : Expr)
   | arrayAppend? (left right : Expr)
+  | dataCtor (dataId constructor : Nat) (fields : List Expr)
+  /-- Branches are in constructor order, with explicit field arity and body. -/
+  | dataCase (dataId : Nat) (result : Ty) (scrutinee : Expr)
+      (branches : List (Nat × Expr))
   deriving Repr
 
 inductive Value where
@@ -71,93 +69,123 @@ inductive Value where
   | inl (payload : Value)
   | inr (payload : Value)
   | array (elements : List Value)
+  | data (dataId constructor : Nat) (fields : List Value)
   deriving Repr
 
-abbrev Context := List Ty
 abbrev Env := List Value
 
-structure Signature where
-  params : List Ty
-  result : Ty
-  deriving Repr
-
-abbrev Signatures := List Signature
 /-- Body and signature indices identify functions; there are no function values. -/
 abbrev Program := List Expr
 
-/-- Total lookup; missing variables remain observably stuck in the machine. -/
-def lookup {α : Type} : List α → Nat → Option α
-  | [], _ => none
-  | x :: _, 0 => some x
-  | _ :: xs, n + 1 => lookup xs n
-
 mutual
-inductive ExprTyped (signatures : Signatures) : Context → Expr → Ty → Prop where
-  | var (found : lookup Γ index = some τ) : ExprTyped signatures Γ (.var index) τ
-  | unit : ExprTyped signatures Γ .unit .unit
-  | bool : ExprTyped signatures Γ (.bool b) .bool
-  | nat (bounded : n < nat64Limit) : ExprTyped signatures Γ (.nat n) .nat64
-  | letE : ExprTyped signatures Γ bound α → ExprTyped signatures (α :: Γ) body β →
-      ExprTyped signatures Γ (.letE bound body) β
-  | ifE : ExprTyped signatures Γ condition .bool → ExprTyped signatures Γ yes τ →
-      ExprTyped signatures Γ no τ → ExprTyped signatures Γ (.ifE condition yes no) τ
-  | pair : ExprTyped signatures Γ left α → ExprTyped signatures Γ right β →
-      ExprTyped signatures Γ (.pair left right) (.prod α β)
-  | fst : ExprTyped signatures Γ pair (.prod α β) → ExprTyped signatures Γ (.fst pair) α
-  | snd : ExprTyped signatures Γ pair (.prod α β) → ExprTyped signatures Γ (.snd pair) β
-  | split : ExprTyped signatures Γ pair (.prod α β) →
-      ExprTyped signatures (α :: β :: Γ) body τ →
-      ExprTyped signatures Γ (.split pair body) τ
-  | unitCase : ExprTyped signatures Γ scrutinee .unit → ExprTyped signatures Γ body τ →
-      ExprTyped signatures Γ (.unitCase scrutinee body) τ
-  | inl : ExprTyped signatures Γ payload α → ExprTyped signatures Γ (.inl payload) (.sum α β)
-  | inr : ExprTyped signatures Γ payload β → ExprTyped signatures Γ (.inr payload) (.sum α β)
-  | sumCase : ExprTyped signatures Γ scrutinee (.sum α β) →
-      ExprTyped signatures (α :: Γ) left τ → ExprTyped signatures (β :: Γ) right τ →
-      ExprTyped signatures Γ (.sumCase scrutinee left right) τ
-  | add : ExprTyped signatures Γ left .nat64 → ExprTyped signatures Γ right .nat64 →
-      ExprTyped signatures Γ (.add left right) .nat64
+inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
+    Context → Expr → Ty →
+      Prop where
+  | var (found : lookup Γ index = some τ) : ExprTyped declarations signatures Γ (.var index) τ
+  | unit : ExprTyped declarations signatures Γ .unit .unit
+  | bool : ExprTyped declarations signatures Γ (.bool b) .bool
+  | nat (bounded : n < nat64Limit) : ExprTyped declarations signatures Γ (.nat n) .nat64
+  | letE : ExprTyped declarations signatures Γ bound α →
+      ExprTyped declarations signatures (α :: Γ) body β →
+      ExprTyped declarations signatures Γ (.letE bound body) β
+  | ifE : ExprTyped declarations signatures Γ condition .bool →
+      ExprTyped declarations signatures Γ yes τ →
+      ExprTyped declarations signatures Γ no τ →
+      ExprTyped declarations signatures Γ (.ifE condition yes no) τ
+  | pair : ExprTyped declarations signatures Γ left α → ExprTyped declarations signatures Γ right β →
+      ExprTyped declarations signatures Γ (.pair left right) (.prod α β)
+  | fst : ExprTyped declarations signatures Γ pair (.prod α β) →
+      ExprTyped declarations signatures Γ (.fst pair) α
+  | snd : ExprTyped declarations signatures Γ pair (.prod α β) →
+      ExprTyped declarations signatures Γ (.snd pair) β
+  | split : ExprTyped declarations signatures Γ pair (.prod α β) →
+      ExprTyped declarations signatures (α :: β :: Γ) body τ →
+      ExprTyped declarations signatures Γ (.split pair body) τ
+  | unitCase : ExprTyped declarations signatures Γ scrutinee .unit →
+      ExprTyped declarations signatures Γ body τ →
+      ExprTyped declarations signatures Γ (.unitCase scrutinee body) τ
+  | inl : ExprTyped declarations signatures Γ payload α → TyWF declarations β →
+      ExprTyped declarations signatures Γ (.inl payload) (.sum α β)
+  | inr : ExprTyped declarations signatures Γ payload β → TyWF declarations α →
+      ExprTyped declarations signatures Γ (.inr payload) (.sum α β)
+  | sumCase : ExprTyped declarations signatures Γ scrutinee (.sum α β) →
+      ExprTyped declarations signatures (α :: Γ) left τ →
+      ExprTyped declarations signatures (β :: Γ) right τ →
+      ExprTyped declarations signatures Γ (.sumCase scrutinee left right) τ
+  | add : ExprTyped declarations signatures Γ left .nat64 →
+      ExprTyped declarations signatures Γ right .nat64 →
+      ExprTyped declarations signatures Γ (.add left right) .nat64
 
   | call (found : lookup signatures function = some ⟨params, result⟩) :
-      ArgsTyped signatures Γ arguments params →
-      ExprTyped signatures Γ (.call function arguments) result
-  | arrayEmpty : ExprTyped signatures Γ (.arrayEmpty α) (.array α)
-  | arraySize : ExprTyped signatures Γ array (.array α) →
-      ExprTyped signatures Γ (.arraySize array) .nat64
-  | arrayGet? : ExprTyped signatures Γ array (.array α) →
-      ExprTyped signatures Γ index .nat64 →
-      ExprTyped signatures Γ (.arrayGet? array index) (.sum .unit α)
-  | arraySet? : ExprTyped signatures Γ array (.array α) →
-      ExprTyped signatures Γ index .nat64 → ExprTyped signatures Γ replacement α →
-      ExprTyped signatures Γ (.arraySet? array index replacement) (.sum .unit (.array α))
-  | arrayPush? : ExprTyped signatures Γ array (.array α) → ExprTyped signatures Γ value α →
-      ExprTyped signatures Γ (.arrayPush? array value) (.sum .unit (.array α))
-  | arrayAppend? : ExprTyped signatures Γ left (.array α) →
-      ExprTyped signatures Γ right (.array α) →
-      ExprTyped signatures Γ (.arrayAppend? left right) (.sum .unit (.array α))
+      ArgsTyped declarations signatures Γ arguments params →
+      ExprTyped declarations signatures Γ (.call function arguments) result
+  | arrayEmpty : TyWF declarations α → ExprTyped declarations signatures Γ (.arrayEmpty α) (.array α)
+  | arraySize : ExprTyped declarations signatures Γ array (.array α) →
+      ExprTyped declarations signatures Γ (.arraySize array) .nat64
+  | arrayGet? : ExprTyped declarations signatures Γ array (.array α) →
+      ExprTyped declarations signatures Γ index .nat64 →
+      ExprTyped declarations signatures Γ (.arrayGet? array index) (.sum .unit α)
+  | arraySet? : ExprTyped declarations signatures Γ array (.array α) →
+      ExprTyped declarations signatures Γ index .nat64 →
+      ExprTyped declarations signatures Γ replacement α →
+      ExprTyped declarations signatures Γ (.arraySet? array index replacement) (.sum .unit (.array α))
+  | arrayPush? : ExprTyped declarations signatures Γ array (.array α) →
+      ExprTyped declarations signatures Γ value α →
+      ExprTyped declarations signatures Γ (.arrayPush? array value) (.sum .unit (.array α))
+  | arrayAppend? : ExprTyped declarations signatures Γ left (.array α) →
+      ExprTyped declarations signatures Γ right (.array α) →
+      ExprTyped declarations signatures Γ (.arrayAppend? left right) (.sum .unit (.array α))
 
-inductive ArgsTyped (signatures : Signatures) : Context → List Expr → List Ty → Prop where
-  | nil : ArgsTyped signatures Γ [] []
-  | cons : ExprTyped signatures Γ argument α → ArgsTyped signatures Γ rest types →
-      ArgsTyped signatures Γ (argument :: rest) (α :: types)
+  | dataCtor (foundData : lookup declarations dataId = some constructors)
+      (foundCtor : lookup constructors constructor = some fieldTypes) :
+      ArgsTyped declarations signatures Γ fields fieldTypes →
+      ExprTyped declarations signatures Γ (.dataCtor dataId constructor fields) (.data dataId)
+  | dataCase (foundData : lookup declarations dataId = some constructors) :
+      TyWF declarations result →
+      ExprTyped declarations signatures Γ scrutinee (.data dataId) →
+      BranchesTyped declarations signatures Γ branches constructors result →
+      ExprTyped declarations signatures Γ (.dataCase dataId result scrutinee branches) result
+
+inductive ArgsTyped (declarations : DataDecls) (signatures : Signatures) :
+    Context → List Expr →
+      List Ty → Prop where
+  | nil : ArgsTyped declarations signatures Γ [] []
+  | cons : ExprTyped declarations signatures Γ argument α →
+      ArgsTyped declarations signatures Γ rest types →
+      ArgsTyped declarations signatures Γ (argument :: rest) (α :: types)
+
+/-- Every constructor has one branch; its field binders follow declaration order. -/
+inductive BranchesTyped (declarations : DataDecls) (signatures : Signatures)
+    : Context → List (Nat × Expr) → DataDecl → Ty → Prop where
+  | nil : BranchesTyped declarations signatures Γ [] [] result
+  | cons : arity = fields.length →
+      ExprTyped declarations signatures (fields ++ Γ) body result →
+      BranchesTyped declarations signatures Γ rest constructors result →
+      BranchesTyped declarations signatures Γ ((arity, body) :: rest) (fields :: constructors) result
+
 end
 
 /-- All function bodies use the same global signature table, allowing recursion. -/
-inductive BodiesTyped (signatures : Signatures) : Program → Signatures → Prop where
-  | nil : BodiesTyped signatures [] []
-  | cons : ExprTyped signatures signature.params body signature.result →
-      BodiesTyped signatures bodies rest →
-      BodiesTyped signatures (body :: bodies) (signature :: rest)
+inductive BodiesTyped (declarations : DataDecls) (signatures : Signatures) :
+    Program →
+      Signatures → Prop where
+  | nil : BodiesTyped declarations signatures [] []
+  | cons : ExprTyped declarations signatures signature.params body signature.result →
+      BodiesTyped declarations signatures bodies rest →
+      BodiesTyped declarations signatures (body :: bodies) (signature :: rest)
 
-/-- Every program body has exactly one matching declared signature. -/
-abbrev ProgramTyped (program : Program) (signatures : Signatures) : Prop :=
-  BodiesTyped signatures program signatures
+/-- Formation and exact body/signature alignment are independent admission obligations. -/
+structure ProgramTyped (declarations : DataDecls) (program : Program)
+    (signatures : Signatures) : Prop where
+  declarationsWF : DeclarationsWF declarations
+  signaturesWF : SignaturesWF declarations signatures
+  bodies : BodiesTyped declarations signatures program signatures
 
 /-- A declared callee exists and its body is typed in its parameter context. -/
-theorem BodiesTyped.lookup (typed : BodiesTyped signatures program declarations)
-    (found : lookup declarations function = some signature) :
+theorem BodiesTyped.lookup (typed : BodiesTyped declarations signatures program bodySignatures)
+    (found : lookup bodySignatures function = some signature) :
     ∃ body, lookup program function = some body ∧
-      ExprTyped signatures signature.params body signature.result := by
+      ExprTyped declarations signatures signature.params body signature.result := by
   induction typed generalizing function signature with
   | nil => simp [LeanExe.TypeSafety.lookup] at found
   | cons hbody hrest ih =>
@@ -169,81 +197,209 @@ theorem BodiesTyped.lookup (typed : BodiesTyped signatures program declarations)
       | succ function => exact ih found
 
 mutual
-inductive ValueTyped : Value → Ty → Prop where
-  | unit : ValueTyped .unit .unit
-  | bool : ValueTyped (.bool b) .bool
-  | nat (bounded : n < nat64Limit) : ValueTyped (.nat n) .nat64
-  | pair : ValueTyped left α → ValueTyped right β →
-      ValueTyped (.pair left right) (.prod α β)
-  | inl : ValueTyped payload α → ValueTyped (.inl payload) (.sum α β)
-  | inr : ValueTyped payload β → ValueTyped (.inr payload) (.sum α β)
-  | array : ValuesTyped elements α → elements.length < nat64Limit →
-      ValueTyped (.array elements) (.array α)
+inductive ValueTyped (declarations : DataDecls) : Value → Ty → Prop where
+  | unit : ValueTyped declarations .unit .unit
+  | bool : ValueTyped declarations (.bool b) .bool
+  | nat (bounded : n < nat64Limit) : ValueTyped declarations (.nat n) .nat64
+  | pair : ValueTyped declarations left α → ValueTyped declarations right β →
+      ValueTyped declarations (.pair left right) (.prod α β)
+  | inl : ValueTyped declarations payload α → TyWF declarations β →
+      ValueTyped declarations (.inl payload) (.sum α β)
+  | inr : ValueTyped declarations payload β → TyWF declarations α →
+      ValueTyped declarations (.inr payload) (.sum α β)
+  | array : ValuesTyped declarations elements α → elements.length < nat64Limit →
+      ValueTyped declarations (.array elements) (.array α)
+
+  | data (foundData : lookup declarations dataId = some constructors)
+      (foundCtor : lookup constructors constructor = some fieldTypes) :
+      EnvTyped declarations fields fieldTypes →
+      ValueTyped declarations (.data dataId constructor fields) (.data dataId)
 
 /-- An abstract array stores a finite homogeneous sequence of values. -/
-inductive ValuesTyped : List Value → Ty → Prop where
-  | nil : ValuesTyped [] α
-  | cons : ValueTyped value α → ValuesTyped rest α → ValuesTyped (value :: rest) α
+inductive ValuesTyped (declarations : DataDecls) : List Value → Ty → Prop where
+  | nil : TyWF declarations α → ValuesTyped declarations [] α
+  | cons : ValueTyped declarations value α → ValuesTyped declarations rest α →
+      ValuesTyped declarations (value :: rest) α
+
+inductive EnvTyped (declarations : DataDecls) : Env → Context → Prop where
+  | nil : EnvTyped declarations [] []
+  | cons : ValueTyped declarations value τ → EnvTyped declarations env Γ →
+      EnvTyped declarations (value :: env) (τ :: Γ)
 end
 
-inductive EnvTyped : Env → Context → Prop where
-  | nil : EnvTyped [] []
-  | cons : ValueTyped value τ → EnvTyped env Γ →
-      EnvTyped (value :: env) (τ :: Γ)
-
 /-- Argument accumulation preserves the correspondence between values and types. -/
-theorem EnvTyped.append (left : EnvTyped env Γ) (right : EnvTyped env' Δ) :
-    EnvTyped (env ++ env') (Γ ++ Δ) := by
-  induction left with
-  | nil => exact right
-  | cons hvalue henv ih => exact .cons hvalue ih
+theorem EnvTyped.append (left : EnvTyped declarations env Γ) (right : EnvTyped declarations env' Δ) :
+    EnvTyped declarations (env ++ env') (Γ ++ Δ) := by
+  induction env generalizing Γ with
+  | nil => cases left; exact right
+  | cons value env ih =>
+      cases left with
+      | cons hvalue henv => exact .cons hvalue (ih henv)
 
 /-- A typed variable always has a value of its declared type. -/
-theorem EnvTyped.lookup (henv : EnvTyped env Γ)
+theorem EnvTyped.lookup (henv : EnvTyped declarations env Γ)
     (found : lookup Γ index = some τ) :
-    ∃ value, lookup env index = some value ∧ ValueTyped value τ := by
-  induction henv generalizing index τ with
-  | nil => simp [LeanExe.TypeSafety.lookup] at found
-  | @cons value α env Γ hvalue henv ih =>
-      cases index with
-      | zero =>
-          simp only [LeanExe.TypeSafety.lookup, Option.some.injEq] at found
-          subst τ
-          exact ⟨value, rfl, hvalue⟩
-      | succ index =>
-          exact ih found
+    ∃ value, lookup env index = some value ∧ ValueTyped declarations value τ := by
+  induction env generalizing Γ index τ with
+  | nil => cases henv; cases found
+  | cons value env ih =>
+      cases henv with
+      | cons hvalue henv =>
+          cases index with
+          | zero => cases found; exact ⟨_, rfl, hvalue⟩
+          | succ index => exact ih henv found
 
-theorem ValueTyped.bool_canonical (h : ValueTyped value .bool) :
+mutual
+/-- Formation follows from typing even for types absent from a runtime payload. -/
+theorem ValueTyped.wellFormed (typed : ValueTyped declarations value τ) :
+    TyWF declarations τ := by
+  cases typed with
+  | unit => exact .unit
+  | bool => exact .bool
+  | nat _ => exact .nat64
+  | pair left right => exact .prod left.wellFormed right.wellFormed
+  | inl payload other => exact .sum payload.wellFormed other
+  | inr payload other => exact .sum other payload.wellFormed
+  | array elements _ => exact .array elements.wellFormed
+  | data foundData _ _ => exact .data (lookup_lt foundData)
+
+theorem ValuesTyped.wellFormed (typed : ValuesTyped declarations elements τ) :
+    TyWF declarations τ := by
+  cases typed with
+  | nil item => exact item
+  | cons head _ => exact head.wellFormed
+end
+
+theorem EnvTyped.wellFormed (typed : EnvTyped declarations env Γ) : TypesWF declarations Γ := by
+  induction env generalizing Γ with
+  | nil => cases typed; exact .nil
+  | cons value rest ih =>
+      cases typed with
+      | cons head tail => exact .cons head.wellFormed (ih tail)
+
+theorem EnvTyped.length (typed : EnvTyped declarations env Γ) : env.length = Γ.length := by
+  induction env generalizing Γ with
+  | nil => cases typed; rfl
+  | cons value rest ih =>
+      cases typed with
+      | cons head tail => exact congrArg Nat.succ (ih tail)
+
+/-- Formation includes intermediate types, not just annotations at the root. -/
+theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr τ)
+    (hdeclarations : DeclarationsWF declarations) (hsignatures : SignaturesWF declarations signatures)
+    (hcontext : TypesWF declarations Γ) : TyWF declarations τ := by
+  cases typed with
+  | var found => exact hcontext.lookup found
+  | unit => exact .unit
+  | bool => exact .bool
+  | nat _ => exact .nat64
+  | letE bound body =>
+      exact body.wellFormed hdeclarations hsignatures
+        (.cons (bound.wellFormed hdeclarations hsignatures hcontext) hcontext)
+  | ifE _ yes _ => exact yes.wellFormed hdeclarations hsignatures hcontext
+  | pair left right =>
+      exact .prod (left.wellFormed hdeclarations hsignatures hcontext)
+        (right.wellFormed hdeclarations hsignatures hcontext)
+  | fst pair => exact (pair.wellFormed hdeclarations hsignatures hcontext).prod_left
+  | snd pair => exact (pair.wellFormed hdeclarations hsignatures hcontext).prod_right
+  | split pair body =>
+      have formed := pair.wellFormed hdeclarations hsignatures hcontext
+      exact body.wellFormed hdeclarations hsignatures
+        (.cons formed.prod_left (.cons formed.prod_right hcontext))
+  | unitCase _ body => exact body.wellFormed hdeclarations hsignatures hcontext
+  | inl payload other =>
+      exact .sum (payload.wellFormed hdeclarations hsignatures hcontext) other
+  | inr payload other =>
+      exact .sum other (payload.wellFormed hdeclarations hsignatures hcontext)
+  | sumCase scrutinee left _ =>
+      have formed := scrutinee.wellFormed hdeclarations hsignatures hcontext
+      exact left.wellFormed hdeclarations hsignatures (.cons formed.sum_left hcontext)
+  | add _ _ => exact .nat64
+  | call found _ => exact (hsignatures.lookup found).result
+  | arrayEmpty item => exact .array item
+  | arraySize _ => exact .nat64
+  | arrayGet? array _ =>
+      exact .sum .unit (array.wellFormed hdeclarations hsignatures hcontext).array_item
+  | arraySet? array _ _ =>
+      exact .sum .unit (array.wellFormed hdeclarations hsignatures hcontext)
+  | arrayPush? array _ => exact .sum .unit (array.wellFormed hdeclarations hsignatures hcontext)
+  | arrayAppend? left _ => exact .sum .unit (left.wellFormed hdeclarations hsignatures hcontext)
+  | dataCtor found _ _ => exact .data (lookup_lt found)
+  | dataCase _ result _ _ => exact result
+
+theorem ArgsTyped.wellFormed (typed : ArgsTyped declarations signatures Γ arguments types)
+    (hdeclarations : DeclarationsWF declarations) (hsignatures : SignaturesWF declarations signatures)
+    (hcontext : TypesWF declarations Γ) : TypesWF declarations types := by
+  induction arguments generalizing types with
+  | nil => cases typed; exact .nil
+  | cons argument rest ih =>
+      cases typed with
+      | cons head tail =>
+          exact .cons (head.wellFormed hdeclarations hsignatures hcontext) (ih tail)
+
+/-- Exhaustive branch alignment makes every declared constructor selectable. -/
+theorem BranchesTyped.lookup (typed : BranchesTyped declarations signatures Γ branches constructors τ)
+    (found : lookup constructors constructor = some fields) :
+    ∃ arity body, lookup branches constructor = some (arity, body) ∧
+      arity = fields.length ∧ ExprTyped declarations signatures (fields ++ Γ) body τ := by
+  induction branches generalizing constructors constructor with
+  | nil => cases typed; cases found
+  | cons branch rest ih =>
+      cases typed with
+      | cons arity body tail =>
+          cases constructor with
+          | zero => cases found; exact ⟨_, _, rfl, arity, body⟩
+          | succ constructor => exact ih tail found
+
+theorem BranchesTyped.length
+    (typed : BranchesTyped declarations signatures Γ branches constructors τ) :
+    branches.length = constructors.length := by
+  induction branches generalizing constructors with
+  | nil => cases typed; rfl
+  | cons branch rest ih =>
+      cases typed with
+      | cons _ _ tail => exact congrArg Nat.succ (ih tail)
+
+theorem ValueTyped.bool_canonical (h : ValueTyped declarations value .bool) :
     ∃ b, value = .bool b := by
   cases h with
   | bool => exact ⟨_, rfl⟩
 
-theorem ValueTyped.unit_canonical (h : ValueTyped value .unit) : value = .unit := by
+theorem ValueTyped.unit_canonical (h : ValueTyped declarations value .unit) : value = .unit := by
   cases h
   rfl
 
-theorem ValueTyped.nat_canonical (h : ValueTyped value .nat64) :
+theorem ValueTyped.nat_canonical (h : ValueTyped declarations value .nat64) :
     ∃ n, value = .nat n ∧ n < nat64Limit := by
   cases h with
   | nat bounded => exact ⟨_, rfl, bounded⟩
 
-theorem ValueTyped.prod_canonical (h : ValueTyped value (.prod α β)) :
+theorem ValueTyped.prod_canonical (h : ValueTyped declarations value (.prod α β)) :
     ∃ left right, value = .pair left right ∧
-      ValueTyped left α ∧ ValueTyped right β := by
+      ValueTyped declarations left α ∧ ValueTyped declarations right β := by
   cases h with
   | pair hleft hright => exact ⟨_, _, rfl, hleft, hright⟩
 
-theorem ValueTyped.sum_canonical (h : ValueTyped value (.sum α β)) :
-    (∃ payload, value = .inl payload ∧ ValueTyped payload α) ∨
-    (∃ payload, value = .inr payload ∧ ValueTyped payload β) := by
+theorem ValueTyped.sum_canonical (h : ValueTyped declarations value (.sum α β)) :
+    (∃ payload, value = .inl payload ∧ ValueTyped declarations payload α) ∨
+    (∃ payload, value = .inr payload ∧ ValueTyped declarations payload β) := by
   cases h with
-  | inl hpayload => exact .inl ⟨_, rfl, hpayload⟩
-  | inr hpayload => exact .inr ⟨_, rfl, hpayload⟩
+  | inl hpayload _ => exact .inl ⟨_, rfl, hpayload⟩
+  | inr hpayload _ => exact .inr ⟨_, rfl, hpayload⟩
 
-theorem ValueTyped.array_canonical (h : ValueTyped value (.array α)) :
-    ∃ elements, value = .array elements ∧ ValuesTyped elements α ∧
+theorem ValueTyped.array_canonical (h : ValueTyped declarations value (.array α)) :
+    ∃ elements, value = .array elements ∧ ValuesTyped declarations elements α ∧
       elements.length < nat64Limit := by
   cases h with
   | array helements bounded => exact ⟨_, rfl, helements, bounded⟩
+
+theorem ValueTyped.data_canonical (typed : ValueTyped declarations value (.data dataId)) :
+    ∃ constructor fields constructors fieldTypes,
+      value = .data dataId constructor fields ∧
+      lookup declarations dataId = some constructors ∧
+      lookup constructors constructor = some fieldTypes ∧
+      EnvTyped declarations fields fieldTypes := by
+  cases typed with
+  | data foundData foundCtor fields => exact ⟨_, _, _, _, rfl, foundData, foundCtor, fields⟩
 
 end LeanExe.TypeSafety
