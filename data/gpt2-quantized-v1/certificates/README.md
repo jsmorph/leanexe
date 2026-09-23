@@ -14,13 +14,21 @@ The common-offset check subtracts `zq[k] - z[k]` from every quantized logit, usi
 
 The capture reproduces all 229 previously recorded group64 logit hashes and all 128 previously recorded FP32 fixed-prefix hashes.  The record identifies both weight files, both binaries, the native host, the capture program, and the Lean checker sources.  Native execution of Wasmtime and the compiled Lean checker remains within the repository's existing runtime trust boundary.
 
-The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  Forward error propagation through every transformer operation remains open.
+The [packed-word theorem](../../../proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean) connects certificates to the returned byte arrays.  The [cached-step theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean) applies that check to the FP32 and quantized recurrences with their respective caches.  The [session theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean) proves equal greedy choices throughout a common token sequence when every step passes its certificate.  The captured data above checks supplied output pairs.  It does not evaluate the complete Lean inference recurrence in the kernel.  The [forward numerical theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md) now covers the complete cached recurrence under explicit intermediate-range and reconstruction assumptions.  Trace-level checking of every nonlinear assumption and evaluation of that propagated bound remain open.
 
 ## Checkpoint export
 
 The [export record](export-check.json) and [checker output](export-check.log) record successful checks of all 123,532,032 coefficients, 133,201 scales, and 907,776 retained FP32 words.  The checker covers the shared embedding/vocabulary matrix and all forty-eight block projections, including their source and target orientations.  Each stored scale equals the specified row scale.  Each coefficient equals the result of FP32 division, clipping, and nearest-even rounding.  Retained FP32 words are finite and unchanged.  The quotient range satisfies the scaled-integer bound with exponent 156.
 
 The [export soundness theorem](../../../proofs/talos/lean/Project/Gpt2QuantizedCached/Export.lean) exposes those conditions for every selected tensor and row.  The [reconstruction theorem](../../../proofs/talos/lean/Project/ProofKit/QuantizedExport.lean) derives the component error, including saturation and division rounding.  The whole-file run uses a native Lean executable compiled from the checked definitions.  Its compiler and runtime remain trusted for data evaluation.  The earlier interpreted run reached its 1,200-second limit before completing the first matrix.
+
+## Activation quantizers
+
+The [activation record](activation-check.json) and [checker output](activation-check.log) cover 233,580 groups and 14,949,120 coefficients across the same 229 prefixes.  Capture reproduces every retained group64 logit hash.  The Lean native checker verifies each group's scale rule, positive finite scale, finite input words, signed coefficients, nearest-even quantization, and quotient range with exponent 156.
+
+The maximum scale is the FP32 word `1074517830`, or 2.185014247894287.  The maximum rounded quotient magnitude is `1123942401`, or `127 + 2^-17`.  The [reconstruction theorem](../../../proofs/talos/lean/Project/ProofKit/QuantizedRangeCertificate.lean) therefore bounds a captured component's local error by its scale times `1/2 + 2^-16`.  The two `2^-17` contributions cover clipping and quotient rounding.  Using the largest scale gives the exact uniform bound `150157618083 / 137438953472`, approximately 1.0925404646186507.  This is an activation reconstruction bound, before multiplication by weights and propagation through later layers.
+
+The capture records contain input words, scale words, and signed coefficients.  Their SHA-256 is `3e578ae5f89bd852a2b778f127418687b640d523352fd3433b4d7e7ac63fba2e`.  Their 75,679,920 bytes remain reproducible under `build`.  Whole-file checking uses the same native Lean compiler/runtime trust boundary as the checkpoint check.
 
 ## Reproduction
 
@@ -32,6 +40,9 @@ tools/leanrun --timeout 120 lake -d proofs/talos/lean build Project.Gpt2Quantize
 tools/leanrun --timeout 180 lake -d proofs/talos/lean env lean --run proofs/talos/lean/Project/Gpt2QuantizedCached/CheckLogitCertificates.lean build/gpt2-124m/quantized-group64/certificates/logit-pairs.bin
 tools/leanrun --timeout 120 lake -d proofs/talos/lean build gpt2-export-check Project.Gpt2QuantizedCached.Export
 tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-export-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin
+training/gpt2/.venv/bin/python training/gpt2/capture_activation_certificates.py
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build gpt2-activation-check Project.ProofKit.QuantizedRangeCertificate
+tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-activation-check build/gpt2-124m/quantized-group64/activations/groups.bin
 ```
 
 The kernel-checked test examples cover a strict accepted margin, a tied maximum, an equality at the error threshold, a changed winner, a common offset, and a nonfinite input.
