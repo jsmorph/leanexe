@@ -34,8 +34,10 @@ def main():
     parser = argparse.ArgumentParser(description="Capture exact paired logit words for Lean margin checking")
     parser.add_argument("--model-dir", type=Path, default=ROOT / "build/gpt2-124m")
     parser.add_argument("--output", type=Path, default=ROOT / "build/gpt2-124m/quantized-group64/certificates")
+    parser.add_argument("--evaluation", type=Path,
+                        default=ROOT / "data/gpt2-quantized-v1/evaluation.json")
     args = parser.parse_args()
-    evaluation_path = ROOT / "data/gpt2-quantized-v1/evaluation.json"
+    evaluation_path = args.evaluation
     evaluation = json.loads(evaluation_path.read_text())
     deployment = json.loads((ROOT / "data/gpt2-quantized-v1/model.json").read_text())
     quantized_binary = ROOT / deployment["wasm_path"]
@@ -47,7 +49,8 @@ def main():
                            (fp32_binary, evaluation["fp32_wasm_sha256"]), (fp32_weights, PACKED_SHA256)]:
         if digest(path) != expected:
             raise ValueError(f"Pinned input identity mismatch: {path}")
-    sequences = [{"name": "fixed-128", "tokens": evaluation["prefix_tokens"]}]
+    sequences = ([{"name": "fixed-128", "tokens": evaluation["prefix_tokens"]}]
+                 if "prefix_tokens" in evaluation else [])
     sequences += [{"name": f"prompt-{i}", "prompt": case["prompt"], "tokens": case["prompt_tokens"]}
                   for i, case in enumerate(evaluation["retained_completions"] + evaluation["heldout"])]
     args.output.mkdir(parents=True, exist_ok=True)
@@ -68,11 +71,14 @@ def main():
                 candidate = [scaled_value(word) for word in observed.view("<u4").tolist()]
                 winner = max(range(50257), key=reference.__getitem__)
                 observed_winner = max(range(50257), key=candidate.__getitem__)
+                difference = observed.astype(np.float64) - baseline.astype(np.float64)
                 stream.write(struct.pack("<III", sequence, position, winner))
                 stream.write(baseline.tobytes())
                 stream.write(observed.tobytes())
                 row = {"sequence": sequence, "position": position, "winner": winner,
                        "quantized_winner": observed_winner,
+                       "max_absolute_difference": float(np.max(np.abs(difference))),
+                       "rms_difference": float(np.sqrt(np.mean(difference * difference))),
                        "fp32_logits_sha256": hashlib.sha256(baseline.tobytes()).hexdigest(),
                        "quantized_logits_sha256": hashlib.sha256(observed.tobytes()).hexdigest(),
                        "raw": margin_record(reference, candidate, winner, 0),
