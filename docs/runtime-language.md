@@ -185,3 +185,54 @@ after push and append. Universal failure and length-bound proofs cover growth
 failure; the result does not rely on constructing huge arrays in tests. The
 machine extension preserves the existing safety results for nested arrays,
 calls, lexical environments, and continuations.
+
+## Next increment: nominal recursive data
+
+This section specifies the next increment, which is being implemented. It is
+not yet part of the checked safety result reported above.
+
+A declaration table maps each nominal datatype index to a finite ordered list
+of constructors; each constructor has a finite ordered list of field types.
+Types gain a nominal reference `data i`. Formation requires every reference,
+including references under products, sums, and arrays, to name an entry in the
+table. Every field of every constructor is checked. Function signatures and
+local typing contexts also require well-formed types.
+
+Recursive references are names, not instructions to unfold declarations during
+checking. Self-recursion and mutual recursion are allowed. The first-order field
+grammar contains only positive type constructors; there are no function domains
+or type-level computations in which to hide a negative occurrence. Values remain
+finite inductive trees. This is not a representation of cyclic mutable heaps.
+These declarations are monomorphic; source specialization and dependent indexed
+families are separate questions.
+
+Zero-constructor declarations are allowed. A recursively declared type may have
+no finite inhabitants. Neither property is a type error, and declaration validity
+does not assert inhabitance or program termination.
+
+`dataCtor dataId ctorId fields` supplies exactly the declared field list. Field
+expressions evaluate left to right. `dataCase dataId resultTy scrutinee branches`
+has one branch for every constructor, in declaration order. Each branch carries
+its field arity explicitly; typing checks the annotation against the declaration.
+There is no wildcard branch. The selected branch receives the constructor fields
+followed by its captured lexical environment, with the first field at index zero.
+Runtime matching checks both nominal identity and the selected branch's arity;
+malformed matches remain stuck rather than becoming a permitted failure.
+
+All branches are type checked, including branches not selected by an execution.
+Every pattern field must occur syntactically in its branch under the relevance
+profile. Outer-variable occurrence checking shifts by the explicit branch arity.
+Zero-field branches introduce no variables and require no artificial Unit field.
+
+Formation must hold inside derivations, not just for the final result type.
+Sum introductions must validate the unselected summand, and empty arrays must
+validate their element type. Otherwise malformed types could disappear beneath
+eliminators. A zero-branch match must validate its explicit result type, since
+there is no branch from which to derive its formation.
+
+The proof obligations are: declaration-checker soundness and completeness;
+formation of expression, argument, value, and environment types; exact constructor
+and branch lookup; nominal canonical forms; then extensions of preservation,
+progress, and reachable-state safety. Program typing must include well-formed
+declarations and signatures as well as checked bodies. This adds formation
+premises to the language judgments, never an assumption of safe execution.

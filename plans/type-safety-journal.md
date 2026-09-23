@@ -201,3 +201,27 @@ exact official Lean archive, again matching SHA-256
 The container cannot restore archive owner IDs, so extraction was repeated with
 --no-same-owner. The restored baseline passed the full gate: seven build jobs,
 113 examples, and 52 theorem audits. No source or proof changed during recovery.
+
+2026-09-23: Agreed the nominal-data design after a read-only review. Declarations
+are finite tables of constructor field lists; references are bounded nominal
+indices, so formation terminates without unfolding recursive definitions. Empty
+types, empty constructors, and arbitrary mutual recursion are permitted. There
+are no negative field occurrences in the first-order type grammar. Runtime
+values remain finite trees. Case expressions carry explicit result types and
+branch arities; typing enforces exact branch coverage and declared field counts,
+and execution checks nominal identity and selected arity before binding fields.
+
+The review rejected checking only a term's outer type: an invalid empty-array
+annotation can disappear under size, and an invalid absent sum summand can
+disappear under case. Sum introduction and empty arrays therefore receive
+formation premises in expression and value typing. An empty nominal match also
+requires its explicit result type to be well formed. Program typing now needs
+declaration and signature formation as well as body typing; no safe-execution
+premise is introduced.
+
+The agent's focused Formation target passed, including exact Boolean-checker
+characterizations. Its focused Core target then passed with nominal syntax,
+canonical forms, exhaustive branch typing, and expression/argument/value/
+environment formation theorems. Machine, array, and profile integration and the
+expanded gate are still in progress at this contract checkpoint. The parent has
+migrated existing examples and is adding independent nominal boundary examples.
