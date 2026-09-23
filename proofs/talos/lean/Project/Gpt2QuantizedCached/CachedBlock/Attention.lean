@@ -47,7 +47,7 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       heap.Frame initial (Gpt2CachedStep.CachedAttention.finalHeap heap position) final →
       final.mem.pages ≤ 65536 → final.memoryCap Project.Gpt2CachedStep.«module» 0 = initial.memoryCap Project.Gpt2CachedStep.«module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((normalizedSuccess.drop 79).take 34 ++ rest) Q initial frame env := by
+    wp «module» (attentionCode ++ rest) Q initial frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hBase, hNormalizedOwner, hNormalizedPtr,
     hNormalizedBytes, hCopiedOwner, hCopiedPtr, hCopiedBytes, hTyped⟩,
     hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes⟩
@@ -55,7 +55,6 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     cache qkv layer position hHeap hCache hQkv hCacheProtected hQkvProtected hLayer hPosition
     hCacheSize (by rw [hQkvSize]) hResources hPages
   simp only [hQkvSize] at hCall
-  rw [emitted_attention]
   simp only [attentionCode, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, parameters, hLocals, hValues, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes]
   refine wp_call_tw hCall ?_
