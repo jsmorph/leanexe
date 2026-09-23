@@ -175,6 +175,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [Typing.lean](../LeanExe/TypeSafety/Typing.lean) | Total inference, exact admission checks, type uniqueness, and checker-to-safety corollaries. |
 | [BoolDerived.lean](../LeanExe/TypeSafety/BoolDerived.lean) | Strict Boolean source expansions, typing/inference/relevance equations, staging and truth-table execution proofs. |
 | [ValueEquality.lean](../LeanExe/TypeSafety/ValueEquality.lean) | Total raw value/list comparison and exact equality laws; no source equality primitive or admission judgment yet. |
+| [EqualityFlags.lean](../LeanExe/TypeSafety/EqualityFlags.lean) | Constructive monotone Boolean-table saturation and its proved iteration bound; equality admission is still pending. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -195,7 +196,7 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [35 natural-case examples](../test/type_safety_nat_case.lean),
 [47 Boolean examples](../test/type_safety_booleans.lean), and
 [25 raw equality examples](../test/type_safety_value_equality.lean). It audits the
-transitive axiom dependencies of all 265 declared theorems across the twelve
+transitive axiom dependencies of all 278 declared theorems across the thirteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -315,3 +316,10 @@ identities, constructors, field order, and lengths. These are mathematical
 operation laws, not source admission or compiler-correctness results. The
 comparison accepts raw malformed values as inputs; it does not validate them.
 There is not yet a structural-equality expression or proved `EqTy` checker.
+
+
+`EqualityCheck.saturate_stable` proves that a monotone, length-preserving
+transformer on Boolean tables stabilizes from the all-false table within the
+table length. Its proof uses a direct count of true entries. This generic
+iteration bound is checked; the equality-specific closure judgment and checker
+correspondence remain the next obligation.

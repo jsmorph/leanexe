@@ -1,4 +1,5 @@
 import LeanExe.TypeSafety.Formation
+import LeanExe.TypeSafety.EqualityFlags
 import LeanExe.TypeSafety.NatOperations
 import LeanExe.TypeSafety.BitOperations
 import LeanExe.TypeSafety.WordOperations

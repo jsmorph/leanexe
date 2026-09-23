@@ -273,6 +273,19 @@ const auditedTheorems = [
   "valuesEq_nil_right",
   "valuesEq_cons",
   "valuesEq_length",
+  "EqualityCheck.FlagsLE.refl",
+  "EqualityCheck.FlagsLE.trans",
+  "EqualityCheck.FlagsLE.length",
+  "EqualityCheck.FlagsLE.lookup",
+  "EqualityCheck.FlagsLE.bottom",
+  "EqualityCheck.trueCount_le_length",
+  "EqualityCheck.FlagsLE.count_le",
+  "EqualityCheck.FlagsLE.eq_of_count_eq",
+  "EqualityCheck.FlagsLE.count_lt_of_ne",
+  "EqualityCheck.saturate_length",
+  "EqualityCheck.saturate_le_next",
+  "EqualityCheck.saturate_stable_or_count",
+  "EqualityCheck.saturate_stable",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
