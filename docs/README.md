@@ -12,6 +12,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [Type Theory of the LeanExe Fragment](leanexe-type-theory.md) | Mathematical typing, representation, specialization, and ownership judgments, with implementation-defined recognition premises. |
 | [Formal Specification of Compilation and Execution](leanexe-formal-specification.md) | Compilation and execution relations, numeric and collection operations, heap representation, ABI, WASI, and open proof obligations. |
 | [Compiler Architecture](compiler.md) | Extraction, specialization, IR, ownership analysis, WASM emission, annotations, and compiler theorem boundaries. |
+| [Native WASI API](wasi.md) | Preview 1 operations, action sequencing, owned buffers, native errors, polling, and command execution. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Canonical final-module image, host ABI, precise self-hosting claim, compatibility rules, and bootstrap receipt. |
 | [Architecture Diagram](leanexe.png) | High-level source, compilation, annotation, LTG, execution, and proof flow. |
 | [JSON Tree WASI Example](demo.md) | Source, compilation, command execution, and verification for a typed tree-processing program. |

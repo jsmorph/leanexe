@@ -49,7 +49,7 @@ Use these rules before reaching for more specific templates:
 
 Avoid these forms in source intended for LeanExe:
 
-- Runtime `String`, runtime `Char`, `IO`, `EIO`, `BaseIO`, `Task`, file access, randomness, time, concurrency, reflection, and FFI.
+- Runtime `String`, runtime `Char`, arbitrary `IO`, `EIO`, `Task`, concurrency, reflection, and FFI.  Host operations are available through `LeanExe.Wasi.Action` only in [native WASI mode](wasi.md).
 - `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, and arbitrary Lean runtime calls.
 - Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
 - Runtime-polymorphic public entries, shared generic runtime helper bodies, runtime class dictionaries, and unresolved class-constrained entries.
@@ -65,12 +65,13 @@ Public entries must be monomorphic after elaboration.  A public function with a 
 
 ## Entry Shapes
 
-Choose the compile command from the entry type.  The Lean source stays pure in every mode.  WASI adapters add command behavior around the pure entry.
+Choose the compile command from the entry type.  WASI adapters add command behavior around a pure entry.  Native WASI mode accepts an `Action UInt32` entry that sequences explicit host operations.
 
 | Entry type | Command | Runtime behavior |
 |------------|---------|------------------|
 | Scalar or ABI value function | `compile` | Exports a callable WASM function, `memory`, `alloc`, and `reset`. |
-| Any accepted entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
+| Any accepted pure entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
+| `LeanExe.Wasi.Action UInt32` | `compile-wasi-api` | Runs native Preview 1 operations and uses the returned value as the process exit code. See the [WASI API](wasi.md) for values, errors, polling, and examples. |
 | `ByteArray` | `compile-wasi` | Calls the entry and writes returned bytes to stdout. |
 | `ByteArray -> ByteArray` | `compile-wasi-stdin` | Reads bounded stdin and writes returned bytes to stdout. |
 | `ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-except` | Writes `ok` bytes to stdout, writes `error` bytes to stderr, and exits nonzero. |
