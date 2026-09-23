@@ -263,16 +263,17 @@ theorem get_after_append_right :
 
 end ArrayValues
 
-theorem ValuesTyped.append (left : ValuesTyped values α) (right : ValuesTyped values' α) :
-    ValuesTyped (values ++ values') α := by
+theorem ValuesTyped.append (left : ValuesTyped declarations values α)
+    (right : ValuesTyped declarations values' α) :
+    ValuesTyped declarations (values ++ values') α := by
   induction values with
   | nil => exact right
   | cons value rest ih =>
       cases left with
       | cons hvalue hrest => exact .cons hvalue (ih hrest)
 
-theorem ValuesTyped.lookup (typed : ValuesTyped elements α)
-    (found : lookup elements index = some value) : ValueTyped value α := by
+theorem ValuesTyped.lookup (typed : ValuesTyped declarations elements α)
+    (found : lookup elements index = some value) : ValueTyped declarations value α := by
   induction elements generalizing index with
   | nil => simp [LeanExe.TypeSafety.lookup] at found
   | cons head rest ih =>
@@ -285,9 +286,10 @@ theorem ValuesTyped.lookup (typed : ValuesTyped elements α)
               exact hvalue
           | succ index => exact ih hrest found
 
-theorem ValuesTyped.replace (typed : ValuesTyped elements α) (hvalue : ValueTyped value α)
+theorem ValuesTyped.replace (typed : ValuesTyped declarations elements α)
+    (hvalue : ValueTyped declarations value α)
     (changed : ArrayValues.replace? elements index value = some result) :
-    ValuesTyped result α := by
+    ValuesTyped declarations result α := by
   induction elements generalizing index result with
   | nil => simp [ArrayValues.replace?] at changed
   | cons head rest ih =>
@@ -309,48 +311,56 @@ theorem ValuesTyped.replace (typed : ValuesTyped elements α) (hvalue : ValueTyp
 
 namespace ArrayValues
 
-theorem empty_typed (item : Ty) : ValueTyped (.array []) (.array item) :=
-  .array .nil (by decide)
+theorem empty_typed (item : Ty) (formed : TyWF declarations item) :
+    ValueTyped declarations (.array []) (.array item) :=
+  .array (.nil formed) (by decide)
 
-theorem get_typed (typed : ValuesTyped elements α) :
-    ValueTyped (get? elements index) (.sum .unit α) := by
+theorem get_typed (typed : ValuesTyped declarations elements α) :
+    ValueTyped declarations (get? elements index) (.sum .unit α) := by
   cases found : lookup elements index with
-  | none => simpa only [get?, found] using (ValueTyped.inl ValueTyped.unit :
-      ValueTyped (.inl .unit) (.sum .unit α))
-  | some value => simpa only [get?, found] using ValueTyped.inr (typed.lookup found)
+  | none => simpa only [get?, found] using
+      (ValueTyped.inl ValueTyped.unit typed.wellFormed :
+        ValueTyped declarations (.inl .unit) (.sum .unit α))
+  | some value =>
+      simpa only [get?, found] using ValueTyped.inr (typed.lookup found) TyWF.unit
 
-theorem set_typed (typed : ValuesTyped elements α) (bounded : elements.length < nat64Limit)
-    (hvalue : ValueTyped value α) :
-    ValueTyped (set? elements index value) (.sum .unit (.array α)) := by
+theorem set_typed (typed : ValuesTyped declarations elements α)
+    (bounded : elements.length < nat64Limit) (hvalue : ValueTyped declarations value α) :
+    ValueTyped declarations (set? elements index value) (.sum .unit (.array α)) := by
   cases found : replace? elements index value with
-  | none => simpa only [set?, found] using (ValueTyped.inl ValueTyped.unit :
-      ValueTyped (.inl .unit) (.sum .unit (.array α)))
+  | none => simpa only [set?, found] using
+      (ValueTyped.inl ValueTyped.unit (.array typed.wellFormed) :
+        ValueTyped declarations (.inl .unit) (.sum .unit (.array α)))
   | some result =>
       have resultBound : result.length < nat64Limit := by
         rw [replace_length found]
         exact bounded
       simpa only [set?, found] using ValueTyped.inr
-        (ValueTyped.array (typed.replace hvalue found) resultBound)
+        (ValueTyped.array (typed.replace hvalue found) resultBound) TyWF.unit
 
-theorem push_typed (typed : ValuesTyped elements α) (hvalue : ValueTyped value α) :
-    ValueTyped (push? elements value) (.sum .unit (.array α)) := by
+theorem push_typed (typed : ValuesTyped declarations elements α)
+    (hvalue : ValueTyped declarations value α) :
+    ValueTyped declarations (push? elements value) (.sum .unit (.array α)) := by
   by_cases bounded : elements.length + 1 < nat64Limit
   · have resultBound : (elements ++ [value]).length < nat64Limit := by
       simpa only [List.length_append, List.length_cons, List.length_nil] using bounded
     simpa [push?, bounded] using ValueTyped.inr
-      (ValueTyped.array (typed.append (.cons hvalue .nil)) resultBound)
-  · simpa [push?, bounded] using (ValueTyped.inl ValueTyped.unit :
-      ValueTyped (.inl .unit) (.sum .unit (.array α)))
+      (ValueTyped.array (typed.append (.cons hvalue (.nil typed.wellFormed))) resultBound) TyWF.unit
+  · simpa [push?, bounded] using
+      (ValueTyped.inl ValueTyped.unit (.array typed.wellFormed) :
+        ValueTyped declarations (.inl .unit) (.sum .unit (.array α)))
 
-theorem append_typed (leftTyped : ValuesTyped left α) (rightTyped : ValuesTyped right α) :
-    ValueTyped (append? left right) (.sum .unit (.array α)) := by
+theorem append_typed (leftTyped : ValuesTyped declarations left α)
+    (rightTyped : ValuesTyped declarations right α) :
+    ValueTyped declarations (append? left right) (.sum .unit (.array α)) := by
   by_cases bounded : left.length + right.length < nat64Limit
   · have resultBound : (left ++ right).length < nat64Limit := by
       simpa only [List.length_append] using bounded
     simpa [append?, bounded] using ValueTyped.inr
-      (ValueTyped.array (leftTyped.append rightTyped) resultBound)
-  · simpa [append?, bounded] using (ValueTyped.inl ValueTyped.unit :
-      ValueTyped (.inl .unit) (.sum .unit (.array α)))
+      (ValueTyped.array (leftTyped.append rightTyped) resultBound) TyWF.unit
+  · simpa [append?, bounded] using
+      (ValueTyped.inl ValueTyped.unit (.array leftTyped.wellFormed) :
+        ValueTyped declarations (.inl .unit) (.sum .unit (.array α)))
 
 end ArrayValues
 

@@ -24,8 +24,8 @@ def sample : Value := .array [.nat 11, .nat 22, .nat 33]
 example : run [] 10 (initial (.arrayEmpty .nat64)) = .ret (.array []) [] := by rfl
 example : run [] 10 (initial (.arraySize (.arrayEmpty .nat64))) =
     .ret (.nat 0) [] := by rfl
-example : ProfileTyped [] [] (.arrayEmpty .nat64) (.array .nat64) :=
-  ⟨.arrayEmpty, rfl⟩
+example : ProfileTyped [] [] [] (.arrayEmpty .nat64) (.array .nat64) :=
+  ⟨.arrayEmpty .nat64, rfl⟩
 
 -- Boundary indices include zero, the last element, and the exclusive endpoint.
 example : run [] 20 (.eval (.arraySize (.var 0)) [sample] []) =
@@ -107,23 +107,23 @@ def sizeAfterPush : Expr := .sumCase
 
 example : admissible sizeAfterPush = true := by rfl
 example : run [] 50 (initial sizeAfterPush) = .ret (.nat 1) [] := by rfl
-example : ProfileTyped [] [] sizeAfterPush .nat64 :=
-  ⟨.sumCase (.arrayPush? .arrayEmpty (.nat (by decide)))
+example : ProfileTyped [] [] [] sizeAfterPush .nat64 :=
+  ⟨.sumCase (.arrayPush? (.arrayEmpty .nat64) (.nat (by decide)))
     (.unitCase (.var rfl) (.nat (by decide))) (.arraySize (.var rfl)), rfl⟩
 
 -- Array parameters cross the same first-order call boundary as scalar values.
 def sizeSignatures : Signatures := [⟨[.array .nat64], .nat64⟩]
 def sizeProgram : Program := [.arraySize (.var 0)]
 
-example : ProfileProgramTyped sizeProgram sizeSignatures :=
-  ⟨.cons (.arraySize (.var rfl)) .nil, rfl⟩
-example : ProfileTyped sizeSignatures [] (.call 0 [.arrayEmpty .nat64]) .nat64 :=
-  ⟨.call rfl (.cons .arrayEmpty .nil), rfl⟩
+example : ProfileProgramTyped [] sizeProgram sizeSignatures :=
+  ⟨⟨.nil, signaturesWellFormed_iff.mp rfl, .cons (.arraySize (.var rfl)) .nil⟩, rfl⟩
+example : ProfileTyped [] sizeSignatures [] (.call 0 [.arrayEmpty .nat64]) .nat64 :=
+  ⟨.call rfl (.cons (.arrayEmpty .nat64) .nil), rfl⟩
 example : run sizeProgram 40 (.eval (.call 0 [.var 0]) [sample] []) =
     .ret (.nat 3) [] := by rfl
 
 -- Typing rejects shape errors independently of the relevance check.
-example : ¬ ExprTyped signatures Γ
+example : ¬ ExprTyped [] signatures Γ
     (.arrayPush? (.arrayEmpty .nat64) (.bool true)) τ := by
   intro typed
   cases typed with
@@ -131,13 +131,13 @@ example : ¬ ExprTyped signatures Γ
       cases arrayTyped
       cases itemTyped
 
-example : ¬ ExprTyped signatures Γ
+example : ¬ ExprTyped [] signatures Γ
     (.arrayGet? (.arrayEmpty .nat64) (.bool false)) τ := by
   intro typed
   cases typed with
   | arrayGet? _ indexTyped => cases indexTyped
 
-example : ¬ ValueTyped (.array [.nat 1, .bool true]) (.array .nat64) := by
+example : ¬ ValueTyped [] (.array [.nat 1, .bool true]) (.array .nat64) := by
   intro typed
   cases typed with
   | array elements _ =>
@@ -146,7 +146,7 @@ example : ¬ ValueTyped (.array [.nat 1, .bool true]) (.array .nat64) := by
           cases rest with
           | cons item _ => cases item
 
-example : ¬ ValueTyped (.array [.nat nat64Limit]) (.array .nat64) := by
+example : ¬ ValueTyped [] (.array [.nat nat64Limit]) (.array .nat64) := by
   intro typed
   cases typed with
   | array elements _ =>

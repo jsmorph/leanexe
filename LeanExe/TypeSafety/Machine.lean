@@ -15,9 +15,11 @@ needed after the result returns. Recursive calls are allowed.
 `step` returns `none` both for terminal states and for malformed/stuck states.
 Consequently progress is substantive: a missing variable, a non-Boolean
 condition, or a projection from a scalar is not silently relabeled a failure.
-The only machine failure is checked natural-number addition overflow. Checked
+The only failure terminal is checked natural-number addition overflow. Checked
 array operations evaluate all operands from left to right; bounds and growth
-failures return `inl unit` as ordinary data.
+failures return `inl unit` as ordinary data. Nominal construction evaluates fields
+in order. Matching checks both nominal identity and the selected branch arity,
+then prepends fields in declaration order to the captured lexical environment.
 -/
 
 namespace LeanExe.TypeSafety
@@ -48,6 +50,8 @@ inductive Frame where
   | arrayPushValue (elements : List Value)
   | arrayAppendLeft (right : Expr) (env : Env)
   | arrayAppendRight (left : List Value)
+  | dataFields (dataId constructor : Nat) (done : Env) (remaining : List Expr) (env : Env)
+  | dataBranches (dataId : Nat) (branches : List (Nat × Expr)) (env : Env)
   deriving Repr
 
 abbrev Kont := List Frame
@@ -100,6 +104,12 @@ def step (program : Program) : State → Option State
       some (.eval array env (.arrayPushArray value env :: kont))
   | .eval (.arrayAppend? left right) env kont =>
       some (.eval left env (.arrayAppendLeft right env :: kont))
+  | .eval (.dataCtor dataId constructor []) _ kont =>
+      some (.ret (.data dataId constructor []) kont)
+  | .eval (.dataCtor dataId constructor (field :: rest)) env kont =>
+      some (.eval field env (.dataFields dataId constructor [] rest env :: kont))
+  | .eval (.dataCase dataId _ scrutinee branches) env kont =>
+      some (.eval scrutinee env (.dataBranches dataId branches env :: kont))
   | .ret _ [] => none
   | .ret value (.letBody body env :: kont) =>
       some (.eval body (value :: env) kont)
@@ -148,6 +158,18 @@ def step (program : Program) : State → Option State
       some (.eval right env (.arrayAppendRight left :: kont))
   | .ret (.array right) (.arrayAppendRight left :: kont) =>
       some (.ret (ArrayValues.append? left right) kont)
+  | .ret value (.dataFields dataId constructor done [] _ :: kont) =>
+      some (.ret (.data dataId constructor (done ++ [value])) kont)
+  | .ret value (.dataFields dataId constructor done (field :: rest) env :: kont) =>
+      some (.eval field env
+        (.dataFields dataId constructor (done ++ [value]) rest env :: kont))
+  | .ret (.data actualId constructor fields) (.dataBranches dataId branches env :: kont) =>
+      if actualId = dataId then
+        match lookup branches constructor with
+        | none => none
+        | some (arity, body) =>
+            if arity = fields.length then some (.eval body (fields ++ env) kont) else none
+      else none
   | .ret _ (_ :: _) => none
   | .overflow _ _ => none
 
@@ -161,69 +183,91 @@ def Terminal : State → Prop
   | _ => False
 
 /-- The captured environment is part of each suspended expression's invariant. -/
-inductive FrameTyped (signatures : Signatures) : Frame → Ty → Ty → Prop where
-  | letBody : ExprTyped signatures (α :: Γ) body β → EnvTyped env Γ →
-      FrameTyped signatures (.letBody body env) α β
-  | ifBranches : ExprTyped signatures Γ yes τ → ExprTyped signatures Γ no τ → EnvTyped env Γ →
-      FrameTyped signatures (.ifBranches yes no env) .bool τ
-  | pairLeft : ExprTyped signatures Γ right β → EnvTyped env Γ →
-      FrameTyped signatures (.pairLeft right env) α (.prod α β)
-  | pairRight : ValueTyped left α → FrameTyped signatures (.pairRight left) β (.prod α β)
-  | fst : FrameTyped signatures .fst (.prod α β) α
-  | snd : FrameTyped signatures .snd (.prod α β) β
-  | splitBody : ExprTyped signatures (α :: β :: Γ) body τ → EnvTyped env Γ →
-      FrameTyped signatures (.splitBody body env) (.prod α β) τ
-  | unitBody : ExprTyped signatures Γ body τ → EnvTyped env Γ →
-      FrameTyped signatures (.unitBody body env) .unit τ
-  | inl : FrameTyped signatures .inl α (.sum α β)
-  | inr : FrameTyped signatures .inr β (.sum α β)
-  | sumBranches : ExprTyped signatures (α :: Γ) left τ → ExprTyped signatures (β :: Γ) right τ →
-      EnvTyped env Γ → FrameTyped signatures (.sumBranches left right env) (.sum α β) τ
-  | addLeft : ExprTyped signatures Γ right .nat64 → EnvTyped env Γ →
-      FrameTyped signatures (.addLeft right env) .nat64 .nat64
-  | addRight : ValueTyped left .nat64 → FrameTyped signatures (.addRight left) .nat64 .nat64
+inductive FrameTyped (declarations : DataDecls) (signatures : Signatures) : Frame → Ty → Ty → Prop where
+  | letBody : ExprTyped declarations signatures (α :: Γ) body β → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.letBody body env) α β
+  | ifBranches : ExprTyped declarations signatures Γ yes τ →
+      ExprTyped declarations signatures Γ no τ → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.ifBranches yes no env) .bool τ
+  | pairLeft : ExprTyped declarations signatures Γ right β → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.pairLeft right env) α (.prod α β)
+  | pairRight : ValueTyped declarations left α →
+      FrameTyped declarations signatures (.pairRight left) β (.prod α β)
+  | fst : FrameTyped declarations signatures .fst (.prod α β) α
+  | snd : FrameTyped declarations signatures .snd (.prod α β) β
+  | splitBody : ExprTyped declarations signatures (α :: β :: Γ) body τ → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.splitBody body env) (.prod α β) τ
+  | unitBody : ExprTyped declarations signatures Γ body τ → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.unitBody body env) .unit τ
+  | inl : TyWF declarations β → FrameTyped declarations signatures .inl α (.sum α β)
+  | inr : TyWF declarations α → FrameTyped declarations signatures .inr β (.sum α β)
+  | sumBranches : ExprTyped declarations signatures (α :: Γ) left τ →
+      ExprTyped declarations signatures (β :: Γ) right τ →
+      EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.sumBranches left right env) (.sum α β) τ
+  | addLeft : ExprTyped declarations signatures Γ right .nat64 → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.addLeft right env) .nat64 .nat64
+  | addRight : ValueTyped declarations left .nat64 →
+      FrameTyped declarations signatures (.addRight left) .nat64 .nat64
 
   | callArgs (found : lookup signatures function = some ⟨params, result⟩) :
-      EnvTyped done doneTypes → ArgsTyped signatures Γ remaining remainingTypes →
-      EnvTyped env Γ → doneTypes ++ (α :: remainingTypes) = params →
-      FrameTyped signatures (.callArgs function done remaining env) α result
-  | arraySize : FrameTyped signatures .arraySize (.array α) .nat64
-  | arrayGetArray : ExprTyped signatures Γ index .nat64 → EnvTyped env Γ →
-      FrameTyped signatures (.arrayGetArray index env) (.array α) (.sum .unit α)
-  | arrayGetIndex : ValuesTyped elements α → elements.length < nat64Limit →
-      FrameTyped signatures (.arrayGetIndex elements) .nat64 (.sum .unit α)
-  | arraySetArray : ExprTyped signatures Γ index .nat64 →
-      ExprTyped signatures Γ replacement α → EnvTyped env Γ →
-      FrameTyped signatures (.arraySetArray index replacement env)
+      EnvTyped declarations done doneTypes →
+      ArgsTyped declarations signatures Γ remaining remainingTypes →
+      EnvTyped declarations env Γ → doneTypes ++ (α :: remainingTypes) = params →
+      FrameTyped declarations signatures (.callArgs function done remaining env) α result
+  | arraySize : FrameTyped declarations signatures .arraySize (.array α) .nat64
+  | arrayGetArray : ExprTyped declarations signatures Γ index .nat64 → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.arrayGetArray index env) (.array α) (.sum .unit α)
+  | arrayGetIndex : ValuesTyped declarations elements α → elements.length < nat64Limit →
+      FrameTyped declarations signatures (.arrayGetIndex elements) .nat64 (.sum .unit α)
+  | arraySetArray : ExprTyped declarations signatures Γ index .nat64 →
+      ExprTyped declarations signatures Γ replacement α → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.arraySetArray index replacement env)
         (.array α) (.sum .unit (.array α))
-  | arraySetIndex : ValuesTyped elements α → elements.length < nat64Limit →
-      ExprTyped signatures Γ replacement α → EnvTyped env Γ →
-      FrameTyped signatures (.arraySetIndex elements replacement env)
+  | arraySetIndex : ValuesTyped declarations elements α → elements.length < nat64Limit →
+      ExprTyped declarations signatures Γ replacement α → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.arraySetIndex elements replacement env)
         .nat64 (.sum .unit (.array α))
-  | arraySetValue : ValuesTyped elements α → elements.length < nat64Limit → index < nat64Limit →
-      FrameTyped signatures (.arraySetValue elements index) α (.sum .unit (.array α))
-  | arrayPushArray : ExprTyped signatures Γ value α → EnvTyped env Γ →
-      FrameTyped signatures (.arrayPushArray value env) (.array α) (.sum .unit (.array α))
-  | arrayPushValue : ValuesTyped elements α → elements.length < nat64Limit →
-      FrameTyped signatures (.arrayPushValue elements) α (.sum .unit (.array α))
-  | arrayAppendLeft : ExprTyped signatures Γ right (.array α) → EnvTyped env Γ →
-      FrameTyped signatures (.arrayAppendLeft right env) (.array α) (.sum .unit (.array α))
-  | arrayAppendRight : ValuesTyped left α → left.length < nat64Limit →
-      FrameTyped signatures (.arrayAppendRight left) (.array α) (.sum .unit (.array α))
+  | arraySetValue : ValuesTyped declarations elements α → elements.length < nat64Limit →
+      index < nat64Limit →
+      FrameTyped declarations signatures (.arraySetValue elements index) α (.sum .unit (.array α))
+  | arrayPushArray : ExprTyped declarations signatures Γ value α → EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.arrayPushArray value env) (.array α) (.sum .unit (.array α))
+  | arrayPushValue : ValuesTyped declarations elements α → elements.length < nat64Limit →
+      FrameTyped declarations signatures (.arrayPushValue elements) α (.sum .unit (.array α))
+  | arrayAppendLeft : ExprTyped declarations signatures Γ right (.array α) →
+      EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.arrayAppendLeft right env) (.array α) (.sum .unit (.array α))
+  | arrayAppendRight : ValuesTyped declarations left α → left.length < nat64Limit →
+      FrameTyped declarations signatures (.arrayAppendRight left) (.array α) (.sum .unit (.array α))
+
+  | dataFields (foundData : lookup declarations dataId = some constructors)
+      (foundCtor : lookup constructors constructor = some fieldTypes) :
+      EnvTyped declarations done doneTypes →
+      ArgsTyped declarations signatures Γ remaining remainingTypes →
+      EnvTyped declarations env Γ → doneTypes ++ (α :: remainingTypes) = fieldTypes →
+      FrameTyped declarations signatures (.dataFields dataId constructor done remaining env)
+        α (.data dataId)
+  | dataBranches (foundData : lookup declarations dataId = some constructors) :
+      TyWF declarations result →
+      BranchesTyped declarations signatures Γ branches constructors result →
+      EnvTyped declarations env Γ →
+      FrameTyped declarations signatures (.dataBranches dataId branches env) (.data dataId) result
 
 /-- A continuation consumes the current type and eventually returns the result type. -/
-inductive KontTyped (signatures : Signatures) : Kont → Ty → Ty → Prop where
-  | nil : KontTyped signatures [] τ τ
-  | cons : FrameTyped signatures frame α β → KontTyped signatures rest β τ →
-      KontTyped signatures (frame :: rest) α τ
+inductive KontTyped (declarations : DataDecls) (signatures : Signatures) : Kont → Ty → Ty → Prop where
+  | nil : TyWF declarations τ → KontTyped declarations signatures [] τ τ
+  | cons : FrameTyped declarations signatures frame α β → KontTyped declarations signatures rest β τ →
+      KontTyped declarations signatures (frame :: rest) α τ
 
-inductive StateTyped (signatures : Signatures) : State → Ty → Prop where
-  | eval : ExprTyped signatures Γ expr α → EnvTyped env Γ → KontTyped signatures kont α τ →
-      StateTyped signatures (.eval expr env kont) τ
-  | ret : ValueTyped value α → KontTyped signatures kont α τ →
-      StateTyped signatures (.ret value kont) τ
+inductive StateTyped (declarations : DataDecls) (signatures : Signatures) : State → Ty → Prop where
+  | eval : ExprTyped declarations signatures Γ expr α → EnvTyped declarations env Γ →
+      KontTyped declarations signatures kont α τ →
+      StateTyped declarations signatures (.eval expr env kont) τ
+  | ret : ValueTyped declarations value α → KontTyped declarations signatures kont α τ →
+      StateTyped declarations signatures (.ret value kont) τ
   | overflow : left < nat64Limit → right < nat64Limit → nat64Limit ≤ left + right →
-      StateTyped signatures (.overflow left right) τ
+      TyWF declarations τ → StateTyped declarations signatures (.overflow left right) τ
 
 /-- Reflexive, transitive execution; it does not assume termination. -/
 inductive Steps (program : Program) : State → State → Prop where
@@ -232,9 +276,67 @@ inductive Steps (program : Program) : State → State → Prop where
 
 def initial (expr : Expr) : State := .eval expr [] []
 
-theorem initial_typed (typed : ExprTyped signatures [] expr τ) :
-    StateTyped signatures (initial expr) τ :=
-  .eval typed .nil .nil
+/-- A well-formed input type determines a well-formed frame output type. -/
+theorem FrameTyped.wellFormed (typed : FrameTyped declarations signatures frame α β)
+    (hprogram : ProgramTyped declarations program signatures) (input : TyWF declarations α) :
+    TyWF declarations β := by
+  cases typed with
+  | letBody body env =>
+      exact body.wellFormed hprogram.declarationsWF hprogram.signaturesWF
+        (.cons input env.wellFormed)
+  | ifBranches yes _ env =>
+      exact yes.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed
+  | pairLeft right env =>
+      exact .prod input
+        (right.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed)
+  | pairRight left => exact .prod left.wellFormed input
+  | fst => exact input.prod_left
+  | snd => exact input.prod_right
+  | splitBody body env =>
+      exact body.wellFormed hprogram.declarationsWF hprogram.signaturesWF
+        (.cons input.prod_left (.cons input.prod_right env.wellFormed))
+  | unitBody body env =>
+      exact body.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed
+  | inl other => exact .sum input other
+  | inr other => exact .sum other input
+  | sumBranches left _ env =>
+      exact left.wellFormed hprogram.declarationsWF hprogram.signaturesWF
+        (.cons input.sum_left env.wellFormed)
+  | addLeft _ _ | addRight _ => exact .nat64
+  | callArgs found _ _ _ _ => exact (hprogram.signaturesWF.lookup found).result
+  | arraySize => exact .nat64
+  | arrayGetArray _ _ => exact .sum .unit input.array_item
+  | arrayGetIndex elements _ => exact .sum .unit elements.wellFormed
+  | arraySetArray _ _ _ => exact .sum .unit input
+  | arraySetIndex elements _ _ _ => exact .sum .unit (.array elements.wellFormed)
+  | arraySetValue _ _ _ => exact .sum .unit (.array input)
+  | arrayPushArray _ _ => exact .sum .unit input
+  | arrayPushValue elements _ => exact .sum .unit (.array elements.wellFormed)
+  | arrayAppendLeft _ _ | arrayAppendRight _ _ => exact .sum .unit input
+  | dataFields found _ _ _ _ _ => exact .data (lookup_lt found)
+  | dataBranches _ result _ _ => exact result
+
+theorem KontTyped.wellFormed (typed : KontTyped declarations signatures kont α τ)
+    (hprogram : ProgramTyped declarations program signatures) (input : TyWF declarations α) :
+    TyWF declarations τ := by
+  induction typed with
+  | nil result => exact result
+  | cons frame rest ih => exact ih (frame.wellFormed hprogram input)
+
+/-- Public runtime typing never assigns a malformed result, including at overflow. -/
+theorem StateTyped.wellFormed (typed : StateTyped declarations signatures state τ)
+    (hprogram : ProgramTyped declarations program signatures) : TyWF declarations τ := by
+  cases typed with
+  | eval expr env kont =>
+      exact kont.wellFormed hprogram
+        (expr.wellFormed hprogram.declarationsWF hprogram.signaturesWF env.wellFormed)
+  | ret value kont => exact kont.wellFormed hprogram value.wellFormed
+  | overflow _ _ _ result => exact result
+
+theorem initial_typed (hprogram : ProgramTyped declarations program signatures)
+    (typed : ExprTyped declarations signatures [] expr τ) :
+    StateTyped declarations signatures (initial expr) τ :=
+  .eval typed .nil (.nil (typed.wellFormed hprogram.declarationsWF hprogram.signaturesWF .nil))
 
 theorem step_deterministic (left : Step program state next₁) (right : Step program state next₂) :
     next₁ = next₂ := by

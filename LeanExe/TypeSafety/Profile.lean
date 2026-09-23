@@ -42,12 +42,24 @@ def uses (index : Nat) : Expr → Bool
       uses index array || uses index position || uses index replacement
   | .arrayPush? array value => uses index array || uses index value
   | .arrayAppend? left right => uses index left || uses index right
+  | .dataCtor _ _ fields => usesArgs index fields
+  | .dataCase _ _ scrutinee branches => uses index scrutinee || usesBranches index branches
 
 /-- Occurrence in a finite argument list. -/
 def usesArgs (index : Nat) : List Expr → Bool
   | [] => false
   | argument :: rest => uses index argument || usesArgs index rest
+
+/-- Pattern fields precede the captured context; each explicit arity shifts outer indices. -/
+def usesBranches (index : Nat) : List (Nat × Expr) → Bool
+  | [] => false
+  | (arity, body) :: rest => uses (index + arity) body || usesBranches index rest
 end
+
+/-- All indices in a function's parameter environment must occur in its body. -/
+def parametersUsed : Nat → Expr → Bool
+  | 0, _ => true
+  | count + 1, body => parametersUsed count body && uses count body
 
 mutual
 /-- The decidable source restriction, separate from the expression typing rules. -/
@@ -73,17 +85,20 @@ def admissible : Expr → Bool
       admissible array && (admissible index && admissible replacement)
   | .arrayPush? array value => admissible array && admissible value
   | .arrayAppend? left right => admissible left && admissible right
+  | .dataCtor _ _ fields => admissibleArgs fields
+  | .dataCase _ _ scrutinee branches => admissible scrutinee && admissibleBranches branches
 
 /-- Every argument must itself satisfy the source restriction. -/
 def admissibleArgs : List Expr → Bool
   | [] => true
   | argument :: rest => admissible argument && admissibleArgs rest
-end
 
-/-- All indices in a function's parameter environment must occur in its body. -/
-def parametersUsed : Nat → Expr → Bool
-  | 0, _ => true
-  | count + 1, body => parametersUsed count body && uses count body
+/-- Every branch is admitted and every declared pattern field has a syntactic use. -/
+def admissibleBranches : List (Nat × Expr) → Bool
+  | [] => true
+  | (arity, body) :: rest =>
+      admissible body && (parametersUsed arity body && admissibleBranches rest)
+end
 
 /-- Check every body, every parameter, and exact program/signature alignment. -/
 def programAdmissible : Program → Signatures → Bool
@@ -93,11 +108,13 @@ def programAdmissible : Program → Signatures → Bool
         (parametersUsed signature.params.length body && programAdmissible bodies signatures)
   | _, _ => false
 
-def ProfileTyped (signatures : Signatures) (Γ : Context) (expr : Expr) (τ : Ty) : Prop :=
-  ExprTyped signatures Γ expr τ ∧ admissible expr = true
+def ProfileTyped (declarations : DataDecls) (signatures : Signatures)
+    (Γ : Context) (expr : Expr) (τ : Ty) : Prop :=
+  ExprTyped declarations signatures Γ expr τ ∧ admissible expr = true
 
-def ProfileProgramTyped (program : Program) (signatures : Signatures) : Prop :=
-  ProgramTyped program signatures ∧ programAdmissible program signatures = true
+def ProfileProgramTyped (declarations : DataDecls) (program : Program)
+    (signatures : Signatures) : Prop :=
+  ProgramTyped declarations program signatures ∧ programAdmissible program signatures = true
 
 theorem usesArgs_iff : usesArgs index arguments = true ↔
     ∃ argument ∈ arguments, uses index argument = true := by
@@ -115,6 +132,31 @@ theorem usesArgs_iff : usesArgs index arguments = true ↔
         -- The direct equation avoids the quotient dependency of `Bool.or_eq_true_iff`.
         rcases (Iff.of_eq (Bool.or_eq_true _ _)).mp checked with here | later
         · exact ⟨argument, .head _, here⟩
+        · obtain ⟨found, member, used⟩ := ih.mp later
+          exact ⟨found, .tail _ member, used⟩
+      · intro witness
+        obtain ⟨found, member, used⟩ := witness
+        cases member with
+        | head => exact (Iff.of_eq (Bool.or_eq_true _ _)).mpr (.inl used)
+        | tail _ member =>
+            exact (Iff.of_eq (Bool.or_eq_true _ _)).mpr (.inr (ih.mpr ⟨found, member, used⟩))
+
+theorem usesBranches_iff : usesBranches index branches = true ↔
+    ∃ branch ∈ branches, uses (index + branch.1) branch.2 = true := by
+  induction branches with
+  | nil =>
+      constructor
+      · intro impossible
+        cases impossible
+      · intro witness
+        obtain ⟨branch, member, _⟩ := witness
+        cases member
+  | cons branch rest ih =>
+      obtain ⟨arity, body⟩ := branch
+      constructor
+      · intro checked
+        rcases (Iff.of_eq (Bool.or_eq_true _ _)).mp checked with here | later
+        · exact ⟨_, .head _, here⟩
         · obtain ⟨found, member, used⟩ := ih.mp later
           exact ⟨found, .tail _ member, used⟩
       · intro witness
@@ -186,6 +228,47 @@ theorem admissibleArgs_iff : admissibleArgs arguments = true ↔
           ⟨allAdmissible argument (.head _),
             ih.mpr (fun found member => allAdmissible found (.tail _ member))⟩
 
+theorem admissibleBranches_iff : admissibleBranches branches = true ↔
+    ∀ branch ∈ branches, admissible branch.2 = true ∧
+      ∀ index, index < branch.1 → uses index branch.2 = true := by
+  induction branches with
+  | nil =>
+      constructor
+      · intro _ branch member
+        cases member
+      · intro _
+        rfl
+  | cons branch rest ih =>
+      obtain ⟨arity, body⟩ := branch
+      constructor
+      · intro checked found member
+        obtain ⟨bodyAdmitted, tail⟩ := Bool.and_eq_true_iff.mp checked
+        obtain ⟨allUsed, restAdmitted⟩ := Bool.and_eq_true_iff.mp tail
+        cases member with
+        | head => exact ⟨bodyAdmitted, parametersUsed_iff.mp allUsed⟩
+        | tail _ member => exact ih.mp restAdmitted found member
+      · intro allAdmitted
+        have head := allAdmitted (arity, body) (.head _)
+        exact Bool.and_eq_true_iff.mpr ⟨head.1,
+          Bool.and_eq_true_iff.mpr ⟨parametersUsed_iff.mpr head.2,
+            ih.mpr (fun found member => allAdmitted found (.tail _ member))⟩⟩
+
+theorem admissible_dataCtor_iff : admissible (.dataCtor dataId constructor fields) = true ↔
+    ∀ field ∈ fields, admissible field = true :=
+  admissibleArgs_iff
+
+theorem admissible_dataCase_iff :
+    admissible (.dataCase dataId result scrutinee branches) = true ↔
+      admissible scrutinee = true ∧
+        ∀ branch ∈ branches, admissible branch.2 = true ∧
+          ∀ index, index < branch.1 → uses index branch.2 = true := by
+  constructor
+  · intro checked
+    obtain ⟨scrutineeAdmitted, branchesAdmitted⟩ := Bool.and_eq_true_iff.mp checked
+    exact ⟨scrutineeAdmitted, admissibleBranches_iff.mp branchesAdmitted⟩
+  · intro admitted
+    exact Bool.and_eq_true_iff.mpr ⟨admitted.1, admissibleBranches_iff.mpr admitted.2⟩
+
 theorem programAdmissible_cons_iff :
     programAdmissible (body :: bodies) (signature :: signatures) = true ↔
       admissible body = true ∧
@@ -232,19 +315,19 @@ theorem programAdmissible_lookup
           | succ function => exact ih hrest found
 
 /-- Source admission inherits core safety; relevance is not a runtime invariant. -/
-theorem profile_type_safety (hprogram : ProfileProgramTyped program signatures)
-    (typed : ProfileTyped signatures [] expr τ)
+theorem profile_type_safety (hprogram : ProfileProgramTyped declarations program signatures)
+    (typed : ProfileTyped declarations signatures [] expr τ)
     (execution : Steps program (initial expr) final) :
-    StateTyped signatures final τ ∧ ¬ Stuck program final :=
+    StateTyped declarations signatures final τ ∧ ¬ Stuck program final :=
   closed_type_safety hprogram.1 typed.1 execution
 
-theorem profile_return_type (hprogram : ProfileProgramTyped program signatures)
-    (typed : ProfileTyped signatures [] expr τ)
-    (execution : Steps program (initial expr) (.ret value [])) : ValueTyped value τ :=
+theorem profile_return_type (hprogram : ProfileProgramTyped declarations program signatures)
+    (typed : ProfileTyped declarations signatures [] expr τ)
+    (execution : Steps program (initial expr) (.ret value [])) : ValueTyped declarations value τ :=
   return_type hprogram.1 typed.1 execution
 
-theorem profile_overflow_is_justified (hprogram : ProfileProgramTyped program signatures)
-    (typed : ProfileTyped signatures [] expr τ)
+theorem profile_overflow_is_justified (hprogram : ProfileProgramTyped declarations program signatures)
+    (typed : ProfileTyped declarations signatures [] expr τ)
     (execution : Steps program (initial expr) (.overflow left right)) :
     left < nat64Limit ∧ right < nat64Limit ∧ nat64Limit ≤ left + right :=
   overflow_is_justified hprogram.1 typed.1 execution

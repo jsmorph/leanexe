@@ -23,7 +23,7 @@ def addPair : Expr := .split (.pair (.nat 11) (.nat 22)) (.add (.var 0) (.var 1)
 
 example : run [] 30 (initial addPair) = .ret (.nat 33) [] := by rfl
 example : admissible addPair = true := by rfl
-example : ProfileTyped [] [] addPair .nat64 :=
+example : ProfileTyped [] [] [] addPair .nat64 :=
   ⟨.split (.pair (.nat (by decide)) (.nat (by decide)))
     (.add (.var rfl) (.var rfl)), rfl⟩
 
@@ -35,13 +35,13 @@ example : run [] 40 (initial (.letE (.nat 10)
 
 -- Unit elimination consumes its constructor without inventing a field binder.
 example : run [] 20 (initial (.unitCase .unit (.nat 9))) = .ret (.nat 9) [] := by rfl
-example : ProfileTyped [] [] (.unitCase .unit (.nat 9)) .nat64 :=
+example : ProfileTyped [] [] [] (.unitCase .unit (.nat 9)) .nat64 :=
   ⟨.unitCase .unit (.nat (by decide)), rfl⟩
 
-example : ProfileTyped [] []
+example : ProfileTyped [] [] []
     (.sumCase (.inl .unit)
       (.unitCase (.var 0) (.nat 7)) (.unitCase (.var 0) (.nat 9))) .nat64 :=
-  ⟨.sumCase (.inl .unit) (.unitCase (.var rfl) (.nat (by decide)))
+  ⟨.sumCase (.inl .unit .unit) (.unitCase (.var rfl) (.nat (by decide)))
     (.unitCase (.var rfl) (.nat (by decide))), rfl⟩
 
 -- Strictness remains explicit even for a term rejected by the profile.
@@ -86,9 +86,10 @@ example : run [] 30 (initial
 def signatures : Signatures := [⟨[.prod .nat64 .nat64], .nat64⟩]
 def program : Program := [.split (.var 0) (.add (.var 0) (.var 1))]
 
-example : ProfileProgramTyped program signatures :=
-  ⟨.cons (.split (.var rfl) (.add (.var rfl) (.var rfl))) .nil, rfl⟩
-example : ProfileTyped signatures [] (.call 0 [.pair (.nat 4) (.nat 5)]) .nat64 :=
+example : ProfileProgramTyped [] program signatures :=
+  ⟨⟨.nil, signaturesWellFormed_iff.mp rfl,
+    .cons (.split (.var rfl) (.add (.var rfl) (.var rfl))) .nil⟩, rfl⟩
+example : ProfileTyped [] signatures [] (.call 0 [.pair (.nat 4) (.nat 5)]) .nat64 :=
   ⟨.call rfl (.cons (.pair (.nat (by decide)) (.nat (by decide))) .nil), rfl⟩
 example : run program 40 (initial (.call 0 [.pair (.nat 4) (.nat 5)])) =
     .ret (.nat 9) [] := by rfl
@@ -100,7 +101,7 @@ example : programAdmissible [.unit] [] = false := by rfl
 
 -- A passed occurrence check is not evidence of typing.
 example : admissible (.var 99) = true := by rfl
-example : ¬ ProfileTyped [] [] (.var 99) τ := by
+example : ¬ ProfileTyped [] [] [] (.var 99) τ := by
   rintro ⟨typed, _⟩
   cases typed with
   | var found => simp [lookup] at found
