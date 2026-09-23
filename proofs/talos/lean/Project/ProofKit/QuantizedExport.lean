@@ -1,3 +1,4 @@
+import Project.ProofKit.QuantizedExportCheck
 import Project.ProofKit.QuantizedScalarError
 import Project.ProofKit.F32Div
 import LeanExe.Models.Gpt2.Quantized.Kernel
@@ -5,28 +6,10 @@ import LeanExe.Models.Gpt2.Quantized.Kernel
 namespace Project.ProofKit.QuantizedExport
 open CodeLib.IEEE32 LeanExe.Models.Gpt2 LeanExe.Models.Gpt2.Quantized
 
-def roundedCoefficient (input scale : UInt32) : Int :=
-  let clipped := QuantizedValue.clamp127 (Wasm.IEEE32.div input scale)
-  if Wasm.IEEE32.sign clipped then
-    -(Wasm.IEEE32.roundShift (Wasm.IEEE32.scaledMagnitude clipped) 149 : Int)
-  else Wasm.IEEE32.roundShift (Wasm.IEEE32.scaledMagnitude clipped) 149
-
 theorem roundedCoefficient_eq (input scale : UInt32) :
     roundedCoefficient input scale = QuantizedError.coefficient input scale := by
   rw [QuantizedError.coefficient_exact, F32Div.div_eq]
   rfl
-
-def checkRow (source : ByteArray) (coefficients : ByteArray) (offset width : Nat)
-    (scale : UInt32) : Bool :=
-  source.size == width * 4 && offset + width ≤ coefficients.size &&
-    scale == rowScale source 0 width && Wasm.IEEE32.isFinite scale &&
-    decide (0 < Wasm.IEEE32.scaledValue scale) &&
-    (List.range width).all (fun i =>
-      Wasm.IEEE32.isFinite (word source i) && coefficients[offset + i]! != 128 &&
-      decide (LeanExe.Signed32.decode (LeanExe.Signed32.extend8Bits coefficients[offset + i]!.toUInt32) =
-        roundedCoefficient (word source i) scale) &&
-      decide (Wasm.IEEE32.scaledMagnitude (word source i) * 2 ^ 149 ≤
-        Wasm.IEEE32.scaledMagnitude scale * 2 ^ 156))
 
 theorem checked_row (source coefficients : ByteArray) (offset width : Nat) (scale : UInt32)
     (h : checkRow source coefficients offset width scale = true) :
