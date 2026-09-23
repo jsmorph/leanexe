@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 537 semantic examples and audits all 278 declared
-theorems across the thirteen development modules, including helper proofs. It
+The maintained gate checks 575 semantic examples and audits all 300 declared
+theorems across the fourteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -439,29 +439,30 @@ all fields. Scalar tags, word widths, and sum tags are significant.
 This is an operation-law checkpoint, not yet an admitted source primitive. The
 raw comparison may be defined on malformed values and finite recursive values
 without admitting their types for source equality. The documented `EqTy` domain
-excludes recursive variants; source integration must give that boundary an
-independent judgment and exact executable check. Bytes are not yet represented
-in the calculus. Arbitrary user-selected `BEq` implementations remain separate.
+excludes recursive variants. `EqualityTypes.lean` now provides the independent
+judgment and exact executable check for that boundary. Bytes are not yet
+represented in the calculus. Arbitrary user-selected `BEq` implementations remain separate.
 
 
-### Equality admission under development
+### Checked equality admission
 
-The independent equality domain will be an inductive closure judgment, not a
-checker result used as its own specification. Unit, Bool, bounded naturals, and
-words qualify. Products, sums, and arrays require qualifying components. A
+The independent equality domain is the inductive closure judgment `EqTy`.
+The checker is proved equivalent to that separate specification. Unit, Bool,
+bounded naturals, and words qualify. Products, sums, and arrays require qualifying components. A
 nominal type requires a valid declaration lookup and qualifying fields in every
 constructor. This least inductive closure excludes reachable recursive cycles,
 including cycles beneath arrays or alternatives with a nullary constructor.
 An empty declaration qualifies without implying that it has a value.
 
-The checker under development starts with a false flag for each declaration and
+The checked algorithm starts with a false flag for each declaration and
 repeatedly checks all constructor fields against the previous flags. Its bound
 is the number of declarations. Monotonicity, strict increase in the count of true
 flags when a round changes the table, and the table length bound now prove
 generic stabilization in `EqualityFlags.lean`. The equality-specific checker
-and correspondence remain under development. Its soundness proof is by
-induction on rounds; completeness by
-induction on the independent judgment against the resulting fixed table.
+and correspondence are proved in `EqualityTypes.lean`. Soundness uses induction
+on rounds; completeness uses induction on the independent judgment against the resulting fixed table.
+`equalitySupported_iff` has no unproved fuel-adequacy or acyclicity premise.
+A source expression and its operational/typing rules are still pending.
 
 This is a local property of the queried type. An unrelated recursive declaration
 does not reject an acyclic query. Global declaration formation is still required
