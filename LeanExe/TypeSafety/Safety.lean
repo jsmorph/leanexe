@@ -43,6 +43,7 @@ theorem eval_step_typed (hprogram : ProgramTyped declarations program signatures
   | unit => exact ⟨_, rfl, .ret .unit hkont⟩
   | bool => exact ⟨_, rfl, .ret .bool hkont⟩
   | nat bounded => exact ⟨_, rfl, .ret (.nat bounded) hkont⟩
+  | word bounded => exact ⟨_, rfl, .ret (.word bounded) hkont⟩
   | letE hbound hbody =>
       exact ⟨_, rfl, .eval hbound henv (.cons (.letBody hbody henv) hkont)⟩
   | ifE hcondition hyes hno =>
@@ -64,6 +65,16 @@ theorem eval_step_typed (hprogram : ProgramTyped declarations program signatures
       exact ⟨_, rfl, .eval hleft henv (.cons (.natBinLeft operation hright henv) hkont)⟩
   | natCmp operation hleft hright =>
       exact ⟨_, rfl, .eval hleft henv (.cons (.natCmpLeft operation hright henv) hkont)⟩
+  | wordBin width operation hleft hright =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.wordBinLeft width operation hright henv) hkont)⟩
+  | wordCmp width operation hleft hright =>
+      exact ⟨_, rfl, .eval hleft henv (.cons (.wordCmpLeft width operation hright henv) hkont)⟩
+  | wordOfNat target hvalue =>
+      exact ⟨_, rfl, .eval hvalue henv (.cons (.wordOfNat target) hkont)⟩
+  | wordToNat source hvalue =>
+      exact ⟨_, rfl, .eval hvalue henv (.cons (.wordToNat source) hkont)⟩
+  | wordCast source target hvalue =>
+      exact ⟨_, rfl, .eval hvalue henv (.cons (.wordCast source target) hkont)⟩
   | call found hargs =>
       cases hargs with
       | nil => exact enter_call_typed hprogram found .nil hkont
@@ -150,6 +161,30 @@ theorem frame_step_typed (hprogram : ProgramTyped declarations program signature
       obtain ⟨left, rfl, _⟩ := hleft.nat_canonical
       obtain ⟨right, rfl, _⟩ := hvalue.nat_canonical
       exact ⟨_, rfl, .ret .bool hkont⟩
+
+  | wordBinLeft width operation hright henv =>
+      exact ⟨_, rfl, .eval hright henv (.cons (.wordBinRight width operation hvalue) hkont)⟩
+  | wordBinRight width operation hleft =>
+      obtain ⟨left, rfl, leftBound⟩ := hleft.word_canonical
+      obtain ⟨right, rfl, rightBound⟩ := hvalue.word_canonical
+      exact ⟨_, by simp [Step, step],
+        .ret (.word (evalWordBin_bounded (operation := operation) leftBound rightBound)) hkont⟩
+  | wordCmpLeft width operation hright henv =>
+      exact ⟨_, rfl, .eval hright henv (.cons (.wordCmpRight width operation hvalue) hkont)⟩
+  | wordCmpRight width operation hleft =>
+      obtain ⟨left, rfl, _⟩ := hleft.word_canonical
+      obtain ⟨right, rfl, _⟩ := hvalue.word_canonical
+      exact ⟨.ret (.bool (operation.apply left right)) _, by simp [Step, step], .ret .bool hkont⟩
+  | wordOfNat target =>
+      obtain ⟨value, rfl, _⟩ := hvalue.nat_canonical
+      exact ⟨_, rfl, .ret (.word normalizeWord_bounded) hkont⟩
+  | wordToNat source =>
+      obtain ⟨value, rfl, bounded⟩ := hvalue.word_canonical
+      exact ⟨_, by simp [Step, step], .ret (.nat (wordToNat_bounded bounded)) hkont⟩
+  | wordCast source target =>
+      obtain ⟨value, rfl, _⟩ := hvalue.word_canonical
+      exact ⟨_, by simp [Step, step],
+        .ret (.word (normalizeWord_bounded (width := target) (value := value))) hkont⟩
 
   | callArgs found hdone hremaining henv paramsEqual =>
       have hdone' := hdone.append (EnvTyped.cons hvalue .nil)

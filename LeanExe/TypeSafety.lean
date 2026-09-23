@@ -1,5 +1,6 @@
 import LeanExe.TypeSafety.Formation
 import LeanExe.TypeSafety.NatOperations
+import LeanExe.TypeSafety.WordOperations
 import LeanExe.TypeSafety.Core
 import LeanExe.TypeSafety.ArrayValues
 import LeanExe.TypeSafety.Machine
@@ -30,7 +31,9 @@ This module makes no extraction, layout, ownership, or WebAssembly correctness
 claim. Persistent abstract arrays have checked operations and a bounded length;
 their physical storage is outside this model. Byte arrays, heap effects,
 compiler-specific recursion recognizers, natural-number pattern elimination,
-fixed-width word operations, and floating-point arithmetic remain outside this core.
+word bitwise operations and shifts, and floating-point arithmetic remain outside
+this core. Word literals, modular arithmetic, unsigned comparisons, and explicit
+conversions are included for widths 8, 32, and 64.
 The bounded-natural family covers add/subtract/multiply/divide/remainder/min/max
 and equality/order comparisons with precise operation-tagged overflow.
 -/

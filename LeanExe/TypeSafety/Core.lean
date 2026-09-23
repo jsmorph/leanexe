@@ -1,4 +1,4 @@
-import LeanExe.TypeSafety.NatOperations
+import LeanExe.TypeSafety.WordOperations
 
 /-!
 # An independent first-order core
@@ -16,7 +16,8 @@ sums, bindings, conditionals, bounded-natural arithmetic and comparisons, and
 direct first-order calls.
 `nat64` is a bounded natural-number interpretation, not modular unsigned
 arithmetic: addition and multiplication may overflow; subtraction saturates;
-division and remainder specify their zero-divisor behavior. Function bodies may call any declared function, including themselves;
+division and remainder specify their zero-divisor behavior. Function bodies may
+call any declared function, including themselves;
 typing imposes no termination condition. Nominal declarations admit arbitrary
 mutual recursion through strictly positive first-order fields, with exhaustive
 constructor patterns. Formation is checked separately and required by typing.
@@ -24,6 +25,10 @@ constructor patterns. Formation is checked separately and required by typing.
 Persistent arrays contain homogeneous finite sequences with length below
 `nat64Limit`. Reads, replacement, growth, and concatenation expose checked sum
 results; their typing is independent of any physical storage representation.
+
+Words have explicit 8/32/64-bit widths and canonical bounded literal values.
+Arithmetic is modular, comparisons are unsigned, and explicit conversions
+normalize to the target width. Word arithmetic does not raise Nat overflow.
 -/
 
 namespace LeanExe.TypeSafety
@@ -33,6 +38,7 @@ inductive Expr where
   | unit
   | bool (value : Bool)
   | nat (value : Nat)
+  | word (width : WordWidth) (value : Nat)
   | letE (bound body : Expr)
   | ifE (condition yes no : Expr)
   | pair (left right : Expr)
@@ -49,6 +55,11 @@ inductive Expr where
   | sumCase (scrutinee left right : Expr)
   | natBin (operation : NatBinOp) (left right : Expr)
   | natCmp (operation : NatCmpOp) (left right : Expr)
+  | wordBin (width : WordWidth) (operation : WordBinOp) (left right : Expr)
+  | wordCmp (width : WordWidth) (operation : NatCmpOp) (left right : Expr)
+  | wordOfNat (target : WordWidth) (value : Expr)
+  | wordToNat (source : WordWidth) (value : Expr)
+  | wordCast (source target : WordWidth) (value : Expr)
   | call (function : Nat) (arguments : List Expr)
   | arrayEmpty (item : Ty)
   | arraySize (array : Expr)
@@ -72,6 +83,7 @@ inductive Value where
   | unit
   | bool (value : Bool)
   | nat (value : Nat)
+  | word (width : WordWidth) (value : Nat)
   | pair (left right : Value)
   | inl (payload : Value)
   | inr (payload : Value)
@@ -92,6 +104,8 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
   | unit : ExprTyped declarations signatures Γ .unit .unit
   | bool : ExprTyped declarations signatures Γ (.bool b) .bool
   | nat (bounded : n < nat64Limit) : ExprTyped declarations signatures Γ (.nat n) .nat64
+  | word (bounded : n < width.modulus) :
+      ExprTyped declarations signatures Γ (.word width n) (.word width)
   | letE : ExprTyped declarations signatures Γ bound α →
       ExprTyped declarations signatures (α :: Γ) body β →
       ExprTyped declarations signatures Γ (.letE bound body) β
@@ -126,6 +140,22 @@ inductive ExprTyped (declarations : DataDecls) (signatures : Signatures) :
   | natCmp (operation : NatCmpOp) : ExprTyped declarations signatures Γ left .nat64 →
       ExprTyped declarations signatures Γ right .nat64 →
       ExprTyped declarations signatures Γ (.natCmp operation left right) .bool
+
+  | wordBin (width : WordWidth) (operation : WordBinOp) :
+      ExprTyped declarations signatures Γ left (.word width) →
+      ExprTyped declarations signatures Γ right (.word width) →
+      ExprTyped declarations signatures Γ (.wordBin width operation left right) (.word width)
+  | wordCmp (width : WordWidth) (operation : NatCmpOp) :
+      ExprTyped declarations signatures Γ left (.word width) →
+      ExprTyped declarations signatures Γ right (.word width) →
+      ExprTyped declarations signatures Γ (.wordCmp width operation left right) .bool
+  | wordOfNat (target : WordWidth) : ExprTyped declarations signatures Γ value .nat64 →
+      ExprTyped declarations signatures Γ (.wordOfNat target value) (.word target)
+  | wordToNat (source : WordWidth) : ExprTyped declarations signatures Γ value (.word source) →
+      ExprTyped declarations signatures Γ (.wordToNat source value) .nat64
+  | wordCast (source target : WordWidth) :
+      ExprTyped declarations signatures Γ value (.word source) →
+      ExprTyped declarations signatures Γ (.wordCast source target value) (.word target)
 
   | call (found : lookup signatures function = some ⟨params, result⟩) :
       ArgsTyped declarations signatures Γ arguments params →
@@ -229,6 +259,7 @@ inductive ValueTyped (declarations : DataDecls) : Value → Ty → Prop where
   | unit : ValueTyped declarations .unit .unit
   | bool : ValueTyped declarations (.bool b) .bool
   | nat (bounded : n < nat64Limit) : ValueTyped declarations (.nat n) .nat64
+  | word (bounded : n < width.modulus) : ValueTyped declarations (.word width n) (.word width)
   | pair : ValueTyped declarations left α → ValueTyped declarations right β →
       ValueTyped declarations (.pair left right) (.prod α β)
   | inl : ValueTyped declarations payload α → TyWF declarations β →
@@ -285,6 +316,7 @@ theorem ValueTyped.wellFormed (typed : ValueTyped declarations value τ) :
   | unit => exact .unit
   | bool => exact .bool
   | nat _ => exact .nat64
+  | word _ => exact .word
   | pair left right => exact .prod left.wellFormed right.wellFormed
   | inl payload other => exact .sum payload.wellFormed other
   | inr payload other => exact .sum other payload.wellFormed
@@ -321,6 +353,7 @@ theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr 
   | unit => exact .unit
   | bool => exact .bool
   | nat _ => exact .nat64
+  | word _ => exact .word
   | letE bound body =>
       exact body.wellFormed hdeclarations hsignatures
         (.cons (bound.wellFormed hdeclarations hsignatures hcontext) hcontext)
@@ -344,6 +377,9 @@ theorem ExprTyped.wellFormed (typed : ExprTyped declarations signatures Γ expr 
       exact left.wellFormed hdeclarations hsignatures (.cons formed.sum_left hcontext)
   | natBin _ _ _ => exact .nat64
   | natCmp _ _ _ => exact .bool
+  | wordBin _ _ _ _ | wordOfNat _ _ | wordCast _ _ _ => exact .word
+  | wordCmp _ _ _ _ => exact .bool
+  | wordToNat _ _ => exact .nat64
   | call found _ => exact (hsignatures.lookup found).result
   | arrayEmpty item => exact .array item
   | arraySize _ => exact .nat64
@@ -402,6 +438,11 @@ theorem ValueTyped.nat_canonical (h : ValueTyped declarations value .nat64) :
     ∃ n, value = .nat n ∧ n < nat64Limit := by
   cases h with
   | nat bounded => exact ⟨_, rfl, bounded⟩
+
+theorem ValueTyped.word_canonical (typed : ValueTyped declarations value (.word width)) :
+    ∃ n, value = .word width n ∧ n < width.modulus := by
+  cases typed with
+  | word bounded => exact ⟨_, rfl, bounded⟩
 
 theorem ValueTyped.prod_canonical (h : ValueTyped declarations value (.prod α β)) :
     ∃ left right, value = .pair left right ∧

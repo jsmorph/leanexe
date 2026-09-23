@@ -23,7 +23,7 @@ mutual
 /-- Whether a de Bruijn variable occurs, accounting for each nested binder. -/
 def uses (index : Nat) : Expr → Bool
   | .var found => found == index
-  | .unit | .bool _ | .nat _ => false
+  | .unit | .bool _ | .nat _ | .word _ _ => false
   | .letE bound body => uses index bound || uses (index + 1) body
   | .ifE condition yes no => uses index condition || uses index yes || uses index no
   | .pair left right => uses index left || uses index right
@@ -33,7 +33,9 @@ def uses (index : Nat) : Expr → Bool
   | .inl _ payload | .inr _ payload => uses index payload
   | .sumCase scrutinee left right =>
       uses index scrutinee || uses (index + 1) left || uses (index + 1) right
-  | .natBin _ left right | .natCmp _ left right => uses index left || uses index right
+  | .natBin _ left right | .natCmp _ left right |
+    .wordBin _ _ left right | .wordCmp _ _ left right => uses index left || uses index right
+  | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => uses index value
   | .call _ arguments => usesArgs index arguments
   | .arrayEmpty _ => false
   | .arraySize array => uses index array
@@ -64,7 +66,7 @@ def parametersUsed : Nat → Expr → Bool
 mutual
 /-- The decidable source restriction, separate from the expression typing rules. -/
 def admissible : Expr → Bool
-  | .var _ | .unit | .bool _ | .nat _ => true
+  | .var _ | .unit | .bool _ | .nat _ | .word _ _ => true
   | .letE bound body => admissible bound && (admissible body && uses 0 body)
   | .ifE condition yes no => admissible condition && (admissible yes && admissible no)
   | .pair left right => admissible left && admissible right
@@ -76,7 +78,9 @@ def admissible : Expr → Bool
   | .sumCase scrutinee left right =>
       admissible scrutinee &&
         (admissible left && (uses 0 left && (admissible right && uses 0 right)))
-  | .natBin _ left right | .natCmp _ left right => admissible left && admissible right
+  | .natBin _ left right | .natCmp _ left right |
+    .wordBin _ _ left right | .wordCmp _ _ left right => admissible left && admissible right
+  | .wordOfNat _ value | .wordToNat _ value | .wordCast _ _ value => admissible value
   | .call _ arguments => admissibleArgs arguments
   | .arrayEmpty _ => true
   | .arraySize array => admissible array

@@ -835,7 +835,8 @@ memory-management implementation, or compiler correctness.
 - [ ] Complete the remaining schematic collection, binder, and recursion rules or prove their expansion into the core.
 - [x] Extend abstract values and primitive semantics with persistent arrays: empty, size, checked get/set/push/append, length bounds, failure laws, and read-after-write laws.
 - [x] Define and prove the documented bounded-natural primitive family, tagged overflow, comparisons, and derived successor/predecessor/Boolean conversion.
-- [ ] Extend fixed-width words, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
+- [x] Define explicit-width words, modular arithmetic, unsigned comparisons, and conversions with operation laws and extended metatheory.
+- [ ] Extend word bitwise operations/shifts, raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
 - [x] Establish total algorithmic typing, exact ordinary/profile admission, and expression type uniqueness for the current calculus; keep program termination separate.
@@ -852,8 +853,8 @@ milestone, with frequent status updates, commits, and pushes. Publishing a
 milestone is a checkpoint, not a reason to stop or wait for renewed permission.
 Nominal recursive data and algorithmic typing are now checked, including checker
 soundness/completeness, exact public admission, and expression type uniqueness.
-The documented bounded-natural primitive family is also checked. The next numeric
-increment specifies fixed-width words and their operation/conversion laws, then
-extends the semantics, safety proofs, and checker. Natural pattern matching still
+The documented bounded-natural primitive family and word arithmetic/conversions
+are also checked. The next numeric increment specifies word bitwise operations
+and masked shifts, proves their laws, and preserves the safety/checker results. Natural pattern matching still
 needs a complete rule or proved expansion; generic recursive calls alone do not
 establish such an expansion.

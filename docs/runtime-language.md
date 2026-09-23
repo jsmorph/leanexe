@@ -97,8 +97,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 308 semantic examples and audits all 142 declared
-theorems across the eight development modules, including helper proofs. It
+The maintained gate checks 381 semantic examples and audits all 171 declared
+theorems across the nine development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -134,7 +134,7 @@ data. The following work remains separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
-| U8/U32/U64 operations | The documented bounded-natural primitive family is checked. Define word arithmetic, comparisons, bitwise operations, shifts, and conversions, and prove their laws and safety. |
+| U8/U32/U64 operations | Arithmetic, comparisons, and conversions are checked. Bitwise operations, complement, and masked shifts remain to be defined and proved. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
 | Data generalizations | Monomorphic nominal tables, constructors, exhaustive matches, and recursive value typing are proved. Dependent indexed families and any further type-level features require separate rules. |
@@ -309,10 +309,10 @@ have typing theorems and executable inference/step equations. Primitive definiti
 take raw operands; their bounded-outcome theorem separately requires bounded inputs.
 
 
-## Word arithmetic and conversion increment in progress
+## Word arithmetic and conversions
 
-This section specifies the next increment; it is not yet included in the checked
-coverage above. Word widths are exactly 8, 32, and 64 bits. Write `M = 2^w` for
+This section is included in the checked coverage above. Word widths are exactly
+8, 32, and 64 bits. Write `M = 2^w` for
 a width's modulus. A word literal carries its width and a natural value strictly
 below `M`. Oversized literals are rejected, rather than implicitly normalized.
 Runtime word values retain their width tag.
@@ -344,10 +344,10 @@ Raw normalization needs only the target width. The source width belongs to the
 cast's typing and execution checks and the premises of widening/round-trip laws;
 an ignored source argument is not added to the arithmetic helper.
 
-Required proof obligations include representable outcomes, exact arithmetic
-results, both subtraction branches, zero-divisor behavior, quotient/remainder
-reconstruction, min/max selection, comparison characterizations, exact conversion
-laws, widening identity, and appropriate round trips. Formation, canonical forms,
-machine safety, relevance, and exact algorithmic admission must extend to every
-new form. Bitwise operations, complement, shifts, and raw binary64 operations are
+Checked results include representable outcomes, exact arithmetic formulas,
+both subtraction branches, zero-divisor behavior, quotient/remainder reconstruction,
+min/max selection, normalization identity/idempotence, widening, and widening-then-
+narrowing round trips. Comparisons use the same proved unsigned mathematical
+relations as bounded naturals. Formation, canonical forms, machine safety, relevance,
+and exact algorithmic admission include every new form. Bitwise operations, complement, shifts, and raw binary64 operations are
 not part of this first word checkpoint.
