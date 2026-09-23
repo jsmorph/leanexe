@@ -108,7 +108,9 @@ def exceptMonadErrorType? (env : Environment) (expr : Expr) : Option Ty :=
   | _ => none
 
 def supportedMonadType? (env : Environment) (expr : Expr) : Option SupportedMonad :=
-  if isIdType expr then
+  if isWasiMonad expr then
+    some .id
+  else if isIdType expr then
     some .id
   else if isOptionMonadType expr then
     some .option
@@ -478,14 +480,28 @@ def exceptMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
   let generatedExceptArgs? (name : Name) : Option (Expr × Expr × Expr) :=
     match generatedMatcherVariantScrutineeArg? env name args (some ``Except) with
-    | some (scrutineeIndex, _scrutineeTy) =>
+    | some (scrutineeIndex, scrutineeTy) =>
         match env.find? name, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
         | some info, some scrutinee, [firstArm, secondArm] =>
             match (peelForall info.type).fst.drop (scrutineeIndex + 1) with
             | firstArmTy :: secondArmTy :: _ =>
+                let fallback (arm : Expr) (ok : Bool) : Option Expr := do
+                  let .lam _ domain _ _ := arm.consumeMData | none
+                  if typeAtom? env domain != some scrutineeTy then none else do
+                    let (.const ``Except levels, [errorTy, okTy]) := appFnArgs domain | none
+                    let payloadTy := if ok then okTy else errorTy
+                    let ctor := if ok then ``Except.ok else ``Except.error
+                    let value := rebuildApp (.const ctor levels)
+                      [errorTy.liftLooseBVars 0 1, okTy.liftLooseBVars 0 1, .bvar 0]
+                    some (.lam `payload payloadTy
+                      (betaReduceExpr 32 (.app (arm.liftLooseBVars 0 1) value)) .default)
                 match exceptArmTarget? firstArmTy, exceptArmTarget? secondArmTy with
                 | some false, some true => some (scrutinee, firstArm, secondArm)
                 | some true, some false => some (scrutinee, secondArm, firstArm)
+                | some false, none => (fallback secondArm true).map (scrutinee, firstArm, ·)
+                | some true, none => (fallback secondArm false).map (scrutinee, ·, firstArm)
+                | none, some false => (fallback firstArm true).map (scrutinee, secondArm, ·)
+                | none, some true => (fallback firstArm false).map (scrutinee, ·, secondArm)
                 | _, _ => none
             | _ => none
         | _, _, _ => none
