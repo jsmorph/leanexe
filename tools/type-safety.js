@@ -168,6 +168,11 @@ const auditedTheorems = [
   "step_natCase",
   "step_natCase_zero",
   "step_natCase_succ",
+  "step_structEq",
+  "step_structEq_right",
+  "step_structEq_result",
+  "step_structEq_true_iff",
+  "step_structEq_false_iff",
   "Steps.trans",
   "FrameTyped.wellFormed",
   "KontTyped.wellFormed",
@@ -189,6 +194,8 @@ const auditedTheorems = [
   "overflow_is_justified",
   "uses_natCase",
   "uses_natCase_iff",
+  "uses_structEq",
+  "admissible_structEq_iff",
   "uses_wordNot",
   "admissible_wordNot",
   "usesArgs_iff",
@@ -355,6 +362,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_booleans.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_value_equality.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_equality_domain.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_structural_equality.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

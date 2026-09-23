@@ -477,3 +477,21 @@ cycles through arrays/sums/products, nullary alternatives beside recursion,
 unrelated cycles, empty declarations, and local admission versus global malformed
 declarations. Source structural equality and its safety cases remain the next
 increment; no source operation was added in this checkpoint.
+
+
+Integrated strict homogeneous source structural equality. The expression typing
+rule requires EqTy for the common operand type; inference uses the proved checker.
+Two continuation frames enforce left-to-right operand evaluation. The final raw
+transition computes valueEq without a dynamic typing oracle. Exact true/false
+step laws characterize equality/inequality for arbitrary raw values. Formation,
+progress, preservation, finite safety, profile admission, exact inference, and
+type uniqueness include the new cases. No failure terminal was added.
+
+The complete umbrella built on the first check. The maintained gate then passed
+sixteen build jobs, all 610 examples, and all 307 audits, including all affected
+safety and inference proofs. The 35 new examples passed on their first run and
+cover strict field/operand failure order, recursive-domain rejection despite
+empty arrays or unused summands, nominal identity/type mismatch, malformed raw
+returns, lexical capture, relevance, and typed calls. The next foundational
+increment is hygienic renaming/weakening for derived callback forms; no payload
+discard policy has been relaxed.
