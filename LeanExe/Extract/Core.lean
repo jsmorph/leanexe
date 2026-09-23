@@ -7292,6 +7292,7 @@ def inlineSpecializedValueForSynthetics?
     (args : List Expr) :
     Option (Signature × Expr) := do
   if compilerPrimitiveName name || name.getRoot != root ||
+      handledMatcher env name args ||
       (supportedFunction? env info).isSome ||
       containsConstant ``Nat.brecOn info || containsConstant name info then
     none

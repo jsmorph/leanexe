@@ -16172,16 +16172,22 @@ marXiv accepted the comprehensive report as `2609.00014v1`.  The editorial revie
 
 ## Native WASI API: 23 September 2026
 
-The user requested a separate `wasi` branch from `main`, with permission to reuse relevant work from `io`.  The branch starts at `a465538`.  The target is the 46 functions in the [Preview 1 WITX specification](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/witx/wasi_snapshot_preview1.witx), with layouts from its [generated documentation](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md).
+The user requested a separate `wasi` branch, with permission to reuse relevant work from `io`.  The branch starts from `main` at `a465538`.  The target is the 46 functions in the [Preview 1 WITX specification](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/witx/wasi_snapshot_preview1.witx), with layouts from its [generated documentation](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md).
 
 `LeanExe.Wasi.Action` sequences host calls through `BaseIO`.  Operations return the native numeric errno or an explicit `Except UInt32` value.  ByteArray inputs remain values, buffer outputs are owned values, and descriptor reads and writes retain WASI partial-transfer semantics.  Polling provides the native timeout mechanism.  The API includes descriptor and path operations, arguments and environment, clocks, polling, random data, process operations, and inherited sockets.
 
 - [x] Create and publish `wasi` from `main`.
 - [x] Define the public API, constants, and primitive ABI descriptions.
-- [ ] Add effect sequencing and native WASI lowering.
+- [x] Add effect sequencing and native WASI lowering.
 - [ ] Exercise all operation families on the standard Wasmtime host.
 - [ ] Check failure paths, value ownership, documentation, and final branch state.
 
 The compiler now lowers every registered operation to the Preview 1 ABI.  Buffer results, argument/environment arrays, preopen names, and poll records use owned runtime values.  A compile-time check compares each public declaration with its registered argument count, result width, and ownership slots.  The implementation reuses effect sequencing, loop ownership fixes, and signed i32 constant encoding from `io`, without adding that branch's byte IO API or custom host.
 
 The first Wasmtime executions passed binary echo, EOF, and repeated execution of a stored action.  Further tests exposed an existing omission in sparse `Except` matcher recognition.  An initial eta-expansion attempt did not resolve the matcher classification and was removed.  The extractor now converts a fallback arm into the missing constructor arm.  The next test pass covers clocks, argument/environment arrays, polling, filesystem operations, descriptor errors, and ownership counters.  Full execution coverage and the final audit remain in progress.
+
+The filesystem test exposed repeated matcher expansion in structural-synthetic discovery.  That pass recursed into both an expanded generated matcher and its original arguments, duplicating nested continuations.  It now recognizes the matchers already handled by extraction and scans their arguments once.  The same environment loader as the CLI compiles the filesystem entry in approximately three seconds.  Lean's matcher metadata was absent in that loader, so recognition uses the existing type-directed parsers.
+
+A returned argument element initially pointed into freed storage.  WASI had returned an owned array with owned byte slices, but result materialization released the array without acquiring the returned child's reference.  Return-owner analysis now identifies array and heap-field projections, including aliases and branches, and inserts a retain before releasing the container.  Retains compare existing owned references so two returned slices sharing one buffer do not acquire duplicate references.  Focused Wasmtime tests preserve returned bytes after further allocations and balance allocations and frees across 100 cycles, including shared-buffer pairs.
+
+Nested tuple patterns in `Except.ok` exposed a separate matcher error: extraction treated a two-parameter tuple arm as a one-parameter payload arm.  Generated arm normalization now binds constructor-pattern variables to payload projections.  Tests cover `let .ok (first, last)` and shared argument storage.  The complete WASI driver and existing compiler tests remain in progress.
