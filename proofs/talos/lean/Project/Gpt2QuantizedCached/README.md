@@ -24,7 +24,10 @@ The registration remains incomplete.
 | [Quantized embedding](Embedding/Spec.lean) | Exact signed-byte decoding, FP32 rescaling and position addition, packed output ownership, and protected-buffer preservation. |
 | [Block validation](BlockValidation.lean) | Exact acceptance for all thirteen coefficient, scale, and FP32 regions, with unchanged store. |
 | [Block allocation budget](CachedBlock/Budget.lean) | Sufficient capacity for the complete allocation sequence within 96 KiB of the initial heap top, at positions below 128. |
-| [First block normalization](CachedBlock/Normalized.lean) | Exact address calculation, call, output ownership, and frame preservation. |
+| [Block normalization](CachedBlock/Normalized.lean), [QKV projection](CachedBlock/Qkv.lean), and [cached attention](CachedBlock/Attention.lean) | Exact calls, output ownership, and frame preservation. |
+| [Attention projection](CachedBlock/Projection.lean), [expansion](CachedBlock/Expanded.lean), and [contraction](CachedBlock/Projected2.lean) | Checked offsets, quantized calls, three allocations, temporary releases, and exact outputs. |
+| [Residual addition](CachedBlock/Residual.lean), [second normalization](CachedBlock/Normalized2.lean), [GELU](CachedBlock/Activated.lean), and [hidden output](CachedBlock/Hidden.lean) | Exact FP32 calls and preservation of earlier live bindings. |
+| [Finiteness checks](CachedBlock/FiniteTest.lean) and [cache construction](CachedBlock/Cache.lean) | All four rejection predicates, cache allocation and copying, and preservation of the successful status. |
 | [Model representation](Model.lean) and [source validation](ModelSource.lean) | Accepted tensor predicates, block extents, token coefficient and scale properties, and equivalence between validation status zero and the complete representation predicate. |
 | [Public model validator](Validation/Public.lean) | Exact status, termination, and unchanged store for every represented input, including header rejection, global checks, and the early-exit twelve-block scan. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
