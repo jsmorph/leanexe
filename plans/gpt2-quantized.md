@@ -109,10 +109,10 @@ Completion requires a checked kernel artifact and reproducible correctness and t
 
 - [x] Export and validate the quantized checkpoint using the existing Python dependencies.  Retain an independent scalar reference for quantizer and integer-dot tests, and compare FP32 stages in their specified operation order.
 - [x] Add quantized embedding lookup and projections, then compose one block, twelve blocks, final normalization, and all vocabulary logits.
-- [ ] Prove the initialization validator and successful model representation.  Prove the public token step for arbitrary validated weights and represented cache bytes.
-- [ ] Prove exact status, cache, and logit results for every branch.  Failures after allocation must release temporary buffers and preserve protected inputs.
-- [ ] Derive allocation sufficiency and address bounds for the full 128-token session, including model validation, quantized activation buffers, FP32 intermediates, returned logits, and cache growth.
-- [ ] Compose initialization, weight loading, the empty cache, successive calls with fixed weights, reads, and cache/logit releases.  State what happens when an intermediate call returns failure.
+- [x] Prove the initialization validator and successful model representation.  Prove the public token step for arbitrary validated weights and represented cache bytes.
+- [x] Prove exact status, cache, and logit results for every branch.  Failures after allocation must release temporary buffers and preserve protected inputs.
+- [x] Derive allocation sufficiency and address bounds for the full 128-token session, including model validation, quantized activation buffers, FP32 intermediates, returned logits, and cache growth.
+- [x] Compose initialization, weight loading, the empty cache, successive calls with fixed weights, reads, and cache/logit releases.  State what happens when an intermediate call returns failure.
 
 Completion requires termination and exact source agreement for the complete session, with a concrete memory bound derived from the new layout and allocation sequence.  The session invariant identifies the prior tokens represented by each cache and preserves validated model bytes.  Host tests cover repeated, changed, and shortened prefixes, reset, the context limit, rejection, and cleanup.  The existing FP32 cache-copy allocation policy supplies the initial comparison point.  A later allocator or cache-layout change requires its own design and proof review.
 
@@ -172,7 +172,7 @@ to 0.066768.  The FP32 vocabulary-activation control agrees on 87 prefixes.
 The nine retained generated texts include readable sampled continuations and
 repetitive or incorrect greedy results.  The compiled grouped projection
 matches the independent reference byte for byte on four checkpoint shapes
-and runs 3.90–4.04 times as fast as FP32.  The compiled grouped model reproduces all reference logits and caches through 128 tokens and all nine completion streams.  Three measured warm traces give a 3.59× median speedup over FP32.  Complete cached-model and exact-binary proofs remain open.  Any revised model binary needs a distinct scheme
+and runs 3.90–4.04 times as fast as FP32.  The compiled grouped model reproduces all reference logits and caches through 128 tokens and all nine completion streams.  Three measured warm traces give a 3.59× median speedup over FP32.  The complete cached-model and session execution proofs pass.  Exact-binary verification remains in progress.  Any revised model binary needs a distinct scheme
 identifier and proof package.  The nine completion prompts have already been
 evaluated and cannot serve as unseen inputs for the revised scheme.
 
