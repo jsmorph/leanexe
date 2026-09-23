@@ -98,4 +98,27 @@ def released : LeanExe.ByteIO UInt32 := do
   let _ ← consume
   pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then 0 else 99)
 
+def copyChecked (timeoutNs : UInt64) : LeanExe.ByteIO UInt32 := do
+  let mut running := true
+  let mut status : UInt32 := 0
+  while running do
+    if LeanExe.Runtime.allocCount != LeanExe.Runtime.freeCount then
+      status := 98
+      break
+    match ← read 4096 timeoutNs with
+    | .error code =>
+        status := code
+        running := false
+    | .ok bytes =>
+        if bytes.size == 0 then
+          running := false
+        else
+          status ← write bytes timeoutNs
+          if status != 0 then running := false
+  pure status
+
+def streaming : LeanExe.ByteIO UInt32 := do
+  let status ← copyChecked 1000000000
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
 end LeanExe.Examples.ByteIO
