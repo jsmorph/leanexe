@@ -351,3 +351,28 @@ narrowing round trips. Comparisons use the same proved unsigned mathematical
 relations as bounded naturals. Formation, canonical forms, machine safety, relevance,
 and exact algorithmic admission include every new form. Bitwise operations, complement, shifts, and raw binary64 operations are
 not part of this first word checkpoint.
+
+
+## Bitwise and masked-shift increment in progress
+
+This section is the next specified increment, not yet checked coverage. It adds
+`bitAnd`, `bitOr`, `bitXor`, `shiftLeft`, and `shiftRight` to the existing word
+binary-operation family. Both operands, including a shift count, must have the
+stated word width. Existing strict evaluation and width checks apply.
+
+For every bit position below width `w`, AND/OR/XOR apply the corresponding Boolean
+operation to the two input bits. Results are representable words, with no bits
+at or above `w`. This pointwise specification is independent of a host-library
+bitwise implementation. The bit at position `i` of a natural value is determined
+by `(value / 2^i) % 2`. The implementation must prove its finite-bit behavior and
+bounds, not merely provide an operation name and result type.
+
+Let `k = count % w` and `M = 2^w`. Left shift returns `(value * 2^k) % M`;
+right shift returns `value / 2^k`. Thus shifting by the width is the identity,
+not a zero result. Right shift is logical/unsigned. Shift-count normalization
+requires positive widths, a reduced count below `w`, and periodicity laws.
+
+`wordNot width value` is a transparent XOR with the represented mask `M-1`.
+It introduces no new expression constructor or runtime frame and evaluates its
+operand once. Its derived typing, inference, step, and relevance equations must
+be checked, along with mask identities and complement involution.
