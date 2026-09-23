@@ -35,6 +35,7 @@ The registration remains incomplete.
 | [Active iteration](CachedHidden/ActiveStep.lean) and [allocation budget](CachedHidden/LayerBudget.lean) | Complete block call, update append, status-dependent cache release, previous-buffer releases, counter advance, and preserved owned outputs. |
 | [Complete layer loop](CachedHidden/LayerLoop.lean) and [traversal allocation bound](CachedHidden/TraversalBudget.lean) | All twelve iterations, exact successful and failed source states, ownership preservation, termination, and heap-top growth of at most 1,659,552 bytes before final cache construction. |
 | [Final-output preparation](CachedHidden/FinishPrepare.lean), [failure guard](CachedHidden/FinishGuard.lean), and [cache append](CachedHidden/FinishAppend.lean) | Exact branch selection, empty failed outputs, successful cache concatenation, and returned buffer assignments. |
+| [Complete cached hidden function](CachedHidden/Spec.lean) | Exact callable function 58, embedding and twelve-layer traversal, status propagation, final cache construction, returned bytes, owned outputs, and complete temporary cleanup. |
 | [Model representation](Model.lean) and [source validation](ModelSource.lean) | Accepted tensor predicates, block extents, token coefficient and scale properties, and equivalence between validation status zero and the complete representation predicate. |
 | [Public model validator](Validation/Public.lean) | Exact status, termination, and unchanged store for every represented input, including header rejection, global checks, and the early-exit twelve-block scan. |
 | [Validator characterizations](../ProofKit/QuantizedValidity.lean) | Pointwise source conditions for finite words, permitted coefficients, and valid scales. |
@@ -55,11 +56,10 @@ through the full cached recurrence remain open.
 
 ## Remaining proof and evaluation
 
-The complete proof must compose the checked validator and represented
-model and checked twelve-block loop with final cache construction and
-cleanup, all token-step branches, cached sessions, address bounds, and a
-complete memory bound.  The
-resulting theorem must then transfer to the exact decoded binary.  No
+The complete proof must compose the checked validator, model representation,
+and cached-hidden function with all token-step branches, cached sessions,
+address bounds, and a complete memory bound.  The resulting theorem must
+then transfer to the exact decoded binary.  No
 complete-model execution or binary theorem is claimed here.
 
 The [evaluation record](../../../../../data/gpt2-quantized-v1/README.md)

@@ -45,8 +45,22 @@ theorem Heap.StatusPacked.released {heap : Heap} {store : Store Unit} {status : 
     (heap.release node).StatusPacked (heap.releaseStore store node) status source bytes :=
   ⟨fun hZero => (h.owned hZero).released node hRoot hRoot32 (hSep hZero), h.empty⟩
 
+theorem Heap.OwnsPacked.root_ne_status {heap : Heap} {store : Store Unit}
+    {node : FreeNode} {bytes : ByteArray} (h : heap.OwnsPacked store node bytes)
+    (status : UInt64) (other : FreeNode)
+    (hSep : status = 0 → regionsDisjoint node.region other.region) :
+    node.root ≠ statusRoot status other := by
+  by_cases hZero : status = 0
+  · simpa only [statusRoot, hZero, ite_true] using h.root_ne (hSep hZero)
+  · simp only [statusRoot, hZero, ite_false]
+    intro hRoot
+    have hBound := h.buffer.rootBound
+    rw [hRoot] at hBound
+    contradiction
+
 #print axioms Heap.StatusPacked.values
 #print axioms Heap.StatusPacked.protects
 #print axioms Heap.Frame.statusPacked
 #print axioms Heap.StatusPacked.released
+#print axioms Heap.OwnsPacked.root_ne_status
 end Project.EulerRiemann.Execution
