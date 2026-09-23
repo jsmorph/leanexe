@@ -829,7 +829,8 @@ memory-management implementation, or compiler correctness.
 - [x] Check positive, specified-failure, and ill-typed/stuck examples.
 - [x] Add a repeatable independent proof gate and public-theorem axiom audit.
 - [x] Extend the core with typed direct first-order calls and well-formed bodies.
-- [ ] Settle independent runtime-language semantics, including the current strict-core/deferred-field discrepancy; record the precise language coverage.
+- [x] Choose strict independent semantics and record the compatibility boundary with the existing deferred-field implementation.
+- [ ] Add and verify a syntactic relevance profile for machine-written programs, including complete product patterns and Unit elimination.
 - [ ] Complete declarative type/declaration formation and the schematic collection, binder, and recursion rules.
 - [ ] Extend abstract values and primitive semantics, starting with persistent arrays and their bounds/length invariants.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.

@@ -146,14 +146,12 @@ summand is not specified. Progress and preservation hold for every given typing
 derivation; type uniqueness and principal inference are not claimed. A future
 checker needs a deliberate annotation or bidirectional-checking design.
 
-The next Track 1 task is to settle the intended runtime-language semantics and
-record how the current calculus relates to it. There is a concrete unresolved
-strictness discrepancy: the checked core makes a projection from a pair evaluate
-both components, including an overflowing unused component. The
-[dialect account](typetheory.md#evaluation-traps-and-termination) describes lazy
-projection and deferred fields. A semantics-preserving inclusion of the current
-core in that described language has not been established. This limits the
-scope of the result; it does not invalidate the theorem about the core itself.
+The [runtime-language contract](runtime-language.md) adopts strict evaluation and
+a syntactic relevance profile for machine-written programs. It deliberately
+restricts the language rather than adding deferred computation to reproduce the
+current compiler's treatment of unused expressions. The profile requires used
+binding introductions and complete product patterns; its occurrence checker is
+separate from ordinary typing. The compiler does not yet enforce these rules.
 
 The independent language agenda is:
 
