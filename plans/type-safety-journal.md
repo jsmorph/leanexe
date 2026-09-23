@@ -495,3 +495,14 @@ empty arrays or unused summands, nominal identity/type mismatch, malformed raw
 returns, lexical capture, relevance, and typed calls. The next foundational
 increment is hygienic renaming/weakening for derived callback forms; no payload
 discard policy has been relaxed.
+
+The next checkpoint specifies hygienic renaming independently of execution.
+A variable map is lifted beneath each exact binder prefix; nominal/function
+identities and type annotations are unchanged. The first required laws are
+pointwise congruence, expression identity/composition, context lookup transport,
+and typing preservation/weakening. Pointwise statements avoid importing function
+extensionality into the dependency policy. Occurrence/admission preservation and
+runtime simulation are separate subsequent obligations. Forward context lookup
+transport alone does not justify inference equivalence: it can map an originally
+out-of-range raw variable to an in-range target variable. The parent prepared
+regressions for that boundary and for each different binding arity.

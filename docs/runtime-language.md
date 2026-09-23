@@ -485,3 +485,26 @@ checks both operand expressions. Formation, exact inference, type uniqueness,
 progress, preservation, finite-execution safety, and profile safety include this
 form. Exact final-step laws connect returned true/false to raw value equality
 and inequality, respectively.
+
+
+## Hygienic renaming under development
+
+Derived callback forms need a proved way to insert bindings around code that
+refers to its original context. Renaming maps only free variable indices. A
+lifted map fixes the newly bound prefix and maps the remaining indices beyond
+that prefix. Let and sum arms lift by one, complete product elimination by two,
+natural successor arms by one, and nominal arms by their explicit field count.
+Natural zero arms introduce no binder. Types and declaration/function identities
+are not variable indices and remain unchanged.
+
+The first checkpoint requires total syntax traversal, pointwise congruence,
+identity/composition laws on expressions, context lookup preservation under
+lifting, and typing preservation/weakening. These are binding and static typing
+results. They do not establish evaluation equivalence, public checker equivalence
+under arbitrary maps, or relevance of newly inserted function parameters. Public
+admission still requires formation of the entire ambient context.
+
+Occurrence/admissibility preservation and an operational simulation require
+separate proofs. In particular, noninjective renaming may merge free variables;
+a forward context map can turn an originally out-of-range raw variable into a
+valid one. Exact checker or runtime correspondence needs stronger hypotheses.
