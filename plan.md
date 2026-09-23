@@ -839,7 +839,9 @@ memory-management implementation, or compiler correctness.
 - [x] Prove finite-bit semantics, AND/OR/XOR laws, derived complement, and width-masked shifts under the existing dependency limit.
 - [x] Prove natural zero/successor elimination, predecessor binding, branch agreement, relevance, and its full metatheory.
 - [x] Prove strict Boolean derived APIs, exact typing/relevance, staging, and truth-table execution.
-- [ ] Define and prove compound structural equality and Option/Except combinators; track them explicitly in the coverage ledger.
+- [x] Prove total raw structural comparison exactly matches equality of finite values/lists; keep source admission separate.
+- [ ] Prove independent EqTy admission and its exact checker, then integrate the structural-equality expression with full metatheory.
+- [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
 - [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
@@ -859,7 +861,9 @@ Nominal recursive data and algorithmic typing are now checked, including checker
 soundness/completeness, exact public admission, and expression type uniqueness.
 The bounded-natural primitive family and word arithmetic/conversions/bitwise
 operations/shifts, natural pattern matching, and strict Boolean derived APIs
-are also checked. Next, review the binding infrastructure needed for safe derived
-Option/Except and collection APIs alongside the structural-equality obligation.
+are also checked. Raw structural comparison has exact equality proofs. Next,
+prove the independent source equality domain and its total exact checker before
+integrating the operation. Option/Except callback hygiene and payload-discard
+policy remain explicit obligations.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.
