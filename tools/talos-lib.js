@@ -121,6 +121,7 @@ function loadRegistry() {
         "complete",
         ...(Object.hasOwn(item, "sourceWorkspace") ? ["sourceWorkspace"] : []),
         ...(Object.hasOwn(item, "annotations") ? ["annotations"] : []),
+        ...(Object.hasOwn(item, "entries") ? ["entries"] : []),
       ],
       description,
     );
@@ -128,6 +129,12 @@ function loadRegistry() {
       if (typeof item[field] !== "string" || item[field].length === 0) {
         throw new Error(`${description}.${field} must be a nonempty string`);
       }
+    }
+    if (Object.hasOwn(item, "entries") &&
+        (!Array.isArray(item.entries) || item.entries.length < 2 ||
+         item.entries.some(entry => typeof entry !== "string" || entry.length === 0 || entry.includes(",")) ||
+         new Set(item.entries).size !== item.entries.length || !item.entries.includes(item.entry))) {
+      throw new Error(`${description}.entries must contain distinct entry names including .entry`);
     }
     if (!/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(item.name)) {
       throw new Error(`${description}.name is not snake_case: ${item.name}`);
@@ -422,7 +429,8 @@ function prepareCase(item, wasmTools, programMode) {
     fs.mkdirSync(stageRoot, { recursive: true });
 
     const sourceRoot = sourceWorkspace(item);
-    const compileArgs = ["compile", "--module", item.module, "--entry", item.entry, "--out", wasm];
+    const entryArgs = item.entries ? ["--entries", item.entries.join(",")] : ["--entry", item.entry];
+    const compileArgs = ["compile", "--module", item.module, ...entryArgs, "--out", wasm];
     if (item.annotations) compileArgs.push("--annotations", annotations);
     runLimited(
       `${item.name} compiler run`,

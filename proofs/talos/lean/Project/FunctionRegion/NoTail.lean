@@ -108,6 +108,10 @@ private theorem noReturnCall_aux : ∀ fuel,
         | f32Mul => no_return_call_atomic
         | f32Div => no_return_call_atomic
         | f32Sqrt => no_return_call_atomic
+        | f32Nearest => no_return_call_atomic
+        | i32TruncSatF32S => no_return_call_atomic
+        | f32ConvertI32S => no_return_call_atomic
+        | extend8S => no_return_call_atomic
         | f64ReinterpretI64 => no_return_call_atomic
         | i64ReinterpretF64 => no_return_call_atomic
         | f64Add => no_return_call_atomic
@@ -124,6 +128,8 @@ private theorem noReturnCall_aux : ∀ fuel,
         | wrapI64 => no_return_call_atomic
         | extendUI32 => no_return_call_atomic
         | load32 => no_return_call_atomic
+        | load8U => no_return_call_atomic
+        | store8 => no_return_call_atomic
         | store32 => no_return_call_atomic
         | load64 => no_return_call_atomic
         | store64 => no_return_call_atomic

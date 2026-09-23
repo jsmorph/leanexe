@@ -194,4 +194,23 @@ example : rejectedWith
     (.typeMismatch .f32 .i32) = true := by
   decide +kernel
 
+example : accepted
+    { baseModule with
+      types := [{ params := [], results := [.i32] }]
+      codes := [{ locals := [], body := [.i32Const (-1), .i32Extend8S,
+        .f32ConvertI32S, .f32Nearest, .i32TruncSatF32S] }] } = true := by
+  decide +kernel
+
+example : [.f32Nearest, .i32TruncSatF32S].all (fun op =>
+    rejectedWith
+      { baseModule with codes := [{ locals := [], body := [.i32Const 0, op] }] }
+      (.typeMismatch .f32 .i32)) = true := by
+  decide +kernel
+
+example : [.f32ConvertI32S, .i32Extend8S].all (fun op =>
+    rejectedWith
+      { baseModule with codes := [{ locals := [], body := [.i64Const 0, op] }] }
+      (.typeMismatch .i32 .i64)) = true := by
+  decide +kernel
+
 end Wasm.Binary.Tests

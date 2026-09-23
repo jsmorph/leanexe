@@ -10,6 +10,9 @@ import Project.Gpt2RowMean.Program
 import Project.Gpt2RowInvStd.Program
 import Project.Gpt2AttentionScore.Program
 import Project.Gpt2LinearRows.Program
+import Project.Gpt2QuantizedLinearRows.Program
+import Project.Gpt2QuantizedGroupedRows.Program
+import Project.Gpt2QuantizedCached.Program
 import Project.Gpt2CachedStep.Program
 import Project.PackedRead.Program
 import Project.PackedGenerate.Program
@@ -423,5 +426,20 @@ example : eraseTypeIdx Project.PackedGenerate.func1Def = eraseTypeIdx allocFuncD
 example : eraseTypeIdx Project.PackedGenerate.func2Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.PackedGenerate.func3Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.PackedGenerate.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.Gpt2QuantizedLinearRows.func9Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedLinearRows.func10Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedLinearRows.func11Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedLinearRows.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
+
+example : eraseTypeIdx Project.Gpt2QuantizedGroupedRows.func9Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedGroupedRows.func10Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedGroupedRows.func11Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedGroupedRows.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
+
+example : eraseTypeIdx Project.Gpt2QuantizedCached.func62Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedCached.func63Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedCached.func64Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gpt2QuantizedCached.func65Def = eraseTypeIdx (releaseFuncDef 65) := rfl
 
 end Project.Runtime
