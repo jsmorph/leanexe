@@ -863,7 +863,7 @@ tools/talos-proof.js check gcd
 tools/talos-proof.js check --all
 ```
 
-[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete forty-four-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
+[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete forty-five-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
 
 ```sh
 tools/artifact-proof.js check-all
@@ -875,7 +875,7 @@ tools/artifact-conformance.js check
 The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  The
 source-driven proof Lake files pin floating-point Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
-All forty-four exact-artifact manifests identify this Talos revision.  The
+All forty-five exact-artifact manifests identify this Talos revision.  The
 quantized projection uses the extended scalar instruction profile.  The
 earlier forty-three manifests now identify that verifier, and their renewed
 aggregate proof check remains pending.  The source artifact tool fetches its

@@ -1,6 +1,6 @@
 # Grouped quantized projection proof
 
-The `gpt2_quantized_grouped_rows` case proves exact execution of the [grouped projection](../../../../../LeanExe/Models/Gpt2/Quantized/Grouped.lean).  Its measured 5,441-byte binary has SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  Exact-binary certificates are in progress.
+The `gpt2_quantized_grouped_rows` case proves exact execution of the [grouped projection](../../../../../LeanExe/Models/Gpt2/Quantized/Grouped.lean).  Its measured 5,441-byte binary has SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  The independent package check passes.  The [binary theorem](ArtifactTranslation.lean), `Artifact.artifact_linearGroupedRows_exact`, connects decoding, grammar encoding, validation, core validity, and the execution specification to these bytes.
 
 ## Algorithm and guarantees
 
@@ -25,4 +25,10 @@ The [evaluation record](../../../../../data/gpt2-quantized-v1/README.md) retains
 
 ```sh
 tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.Gpt2QuantizedGroupedRows.Spec
+```
+
+The frozen package can be checked independently:
+
+```sh
+tools/artifact-proof.js check proofs/artifacts/gpt2_quantized_grouped_rows/f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b/program.wasm Project.Gpt2QuantizedGroupedRows.ArtifactTranslation
 ```
