@@ -912,9 +912,13 @@
       ],
       "leanModule": "Gpt2QuantizedCached",
       "specTarget": "Project.Gpt2QuantizedCached.Spec",
-      "behaviorTheorems": ["Project.Gpt2QuantizedCached.Spec.cachedStep_exact"],
+      "behaviorTheorems": [
+        "Project.Gpt2QuantizedCached.Spec.cachedStep_exact",
+        "Project.Gpt2QuantizedCached.Spec.validateModel_exact",
+        "Project.Gpt2QuantizedCached.Spec.gpt2_128_exact"
+      ],
       "annotations": true,
-      "complete": false
+      "complete": true
     },
     {
       "name": "gpt2_cached_step",

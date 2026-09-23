@@ -4,7 +4,7 @@ The registered `gpt2_quantized_cached` case contains `validateModel` and
 `cachedStep` exports from the [quantized Lean model](../../../../../LeanExe/Models/Gpt2/Quantized/README.md).
 Its candidate has 28,315 bytes and SHA-256
 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.
-The registration remains incomplete.
+The source-driven execution gate passes.  Exact-binary verification remains in progress.
 
 ## Checked components
 
@@ -38,6 +38,8 @@ The registration remains incomplete.
 | [Complete cached hidden function](CachedHidden/Spec.lean) and [allocation bound](CachedHidden/Budget.lean) | Exact callable function 58, embedding and twelve-layer traversal, status propagation, final cache construction, returned bytes, owned outputs, complete temporary cleanup, and heap-top growth bounded by incoming cache bytes plus 1,736,456. |
 | [Token-step hidden call](Entry/Hidden.lean), [final normalization](Entry/Normalized.lean), and [vocabulary projection](Entry/Logits.lean) | Exact calls, status and buffer assignments, preserved live bindings, and the 50,257-logit output. |
 | [Entry input test](Entry/InputTest.lean), [cache test](Entry/CacheTest.lean), [normalized guard](Entry/FiniteGuard.lean), and [output guard](Entry/OutputGuard.lean) | Header and input rejection, bounded cache-length arithmetic, all finite-word probes, short-circuit output checks, and preserved live owners. |
+| [Complete session](Spec.lean) | Reset, checkpoint allocation and byte loading, model validation, up to 128 token calls, status-dependent termination, replaced-cache and logit release, and session shutdown. |
+| [Token-step budget](Entry/Budget.lean) | Allocation sufficiency and heap-top growth bounded by incoming cache bytes plus 1,942,544.  The session allows 16 MiB per token from a 128 MiB initial allowance. |
 | [Complete public token step](Entry/Public.lean) | Exact status, cache and logit bytes for public function 61, arbitrary 64-bit token masking, all input and numerical rejection branches, ownership, protected-input preservation, and temporary cleanup. |
 | [Result assignment and return](Entry/Result.lean) | Exact status, cache and logit result words, and empty failed outputs. |
 | [Model representation](Model.lean) and [source validation](ModelSource.lean) | Accepted tensor predicates, block extents, token coefficient and scale properties, and equivalence between validation status zero and the complete representation predicate. |
@@ -60,11 +62,14 @@ through the full cached recurrence remain open.
 
 ## Remaining proof and evaluation
 
-The complete proof must compose the checked validator, model representation,
-and public token-step theorem with cached sessions, address bounds, and a
-complete memory bound.  The resulting theorem must
-then transfer to the exact decoded binary.  No
-complete-session or binary theorem is claimed here.
+The complete source session theorem passes with `propext`, `Classical.choice`,
+and `Quot.sound`.  Its input assumptions are the 127,695,972-byte model shape
+and at most 128 requested tokens.  Validation rejection closes the loaded
+model.  Token-step failure ends the trace and releases the preceding cache
+and weights.  Successful completion releases the final cache and weights.
+The formal boundary includes host byte loading and the specified sequence of
+WASM calls.  Transferring this theorem to the exact decoded binary remains
+in progress.
 
 The [evaluation record](../../../../../data/gpt2-quantized-v1/README.md)
 contains the retained grouped binary, all 6,432,896 bitwise logit comparisons,

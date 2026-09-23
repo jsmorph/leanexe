@@ -36,8 +36,9 @@ retains its preceding cache until a successful call returns the replacement.
 The [scalar projection proof](../../../../proofs/talos/lean/Project/Gpt2QuantizedLinearRows/README.md)
 covers exact execution, integer range, allocation, release, and its frozen
 binary.  The [cached proof work](../../../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md)
-has checked helper-region equality.  Complete-model execution, session memory
-bounds, and exact-binary proofs remain open.
+proves the complete token step and session, including validation, failure
+cleanup, ownership, and allocation sufficiency.  Exact-binary verification
+remains in progress.
 
 The [evaluation records](../../../../data/gpt2-quantized-v1/README.md) retain
 bitwise reference tests, memory measurements, timing, generated texts, and
@@ -45,4 +46,4 @@ activation-error diagnostics.  The original per-row candidate reduces storage
 and measured runtime, but its completion quality deteriorates under that scale rule.
 The grouped reference improves agreement with FP32 on both evaluated prefix
 sets.  Its experimental projection binary passes bitwise reference tests and
-timing comparisons.  The grouped cached WASM matches all reference logits and caches through 128 tokens.  The grouped projection execution proof passes.  Complete cached-model and exact-binary proofs remain open.
+timing comparisons.  The grouped cached WASM matches all reference logits and caches through 128 tokens.  The grouped projection execution proof passes.  The complete cached-model and session execution proofs pass.  Exact-binary verification remains in progress.

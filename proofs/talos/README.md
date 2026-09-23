@@ -214,10 +214,11 @@ The [grouped projection](lean/Project/Gpt2QuantizedGroupedRows/README.md)
 now proves generated execution with 64-coordinate activation groups and
 ordered FP32 accumulation of rescaled partial sums.  Each integer prefix has
 magnitude at most 1,032,256.  The [cached quantized candidate](lean/Project/Gpt2QuantizedCached/README.md)
-has checked instruction-region equality and transported execution and heap
-theorems for the reused FP32 and projection helpers.  Its internal grouped
-projection also has an execution and ownership proof.  Complete cached
-execution, session memory, and exact-binary proofs remain open.
+has complete public token-step and session execution proofs.  The session
+composes reset, checkpoint allocation and byte loading, validation, up to 128
+token calls, status-dependent termination, and buffer release.  Its
+allocation bound permits 16 MiB per token from a 128 MiB initial allowance.
+Exact-binary verification remains in progress.
 
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
