@@ -8,7 +8,7 @@ namespace Project.TinyGpt2Checked.Spec
 open Wasm Project.ProofKit Project.Clob FixedArrayFold
 
 def outputReleaseProgram : Wasm.Program :=
-  [.localGet 54,
+  [.localGet 56,
    .localSet 39,
    .localGet 39,
    .localSet 40,
@@ -17,12 +17,12 @@ def outputReleaseProgram : Wasm.Program :=
    .localGet 40,
    .localSet 42,
    .localGet 41,
-   .localSet 66,
+   .localSet 68,
    .localGet 42,
-   .localSet 67,
+   .localSet 69,
    .constI64 0,
-   .localSet 65,
-   .localGet 68,
+   .localSet 67,
+   .localGet 70,
    .constI64 0,
    .neI64,
    .iff 0 0 [
@@ -34,13 +34,13 @@ def outputReleaseProgram : Wasm.Program :=
       .call 89
      ] []
     ] [],
-   .localGet 66,
+   .localGet 68,
    .localSet 24,
-   .localGet 67,
+   .localGet 69,
    .localSet 25,
    .constI64 1,
-   .localSet 68,
-   .localGet 65,
+   .localSet 70,
+   .localGet 67,
    .constI64 0,
    .neI64,
    .br_if 1]
@@ -48,8 +48,8 @@ def outputReleaseProgram : Wasm.Program :=
 theorem output_release_shape : (outputBody.drop 103).take 28 = outputReleaseProgram := rfl
 
 def outputReleaseFrame (frame : Locals) (output : UInt64) : Locals :=
-  [(39, output), (40, output), (41, output), (42, output), (66, output), (67, output),
-    (65, 0), (24, output), (25, output), (68, 1)].foldl
+  [(39, output), (40, output), (41, output), (42, output), (68, output), (69, output),
+    (67, 0), (24, output), (25, output), (70, 1)].foldl
       (fun current assignment => resultFrame current assignment.1 assignment.2) frame
 
 theorem outputReleaseFrame_saved {frame : Locals} {owner pointer empty : UInt64}
@@ -62,19 +62,19 @@ theorem outputReleaseFrame_saved {frame : Locals} {owner pointer empty : UInt64}
     | refine OutputSaved.result ?_ _ _ (by decide) (by decide) (by decide)
 
 theorem outputReleaseFrame_get (frame : Locals) (output : UInt64)
-    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 63) :
+    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 65) :
     let next := outputReleaseFrame frame output
     next.get 24 = some (.i64 output) ∧ next.get 25 = some (.i64 output) ∧
-    next.get 47 = frame.get 47 ∧ next.get 68 = some (.i64 1) := by
+    next.get 49 = frame.get 49 ∧ next.get 70 = some (.i64 1) := by
   simp [outputReleaseFrame, List.foldl, resultFrame, Locals.get, hParams, hLocals,
     List.getElem?_set]
 
 theorem output_release_region_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (root capacity head releases frees output : UInt64) (input : Array UInt64) (count : Nat)
-    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 63)
+    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 65)
     (hValues : frame.values = [])
-    (hCurrent : frame.get 24 = some (.i64 root)) (hOutput : frame.get 54 = some (.i64 output))
-    (hOwned : frame.get 68 = some (.i64 (if count = 0 then 0 else 1)))
+    (hCurrent : frame.get 24 = some (.i64 root)) (hOutput : frame.get 56 = some (.i64 output))
+    (hOwned : frame.get 70 = some (.i64 (if count = 0 then 0 else 1)))
     (hRoot : 48 ≤ root.toNat) (hHeader : FreshFixedArrayAt initial root capacity 1)
     (hInput : UInt64Array.At initial root input)
     (hHead : initial.globals.globals[1]? = some (.i64 head))
@@ -87,9 +87,9 @@ theorem output_release_region_spec (env : HostEnv Unit) (initial : Store Unit) (
     wp module ((outputBody.drop 103).take 28 ++ rest) Q initial frame env := by
   have hCurrent' := Frame.internal_getElem?_of_get frame 6 18 (.i64 root)
     hParams (by rw [hLocals]; decide) hCurrent
-  have hOutput' := Frame.internal_getElem?_of_get frame 6 48 (.i64 output)
+  have hOutput' := Frame.internal_getElem?_of_get frame 6 50 (.i64 output)
     hParams (by rw [hLocals]; decide) hOutput
-  have hOwned' := Frame.internal_getElem?_of_get frame 6 62
+  have hOwned' := Frame.internal_getElem?_of_get frame 6 64
     (.i64 (if count = 0 then 0 else 1)) hParams (by rw [hLocals]; decide) hOwned
   have hNonzero : root ≠ 0 := by
     intro hZero

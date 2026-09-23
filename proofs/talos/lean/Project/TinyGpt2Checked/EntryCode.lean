@@ -36,8 +36,8 @@ def tokenAccept : Wasm.Program :=
    .call 7,
    .localSet 15,
    .localGet 14,
-   .localSet 26,
-   .localGet 26,
+   .localSet 27,
+   .localGet 27,
    .wrapI64,
    .load64 0,
    .localGet 15,
@@ -79,11 +79,18 @@ def tokenAccept : Wasm.Program :=
     .call 84,
     .localSet 23,
     .localSet 22,
+    .localGet 22,
+    .localSet 25,
     .localGet 23,
-    .localSet 25
+    .localSet 26,
+    .localGet 11, .constI64 0, .eqI64, .eqz,
+    .iff 0 1 [.localGet 11, .localGet 25, .eqI64, .eqz] [.const 0] [] [.i32],
+    .iff 0 0 [.localGet 11, .call 89] []
    ] [
+    .localGet 13,
+    .localSet 25,
     .localGet 14,
-    .localSet 25
+    .localSet 26
    ]
   ]
 
@@ -99,17 +106,18 @@ def tokenGuard : Wasm.Program :=
    .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64], .constI64 0, .eqI64, .eqz]
 
 theorem checked_shape : func85 = tokenGuard ++
-    [.iff 0 0 tokenAccept tokenReject, .localGet 25] := rfl
+    [.iff 0 0 tokenAccept tokenReject, .localGet 26] := rfl
 
 theorem token_reject_shape : tokenReject =
-    FixedArrayCapacity.constantProgram 0 1 30 ++
-    FixedArrayAllocateNone.program 30 (FixedArrayReuse.program 30 1) 1 ++
-    [.localGet 35, .localSet 26] ++ FixedArrayResult.lengthStoreProgram 26 0 ++
-    [.localGet 26, .localSet 24, .localGet 24, .localSet 25] := rfl
+    FixedArrayCapacity.constantProgram 0 1 31 ++
+    FixedArrayAllocateNone.program 31 (FixedArrayReuse.program 31 1) 1 ++
+    [.localGet 36, .localSet 27] ++ FixedArrayResult.lengthStoreProgram 27 0 ++
+    [.localGet 27, .localSet 24, .localGet 24, .localSet 25,
+     .localGet 24, .localSet 26] := rfl
 
 theorem token_guard_spec (env : HostEnv Unit) (initial : Store Unit)
     (pointer bound t0 t1 t2 t3 : UInt64) (Q : Assertion Unit)
-    (hNext : wp module [.iff 0 0 tokenAccept tokenReject, .localGet 25] Q initial
+    (hNext : wp module [.iff 0 0 tokenAccept tokenReject, .localGet 26] Q initial
       { checkedFrame pointer bound t0 t1 t2 t3 with values :=
           [.i32 (if t0 < 256 ∧ t1 < 256 ∧ t2 < 256 ∧ t3 < 256 then 1 else 0)] } env) :
     wp module func85 Q initial (checkedFrame pointer bound t0 t1 t2 t3) env := by
