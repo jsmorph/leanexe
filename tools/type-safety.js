@@ -8,59 +8,110 @@ const { spawnSync } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const runner = path.join(root, "tools", "leanrun");
 const auditedTheorems = [
-  "LeanExe.TypeSafety.preservation",
-  "LeanExe.TypeSafety.progress",
-  "LeanExe.TypeSafety.type_safety",
-  "LeanExe.TypeSafety.closed_type_safety",
-  "LeanExe.TypeSafety.return_type",
-  "LeanExe.TypeSafety.overflow_is_justified",
-  "LeanExe.TypeSafety.step_deterministic",
-  "LeanExe.TypeSafety.profile_type_safety",
-  "LeanExe.TypeSafety.profile_return_type",
-  "LeanExe.TypeSafety.profile_overflow_is_justified",
-  "LeanExe.TypeSafety.usesArgs_iff",
-  "LeanExe.TypeSafety.parametersUsed_iff",
-  "LeanExe.TypeSafety.admissible_let_iff",
-  "LeanExe.TypeSafety.admissible_split_iff",
-  "LeanExe.TypeSafety.admissible_sumCase_iff",
-  "LeanExe.TypeSafety.admissible_unitCase_iff",
-  "LeanExe.TypeSafety.admissibleArgs_iff",
-  "LeanExe.TypeSafety.programAdmissible_cons_iff",
-  "LeanExe.TypeSafety.programAdmissible_length",
-  "LeanExe.TypeSafety.programAdmissible_lookup",
-  ...[
-    "lookup_none_iff",
-    "lookup_append_left",
-    "lookup_append_right",
-    "replace_none_iff",
-    "replace_length",
-    "replace_lookup_same",
-    "replace_lookup_other",
-    "get_failure_iff",
-    "set_failure_iff",
-    "push_failure_iff",
-    "append_failure_iff",
-    "set_success_iff",
-    "set_success_length",
-    "get_after_set_same",
-    "get_after_set_other",
-    "push_success",
-    "append_success",
-    "push_success_iff",
-    "append_success_iff",
-    "push_success_length",
-    "append_success_length",
-    "get_after_push_last",
-    "get_after_append_left",
-    "get_after_append_right",
-    "empty_typed",
-    "get_typed",
-    "set_typed",
-    "push_typed",
-    "append_typed",
-  ].map(name => `LeanExe.TypeSafety.ArrayValues.${name}`),
-  ...["append", "lookup", "replace"].map(name => `LeanExe.TypeSafety.ValuesTyped.${name}`),
-];
+  "lookup_lt",
+  "tyWellFormed_iff",
+  "typesWellFormed_iff",
+  "constructorsWellFormed_iff",
+  "declarationTableWellFormed_iff",
+  "declarationsWellFormed_iff",
+  "signatureWellFormed_iff",
+  "signaturesWellFormed_iff",
+  "TypesWF.append",
+  "TypesWF.lookup",
+  "ConstructorsWF.lookup",
+  "DeclarationTableWF.lookup",
+  "SignaturesWF.lookup",
+  "TyWF.prod_left",
+  "TyWF.prod_right",
+  "TyWF.sum_left",
+  "TyWF.sum_right",
+  "TyWF.array_item",
+  "BodiesTyped.lookup",
+  "EnvTyped.append",
+  "EnvTyped.lookup",
+  "ValueTyped.wellFormed",
+  "ValuesTyped.wellFormed",
+  "EnvTyped.wellFormed",
+  "EnvTyped.length",
+  "ExprTyped.wellFormed",
+  "ArgsTyped.wellFormed",
+  "BranchesTyped.lookup",
+  "BranchesTyped.length",
+  "ValueTyped.bool_canonical",
+  "ValueTyped.unit_canonical",
+  "ValueTyped.nat_canonical",
+  "ValueTyped.prod_canonical",
+  "ValueTyped.sum_canonical",
+  "ValueTyped.array_canonical",
+  "ValueTyped.data_canonical",
+  "ArrayValues.lookup_none_iff",
+  "ArrayValues.lookup_append_left",
+  "ArrayValues.lookup_append_right",
+  "ArrayValues.replace_none_iff",
+  "ArrayValues.replace_length",
+  "ArrayValues.replace_lookup_same",
+  "ArrayValues.replace_lookup_other",
+  "ArrayValues.get_failure_iff",
+  "ArrayValues.set_failure_iff",
+  "ArrayValues.push_failure_iff",
+  "ArrayValues.append_failure_iff",
+  "ArrayValues.set_success_iff",
+  "ArrayValues.set_success_length",
+  "ArrayValues.get_after_set_same",
+  "ArrayValues.get_after_set_other",
+  "ArrayValues.push_success",
+  "ArrayValues.append_success",
+  "ArrayValues.push_success_iff",
+  "ArrayValues.append_success_iff",
+  "ArrayValues.push_success_length",
+  "ArrayValues.append_success_length",
+  "ArrayValues.get_after_push_last",
+  "ArrayValues.get_after_append_left",
+  "ArrayValues.get_after_append_right",
+  "ValuesTyped.append",
+  "ValuesTyped.lookup",
+  "ValuesTyped.replace",
+  "ArrayValues.empty_typed",
+  "ArrayValues.get_typed",
+  "ArrayValues.set_typed",
+  "ArrayValues.push_typed",
+  "ArrayValues.append_typed",
+  "FrameTyped.wellFormed",
+  "KontTyped.wellFormed",
+  "StateTyped.wellFormed",
+  "initial_typed",
+  "step_deterministic",
+  "enter_call_typed",
+  "eval_step_typed",
+  "frame_step_typed",
+  "safety_step",
+  "terminal_no_step",
+  "preservation",
+  "progress",
+  "preservation_steps",
+  "typed_not_stuck",
+  "type_safety",
+  "closed_type_safety",
+  "return_type",
+  "overflow_is_justified",
+  "usesArgs_iff",
+  "usesBranches_iff",
+  "parametersUsed_iff",
+  "admissible_let_iff",
+  "admissible_split_iff",
+  "admissible_sumCase_iff",
+  "admissible_unitCase_iff",
+  "admissibleArgs_iff",
+  "admissibleBranches_iff",
+  "admissible_dataCtor_iff",
+  "admissible_dataCase_iff",
+  "programAdmissible_cons_iff",
+  "programAdmissible_length",
+  "programAdmissible_lookup",
+  "profile_type_safety",
+  "profile_return_type",
+  "profile_overflow_is_justified",
+].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
 // additional assumptions even when they are available in the Lean environment.
@@ -98,6 +149,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_profile.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_arrays.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_data.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });
@@ -112,14 +164,17 @@ function main() {
   for (const match of output.matchAll(/'([^']+)' does not depend on any axioms/gu)) {
     dependencies.set(match[1], []);
   }
+  const failures = [];
   for (const name of auditedTheorems) {
     if (!dependencies.has(name)) {
-      throw new Error(`Missing axiom audit result for ${name}:\n${output}`);
+      failures.push(`Missing axiom audit result for ${name}`);
+      continue;
     }
     const unexpected = dependencies.get(name).filter(axiom => !allowedAxioms.has(axiom));
-    if (unexpected.length) throw new Error(`${name} uses unexpected axioms: ${unexpected.join(", ")}`);
+    if (unexpected.length) failures.push(`${name} uses unexpected axioms: ${unexpected.join(", ")}`);
     console.log(`${name}: ${dependencies.get(name).join(", ") || "no axioms"}`);
   }
+  if (failures.length) throw new Error(failures.join("\n"));
   console.log(`Type-safety gate passed: core build, behavior checks, ${auditedTheorems.length} theorem audits.`);
 }
 

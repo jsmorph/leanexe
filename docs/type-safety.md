@@ -31,7 +31,8 @@ different obligation, not the reason the full language theorem is unfinished.
 The core has Unit, Bool, bounded natural numbers, products, binary sums,
 variables, let bindings, conditionals, projections, complete product patterns,
 Unit elimination, sum case analysis, checked addition, and direct first-order
-calls with arbitrary finite argument lists, and persistent homogeneous arrays.
+calls with arbitrary finite argument lists, persistent homogeneous arrays, and
+nominal recursive data with strict construction and exhaustive matching.
 Expressions, values, and machine states are ordinary untyped data. Separate
 inductive judgments describe their types. Natural literals and natural values
 must be below `2^64` when typed; addition uses this bounded-natural interpretation,
@@ -52,9 +53,10 @@ allowed; a use in one conditional branch suffices. This is neither a linearity
 discipline nor a claim of semantic necessity. `ProfileTyped` and
 `ProfileProgramTyped` require both ordinary typing and these admission checks.
 
-Function bodies are checked against a fixed signature table. `ProgramTyped`
-requires exactly one body per declared signature, checked under its parameter
-types and the same global table. Calls must supply exactly the declared argument
+Function bodies are checked against fixed declaration and signature tables.
+`ProgramTyped` requires well-formed declarations and signatures, and exactly one
+body per signature, checked under its parameter types and the same global tables.
+Calls must supply exactly the declared argument
 types and arity. Self-recursion and mutual recursion are permitted; program
 typing assumes neither termination nor execution safety.
 
@@ -72,6 +74,20 @@ evaluate left to right, including a set replacement when the index is invalid.
 These errors are ordinary typed data; they introduce no new terminal failure.
 Arrays here are persistent values, with no physical heap or allocation model.
 
+Nominal declarations list constructors and their ordered field types. Every
+nominal reference must name a declaration, including references under arrays,
+products, and unused sum alternatives. Self-recursion and mutual recursion are
+allowed; formation checks indices without unfolding recursive declarations.
+Empty datatypes are permitted, but an empty match must declare a well-formed
+result type. The type grammar has no negative field positions. Values are finite
+inductive trees; no theorem asserts that every declared type has a value.
+
+Constructor fields evaluate left to right. Matching requires one typed branch
+per declared constructor, exact field arities, and syntactic use of every pattern
+field in the profile. Runtime matching checks nominal identity and selected
+arity, then prepends the fields to the captured environment. Exhaustiveness is
+a static typing property. No source-recursion recognizer is used by these rules.
+
 This evaluation strategy belongs to this core. Connecting demand-based LeanExe
 extraction to it requires a separate theorem. The core does not import the
 extractor, diagnostic IR evaluator, emitter, or Talos.
@@ -81,10 +97,10 @@ extractor, diagnostic IR evaluator, emitter, or Talos.
 The principal closed-term theorem, `closed_type_safety`, has the shape:
 
 ```lean
-ProgramTyped program signatures →
-ExprTyped signatures [] expr τ →
+ProgramTyped declarations program signatures →
+ExprTyped declarations signatures [] expr τ →
 Steps program (initial expr) final →
-StateTyped signatures final τ ∧ ¬ Stuck program final
+StateTyped declarations signatures final τ ∧ ¬ Stuck program final
 ```
 
 `Steps` denotes any finite sequence of actual machine steps, including zero
@@ -103,6 +119,10 @@ computations supplied with well-typed environments and continuations.
 | `overflow_is_justified` | A reached overflow contains bounded operands whose mathematical sum exceeds the representation. |
 | `step_deterministic` | Two successors of the same state are equal. |
 | `profile_type_safety`, `profile_return_type`, `profile_overflow_is_justified` | The corresponding execution guarantees for admitted profile programs. |
+| `declarationsWellFormed_iff`, `signaturesWellFormed_iff` | The corresponding Boolean checks accept exactly well-formed declaration/signature tables. |
+| `ExprTyped.wellFormed`, `ArgsTyped.wellFormed` | Typed expressions/arguments have formed types under formed ambient tables and contexts. |
+| `ValueTyped.wellFormed`, `EnvTyped.wellFormed`, `StateTyped.wellFormed` | Value/environment types are formed; admitted-program runtime states have formed result types, including overflow states. |
+| `BranchesTyped.length`, `BranchesTyped.lookup` | Exact branch coverage and declared field arity/type at every selected constructor. |
 
 The profile module also proves exact characterizations of its binding and
 argument checks. `programAdmissible_lookup` establishes that each declared
@@ -127,6 +147,7 @@ presentation. No premise assumes one of these safety conclusions.
 
 | Module | Content |
 |--------|---------|
+| [Formation.lean](../LeanExe/TypeSafety/Formation.lean) | Types, nominal declarations, formation judgments, and exact Boolean checker characterizations. |
 | [Core.lean](../LeanExe/TypeSafety/Core.lean) | Syntax, extrinsic expression and program typing, typed environments, lookup, and canonical forms. |
 | [ArrayValues.lean](../LeanExe/TypeSafety/ArrayValues.lean) | Pure checked array operations, failure/result/length/read laws, and primitive typing. |
 | [Machine.lean](../LeanExe/TypeSafety/Machine.lean) | Executable transitions, typed frames and continuations, state typing, and determinism. |
@@ -142,10 +163,12 @@ tools/type-safety.js check
 
 The gate checks the version against `lean-toolchain`, builds only the independent
 `LeanExe.TypeSafety` target, checks [26 core examples](../test/type_safety.lean),
-[41 profile examples](../test/type_safety_profile.lean), and
-[46 array examples](../test/type_safety_arrays.lean). It audits the transitive
-axiom dependencies of seven core results, all 13 profile theorems, and all 32
-array operation and list-typing theorems: 52 audits in total.
+[41 profile examples](../test/type_safety_profile.lean),
+[46 array examples](../test/type_safety_arrays.lean), and
+[57 nominal-data examples](../test/type_safety_data.lean). It audits the
+transitive axiom dependencies of all 103 declared theorems across the six
+development modules. The maintained list includes helper proofs as well as the
+main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
 Behavior checks and the audit run with warnings treated as errors. The examples
 exercise lexical capture, both sum branches, branch selection, strict pairs,
@@ -158,6 +181,9 @@ uses, and uses confined to an unselected branch.
 Array examples exercise invalid and boundary indices, persistent updates,
 nested arrays, left-to-right failure order, captured replacement environments,
 array parameters, heterogeneous-value rejection, and malformed array frames.
+Nominal examples cover mutual/empty/cyclic declaration formation, malformed
+hidden types, exact field/branch coverage, empty elimination, runtime result
+formation, field binding order, raw mismatches, and a typed recursive list sum.
 
 The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
@@ -178,7 +204,7 @@ This result does not establish termination, absence of arithmetic overflow,
 source extraction correctness, ownership safety, or WebAssembly correctness.
 There is no claim that existing accepted LeanExe programs have been translated
 into this core. Fixed-width modular operations, other arithmetic, additional
-array operations, byte arrays, general recursive data, physical heaps, and
+array operations, byte arrays, dependent indexed data, physical heaps, and
 compiler-specific recursion recognizers remain outside the language proved here.
 
 Unannotated sum introductions can have multiple typings because the unused
@@ -214,8 +240,10 @@ The independent language agenda is:
 The first persistent-array increment is checked. Additional collection forms
 such as replication, slicing, folds, and early-exit loops still require complete
 rules or proved expansions into this core. Growth must preserve representable
-lengths or return a specified failure. Recursive nominal declarations and an
-algorithmic typing discipline remain separate foundational work items.
+lengths or return a specified failure. Monomorphic nominal recursive data is now
+checked. The next increment will make sum introductions explicit enough for
+deterministic inference and prove an algorithmic checker against the declarative
+judgments. That checker is not yet implemented at this checkpoint.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;

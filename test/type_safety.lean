@@ -51,10 +51,10 @@ example : run [] 20 (initial (.add (.nat largest) (.nat 0))) =
 
 example : run [] 20 (initial overflowOne) = .overflow largest 1 := by rfl
 
-example : ExprTyped [] [] overflowOne .nat64 :=
+example : ExprTyped [] [] [] overflowOne .nat64 :=
   .add (.nat (by decide)) (.nat (by decide))
 
-example : ¬ ExprTyped signatures Γ (.nat nat64Limit) .nat64 := by
+example : ¬ ExprTyped [] signatures Γ (.nat nat64Limit) .nat64 := by
   intro typed
   cases typed with
   | nat bounded => exact Nat.lt_irrefl _ bounded
@@ -77,10 +77,10 @@ example : ¬ Terminal (.overflow 1 1) := by
 def pairSignatures : Signatures := [⟨[.nat64, .nat64], .prod .nat64 .nat64⟩]
 def pairProgram : Program := [.pair (.var 0) (.var 1)]
 
-example : ProgramTyped pairProgram pairSignatures :=
-  .cons (.pair (.var rfl) (.var rfl)) .nil
+example : ProgramTyped [] pairProgram pairSignatures :=
+  ⟨.nil, signaturesWellFormed_iff.mp rfl, .cons (.pair (.var rfl) (.var rfl)) .nil⟩
 
-example : ExprTyped pairSignatures [] (.call 0 [.nat 11, .nat 22])
+example : ExprTyped [] pairSignatures [] (.call 0 [.nat 11, .nat 22])
     (.prod .nat64 .nat64) :=
   .call rfl (.cons (.nat (by decide)) (.cons (.nat (by decide)) .nil))
 
@@ -105,7 +105,7 @@ example : Stuck [] (initial (.call 0 [])) := by
 example : run [.var 0] 20 (initial (.letE (.nat 99) (.call 0 []))) =
     .eval (.var 0) [] [] := by rfl
 
-example : ¬ ExprTyped pairSignatures [] (.call 0 []) (.prod .nat64 .nat64) := by
+example : ¬ ExprTyped [] pairSignatures [] (.call 0 []) (.prod .nat64 .nat64) := by
   intro typed
   cases typed with
   | call found arguments =>
@@ -116,10 +116,10 @@ example : ¬ ExprTyped pairSignatures [] (.call 0 []) (.prod .nat64 .nat64) := b
 def recursiveSignatures : Signatures := [⟨[], .unit⟩]
 def recursiveProgram : Program := [.call 0 []]
 
-example : ProgramTyped recursiveProgram recursiveSignatures :=
-  .cons (.call rfl .nil) .nil
+example : ProgramTyped [] recursiveProgram recursiveSignatures :=
+  ⟨.nil, signaturesWellFormed_iff.mp rfl, .cons (.call rfl .nil) .nil⟩
 
-example : ExprTyped recursiveSignatures [] (.call 0 []) .unit := .call rfl .nil
+example : ExprTyped [] recursiveSignatures [] (.call 0 []) .unit := .call rfl .nil
 
 example : Step recursiveProgram (initial (.call 0 [])) (initial (.call 0 [])) := rfl
 

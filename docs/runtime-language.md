@@ -97,8 +97,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 113 semantic examples and audits seven core results,
-all 13 profile theorems, and all 32 array operation and list-typing theorems. It
+The maintained gate checks 170 semantic examples and audits all 103 declared
+theorems across the six development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -129,15 +129,15 @@ that this independent language must reproduce.
 ## Full-language coverage
 
 The profile applies to the scalar/product/sum/call calculus, complete product
-and Unit elimination, and the six array forms below. The following work remains
-separately tracked:
+and Unit elimination, the six array forms below, and monomorphic nominal recursive
+data. The following work remains separately tracked:
 
 | Language family | Required definition and proof |
 |-----------------|-------------------------------|
 | Remaining natural arithmetic and U8/U32/U64 operations | Define each bounded/modular operation and prove its primitive safety. |
 | Additional array operations | Empty, size, checked get/set/push/append are proved. Replication, slicing, search, and other collection forms remain to be specified and proved or derived. |
 | Bytes and byte operations | Define byte bounds, copying, slicing, endian conversion, and operation-specific failures. |
-| Nominal structures, variants, recursive families | Define declaration well-formedness, constructor fields, tags, matches, and recursive value typing. Extend the chosen pattern-binding discipline explicitly. |
+| Data generalizations | Monomorphic nominal tables, constructors, exhaustive matches, and recursive value typing are proved. Dependent indexed families and any further type-level features require separate rules. |
 | Collection binders, folds, loops, recursion forms | Replace schematic families with complete rules or justified derived forms, including captured lexical environments and early exits. |
 | Raw-word binary64 primitives | Define permitted results and prove preservation for every allowed result. |
 | Counter reads and explicit release | Define abstract state and a declarative admissibility/ownership discipline. Ordinary relevance does not discharge this obligation. |
@@ -186,10 +186,10 @@ failure; the result does not rely on constructing huge arrays in tests. The
 machine extension preserves the existing safety results for nested arrays,
 calls, lexical environments, and continuations.
 
-## Next increment: nominal recursive data
+## Nominal recursive data
 
-This section specifies the next increment, which is being implemented. It is
-not yet part of the checked safety result reported above.
+The declaration, typing, runtime, and relevance rules in this section are now
+covered by the checked safety result reported above.
 
 A declaration table maps each nominal datatype index to a finite ordered list
 of constructors; each constructor has a finite ordered list of field types.
@@ -230,9 +230,15 @@ validate their element type. Otherwise malformed types could disappear beneath
 eliminators. A zero-branch match must validate its explicit result type, since
 there is no branch from which to derive its formation.
 
-The proof obligations are: declaration-checker soundness and completeness;
+The checked results include: declaration-checker soundness and completeness;
 formation of expression, argument, value, and environment types; exact constructor
-and branch lookup; nominal canonical forms; then extensions of preservation,
-progress, and reachable-state safety. Program typing must include well-formed
+and branch lookup; nominal canonical forms; and extensions of preservation,
+progress, and reachable-state safety. Program typing includes well-formed
 declarations and signatures as well as checked bodies. This adds formation
 premises to the language judgments, never an assumption of safe execution.
+
+Runtime result types must also be formed. The empty continuation and overflow
+typing rules carry result-formation evidence, and formation transfers through
+frames and continuations. `StateTyped.wellFormed` establishes the result for every
+state typed under an admitted program. Arithmetic overflow cannot be used to
+assign an undeclared nominal result type.
