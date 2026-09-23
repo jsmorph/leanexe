@@ -174,6 +174,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [Profile.lean](../LeanExe/TypeSafety/Profile.lean) | Syntactic admission checks, their characterizations, and profile safety. |
 | [Typing.lean](../LeanExe/TypeSafety/Typing.lean) | Total inference, exact admission checks, type uniqueness, and checker-to-safety corollaries. |
 | [BoolDerived.lean](../LeanExe/TypeSafety/BoolDerived.lean) | Strict Boolean source expansions, typing/inference/relevance equations, staging and truth-table execution proofs. |
+| [ValueEquality.lean](../LeanExe/TypeSafety/ValueEquality.lean) | Total raw value/list comparison and exact equality laws; no source equality primitive or admission judgment yet. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -191,9 +192,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [73 bounded-natural examples](../test/type_safety_naturals.lean),
 [73 word examples](../test/type_safety_words.lean),
 [49 bitwise/shift examples](../test/type_safety_bits.lean),
-[35 natural-case examples](../test/type_safety_nat_case.lean), and
-[47 Boolean examples](../test/type_safety_booleans.lean). It audits the
-transitive axiom dependencies of all 246 declared theorems across the eleven
+[35 natural-case examples](../test/type_safety_nat_case.lean),
+[47 Boolean examples](../test/type_safety_booleans.lean), and
+[25 raw equality examples](../test/type_safety_value_equality.lean). It audits the
+transitive axiom dependencies of all 265 declared theorems across the twelve
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -303,3 +305,13 @@ use the language definition and transfer its results to implementation artifacts
 they do not block completion of the language's own soundness theorem. Physical
 ownership implementation should likewise be distinguished from a declarative
 ownership/effect discipline, whose soundness is a language-level question.
+
+
+## Raw structural comparison boundary
+
+`valueEq_eq_true_iff` and `valuesEq_eq_true_iff` characterize equality of the
+complete finite raw value or value list. This includes tags, widths, nominal
+identities, constructors, field order, and lengths. These are mathematical
+operation laws, not source admission or compiler-correctness results. The
+comparison accepts raw malformed values as inputs; it does not validate them.
+There is not yet a structural-equality expression or proved `EqTy` checker.

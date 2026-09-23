@@ -254,6 +254,25 @@ const auditedTheorems = [
   "boolBin_result_steps",
   "boolNot_value_steps",
   "boolBin_value_steps",
+  "valueEq_sound",
+  "valuesEq_sound",
+  "valueEq_refl",
+  "valuesEq_refl",
+  "valueEq_eq_true_iff",
+  "valuesEq_eq_true_iff",
+  "valueEq_eq_false_iff",
+  "valuesEq_eq_false_iff",
+  "valueEq_symm",
+  "valuesEq_symm",
+  "valueEq_pair",
+  "valueEq_word",
+  "valueEq_sum_tags",
+  "valueEq_array",
+  "valueEq_data",
+  "valuesEq_nil_left",
+  "valuesEq_nil_right",
+  "valuesEq_cons",
+  "valuesEq_length",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -299,6 +318,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_bits.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_nat_case.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_booleans.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_value_equality.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

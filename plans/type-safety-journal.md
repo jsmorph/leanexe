@@ -409,3 +409,27 @@ build jobs, 512 examples, and 246 theorem audits passed. The 47 new examples
 include failure order, strict false-AND/true-OR, lexical capture, relevance,
 and rejection of wrong operand types even when raw execution happens to return.
 No claim about compound equality or compiler behavior follows from this increment.
+
+
+Structural-equality design review separated a total raw comparison algorithm
+from source equality admission. The reference explicitly excludes recursive
+variants; the extractor also rejects them. The agent's initial proposal to
+expand that domain was not adopted. The next checkpoint proves comparison of
+finite raw Value trees exactly, without adding an expression or claiming EqTy
+admission. Importing Core avoids reorganizing the value definitions.
+
+The same review identified two distinct Option/Except obligations: captured
+callback hygiene and intentional payload discard. Naive isSome/isOk or
+Except-to-Option expansions introduce unused pattern fields and fail the
+profile. Artificial dummy uses would undermine its purpose. This policy question
+remains open; mere sum representability does not settle it.
+
+The raw comparison checkpoint passed fourteen build jobs, all 537 examples,
+and all 265 theorem audits, with no dependencies beyond propext. The 25 new
+examples distinguish word widths, malformed numeric payloads, sum tags, array
+order/length, nominal identities and constructors, and nested finite recursive
+values. The new general iff laws, not these examples, establish exactness for
+all raw values. The focused proof needed one Bool conjunction theorem spelling
+correction; no timeout or semantic change was needed. No source expression,
+typing rule, machine frame, or admission judgment changed in this checkpoint.
+Next is an independent EqTy judgment and an exact terminating admission checker.
