@@ -844,3 +844,9 @@ implementation are separate tracks, not prerequisites for this theorem. A
 declarative ownership/effect system, if part of the language, does need its own
 soundness argument. The existing small calculus is type safe; its adequacy for
 the broader documented runtime language is still open.
+
+Execution cadence: keep advancing this authorized track after each checked
+milestone, with frequent status updates, commits, and pushes. Publishing a
+milestone is a checkpoint, not a reason to stop or wait for renewed permission.
+The next increment is nominal recursive-data declaration formation, followed by
+strict constructors, exhaustive matching, and the corresponding safety proofs.
