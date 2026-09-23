@@ -442,3 +442,25 @@ without admitting their types for source equality. The documented `EqTy` domain
 excludes recursive variants; source integration must give that boundary an
 independent judgment and exact executable check. Bytes are not yet represented
 in the calculus. Arbitrary user-selected `BEq` implementations remain separate.
+
+
+### Equality admission under development
+
+The independent equality domain will be an inductive closure judgment, not a
+checker result used as its own specification. Unit, Bool, bounded naturals, and
+words qualify. Products, sums, and arrays require qualifying components. A
+nominal type requires a valid declaration lookup and qualifying fields in every
+constructor. This least inductive closure excludes reachable recursive cycles,
+including cycles beneath arrays or alternatives with a nullary constructor.
+An empty declaration qualifies without implying that it has a value.
+
+The checker under development starts with a false flag for each declaration and
+repeatedly checks all constructor fields against the previous flags. Its bound
+is the number of declarations. Monotonicity, strict increase in the count of true
+flags when a round changes the table, and the table length bound must prove
+stabilization. Soundness follows by induction on rounds; completeness by
+induction on the independent judgment against the resulting fixed table.
+
+This is a local property of the queried type. An unrelated recursive declaration
+does not reject an acyclic query. Global declaration formation is still required
+by the public source admission check; local equality admission cannot replace it.
