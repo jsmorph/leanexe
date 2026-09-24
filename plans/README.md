@@ -1,6 +1,6 @@
 # Detailed Plans
 
-The root [Development Plan](../plan.md) is the only active work queue.  This directory contains a detailed technical plan when an unfinished item needs more design than the root queue should carry.  Completed implementation plans and experiment sequences are removed after their current facts enter reference documentation and their remaining tasks enter the root plan.
+The root [Development Plan](../plan.md) owns the repository roadmap.  The [type-safety working state](../task.md) owns the current agenda and notes for phase 15.  This directory contains a detailed technical plan when an unfinished item needs more design than the root queue should carry.  Completed implementation plans and experiment sequences are removed after their current facts enter reference documentation and their remaining tasks enter the root plan.
 
 | Plan | Status | Scope |
 |------|--------|-------|

@@ -1,5 +1,32 @@
 # Development Journal
 
+## 2026-09-24: Type-safety working record
+
+The user requested a comprehensive current working record in `task.md`.
+The branch had no such file.  The new [working state](task.md) consolidates
+the proof checkpoint, completed inventory, continuation and derived-sum agenda,
+Option/Except policy question, remaining language families, and current notes.
+The repository plan and documentation indexes now assign that branch's active
+agenda to the working record.  The documentation checker includes the new file.
+
+The initial working record described the 2026-09-23 renaming-profile checkpoint.
+The publication attempts found four newer commits on `origin/typesafety`:
+environment correspondence, raw operational correspondence, the first
+derived-sum specification, and continuation decomposition.  The documentation
+commit was rebased onto those commits, and the working record now reflects
+their agenda and the journal's 2026-09-24 result: 730 examples and 403 theorem
+audits passed.
+
+On 2026-09-24, sandbox execution failed with `EPERM`.  The approved retry
+timed out acquiring the shared Lean slot before
+the version check.  The working record preserves both outcomes and leaves a
+fresh local proof check pending.  This update changes documentation and its
+checked file list.
+
+- [x] Check whitespace and documentation-checker syntax.
+- [x] Review the new record against the source, plan, and proof journal.
+- [ ] Complete the repository documentation check.  Its only reported failure is an existing absolute temporary-workspace path in the [WGSL review](paper/wgsl-verification-report/review.md), present at `HEAD` before this update.  The new record's links pass.
+
 ## 2026-09-16: Tiny transformer implementation
 
 The user authorized implementation of the tiny GPT-2-style model, beginning

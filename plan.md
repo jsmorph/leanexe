@@ -105,7 +105,7 @@ datasets, figures, the claim-to-theorem table, and the final comparison.
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, fifty-one completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file owns the repository roadmap.  The [type-safety working state](task.md) owns the current agenda and notes for phase 15.  The compiler, execution suite, fifty-one completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -816,69 +816,21 @@ mismatch.  GPT-2's focused regeneration and proof checks pass.
 
 ## 15. Establish independent core type safety
 
-Authorized on 2026-09-23, on branch `typesafety`. The
-[core type-safety reference](docs/type-safety.md) defines the fragment and theorem
-boundary. The [development journal](plans/type-safety-journal.md) records proof
-and verification evidence. This track does not establish extraction, physical
-memory-management implementation, or compiler correctness.
+Authorized on 2026-09-23, on branch `typesafety`.  The
+[working state](task.md) owns the completed proof inventory, current agenda,
+open decisions, verification evidence, and resume notes.  The
+[language definition](docs/runtime-language.md) specifies the rules, the
+[proof reference](docs/type-safety.md) states the theorem boundaries, and the
+[proof journal](plans/type-safety-journal.md) records development evidence.
 
-- [x] Declare independent untyped syntax and extrinsic typing for the initial core.
-- [x] Kernel-check typed environment lookup and canonical-form lemmas.
-- [x] Define explicit machine transitions and configuration typing.
-- [x] Prove one-step preservation, progress, and reachable-state safety for the initial core.
-- [x] Check positive, specified-failure, and ill-typed/stuck examples.
-- [x] Add a repeatable independent proof gate and public-theorem axiom audit.
-- [x] Extend the core with typed direct first-order calls and well-formed bodies.
-- [x] Choose strict independent semantics and record the compatibility boundary with the existing deferred-field implementation.
-- [x] Add and verify a syntactic relevance profile for machine-written programs, including complete product patterns and Unit elimination.
-- [x] Define and prove monomorphic nominal declaration formation, strict construction, exhaustive matching, recursive value typing, and source/runtime type formation.
-- [ ] Complete the remaining schematic collection, binder, and recursion rules or prove their expansion into the core.
-- [x] Extend abstract values and primitive semantics with persistent arrays: empty, size, checked get/set/push/append, length bounds, failure laws, and read-after-write laws.
-- [x] Define and prove the documented bounded-natural primitive family, tagged overflow, comparisons, and derived successor/predecessor/Boolean conversion.
-- [x] Define explicit-width words, modular arithmetic, unsigned comparisons, and conversions with operation laws and extended metatheory.
-- [x] Prove finite-bit semantics, AND/OR/XOR laws, derived complement, and width-masked shifts under the existing dependency limit.
-- [x] Prove natural zero/successor elimination, predecessor binding, branch agreement, relevance, and its full metatheory.
-- [x] Prove strict Boolean derived APIs, exact typing/relevance, staging, and truth-table execution.
-- [x] Prove total raw structural comparison exactly matches equality of finite values/lists; keep source admission separate.
-- [x] Prove constructive finite Boolean-table saturation within the table length.
-- [x] Prove independent EqTy admission and its exact total checker, including the iteration bound.
-- [x] Integrate strict homogeneous structural equality with full metatheory and exact result laws.
-- [x] Prove hygienic renaming, pointwise algebra, context transport, typing preservation and weakening.
-- [x] Prove exact occurrence/relevance preservation under arbitrary renaming and protected-prefix parameter use.
-- [x] Prove exact raw environment lookup correspondence and branch lookup support.
-- [x] Prove operational renaming correspondence for derived callback work.
-- [x] Prove continuation extension and execution decomposition for exact derived-form semantics.
-- [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
-- [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
-- [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
-- [ ] Specify abstract effects and an admissibility/ownership discipline for counter reads and explicit release if included in the language claim.
-- [x] Establish total algorithmic typing, exact ordinary/profile admission, and expression type uniqueness for the current calculus; keep program termination separate.
-
-Language type soundness is a property of the language's typing and operational
-semantics. Extraction correctness, compiler refinement, and physical ownership
-implementation are separate tracks, not prerequisites for this theorem. A
-declarative ownership/effect system, if part of the language, does need its own
-soundness argument. The specified calculus is type safe; its adequacy for
-the broader documented runtime language is still open.
-
-Execution cadence: keep advancing this authorized track after each checked
-milestone, with frequent status updates, commits, and pushes. Publishing a
-milestone is a checkpoint, not a reason to stop or wait for renewed permission.
-Nominal recursive data and algorithmic typing are now checked, including checker
-soundness/completeness, exact public admission, and expression type uniqueness.
-The bounded-natural primitive family and word arithmetic/conversions/bitwise
-operations/shifts, natural pattern matching, and strict Boolean derived APIs
-are also checked. Structural equality now has an independent admission domain,
-an exact checker, strict source semantics, full metatheory, and exact result
-laws. Hygienic renaming, its algebra, typing transport, and weakening are now
-checked, as are exact occurrence/relevance preservation and profile typing
-transport. Raw step correspondence and finite-execution equivalences now hold
-under exact environment agreement, with the same program on both sides.
-Continuation extension and finite boundary decomposition now give exact
-return/overflow/stuck sequencing laws. Next, prove the individual derived-sum
-expansions and their complete behavior laws.
-The [derived-sum plan](plans/type-safety-derived-sums.md) specifies the first
-constructors/map/bind/map-error increment. Payload-discarding APIs remain outside
-that increment and require explicit inclusion or exclusion.
-The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
-derived families; representation ingredients alone do not establish their APIs.
+The current independent calculus has checked type safety, exact executable
+admission, structural equality, static/profile/operational renaming laws, and
+continuation extension with exact finite sequencing.  The next work is general
+first-step inversion and the individual derived-sum expansions with their
+complete behavior laws.  The
+[derived-sum plan](plans/type-safety-derived-sums.md) specifies constructors,
+map/bind, and map-error for Option/Except.  Payload-discarding APIs require an
+explicit inclusion or exclusion decision.  The
+[coverage ledger](docs/type-safety-coverage.md) records the remaining language
+families.  Extraction, physical memory management, and compiler correctness
+remain separate proof tracks.
