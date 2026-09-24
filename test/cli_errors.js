@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const path = require("path");
-const { spawnResult } = require("../tools/run-process");
+const { spawnResult, withoutLeanrunNotices } = require("../tools/run-process");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 
@@ -174,14 +174,42 @@ function main() {
     "file: .lake/build",
   ]);
 
+  expectFailure("invalid byte I/O command shape", ["compile-wasi-io"], 2, [
+    'lean-wasm: usage: command "compile-wasi-io": invalid command or arguments',
+  ]);
+  for (const [module, entry] of [
+    ["LeanExe.Examples.Correctness", "byteArrayStringLiteralReturn"],
+    ["LeanExe.Examples.Correctness", "rejectIO"],
+    ["LeanExe.Examples.ByteIO", "mark"],
+  ]) {
+    expectFailure(`invalid byte I/O entry ${entry}`, [
+      "compile-wasi-io", "--module", module, "--entry", `${module}.${entry}`,
+      "--out", ".lake/build/cli-errors/rejected-io.wasm",
+    ], 3, ['lean-wasm: source: command "compile-wasi-io"',
+      "ByteIO entry must have type ByteIO UInt32"]);
+  }
+  expectFailure("missing byte I/O entry", [
+    "compile-wasi-io", "--module", "LeanExe.Examples.ByteIO",
+    "--entry", "LeanExe.Examples.ByteIO.doesNotExist",
+    "--out", ".lake/build/cli-errors/missing-io.wasm",
+  ], 3, ['lean-wasm: source: command "compile-wasi-io"',
+    "entry not found: LeanExe.Examples.ByteIO.doesNotExist"]);
+  expectFailure("byte I/O output write failure", [
+    "compile-wasi-io", "--module", "LeanExe.Examples.ByteIO",
+    "--entry", "LeanExe.Examples.ByteIO.echo", "--out", ".lake/build",
+  ], 4, ['lean-wasm: I/O: command "compile-wasi-io"', "file: .lake/build"]);
+
   const help = run(["--help"]);
-  if (help.status !== 0 || help.stderr !== "" || !help.stdout.startsWith("lean-wasm commands:\n")) {
+  // Local runners announce the user-authorized operating limits on stderr.
+  // Allow only those exact notices; compiler diagnostics must still be absent.
+  const helpStderr = withoutLeanrunNotices(help.stderr);
+  if (help.status !== 0 || helpStderr !== "" || !help.stdout.startsWith("lean-wasm commands:\n")) {
     throw new Error(
       `help: unexpected result\nstatus: ${help.status}\nstdout:\n${help.stdout}\nstderr:\n${help.stderr}`,
     );
   }
 
-  console.log("checked 9 CLI error cases and help output");
+  console.log("checked 15 CLI error cases and help output");
 }
 
 try {

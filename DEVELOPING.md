@@ -148,6 +148,8 @@ Run the smallest relevant test during development, then run every gate required 
 
 `node test/run_all.js` is the full execution gate.  It covers report classification, ownership reports, Wasmtime-only execution, core semantics, reference counting, allocation, ASCII strings, integer maps, JSON, WASI adapters, self-emission, standard Lean comparisons, IR comparisons, and fuzz cases.  `tools/check-wat.sh` checks that parsing compiler-emitted WAT produces the same bytes as direct binary emission.
 
+For byte I/O, build `LeanExe.Examples.ByteIO` and run `node test/wasi_io_host.js`, `node test/byte_io.js`, and `node test/refcount.js`.  The I/O drivers build `tools/wasi-io-host.c` against the pinned Wasmtime C API.  Set `WASMTIME_C_API` when using an external installation; `LEANEXE_WASI_IO_HOST` selects the compiled host.  The source tests validate each generated module with `WASM_TOOLS` and exercise actual nonblocking pipes, delayed input, partial writes, deadlines, retained buffers, and allocation counts.  The ordinary Wasmtime CLI is suitable for the pure WASI adapters but cannot supply this byte-I/O host contract.  Existing Talos checks validate registered pure programs after shared compiler changes; formal byte-I/O verification requires a separately specified host model.
+
 The experimental self-hosted emitter is deliberately outside the aggregate gate.
 Run `node test/selfhost_emitter.js` separately only for a change to the module-image
 codec, emitter, or bootstrap boundary; it does not block native compiler work.
