@@ -1,488 +1,64 @@
 # Checked conservative grid step
 
-[The source](../../../../../LeanExe/Examples/EulerGridStep.lean) accepts a flat
-array of conservative triples and uses transmissive end states. A checked
-maximum-speed scan supports adaptive time steps. The step reads the old grid
-and fills a separate result array: a leading status, followed by six words
-per cell (density, momentum, energy, pressure, signal speed, rounded Courant).
-Malformed shape or invalid ratio returns `#[1]`. A cell rejection sets status
-one and stops; its partially written payload must not be used as a new grid.
-The scan uses a named `scanAt` body; its exact execution work is recorded
-[separately](../EulerGridScan/README.md). Input reads use total `getD` with zero defaults, which preserves strict calls
-to the existing checked-cell function without changing the compiler.
+The [grid-step source](../../../../../LeanExe/Examples/EulerGridStep.lean) accepts a flat array of conservative triples and uses transmissive boundaries.  It returns a status word followed by six words per cell: density, momentum, energy, pressure, signal speed, and rounded Courant.  Malformed shape or an invalid ratio returns `#[1]`.  A rejected cell sets status one and stops the loop.  The runner accepts the payload as a new grid only when status is zero.
 
-[Model.lean](Model.lean) names the finite scan and fill recurrences.
-[Safety.lean](Safety.lean) proves output size, preservation of earlier words,
-persistence of rejection, and acceptance of every requested cell computation
-when the fill returns status zero. These model theorems use standard logical
-axioms. [Payload.lean](Payload.lean) proves exact correspondence of all six
-fields and preservation by subsequent cells. [Outputs.lean](Outputs.lean)
-transfers accepted state, pressure, speed and Courant safety to the actual
-returned array and proves its expected length. [Scan.lean](Scan.lean) proves
-that an accepted scan checks every input cell and returns a positive finite
-speed bounding all computed cell speeds in decoded-real order. This bounds
-the rounded computed speeds; it does not assert a bound on exact-real wave
-speeds. Complete generated-WAT array execution and accepted-payload safety are proved
-in [Spec.lean](Spec.lean), under the explicit input representation, empty free
-list, page/counter and disjoint arena assumptions of
-[GridEntryReady.lean](GridEntryReady.lean). For N cells, that arena reserves
-N+6 objects of 64+48N bytes each. The 8,866-byte frozen package passes
-independent exact-byte decoding, validation, translation and behavioral checks.
+## Execution and safety
 
-The named writeCellField helper isolates the common copying array write;
-writeCell calls it six times and releases five intermediate arrays. The
-current binary has 8,866 bytes (SHA256
-bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297),
-reduced from 11,222 bytes without changing any of the 31 regression results.
-The separate verified scan remains byte-identical. [Program.lean](Program.lean)
-is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
-field write27, writer34, advance35, entry36 and release40, and proves the
-complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
-composition under explicit storage assumptions. Initialization, the outer loop and the final release are proved below;
-full entry composition is supplied below.
-[FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
-realizes the logical array update, preserves a disjoint input array and
-leaves all bytes outside that word unchanged. Its
-[WordRoundtrip.lean](WordRoundtrip.lean) helper reconstructs the eight stored
-bytes with a kernel-checked bit proof. These theorems use only standard
-logical axioms; the existing native-decision read-back lemma is not used.
+The [public specification](Spec.lean) proves termination and exact output for the [current generated program](Program.lean).  Its assumptions are the input representation, empty free list, typed allocator counters, page bounds, and disjoint arena in [the entry predicate](GridEntryReady.lean).  For `N` cells, the arena budget reserves `N + 6` objects of `64 + 48N` bytes each.  The current implementation reuses outputs after the first two accepted cells.
 
-[CopyModel.lean](CopyModel.lean) tracks the copied prefix, both arrays, all
-non-memory store fields and bytes outside the destination payload.
-[CopyFrame.lean](CopyFrame.lean) handles encoded addresses and loop locals.
-[CopyLoop.lean](CopyLoop.lean) proves the complete terminating copy loop under
-valid, disjoint source/destination array assumptions, preserving the input
-and outside memory. [FieldShape.lean](FieldShape.lean) identifies that exact
-loop in generated field writer27. The complete field theorem below establishes those
-preconditions from explicit allocation bounds and separation. The copy execution theorem uses only standard logical axioms.
+| Declaration | Result |
+|-------------|--------|
+| `Spec.stepCheckedBits_exact` | Exact represented output of `Model.stepCheckedBits` for every permitted input and ratio. |
+| `Spec.stepCheckedBits_wat_safe` | Exact execution plus finite, admissible accepted cell states and rounded Courant at most one half. |
+| `Spec.reset_exact` | Exact reset of the six allocator globals with memory preserved. |
 
-[HeaderMemory.lean](HeaderMemory.lean) initializes the array length over
-arbitrary existing payload bytes. [FieldTailModel.lean](FieldTailModel.lean)
-combines that header, copying and one store into an exact logical update.
-[FieldTail.lean](FieldTail.lean) proves the complete generated tail after
-allocation, including the returned pointer, unchanged source, other store
-fields and bytes outside the destination array. This theorem requires
-bounded, disjoint allocated storage and the expected live locals; its
-allocator preconditions are discharged by the complete field theorem below. Its axiom audit is standard.
+The complete current specification passed on 2026-09-24.  The execution and safety proofs use the standard logical axioms.  The [model](Model.lean), [payload correspondence](Payload.lean), and [output safety](Outputs.lean) connect the cell recurrence to all six returned fields.  The [separate maximum-speed scan](../EulerGridScan/README.md) bounds rounded computed speeds and supports adaptive time steps.
 
-[HeaderStores.lean](HeaderStores.lean) proves individual metadata stores with
-unchanged local frames. [AllocationHeader.lean](AllocationHeader.lean) proves
-the six emitted metadata writes and identifies the exact allocator region,
-including its localTee instruction.
-[FieldAllocationBump.lean](FieldAllocationBump.lean) proves fresh allocation
-with an empty free list and enough existing memory: exact metadata, updated
-heap top and allocation count, and the resulting local frame. It builds in
-7.4s with standard logical axioms.
+### Buffer lifecycle
 
-[ReuseHit.lean](ReuseHit.lean) proves the successful first-candidate branch.
-[ReuseSearch.lean](ReuseSearch.lean) reads that candidate and proves the
-terminating search with a one-to-zero measure.
-[FieldAllocationReuse.lean](FieldAllocationReuse.lean) composes the complete
-emitted allocator path when the free-list head has sufficient capacity: it
-unlinks and initializes that block, skips bump allocation, increments the
-allocation counter and returns the exact local frame. This build takes3.0s
-with standard logical axioms. The complete field theorem composes this path
-with the tail and the accepted-writer ownership proof below.
+Slot zero holds the initialized output and remains protected until the final return.  Each accepted cell calls the field writer six times and releases five intermediate arrays.  The outer loop reads the previous output's status, then releases that output when it differs from both slot zero and the new result.
 
-[ArrayFrame.lean](ArrayFrame.lean) transfers represented arrays across
-byte-preserving store changes. [AllocationMemory.lean](AllocationMemory.lean)
-proves exact owned-header values, the 48-byte metadata footprint, preservation
-of disjoint arrays, and preservation of metadata by field writes.
-[Release.lean](Release.lean) applies the existing scalar-array runtime proof
-at function40: an owned array is freed with exact memory writes, free-list
-update and release/free counters. These checks take under four seconds each
-and audit to standard logical axioms. The accepted-writer theorem below
-composes these facts across its intermediate buffers.
+| Step | Field storage | Heap position after the step | Outer-loop release |
+|------|---------------|------------------------------|--------------------|
+| Initialization | Fresh slot zero. | Slot 1. | None. |
+| First accepted cell | Six fresh objects. | Slot 7. | Slot zero remains protected. |
+| Second accepted cell | Five reused objects and one fresh object. | Slot 8. | Previous output joins the five freed intermediates. |
+| Later accepted cell | Six reused objects. | Slot 8. | Previous output completes the six-node free list. |
+| First rejected cell | One fresh object. | Slot 2. | Slot zero remains protected. |
+| Later rejected cell | One reused object. | Previous heap position. | Previous output joins the remaining free list. |
+| Return | Current output remains owned. | Unchanged. | Slot zero joins the free list. |
 
-[FieldIndexing.lean](FieldIndexing.lean) proves checked field-offset guards
-and exact scalar-array byte capacity for bounded lengths.
-[FieldPrefix.lean](FieldPrefix.lean) proves the first44 emitted instructions,
-including zero/nonzero index paths, checked additions, the length-header read
-and the true bounds test, with an exact20-local frame.
-[FieldCapacity.lean](FieldCapacity.lean) proves the next22 instructions
-inside the accepted branch, setting copy count and normalized capacity.
-These builds take6.8s and3.8s respectively and audit to standard logical
-axioms. The complete field theorem below joins these regions.
+The [rotating-pool lemmas](RotatingPool.lean) prove slot bounds, separation, and pool rotation.  The [rotating arena state](RotatingArenaState.lean) covers the five-reuse/one-fresh second cell and the six-reuse later cells.  [Accepted advance](AdvanceRotatingAccepted.lean) and [rejected advance](AdvanceRotatingRejected.lean) retain the old output until the loop finishes reading it.
 
-[AllocationPost.lean](AllocationPost.lean) connects both allocator memory
-models to represented input, initialized owned metadata, destination bounds
-and the object footprint. [AllocationChoice.lean](AllocationChoice.lean)
-provides a common exact execution theorem with explicit capacity, availability
-and separation conditions. [FieldFrame.lean](FieldFrame.lean) proves the live
-local-variable conditions required by the copy/update tail for both paths.
-These focused builds take3.5–4.0s and use only standard logical axioms.
-The complete field theorem below joins these contracts; the multi-buffer
-arena invariant remains open.
+The [framed previous-output release](ReleasePreviousOutput.lean), [grid release composition](GridRotatingRelease.lean), and [release continuation](GridAdvanceFinish.lean) establish the next storage state while preserving the input and protected initial output.  The [loop storage invariant](GridLoopStorage.lean) distinguishes initialization, accepted output, and rejected output.  The [loop theorem](GridLoop.lean) covers every cell and the final condition-only iteration.  [Final geometry](GridFinalGeometry.lean) and [final release](GridFinalRelease.lean) preserve the returned output while freeing slot zero.
 
-[FieldBody.lean](FieldBody.lean) composes the complete accepted branch.
-[FieldExecution.lean](FieldExecution.lean) proves exact terminating execution
-of generated function27, including checked index setup and both returned
-pointer values. It realizes the logical array update, preserves the input,
-keeps the new result metadata owned, preserves page count and all memory
-outside the new object's metadata and used array bytes. Allocation globals
-and other store fields are framed by the exact chosen allocator model.
-The theorem assumes an in-bounds field, sufficient existing memory, explicit
-source/destination separation and either an empty free list for fresh
-allocation or a sufficient first free block. Builds take3.5s and3.9s, with
-only standard logical axioms. The accepted-writer theorem below composes six
-field writes and five releases. The rejected-writer theorem follows below;
-initial grid allocation and the grid loop remain.
+### Proof composition
 
-[ObjectFrame.lean](ObjectFrame.lean) strengthens separation to include both
-runtime headers and proves that field writes preserve other live buffers.
-[ReleaseMemory.lean](ReleaseMemory.lean) proves exact reusable metadata after
-release, unchanged payload/page count and preservation of separate buffers.
-[FreeFrame.lean](FreeFrame.lean) preserves existing free-list nodes across
-field writes and release. [ReleaseFramed.lean](ReleaseFramed.lean) attaches
-these facts to exact generated release function40. Builds take3.5–3.8s with
-standard logical axioms. These facts support the accepted-writer invariant
-below; initial grid allocation and the grid loop remain open.
+| Modules | Responsibility |
+|---------|----------------|
+| [Field memory](FieldMemory.lean), [copy loop](CopyLoop.lean), and [field execution](FieldExecution.lean) | Exact cloning and indexed writes, termination, address bounds, and preservation of separate arrays. |
+| [Allocation choice](AllocationChoice.lean), [free chain](FreeChain.lean), and [buffer state](BufferState.lean) | Fresh/reused allocation, owned metadata, free-list links, counters, and page limits. |
+| [Fresh writer](FreshWriterFramed.lean), [mixed writer](MixedWriterFramed.lean), and [reused writer](ReusedWriterFramed.lean) | Six writes and five intermediate releases under each allocation schedule. |
+| [Neighbor reads](AdvanceReads.lean) and [advance execution](AdvanceExecution.lean) | Boundary clamping, nine input reads, checked-cell execution, and output writing. |
+| [Initial arena](InitialArena.lean), [entry guards](EntryGuards.lean), and [rejected entry](RejectedEntryExecution.lean) | Dimensions, fresh allocation, zero fill, and malformed-entry behavior. |
+| [Grid setup](GridSetup.lean), [loop frame](GridLoopFrame.lean), and [return staging](GridFinish.lean) | The emitted 52-local entry function and its release guards. |
+| [Valid branch](GridValidBody.lean) and [complete export](GridExecution.lean) | Composition into the public step theorem. |
 
-[FreeChain.lean](FreeChain.lean) represents finite, uniformly sized free
-buffers with physical bounds and exact next links. Its first node establishes
-the actual allocator preconditions. [FreeChainExecution.lean](FreeChainExecution.lean)
-proves that a full field write consumes one node and that release adds a node,
-with exact runtime-global updates and preserved remaining chain.
-[LiveBuffers.lean](LiveBuffers.lean) preserves lists of owned intermediate
-arrays and adds the exact updated clone. These builds take3.6–3.9s with
-standard logical axioms. Pairwise buffer separation remains explicit; the
-accepted-writer theorem below uses it. The grid arena invariant remains open.
+The earlier growing-arena lemmas remain checked support for the first-cell and mixed allocation cases.  The current outer loop uses the rotating arena invariant.
 
-[BufferState.lean](BufferState.lean) combines live arrays, free chains,
-head pointer, runtime counters and page limit, with exact clone/release
-transitions. [CellPrefixes.lean](CellPrefixes.lean) names the successive
-logical outputs and proves that the sixth equals the existing cell model.
-[CellFieldCall.lean](CellFieldCall.lean) specializes exact field execution to
-any of those six stages, advancing its live/free/counter state under explicit
-slot and free-tail separation. These builds take3.6–3.9s with standard logical
-axioms. The accepted-writer theorem below connects these stages to the emitted
-six-call sequence and five intermediate releases.
+## Frozen binary
 
-[WriterShape.lean](WriterShape.lean) splits the actual accepted writer
-instructions at the six call boundaries. Its deepest shape equality uses a
-short prefix check and generic list lemmas to retain the default recursion
-limit. [WriterCalls.lean](WriterCalls.lean) proves each emitted local handoff;
-[WriterFrames.lean](WriterFrames.lean) tracks the exact resulting frames.
-[WriterCopies.lean](WriterCopies.lean) composes all six emitted calls into
-one execution theorem, ending at the release tail with seven live arrays,
-the exact sixth logical update and allocation count increased by six.
-Its build takes3.7s and audits to standard logical axioms.
+The historical package contains 8,866 bytes with SHA-256 `bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297`.  [Embedded bytes](ArtifactBytes.lean), [decoding](ArtifactDecode.lean), [validation](ArtifactValidation.lean), and [translation](ArtifactTranslation.lean) establish its binary identity and execution model.  Its `Frozen` proof modules retain the allocation behavior of that binary.  Rechecking this historical package against the updated shared verifier remains part of the current release work.
 
-[CellReleaseCall.lean](CellReleaseCall.lean) preserves the completed result
-and earlier prefixes across one intermediate release.
-[WriterReleaseOne.lean](WriterReleaseOne.lean) proves the emitted conditional;
-[WriterReleaseShape.lean](WriterReleaseShape.lean) identifies the five exact
-release boundaries, and [WriterReleaseFrame.lean](WriterReleaseFrame.lean)
-proves the saved pointer locals. [WriterReleases.lean](WriterReleases.lean)
-composes the full tail: the final result and original input remain owned,
-the five intermediates return to the free list, and release/free counters
-increase by five. Builds take3.5–4.1s with standard logical axioms. These
-contracts assume explicitly separated live slots and a suitable initial free
-chain.
+Decoder-cache witnesses use the repository's native-decision policy.  Execution, safety, and reset proofs use the standard logical axioms.  The [artifact format](../../../../../docs/artifact-format.md) defines the independent package boundary.
 
-[WriterStatus.lean](WriterStatus.lean) proves the exact ten-instruction status
-test for both outcomes. [WriterAccepted.lean](WriterAccepted.lean) proves
-terminating execution of the whole generated writer34 when cell status is
-zero: the returned pointer pair represents exactly Model.putCell, the original
-output remains owned and unchanged, six allocations and five releases are
-accounted for, and the five intermediate buffers form the expected free chain.
-The proof requires six suitable free buffers and explicit separation; it does
-not establish their initial availability for the grid. Builds take4.0s and3.8s
-with standard logical axioms. The rejected-writer theorem follows below.
-Whole-grid allocation, neighbor reads and the outer loop remain pending.
-Separate old-grid preservation is established by WriterProtected below.
+## Repeated steps and tests
 
-[CopyUpdate.lean](CopyUpdate.lean) generalizes the checked copy/update tail
-over the local-variable window; FieldTail now specializes it without changing
-its public contract. [RejectedShape.lean](RejectedShape.lean) identifies that
-same tail in the rejected-cell branch at local67, including the surrounding
-bounds conditional and result saves. [RejectedPrefix.lean](RejectedPrefix.lean)
-proves its header read, index-zero bounds test and exact local frame for a
-nonempty output. These builds take3.6–3.8s with standard logical axioms.
-[RejectedCapacity.lean](RejectedCapacity.lean) proves the copy-count and
-capacity setup. [RejectedReuseHit.lean](RejectedReuseHit.lean) and
-[RejectedReuseSearch.lean](RejectedReuseSearch.lean) prove the terminating
-first-sufficient-head search at this local window.
-[RejectedAllocationShape.lean](RejectedAllocationShape.lean) identifies the
-exact allocator block, and [RejectedAllocationReuse.lean](RejectedAllocationReuse.lean)
-proves its complete reuse path with exact metadata, globals and selected root.
-[RejectedFrame.lean](RejectedFrame.lean) proves every live variable required
-by the copy/update tail. New targets take3.7–5.4s and use standard logical
-axioms.
+The [repeated-step recurrence](Runner.lean) projects the three conservative fields and rejects a failed step before copying its partial output.  Its induction theorem records each IEEE output, pressure, speed, Courant value, and accepted conservative grid.  [Repeated execution](RunnerExecution.lean) transfers the step theorem to stores satisfying `GridEntryReady`.  Host time selection, memory preparation, scientific validation, and presentation remain outside the execution theorem.  The [scientific dataset](../../../../../data/euler-sod-v2/README.md) records the Sod experiment.
 
-[RejectedClone.lean](RejectedClone.lean) composes capacity, reuse allocation
-and the complete copy/update tail. [WriterRejected.lean](WriterRejected.lean)
-proves all of generated writer34 when cell status is nonzero: it returns the
-pointer pair for input.set! 0 1, preserves the original array, establishes owned
-result metadata, and preserves all bytes outside the destination object.
-Both proofs use the explicit sufficient-free-head and separation contract;
-they build in3.5s and3.7s with standard logical axioms. Both writer outcomes
-now have complete conditional execution proofs. Initial grid storage availability and the outer loop
-remain open.
-
-[CellFieldFramed.lean](CellFieldFramed.lean) and
-[CellReleaseFramed.lean](CellReleaseFramed.lean) carry an additional property
-justified by each exact memory result.
-[WriterCopiesFramed.lean](WriterCopiesFramed.lean) and
-[WriterReleasesFramed.lean](WriterReleasesFramed.lean) preserve that property
-through all six writes and five releases.
-[WriterProtected.lean](WriterProtected.lean) applies these contracts to a
-separate represented array, proving that the accepted writer preserves the
-old grid as well as its exact output and buffer-state result. The old-grid
-array may have a different length; separation from each output slot is
-explicit. These builds take3.5–3.7s with standard logical axioms. The theorem
-uses the same six-reusable-buffer premise as WriterAccepted.
-
-[WriterSequence.lean](WriterSequence.lean) abstracts the exact six-call
-control flow over a staged invariant and explicit terminating field calls.
-[FreshBufferState.lean](FreshBufferState.lean) extends the live list across a
-fresh field clone, keeps the free list empty and exposes the updated heap.
-[ArenaLayout.lean](ArenaLayout.lean) proves exact addresses, bounds and
-metadata-inclusive separation for seven consecutive output slots; each grid
-output object occupies64+48*cells bytes.
-[ArenaAllocation.lean](ArenaAllocation.lean) establishes the fresh allocator's
-complete validity contract from the slot budget, globals and distinct source/
-destination slots. These builds take3.5–3.7s and audit to standard logical
-axioms. The address budget is explicit.
-
-[FreshCellState.lean](FreshCellState.lean) advances the initialized live prefix,
-next heap slot and budget after each exact fresh field call.
-[FreshWriterCopies.lean](FreshWriterCopies.lean) composes all six calls while
-preserving a separate old-grid array.
-[FreshWriterAccepted.lean](FreshWriterAccepted.lean) proves the whole accepted
-writer from an empty free list: six fresh allocations, five releases, exact
-Model.putCell result and old-grid preservation, with a seven-object memory
-budget. Slot0 must already hold the initialized output. Builds take3.4–3.6s
-and use standard logical axioms.
-
-[RejectedAllocationBump.lean](RejectedAllocationBump.lean) proves fresh
-allocation in the rejected writer. [FreshRejectedFrame.lean](FreshRejectedFrame.lean)
-and [FreshRejectedClone.lean](FreshRejectedClone.lean) connect it to the shared
-copy-and-update proof. [FreshWriterRejected.lean](FreshWriterRejected.lean)
-proves the full rejected writer from an empty free list, returning a fresh
-clone with status one and the exact destination-object memory frame. The
-complete theorem builds in3.0s with standard logical axioms. Both writer
-outcomes now cover fresh and reused storage.
-
-[NeighborIndexing.lean](NeighborIndexing.lean) establishes all nine valid
-neighbor indices and exact word guards. [AdvanceOffsets.lean](AdvanceOffsets.lean)
-proves the first47 instructions of advance35, including both clamped endpoints.
-[AdvanceReadFrames.lean](AdvanceReadFrames.lean) records the staged local
-updates; [AdvanceReadLeft.lean](AdvanceReadLeft.lean),
-[AdvanceReadCentre.lean](AdvanceReadCentre.lean) and
-[AdvanceReadRight.lean](AdvanceReadRight.lean) prove each actual memory read.
-[AdvanceReads.lean](AdvanceReads.lean) composes all nine reads and the exact
-reversed argument list for cell25, preserving the complete store. The offset
-proof takes11s, read groups7.4–10s, and final composition4.3s; all execution
-theorems use standard logical axioms. Splitting the original timed-out
-read proof keeps subsequent checks small.
-
-[AdvanceExecution.lean](AdvanceExecution.lean) composes the complete generated
-advance35 with cell25 and an applicable writer34 contract.
-[AdvanceAccepted.lean](AdvanceAccepted.lean) instantiates it for six fresh
-allocations or six reused buffers, returning Model.advanceAt, exact buffer
-state and the preserved old grid. [AdvanceRejected.lean](AdvanceRejected.lean)
-covers a rejected cell with either fresh or reused storage, returning the
-status-one model output and its full memory frame. These builds take3.5–6.5s
-and use standard logical axioms.
-
-The actual outer loop releases its initial output only after the loop; it
-does not release each prior iteration output. Thus an accepted writer
-leaves five reusable intermediates, and the next accepted writer requires
-five reused buffers followed by one fresh allocation. The mixed writer and advance path are now composed below;
-the later-cell arena transition is also checked below. The seven-object bound
-above applies to the first fresh writer, not the entire grid step. Initial
-output allocation and full grid execution also remain open.
-
-[WriterReleaseSequence.lean](WriterReleaseSequence.lean) exposes the five
-release calls with a generic staged invariant. [BufferResults.lean](BufferResults.lean)
-connects either allocation result to live/free buffer state while tracking
-global0. [ReleaseHeap.lean](ReleaseHeap.lean) preserves that heap address
-through the full scalar release. [FreshSpace.lean](FreshSpace.lean) establishes
-fresh-allocation validity from one available object, independent of the
-seven-slot first-cell layout. These focused builds take3.4–3.8s and use
-standard logical axioms. They support the complete mixed writer below and the growing arena transition below.
-
-[WriterPool.lean](WriterPool.lean) describes the actual five reusable nodes.
-[MixedState.lean](MixedState.lean), [MixedReuseCall.lean](MixedReuseCall.lean),
-[MixedFreshCall.lean](MixedFreshCall.lean) and
-[MixedCellState.lean](MixedCellState.lean) prove each full field call in the
-five-reused/one-fresh sequence, retaining prefixes, counters and exact heap
-movement. [CellReleaseHeap.lean](CellReleaseHeap.lean) preserves that heap
-through each intermediate release. [WriterAcceptedSequence.lean](WriterAcceptedSequence.lean)
-shares the complete accepted writer control over proved staged invariants.
-Focused builds take3.4–3.8s with standard logical axioms. These support the complete mixed writer below.
-
-[WriterReleaseState.lean](WriterReleaseState.lean) gives the releases a
-shared invariant with exact heap/page state and a framed property.
-[MixedWriterFramed.lean](MixedWriterFramed.lean) composes all of writer34
-for five reused buffers followed by one fresh object.
-[MixedWriterAccepted.lean](MixedWriterAccepted.lean) discharges preservation
-of a separate old grid; [AdvanceMixed.lean](AdvanceMixed.lean) connects it to
-all neighbor reads, cell25 and advance35. The full result includes the exact
-model update, five-node free list, counters, one-object heap advance and
-unchanged page count. These checks take3.5–3.7s with standard axioms.
-Initialization and the outer loop still need proof.
-
-[ArenaBounds.lean](ArenaBounds.lean) generalizes address bounds and object
-separation to an explicit variable slot count. [LaterArena.lean](LaterArena.lean)
-maps the later writer's source to slot i+5, free buffers to slots1–5 and
-fresh result to slot i+6. [GridSizes.lean](GridSizes.lean) proves that all
-model updates preserve output length. [LaterArenaState.lean](LaterArenaState.lean)
-records the current output, fixed free list, growing heap and cells+6 object
-budget. [AdvanceArena.lean](AdvanceArena.lean) proves that a complete later
-accepted advance preserves this invariant and the old grid. These builds
-take3.4–3.7s with standard axioms. This remains conditional on the initial
-state and budget; initial allocation and outer-loop composition
-are still pending.
-
-[FreshWriterFramed.lean](FreshWriterFramed.lean) and
-[FreshWriterHeap.lean](FreshWriterHeap.lean) strengthen the complete first
-writer with exact heap slot7, unchanged pages and framed observations.
-[AdvanceFirstArena.lean](AdvanceFirstArena.lean) connects the first accepted
-advance to the later-cell arena state, including the whole-grid budget and
-old-grid preservation. Checks take3.5–3.7s with standard axioms. Slot0 must
-already be initialized; initial allocation and the outer loop remain open.
-
-[RejectedBuffers.lean](RejectedBuffers.lean) retains the complete rejected
-advance's buffer, heap, page and memory results for either allocation choice.
-[RejectedArenaState.lean](RejectedArenaState.lean) records the terminal
-status-one output in slot1. [AdvanceLaterRejected.lean](AdvanceLaterRejected.lean)
-leaves slots2–5 free and the heap unchanged;
-[AdvanceFirstRejected.lean](AdvanceFirstRejected.lean) allocates slot1,
-leaves the pool empty and advances the heap to slot2. Both use one allocation
-and no intermediate releases, preserve the old grid, and retain the explicit
-budget. Checks take3.6–3.7s with standard axioms. Initial allocation and the
-actual outer loop, including final release of the initial output, remain open.
-
-[ArenaAdvance.lean](ArenaAdvance.lean) combines all four first/later and
-accepted/rejected cases into two complete cell-call interfaces. Each exposes
-the exact result pointer, model output, outcome-specific arena/counters,
-unchanged pages and old grid. The combined target passes in3.6s with standard
-axioms. This is the cell-call interface for the pending outer-loop proof;
-initial output allocation and final release are still explicit open work.
-
-[InitializationShape.lean](InitializationShape.lean) identifies the actual
-entry allocation and zero-fill regions. [InitialAllocationBump.lean](InitialAllocationBump.lean)
-proves fresh allocation in the valid entry's local window.
-[FillState.lean](FillState.lean) and [FillLoop.lean](FillLoop.lean) prove a
-constant-fill loop with exact prefix, termination and store/memory frames.
-[InitializationFill.lean](InitializationFill.lean) composes the actual length
-store and zero loop, producing an exact replicated-zero array from arbitrary
-payload bytes. Allocation takes7.2s; the fill loop and its entry composition
-take3.6–3.7s, with standard logical axioms. Entry guards, capacity arithmetic,
-initialized arena composition and the outer loop remained open at that checkpoint.
-
-[InitialDimensions.lean](InitialDimensions.lean) proves the actual valid-entry
-cell-count and output-length calculation, including the integer overflow guards.
-[InitialCapacity.lean](InitialCapacity.lean) proves the emitted normalized
-capacity arithmetic. [InitialMemory.lean](InitialMemory.lean) connects allocation
-and completed zero fill to owned output metadata and exact runtime counters,
-and preserves a separate old grid through initialization. The dimension target
-passes in 5.6s with standard logical axioms. Entry guard dispatch and the
-composition through the outer loop/final release remain open.
-
-[InitialOutput.lean](InitialOutput.lean) composes actual capacity, fresh allocation,
-length storage and zero fill. [InitialArena.lean](InitialArena.lean) prepends
-the checked dimension calculation and derives its space requirements from the
-cells+6 arena budget. The result is the owned zero-filled slot0, heap slot1,
-exact counters/pages and preserved input grid. Targets pass in 5.1s and 4.8s
-with standard axioms. Initial guard dispatch and outer-loop/final-release
-composition remain open.
-
-[EntryGuards.lean](EntryGuards.lean) proves the exact ratio/empty/remainder
-short-circuit prefix and its scratch locals. [InvalidEntryShape.lean](InvalidEntryShape.lean),
-[InvalidEntryAllocation.lean](InvalidEntryAllocation.lean) and
-[InvalidEntry.lean](InvalidEntry.lean) cover the rejected arm's fresh allocation
-and exact singleton stores. [RejectedEntryExecution.lean](RejectedEntryExecution.lean)
-composes the full function36 entry rejection, returning the pointer to [1]
-and an exact final store under explicit empty-free-list and memory bounds.
-The guard, allocation, singleton body and complete rejection checks pass in
-6.5s, 7.3s, 4.1s and 3.0s, with accepted logical axioms. Valid-entry loop and
-final-release composition remain open.
-
-[ProtectedBuffer.lean](ProtectedBuffer.lean) frames a separately owned array
-through clones and releases. [MixedWriterProtected.lean](MixedWriterProtected.lean)
-and [AdvanceMixedProtected.lean](AdvanceMixedProtected.lean) carry that
-observation through the complete mixed writer and advance.
-[AdvanceLaterProtected.lean](AdvanceLaterProtected.lean),
-[AdvanceFirstPreserved.lean](AdvanceFirstPreserved.lean),
-[AdvanceLaterRejectedProtected.lean](AdvanceLaterRejectedProtected.lean) and
-[AdvanceFirstRejectedPreserved.lean](AdvanceFirstRejectedPreserved.lean) retain
-the initial output's ownership and the old current output's readable array.
-[ProtectedArenaAdvance.lean](ProtectedArenaAdvance.lean) combines both outcomes
-for first/later cells. These checks take 3.5–3.8s with standard axioms. They
-supply the observations needed for the actual loop's post-body condition and
-final release of the initial output; both are composed by the checked modules below.
-
-[GridLoopModel.lean](GridLoopModel.lean) relates the remaining recurrence to
-each advance and exact header. [GridLoopStorage.lean](GridLoopStorage.lean)
-unifies initial, accepted and rejected arena states.
-[GridLoopTransition.lean](GridLoopTransition.lean) and
-[GridLoopAdvance.lean](GridLoopAdvance.lean) prove that each actual cell call
-establishes the next storage phase, retaining both required old buffers.
-[GridLoopShape.lean](GridLoopShape.lean) extracts the exact outer loop;
-[GridLoopFrame.lean](GridLoopFrame.lean) defines its complete locals, invariant
-and decreasing measure. The focused dependency check passes with standard
-axioms. [GridLoop.lean](GridLoop.lean) proves the complete terminating outer
-loop, including rejection and the extra no-call exit iteration, in 12s.
-[GridFinalGeometry.lean](GridFinalGeometry.lean) proves that initial slot zero
-is separate from the final current output and remaining free-list nodes.
-[GridFinalRelease.lean](GridFinalRelease.lean) proves its actual release40 call
-preserves the output, heap and pages, and records exact counters/free pool.
-[GridFinish.lean](GridFinish.lean) composes return-pointer staging and the
-guarded final release. All public audits use only standard logical axioms.
-[GridSetup.lean](GridSetup.lean) and [GridInitialFacts.lean](GridInitialFacts.lean)
-join the concrete initialized frame to the loop.
-[GridValidBody.lean](GridValidBody.lean) composes the entire valid branch, and
-[GridExecution.lean](GridExecution.lean) proves the complete exported function
-for all raw ratio/shape and numerical outcomes under the arena assumptions.
-The public execution and safety declarations audit to standard logical axioms.
-[GridReset.lean](GridReset.lean) proves the actual reset export38 preserves
-memory and restores the six allocator globals; its ready-state lemma
-establishes the step preconditions at base4096. Spec registers reset_exact
-as a third behavior contract for the repeated-step runner.
-
-[ArtifactBytes.lean](ArtifactBytes.lean) embeds the exact 8,866 bytes.
-[ArtifactCache.lean](ArtifactCache.lean), [ArtifactDecoded.lean](ArtifactDecoded.lean),
-[ArtifactRawCache.lean](ArtifactRawCache.lean) and [ArtifactDecode.lean](ArtifactDecode.lean)
-identify their decoded syntax; [ArtifactValidation.lean](ArtifactValidation.lean)
-proves profile validation, and [ArtifactTranslation.lean](ArtifactTranslation.lean)
-proves exact equality to the execution model. The independent package gate
-checks that closure and all three behavior declarations. The decoder cache
-witnesses use the existing native-decision policy; execution/safety/reset
-proofs use only the accepted standard logical axioms.
-The repeated-step recurrence and [scientific data](../../../../../data/euler-sod-v2/README.md) are complete. The 2D extension remains.
-
-[The focused regression](../../../../../test/euler_grid_step.js) passes 31
-compiled cases covering single-cell boundaries, moving uniform states,
-two-cell and initial 100-cell Sod grids, malformed shape, bad states, invalid
-ratios, CFL rejection and final-state rejection. IR/WAT checks confirm that
-the array wrapper reuses one cell-call boundary without additional floating
-point arithmetic. A preliminary compiled 100-cell run reaches t=0.2 in 93
-steps and matches all 300 final raw state words of the independent host
-calculation. That run is runtime evidence; runner proofs and a maintained
-scientific data package are still pending.
-
-Run focused checks serially:
+The [compiled tests](../../../../../test/euler_grid_step.js) cover boundaries, uniform states, Sod grids, malformed inputs, invalid ratios, CFL rejection, and final-state rejection.  Repository verification commands run serially:
 
 ```sh
-source tools/macos-env.sh
-tools/leanrun --timeout 2m lake --no-ansi build LeanExe.Examples.EulerGridStep
-tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Outputs
-tools/leanrun --timeout 2m lake -d proofs/talos/lean --no-ansi build Project.EulerGridStep.Scan
+tools/talos-proof.js check euler_grid_step
 node test/euler_grid_step.js
 ```
-
-## Repeated steps
-
-[Runner.lean](Runner.lean) projects the three conservative fields and rejects
-a failed step before copying its partial output. Its generic induction theorem
-records each exact IEEE output, pressure/speed/CFL diagnostics and the finite,
-admissible conservative grid passed to the next step.
-[RunnerExecution.lean](RunnerExecution.lean) transfers the actual terminating
-WASM call contract to every step, for any host-prepared store satisfying
-GridEntryReady. It includes the stationary100-cell Sod initial data.
-[ArtifactRunner.lean](ArtifactRunner.lean) connects this contract to the same
-frozen8,866 bytes. Host time selection, memory preparation/copying, scientific
-validation and presentation remain outside the formal execution theorem.
