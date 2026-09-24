@@ -1,0 +1,59 @@
+\section{Quantization and arithmetic order}
+\label{sec:arithmetic}
+
+\subsection{Scale selection and coefficient encoding}
+
+Let $\fl(x)$ denote the binary32 result of the specified rounded operation, and let $\rne(x)$ denote rounding a represented value to the nearest integer with ties to even.  For a finite vector $x=(x_0,\ldots,x_{d-1})$, the scale rule is
+\begin{equation}
+ m=\max_i |x_i|,\qquad
+ s(x)=
+ \begin{cases}
+  1,&m=0,\\
+  \max\{2^{-126},\fl(m/127)\},&m>0.
+ \end{cases}
+ \label{eq:scale}
+\end{equation}
+The implementation compares the magnitude bits of finite binary32 words to obtain $m$.  The floor is the smallest positive normal binary32 value.  It prevents a positive scale from becoming zero or subnormal.  The all-zero vector has scale one and all-zero coefficients.
+
+The signed coefficient is
+\begin{equation}
+ q_s(x_i)=\rne\!\left(\clip\bigl(\fl(x_i/s)\bigr)\right).
+ \label{eq:quant}
+\end{equation}
+Division rounds before clipping, and clipping precedes nearest-even rounding.  The result is converted to a signed 32-bit integer and stored as its low byte.  Thus $-127$ has byte representation \code{0x81}, zero has \code{0x00}, and 127 has \code{0x7f}.  The validator rejects \code{0x80}, the encoding of $-128$.  Zero point zero is implicit.  Both signs of an input zero produce integer zero.  The definitions \code{rowScale}, \code{quantizeValue}, and \code{quantizeRows} implement these rules in the \src{LeanExe/Models/Gpt2/Quantized/Kernel.lean}{projection source}.
+
+Each learned projection stores coefficients in output-major order: all input coordinates for output channel $j$ occupy one contiguous row.  Its scale $s^w_j$ comes from Equation~\eqref{eq:scale} applied to that complete weight row.  Token embedding row $j$ uses the same rule and the same coefficient row later used to compute vocabulary logit $j$.  Learned projection biases and normalization parameters retain their original binary32 words.
+
+\subsection{Grouped projection}
+
+Let the input width be $d=64G$.  GPT-2 uses $G=12$ for width 768 and $G=48$ for width 3,072.  For input row $r$, group $g$ contains coordinates $64g$ through $64g+63$.  Its scale is $s^x_{r,g}$, and its coefficients are $q^x_{r,g,i}$.  With output-major weight coefficients $q^w_{j,g,i}$, the projection computes
+\begin{align}
+ a_{r,j,g}&=\sum_{i=0}^{63}q^x_{r,g,i}q^w_{j,g,i},\label{eq:dot}\\
+ u_{r,j,g}&=\fl\!\left(\operatorname{f32}(a_{r,j,g})\,
+                 \fl(s^x_{r,g}s^w_j)\right),\label{eq:rescale}\\
+ t_0&=+0,\qquad t_{g+1}=\fl(t_g+u_{r,j,g}),\label{eq:sum}\\
+ y_{r,j}&=\begin{cases}\fl(t_G+b_j),&\text{with bias},\\t_G,&\text{without bias}.
+ \end{cases}\label{eq:bias}
+\end{align}
+The inner scale product in Equation~\eqref{eq:rescale} rounds first.  The accumulator converts to binary32 exactly under the range bound below.  A second multiplication rounds the rescaled partial sum.  Equation~\eqref{eq:sum} adds groups in increasing index order, starting from positive zero.  Bias is added once after the last group.  The vocabulary projection uses the bias-free case.  The \src{LeanExe/Models/Gpt2/Quantized/Grouped.lean}{grouped source definition} fixes this order, including each binary32 rounding point.
+
+The original candidate used one activation scale and one integer dot product for the complete input row, followed by one rescaling.  Grouping therefore changes both the quantizer and the floating-point accumulation order.  Its measured improvement cannot be attributed to scale granularity alone while assuming identical arithmetic elsewhere.  The weight coefficients, per-output weight scales, and quantized embedding values remain unchanged between the two schemes.
+
+\subsection{Accumulator range and conversion}
+
+Every permitted coefficient has magnitude at most 127, so every integer product has magnitude at most $127^2=16{,}129$.  For every prefix of $k$ products,
+\begin{equation}
+ \left|\sum_{i<k}q^x_iq^w_i\right|\leq k\,16{,}129.
+ \label{eq:prefix}
+\end{equation}
+For $k\leq64$, the bound is $1{,}032{,}256<2^{20}$.  Products and all partial sums fit the signed 32-bit range, and the final integer converts to binary32 exactly because its magnitude is less than $2^{24}$.  For the original complete-row kernel, $k\leq3{,}072$ gives $49{,}548{,}288<2^{31}$.  That larger bound still proves accumulation safety, while a complete-row accumulator can require rounding on conversion to binary32.
+
+The implementation stores products and sums as \code{UInt32} words.  The checked \proofref{ProofKit/QuantizedDot.lean}{\code{dot\_exact}} theorem identifies the signed decoding of the resulting word with the mathematical integer sum.  Its companion \code{dot\_prefix\_range} proves Equation~\eqref{eq:prefix}.  These results use the exclusion of byte \code{0x80} and the width bound to justify the implementation's word arithmetic.  The grouped numerical proof uses the sharper 64-term bound and the checked integer-to-binary32 conversion theorem.
+
+\subsection{Model format and validation}
+
+The version-one checkpoint occupies 127,695,972 bytes: a 32-byte header and a 127,695,940-byte payload.  Words are little-endian, and tensor starts are four-byte aligned.  The header contains the magic string \code{LXQGPT2} followed by zero, format version one, header and payload lengths, scheme identifier two, context limit 128, and a zero reserved word.  Scheme one identifies the preserved complete-row candidate.  Scheme two identifies Equations~\eqref{eq:dot}--\eqref{eq:bias}.  The tensor payload is identical between the schemes, while the changed header produces a different whole-file hash.
+
+The payload contains 123,532,032 coefficient bytes, 133,201 binary32 scales, and 907,776 retained binary32 words.  The shared token/vocabulary matrix contributes 38,597,376 coefficient bytes and 50,257 scales.  Twelve transformer blocks follow the position embeddings.  The final normalization parameters end the file.  The \dataref{group64-manifest.json}{tensor manifest} gives all offsets, dimensions, and lengths, and the \src{plans/gpt2-quantized-format.md}{format specification} states the public API.
+
+Initialization checks the complete header, excludes every forbidden coefficient, requires every scale to be finite and at least $2^{-126}$, and checks every retained binary32 parameter for finiteness.  Each token call checks the header again, token and position bounds, cache length, and cache finiteness.  The status codes are zero for success, one for format rejection, two for model-parameter rejection during validation, three for token/cache rejection, and four for numerical failure.  Failure returns empty output buffers.  A finite validated checkpoint can still cause a numerical failure during inference.  Validation establishes its represented shape and permitted values, while the execution theorem covers the resulting success or failure path.

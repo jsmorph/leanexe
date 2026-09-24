@@ -1,0 +1,22 @@
+Title:           Quantized GPT-2 Inference with Exact WebAssembly Proofs: Arithmetic, Cached Execution, and Numerical Evidence
+Subject:         Formal verification; quantized language-model inference; WebAssembly
+Keywords:
+Author:          Jamie Stephens
+Creator:         LaTeX with hyperref
+Producer:        pdfTeX-1.40.26
+CreationDate:    Thu Sep 24 08:19:29 2026 CDT
+ModDate:         Thu Sep 24 08:19:29 2026 CDT
+Custom Metadata: yes
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no
+Pages:           20
+Encrypted:       no
+Page size:       612 x 792 pts (letter)
+Page rot:        0
+File size:       392080 bytes
+Optimized:       no
+PDF version:     1.7
