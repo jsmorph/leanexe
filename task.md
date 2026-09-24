@@ -16,9 +16,10 @@ The preceding working state is preserved in
 ## Current checkpoint
 
 - Branch created and cloned at the base commit.
-- Pinned Lean 4.34.0-rc2 is being installed into workspace-local tooling.
-- No scalar correctness milestone has passed yet.
-- Next: profile, admission checker, source-certificate interface, and choose.
+- Pinned Lean 4.34.0-rc2 / 6a10ac8c22beadecabdbb0919c2b50214762f91d is installed and checked.
+- Independent scalar grammar/admission and affine/choose source certificates pass; audits use only propext.
+- Next: source loop certificate, then generic lowering and exact bytes.
+- Talos dependencies are cloned; targeted Mathlib cache acquisition is in progress.
 
 ## Objective and precise claim
 
@@ -60,8 +61,8 @@ the dividend, and shift counts modulo 64.
 
 ### 1. Profile and theorem statement
 
-- [ ] Independent scalar admission judgment and terminating checker.
-- [ ] Checker soundness and completeness.
+- [x] Independent scalar admission judgment and terminating checker.
+- [x] Checker soundness and completeness.
 - [ ] Explicit ABI, core execution contract, value representation, source
       certificate, and final artifact contract.
 - [ ] Well-formed locals, calls, indices, signatures, exports, and result arities.
@@ -71,7 +72,7 @@ the dividend, and shift counts modulo 64.
 
 - [ ] Reuse word w64, arithmetic laws, typing, machine semantics, renaming,
       and sequencing.
-- [ ] Use ordinary typing and strict evaluation; relevance is separate.
+- [x] Use ordinary typing and strict evaluation; relevance is separate.
 - [ ] Allow unused scalar parameters/bindings and justify discarded evaluation.
 - [ ] Specify loops independently, directly or by proved recursive expansion.
 - [ ] Relate the profile to the independent language; do not substitute the
@@ -82,8 +83,8 @@ the dividend, and shift counts modulo 64.
 - [ ] Freeze scalar-core representations and prove certificates naming the
       original Lean functions.
 - [ ] Reusable arithmetic, binding, branch, call, and iteration certificate rules.
-- [ ] Arithmetic.affine certificate.
-- [ ] Arithmetic.choose certificate.
+- [x] Arithmetic.affine certificate.
+- [x] Arithmetic.choose certificate.
 - [ ] Loop certificate before large backend work.
 - [ ] Certificate generation with explicit rejection of unsupported source forms.
 
@@ -148,3 +149,25 @@ Created correct from the reviewed typesafety head and cloned it. The workspace
 had no Lean installation, so the pinned release is being downloaded. Preserved
 the old independent-language agenda and recorded this complete plan before
 implementation.
+
+### 2026-09-24: first checked source certificates
+
+Added Correct/Scalar64/Profile, Source, and Arithmetic. Admission is an independent
+inductive grammar plus the existing sound ordinary type checker. It allows strict
+unused lets/arguments and rejects non-word runtime families. Source certificates
+name the actual Arithmetic.affine/choose definitions and prove independent-machine
+execution for every scalar input. Branches and modular boundaries are included.
+
+Passed: lake build LeanExe.Correct.Scalar64.Arithmetic; lake env lean
+test/scalar64_profile.lean. The test includes 13 admission/execution cases and
+six dependency audits, all with only propext. Initial generic simp proofs pulled
+in Quot.sound via predicate/function congruence; replaced them with constructive
+pointwise list proofs rather than widening the audit policy.
+
+Source certificate generation, loop certificates, verified lowering, and byte
+closure are not complete. The source grammar currently permits direct calls;
+acyclic helper admission and the separate iteration boundary remain open.
+
+The shell has no GitHub push credential. Commits are published through the
+connected GitHub Git-data interface, then the local branch is synchronized to
+that exact remote commit. No changes are made to main or typesafety.
