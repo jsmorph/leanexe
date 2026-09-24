@@ -5,18 +5,20 @@ open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project
 
 def HiddenResultState (params : List Value) (embeddingPtr updatesPtr hiddenPtr cachePtr : UInt64)
     (cacheSize : Nat) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 119 ∧ frame.values = [] ∧ I64Values frame.locals ∧
+  frame.params = params ∧ frame.locals.length = 124 ∧ frame.values = [] ∧ I64Values frame.locals ∧
   frame.locals[11]? = some (.i64 embeddingPtr) ∧ frame.locals[75]? = some (.i64 updatesPtr) ∧
   frame.locals[89]? = some (.i64 hiddenPtr) ∧ frame.locals[90]? = some (.i64 hiddenPtr) ∧
   frame.locals[91]? = some (.i64 3072) ∧
   frame.locals[92]? = some (.i64 cachePtr) ∧ frame.locals[93]? = some (.i64 cachePtr) ∧
-  frame.locals[94]? = some (.i64 (UInt64.ofNat cacheSize))
+  frame.locals[94]? = some (.i64 (UInt64.ofNat cacheSize)) ∧
+  frame.locals[12]? = some (.i64 embeddingPtr) ∧
+  frame.locals[14]? = some (.i64 0) ∧ frame.locals[15]? = some (.i64 0) ∧ frame.locals[16]? = some (.i64 0)
 
 def cacheAppendTail : Wasm.Program :=
   [.localSet 100, .localGet 100, .localSet 101, .localGet 93, .localGet 95, .addI64, .localSet 102]
 
 set_option maxRecDepth 32768 in
-theorem emitted_cacheAppendFull : (func36.drop 120).take 47 = PackedAppend.program 103 ++ cacheAppendTail := rfl
+theorem emitted_cacheAppendFull : (func36.drop 122).take 47 = PackedAppend.program 103 ++ cacheAppendTail := rfl
 
 theorem cacheAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (params : List Value) (embeddingPtr hiddenPtr updatesPtr cachePtr : UInt64)
@@ -35,9 +37,9 @@ theorem cacheAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       (allocatedRoot heap.top (PackedAppend.need cache updates) heap.nodes) (cache.size + updates.size) result →
       heap.PackedOutput initial final (PackedAppend.need cache updates) (cache ++ updates) →
       wp «module» rest Q final result env) :
-    wp «module» ((func36.drop 120).take 47 ++ rest) Q initial frame env := by
+    wp «module» ((func36.drop 122).take 47 ++ rest) Q initial frame env := by
   rcases hState with ⟨hParams, hLocals, hValues, hTyped, hEmbedding, hUpdatesOwner, hHiddenOwner, hHiddenPtr,
-    hHiddenSize, hCacheSize, hUpdatesSize, hLeftPtr, hLeftSize, hRightPtr, hRightSize⟩
+    hHiddenSize, hCacheSize, hUpdatesSize, hLeftPtr, hLeftSize, hRightPtr, hRightSize, hEmbeddingPtr, hEmptyOwner, hEmptyPtr, hEmptySize⟩
   have hParamLength : frame.params.length = 8 := by rw [hParams, hParamsLength]
   rw [emitted_cacheAppendFull, List.append_assoc]
   apply PackedAppend.program_spec 103 «module» env initial heap frame cachePtr updatesPtr cache updates
@@ -49,7 +51,7 @@ theorem cacheAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
   · simpa [Locals.get, hParamLength, hLocals] using hRightSize
   intro final result hReturned hPreserved hOutput
   have hResultParams : result.params = params := hPreserved.1.trans hParams
-  have hResultLength : result.locals.length = 119 := hPreserved.2.1.trans hLocals
+  have hResultLength : result.locals.length = 124 := hPreserved.2.1.trans hLocals
   have hRead (index : Nat) (hi : index < 95) : result.locals[index]? = frame.locals[index]? :=
     hPreserved.local index (by rw [hParamLength]; omega)
   have hAdd : UInt64.ofNat cache.size + UInt64.ofNat updates.size = UInt64.ofNat (cache.size + updates.size) := by simp
@@ -60,8 +62,8 @@ theorem cacheAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
   · simp (config := { maxDischargeDepth := 64 }) only [HiddenResultState, hResultLength,
       List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hPreserved.2.2.1,
-      hRead 11 (by decide), hRead 75 (by decide), hRead 89 (by decide), hRead 90 (by decide), hRead 91 (by decide),
-      hEmbedding, hUpdatesOwner, hHiddenOwner, hHiddenPtr, hHiddenSize, and_self]
+      hRead 11 (by decide), hRead 12 (by decide), hRead 14 (by decide), hRead 15 (by decide), hRead 16 (by decide), hRead 75 (by decide), hRead 89 (by decide), hRead 90 (by decide), hRead 91 (by decide),
+      hEmbedding, hEmbeddingPtr, hEmptyOwner, hEmptyPtr, hEmptySize, hUpdatesOwner, hHiddenOwner, hHiddenPtr, hHiddenSize, and_self]
   · exact hOutput
 
 #print axioms cacheAppend_spec

@@ -20,7 +20,7 @@ def layerAppendTail : Wasm.Program :=
    .constI64 0, .localSet 78]
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerAppendFull : (layerBody.drop 88).take 61 = PackedAppend.program 106 ++ layerAppendTail := rfl
+theorem emitted_layerAppendFull : (layerBody.drop 94).take 61 = PackedAppend.program 106 ++ layerAppendTail := rfl
 
 theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (params : List Value) (embeddingPtr inputPtr updatesPtr hiddenPtr cachePtr : UInt64)
@@ -42,9 +42,9 @@ theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
         (allocatedRoot heap.top (PackedAppend.need updates blockCache) heap.nodes) layer updates.size result →
       heap.PackedOutput initial final (PackedAppend.need updates blockCache) (updates ++ blockCache) →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 88).take 61 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 94).take 61 ++ rest) Q initial frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
-    hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hOld⟩,
+    hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize⟩,
     hHidden49, hHidden55, hHiddenOwner, hHiddenPtr, hHiddenBytes, hCacheOwner, hOldSize, hBlockSize,
     hLeftPtr, hLeftSize, hRightPtr, hRightSize⟩
   have hParamLength : frame.params.length = 8 := by rw [hParams, hParamsLength]
@@ -58,7 +58,7 @@ theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
   · simpa [Locals.get, hParamLength, hLocals, hCacheSize] using hRightSize
   intro final result hReturned hPreserved hOutput
   have hResultParams : result.params = params := hPreserved.1.trans hParams
-  have hResultLength : result.locals.length = 119 := hPreserved.2.1.trans hLocals
+  have hResultLength : result.locals.length = 124 := hPreserved.2.1.trans hLocals
   have hRead (index : Nat) (hi : index < 98 ∨ 111 ≤ index) : result.locals[index]? = frame.locals[index]? :=
     hPreserved.local index (by rw [hParamLength]; omega)
   have hAdd : UInt64.ofNat updates.size + 6144 = UInt64.ofNat (updates.size + 6144) := by simp
@@ -73,10 +73,11 @@ theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       hRead 11 (by decide), hRead 12 (by decide), hRead 13 (by decide),
       hRead 17 (by decide), hRead 18 (by decide), hRead 19 (by decide),
       hRead 20 (by decide), hRead 21 (by decide), hRead 22 (by decide),
-      hRead 95 (by decide), hRead 96 (by decide), hRead 97 (by decide), hRead 118 (by decide),
+      hRead 95 (by decide), hRead 96 (by decide), hRead 97 (by decide), hRead 118 (by decide), hRead 121 (by decide),
+      hRead 14 (by decide), hRead 15 (by decide), hRead 16 (by decide),
       hRead 41 (by decide), hRead 44 (by decide),
       hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize, hInputOwner, hInputPtr, hInputBytes,
-      hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hOld,
+      hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize,
       hHidden49, hCacheOwner, and_self]
   · exact hOutput
 

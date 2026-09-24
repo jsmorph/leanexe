@@ -6,10 +6,10 @@ namespace Project.Gpt2CachedStep.CachedHidden
 open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project.EulerRiemann.Execution LeanExe.Models.Gpt2
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerStep : (layerBody.drop 4).take 217 =
-    (layerBody.drop 4).take 84 ++ (layerBody.drop 88).take 61 ++
-    (layerBody.drop 149).take 24 ++ (layerBody.drop 173).take 14 ++
-    (layerBody.drop 187).take 4 ++ (layerBody.drop 191).take 30 := rfl
+theorem emitted_layerStep : (layerBody.drop 4).take 261 =
+    (layerBody.drop 4).take 90 ++ (layerBody.drop 94).take 61 ++
+    (layerBody.drop 155).take 24 ++ (layerBody.drop 179).take 14 ++
+    (layerBody.drop 193).take 44 ++ (layerBody.drop 237).take 28 := rfl
 
 theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (before heap : Heap)
     (weightsOwner weightsPtr cacheOwner cachePtr embeddingPtr : UInt64) (inputNode oldUpdates : FreeNode)
@@ -26,6 +26,8 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
     (hInputFresh : layer ≠ 0 → before.FreshNode inputNode)
     (hUpdatesFresh : layer ≠ 0 → before.FreshNode oldUpdates)
     (hOldSeparated : layer ≠ 0 → regionsDisjoint inputNode.region oldUpdates.region)
+    (hInitial : layer = 0 → inputNode.root = embeddingPtr ∧ oldUpdates.root = 0)
+    (hEmbeddingNe : layer ≠ 0 → inputNode.root ≠ embeddingPtr ∧ oldUpdates.root ≠ embeddingPtr)
     (hLayer : layer < 12) (hPosition : position < 128)
     (hInputSize : input.size = 3072) (hUpdatesSize : updates.size = layer * 6144)
     (hCacheSize : position * 12 * 1536 * 4 ≤ cache.size)
@@ -49,7 +51,7 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
       regionsDisjoint (CachedBlock.hiddenNode heap position).region (updatesNode heap position layer).region →
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 217 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 4).take 261 ++ rest) Q initial frame env := by
   have hCacheBytes := CachedBlock.Spec.cachedBlock_cache_size weights input cache layer position
   have hNeed : PackedAppend.need updates (cachedBlock weights input cache layer position).cache = updatesNeed layer := by
     simp only [PackedAppend.need, updatesNeed, hCacheBytes, hUpdatesSize]
@@ -113,12 +115,20 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
   intro preparedFrame hPrepared
   have hParamLength : preparedFrame.params.length = 8 := by rw [hPrepared.1.1]; rfl
   have hLocalLength := hPrepared.1.2.1
-  have hPreparedOld := hPrepared.1.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
-  have hPreparedInput := hPrepared.1.2.2.2.2.2.2.2.1
-  have hPreparedUpdates := hPrepared.1.2.2.2.2.2.2.2.2.2.2.1
+  rcases hPrepared.1 with ⟨_, _, _, _, _, _, _, hPreparedInput, _, _, hPreparedUpdates,
+    _, _, _, _, _, hPreparedInitialInput, hPreparedInitialUpdates, _, _, _⟩
   apply oldRelease_spec env _ (cacheReleasedHeap heap position layer) inputNode oldUpdates input updates layer preparedFrame
-    hReleasedHeap (fun _ => hAfterCacheInput) hAfterCacheOldUpdates hOldSeparated hPrepared.1.2.2.1
-  · simpa [Locals.get, hParamLength, hLocalLength] using hPreparedOld
+    embeddingPtr (CachedBlock.hiddenNode heap position).root (updatesNode heap position layer).root
+    hReleasedHeap (fun _ => hAfterCacheInput) hAfterCacheOldUpdates hOldSeparated hInitial hEmbeddingNe
+    (fun h => ⟨hAfterCacheInput.root_ne (regionsDisjoint_symm hHiddenInput),
+      (hAfterCacheOldUpdates h).root_ne (regionsDisjoint_symm (hHiddenOldUpdates h))⟩)
+    (fun h => ⟨hAfterCacheInput.root_ne (regionsDisjoint_symm hNewInput),
+      (hAfterCacheOldUpdates h).root_ne (regionsDisjoint_symm (hNewOldUpdates h))⟩)
+    hPrepared.1.2.2.1
+  · simpa [Locals.get, hParamLength, hLocalLength] using hPreparedInitialInput
+  · simpa [Locals.get, hParamLength, hLocalLength] using hPreparedInitialUpdates
+  · simpa [Locals.get, hParamLength, hLocalLength] using hPrepared.2.1
+  · simpa [Locals.get, hParamLength, hLocalLength] using hPrepared.2.2.2.2.1
   · simpa [Locals.get, hParamLength, hLocalLength] using hPreparedInput
   · simpa [Locals.get, hParamLength, hLocalLength] using hPreparedUpdates
   intro hFinalHeap

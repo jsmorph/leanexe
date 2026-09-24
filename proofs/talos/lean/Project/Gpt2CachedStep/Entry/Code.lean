@@ -21,7 +21,8 @@ def HiddenState (params : List Value) (hiddenPtr cachePtr : UInt64) (cacheSize :
   State params frame ∧ frame.locals[8]? = some (.i64 hiddenPtr) ∧
   frame.locals[14]? = some (.i64 hiddenPtr) ∧ frame.locals[15]? = some (.i64 hiddenPtr) ∧
   frame.locals[16]? = some (.i64 3072) ∧ frame.locals[17]? = some (.i64 cachePtr) ∧
-  frame.locals[18]? = some (.i64 cachePtr) ∧ frame.locals[19]? = some (.i64 (UInt64.ofNat cacheSize))
+  frame.locals[18]? = some (.i64 cachePtr) ∧ frame.locals[19]? = some (.i64 (UInt64.ofNat cacheSize)) ∧
+  frame.locals[11]? = some (.i64 cachePtr) ∧ frame.locals[0]? = some (.i64 0) ∧ frame.locals[3]? = some (.i64 0)
 
 def NormalizedState (params : List Value) (hiddenPtr cachePtr normalizedPtr : UInt64)
     (cacheSize : Nat) (frame : Locals) : Prop :=
@@ -34,7 +35,9 @@ def LogitsState (params : List Value) (hiddenPtr normalizedPtr cachePtr logitsPt
   State params frame ∧ frame.locals[8]? = some (.i64 hiddenPtr) ∧ frame.locals[30]? = some (.i64 normalizedPtr) ∧
   frame.locals[45]? = some (.i64 cachePtr) ∧ frame.locals[46]? = some (.i64 cachePtr) ∧
   frame.locals[47]? = some (.i64 (UInt64.ofNat cacheSize)) ∧ frame.locals[48]? = some (.i64 logitsPtr) ∧
-  frame.locals[49]? = some (.i64 logitsPtr) ∧ frame.locals[50]? = some (.i64 201028)
+  frame.locals[49]? = some (.i64 logitsPtr) ∧ frame.locals[50]? = some (.i64 201028) ∧
+  frame.locals[14]? = some (.i64 hiddenPtr) ∧ frame.locals[17]? = some (.i64 cachePtr) ∧
+  frame.locals[11]? = some (.i64 cachePtr) ∧ frame.locals[0]? = some (.i64 0) ∧ frame.locals[3]? = some (.i64 0)
 
 theorem valid_extents {weights cache : ByteArray} {token : UInt32} {position : Nat}
     (h : Valid weights cache token position) :
