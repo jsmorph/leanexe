@@ -350,3 +350,13 @@ bundled-package checkpoint will receive a final independent verification run.
 
 The module-admission regressions passed, including explicit rejection of a
 self-call at the encoder boundary and insufficient division scratch space.
+
+### 2026-09-24: portable artifacts frozen at the final code revision
+
+All five packages were regenerated and independently accepted at source/proof/tool
+revision e4bb6d08670e6fa6495e0cc32efa4e84ee2e95fc. They are now preserved under
+proofs/talos/scalar64/packages, including exact binaries, data, original source
+snapshots, checking declarations, and manifests. The repeated 333 engine cases,
+source tests, module-admission regressions, and namespace audit passed. Final
+mutation and clean-checkout checks are running. Documentation inventories now
+separate this certified scalar path from the ordinary compiler registries.
