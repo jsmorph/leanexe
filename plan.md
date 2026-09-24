@@ -845,6 +845,7 @@ memory-management implementation, or compiler correctness.
 - [x] Integrate strict homogeneous structural equality with full metatheory and exact result laws.
 - [x] Prove hygienic renaming, pointwise algebra, context transport, typing preservation and weakening.
 - [x] Prove exact occurrence/relevance preservation under arbitrary renaming and protected-prefix parameter use.
+- [x] Prove exact raw environment lookup correspondence and branch lookup support.
 - [ ] Prove operational renaming correspondence for derived callback work.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.

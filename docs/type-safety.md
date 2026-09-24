@@ -179,6 +179,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [EqualityTypes.lean](../LeanExe/TypeSafety/EqualityTypes.lean) | Independent equality-domain judgments, formation, exact terminating admission checker. |
 | [Renaming.lean](../LeanExe/TypeSafety/Renaming.lean) | Capture-avoiding traversal, pointwise algebra, context transport, typing preservation and weakening. |
 | [RenamingProfile.lean](../LeanExe/TypeSafety/RenamingProfile.lean) | Exact free-occurrence images, protected-prefix use, relevance invariance, and profile typing transport. |
+| [RenamingEnvironments.lean](../LeanExe/TypeSafety/RenamingEnvironments.lean) | Exact raw environment lookup correspondence and arity-preserving branch lookup; machine correspondence is pending. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -201,9 +202,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [25 raw equality examples](../test/type_safety_value_equality.lean),
 [38 equality-domain examples](../test/type_safety_equality_domain.lean),
 [35 source equality examples](../test/type_safety_structural_equality.lean),
-[26 renaming examples](../test/type_safety_renaming.lean), and
-[27 renaming-profile examples](../test/type_safety_renaming_profile.lean). It audits the
-transitive axiom dependencies of all 357 declared theorems across the sixteen
+[26 renaming examples](../test/type_safety_renaming.lean),
+[27 renaming-profile examples](../test/type_safety_renaming_profile.lean), and
+[17 environment-correspondence examples](../test/type_safety_renaming_environments.lean). It audits the
+transitive axiom dependencies of all 365 declared theorems across the seventeen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -364,3 +366,13 @@ indices each have exactly themselves as a preimage under a lifted map. Hence
 internal relevance. `ProfileTyped.rename` and `.weaken` combine those results
 with typing preservation. None of these results makes newly inserted parameters
 used, proves a signature change safe, or establishes runtime equivalence.
+
+
+`EnvCorresponds mapping source target` requires equality of every raw lookup,
+including missing entries, after applying the map. Its identity, empty,
+composition, lifting, prefix, and insertion laws are checked.
+`renameBranches_lookup` preserves selected position, arity, and absence.
+These support laws use no axioms. They are independent of type-context transport:
+a raw sum value may inhabit more than one sum type. The next step is the raw
+frame/state relation and proof that machine steps and finite observations
+correspond under these environment hypotheses.
