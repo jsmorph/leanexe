@@ -29,7 +29,6 @@ structure GridScratch where
   l27 : UInt64 := 0
   l28 : UInt64 := 0
   l29 : UInt64 := 0
-  l30 : UInt64 := 0
   l31 : UInt64 := 0
   l32 : UInt64 := 0
   l33 : UInt64 := 0
@@ -44,6 +43,15 @@ structure GridScratch where
   l42 : UInt64 := 0
   l43 : UInt64 := 0
   l44 : UInt64 := 0
+  l45 : UInt64 := 0
+  l46 : UInt64 := 0
+  l47 : UInt64 := 0
+  l48 : UInt64 := 0
+  l49 : UInt64 := 0
+  l50 : UInt64 := 0
+  l51 : UInt64 := 0
+  l52 : UInt64 := 0
+  l53 : UInt64 := 0
   deriving Inhabited
 
 def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index : Nat)
@@ -78,7 +86,7 @@ def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index 
       .i64 scratch.l27,
       .i64 scratch.l28,
       .i64 scratch.l29,
-      .i64 scratch.l30,
+      .i64 initialRoot,
       .i64 scratch.l31,
       .i64 scratch.l32,
       .i64 scratch.l33,
@@ -92,7 +100,16 @@ def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index 
       .i64 scratch.l41,
       .i64 scratch.l42,
       .i64 scratch.l43,
-      .i64 scratch.l44]
+      .i64 scratch.l44,
+      .i64 scratch.l45,
+      .i64 scratch.l46,
+      .i64 scratch.l47,
+      .i64 scratch.l48,
+      .i64 scratch.l49,
+      .i64 scratch.l50,
+      .i64 scratch.l51,
+      .i64 scratch.l52,
+      .i64 scratch.l53]
     values := [] }
 
 def gridLoopInvariant (ratio pointer : UInt64) (input : Array UInt64) (base : Nat)
@@ -118,7 +135,7 @@ theorem gridLoopMeasure_frame (count index : Nat) (initial : Store Unit)
   simp [gridLoopMeasure, gridLoopFrame, Locals.get, UInt64.toNat_ofNat_of_lt' hi]
 
 def gridSteppedScratch (scratch : GridScratch) (ratio pointer currentRoot nextRoot : UInt64)
-    (index : Nat) : GridScratch :=
+    (index : Nat) (frees : UInt64) : GridScratch :=
   { scratch with
     l13 := currentRoot
     l14 := currentRoot
@@ -137,14 +154,16 @@ def gridSteppedScratch (scratch : GridScratch) (ratio pointer currentRoot nextRo
     l27 := nextRoot
     l28 := nextRoot
     l29 := UInt64.ofNat (index + 1)
-    l33 := currentRoot
-    l34 := 0
-    l35 := UInt64.ofNat (index + 1)
-    l36 := 0
-    l37 := nextRoot
-    l38 := nextRoot
-    l39 := UInt64.ofNat (index + 1)
-    l40 := 1 }
+    l33 := 0
+    l34 := if index = 0 then scratch.l34 else frees
+    l42 := currentRoot
+    l43 := 0
+    l44 := UInt64.ofNat (index + 1)
+    l45 := 0
+    l46 := nextRoot
+    l47 := nextRoot
+    l48 := UInt64.ofNat (index + 1)
+    l49 := 1 }
 
 def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index : Nat) : GridScratch :=
   { scratch with
@@ -154,13 +173,14 @@ def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index 
     l27 := currentRoot
     l28 := currentRoot
     l29 := UInt64.ofNat index
-    l33 := if index < count then currentRoot else scratch.l33
-    l34 := if index < count then 0 else scratch.l34
-    l36 := 1
-    l37 := currentRoot
-    l38 := currentRoot
-    l39 := UInt64.ofNat index
-    l40 := 1 }
+    l33 := 1
+    l42 := if index < count then currentRoot else scratch.l42
+    l43 := if index < count then 0 else scratch.l43
+    l45 := 1
+    l46 := currentRoot
+    l47 := currentRoot
+    l48 := UInt64.ofNat index
+    l49 := 1 }
 
 #print axioms gridLoopMeasure_frame
 end Project.EulerGridStep.Execution
