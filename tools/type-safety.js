@@ -373,6 +373,24 @@ const auditedTheorems = [
   "EnvCorresponds.prefix",
   "EnvCorresponds.shift",
   "renameBranches_lookup",
+  "StateCorresponds.eval_same",
+  "OptionStatesCorrespond.none_iff",
+  "enterCall_corresponds",
+  "eval_step_corresponds",
+  "ret_step_corresponds",
+  "StateCorresponds.step",
+  "StateCorresponds.step_none_iff",
+  "StateCorresponds.terminal_iff",
+  "StateCorresponds.stuck_iff",
+  "OptionStatesCorrespond.some_left",
+  "OptionStatesCorrespond.some_right",
+  "StateCorresponds.step_forward",
+  "StateCorresponds.step_backward",
+  "StateCorresponds.steps_forward",
+  "StateCorresponds.steps_backward",
+  "rename_returns_iff",
+  "rename_overflows_iff",
+  "rename_reaches_stuck_iff",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -424,6 +442,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming_profile.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming_environments.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming_dynamics.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });

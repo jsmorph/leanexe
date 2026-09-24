@@ -566,3 +566,31 @@ merging versus invalid merging, missing lookup protection, prefix insertion,
 branch absence/arity, and raw sum values that inhabit different source types.
 This is support for the upcoming raw step/finite-observation correspondence
 proof; no execution-equivalence result is claimed at this checkpoint.
+
+
+Completed raw operational renaming correspondence. Every suspended frame carries
+its own environment map. Fresh callees enter identical program bodies and
+argument environments. The one-step theorem compares actual optional results,
+including both missing transitions; malformed values, missing branches, wrong
+nominal IDs, and wrong arities are retained. Terminality still uses the original
+mathematical overflow predicate. Both finite-trace directions and exact
+return/overflow/stuck-reachability equivalences have no typing premises.
+
+The finite-step proof initially needed generic successful-option extraction
+lemmas instead of dependent elimination on an unreduced machine step. Minor
+deprecated/unused simplifier arguments were cleaned before integration. The
+parent's first regression run found a proposition declared with def, ambiguous
+constructor field notation, and a Decidable instance hidden behind the Terminal
+definition. Using theorem, explicit Expr constructors, and an explicit arithmetic
+goal fixed these without changing any semantics or theorem premise.
+
+The complete gate passed twenty build jobs, all 706 semantic examples, and all
+383 theorem audits. The 26 new examples include caller captures versus fresh
+callee scopes, all different binder prefixes, noninjective maps in both
+execution directions, a finite recursive prefix, exact tagged faults, forged
+overflow records, and malformed return frames. All eighteen new proof
+declarations use at most propext. The next checkpoint is continuation extension
+and finite execution decomposition for exact derived-form semantics. An
+unconditional optional-step extension equation would be false at ret value []:
+appending a continuation enables a new transition there. The upcoming statement
+must isolate that return boundary explicitly.
