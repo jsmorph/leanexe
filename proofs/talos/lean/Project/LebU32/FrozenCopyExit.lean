@@ -1,4 +1,4 @@
-import Project.LebU32.Copy
+import Project.LebU32.FrozenCopy
 
 /-!
 # Byte-copy loop exit
@@ -10,7 +10,7 @@ continuation that follows it.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common
 
@@ -38,4 +38,4 @@ theorem copyExitNeg (env : HostEnv Unit) (stC : Store Unit)
   wp_run
   simpa [cFrameNeg] using hB1
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

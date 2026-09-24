@@ -1,4 +1,4 @@
-import Project.LebU32.Defs
+import Project.LebU32.FrozenDefs
 
 /-!
 # The byte-copy step of the buffer push
@@ -11,7 +11,7 @@ facts the caller's invariant needs, generically over the postcondition.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
@@ -220,4 +220,4 @@ theorem copyStepNeg (env : HostEnv Unit) (st stC : Store Unit)
       omega)]
     exact hloC a ha
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

@@ -1,12 +1,13 @@
-import Project.LebU32.Copy
-import Project.LebU32.CopyExit
-import Project.LebU32.Frame
-import Project.LebU32.NegDone
+import Project.LebU32.FrozenCopy
+import Project.LebU32.FrozenCopyExit
+import Project.LebU32.FrozenFrame
+import Project.LebU32.FrozenIterDone
+import Project.LebU32.FrozenIterResult
 
 /-!
-# The allocation continuation of a continuation-byte iteration
+# The allocation continuation of the final-byte iteration
 
-Split from `negIterLemma` at the state after the five header writes.  In
+Split from `posIterLemma` at the state after the five header writes.  In
 the parent proof the goal at this point is internally large, and context
 extension or constructor splitting there stalls the elaborator.  This
 lemma restates that goal from scratch, so the bound conjuncts and the
@@ -15,24 +16,25 @@ copy-loop phase elaborate against a term of ordinary size.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
-def negBlockPOST (env : HostEnv Unit) (POST : Assertion Unit) : Assertion Unit :=
+def posBlockPOST (env : HostEnv Unit) (st : Store Unit)
+    (n g0 g2 : UInt64) (m0 : Nat) (POST : Assertion Unit) : Assertion Unit :=
   fun cont => match cont with
     | .Fallthrough st' s' =>
-      wp «module» negAllocTail (POST) st'
+      wp «module» posAllocTail (posPOST st n g0 g2 m0 POST) st'
         { s' with values := [] } env
     | .Break 0 st' s' =>
-      wp «module» negAllocTail (POST) st'
+      wp «module» posAllocTail (posPOST st n g0 g2 m0 POST) st'
         { s' with values := [] } env
-    | .Break (k + 1) st' s' => POST (.Break k st' s')
-    | other => POST other
+    | .Break (k + 1) st' s' => posPOST st n g0 g2 m0 POST (.Break k st' s')
+    | other => posPOST st n g0 g2 m0 POST other
 
 set_option maxHeartbeats 4000000 in
 set_option Elab.async false in
-theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
+theorem posIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
     (n g0 g2 : UInt64) (k : Nat) (v : UInt64) (written : List UInt8)
     (e : Nat → UInt64) (m0 : Nat) (POST : Assertion Unit)
     (_hn32 : n.toNat < 4294967296)
@@ -43,17 +45,10 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
     (hsplit : lebList 10 n = written ++ lebList (10 - k) v)
     (hwlen : written.length = k)
     (hkL : k < (lebList 10 n).length)
-    (hcont : ¬ v / 128 = 0)
+    (hrest : v / 128 = 0)
     (hm0 : 2 * (10 - k) + 1 ≤ m0)
     (hTrap : ∀ (st' : Store Unit) (msg : String),
       POST (.Trap st' msg) = False)
-    (hFT : ∀ (st' : Store Unit) (s' : Locals),
-      lInv st n g0 g2 st'
-        { s' with values := s'.values.take 0 ++ ([] : List Value).drop 0 } ∧
-      lMeasure st'
-        { s' with values := s'.values.take 0 ++ ([] : List Value).drop 0 } <
-        m0 →
-      POST (.Fallthrough st' s'))
     (hkU : (UInt64.ofNat k).toNat = k)
     (hcap8 : (UInt64.ofNat k + 1 + 7) / 8 * 8 = 8)
     (h56k : (g0 + UInt64.ofNat (56 * k)).toNat = g0.toNat + 56 * k)
@@ -103,9 +98,27 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
     (hpgL : st1.mem.pages = st.mem.pages)
     (hloL : ∀ a < g0.toNat, st1.mem.bytes a = st.mem.bytes a) :
     wp «module»
-      (Instruction.block 0 0 [Instruction.loop 0 0 copyBody] ::
-        negAllocTail)
-      POST
+      [Instruction.block 0 0
+          [Instruction.loop 0 0
+              [Instruction.localGet 30, Instruction.localGet 26,
+                Instruction.geUI64, Instruction.br_if 1,
+                Instruction.localGet 28, Instruction.localGet 30,
+                Instruction.addI64, Instruction.wrapI64,
+                Instruction.localGet 25, Instruction.localGet 30,
+                Instruction.addI64, Instruction.wrapI64,
+                Instruction.load8U 0, Instruction.store8 0,
+                Instruction.localGet 30, Instruction.constI64 1,
+                Instruction.addI64, Instruction.localSet 30,
+                Instruction.br 0]],
+        Instruction.localGet 28, Instruction.localGet 26,
+        Instruction.addI64, Instruction.wrapI64, Instruction.localGet 27,
+        Instruction.wrapI64, Instruction.store8 0, Instruction.localGet 28,
+        Instruction.localSet 12, Instruction.localGet 12,
+        Instruction.localSet 5, Instruction.localGet 12,
+        Instruction.localSet 6, Instruction.localGet 11,
+        Instruction.constI64 1, Instruction.addI64, Instruction.localSet 7,
+        Instruction.constI64 1, Instruction.localSet 8]
+      (posPOST st n g0 g2 m0 POST)
       { st1 with
         globals :=
           { globals :=
@@ -127,10 +140,10 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
             (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 8).toNat %
               4294967296)) 0 }
       (lFrameFlat (UInt64.ofNat (10 - k)) v (bufPtr g0 k) (bufPtr g0 k)
-        (UInt64.ofNat k) 0 0 0 0 (e 9) (e 10) (e 11) (e 12) (v / 128)
-        (v % 128 + 128 &&& 255) (bufPtr g0 k) (UInt64.ofNat k) (e 17)
+        (UInt64.ofNat k) 0 0 0 0 (v % 128 &&& 255) (bufPtr g0 k)
+        (UInt64.ofNat k) (e 12) (e 13) (e 14) (e 15) (e 16) (e 17)
         (e 18) (e 19) (e 20) (e 21) (e 22) (e 23) (e 24) (bufPtr g0 k)
-        (UInt64.ofNat k) (v % 128 + 128 &&& 255)
+        (UInt64.ofNat k) (v % 128 &&& 255)
         (g0 + 56 * UInt64.ofNat k + 48) (UInt64.ofNat k + 1) 0 8 0 0
         (g0 + 56 * UInt64.ofNat k + 48 + 8)
         ((g0 + 56 * UInt64.ofNat k + 48 + 8 - 1) / 65536 + 1)
@@ -138,31 +151,31 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
       env := by
   try simp only [h2L]
   try wp_run_folded []
-  try simp [hTrap]
+  try simp [posPOST, hTrap]
   apply wp_block_cons
-  apply wp.conseq (Q := negBlockPOST env POST)
+  apply wp.conseq (Q := posBlockPOST env st n g0 g2 m0 POST)
   · intro cont h
     cases cont with
     | Fallthrough st' s' =>
-      simpa only [negBlockPOST, negAllocTail, lFrameFlat_values,
+      simpa only [posBlockPOST, posAllocTail, lFrameFlat_values,
         List.take_zero, List.drop_zero, List.nil_append] using h
     | Break k st' s' =>
       cases k with
       | zero =>
-        simpa only [negBlockPOST, negAllocTail, lFrameFlat_values,
+        simpa only [posBlockPOST, posAllocTail, lFrameFlat_values,
           List.take_zero, List.drop_zero, List.nil_append] using h
-      | succ k => simpa only [negBlockPOST] using h
-    | Return st' values => simpa only [negBlockPOST] using h
-    | Trap st' message => simpa only [negBlockPOST] using h
-    | Invalid message => simpa only [negBlockPOST] using h
-    | OutOfFuel => simpa only [negBlockPOST] using h
-    | ReturnCall id st' values => simpa only [negBlockPOST] using h
-    | Throwing tag args st' s' => simpa only [negBlockPOST] using h
+      | succ k => simpa only [posBlockPOST] using h
+    | Return st' values => simpa only [posBlockPOST] using h
+    | Trap st' message => simpa only [posBlockPOST] using h
+    | Invalid message => simpa only [posBlockPOST] using h
+    | OutOfFuel => simpa only [posBlockPOST] using h
+    | ReturnCall id st' values => simpa only [posBlockPOST] using h
+    | Throwing tag args st' s' => simpa only [posBlockPOST] using h
   apply wp_loop_cons
-    (Q := negBlockPOST env POST)
+    (Q := posBlockPOST env st n g0 g2 m0 POST)
     (Inv := fun stC sC =>
       ∃ j : Nat, j ≤ k ∧
-        sC = cFrameNeg g0 v k j e ∧
+        sC = cFramePos g0 v k j e ∧
         stC.globals.globals =
           (st1.globals.globals.set 0
             (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8))).set 2
@@ -183,7 +196,7 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
           _ :: _ :: _ :: _ :: .i64 l30 :: _ =>
           k + 1 - l30.toNat
       | _ => 0)
-  · refine ⟨0, Nat.zero_le _, by rw [cFrameNeg_eq_flat]; rfl, rfl, ?_, ?_,
+  · refine ⟨0, Nat.zero_le _, by rw [cFramePos_eq_flat]; rfl, rfl, ?_, ?_,
       ?_, ?_⟩
     · simp [Mem.write64_pages]
     · intro i hi
@@ -246,37 +259,37 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
     have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
     by_cases hjend : j = k
     · subst hjend
-      change wp «module» copyBody _ stC (cFrameNeg g0 v j j e) env
-      refine copyExitNeg env stC g0 v j e _ ?_
-      simp only [negBlockPOST]
-      exact negAllocDone env st st1 stC n g0 g2 v j written e m0 POST
-        hFit32 hFit hL5 hsplit hwlen hkL hcont hm0 hTrap hFT hkU hglC
-        hpgC hdst hloC hlen h0L h1L h2L h3L h4L h5L hpgL
+      change wp «module» copyBody _ stC (cFramePos g0 v j j e) env
+      refine copyExitPos env stC g0 v j e _ ?_
+      simp only [posBlockPOST]
+      exact posAllocDone env st st1 stC n g0 g2 v j written e m0 POST
+        hFit32 hFit hL5 hsplit hwlen hkL hrest hm0 hTrap hkU hglC hpgC
+        hdst hloC hlen h0L h1L h2L h3L h4L h5L hpgL
     · have hjlt : j < k := Nat.lt_of_le_of_ne hjk hjend
       have hnge : ¬ (UInt64.ofNat j ≥ UInt64.ofNat k) := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hjU, hkU]
         omega
-      change wp «module» copyBody _ stC (cFrameNeg g0 v k j e) env
-      refine copyStepNeg env st stC n g0 v k j written e
+      change wp «module» copyBody _ stC (cFramePos g0 v k j e) env
+      refine copyStepPos env st stC n g0 v k j written e
         ((st1.globals.globals.set 0
           (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8))).set 2
           (.i64 (g2 + UInt64.ofNat k + 1)))
-        (cFrameNeg g0 v k j e).values _ hFit32 hFit hPages (by omega)
+        (cFramePos g0 v k j e).values _ hFit32 hFit hPages (by omega)
         hwlen hjlt hglC (hpgC.trans hpgL) hdst hsrc hloC
         (hvals := by rfl) (hTrap := ?_) (hB0 := ?_)
       · intro st' msg
-        simp [negBlockPOST, hTrap]
+        simp [posBlockPOST, posPOST, hTrap]
       · rintro st' s' ⟨hframe', hgl', hpg', hdst', hsrc', hlo'⟩
         refine ⟨⟨j + 1, by omega, hframe', hgl',
           hpg'.trans hpgL.symm, hdst', hsrc', hlo'⟩, ?_⟩
         have hlocals' := congrArg (fun s : Locals => s.locals) hframe'
-        change s'.locals = (cFrameNeg g0 v k (j + 1) e).locals at hlocals'
-        have hlocals : s'.locals = (cFrameNeg g0 v k (j + 1) e).locals :=
+        change s'.locals = (cFramePos g0 v k (j + 1) e).locals at hlocals'
+        have hlocals : s'.locals = (cFramePos g0 v k (j + 1) e).locals :=
           hlocals'
         rw [hlocals]
-        simp only [cFrameNeg]
+        simp only [cFramePos]
         rw [toNat_ofNat_lt (by rw [size_eq]; omega), hjU]
         omega
 
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec
