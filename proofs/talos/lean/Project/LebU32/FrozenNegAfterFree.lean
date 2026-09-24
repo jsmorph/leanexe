@@ -1,24 +1,26 @@
-import Project.LebU32.Frame
-import Project.LebU32.NegAfterFree
+import Project.LebU32.FrozenFrame
+import Project.LebU32.FrozenNegFreshAlloc
+import Project.LebU32.FrozenNegIterAlloc
 
 /-!
-# Continuation-byte instruction prefix
+# Continuation-byte post-allocation suffix
 
-This module executes the continuation-byte program through allocation and
-delegates its copy loop to `negIterAllocWp`.  Its inputs include the arithmetic
-facts proved by `negIterLemma`.  The separation prevents those proof terms from
-sharing an elaboration process with the generated instruction prefix.
+This module executes the continuation-byte suffix after the free-list block.
+It performs the allocation and header writes, then delegates the copy loop to
+`negIterAllocWp`.  The program value is the exact suffix of `negProg`.
 -/
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
+def negAfterFreeProg : Program := negProg.drop 55
+
 set_option maxHeartbeats 4000000 in
 set_option Elab.async false in
-theorem negPrefixWp (env : HostEnv Unit) (st stL : Store Unit)
+theorem negAfterFreeWp (env : HostEnv Unit) (st stL : Store Unit)
     (n g0 g2 : UInt64) (k : Nat) (v : UInt64) (written : List UInt8)
     (e : Nat → UInt64) (m0 : Nat) (POST : Assertion Unit)
     (hn32 : n.toNat < 4294967296)
@@ -94,67 +96,41 @@ theorem negPrefixWp (env : HostEnv Unit) (st stL : Store Unit)
     (hs8m : (g0 + 56 * UInt64.ofNat k + 48 - 8).toNat % 4294967296 =
       g0.toNat + 56 * k + 40)
     (hs0m : (g0.toNat + 56 * k) % 4294967296 = g0.toNat + 56 * k)
-    (hcap : ¬ (UInt64.ofNat k + 1 + 7) / 8 * 8 < 8)
-    (sL : Locals)
-    (hsL : sL = lFrame (UInt64.ofNat (10 - k)) v (bufPtr g0 k)
-      (bufPtr g0 k) (UInt64.ofNat k) 0 0 0 0 e) :
-    wp «module» negProg POST stL sL env := by
-  subst hsL
-  rw [lFrame_eq_flat]
-  unfold negProg
-  wp_run_folded []
-  try simp
-  refine wp_iff_cons rfl ?_
-  rw [if_neg (by decide)]
-  try wp_run_folded []
-  try simp
-  refine wp_iff_cons rfl ?_
-  rw [if_neg (by decide)]
-  try wp_run_folded []
-  try simp
-  refine wp_iff_cons rfl ?_
-  rw [if_neg (by simp [hcap])]
-  try wp_run_folded []
-  try simp only [h1L]
-  try wp_run_folded []
-  try simp
-  apply wp_block_cons
-  apply wp_loop_cons
-    (Inv := fun st1 s1 => st1 = stL ∧ s1 =
-      lFrameFlat (UInt64.ofNat (10 - k)) v (bufPtr g0 k) (bufPtr g0 k)
+    (hcap : ¬ (UInt64.ofNat k + 1 + 7) / 8 * 8 < 8) :
+    wp «module» negAfterFreeProg POST stL
+      (lFrameFlat (UInt64.ofNat (10 - k)) v (bufPtr g0 k) (bufPtr g0 k)
         (UInt64.ofNat k) 0 0 0 0 (e 9) (e 10) (e 11) (e 12) (v / 128)
         (v % 128 + 128 &&& 255) (bufPtr g0 k) (UInt64.ofNat k) (e 17)
         (e 18) (e 19) (e 20) (e 21) (e 22) (e 23) (e 24) (bufPtr g0 k)
         (UInt64.ofNat k) (v % 128 + 128 &&& 255) (e 28)
         (UInt64.ofNat k + 1) (e 30) ((UInt64.ofNat k + 1 + 7) / 8 * 8)
         0 0 (e 34) (e 35) 0)
-    (μ := fun _ _ => 0)
-  · exact ⟨rfl, rfl⟩
-  · rintro st1 s1 ⟨rfl, rfl⟩
-    wp_run_folded []
-    refine wp_iff_cons rfl ?_
-    rw [if_pos (by decide)]
-    have hk5 : k < 5 := by omega
-    have h2R : (st1.globals.globals.set 0
-        (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8)))[2]? =
-        some (.i64 (g2 + UInt64.ofNat k)) := by
-      rw [List.getElem?_set]
-      simp only [if_neg (by omega : ¬ (0 = 2))]
-      exact h2L
-    apply negFreshAllocationPreludeWp env st st1 g0 v k e
-      _ hk5 hFit32 hFit h0L hpgL hcap8 hno_wrap hgeM hs40 hs32 hs24
-      hs16 hs8 hs0m
-    · intro st' msg
-      simpa using hTrap st' msg
-    · simp only [negFreshResultStore, negFreshHeaderStartStore,
-        negFreshResultFrame, lFrameFlat_values, List.take_zero,
-        List.drop_zero, List.nil_append]
-      wp_run_folded [h2R]
-      exact negIterAllocWp env st _ n g0 g2 k v written e m0 POST
-        hn32 hFit32 hFit hPages hL5 hsplit hwlen hkL hcont hm0 hTrap hFT
-        hkU hcap8 h56k h56kM hnewtopN h56kN hno_wrap hle_wrap hsub1T
-        hp32L hgeM h48kN hsubHdr hs40 hs32 hs24 hs16 hs8 hs40m hs32m
-        hs24m hs16m hs8m hs0m hcap hbytes hlen h0L h1L h2L h3L h4L
-        h5L hpgL hloL
+      env := by
+  unfold negAfterFreeProg negProg
+  wp_run_folded []
+  refine wp_iff_cons rfl ?_
+  rw [if_pos (by decide)]
+  have hk5 : k < 5 := by omega
+  have h2R : (stL.globals.globals.set 0
+      (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8)))[2]? =
+      some (.i64 (g2 + UInt64.ofNat k)) := by
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (0 = 2))]
+    exact h2L
+  apply negFreshAllocationPreludeWp env st stL g0 v k e
+    _ hk5 hFit32 hFit h0L hpgL hcap8 hno_wrap hgeM hs40 hs32 hs24
+    hs16 hs8 hs0m
+  · intro st' msg
+    simpa using hTrap st' msg
+  · simp only [negFreshResultStore, negFreshHeaderStartStore,
+      negFreshResultFrame, lFrameFlat_values, List.take_zero,
+      List.drop_zero, List.nil_append]
+    wp_run_folded [h2R]
+    exact negIterAllocWp env st _ n g0 g2 k v written e m0 POST
+      hn32 hFit32 hFit hPages hL5 hsplit hwlen hkL hcont hm0 hTrap hFT
+      hkU hcap8 h56k h56kM hnewtopN h56kN hno_wrap hle_wrap hsub1T hp32L
+      hgeM h48kN hsubHdr hs40 hs32 hs24 hs16 hs8 hs40m hs32m hs24m
+      hs16m hs8m hs0m hcap hbytes hlen h0L h1L h2L h3L h4L h5L hpgL
+      hloL
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

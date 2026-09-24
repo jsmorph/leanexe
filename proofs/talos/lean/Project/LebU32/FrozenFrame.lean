@@ -1,4 +1,4 @@
-import Project.LebU32.Defs
+import Project.LebU32.FrozenDefs
 import Project.WpScaffold
 
 /-!
@@ -10,7 +10,7 @@ parameter and local arrays.  The generated `frame_step` lemmas expose only the
 slot read or update required by each instruction.
 -/
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm
 
@@ -416,4 +416,4 @@ variable (l0 l1 l2 l3 l4 l5 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 
 
 end lFrameFlatLemmas
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

@@ -1,5 +1,5 @@
-import Project.LebU32.Frame
-import Project.LebU32.IterResult
+import Project.LebU32.FrozenFrame
+import Project.LebU32.FrozenIterResult
 
 /-!
 # Completed final-byte iteration
@@ -11,7 +11,7 @@ instruction continuation from entering every dependent record field.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
@@ -234,4 +234,4 @@ theorem posAllocDone (env : HostEnv Unit) (st st1 stC : Store Unit)
       omega
   }
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec
