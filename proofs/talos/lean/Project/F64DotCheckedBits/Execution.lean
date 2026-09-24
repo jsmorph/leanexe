@@ -162,7 +162,7 @@ theorem unequal_lengths_exact
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold Project.F64DotCheckedBits.func0
     wp_run_with []
@@ -215,7 +215,7 @@ theorem equal_empty_exact
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold Project.F64DotCheckedBits.func0
     wp_run_with []
@@ -250,21 +250,21 @@ theorem equal_empty_exact
 /-! ## Nonempty-loop invariant
 
 The compiler uses locals 4 and 5 for the loop-carried index and accumulator.
-The other eighteen locals are scratch values whose exact contents do not
+The other twenty locals are scratch values whose exact contents do not
 belong in the mathematical invariant. -/
 
 private def loopFrame (leftPtr rightPtr index accumulator : UInt64)
-    (local2 local3 local6 local7 local8 local9 local10 local11 local12
-      local13 local14 local15 local16 local17 local18 local19 local20 local21 :
+    (local2 local3 local6 local7 local8 local9 local10 local11 local14
+      local15 local16 local17 local18 local19 local20 local21 local22 local23 :
       UInt64) (values : List Value := []) : Locals :=
   { params := [.i64 leftPtr, .i64 rightPtr],
     locals :=
       [.i64 local2, .i64 local3,
        .i64 index, .i64 accumulator,
        .i64 local6, .i64 local7, .i64 local8, .i64 local9,
-       .i64 local10, .i64 local11, .i64 local12, .i64 local13,
-       .i64 local14, .i64 local15, .i64 local16, .i64 local17,
-       .i64 local18, .i64 local19, .i64 local20, .i64 local21],
+       .i64 local10, .i64 local11, .i64 0, .i64 0, .i64 local14, .i64 local15,
+       .i64 local16, .i64 local17, .i64 local18, .i64 local19,
+       .i64 local20, .i64 local21, .i64 local22, .i64 local23],
     values := values }
 
 /-- Frame shape while the nonempty path stages its two seed element loads. -/
@@ -276,7 +276,7 @@ private def seedFrame (leftPtr rightPtr staged : UInt64)
        .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
        .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
        .i64 0, .i64 0,
-       .i64 staged,
+       .i64 0, .i64 0, .i64 staged,
        .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := values }
 
@@ -288,13 +288,13 @@ private def loopInvariant (initial : Store Unit)
   fun current frame =>
     current = initial ∧
       ∃ k : Nat, 1 ≤ k ∧ k ≤ terms.length ∧
-        ∃ local2 local3 local6 local7 local8 local9 local10 local11 local12
-          local13 local14 local15 local16 local17 local18 local19 local20 local21 :
+        ∃ local2 local3 local6 local7 local8 local9 local10 local11 local14
+          local15 local16 local17 local18 local19 local20 local21 local22 local23 :
           UInt64,
           frame = loopFrame leftPtr rightPtr (UInt64.ofNat k)
             (Kernels.dot64List (terms.take k)) local2 local3 local6 local7
-            local8 local9 local10 local11 local12 local13 local14 local15
-            local16 local17 local18 local19 local20 local21
+            local8 local9 local10 local11 local14 local15 local16 local17
+            local18 local19 local20 local21 local22 local23
 
 /-- The number of input pairs still unconsumed by the generated loop. -/
 private def loopMeasure (terms : List (UInt64 × UInt64))
@@ -349,7 +349,7 @@ theorem equal_nonempty_exact
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold Project.F64DotCheckedBits.func0
     wp_run_with []
@@ -389,10 +389,10 @@ theorem equal_nonempty_exact
     simp only [wp_constI64_cons, wp_localSet_cons, Locals.set?,
       Function.numParams, List.length]
     change wp Project.F64DotCheckedBits.«module»
-      (Project.ProofKit.CheckedArrayGet.checkedGetCore 15 16 ++ _)
+      (Project.ProofKit.CheckedArrayGet.checkedGetCore 17 18 ++ _)
       _ initial (seedFrame leftPtr rightPtr leftPtr []) env
     refine Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
-      (pointerLocal := 15) (indexLocal := 16)
+      (pointerLocal := 17) (indexLocal := 18)
       (module_ := Project.F64DotCheckedBits.«module») (env := env)
       (store := initial) (frame := seedFrame leftPtr rightPtr leftPtr [])
       (pointer := leftPtr) (input := left) (index := 0) (tail := [])
@@ -405,10 +405,10 @@ theorem equal_nonempty_exact
     simp only [wp_constI64_cons, wp_localSet_cons, Locals.set?,
       Function.numParams, List.length]
     change wp Project.F64DotCheckedBits.«module»
-      (Project.ProofKit.CheckedArrayGet.checkedGetCore 15 16 ++ _)
+      (Project.ProofKit.CheckedArrayGet.checkedGetCore 17 18 ++ _)
       _ initial (seedFrame leftPtr rightPtr rightPtr [.f64 left[0]]) env
     refine Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
-      (pointerLocal := 15) (indexLocal := 16)
+      (pointerLocal := 17) (indexLocal := 18)
       (module_ := Project.F64DotCheckedBits.«module») (env := env)
       (store := initial)
       (frame := seedFrame leftPtr rightPtr rightPtr [.f64 left[0]])
@@ -432,8 +432,8 @@ theorem equal_nonempty_exact
     · rintro current frame
         ⟨rfl, k, hkPositive, hkLength,
           local2, local3, local6, local7, local8, local9, local10, local11,
-          local12, local13, local14, local15, local16, local17, local18,
-          local19, local20, local21, rfl⟩
+          local14, local15, local16, local17, local18, local19, local20,
+          local21, local22, local23, rfl⟩
       have hkLeftLe : k ≤ left.size := by omega
       have hkLt64 : k < UInt64.size :=
         lt_of_le_of_lt hkLeftLe hLeft.size_lt
@@ -472,8 +472,8 @@ theorem equal_nonempty_exact
             (Kernels.dot64List ((arrayPairTerms left right).take k))
             local2 local3 (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
-            local8 local9 local10 local11 local12 local13 local14 leftPtr
-            local16 local17 local18 local19 local20 local21) env
+            local8 local9 local10 local11 local14 local15 local16 leftPtr
+            local18 local19 local20 local21 local22 local23) env
         rw [wp_localGet_cons]
         simp only [loopFrame, Locals.get, List.length, Nat.reduceAdd,
           Nat.reduceLT, Nat.reduceSub, if_false, if_true,
@@ -497,26 +497,26 @@ theorem equal_nonempty_exact
           Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, if_false, if_true,
           List.set_cons_zero, List.set_cons_succ]
         change wp Project.F64DotCheckedBits.«module»
-          (Project.ProofKit.CheckedArrayGet.checkedGetCore 15 16 ++ _)
+          (Project.ProofKit.CheckedArrayGet.checkedGetCore 17 18 ++ _)
           _ current
           (loopFrame leftPtr rightPtr (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
             local2 local3 (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
-            local8 local9 local10 local11 local12 local13 local14 leftPtr
-            (UInt64.ofNat k) local17 local18 local19 local20 local21
+            local8 local9 local10 local11 local14 local15 local16 leftPtr
+            (UInt64.ofNat k) local19 local20 local21 local22 local23
             [.f64 (Kernels.dot64List
               ((arrayPairTerms left right).take k))]) env
         refine Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
-          (pointerLocal := 15) (indexLocal := 16)
+          (pointerLocal := 17) (indexLocal := 18)
           (module_ := Project.F64DotCheckedBits.«module») (env := env)
           (store := current)
           (frame := loopFrame leftPtr rightPtr (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
             local2 local3 (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
-            local8 local9 local10 local11 local12 local13 local14 leftPtr
-            (UInt64.ofNat k) local17 local18 local19 local20 local21
+            local8 local9 local10 local11 local14 local15 local16 leftPtr
+            (UInt64.ofNat k) local19 local20 local21 local22 local23
             [.f64 (Kernels.dot64List
               ((arrayPairTerms left right).take k))])
           (pointer := leftPtr) (input := left) (index := k)
@@ -543,26 +543,26 @@ theorem equal_nonempty_exact
           Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, if_false, if_true,
           List.set_cons_zero, List.set_cons_succ]
         change wp Project.F64DotCheckedBits.«module»
-          (Project.ProofKit.CheckedArrayGet.checkedGetCore 15 16 ++ _)
+          (Project.ProofKit.CheckedArrayGet.checkedGetCore 17 18 ++ _)
           _ current
           (loopFrame leftPtr rightPtr (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
             local2 local3 (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
-            local8 local9 local10 local11 local12 local13 local14 rightPtr
-            (UInt64.ofNat k) local17 local18 local19 local20 local21
+            local8 local9 local10 local11 local14 local15 local16 rightPtr
+            (UInt64.ofNat k) local19 local20 local21 local22 local23
             [.f64 left[k], .f64 (Kernels.dot64List
               ((arrayPairTerms left right).take k))]) env
         refine Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
-          (pointerLocal := 15) (indexLocal := 16)
+          (pointerLocal := 17) (indexLocal := 18)
           (module_ := Project.F64DotCheckedBits.«module») (env := env)
           (store := current)
           (frame := loopFrame leftPtr rightPtr (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
             local2 local3 (UInt64.ofNat k)
             (Kernels.dot64List ((arrayPairTerms left right).take k))
-            local8 local9 local10 local11 local12 local13 local14 rightPtr
-            (UInt64.ofNat k) local17 local18 local19 local20 local21
+            local8 local9 local10 local11 local14 local15 local16 rightPtr
+            (UInt64.ofNat k) local19 local20 local21 local22 local23
             [.f64 left[k], .f64 (Kernels.dot64List
               ((arrayPairTerms left right).take k))])
           (pointer := rightPtr) (input := right) (index := k)
@@ -628,7 +628,7 @@ theorem equal_nonempty_exact
             Kernels.dot64List ((arrayPairTerms left right).take (k + 1)),
             UInt64.ofNat (k + 1), UInt64.ofNat (k + 1),
             Kernels.dot64List ((arrayPairTerms left right).take (k + 1)),
-            local12, local13, local14, leftPtr, 1,
+            local14, local15, local16, leftPtr, 1,
             UInt64.ofNat (k + 1), 0, UInt64.ofNat (k + 1),
             Kernels.dot64List ((arrayPairTerms left right).take (k + 1)),
             1, rfl⟩

@@ -1,5 +1,5 @@
 import Project.Validate.ArtifactValidation
-import Project.Validate.Program
+import Project.Validate.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,46 +12,46 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.Validate.func0Def := by
+      Project.Validate.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.Validate.func1Def := by
+      Project.Validate.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.Validate.func2Def := by
+      Project.Validate.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.Validate.func3Def := by
+      Project.Validate.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.Validate.func4Def := by
+      Project.Validate.Frozen.func4Def := by
   rfl
 
 theorem function5_eq :
     Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!) =
-      Project.Validate.func5Def := by
+      Project.Validate.Frozen.func5Def := by
   rfl
 
 theorem function6_eq :
     Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!) =
-      Project.Validate.func6Def := by
+      Project.Validate.Frozen.func6Def := by
   rfl
 
 theorem function7_eq :
     Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!) =
-      Project.Validate.func7Def := by
+      Project.Validate.Frozen.func7Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.Validate.«module».funcs := by
+    Project.Validate.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -63,11 +63,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!),
      Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!)
     ] =
-    [Project.Validate.func0Def, Project.Validate.func1Def, Project.Validate.func2Def, Project.Validate.func3Def, Project.Validate.func4Def, Project.Validate.func5Def, Project.Validate.func6Def, Project.Validate.func7Def]
+    [Project.Validate.Frozen.func0Def, Project.Validate.Frozen.func1Def, Project.Validate.Frozen.func2Def, Project.Validate.Frozen.func3Def, Project.Validate.Frozen.func4Def, Project.Validate.Frozen.func5Def, Project.Validate.Frozen.func6Def, Project.Validate.Frozen.func7Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq]
 
 def executionCache : Wasm.Module :=
-  Project.Validate.«module»
+  Project.Validate.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

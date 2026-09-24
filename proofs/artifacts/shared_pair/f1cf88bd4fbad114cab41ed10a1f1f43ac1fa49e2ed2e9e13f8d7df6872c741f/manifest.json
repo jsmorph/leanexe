@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.SharedPair.ArtifactBytes",
   "artifactBytesDefinition": "Project.SharedPair.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.SharedPair.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.SharedPair.Program",
-  "cachedProgramDefinition": "Project.SharedPair.module",
-  "specModule": "Project.SharedPair.Spec",
+  "cachedProgramModule": "Project.SharedPair.FrozenProgram",
+  "cachedProgramDefinition": "Project.SharedPair.Frozen.module",
+  "specModule": "Project.SharedPair.FrozenSpec",
   "proofTarget": "Project.SharedPair.ArtifactTranslation",
   "identityTheorem": "Project.SharedPair.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.SharedPair.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.SharedPair.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.SharedPair.Spec.sharedPushPair_correct"
+    "Project.SharedPair.Frozen.Spec.sharedPushPair_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
