@@ -280,3 +280,17 @@ The proof builds; signed constants and complete module encoding are next.
 A first signed-bit helper attempted bv_decide and Lean exited with code 139.
 That failed attempt is not committed or counted as evidence; replacing it with
 explicit bitvector/arithmetic lemmas.
+
+### Signed encoder bit operations (checked)
+
+Replaced the crashing automated bitvector attempt with explicit kernel-checked
+lemmas. Proved that the production sar7 implements signed arithmetic division by
+128 on every UInt64 bit pattern, and that the low seven bits equal the signed
+remainder modulo 128. The sign-fill proof handles every bit position explicitly.
+SignedLebBits builds without bv_decide, native_decide, holes, or new axioms.
+This is a checked part of signed-LEB correctness; the full signed encoding and
+module-byte theorem remain unfinished.
+
+The user reiterated frequent updates, commits, and pushes. Continue pushing each
+checked increment, announce the pushed SHA immediately, and provide a progress
+update at least every minute during ongoing work.
