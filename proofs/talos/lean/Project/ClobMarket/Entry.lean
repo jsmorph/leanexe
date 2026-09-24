@@ -31,16 +31,16 @@ def invalidProg : Wasm.Program :=
   outerBranch false
 
 def invalidPrepareProg : Wasm.Program :=
-  invalidProg.take 30
+  invalidProg.take 32
 
 def invalidSearchProg : Wasm.Program :=
-  (invalidProg.drop 30).take 1
+  (invalidProg.drop 32).take 1
 
 def invalidBumpProg : Wasm.Program :=
-  (invalidProg.drop 31).take 4
+  (invalidProg.drop 33).take 4
 
 def invalidFinishProg : Wasm.Program :=
-  invalidProg.drop 35
+  invalidProg.drop 37
 
 set_option maxRecDepth 1048576 in
 theorem invalidProg_decomposition :
@@ -154,31 +154,18 @@ def callProg : Wasm.Program :=
 ]
 
 def validResultProg : Wasm.Program :=
-  [
-  .localSet 30,
-  .localSet 29,
-  .localSet 28,
-  .localSet 27,
-  .localSet 26,
-  .localGet 27,
-  .localSet 32,
-  .localGet 29,
-  .localSet 34,
-  .call 19,
-  .localSet 36,
-  .localGet 36,
-  .localSet 39,
-  .localGet 32,
-  .localSet 40,
-  .localGet 34,
-  .localSet 41
-]
+  [.localSet 30, .localSet 29, .localSet 28, .localSet 27, .localSet 26,
+   .localGet 26, .localSet 31, .localGet 27, .localSet 32,
+   .localGet 28, .localSet 33, .localGet 29, .localSet 34,
+   .call 19, .localSet 36, .localGet 36, .localSet 39,
+   .localGet 31, .localSet 40, .localGet 32, .localSet 41,
+   .localGet 33, .localSet 42, .localGet 34, .localSet 43]
 
 def validProg : Wasm.Program :=
   priceProg ++ callProg ++ validResultProg
 
 def resultProg : Wasm.Program :=
-  [.localGet 39, .localGet 40, .localGet 41]
+  [.localGet 39, .localGet 41, .localGet 43]
 
 set_option maxRecDepth 1048576 in
 theorem func21_decomposition :
