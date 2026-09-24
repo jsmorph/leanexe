@@ -231,3 +231,19 @@ type annotations to match ScalarTransition. Connecting it to the typed binary
 decoder requires the proved annotation relation; that connection is still open.
 Scratch-state correspondence, allocation bounds, module assembly, and byte
 roundtrips remain open. These results do not establish source-to-bytes correctness.
+
+### Scratch bounds and emitted expression execution (checked)
+
+Proved correspondence between native scalar descriptor evaluation and Talos's
+scratch-aware scalar evaluator. The theorem covers every expression/condition,
+preserves all source slots, preserves local capacity, and establishes successful
+evaluation whenever the descriptor scratch width fits. Native division and
+remainder at zero and masked shifts are proved to agree with Talos operations.
+
+Proved that the production exprScratch/condScratch calculations equal recognized
+descriptor widths, and that funcScratch for scalar declarations supplies exactly
+that width. Proved expression_execution: the actual emitted structured expression
+instructions, interpreted in Talos, terminate with the source value and unchanged
+source slots. Also proved the initial parameter/local ABI state representation.
+All four new proof modules build. This execution theorem is for instructions;
+encoded module bytes and whole exported-function invocation remain unconnected.
