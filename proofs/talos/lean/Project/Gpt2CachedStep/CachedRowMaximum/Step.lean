@@ -12,13 +12,13 @@ namespace Project.Gpt2CachedStep.CachedRowMaximum
 open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func25[33]? : Option Wasm.Instruction) with
+  match (func25[31]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 set_option maxRecDepth 16384 in
 theorem emitted_loop :
-    func25 = func25.take 33 ++ RangeFoldLoop.program 36 37 stepCode ++ func25.drop 34 := rfl
+    func25 = func25.take 31 ++ RangeFoldLoop.program 36 37 stepCode ++ func25.drop 32 := rfl
 
 def Accumulator (owner ptr : UInt64) (input : ByteArray) (head size index : Nat) (frame : Locals) : Prop :=
   frame.params = [.i64 owner, .i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat head), .i64 (UInt64.ofNat size)] ∧
