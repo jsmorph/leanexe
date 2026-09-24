@@ -12,8 +12,7 @@ def totalPrefix (input : Array UInt64) := ArrayFold.foldPrefix input Wasm.IEEE64
 def totalSuffix : Wasm.Program :=
   [.localGet 2, .f64ReinterpretI64, .localGet 3, .f64ReinterpretI64,
    .f64Add, .i64ReinterpretF64, .localSet 4, .localGet 4, .localSet 12,
-   .constI64 0, .localSet 11, .localGet 12, .localSet 2, .constI64 1,
-   .localSet 13, .localGet 11, .constI64 0, .neI64, .br_if 1,
+   .constI64 0, .localSet 11, .localGet 12, .localSet 2, .localGet 11, .constI64 0, .neI64, .br_if 1,
    .localGet 8, .constI64 1, .addI64, .localSet 8, .br 0]
 
 def totalBody : Wasm.Program :=
@@ -78,7 +77,7 @@ theorem total_step (env : HostEnv Unit) (initial : Store Unit) (owner ptr : UInt
     wp_total
     constructor
     · refine ⟨rfl, index+1, input[index], Wasm.IEEE64.add (totalPrefix input index) input[index],
-        0, Wasm.IEEE64.add (totalPrefix input index) input[index], 1, by omega, ?_⟩
+        0, Wasm.IEEE64.add (totalPrefix input index) input[index], ready, by omega, ?_⟩
       simp [totalFrame, UInt64.ofNat_add, totalPrefix, ArrayFold.foldPrefix_succ _ _ _ _ hi]
     · have hNextMod : (index+1)%18446744073709551616 = index+1 :=
         Nat.mod_eq_of_lt (lt_of_le_of_lt (by omega) hInput.size_lt)
