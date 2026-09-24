@@ -650,3 +650,21 @@ the plan conflict by retaining the new document ownership, and updated task.md
 with the completed 735-example/411-audit check and the next core-sum execution
 work. The other checkout's lock failure remains recorded as a distinct attempt;
 it is not substituted for the successful checks in this proof session.
+
+
+Completed exact arbitrary-expression injection, Unit-elimination, and sum-
+elimination laws. The public return/overflow/stuckness equivalences compose
+first-operand sequencing with supplied-frame inversion. They retain the exact
+overflow record, distinguish scrutinee failures from selected-body failures,
+and explicitly classify wrong Unit/sum shapes as stuck. Sum branches prepend
+the payload to the captured environment; Unit elimination introduces no binder.
+
+All 27 declarations passed focused checks and audited to propext only. The full
+gate passed twenty-three build jobs, all 758 examples, and all 438 audits. The
+23 new examples passed on their first run and exercise raw/static annotation
+separation, arbitrary expression traces, captures, fault order, selected-arm
+failures, malformed shapes, and applications of the exact laws. No new source
+primitive or machine transition was added. Derived Option/Except definitions
+and their exact static/behavior laws remain next. The documentation checker
+was rerun after integrating task.md; its sole reported failure remains the
+pre-existing absolute temporary path in the WGSL review.

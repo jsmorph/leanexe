@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 735 semantic examples and audits all 411 declared
-theorems across the twenty development modules, including helper proofs. It
+The maintained gate checks 758 semantic examples and audits all 438 declared
+theorems across the twenty-one development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -585,3 +585,19 @@ back to an active initial state need not exist after taking its first step.
 `sequence_reaches_stuck_iff` combine a known first operand transition with the
 continuation laws. No-successor endpoints still include stuck states; they are
 not all declared permitted terminal outcomes.
+
+
+## Checked core sum and Unit execution laws
+
+`SumExecution` gives exact return, overflow-record, and stuck-reachability laws
+for arbitrary operand expressions in both injections, Unit elimination, and
+sum elimination. Injections return exactly a wrapped operand value and preserve
+the operand's overflow/stuck outcomes. Unit elimination runs its body in the
+original environment only after a Unit result. Sum elimination runs only the
+selected body with its payload prepended to the captured environment.
+
+The elimination laws distinguish scrutinee failures from selected-body failures.
+A wrong raw scrutinee shape yields stuckness, not a return or permitted fault.
+These statements need neither typing nor termination, and hold with the same
+program on both sides. They establish reusable behavior laws for existing core
+forms; the individual Option/Except expansions remain the next proof increment.

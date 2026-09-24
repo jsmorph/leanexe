@@ -184,6 +184,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [RenamingDynamics.lean](../LeanExe/TypeSafety/RenamingDynamics.lean) | Raw frame/state correspondence, exact step-result matching, both finite-trace directions, and return/overflow/stuck-reachability equivalences. |
 | [Continuations.lean](../LeanExe/TypeSafety/Continuations.lean) | Continuation extension, exact finite boundary decomposition, and return/overflow/stuck sequencing equivalences. |
 | [Execution.lean](../LeanExe/TypeSafety/Execution.lean) | First-step decomposition, inversion at no-successor endpoints, and exact first-operand sequencing laws. |
+| [SumExecution.lean](../LeanExe/TypeSafety/SumExecution.lean) | Exact arbitrary-expression injection, Unit-elimination, and sum-elimination return/overflow/stuck laws. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -209,9 +210,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [26 renaming examples](../test/type_safety_renaming.lean),
 [27 renaming-profile examples](../test/type_safety_renaming_profile.lean),
 [17 environment-correspondence examples](../test/type_safety_renaming_environments.lean),
-[26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean), and
-[29 continuation/execution examples](../test/type_safety_continuations.lean). It audits the
-transitive axiom dependencies of all 411 declared theorems across the twenty
+[26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean),
+[29 continuation/execution examples](../test/type_safety_continuations.lean), and
+[23 sum-execution examples](../test/type_safety_sum_execution.lean). It audits the
+transitive axiom dependencies of all 438 declared theorems across the twenty-one
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -402,3 +404,14 @@ The `sequence_returns_iff`, `sequence_overflows_iff`, and
 `sequence_reaches_stuck_iff` corollaries combine first-step inversion with the
 continuation equations. Their premises include the actual operand transition;
 they impose no typing or termination assumption.
+
+
+`inl_returns_iff`, `inr_returns_iff`, `unitCase_returns_iff`, and
+`sumCase_returns_iff` characterize the exact returned value for arbitrary operand
+expressions. Their `overflows_iff` and `reaches_stuck_iff` counterparts preserve
+exact fault records and distinguish malformed inputs from selected-body behavior.
+The Unit/sum equations explicitly match the scrutinee's returned raw value.
+Wrong shapes cannot return or produce an overflow from the eliminator; they
+produce stuckness. Injection annotations remain static and do not affect raw
+payload execution. All laws are same-program finite-execution statements with
+no typing or termination premise.
