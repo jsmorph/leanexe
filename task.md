@@ -316,3 +316,13 @@ the actual ByteArray output to the grammar. SignedLebStop, SignedLebTrace, and
 SignedLeb all build. There are no per-constant certificates or finite test
 assumptions. Next: instruction encoding, module assembly/decoding, and exported
 execution for the arithmetic-only milestone.
+
+### Arithmetic instruction binary grammar (checked)
+
+Proved that the actual CoreWasm.encodeInstr/encodeInstrs output satisfies the
+independent Wasm instruction grammar for scalar arithmetic instructions,
+UInt64 constants, bounded local indices, and the structured i64 conditionals
+used by division/remainder guards. The proof uses the production signed and
+unsigned encoders and exact opcode bytes, including nested instruction lists.
+ArithmeticEncoding builds. The relation still needs to be derived for every
+admitted source expression and connected to the decoder and module theorem.
