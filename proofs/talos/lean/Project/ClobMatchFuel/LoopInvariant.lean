@@ -95,7 +95,6 @@ def LoopLocalsAt (ctx : Context) (data : RunningData) (s : Locals) : Prop :=
 structure RunningFacts (ctx : Context) (st : Store Unit) (s : Locals)
     (data : RunningData) : Prop where
   locals : LoopLocalsAt ctx data s
-  bookOwner : data.bookOwner = if data.steps = 0 then 0 else data.book
   oldTradesTracker :
     data.oldTradesTracker = if data.steps = 0 then 0 else data.trades
   fuelSpent : ctx.initialFuel.toNat = data.steps + data.fuel.toNat
@@ -169,6 +168,21 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   result : LoopControl.CompletedResultAt s data.book data.trades
     ctx.result.remaining
   fuelLocal : s.get 0 = some (.i64 data.fuel)
+  book48 : 48 ≤ data.book.toNat
+  book32 : data.book.toNat + fixedArrayBytes ctx.result.book.length 5 < 4294967296
+  bookCapacity : fixedArrayBytes ctx.result.book.length 5 ≤ data.bookCapacity.toNat
+  bookBelow : data.book.toNat + data.bookCapacity.toNat ≤ data.g0.toNat
+  bookFree : FreeListSeparatedFromFixedArray data.nodes data.book data.bookCapacity
+  trades48 : 48 ≤ data.trades.toNat
+  trades32 : data.trades.toNat + fixedArrayBytes ctx.result.trades.length 4 < 4294967296
+  tradesCapacity : fixedArrayBytes ctx.result.trades.length 4 ≤ data.tradesCapacity.toNat
+  tradesBelow : data.trades.toNat + data.tradesCapacity.toNat ≤ data.g0.toNat
+  tradesFree : FreeListSeparatedFromFixedArray data.nodes data.trades data.tradesCapacity
+  nodesBelow : ∀ node ∈ data.nodes, node.root.toNat + node.capacity.toNat ≤ data.g0.toNat
+  heapLimit : data.g0.toNat ≤ ctx.limit
+  pageLimit : st.mem.pages ≤ 65536
+  addressLimit : ctx.limit < 4294967296
+  memoryLimit : ctx.limit ≤ st.mem.pages * 65536
   bookOwned :
     OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :

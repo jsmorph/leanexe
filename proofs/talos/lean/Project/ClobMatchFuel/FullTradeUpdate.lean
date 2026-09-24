@@ -1,6 +1,6 @@
 import Project.ClobMatchFuel.FullBookUpdate
 import Project.ClobMatchFuel.FullTradeFinish
-import Project.ClobMatchFuel.MemoryFrame
+import Project.ClobMatchFuel.MemoryBelow
 
 /-!
 # Full-fill trade update
@@ -176,6 +176,7 @@ theorem fullTradeUpdateProg_spec
       st1.globals.globals[2]? = some (.i64 (g2 + 1)) →
       st1.globals.globals[4]? = some (.i64 g4) →
       st1.globals.globals[5]? = some (.i64 g5) →
+      MemoryBelow.AllocationEffect st st1 g0 nodes nodes1 [newTrades] →
       wp «module» rest Q st1 s env) :
     wp «module» (fullTradeUpdateProg ++ rest) Q st base env := by
   let trade := Model.fillTradeL taker os[i]! os[i]!.oqty
@@ -468,6 +469,7 @@ theorem fullTradeUpdateProg_spec
       · exact hFinalG2
       · exact hFinalG4
       · exact hFinalG5
+      · exact MemoryBelow.AllocationEffect.fit hList hTake hOutside
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOldTradesAlloc
       hNewTradesOwned hNewBookOwned1 hOutside hFinalPages hFinalGlobals
       hFinalList hFinalG0 hFinalG1
@@ -686,5 +688,6 @@ theorem fullTradeUpdateProg_spec
       · exact hFinalG2
       · exact hFinalG4
       · exact hFinalG5
+      · exact MemoryBelow.AllocationEffect.bump hFit32 hTargetNat hOutside
 
 end Project.ClobMatchFuel.FullTradeUpdate

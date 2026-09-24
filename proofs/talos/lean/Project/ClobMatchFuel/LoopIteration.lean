@@ -45,9 +45,9 @@ theorem dispatch_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     hFuelLocal hOid hTrader hSide hPrice hQty hBookOwner hBook hTrades hRemaining
     hLength32 facts.bookOwned.2
   · intro s1 hStop hResult hFuelResult
-    have hCompleted :=
+    have hCompleted : CompletedAt ctx st s1 := ⟨_,
       LoopCompletion.of_stop ctx st base data facts hFuel hStop s1 hResult
-        hFuelResult
+        hFuelResult⟩
     apply hDone st s1 (Or.inr hCompleted)
     rw [measure_completed hCompleted, measure_running facts]
     omega
@@ -55,15 +55,17 @@ theorem dispatch_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     simpa using LoopBranches.full_spec env ctx st base data facts bounds hFuel i
       hRemainingNonzero hFind hMakerQty
       (Iteration.dispatchBranchPost env rest Q) [] (by
-        intro st1 s1 hRunning1 hMeasure
-        apply dispatchBranchPost_of_wp env st1 s1 rest Q hRunning1.values
-        exact hDone st1 s1 (Or.inl hRunning1) hMeasure)
+        intro st1 s1 next hRunning1 hMeasure _ _ _
+        apply dispatchBranchPost_of_wp env st1 s1 rest Q
+          (RunningAt.values ⟨next, hRunning1⟩)
+        exact hDone st1 s1 (Or.inl ⟨next, hRunning1⟩) hMeasure)
   · intro i hRemainingNonzero hFind hMakerQty
     simpa using LoopBranches.partial_spec env ctx st base data facts bounds hFuel i
       hRemainingNonzero hFind hMakerQty
       (Iteration.dispatchBranchPost env rest Q) [] (by
-        intro st1 s1 hCompleted1 hMeasure
-        apply dispatchBranchPost_of_wp env st1 s1 rest Q hCompleted1.values
-        exact hDone st1 s1 (Or.inr hCompleted1) hMeasure)
+        intro st1 s1 next hCompleted1 hMeasure _ _ _ _
+        apply dispatchBranchPost_of_wp env st1 s1 rest Q
+          (CompletedAt.values ⟨next, hCompleted1⟩)
+        exact hDone st1 s1 (Or.inr ⟨next, hCompleted1⟩) hMeasure)
 
 end Project.ClobMatchFuel.LoopIteration

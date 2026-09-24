@@ -121,6 +121,20 @@ theorem partialBranchProg_spec
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
       st1.globals.globals[4]? = some (.i64 g4) →
       st1.globals.globals[5]? = some (.i64 g5) →
+      48 ≤ newBook.toNat →
+      newBook.toNat + fixedArrayBytes (Model.setQtyL os i (os[i]!.oqty - remaining)).length 5 < 4294967296 →
+      fixedArrayBytes (Model.setQtyL os i (os[i]!.oqty - remaining)).length 5 ≤ newBookCapacity.toNat →
+      newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
+      48 ≤ newTrades.toNat →
+      newTrades.toNat + fixedArrayBytes (ts.length + 1) 4 < 4294967296 →
+      fixedArrayBytes (ts.length + 1) 4 ≤ newTradesCapacity.toNat →
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
+      (∀ node ∈ nodes1, node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
+      g0.toNat ≤ g0Final.toNat →
+      g0Final.toNat ≤ g0.toNat + 96 + orderArrayBytes os.length + tradeArrayBytes (ts.length + 1) →
+      MemoryBelow.AllocationEffect st st1 g0 nodes nodes1 [newBook, newTrades] →
       wp «module» rest Q st1 s env) :
     wp «module» (partialBranchProg ++ rest) Q st base env := by
   let qty := os[i]!.oqty - remaining
@@ -404,6 +418,9 @@ theorem partialBranchProg_spec
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hListFinal hMemoryFrameFinal hPageFinal
         hG0Final hG1Final hG2Final hG4Final hG5Final
+        hNewBook48 hNewBook32 hNewBookCapacity hNewBookBelow hNewBookFree
+        hNewTrades48 hNewTrades32 hNewTradesCapacity hNewTradesBelow hNewTradesFree
+        hNodesBelowFinal hHeapMono hHeapUpper hEffect
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
@@ -416,6 +433,21 @@ theorem partialBranchProg_spec
       · simpa only [hg2Next] using hG2Final
       · exact hG4Final
       · exact hG5Final
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hNewBookBelow
+      · exact hNewBookFree
+      · exact hNewTrades48
+      · exact hNewTrades32
+      · exact hNewTradesCapacity
+      · exact hNewTradesBelow
+      · exact hNewTradesFree
+      · exact hNodesBelowFinal
+      · exact hHeapMono
+      · omega
+      · exact (MemoryBelow.AllocationEffect.fit hList hTake hOutside).trans
+          hEffect (Nat.le_refl _)
   · intro previous st1 hTarget48 hTarget32 hTargetFit hBookOwnedAlloc
       hNewBookOwned hOutside hFinalPages hFinalGlobals hFinalList hFinalG0
       hFinalG1
@@ -643,6 +675,9 @@ theorem partialBranchProg_spec
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hListFinal hMemoryFrameFinal hPageFinal
         hG0Final hG1Final hG2Final hG4Final hG5Final
+        hNewBook48 hNewBook32 hNewBookCapacity hNewBookBelow hNewBookFree
+        hNewTrades48 hNewTrades32 hNewTradesCapacity hNewTradesBelow hNewTradesFree
+        hNodesBelowFinal hHeapMono hHeapUpper hEffect
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
@@ -655,5 +690,22 @@ theorem partialBranchProg_spec
       · simpa only [hg2Next] using hG2Final
       · exact hG4Final
       · exact hG5Final
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hNewBookBelow
+      · exact hNewBookFree
+      · exact hNewTrades48
+      · exact hNewTrades32
+      · exact hNewTradesCapacity
+      · exact hNewTradesBelow
+      · exact hNewTradesFree
+      · exact hNodesBelowFinal
+      · exact (show g0.toNat ≤ g0AfterBook.toNat by
+          rw [hG0AfterBookNat]; omega).trans hHeapMono
+      · rw [hG0AfterBookNat, hBookNeedNat] at hHeapUpper
+        omega
+      · exact (MemoryBelow.AllocationEffect.bump hBookFit32 hNewBookNat hOutside).trans
+          hEffect (by rw [hG0AfterBookNat]; omega)
 
 end Project.ClobMatchFuel.PartialBranch

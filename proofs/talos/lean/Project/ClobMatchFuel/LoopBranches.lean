@@ -25,8 +25,12 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (hFind : findBestL data.orders ctx.taker = some i)
     (hQty : ¬data.orders[i]!.oqty ≤ data.remaining)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hDone : ∀ st1 s1, CompletedAt ctx st1 s1 →
+    (hDone : ∀ st1 s1 next, CompletedFacts ctx st1 s1 next →
       measure st1 s1 < measure st base →
+      data.g0.toNat ≤ next.g0.toNat →
+      s1.get 73 = some (.i64 next.book) → s1.get 75 = some (.i64 next.trades) →
+      MemoryBelow.AllocationEffect st st1 data.g0 data.nodes next.nodes
+        [next.book, next.trades] →
       wp «module» rest Q st1 s1 env) :
     wp «module» (PartialBranch.partialBranchProg ++ rest) Q st
       (Iteration.quantityFrame base data.bookOwner data.book ctx.taker data.orders i) env := by
@@ -117,15 +121,23 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.freeList
   · intro st1 s1 newBook newBookCapacity newTrades newTradesCapacity nodes1
       g0Final hResult hBookOwned hTradesOwned hFreeList hMemoryFrame hPages hG0
-      hG1 hG2 hG4 hG5
+      hG1 hG2 hG4 hG5 hBook48 hBook32 hBookCapacity hBookBelow hBookFree
+      hTrades48 hTrades32 hTradesCapacity hTradesBelow hTradesFree hNodesBelow
+      hHeapMono hHeapUpper hEffect
     have hCompleted := LoopCompletion.of_partial ctx st base data facts hFuel i hRemaining
       hFind hQty st1 s1 newBook newBookCapacity newTrades newTradesCapacity
       g0Final nodes1 hResult hBookOwned hTradesOwned hFreeList hMemoryFrame hPages
       hG0 hG1
-      hG2 hG4 hG5
-    apply hDone st1 s1 hCompleted
-    rw [measure_completed hCompleted, measure_running facts]
-    omega
+      hG2 hG4 hG5 hBook48 hBook32 hBookCapacity hBookBelow hBookFree
+      hTrades48 hTrades32 hTradesCapacity hTradesBelow hTradesFree hNodesBelow
+      (hHeapUpper.trans bounds.partialAllocationLimit)
+    apply hDone st1 s1 _ hCompleted
+    · rw [measure_completed ⟨_, hCompleted⟩, measure_running facts]
+      omega
+    · exact hHeapMono
+    · exact hResult.2.2.2.2.2.2.2.2.1
+    · exact hResult.2.2.2.2.2.2.2.2.2
+    · exact hEffect
 
 set_option Elab.async false in
 theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
@@ -135,8 +147,16 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (hFind : findBestL data.orders ctx.taker = some i)
     (hQty : data.orders[i]!.oqty ≤ data.remaining)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hDone : ∀ st1 s1, RunningAt ctx st1 s1 →
+    (hDone : ∀ st1 s1 next, RunningFacts ctx st1 s1 next →
       measure st1 s1 < measure st base →
+      data.g0.toNat ≤ next.g0.toNat →
+      s1.get 16 = some (.i64 next.trades) →
+      (∀ floor : UInt64, 48 ≤ floor.toNat → floor.toNat ≤ data.g0.toNat →
+        (∀ node ∈ data.nodes, floor.toNat + 48 ≤ node.root.toNat) →
+        (data.oldTradesTracker ≠ 0 → floor.toNat + 48 ≤ data.trades.toNat) →
+        MemoryBelow.BytesEqBelow st.mem st1.mem floor.toNat ∧
+        (∀ root ∈ [next.book, next.trades], floor.toNat + 48 ≤ root.toNat) ∧
+        (∀ node ∈ next.nodes, floor.toNat + 48 ≤ node.root.toNat)) →
       wp «module» rest Q st1 s1 env) :
     wp «module» (Iteration.fullBranchProg ++ rest) Q
       st (Iteration.quantityFrame base data.bookOwner data.book ctx.taker data.orders i) env := by
@@ -334,7 +354,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
         g0Final hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32
         hBookCapacity hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow
         hHeapMono hHeapUpper hBookFree hTradesFree hNodesBelow hFreeList
-        hMemoryFrame hPages hG0 hG1 hG2 hG4 hG5
+        hMemoryFrame hPages hG0 hG1 hG2 hG4 hG5 hEffect
       let final := FullTransition.fullTransitionFrame s1 data.fuel ctx.taker
         newBook newTrades (data.remaining - data.orders[i]!.oqty) 0
         data.oldTradesTracker
@@ -363,7 +383,8 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
           apply UInt64.toNat.inj
           simpa using hZero
         omega
-      have hContinue := hDone st1 final ⟨next, nextFacts⟩ hMeasure
-      exact hContinue
+      apply hDone st1 final next nextFacts hMeasure hHeapMono
+      · exact hRecursive.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
+      · exact hEffect
 
 end Project.ClobMatchFuel.LoopBranches

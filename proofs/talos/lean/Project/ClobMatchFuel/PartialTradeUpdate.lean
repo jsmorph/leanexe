@@ -1,5 +1,5 @@
 import Project.ClobMatchFuel.PartialFinish
-import Project.ClobMatchFuel.MemoryFrame
+import Project.ClobMatchFuel.MemoryBelow
 
 /-!
 # Partial-fill trade update
@@ -27,7 +27,8 @@ def PartialResultAt (s : Locals) (book trades fuel : UInt64) : Prop :=
   s.locals[14]? = some (.i64 0) ∧
   s.locals[15]? = some (.i64 1) ∧
   s.params.length = 9 ∧ s.locals.length = 86 ∧ s.values = [] ∧
-  s.get 0 = some (.i64 fuel)
+  s.get 0 = some (.i64 fuel) ∧
+  s.get 73 = some (.i64 book) ∧ s.get 75 = some (.i64 trades)
 
 set_option Elab.async false in
 theorem partialTradeUpdateProg_spec
@@ -110,6 +111,20 @@ theorem partialTradeUpdateProg_spec
       st1.globals.globals[2]? = some (.i64 (g2 + 1)) →
       st1.globals.globals[4]? = some (.i64 g4) →
       st1.globals.globals[5]? = some (.i64 g5) →
+      48 ≤ newBook.toNat →
+      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296 →
+      fixedArrayBytes newOrders.length 5 ≤ newBookCapacity.toNat →
+      newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
+      48 ≤ newTrades.toNat →
+      newTrades.toNat + fixedArrayBytes (ts.length + 1) 4 < 4294967296 →
+      fixedArrayBytes (ts.length + 1) 4 ≤ newTradesCapacity.toNat →
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
+      (∀ node ∈ nodes1, node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
+      g0.toNat ≤ g0Final.toNat →
+      g0Final.toNat ≤ g0.toNat + 48 + tradeArrayBytes (ts.length + 1) →
+      MemoryBelow.AllocationEffect st st1 g0 nodes nodes1 [newTrades] →
       wp «module» rest Q st1 s env) :
     wp «module» (partialTradeUpdateProg ++ rest) Q st base env := by
   let trade := Model.fillTradeL taker os[i]! remaining
@@ -270,6 +285,25 @@ theorem partialTradeUpdateProg_spec
       · exact hFinalG2
       · exact hFinalG4
       · exact hFinalG5
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hNewBookBelow
+      · intro node hNode
+        exact hNewBookFree node (takeFirstFitFrom_some_remaining_mem hTake hNode)
+      · exact hTarget48
+      · unfold fixedArrayBytes
+        omega
+      · exact hChoiceCapacity
+      · exact hNodesBelow choice.node hChoiceMem
+      · intro node hNode
+        simpa [fixedArrayRegion, FreeNode.region] using
+          hList.takeFirstFitFrom_node_disjoint hTake node hNode
+      · intro node hNode
+        exact hNodesBelow node (takeFirstFitFrom_some_remaining_mem hTake hNode)
+      · exact Nat.le_refl _
+      · omega
+      · exact MemoryBelow.AllocationEffect.fit hList hTake hOutside
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOldTradesAlloc
       hNewTradesOwned hNewBookOwned1 hOutside hFinalPages hFinalGlobals
       hFinalList hFinalG0 hFinalG1
@@ -285,6 +319,10 @@ theorem partialTradeUpdateProg_spec
         (tradeArrayBytesU (ts.length + 1)) 4 limit hFit32
       rw [hNeedNat]
       exact hAllocationLimit
+    have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
+      rw [UInt64.toNat_add]
+      change (g0.toNat + 48) % 18446744073709551616 = g0.toNat + 48
+      exact Nat.mod_eq_of_lt (by omega)
     have hPayloadEnd : (g0 + 48).toNat +
         ((ts.length + 1) * 4 + 1) * 8 ≤ limit := by
       have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
@@ -368,5 +406,31 @@ theorem partialTradeUpdateProg_spec
       · exact hFinalG2
       · exact hFinalG4
       · exact hFinalG5
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · rw [htop]
+        omega
+      · exact hNewBookFree
+      · exact hTarget48
+      · unfold fixedArrayBytes
+        omega
+      · exact hNeedNat.symm.le
+      · rw [hTargetNat, htop]
+      · intro node hNode
+        have hBelow := hNodesBelow node hNode
+        have hNode48 := (hList.mem_bounds hNode).1
+        unfold regionsDisjoint fixedArrayRegion FreeNode.region
+        right
+        rw [hTargetNat]
+        omega
+      · intro node hNode
+        have hBelow := hNodesBelow node hNode
+        rw [htop]
+        omega
+      · rw [htop]
+        omega
+      · rw [htop, hNeedNat]
+      · exact MemoryBelow.AllocationEffect.bump hFit32 hTargetNat hOutside
 
 end Project.ClobMatchFuel.PartialTradeUpdate
