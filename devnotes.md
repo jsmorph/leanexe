@@ -1,3 +1,9 @@
+## 2026-09-24: Certificate entry frames and LEB recycling foundations checked
+
+The certificate boundary and totals execution theorems pass in work/leb-certificate-2.log after accounting for ten additional scratch locals in each generated function. Both loop proofs and their complete entry contracts use only standard logical axioms. The earlier work/certificate-tiny-1.log reached its twelve-minute aggregate limit after completing TinyGpt2Hidden.Spec and the inference code match; the complete certificate and remaining tiny specifications still need their maintained gates.
+
+The LEB recycling code decompositions, arena preservation lemmas, and byte-mask/frame definitions pass in work/leb-3.log with standard-only audits. The arena lemmas preserve earlier memory and the original page count across allocation and release within the existing 560-byte reserve. PackedPush now also exposes its exact allocated page count. The public LEB encoder proof remains pending. Focused branch diagnostics caught redundant simplification steps after unfolding; the branch checks are continuing separately. All changed generated programs remain maintained generator output.
+
 ## 2026-09-24: Reusable packed byte-push contract checked
 
 ProofKit.PackedPush.program_spec passes in work/packed-push-6.log (3,491 jobs). It composes existing capacity selection, fresh/reused allocation, and packed byte copying with a proved final byte store. The result owns exactly bytes.push byte, preserves protected caller memory, and preserves all locals outside the twelve-slot scratch region. PackedPushMemory proves the byte-array representation extension separately. Both audits use only standard logical axioms. These are reusable lemmas for the remaining LEB encoder proof; that public encoder proof is not yet refreshed.
