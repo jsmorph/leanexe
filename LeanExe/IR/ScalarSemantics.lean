@@ -88,4 +88,28 @@ mutual
         Cond.ScalarEval (.or a b) s value s₂
 end
 
+inductive Stmt.ScalarEval : Stmt → ScalarStore → ScalarStore → Prop where
+  | skip : Stmt.ScalarEval .skip s s
+  | assign (value : e.ScalarEval s v s₁) (write : s₁.write index v = some s₂) :
+      Stmt.ScalarEval (.assign index e) s s₂
+  | seq (first : Stmt.ScalarEval a s s₁) (second : Stmt.ScalarEval b s₁ s₂) :
+      Stmt.ScalarEval (.seq a b) s s₂
+  | iteTrue (condition : c.ScalarEval s true s₁) (branch : Stmt.ScalarEval a s₁ s₂) :
+      Stmt.ScalarEval (.ite c a b) s s₂
+  | iteFalse (condition : c.ScalarEval s false s₁) (branch : Stmt.ScalarEval b s₁ s₂) :
+      Stmt.ScalarEval (.ite c a b) s s₂
+  | whileFalse (condition : c.ScalarEval s false s₁) : Stmt.ScalarEval (.while c body) s s₁
+  | whileTrue (condition : c.ScalarEval s true s₁) (step : Stmt.ScalarEval body s₁ s₂)
+      (rest : Stmt.ScalarEval (.while c body) s₂ s₃) : Stmt.ScalarEval (.while c body) s s₃
+
+/-- Call boundary for a scalar function with one result. Parameters occupy the
+first slots; declared non-parameter locals start at zero, as in WebAssembly. -/
+inductive Func.ScalarEval : Func → List UInt64 → UInt64 → Prop where
+  | run (arity : args.length = func.params) (bounds : func.params ≤ func.locals)
+      (body : func.body.ScalarEval
+        (args ++ List.replicate (func.locals - func.params) 0) afterBody)
+      (resultShape : func.results = [result])
+      (resultValue : result.ScalarEval afterBody value afterResult) :
+      Func.ScalarEval func args value
+
 end LeanExe.IR
