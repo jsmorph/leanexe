@@ -20,8 +20,10 @@ The preceding working state is preserved in
 - Independent scalar grammar/admission and affine/choose source certificates pass; audits use only propext.
 - The GCD loop feasibility gate passes against the unchanged TalosGcd.gcd.
 - All five pilot source certificates pass, including Prng.mix and ScalarHelper.caller.
-- Next: generic lowering and exact bytes.
-- Talos dependencies are cloned; targeted Mathlib cache acquisition is in progress.
+- Generic expression/command/call/loop lowering and all five source/IR certificates pass.
+- All five exact-byte closures pass, including independent grammar and validity.
+- Next: portable packages, independent CLI verification, mutations, and cold gate.
+- Pinned Talos/Mathlib dependencies and required caches are available.
 
 ## Objective and precise claim
 
@@ -267,3 +269,18 @@ lake build Project.Correct.Scalar64.Encode; lake build
 Project.Correct.Scalar64.Pilots; lake build Project.Correct.Scalar64.Gcd;
 lake build Project.Correct.Scalar64.ValidationTests. Module/byte closure packages,
 CLI rejection gates, mutation tests, and clean verification remain open.
+
+### 2026-09-24: exact emitted bytes checked for every pilot
+
+All five encoder outputs now have kernel-checked decode, validation, and complete
+Talos module equalities. Artifact.of_parts composes these facts into the exact
+byte contract. The naive monolithic `rfl` closure exceeded 90 seconds; splitting
+it and using proof-producing `cbv` for decoding reduced each proof to 3–8 seconds.
+No native-decide or compiler-trust axiom is used. All five closures audit to only
+propext, Classical.choice, and Quot.sound. The original timeout is preserved in
+the work journal rather than retried unchanged.
+
+Passed: lake build Project.Correct.Scalar64.Artifacts (all five); lake build
+Project.Correct.Scalar64.Package (untrusted scalar data serialization). The byte
+sizes are affine 53, choose 58, mix 89, helper 78, and gcd 90. Portable CLI packages
+and mutation/cold verification are still in progress.

@@ -58,6 +58,16 @@ theorem Certificate.correct (certificate : Certificate Input args source) (input
 def Artifact (certificate : Certificate Input args source) (bytes : ByteArray) : Prop :=
   Wasm.Binary.verifiedModule? bytes = some certificate.module
 
+/-- Small, separately checked equalities avoid reducing the decoder and the
+entire compiler in the same kernel conversion problem. -/
+theorem Artifact.of_parts (certificate : Certificate Input args source)
+    (decoded : Wasm.Binary.decode bytes = .ok raw)
+    (valid : Wasm.Binary.Validator.validateRaw raw = .ok ())
+    (same : Wasm.Binary.Translation.module raw = certificate.module) :
+    Artifact certificate bytes := by
+  simp [Artifact, Wasm.Binary.verifiedModule?, decoded, Except.toOption,
+    Wasm.Binary.validate, valid, Wasm.Binary.ValidatedModule.toTalos, same]
+
 theorem Artifact.valid_and_correct (certificate : Certificate Input args source)
     (closed : Artifact certificate bytes) :
     ∃ raw validated,
