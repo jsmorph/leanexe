@@ -184,3 +184,17 @@ not included. Existing unsafe/partial and reserved-export exclusions remain.
 The proof and production extractor build pass. The 56 regression checks pass
 through the changed entry point. This is NOT the end-to-end compiler theorem:
 WASM lowering/encoding and the rest of the agreed language features remain open.
+
+### Production emitter transparency (checked)
+
+Made the existing expression/condition/local-let/statement scratch calculators
+and annotated statement emitter total. The nested-list termination obligation
+uses element membership and structural size; their equations and emitted code
+were not replaced by a separate backend. Existing ScalarCertificate proofs pass.
+
+Proved scalarFunc_emit for the normal emitFuncInstrs function: the exact emitted
+instruction list is the recognized descriptor's code followed by the actual
+result-slot store/load. Added descriptor scalar evaluation and operator meaning
+lemmas as preparation for the IR-to-WASM semantic proof. The descriptor evaluator
+alone is not a WebAssembly execution theorem. Talos semantics, scratch bounds,
+module assembly, and exact binary correspondence still need to be connected.
