@@ -1,4 +1,4 @@
-import Project.TalosPrelude
+import Interpreter.Wasm.Syntax
 import Project.Artifact.Binary.Validate
 
 namespace Wasm.Binary
