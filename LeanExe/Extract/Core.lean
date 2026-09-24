@@ -103,14 +103,8 @@ def structuralBEqApplication? (env : Environment) (name : Name) (expr : Expr) : 
     | (_, _type :: evidence :: _left :: _right :: []) => structuralBEqEvidence? env 16 evidence
     | _ => false
 
-def directPrimitiveClassProjection (name : Name) : Bool :=
-  name == ``OfNat.ofNat || name == ``HAdd.hAdd || name == ``HSub.hSub ||
-    name == ``HMul.hMul || name == ``HDiv.hDiv || name == ``HMod.hMod ||
-    name == ``LT.lt || name == ``LE.le || name == ``GT.gt || name == ``GE.ge ||
-    name == ``Min.min || name == ``Max.max
-
 def classEvidenceNormalizedApp? (env : Environment) (name : Name) (expr : Expr) : Option Expr :=
-  if structuralBEqApplication? env name expr || directPrimitiveClassProjection name then
+  if structuralBEqApplication? env name expr then
     none
   else if isEvidenceProjectionFunction env name || classEvidenceApplication? env expr then
     let normalized := normalizeClassEvidenceExpr env 64 expr
