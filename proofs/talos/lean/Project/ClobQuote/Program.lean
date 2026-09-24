@@ -359,8 +359,6 @@ def func10 : Wasm.Program :=
   .localSet 5,
   .constI64 0,
   .localSet 6,
-  .constI64 0,
-  .localSet 53,
   .localGet 44,
   .localGet 42,
   .ltUI64,
@@ -514,8 +512,6 @@ def func10 : Wasm.Program :=
     .localSet 5,
     .localGet 52,
     .localSet 6,
-    .constI64 1,
-    .localSet 53,
     .localGet 46,
     .constI64 0,
     .neI64,
@@ -548,7 +544,7 @@ def func10 : Wasm.Program :=
  ]
 
 def func10Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func10, results := [.i64, .i64, .i64, .i64, .i64, .i64], typeIdx := some 10 }
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func10, results := [.i64, .i64, .i64, .i64, .i64, .i64], typeIdx := some 10 }
 
 /-- Exported function. -/
 def func11 : Wasm.Program :=

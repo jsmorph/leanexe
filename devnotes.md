@@ -1,3 +1,9 @@
+## 2026-09-24: Dot-product and quote frame proofs refreshed
+
+The focused build accepts F64DotCheckedBits.Execution (7.7 seconds), its numerical specifications (3.6 seconds), ClobQuote.Epilogue (4.9 seconds), and ClobQuote.Spec (7.4 seconds). The proofs preserve their original numerical, source-fold, and unchanged-store postconditions. The first frame repair miscounted the generated local lists; counting the actual function declarations exposed 23 dot-product locals and 64 quote locals. Correcting the explicit frames and preserving the now-unused ownership-flag slots resolved the failures. The dot-product theorem audits list only standard Lean axioms. The new byte-I/O README is also included in the maintained documentation gate, which now checks 162 files.
+
+Validate's borrowed-owner guard proof and ClobDepth's allocator-state generalization are still in progress. No aggregate proof-gate completion is claimed.
+
 ## 2026-09-24: Exact byte-I/O proof gate accepted
 
 `tools/byte-io-proof.js check` passes. It rebuilds the compiler example, validates and compares its exact 2,082 bytes, checks the embedded byte and lookup sources, builds the split Lean proofs, and audits 46 public theorems. Every dependency report contains only `propext`, `Classical.choice`, and `Quot.sound`. The six exact execution cases cover four partial binary writes, EOF, a broken pipe after a two-byte prefix, AGAIN followed by readiness, absolute-deadline timeout, and the `_start` wrapper's nonreturning status-zero exit. The cases include returned status, unconsumed input, exact output, and allocation/free effects. The contracts and protocol theorems are general over modeled host choices; the exact execution cases are concrete, not a universal compiler-refinement claim. The native C host and OS remain an external boundary documented in `proofs/byte-io/README.md`.
