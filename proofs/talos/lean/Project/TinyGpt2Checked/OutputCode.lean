@@ -19,16 +19,16 @@ theorem inference_loop_shape : func84 = func84.take 89 ++
     [.block 0 0 [.loop 0 0 outputBody]] ++ func84.drop 90 := rfl
 
 theorem initial_allocation_shape : (func84.drop 52).take 15 =
-    FixedArrayAllocate.program 51 1 := rfl
+    FixedArrayAllocate.program 55 1 := rfl
 
-theorem output_allocation_shape : (outputBody.drop 67).take 15 =
-    FixedArrayAllocate.program 59 1 := rfl
+theorem output_allocation_shape : (outputBody.drop 69).take 15 =
+    FixedArrayAllocate.program 63 1 := rfl
 
-theorem output_copy_shape : (outputBody.drop 88).take 15 =
-    FixedArrayCopy.prefixProgram 50 54 52 55 ++ UInt64Array.pushStoreProgram 54 51 56 := rfl
+theorem output_copy_shape : (outputBody.drop 90).take 15 =
+    FixedArrayCopy.prefixProgram 54 58 56 59 ++ UInt64Array.pushStoreProgram 58 55 60 := rfl
 
-theorem output_prepare_shape : (outputBody.drop 67).take 21 =
-    (outputBody.drop 67).take 15 ++ [.localGet 64, .localSet 54] ++
-      FixedArrayResult.lengthStoreLocalProgram 54 53 := rfl
+theorem output_prepare_shape : (outputBody.drop 69).take 21 =
+    (outputBody.drop 69).take 15 ++ [.localGet 68, .localSet 58] ++
+      FixedArrayResult.lengthStoreLocalProgram 58 57 := rfl
 
 end Project.TinyGpt2Checked.Spec
