@@ -1,3 +1,9 @@
+## 2026-09-24: Maintained Riemann and reconstructed solver gates pass
+
+`tools/talos-proof.js check euler_riemann` passes against fresh compiler output in work/riemann-maintained-1.log (3,874 proof jobs), and `check euler_reconstructed` passes in work/reconstructed-maintained-1.log (4,034 jobs). Reconstructed scanning uses the current flag-free loop and frame; the full solver retains arbitrary supported grids and reconstruction-trial words, exact source output, termination, memory bounds, accepted-trace safety, and balance. All public audits remain standard-only. The generated programs and annotation matches came from maintained preparation. Documentation distinguishes these current source gates from historical frozen-artifact identities, which remain deferred.
+
+The twelve-minute work/euler-remaining-3.log run completed both public specifications and continued into certificate-solver dependencies before reaching its aggregate limit, without a proof error. Follow-up maintained checks selected the two completed cases rather than repeating that broad build unchanged. The Riemann documentation check passed all 162 maintained files in work/riemann-docs-1.log. The certificate solver and the complete compiler proof library remain pending.
+
 ## 2026-09-24: Riemann public solver proof passes current guarded initialization
 
 Project.EulerRiemann.Spec passes in work/euler-remaining-3.log (4.1 seconds for the public module). The focused initialization check passes in work/initial-cells-4.log (3,672 jobs, 4.5 seconds for initial_cells_exact). Singleton cleanup now proves that the old root is nonzero and distinct from the returned grid, then follows both emitted guards. The maximum-speed scan removes its unused flag and uses the current frame layout. Runtime grid range, exact results, failure behavior, numerical conclusions, and memory limits remain quantified as before; axiom audits contain only the standard three logical axioms.

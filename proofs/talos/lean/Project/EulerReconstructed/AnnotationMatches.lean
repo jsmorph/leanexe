@@ -23,15 +23,15 @@ set_option maxHeartbeats 8000000
 namespace Project.EulerReconstructed.AnnotationMatches
 
 def function_46_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.EulerReconstructed.func46 [] 0 30).getD []
+  (Project.ProofKit.Annotation.region Project.EulerReconstructed.func46 [] 0 28).getD []
 
 theorem function_46_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.EulerReconstructed.func46 [] 0 30 = some function_46_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.EulerReconstructed.func46 [] 0 28 = some function_46_array_fold_0_program := by
   rfl
 
 theorem function_46_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.EulerReconstructed.func46 []).getD []).drop 0 =
-      Project.EulerReconstructed.AnnotationMatches.function_46_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerReconstructed.func46 []).getD []).drop 30 := by
+      Project.EulerReconstructed.AnnotationMatches.function_46_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerReconstructed.func46 []).getD []).drop 28 := by
   rfl
 
 
