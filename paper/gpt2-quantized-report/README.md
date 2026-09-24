@@ -2,7 +2,7 @@
 
 The [twenty-page report](main.pdf) describes LeanExe's grouped INT8 GPT-2 implementation, exact WebAssembly/session proofs, checkpoint correspondence, retained accuracy and timing experiments, conditional numerical bounds, and observed-logit certificates.  It fixes source revision `c655d35b5011c1703dfd22bcceaec4e5bee17088` and the 28,315-byte binary with SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.
 
-The manuscript distinguishes the completed quantized component from unfinished repository-wide release checks.  It reports zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](http://127.0.0.1:8405/abs/2609.00018v2) on 24 September 2026 with no remarks.
+At its cited source revision, the manuscript distinguishes the completed quantized component from unfinished repository-wide checks.  The [development status](../../docs/status.md) records subsequent verification.  The report records zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](http://127.0.0.1:8405/abs/2609.00018v2) on 24 September 2026 with no remarks.
 
 ## Manuscript and evidence
 

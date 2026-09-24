@@ -2,7 +2,7 @@
 
 The [evaluation manifest](evaluation.json) fixes the pretrained checkpoint, FP32 binary, 128-prefix sequence, three retained completion cases, and six held-out prompts.  It records the approved quantization rules from the [implementation plan](../../plans/gpt2-quantized.md).  The first quantized candidate has now been evaluated on all nine completion cases.  Subsequent designs must identify those prompts as previously evaluated.
 
-The group64 implementation on `gpt2-quantized` has complete execution and exact-binary proofs, retained runtime and memory measurements, generated texts, and conditional numerical bounds.  Final aggregate and cold-checkout release tests remain active.
+The group64 implementation on `gpt2-quantized` has complete execution and exact-binary proofs, retained runtime and memory measurements, generated texts, and conditional numerical bounds.  The final aggregate source and artifact checks passed in the existing checkout on 2026-09-24, along with the complete execution, WAT/binary comparison, and conformance suites.  Quantized inference remains opt-in.
 
 ## Scalar projection measurements
 

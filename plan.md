@@ -812,8 +812,8 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Run cached inference and CLI completion tests.
 - [x] Complete the aggregate artifact check after the shared verifier change.
 
-The repository-wide source check still stops at the existing `gcd` cache
-mismatch.  GPT-2's focused regeneration and proof checks pass.
+The repository-wide source check passes all seventy-two generated models
+and seventy-one completed specifications, including both GPT-2 sessions.
 
 ## 15. Extend GPT-2 with quantized inference
 
@@ -823,5 +823,5 @@ The user approved the [quantized GPT-2 plan](plans/gpt2-quantized.md) on 2026-09
 - [ ] Select the output-quality criterion for adoption.
 - [x] Prove and measure an exact-binary quantized projection.
 - [x] Complete the quantized checkpoint, cached model, and session execution and memory proofs.
-- [ ] Verify and deploy the frozen binary, then record storage, memory, runtime, logits, and generated-text comparisons.
+- [x] Verify and deploy the frozen binary, then record storage, memory, runtime, logits, and generated-text comparisons.
 - [x] Establish numerical error bounds and conditional greedy-token certificates as a subsequent milestone.
