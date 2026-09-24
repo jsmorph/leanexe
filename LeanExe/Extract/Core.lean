@@ -3,6 +3,7 @@ import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.Extract.ReleaseCheck
 import LeanExe.Extract.StructuralRec
+import LeanExe.Extract.ScalarPrimitive
 import LeanExe.IR.Core
 import LeanExe.Runtime
 
@@ -4986,7 +4987,9 @@ mutual
     let rightResult ← extractExprFrom ctx locals leftResult.snd right
     let leftIR := leftResult.fst
     let rightIR := rightResult.fst
-    if primitive == ``HAdd.hAdd then
+    if let some scalarOp := ScalarPrimitive.ofName? primitive then
+      .ok (scalarOp.lower leftIR rightIR, rightResult.snd)
+    else if primitive == ``HAdd.hAdd then
       match primitiveResultType? ctx.env args with
       | some .nat =>
           .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
@@ -5026,16 +5029,6 @@ mutual
     else if primitive == ``Nat.div then
       .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
     else if primitive == ``Nat.mod then
-      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.add then
-      .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.sub then
-      .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.mul then
-      .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.div then
-      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.mod then
       .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt32.add then
       .ok (u32WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
@@ -5092,16 +5085,6 @@ mutual
       | some .u32 =>
           .ok (.u64Bin .shiftRight leftIR (u32ShiftAmountExpr rightIR), rightResult.snd)
       | _ => .error s!"unsupported shift-right expression: {primitive}"
-    else if primitive == ``UInt64.land then
-      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.lor then
-      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.xor then
-      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.shiftLeft then
-      .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
-    else if primitive == ``UInt64.shiftRight then
-      .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt32.land then
       .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt32.lor then
