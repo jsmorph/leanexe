@@ -811,5 +811,7 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Run cached inference and CLI completion tests.
 - [x] Complete the aggregate artifact check after the shared verifier change.
 
-The repository-wide source check still stops at the existing `gcd` cache
-mismatch.  GPT-2's focused regeneration and proof checks pass.
+The 2026-09-24 repository-wide source check passes all sixty-nine cache
+comparisons and the complete library for sixty-eight registered specifications.
+The current source proofs include the ownership-guard changes. Frozen-artifact
+release identity remains deferred; earlier exact-binary results are historical.
