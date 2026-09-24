@@ -2,9 +2,10 @@
 
 Track 1 establishes operational type safety for an independent first-order core.
 The work is on `typesafety`, starting from compiler revision
-`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`. The root [development plan](../plan.md)
-owns the remaining work; the [journal](../plans/type-safety-journal.md) records
-proof and verification history. The [coverage ledger](type-safety-coverage.md)
+`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`.  The [working state](../task.md)
+owns the current agenda, open decisions, and resume notes.  The
+[journal](../plans/type-safety-journal.md) records proof and verification history.
+The [coverage ledger](type-safety-coverage.md)
 tracks each documented operation family, including derived APIs not yet proved.
 
 ## What soundness means here
@@ -242,7 +243,7 @@ kernel-checked proofs, without native evaluation certificates. Natural-case
 examples cover predecessor bounds, nested/captured scopes, static checking of
 unselected branches, relevance, and recursive calls.
 
-The complete gate passed on 2026-09-23 with exact Lean `4.34.0-rc2`, commit
+The complete gate passed on 2026-09-24 with exact Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`. Each audited theorem depends on no
 axioms or only Lean's standard propositional extensionality axiom, `propext`.
 There are no proof holes, added axioms, unsafe definitions, or native-evaluation proof shortcuts in
@@ -250,10 +251,10 @@ these modules. This remains a proof checked by Lean's kernel and standard
 foundation, not a proof of the kernel's consistency.
 
 Every Lean invocation goes through `tools/leanrun` with a timeout and the shared
-process lock. The user explicitly authorized local execution without systemd
-cgroups for this development session, using `LEANRUN_LOCAL=1`. That authorization
-does not change the default resource policy for other sessions. An explicitly
-installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
+process lock.  The 2026-09-23 development session used explicitly authorized
+local execution without systemd cgroups, using `LEANRUN_LOCAL=1`.  The current
+session follows the default resource policy in the [repository instructions](../AGENTS.md).
+An explicitly installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 
 ## Boundary and next work
 
@@ -282,37 +283,11 @@ current compiler's treatment of unused expressions. The profile requires used
 binding introductions and complete product patterns; its occurrence checker is
 separate from ordinary typing. The compiler does not yet enforce these rules.
 
-The independent language agenda is:
-
-1. Specify declarations, type formation, binders, execution order, sharing, and
-   explicit permitted failures. Replace schematic fold and recursion families
-   with complete rules, or define and justify their expansion into core forms.
-2. Extend abstract values and primitive semantics to the intended language:
-   raw binary64, bytes, remaining collection/control operations, and any intended
-   data generalizations. Word arithmetic/conversions/bitwise operations/shifts,
-   the bounded-natural primitive family, initial
-   persistent-array forms, and monomorphic nominal recursive data are checked.
-   Primitive signatures alone are insufficient; prove primitive progress and
-   preservation for the defined behavior.
-3. Prove the corresponding canonical forms, binding lemmas, state invariants,
-   preservation, progress, and reachable-state safety in checked increments.
-4. Give runtime counter reads and explicit release their own abstract-state and
-   admissibility rules if included in the language claim. Ordinary array typing
-   alone does not express permission to release or exclude use after release.
-5. Preserve the checked algorithmic typing correspondence and type uniqueness
-   with every language extension. Keep termination and successful, failure-free
-   execution as separate results.
-
-The first persistent-array increment is checked. Additional collection forms
-such as replication, slicing, folds, and early-exit loops still require complete
-rules or proved expansions into this core. Growth must preserve representable
-lengths or return a specified failure. Monomorphic nominal recursive data is now
-checked, as are explicit sum annotations, algorithmic typing, and the documented
-bounded-natural primitive family. Word arithmetic, comparisons, conversions,
-bitwise operations, complement, masked shifts, and natural zero/successor
-elimination are also checked. Boolean NOT and strict AND/OR/XOR/equality now have
-proved expansions, exact typing/relevance equations, and truth-table execution laws. The coverage ledger keeps the
-remaining derived APIs and larger language extensions separate.
+The [working agenda](../task.md#current-agenda) records the next proofs,
+open design decisions, and remaining language families.  Every extension needs
+complete typing and execution rules or a proved expansion, with the corresponding
+formation, progress, preservation, executable admission, and uniqueness results.
+The [coverage ledger](type-safety-coverage.md) records each family's status.
 
 Extraction-preserves-typing and compiler refinement are separate tracks. They
 use the language definition and transfer its results to implementation artifacts;
