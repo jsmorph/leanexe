@@ -59,7 +59,7 @@ def nat(n, limit=2**32):
     return str(n)
 
 def ident(s):
-    require(type(s) is str and IDENT.fullmatch(s), 'invalid Lean identifier')
+    require(type(s) is str and IDENT.fullmatch(s) and '_' not in s.split('.'), 'invalid Lean identifier')
     return s
 
 def string(s):
@@ -271,7 +271,11 @@ def check_checkout(revision,expected_pins):
     require(re.fullmatch('[0-9a-f]{40}',revision) is not None,'invalid revision')
     require(expected_pins==pins(),'toolchain/dependency pin mismatch')
     # Documentation commits may follow the package revision; proof/config/code may not differ.
-    paths=['*.lean','**/*.lean','lean-toolchain','**/lean-toolchain','*lakefile*','**/*lakefile*','*lake-manifest*','**/*lake-manifest*','tools/certified_scalar.py','tools/compile-certified','tools/verify-certified']
+    paths=['LeanExe.lean','Main.lean','LeanExe','proofs/talos/lean/Project',
+           'lean-toolchain','lakefile.lean','lake-manifest.json',
+           'proofs/talos/lean/lean-toolchain','proofs/talos/lean/lakefile.toml',
+           'proofs/talos/lean/lake-manifest.json',
+           'tools/certified_scalar.py','tools/compile-certified','tools/verify-certified']
     require(not git('diff','--name-only',revision,'--',*paths),'checkout differs from certified source revision')
     deps=json.loads((PROOF/'lake-manifest.json').read_text())['packages']
     for dep in deps:
@@ -292,8 +296,9 @@ def audit(output):
 def verify(directory):
     directory=Path(directory).resolve(); m=read_json(directory/'manifest.json')
     keys(m,'schema profile repository revision pins source_module source certificate_module certificate arity abi theorems files')
-    require(m['schema']==1 and m['profile']=='scalar64' and m['repository']=='jsmorph/leanexe','unsupported manifest')
+    require(type(m['schema']) is int and m['schema']==1 and m['profile']=='scalar64' and m['repository']=='jsmorph/leanexe','unsupported manifest')
     for name in ['source_module','source','certificate_module','certificate']:ident(m[name])
+    require(m['source'].startswith(m['source_module']+'.'), 'source declaration is outside its named module namespace')
     nat(m['arity'],33)
     require(m['theorems']==THEOREMS,'unexpected theorem declarations')
     require(m['abi']=={'params':['i64']*m['arity'],'result':'i64','argument_order':list(range(m['arity']))},'unsupported ABI')
@@ -375,7 +380,7 @@ def main():
     try:
         if o.command=='compile':compile_package(o)
         else:verify(o.package)
-    except (Rejected,OSError,ValueError,RecursionError) as e:
+    except (Rejected,OSError,ValueError,RecursionError,TypeError,KeyError,IndexError) as e:
         print('rejected:',e,file=sys.stderr);return 1
     return 0
 

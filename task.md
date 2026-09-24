@@ -127,9 +127,9 @@ the dividend, and shift counts modulo 64.
       correspondence and termination.
 - [x] Dependency audits retaining the type-safety policy: no proof holes, added
       axioms, or native-evaluation proof shortcuts.
-- [ ] Mutation rejection for source linkage, operations, calls, bytes, exports,
+- [x] Mutation rejection for source linkage, operations, calls, bytes, exports,
       ABI, and manifest declarations.
-- [ ] One passing clean-checkout independent verification command.
+- [x] One passing clean-checkout independent verification command.
 - [ ] Record exact commands, pins, successes, failures, and limits.
 - [ ] Update maintained documentation and this task; commit and push.
 
@@ -325,3 +325,28 @@ Lean theorems. The three source/admission test modules and the full namespace
 axiom audit also passed. Mutation checks are in progress; source linkage and IR
 arithmetic mutations already fail their Lean obligations with recomputed hashes.
 The cold gate has not yet finished.
+
+### 2026-09-24: mutation results and package review
+
+All 13 initial adversarial mutations were rejected with recomputed checksums:
+source declaration, core/IR operation, call target/argument order, WASM opcode
+with matching decoder witness, metadata/binary exports, ABI order/arity,
+certificate declaration, dependency pin, and theorem declaration. Unsupported
+source/profile checks also passed. The cold checkout is rebuilding project proofs.
+
+Review found two packaging refinements: reject placeholder declaration names
+and mismatched source namespaces, and limit revision comparisons to actual source,
+proof, and configuration paths so bundled review copies do not invalidate their
+own recorded revision. Added regression cases for both names and independent
+module admission (cycles, arity, bounds, and division scratch capacity).
+
+
+The complete gate passed at 9c0975a254daaeb91c1bddc3d0e2ea7c4841f573:
+`tools/check-correct --packages tmp/certified-acceptance --mutations --cold`.
+All five clean-checkout verifications succeeded. Only pinned external dependency
+caches were shared; the source and project proof caches started empty. Generation
+was not invoked in the detached checkout. The final package-name refinements and
+bundled-package checkpoint will receive a final independent verification run.
+
+The module-admission regressions passed, including explicit rejection of a
+self-call at the encoder boundary and insufficient division scratch space.
