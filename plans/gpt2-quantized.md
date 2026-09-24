@@ -119,13 +119,17 @@ Completion requires termination and exact source agreement for the complete sess
 ### 4. Verify and deploy the exact binary
 
 - [x] Register the quantized case and freeze its compiled WASM bytes.  Complete decoding, grammar membership, validation, `CoreValid`, execution-model equality, and transfer of the session theorem.
-- [ ] Run the focused source and artifact checks, declaration/axiom audit, and independent package check.  Apply the required compiler, conformance, and aggregate artifact tests after shared changes.
+- [x] Run the focused quantized source and artifact checks, declaration/axiom audit, and independent package check.
+- [ ] Complete the required compiler, conformance, and aggregate artifact tests after shared changes.
 - [x] Make the quantized host command load the verified frozen artifact and check its hash and model manifest before execution.  Record both identities in every result.
-- [ ] Run the retained cached-inference and generation tests against those exact bytes.  Preserve the binary, proof package, model manifest, evaluation records, and cold-checkout reproduction result.
+- [x] Run the retained cached-inference and generation tests against those exact bytes.  Preserve the binary, proof package, model manifest, and evaluation records.
+- [ ] Complete and retain the cold-checkout reproduction result.
 
 Use the existing repository verification drivers and checked corpus configuration.  Every Lean invocation follows the [development process limits](../DEVELOPING.md#lean-process-limits).  A timeout without a diagnostic requires a smaller proof boundary or a reusable lemma before another attempt.  Review accepted proofs, journals, and telemetry together, including proof effort and shared theorem use.
 
 Binary-profile changes alter the verifier-source identity.  Preserve historical packages and issue updated manifests and certificates where the [artifact format](../docs/artifact-format.md) requires them.  Recheck the FP32 package against the resulting shared verifier.
+
+The remaining proof repairs cover current-source limit and market orders and their preserved packages.  Compiler changes altered ownership locals and intermediate-buffer release, so the current proofs require updated free-list invariants.  Historical binary packages retain separate proofs of their original allocation behavior.  The preserved reconstructed-Euler specification and exact-binary translation now pass.  Aggregate checks and a clean-checkout run follow the remaining repairs.  Quantized inference remains opt-in while output-quality criteria for default adoption remain unresolved.
 
 The theorem specifies calls and byte input/output under Talos semantics.  The runtime uses the pinned Wasmtime configuration, including canonical NaNs.  Tokenization, native host execution, and Wasmtime retain the [existing trust boundary](../training/gpt2/README.md#verification-boundary).  The quantized deployment command must establish which frozen binary it executes.  The current FP32 command recompiles source on invocation, so its build step alone cannot establish that identity.
 
