@@ -40,7 +40,10 @@ boundaries and the remaining numerical work.
 modules establish validation, allocation, copying, and each branch of the
 wrapper.  [Component proofs](Components.lean) establish hidden-state and
 logit calls.  The output modules compose allocation, append, copy, release,
-and the loop over 256 vocabulary entries.  [Inference composition](Inference.lean)
+and the loop over 256 vocabulary entries. The loop retains the initial empty
+buffer, proves each subsequent output is distinct, and follows the generated
+alias guards before releasing an old output. Final cleanup preserves the
+returned owner. [Inference composition](Inference.lean)
 joins those results.  The public entry theorem adds token validation and
 the exported call.
 

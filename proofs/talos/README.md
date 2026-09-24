@@ -295,6 +295,8 @@ termination, all 256 raw-bit logits, checkpoint preservation, and a fixed
 page count under its memory reservation.  The
 [complete inference theorem](lean/Project/TinyGpt2Infer/Inference.lean)
 composes function entry, initial allocation, the loop, and final release.
+Its current ownership proof tracks the initial empty buffer through the loop
+and checks the emitted alias guards before every release.
 It proves all 256 output words and checkpoint preservation for every four-byte
 input, assuming an empty initial free list, disjoint input storage, and the
 output memory reservation.  The

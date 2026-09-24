@@ -5,24 +5,25 @@ import Project.ProofKit.FixedArraySearchProjection
 namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit FixedArrayFold
 
-def savedOutputLocals : List Nat := [0, 16, 17, 18, 19, 21, 46, 47]
+def savedOutputLocals : List Nat := [0, 5, 16, 17, 18, 19, 21, 51, 52]
 
 structure OutputSaved (pointer empty : UInt64) (x : Row) (frame : Locals) : Prop where
   params : frame.params.length = 5
-  locals : frame.locals.length = 62
+  locals : frame.locals.length = 68
   values : frame.values = []
   pointer : frame.get 0 = some (.i64 pointer)
+  owner : frame.get 5 = some (.i64 0)
   x0 : frame.get 16 = some (.i64 x.x0)
   x1 : frame.get 17 = some (.i64 x.x1)
   x2 : frame.get 18 = some (.i64 x.x2)
   x3 : frame.get 19 = some (.i64 x.x3)
   empty : frame.get 21 = some (.i64 empty)
-  limit : frame.get 46 = some (.i64 256)
-  step : frame.get 47 = some (.i64 1)
-  scratch : I64LocalRange frame 57 63
+  limit : frame.get 51 = some (.i64 256)
+  step : frame.get 52 = some (.i64 1)
+  scratch : I64LocalRange frame 62 68
 
 theorem OutputSaved.valid {pointer empty : UInt64} {x : Row} {frame : Locals}
-    (h : OutputSaved pointer empty x frame) (index : Nat) (hIndex : index < 67) :
+    (h : OutputSaved pointer empty x frame) (index : Nat) (hIndex : index < 73) :
     frame.validIndex index := by
   simpa only [Locals.validIndex, h.params, h.locals] using hIndex
 
@@ -32,17 +33,18 @@ theorem OutputSaved.transport {pointer empty : UInt64} {x : Row} {frame next : L
     (hLocals : next.locals.length = frame.locals.length)
     (hValues : next.values = [])
     (hGets : ∀ index ∈ savedOutputLocals, next.get index = frame.get index)
-    (hScratch : I64LocalRange next 57 63) : OutputSaved pointer empty x next := by
+    (hScratch : I64LocalRange next 62 68) : OutputSaved pointer empty x next := by
   exact ⟨hParams.trans h.params, hLocals.trans h.locals, hValues,
     (hGets 0 (by decide)).trans h.pointer,
+    (hGets 5 (by decide)).trans h.owner,
     (hGets 16 (by decide)).trans h.x0, (hGets 17 (by decide)).trans h.x1,
     (hGets 18 (by decide)).trans h.x2, (hGets 19 (by decide)).trans h.x3,
-    (hGets 21 (by decide)).trans h.empty, (hGets 46 (by decide)).trans h.limit,
-    (hGets 47 (by decide)).trans h.step, hScratch⟩
+    (hGets 21 (by decide)).trans h.empty, (hGets 51 (by decide)).trans h.limit,
+    (hGets 52 (by decide)).trans h.step, hScratch⟩
 
 theorem OutputSaved.result {pointer empty : UInt64} {x : Row} {frame : Locals}
     (h : OutputSaved pointer empty x frame) (index : Nat) (word : UInt64)
-    (hLower : 5 ≤ index) (hUpper : index < 67) (hPreserved : index ∉ savedOutputLocals) :
+    (hLower : 5 ≤ index) (hUpper : index < 73) (hPreserved : index ∉ savedOutputLocals) :
     OutputSaved pointer empty x (resultFrame frame index word) := by
   have hInternal : frame.params.length ≤ index := by simpa only [h.params] using hLower
   apply h.transport (next := resultFrame frame index word) rfl (resultFrame_locals_length ..) rfl
@@ -53,22 +55,22 @@ theorem OutputSaved.result {pointer empty : UInt64} {x : Row} {frame : Locals}
   · exact h.scratch.result index word hInternal (h.valid index hUpper)
 
 theorem OutputSaved.counter {pointer empty : UInt64} {x : Row} {frame : Locals}
-    (h : OutputSaved pointer empty x frame) (count : Nat) (hValid : frame.validIndex 53) :
-    OutputSaved pointer empty x (FixedArrayCopy.counterFrame frame 53 count hValid) := by
+    (h : OutputSaved pointer empty x frame) (count : Nat) (hValid : frame.validIndex 58) :
+    OutputSaved pointer empty x (FixedArrayCopy.counterFrame frame 58 count hValid) := by
   apply h.transport (FixedArrayCopy.counterFrame_params_length ..)
     (FixedArrayCopy.counterFrame_locals_length ..) rfl
   · intro read hRead
-    exact FixedArrayCopy.counterFrame_get_ne frame 53 count read hValid (by
+    exact FixedArrayCopy.counterFrame_get_ne frame 58 count read hValid (by
       simp only [savedOutputLocals, List.mem_cons, List.not_mem_nil, or_false] at hRead
       omega)
-  · exact h.scratch.counter 53 count hValid
+  · exact h.scratch.counter 58 count hValid
 
 theorem OutputSaved.search {pointer empty : UInt64} {x : Row}
     (params saved tail : List Wasm.Value)
     (need previous current capacity next result : UInt64)
     (h : OutputSaved pointer empty x
       (FixedArraySearch.frame params saved tail need previous current capacity next result))
-    (hStart : params.length + saved.length = 57)
+    (hStart : params.length + saved.length = 62)
     (need' previous' current' capacity' next' result' : UInt64) :
     OutputSaved pointer empty x
       (FixedArraySearch.frame params saved tail need' previous' current' capacity' next' result') := by

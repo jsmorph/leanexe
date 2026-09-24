@@ -35,8 +35,8 @@ theorem initial_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
   rw [initial_allocation_shape]
   apply FixedArrayAllocateNone.program_spec module env initial
     (inferenceParams owner pointer t0 t1 t2 t3) (inferenceSaved owner pointer t0 t1 t2 t3 x)
-    (List.replicate 12 (.i64 0)) 51 (by simp [inferenceParams, inferenceSaved])
-    (FixedArrayReuse.program 51 1) (UInt64.ofNat (base start 0)) 8 1 0 0 0 0 0 allocations []
+    (List.replicate 13 (.i64 0)) 55 (by simp [inferenceParams, inferenceSaved])
+    (FixedArrayReuse.program 55 1) (UInt64.ofNat (base start 0)) 8 1 0 0 0 0 0 allocations []
   · simpa [hGlobals, base]
   · simp [hGlobals, freeHead]
   · simp [hGlobals]
