@@ -1,5 +1,39 @@
 # Development Journal
 
+## 2026-09-24: Fold annotations follow current ownership emission
+
+`tools/talos-artifact.js prepare --all` refreshed the initial cases, then
+rejected the first Euler Riemann array fold: its matcher expected the old
+release-ready flag.  The emitter now saves original accumulator pointers,
+which protects borrowed inputs and replaces that flag.  The annotation
+structures and scalar descriptor builder had not followed this change.
+
+Current metadata now names `initialValueStart`; readers recognize this
+layout separately from historical `releaseReadyLocal` annotations in frozen
+packages.  Matchers check saved-owner copies, initialized accumulators,
+result placement, and the current back edge.  Scalar descriptors omit the
+obsolete flag and are absent for folds that perform accumulator releases.
+No runtime instruction emission changes in this repair.  The legacy forward
+setup theorem remains selected only for the legacy instruction sequence;
+current regions still have their exact decoded-region equality.
+
+The compiler build passed all 70 jobs.  Annotation unit tests pass for both
+layouts, including mutations of staged values and saved-owner sources.
+The first new assertion used the wrong generated declaration suffix; changing
+it to the actual `_step_program` name resolved that test-only failure.
+Regeneration passed Euler Riemann and continued through the larger corpus.
+Logs are `annotation-build-1.log`, `annotations-unit-1.log`,
+`annotations-unit-2.log`, and `talos-prepare-all-2.log` in the session workspace.
+The aggregate behavior proofs have not yet run on all refreshed caches.
+
+The association-list cache also passes `tools/talos-proof.js check assoc_list`
+without a handwritten proof change.  Its diff removes an unnecessary retain
+of an owned child and an unused duplicate lookup function, renumbering later
+runtime functions.  The unchanged abstract list-segment induction and concrete
+sample-store theorem remain accepted.  This contrasts with GCD's changed
+frame witnesses and supports keeping mathematical proofs separate from
+emission-specific frames.  The accepted run is in `assoc-proof-1.log`.
+
 ## 2026-09-24: C regression comparison on ARM macOS
 
 The C comparison now accepts a positive standard IEC 60559 macro or GCC's
