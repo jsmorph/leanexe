@@ -37,6 +37,17 @@ structured iteration. Division by zero returns zero and remainder by zero the
 dividend. Runtime Nat, heap objects, imports, mutable globals, and allocation are
 excluded. Proof-level Nat and explicit termination arguments are permitted.
 
+## Immediate milestone: arithmetic expressions end to end
+
+The user now explicitly prioritizes a totally complete arithmetic-expression
+milestone before additional language features. Finish the current independently
+specified UInt64 arithmetic-expression fragment through exact emitted bytes,
+full decoded module, and exported invocation for every input. No extra
+source/IR or byte-correspondence certificate may be required per program.
+Do not extend source bindings, branches, helpers, or loops until this milestone
+is proved, pushed, audited, and demonstrated on unregistered source functions.
+The larger agenda below remains deferred, not reported complete.
+
 ## Completion gates
 
 - [x] Read and identify the actual existing extraction, IR, lowering, and emission paths.
@@ -294,3 +305,14 @@ module-byte theorem remain unfinished.
 The user reiterated frequent updates, commits, and pushes. Continue pushing each
 checked increment, announce the pushed SHA immediately, and provide a progress
 update at least every minute during ongoing work.
+
+### Complete production signed LEB correctness (checked)
+
+Proved the actual s64lebU64 encoder satisfies the independent binary grammar's
+S64 relation for every UInt64 bit pattern, with exactly its two's-complement
+signed value. The proof covers stopping conditions, final-byte bounds,
+continuation form, at most ten bytes, and numeric reconstruction, and connects
+the actual ByteArray output to the grammar. SignedLebStop, SignedLebTrace, and
+SignedLeb all build. There are no per-constant certificates or finite test
+assumptions. Next: instruction encoding, module assembly/decoding, and exported
+execution for the arithmetic-only milestone.
