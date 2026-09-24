@@ -22,7 +22,8 @@ The preceding working state is preserved in
 - All five pilot source certificates pass, including Prng.mix and ScalarHelper.caller.
 - Generic expression/command/call/loop lowering and all five source/IR certificates pass.
 - All five exact-byte closures pass, including independent grammar and validity.
-- Next: portable packages, independent CLI verification, mutations, and cold gate.
+- Portable packages, independent CLI verification, 15 mutation rejections, and clean-checkout verification all pass.
+- The complete scalar64 agenda is finished; frozen packages and acceptance evidence are committed.
 - Pinned Talos/Mathlib dependencies and required caches are available.
 
 ## Objective and precise claim
@@ -130,8 +131,8 @@ the dividend, and shift counts modulo 64.
 - [x] Mutation rejection for source linkage, operations, calls, bytes, exports,
       ABI, and manifest declarations.
 - [x] One passing clean-checkout independent verification command.
-- [ ] Record exact commands, pins, successes, failures, and limits.
-- [ ] Update maintained documentation and this task; commit and push.
+- [x] Record exact commands, pins, successes, failures, and limits.
+- [x] Update maintained documentation and this task; commit and push.
 
 ## Execution policy
 
@@ -360,3 +361,36 @@ snapshots, checking declarations, and manifests. The repeated 333 engine cases,
 source tests, module-admission regressions, and namespace audit passed. Final
 mutation and clean-checkout checks are running. Documentation inventories now
 separate this certified scalar path from the ordinary compiler registries.
+
+### 2026-09-24: final completion
+
+The final gate passed against e4bb6d08670e6fa6495e0cc32efa4e84ee2e95fc:
+
+```
+tools/check-correct --packages proofs/talos/scalar64/packages --mutations --cold
+```
+
+The run used the pinned toolchain, one Lean thread, tools/leanrun, and the user's
+explicitly authorized local mode. All five packages were produced and independently
+verified; all 333 engine cases passed; all 15 semantic/metadata mutations were
+rejected despite refreshed hashes; unsupported source/profile checks passed;
+source/numeric/admission regressions passed; and the declaration audits preserved
+the two stated axiom policies. All five packages then verified in a detached
+checkout starting with no project or source proof cache, without invoking the
+compiler or certificate generator. Only pinned external dependency caches were
+shared. The code tree has no whitespace errors and the independent TypeSafety
+source files are unchanged from the typesafety base.
+
+Frozen packages are in proofs/talos/scalar64/packages; the machine-readable result
+is proofs/talos/scalar64/acceptance.json. Recheck them without generation using:
+
+```
+tools/check-correct --packages proofs/talos/scalar64/packages --verify-only --mutations --cold
+```
+
+The completed claim is certificate-checked correctness for the stated scalar
+subset, with generic backend proofs and exact-byte closure. New source programs
+must supply a checked source/IR certificate; arbitrary invariant discovery,
+full-language compilation, heap programs, and unrestricted recursion are outside
+this release. These limits and the kernel/model/runtime assumptions are documented
+in docs/scalar64-correctness.md. Every planned gate is complete.

@@ -36,3 +36,8 @@ resource policy applies; explicitly authorized local execution can use
 boundary, numeric semantics, certificate extension procedure, and assumptions.
 [The task journal](../../../task.md) records completed checks and failures during
 development. `acceptance.json` records the final gate results and artifact hashes.
+
+The final gate passed on 2026-09-24: five independently verified packages, five
+clean-checkout verifications, 333 engine cases, 15 mutation rejections, and the
+source/admission and axiom audits. The audit checked 494 scalar declarations and
+2,181 independent TypeSafety declarations under their documented axiom policies.
