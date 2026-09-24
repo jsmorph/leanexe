@@ -24,11 +24,10 @@ private def invalidAllocFrame (ptr : UInt64) (order : OrderL) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
-      .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 1, .i64 0, .i64
-      1, .i64 0, .i64 ptr, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 8, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 0, .i64 0],
+      .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 1, .i64 0, .i64 1, .i64 0,
+      .i64 ptr, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 8,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
 theorem postOnly_invalid
@@ -63,10 +62,10 @@ theorem postOnly_invalid
       { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
           .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func17
     wp_run

@@ -31,14 +31,14 @@ def appendCopyFrame (ptr g0 : UInt64) (order : OrderL)
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
-      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64
-      order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n
-      + 1), .i64 (g0 + 48), .i64 (UInt64.ofNat k), .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64
-      (orderArrayBytesU (n + 1)), .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n +
-      1)), .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1), .i64 (g0 + 48)],
+      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
+      .i64 (g0 + 48), .i64 (UInt64.ofNat k), .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0,
+      .i64 (orderArrayBytesU (n + 1)), .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
+      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1), .i64 (g0 + 48)],
     values := [] }
 
 def appendCopyInv (st0 : Store Unit) (ptr g0 g2 : UInt64)
