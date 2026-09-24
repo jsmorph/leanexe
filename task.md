@@ -108,9 +108,9 @@ the dividend, and shift counts modulo 64.
 ### 5. Exact bytes and certified compilation
 
 - [x] Independent artifact decoding and validation.
-- [ ] Full decoded-module equality with verified lowering.
+- [x] Full decoded-module equality with verified lowering.
 - [x] Composition of source correspondence, lowering, and byte equality.
-- [ ] Explicit compile-certified --profile scalar64 command or equivalent.
+- [x] Explicit compile-certified --profile scalar64 command or equivalent.
 - [ ] Fail closed on unsupported source, stale evidence, or failed checking.
 - [ ] Portable package recording source, core/IR, ABI, export, bytes, certificates,
       theorem names, and pinned dependencies.
@@ -284,3 +284,21 @@ Passed: lake build Project.Correct.Scalar64.Artifacts (all five); lake build
 Project.Correct.Scalar64.Package (untrusted scalar data serialization). The byte
 sizes are affine 53, choose 58, mix 89, helper 78, and gcd 90. Portable CLI packages
 and mutation/cold verification are still in progress.
+
+### 2026-09-24: independent package CLI implemented
+
+Added compile-certified and verify-certified with strict JSON data schemas,
+canonical checking text, source/core/IR/ABI/export bindings, source snapshots,
+SHA-256 file identities, theorem names, repository revision, and dependency pins.
+Compilation selects a checked source/IR certificate or accepts an explicitly named
+custom certificate; it does not infer proofs for arbitrary Lean. The generic
+backend still covers every Certificate accepted by the checker. Unsupported
+profiles, absent source certificates, malformed data, and failed equalities stop
+publication. The generator's binary reader only supplies an untrusted witness;
+the independent Lean decoder proves its equality to the actual byte array.
+
+The affine CLI package has passed end to end. The verifier builds only the
+certificate dependencies and canonical checking module, with no call to the
+encoder or package emitter. Final correctness and equality dependencies are
+audited against the three standard axioms. The remaining pilot CLI runs,
+mutations, and clean-checkout gate are pending.
