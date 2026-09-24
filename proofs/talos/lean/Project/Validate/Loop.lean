@@ -26,31 +26,32 @@ set_option maxHeartbeats 64000000
 theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
     (owner ptr : UInt64) (bytes : List UInt8)
     (hLen : bytes.length + 1 < UInt64.size)
-    (hBytes : BytesAt st ptr bytes) :
+    (hBytes : BytesAt st ptr bytes) (hOwner : owner = 0) :
     TerminatesWith (m := «module») (id := 2) (initial := st) (env := env)
       [.i64 0, .i64 (UInt64.ofNat bytes.length), .i64 ptr, .i64 owner,
         .i64 (UInt64.ofNat (bytes.length + 1))]
       (fun st' vs => st' = st ∧ vs = [.i64 (validateExpected bytes)]) := by
+  subst owner
   have hSize : bytes.length < UInt64.size := by omega
   apply TerminatesWith.of_wp_entry_for (f := func2Def)
   · simp [«module»]
   · change wp «module» func2 _ st
-      { params := [.i64 (UInt64.ofNat (bytes.length + 1)), .i64 owner, .i64 ptr,
+      { params := [.i64 (UInt64.ofNat (bytes.length + 1)), .i64 0, .i64 ptr,
           .i64 (UInt64.ofNat bytes.length), .i64 0],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func2
     wp_run
     apply wp_block_cons
-    apply wp_loop_cons (Inv := vInv st owner ptr bytes) (μ := vMeasure)
+    apply wp_loop_cons (Inv := vInv st 0 ptr bytes) (μ := vMeasure)
     · exact ⟨rfl, UInt64.ofNat (bytes.length + 1), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, rfl,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, rfl,
         Or.inl ⟨rfl, 0, Nat.zero_le _, rfl, rfl,
           fun j hj => absurd hj (Nat.not_lt_zero j)⟩⟩
-    · rintro st2 s ⟨hst, fuel, index, l5, l6, l7, l8, l9, l10, l11, l12, l13,
-        l14, l15, l16, l17, l18, l19, l20, l21, l22, l23, rfl, harm⟩
+    · rintro st2 s ⟨hst, fuel, index, l6, l7, l8, l9, l10, l11, l12, l13, l14,
+        l15, l16, l17, l18, l19, l20, l21, l22, l23, l24, l25, rfl, harm⟩
       subst hst
       rcases harm with ⟨rfl, i, hile, rfl, rfl, hpref⟩ | ⟨rfl, hres⟩
       · -- scanning arm: fuel is positive, done flag is zero
@@ -86,13 +87,13 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
           rw [if_pos (by simp [hi])]
           wp_run_folded []
           refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i), UInt64.ofNat i, 1, 1,
-            l7, l8, l9, l10, l11, l12, l13, l14, l15, l16, l17, l18, l19, l20,
-            l21, l22, l23, ?_, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
+            l8, l9, l10, l11, l12, l13, l14, l15, l16, l17, l18, l19, l20, l21, l22,
+            l23, l24, l25, ?_, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
           · simp [vFrame]
           · unfold validateExpected
             rw [all_of_prefix (hi ▸ hpref)]
             simp
-          · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, Nat.reduceSub, Nat.reduceAdd]
+          · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, ite_true, Nat.reduceSub, Nat.reduceAdd]
             try omega
         · have hilt : i < bytes.length := Nat.lt_of_le_of_ne hile hi
           have hne : UInt64.ofNat i ≠ UInt64.ofNat bytes.length := by
@@ -107,7 +108,7 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             rw [toNat_ofNat_lt (by omega)]
             exact hilt
           apply wp_call_tw
-            (func1_terminates env st2 owner ptr (UInt64.ofNat bytes.length)
+            (func1_terminates env st2 0 ptr (UInt64.ofNat bytes.length)
               (UInt64.ofNat i) bytes rfl hSize hBytes hidx)
           rintro st3 vs ⟨rfl, rfl⟩
           wp_run_folded []
@@ -156,11 +157,20 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp [hsucc_no_wrap])]
             wp_run_folded []
+            refine wp_iff_cons rfl ?_
+            rw [if_neg (by simp)]
+            wp_run_folded []
+            refine wp_iff_cons rfl ?_
+            rw [if_neg (by simp)]
+            wp_run_folded []
+            refine wp_iff_cons rfl ?_
+            rw [if_pos (by simp)]
+            wp_run_folded []
             refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i) - 1,
-              UInt64.ofNat i + 1, l5, 0, owner, ptr, UInt64.ofNat bytes.length,
-              UInt64.ofNat i, bytes[i]!.toUInt64, bytes[i]!.toUInt64, owner, ptr,
-              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, owner, ptr,
-              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, UInt64.ofNat i, 1,
+              UInt64.ofNat i + 1, l6, 0, 0, ptr, UInt64.ofNat bytes.length,
+              UInt64.ofNat i, bytes[i]!.toUInt64, bytes[i]!.toUInt64, 0, ptr,
+              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, 0, ptr,
+              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, 0, UInt64.ofNat i, 1,
               UInt64.ofNat i + 1, ?_, Or.inl ⟨rfl, i + 1, hilt, hnext, ?_, ?_⟩⟩, ?_⟩
             · simp [vFrame]
             · rw [hfuel_next]
@@ -200,14 +210,14 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             rw [if_neg (by simp [hne])]
             wp_run_folded []
             refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i), UInt64.ofNat i,
-              0, 1, owner, ptr, UInt64.ofNat bytes.length, UInt64.ofNat i,
-              bytes[i]!.toUInt64, bytes[i]!.toUInt64, l13, l14, l15, l16, l17,
-              l18, l19, l20, l21, l22, l23, ?_, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
+              0, 1, 0, ptr, UInt64.ofNat bytes.length, UInt64.ofNat i,
+              bytes[i]!.toUInt64, bytes[i]!.toUInt64, l14, l15, l16, l17, l18,
+              l19, l20, l21, l22, l23, l24, l25, ?_, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
             · simp [vFrame]
             · unfold validateExpected
               rw [not_all_of_witness hilt hd0]
               simp
-            · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, Nat.reduceSub, Nat.reduceAdd]
+            · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, ite_true, Nat.reduceSub, Nat.reduceAdd]
               try omega
       · -- done arm: the loop exits and the answer is already in the result local
         wp_run_folded []

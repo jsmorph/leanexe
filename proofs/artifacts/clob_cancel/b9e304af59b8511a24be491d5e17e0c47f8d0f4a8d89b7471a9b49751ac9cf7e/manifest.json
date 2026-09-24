@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.ClobCancel.ArtifactBytes",
   "artifactBytesDefinition": "Project.ClobCancel.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.ClobCancel.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.ClobCancel.Program",
-  "cachedProgramDefinition": "Project.ClobCancel.module",
-  "specModule": "Project.ClobCancel.Spec",
+  "cachedProgramModule": "Project.ClobCancel.FrozenProgram",
+  "cachedProgramDefinition": "Project.ClobCancel.Frozen.module",
+  "specModule": "Project.ClobCancel.FrozenSpec",
   "proofTarget": "Project.ClobCancel.ArtifactTranslation",
   "identityTheorem": "Project.ClobCancel.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.ClobCancel.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobCancel.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobCancel.Spec.cancel_correct"
+    "Project.ClobCancel.Frozen.Spec.cancel_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

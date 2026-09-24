@@ -1411,8 +1411,10 @@ def func7 : Wasm.Program :=
   .call 6,
   .localSet 5,
   .localSet 4,
-  .localGet 5,
+  .localGet 4,
   .localSet 11,
+  .localGet 5,
+  .localSet 12,
   .constI64 0,
   .localSet 6,
   .localGet 0,
@@ -1425,14 +1427,16 @@ def func7 : Wasm.Program :=
   .call 6,
   .localSet 10,
   .localSet 9,
+  .localGet 9,
+  .localSet 13,
   .localGet 10,
-  .localSet 12,
-  .localGet 11,
-  .localGet 12
+  .localSet 14,
+  .localGet 12,
+  .localGet 14
  ]
 
 def func7Def : Wasm.Function :=
-  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func7, results := [.i64, .i64], typeIdx := some 7 }
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func7, results := [.i64, .i64], typeIdx := some 7 }
 
 /-- Exported function. -/
 def func8 : Wasm.Program :=

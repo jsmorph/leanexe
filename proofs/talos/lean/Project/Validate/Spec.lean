@@ -63,7 +63,7 @@ theorem validateGeneric_correct : ValidateGenericSpec := by
     rw [if_neg (by simp [hsucc_no_wrap])]
     wp_run
     rw [hplus]
-    apply wp_call_tw (func2_terminates env st 0 ptr bytes hLen hBytes)
+    apply wp_call_tw (func2_terminates env st 0 ptr bytes hLen hBytes rfl)
     rintro st2 vs ⟨rfl, rfl⟩
     wp_run
     simp [func3Def]

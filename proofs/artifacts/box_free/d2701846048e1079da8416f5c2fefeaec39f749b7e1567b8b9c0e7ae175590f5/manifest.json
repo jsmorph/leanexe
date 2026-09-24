@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.BoxFree.ArtifactBytes",
   "artifactBytesDefinition": "Project.BoxFree.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.BoxFree.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.BoxFree.Program",
-  "cachedProgramDefinition": "Project.BoxFree.module",
-  "specModule": "Project.BoxFree.Spec",
+  "cachedProgramModule": "Project.BoxFree.FrozenProgram",
+  "cachedProgramDefinition": "Project.BoxFree.Frozen.module",
+  "specModule": "Project.BoxFree.FrozenSpec",
   "proofTarget": "Project.BoxFree.ArtifactTranslation",
   "identityTheorem": "Project.BoxFree.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.BoxFree.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.BoxFree.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.BoxFree.Spec.boxFreeStats_correct"
+    "Project.BoxFree.Frozen.Spec.boxFreeStats_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
