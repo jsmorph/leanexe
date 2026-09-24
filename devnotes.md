@@ -1,3 +1,9 @@
+## 2026-09-24: Recycled LEB byte loop checked
+
+The complete RecyclingLoop theorem passes in work/leb-16.log (3,510 jobs), including the active header, branch dispatch, final-byte append, continuation append and old-buffer release, pure byte decomposition, and a decreasing loop measure. All audits use only propext, Classical.choice, and Quot.sound. The theorem composes exact generated instruction slices with shared packed allocation, copying, and release contracts. Memory framing retains the 560-byte reserve and unchanged page count. It remains to connect the exported encoder and review the public store assumptions before claiming the source case complete.
+
+Diagnostics isolated list/option indexing normalization, explicit frame typing after writes, the typed-if continuation, and restoration of the block-entry stack. The branch continuation equality is proved pointwise over every continuation constructor. Small code fragments are checked by definitional equality against the generated program; Program.lean itself remains generator output. No diagnostic timed out and no axioms or admitted proof terms were added.
+
 ## 2026-09-24: Certificate entry frames and LEB recycling foundations checked
 
 The certificate boundary and totals execution theorems pass in work/leb-certificate-2.log after accounting for ten additional scratch locals in each generated function. Both loop proofs and their complete entry contracts use only standard logical axioms. The earlier work/certificate-tiny-1.log reached its twelve-minute aggregate limit after completing TinyGpt2Hidden.Spec and the inference code match; the complete certificate and remaining tiny specifications still need their maintained gates.
