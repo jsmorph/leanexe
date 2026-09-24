@@ -20,14 +20,15 @@ def Preserved (before after : Locals) (scratch : Nat) : Prop :=
   after.params = before.params ∧ after.locals.length = before.locals.length ∧
   I64Values after.locals ∧ ∀ index, index < scratch ∨ scratch + 12 ≤ index → after.get index = before.get index
 
-theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit)
+theorem program_spec_available (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit)
     (initial : Store Unit) (heap : Heap) (frame : Locals) (source : UInt64) (bytes : ByteArray) (byte : UInt8)
     (hHeap : heap.At initial) (hBytes : ByteArrayAt initial.mem source.toNat bytes)
     (hProtected : heap.Protects source.toNat (source.toNat + bytes.size))
     (hSize : bytes.size + 1 ≤ 4294967296)
     (hBump : takeFirstFitFrom 0 (need bytes) heap.nodes = none →
       heap.top.toNat + 48 + (need bytes).toNat < 4294967296 ∧
-      FixedArrayBump.requiredPages heap.top (need bytes) ≤ initial.memoryCap module_ 0)
+      (initial.mem.pages < FixedArrayBump.requiredPages heap.top (need bytes) →
+        FixedArrayBump.requiredPages heap.top (need bytes) ≤ initial.memoryCap module_ 0))
     (hPages : initial.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
     (hLower : frame.params.length ≤ scratch) (hBound : scratch + 12 ≤ frame.params.length + frame.locals.length)
     (hValues : frame.values = []) (hTyped : I64Values frame.locals)
@@ -73,7 +74,7 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
       change scratch + 4 < frame.params.length + frame.locals.length; omega)) rfl
     (by change frame.params.length ≤ scratch + 6; omega)
     (by change scratch + 6 < sized.params.length + sized.locals.length; rw [hSizedLength]; change scratch + 6 < frame.params.length + frame.locals.length; omega)
-  apply PackedAllocation.program_spec_frame module_ env initial prepared (scratch + 6) heap.top
+  apply PackedAllocation.program_spec_frame_available module_ env initial prepared (scratch + 6) heap.top
     (need bytes) heap.allocations heap.nodes rfl hPreparedTyped
     (by rw [hPreparedParams]; omega) (by rw [hPreparedParams, hPreparedLength]; omega)
     (capacityFrame_get_capacity sized (scratch + 6) _ (by change frame.params.length ≤ scratch + 6; omega)
@@ -196,6 +197,33 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
         hAddress hFitEnd hMemory)
 
   · exact hWrites.2.1
+
+theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit)
+    (initial : Store Unit) (heap : Heap) (frame : Locals) (source : UInt64) (bytes : ByteArray) (byte : UInt8)
+    (hHeap : heap.At initial) (hBytes : ByteArrayAt initial.mem source.toNat bytes)
+    (hProtected : heap.Protects source.toNat (source.toNat + bytes.size))
+    (hSize : bytes.size + 1 ≤ 4294967296)
+    (hBump : takeFirstFitFrom 0 (need bytes) heap.nodes = none →
+      heap.top.toNat + 48 + (need bytes).toNat < 4294967296 ∧
+      FixedArrayBump.requiredPages heap.top (need bytes) ≤ initial.memoryCap module_ 0)
+    (hPages : initial.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
+    (hLower : frame.params.length ≤ scratch) (hBound : scratch + 12 ≤ frame.params.length + frame.locals.length)
+    (hValues : frame.values = []) (hTyped : I64Values frame.locals)
+    (hSource : frame.get scratch = some (.i64 source))
+    (hLength : frame.get (scratch + 1) = some (.i64 (UInt64.ofNat bytes.size)))
+    (hByte : frame.get (scratch + 2) = some (.i64 byte.toUInt64))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : ∀ final result,
+      result.values = [.i64 (allocatedRoot heap.top (need bytes) heap.nodes)] →
+      Preserved frame result scratch → heap.PackedOutput initial final (need bytes) (bytes.push byte) →
+      final.mem.pages = (heap.allocatePackedStore initial (need bytes)).mem.pages →
+      wp module_ rest Q final result env) :
+    wp module_ (program scratch ++ rest) Q initial frame env := by
+  exact program_spec_available scratch module_ env initial heap frame source bytes byte hHeap hBytes hProtected hSize
+    (fun h => ⟨(hBump h).1, fun _ => (hBump h).2⟩) hPages hMemory32
+    hLower hBound hValues hTyped hSource hLength hByte Q rest hNext
+
+#print axioms program_spec_available
 
 #print axioms program_spec
 end Project.ProofKit.PackedPush

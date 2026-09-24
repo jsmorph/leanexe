@@ -1,3 +1,11 @@
+## 2026-09-24: Heap framing and allocation contracts broadened without new caller restrictions
+
+work/leb-helpers-1.log passes all 3,492 jobs. Heap now preserves an optional arbitrary value in untouched global slot 3 and any globals beyond the six runtime slots; default heaps retain their prior layout. Heap.fromGlobals_at constructs the model from the slots actually read by allocation and release. Allocation, release, ownership framing, and packed push recheck with standard logical axioms.
+
+New available variants of memory ensure, bump preparation, packed allocation, and packed push require the memory-cap bound only on executions that grow memory. Existing theorem names retain their signatures as wrappers. This lets the LEB proof use its original already-reserved memory without adding a memory-cap premise. LEB branch/loop migration and the exported entry are under a separate focused check. The new runtime's releases require typed counter slots 4 and 5; neither slot 3 nor an extra-global suffix is constrained to simplify the proof.
+
+work/tiny-2.log completes the tiny inference hidden-state theorem and numerical dependencies, and reports only the output-code slice mismatches in the inference and checked cases. Both output-code decompositions have been refreshed for their distinct local-slot shifts and are being checked. Their remaining output-loop and cleanup contracts are still pending. work/leb-docs-1.log passes all 162 maintained documents. The shared helper changes require a final complete source-proof rebuild; prior case passes remain checkpoint evidence.
+
 ## 2026-09-24: Recycled LEB byte loop checked
 
 The complete RecyclingLoop theorem passes in work/leb-16.log (3,510 jobs), including the active header, branch dispatch, final-byte append, continuation append and old-buffer release, pure byte decomposition, and a decreasing loop measure. All audits use only propext, Classical.choice, and Quot.sound. The theorem composes exact generated instruction slices with shared packed allocation, copying, and release contracts. Memory framing retains the 560-byte reserve and unchanged page count. It remains to connect the exported encoder and review the public store assumptions before claiming the source case complete.
