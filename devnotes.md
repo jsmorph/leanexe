@@ -1,5 +1,31 @@
 # Development Journal
 
+## 2026-09-24: Resume byte I/O work
+
+Fetched `origin/io` and checked out the local tracking branch at
+`fb19b5efdd6cc171033adf888667764203c14f14`.  The working tree was clean.
+The user deferred release-identity work and requested a current continuation
+document.  [Byte I/O completion](task.md) now records the API, implementation,
+prior test reports, open ownership defects, setup requirements, commands,
+documentation gaps, and completion agenda.
+
+Existing Talos checks cover the effect of shared compiler changes on verified
+programs.  Formal I/O proofs remain a scope decision: the current exact-binary
+profile rejects imports, while the I/O module imports six WASI functions.
+The continuation document records the host model and verifier work such a
+proof would require.
+
+This checkout has Node 24.13.0 and the pinned Lean toolchain directory.
+The compiler executable, repository Wasmtime tools, I/O host, and Talos
+dependency directory are absent.  `wasmtime` and `wasm-tools` are absent
+from `PATH`.  Runtime and proof tests have not run in this resumed session.
+
+`git diff --check` passed, and a separate check passed all 46 local links
+and whitespace in the continuation document.  The documentation checker
+reproduced the existing absolute temporary-workspace path failure in
+`paper/wgsl-verification-report/review.md`.  Its inventory omits root
+`task.md` and `devnotes.md`, so those received a separate link and prose review.
+
 ## 2026-09-23: Byte I/O on branch io
 
 The final streaming test copies 4 MiB plus 137 bytes through a 4,096-byte
