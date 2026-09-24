@@ -1,3 +1,9 @@
+## 2026-09-24: All three tiny-model maintained gates pass
+
+`tools/talos-proof.js check tiny_gpt2_checked` passes in work/tiny-checked-maintained-1.log (3,793 proof jobs), and `check tiny_gpt2_hidden` passes in work/tiny-hidden-maintained-1.log (3,425 jobs). Together with the earlier inference gate, all three regenerated source cases are checked with their original public numerical and execution scope. work/tiny-docs-1.log passes all 162 maintained Markdown files; a separate task.md link review finds 41 local links and no missing targets.
+
+The certificate and existing partial sequence-softmax proofs are now under a bounded dependency rebuild following the shared allocator contract changes. The continuation record distinguishes these pending proofs and the final aggregate from completed runtime and tiny-model validation. Release identity remains deferred.
+
 ## 2026-09-24: Complete tiny inference and checked-entry specifications restored
 
 work/tiny-both-3.log passes both complete specifications (3,816 jobs), including all 256 output words, termination, retained input memory, checked rejection paths, and their existing numerical corollaries. Public theorem statements retain their quantified inputs and resource assumptions; all audits use only standard logical axioms. `tools/talos-proof.js check tiny_gpt2_infer` additionally passes against fresh compiler output in work/tiny-infer-maintained-1.log (3,769 jobs). The checked and hidden maintained case checks are following.
