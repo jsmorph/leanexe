@@ -26,7 +26,7 @@ private def outerBranch (takeValid : Bool) : Wasm.Program :=
   | _ => []
 
 private def validResultBranch (takeFilled : Bool) : Wasm.Program :=
-  match ((outerBranch true)[43]? : Option Wasm.Instruction) with
+  match ((outerBranch true)[47]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.iff _ _ filled residual _ _) =>
       if takeFilled then filled else residual
   | _ => []
@@ -38,16 +38,9 @@ def residualProg : Wasm.Program :=
   validResultBranch false
 
 def filledProg : Wasm.Program :=
-  [
-  .call 19,
-  .localSet 31,
-  .localGet 31,
-  .localSet 37,
-  .localGet 27,
-  .localSet 38,
-  .localGet 29,
-  .localSet 39
-]
+  [.call 19, .localSet 31, .localGet 31, .localSet 37,
+    .localGet 26, .localSet 38, .localGet 27, .localSet 39,
+    .localGet 28, .localSet 40, .localGet 29, .localSet 41]
 
 def entryProg : Wasm.Program :=
   [
@@ -116,8 +109,12 @@ def validResultStoreProg : Wasm.Program :=
   .localSet 23,
   .localSet 22,
   .localSet 21,
+  .localGet 21,
+  .localSet 26,
   .localGet 22,
   .localSet 27,
+  .localGet 23,
+  .localSet 28,
   .localGet 24,
   .localSet 29,
   .localGet 25,
@@ -150,11 +147,7 @@ def validProg : Wasm.Program :=
 ]
 
 def resultProg : Wasm.Program :=
-  [
-  .localGet 37,
-  .localGet 38,
-  .localGet 39
-]
+  [.localGet 37, .localGet 39, .localGet 41]
 
 set_option maxRecDepth 1048576 in
 theorem func21_decomposition :
@@ -173,37 +166,37 @@ def residualStatusProg : Wasm.Program :=
   .localGet 27,
   .localSet 33,
   .localGet 33,
-  .localSet 40
+  .localSet 42
 ]
 
 def residualOrderFieldsProg : Wasm.Program :=
   [
   .localGet 1,
-  .localSet 46,
-  .localGet 2,
-  .localSet 47,
-  .localGet 3,
   .localSet 48,
-  .localGet 4,
+  .localGet 2,
   .localSet 49,
+  .localGet 3,
+  .localSet 50,
+  .localGet 4,
+  .localSet 51,
   .localGet 30,
-  .localSet 50
+  .localSet 52
 ]
 
 def residualLengthProg : Wasm.Program :=
   [
-  .localGet 40,
+  .localGet 42,
   .wrapI64,
   .load64 0,
-  .localSet 41,
-  .localGet 41,
+  .localSet 43,
+  .localGet 43,
   .constI64 5,
   .mulI64,
-  .localSet 42,
-  .localGet 41,
+  .localSet 44,
+  .localGet 43,
   .constI64 1,
   .addI64,
-  .localSet 43
+  .localSet 45
 ]
 
 def residualOrderPrepareProg : Wasm.Program :=
@@ -212,7 +205,7 @@ def residualOrderPrepareProg : Wasm.Program :=
 def residualAllocPrepareProg : Wasm.Program :=
   [
   .constI64 8,
-  .localGet 43,
+  .localGet 45,
   .constI64 5,
   .mulI64,
   .constI64 8,
@@ -224,20 +217,20 @@ def residualAllocPrepareProg : Wasm.Program :=
   .divUI64,
   .constI64 8,
   .mulI64,
-  .localSet 53,
-  .localGet 53,
+  .localSet 55,
+  .localGet 55,
   .constI64 8,
   .ltUI64,
   .iff 0 0 [
     .constI64 8,
-    .localSet 53
+    .localSet 55
   ] [],
   .constI64 0,
-  .localSet 58,
+  .localSet 60,
   .constI64 0,
-  .localSet 54,
+  .localSet 56,
   .globalGet 1,
-  .localSet 55
+  .localSet 57
 ]
 
 def residualArrayPrepareProg : Wasm.Program :=
@@ -248,87 +241,87 @@ def residualPrepareProg : Wasm.Program :=
 
 def residualAllocSearchBodyProg : Wasm.Program :=
   [
-  .localGet 55,
+  .localGet 57,
   .constI64 0,
   .eqI64,
   .br_if 1,
-  .localGet 58,
+  .localGet 60,
   .constI64 0,
   .neI64,
   .br_if 1,
-  .localGet 55,
+  .localGet 57,
   .constI64 32,
   .subI64,
   .wrapI64,
   .load64 0,
-  .localSet 56,
-  .localGet 55,
+  .localSet 58,
+  .localGet 57,
   .constI64 8,
   .subI64,
   .wrapI64,
   .load64 0,
-  .localSet 57,
-  .localGet 56,
-  .localGet 53,
+  .localSet 59,
+  .localGet 58,
+  .localGet 55,
   .geUI64,
   .iff 0 0 [
-    .localGet 54,
+    .localGet 56,
     .constI64 0,
     .eqI64,
     .iff 0 0 [
-      .localGet 57,
+      .localGet 59,
       .globalSet 1
     ] [
-      .localGet 54,
+      .localGet 56,
       .constI64 8,
       .subI64,
       .wrapI64,
-      .localGet 57,
+      .localGet 59,
       .store64 0
     ],
-    .localGet 55,
+    .localGet 57,
     .constI64 48,
     .subI64,
     .wrapI64,
     .constI64 5501223100278326855,
     .store64 0,
-    .localGet 55,
+    .localGet 57,
     .constI64 40,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 55,
+    .localGet 57,
     .constI64 32,
     .subI64,
     .wrapI64,
-    .localGet 56,
+    .localGet 58,
     .store64 0,
-    .localGet 55,
+    .localGet 57,
     .constI64 24,
     .subI64,
     .wrapI64,
     .constI64 2,
     .store64 0,
-    .localGet 55,
+    .localGet 57,
     .constI64 16,
     .subI64,
     .wrapI64,
     .constI64 5,
     .store64 0,
-    .localGet 55,
+    .localGet 57,
     .constI64 8,
     .subI64,
     .wrapI64,
     .constI64 0,
     .store64 0,
-    .localGet 55,
-    .localSet 58
-  ] [
-    .localGet 55,
-    .localSet 54,
     .localGet 57,
-    .localSet 55
+    .localSet 60
+  ] [
+    .localGet 57,
+    .localSet 56,
+    .localGet 59,
+    .localSet 57
   ],
   .br 0
 ]
@@ -338,35 +331,35 @@ def residualAllocSearchProg : Wasm.Program :=
 
 def residualAllocBumpProg : Wasm.Program :=
   [
-  .localGet 58,
+  .localGet 60,
   .constI64 0,
   .eqI64,
   .iff 0 0 [
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localGet 53,
+    .localGet 55,
     .addI64,
-    .localTee 56,
+    .localTee 58,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
       .unreachable
     ] [],
-    .localGet 56,
+    .localGet 58,
     .constI64 1,
     .subI64,
     .constI64 65536,
     .divUI64,
     .constI64 1,
     .addI64,
-    .localSet 57,
+    .localSet 59,
     .memorySize,
     .extendUI32,
-    .localGet 57,
+    .localGet 59,
     .ltUI64,
     .iff 0 0 [
-      .localGet 57,
+      .localGet 59,
       .memorySize,
       .extendUI32,
       .subI64,
@@ -381,40 +374,40 @@ def residualAllocBumpProg : Wasm.Program :=
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localSet 58,
-    .localGet 56,
-    .globalSet 0,
+    .localSet 60,
     .localGet 58,
+    .globalSet 0,
+    .localGet 60,
     .constI64 48,
     .subI64,
     .wrapI64,
     .constI64 5501223100278326855,
     .store64 0,
-    .localGet 58,
+    .localGet 60,
     .constI64 40,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 58,
+    .localGet 60,
     .constI64 32,
     .subI64,
     .wrapI64,
-    .localGet 53,
+    .localGet 55,
     .store64 0,
-    .localGet 58,
+    .localGet 60,
     .constI64 24,
     .subI64,
     .wrapI64,
     .constI64 2,
     .store64 0,
-    .localGet 58,
+    .localGet 60,
     .constI64 16,
     .subI64,
     .wrapI64,
     .constI64 5,
     .store64 0,
-    .localGet 58,
+    .localGet 60,
     .constI64 8,
     .subI64,
     .wrapI64,
@@ -429,14 +422,14 @@ def residualAllocFinishProg : Wasm.Program :=
   .constI64 1,
   .addI64,
   .globalSet 2,
-  .localGet 58,
-  .localSet 44,
-  .localGet 44,
+  .localGet 60,
+  .localSet 46,
+  .localGet 46,
   .wrapI64,
-  .localGet 43,
+  .localGet 45,
   .store64 0,
   .constI64 0,
-  .localSet 45
+  .localSet 47
 ]
 
 def residualAllocProg : Wasm.Program :=
@@ -444,20 +437,20 @@ def residualAllocProg : Wasm.Program :=
 
 def residualCopyBodyProg : Wasm.Program :=
   [
-  .localGet 45,
-  .localGet 42,
+  .localGet 47,
+  .localGet 44,
   .geUI64,
   .br_if 1,
-  .localGet 44,
-  .localGet 45,
+  .localGet 46,
+  .localGet 47,
   .constI64 1,
   .addI64,
   .constI64 8,
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 40,
-  .localGet 45,
+  .localGet 42,
+  .localGet 47,
   .constI64 1,
   .addI64,
   .constI64 8,
@@ -466,10 +459,10 @@ def residualCopyBodyProg : Wasm.Program :=
   .wrapI64,
   .load64 0,
   .store64 0,
-  .localGet 45,
+  .localGet 47,
   .constI64 1,
   .addI64,
-  .localSet 45,
+  .localSet 47,
   .br 0
 ]
 
@@ -478,8 +471,8 @@ def residualCopyProg : Wasm.Program :=
 
 def residualStoreProg : Wasm.Program :=
   [
-  .localGet 44,
-  .localGet 41,
+  .localGet 46,
+  .localGet 43,
   .constI64 5,
   .mulI64,
   .constI64 1,
@@ -488,10 +481,10 @@ def residualStoreProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 46,
+  .localGet 48,
   .store64 0,
-  .localGet 44,
-  .localGet 41,
+  .localGet 46,
+  .localGet 43,
   .constI64 5,
   .mulI64,
   .constI64 2,
@@ -500,10 +493,10 @@ def residualStoreProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 47,
+  .localGet 49,
   .store64 0,
-  .localGet 44,
-  .localGet 41,
+  .localGet 46,
+  .localGet 43,
   .constI64 5,
   .mulI64,
   .constI64 3,
@@ -512,10 +505,10 @@ def residualStoreProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 48,
+  .localGet 50,
   .store64 0,
-  .localGet 44,
-  .localGet 41,
+  .localGet 46,
+  .localGet 43,
   .constI64 5,
   .mulI64,
   .constI64 4,
@@ -524,10 +517,10 @@ def residualStoreProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 49,
+  .localGet 51,
   .store64 0,
-  .localGet 44,
-  .localGet 41,
+  .localGet 46,
+  .localGet 43,
   .constI64 5,
   .mulI64,
   .constI64 5,
@@ -536,19 +529,13 @@ def residualStoreProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 50,
+  .localGet 52,
   .store64 0
 ]
 
 def residualResultProg : Wasm.Program :=
-  [
-  .localGet 44,
-  .localSet 34,
-  .localGet 34,
-  .localSet 38,
-  .localGet 29,
-  .localSet 39
-]
+  [.localGet 46, .localSet 38, .localGet 38, .localSet 39,
+    .localGet 28, .localSet 40, .localGet 29, .localSet 41]
 
 def residualFinishProg : Wasm.Program :=
   residualStoreProg ++ residualResultProg

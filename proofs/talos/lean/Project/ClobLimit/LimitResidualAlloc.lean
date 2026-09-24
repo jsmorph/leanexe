@@ -1,95 +1,32 @@
-import Project.ClobLimit.LimitResidualBump
-
-/-!
-# Complete residual `limit` allocation
-
-The allocation finish increments global 2, stores the appended length, and
-initializes the copy counter.  This module composes that suffix with capacity
-preparation, the empty free-list search, and the bump fallback.  Its output
-frame exposes the source, target, and counter facts consumed by the copy loop.
--/
+import Project.ClobLimit.LimitResidualAllocFrame
+import Project.ClobLimit.LimitResidualAllocation
 
 namespace Project.ClobLimit.LimitResidualAlloc
 
-open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
-  Project.ClobMatchFuel.Allocation
-
-structure BumpLocalsAt (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 : UInt64) : Prop where
-  orderLocals : LimitResidualPrepare.OrderLocalsAt base order ctx data
-  result : base.locals[52]? = some (.i64 (g0 + 48))
+open Wasm Project.Common Project.Clob Project.ClobLimit Project.Runtime
+  Project.ClobLimit.MatchInvariant Project.ClobMatchFuel.Allocation
+  Project.ProofKit
 
 structure CopyLocalsAt (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 : UInt64) : Prop where
+    (data : MatchOutput.OutputData) (target : UInt64) : Prop where
   orderLocals : LimitResidualPrepare.OrderLocalsAt base order ctx data
-  target : base.locals[38]? = some (.i64 (g0 + 48))
-  counter : base.locals[39]? = some (.i64 0)
+  target : base.locals[40]? = some (.i64 target)
+  counter : base.locals[41]? = some (.i64 0)
 
-def copyFrame (base : Locals) (g0 : UInt64) : Locals :=
+def copyFrame (base : Locals) (target : UInt64) : Locals :=
   { base with
-    locals := (base.locals.set 38 (.i64 (g0 + 48))).set 39 (.i64 0)
+    locals := (base.locals.set 40 (.i64 target)).set 41 (.i64 0)
     values := [] }
-
-def allocGlobals (st : Store Unit) (g0 g2 need : UInt64) : List Value :=
-  (fixedArrayAllocBumpStore st g0 need 5).globals.globals.set 2
-    (.i64 (g2 + 1))
-
-def allocMem (st : Store Unit) (g0 need length : UInt64) : Mem :=
-  (fixedArrayAllocBumpStore st g0 need 5).mem.write64
-    (g0 + 48).toUInt32 length
-
-def allocStore (st : Store Unit) (g0 g2 need length : UInt64) : Store Unit :=
-  { fixedArrayAllocBumpStore st g0 need 5 with
-    globals := { globals := allocGlobals st g0 g2 need }
-    mem := allocMem st g0 need length }
-
-set_option maxRecDepth 1048576
-
-theorem bumpFrame_bumpLocals
-    (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 : UInt64)
-    (hAlloc : LimitResidualAllocPrepare.AllocLocalsAt base order ctx data) :
-    BumpLocalsAt
-      (LimitResidualBump.bumpFrame base g0
-        (orderArrayBytesU (ctx.result.book.length + 1)))
-      order ctx data g0 := by
-  rcases hAlloc.orderLocals with ⟨hFields, hLength, hTotal, hAppendLength⟩
-  rcases hFields with
-    ⟨hParams, hLocals, hValues, hBookResult, hTradesResult, hStatus,
-      hSource, hOid, hTrader, hSide, hPrice, hRemaining⟩
-  constructor
-  · constructor
-    · refine {
-        params := by simpa [LimitResidualBump.bumpFrame] using hParams
-        locals := by simpa [LimitResidualBump.bumpFrame] using hLocals
-        values := by simp [LimitResidualBump.bumpFrame]
-        bookResult := by
-          simpa [LimitResidualBump.bumpFrame] using hBookResult
-        tradesResult := by
-          simpa [LimitResidualBump.bumpFrame] using hTradesResult
-        status := by simpa [LimitResidualBump.bumpFrame] using hStatus
-        source := by simpa [LimitResidualBump.bumpFrame] using hSource
-        oid := by simpa [LimitResidualBump.bumpFrame] using hOid
-        trader := by simpa [LimitResidualBump.bumpFrame] using hTrader
-        side := by simpa [LimitResidualBump.bumpFrame] using hSide
-        price := by simpa [LimitResidualBump.bumpFrame] using hPrice
-        remaining := by
-          simpa [LimitResidualBump.bumpFrame] using hRemaining }
-    · simpa [LimitResidualBump.bumpFrame] using hLength
-    · simpa [LimitResidualBump.bumpFrame] using hTotal
-    · simpa [LimitResidualBump.bumpFrame] using hAppendLength
-  · simp [LimitResidualBump.bumpFrame, hLocals]
 
 theorem copyFrame_copyLocals
     (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 : UInt64)
-    (hBump : BumpLocalsAt base order ctx data g0) :
-    CopyLocalsAt (copyFrame base g0) order ctx data g0 := by
-  rcases hBump.orderLocals with ⟨hFields, hLength, hTotal, hAppendLength⟩
+    (data : MatchOutput.OutputData) (target : UInt64)
+    (hOrder : LimitResidualPrepare.OrderLocalsAt base order ctx data) :
+    CopyLocalsAt (copyFrame base target) order ctx data target := by
+  rcases hOrder with ⟨hFields, hLength, hTotal, hAppendLength⟩
   rcases hFields with
     ⟨hParams, hLocals, hValues, hBookResult, hTradesResult, hStatus,
-      hSource, hOid, hTrader, hSide, hPrice, hRemaining⟩
+      hSource, hOid, hTrader, hSide, hPrice, hRemaining, hScratch⟩
   constructor
   · constructor
     · refine {
@@ -104,120 +41,80 @@ theorem copyFrame_copyLocals
         trader := by simpa [copyFrame] using hTrader
         side := by simpa [copyFrame] using hSide
         price := by simpa [copyFrame] using hPrice
-        remaining := by simpa [copyFrame] using hRemaining }
+        remaining := by simpa [copyFrame] using hRemaining
+        scratch := by simpa [copyFrame] using hScratch }
     · simpa [copyFrame] using hLength
     · simpa [copyFrame] using hTotal
     · simpa [copyFrame] using hAppendLength
   · simp [copyFrame, hLocals]
   · simp [copyFrame, hLocals]
 
-set_option Elab.async false in
-theorem residualAllocFinishProg_spec
-    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 g2 : UInt64)
-    (hBump : BumpLocalsAt base order ctx data g0)
-    (hRoot : (g0 + 48).toNat = g0.toNat + 48)
-    (hFit32 : g0.toNat + 56 < 4294967296)
-    (hFit : g0.toNat + 56 ≤ st.mem.pages * 65536)
-    (hg2 : st.globals.globals[2]? = some (.i64 g2))
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ final, CopyLocalsAt final order ctx data g0 →
-      wp «module» rest Q
-        (allocStore st g0 g2
-          (orderArrayBytesU (ctx.result.book.length + 1))
-          (UInt64.ofNat (ctx.result.book.length + 1))) final env) :
-    wp «module» (LimitEntry.residualAllocFinishProg ++ rest) Q
-      (fixedArrayAllocBumpStore st g0
-        (orderArrayBytesU (ctx.result.book.length + 1)) 5) base env := by
-  let need := orderArrayBytesU (ctx.result.book.length + 1)
-  let st1 := fixedArrayAllocBumpStore st g0 need 5
-  have hParams := hBump.orderLocals.fields.params
-  have hLocals := hBump.orderLocals.fields.locals
-  have hValues := hBump.orderLocals.fields.values
-  have hLength : base.locals[37] =
-      .i64 (UInt64.ofNat (ctx.result.book.length + 1)) := getElem_of_some hBump.orderLocals.appendLength
-  have hResult : base.locals[52] = .i64 (g0 + 48) := getElem_of_some hBump.result
-  have hg2' : st1.globals.globals[2]? = some (.i64 g2) := by
-    exact fixedArrayAllocBumpStore_global_of_ne_zero st g0 need 5 2
-      (.i64 g2) (by decide) hg2
-  dsimp only [st1, need] at hg2'
-  have hRootBound : (g0.toNat + 48) % 4294967296 + 8 ≤
-      (fixedArrayAllocBumpStore st g0
-        (orderArrayBytesU (ctx.result.book.length + 1)) 5).mem.pages *
-        65536 := by
-    rw [Nat.mod_eq_of_lt (by omega),
-      fixedArrayAllocBumpStore_pages]
-    omega
-  simp only [LimitEntry.residualAllocFinishProg, List.cons_append,
-    List.nil_append]
-  simp (config := { maxSteps := 10000000 })
-    [wp_simp, hParams, hLocals, hValues, hLength, hResult]
-  simp only [hg2']
-  rw [if_neg (Nat.not_lt.mpr hRootBound)]
-  have hContinue := hNext (copyFrame base g0)
-    (copyFrame_copyLocals base order ctx data g0 hBump)
-  simpa [allocStore, allocGlobals, allocMem, copyFrame,
-    toUInt32_eq_ofNat, hRoot, UInt64.ofNat_add] using hContinue
+def finishProg : Wasm.Program :=
+  [.localGet 60, .localSet 46, .localGet 46, .wrapI64,
+    .localGet 45, .store64 0, .constI64 0, .localSet 47]
 
-set_option Elab.async false in
+set_option maxRecDepth 1048576 in
+theorem program_eq : LimitEntry.residualAllocProg =
+    FixedArrayAllocate.preparedProgram 55 5 ++ finishProg := by
+  rfl
+
+set_option maxRecDepth 1048576
+
+theorem finish_spec (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (order : OrderL) (ctx : Context) (data : MatchOutput.OutputData)
+    (hOrder : LimitResidualPrepare.OrderLocalsAt base order ctx data)
+    (hRoot : base.locals[54]? = some (.i64 (LimitResidualAllocation.root ctx data)))
+    (hFit : (LimitResidualAllocation.root ctx data).toUInt32.toNat + 8 ≤
+      (LimitResidualAllocation.allocated st ctx data).mem.pages * 65536)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : ∀ final, CopyLocalsAt final order ctx data (LimitResidualAllocation.root ctx data) →
+      wp «module» rest Q (LimitResidualAllocation.store st ctx data) final env) :
+    wp «module» (finishProg ++ rest) Q (LimitResidualAllocation.allocated st ctx data) base env := by
+  have hParams := hOrder.fields.params
+  have hLocals := hOrder.fields.locals
+  have hValues := hOrder.fields.values
+  have hLength := getElem_of_some hOrder.appendLength
+  have hResult := getElem_of_some hRoot
+  simp only [finishProg, List.cons_append, List.nil_append]
+  simp [wp_simp, hParams, hLocals, hValues, hLength, hResult]
+  have hBound : (LimitResidualAllocation.root ctx data).toNat % 4294967296 + 8 ≤
+      (LimitResidualAllocation.allocated st ctx data).mem.pages * 65536 := by
+    simpa [toUInt32_toNat] using hFit
+  rw [if_neg (Nat.not_lt.mpr hBound)]
+  simpa [LimitResidualAllocation.store, copyFrame, toUInt32_eq_ofNat, UInt64.ofNat_add] using
+    hNext (copyFrame base (LimitResidualAllocation.root ctx data))
+      (copyFrame_copyLocals base order ctx data _ hOrder)
+
 theorem residualAllocProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (order : OrderL) (ctx : Context) (data : MatchOutput.OutputData)
     (hAlloc : LimitResidualAllocPrepare.AllocLocalsAt base order ctx data)
-    (hLength : ctx.result.book.length + 1 < UInt64.size)
-    (hBytes : orderArrayBytes (ctx.result.book.length + 1) + 7 <
-      UInt64.size)
-    (hTop : (data.g0 + 48 + orderArrayBytesU
-      (ctx.result.book.length + 1)).toNat =
-        data.g0.toNat + 48 +
-          (orderArrayBytesU (ctx.result.book.length + 1)).toNat)
-    (hFit32 : data.g0.toNat + 48 +
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat < 4294967296)
-    (hFit : data.g0.toNat + 48 +
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat ≤
-        st.mem.pages * 65536)
-    (hOutput : InternalLoopResult.OutputAt ctx st data)
+    (hOutput : MatchOutput.OutputAt ctx st data)
+    (hBump : takeFirstFitFrom 0 (LimitResidualAllocation.need ctx) data.nodes = none →
+      data.g0.toNat + 48 + (LimitResidualAllocation.need ctx).toNat ≤ 4294967296 ∧
+      FixedArrayBump.requiredPages data.g0 (LimitResidualAllocation.need ctx) ≤
+        st.memoryCap «module» 0)
+    (hFit : (LimitResidualAllocation.root ctx data).toUInt32.toNat + 8 ≤
+      (LimitResidualAllocation.allocated st ctx data).mem.pages * 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ final, CopyLocalsAt final order ctx data data.g0 →
-      wp «module» rest Q
-        (allocStore st data.g0 ctx.expectedG2
-          (orderArrayBytesU (ctx.result.book.length + 1))
-          (UInt64.ofNat (ctx.result.book.length + 1))) final env) :
+    (hNext : ∀ final, CopyLocalsAt final order ctx data (LimitResidualAllocation.root ctx data) →
+      wp «module» rest Q (LimitResidualAllocation.store st ctx data) final env) :
     wp «module» (LimitEntry.residualAllocProg ++ rest) Q st base env := by
-  have hNeedNat :
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat =
-        orderArrayBytes (ctx.result.book.length + 1) :=
-    fixedArrayBytesU_toNat (ctx.result.book.length + 1) 5 hLength
-      (by decide) (by
-        change fixedArrayBytes (ctx.result.book.length + 1) 5 + 7 <
-          UInt64.size at hBytes
-        omega)
-  have hNeed8 : 8 ≤
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat := by
-    rw [hNeedNat]
-    unfold orderArrayBytes fixedArrayBytes
-    omega
-  have hRoot : (data.g0 + 48).toNat = data.g0.toNat + 48 :=
-    fixedArrayBumpRoot_toNat data.g0 (by
-      have hSize : UInt64.size = 18446744073709551616 := rfl
-      rw [hSize]
-      omega)
-  have hFinish := residualAllocFinishProg_spec env st
-    (LimitResidualBump.bumpFrame base data.g0
-      (orderArrayBytesU (ctx.result.book.length + 1)))
-    order ctx data data.g0 ctx.expectedG2
-    (bumpFrame_bumpLocals base order ctx data data.g0 hAlloc) hRoot
-    (by omega) (by omega) hOutput.global2 Q rest hNext
-  have hBump := LimitResidualBump.residualAllocBumpProg_spec env st base
-    order ctx data data.g0 hAlloc hNeed8 hTop hFit32 hFit hOutput.pageLimit
-    hOutput.global0 Q (LimitEntry.residualAllocFinishProg ++ rest) hFinish
-  have hSearch := LimitResidualBump.residualAllocSearchProg_empty env st base
-    order ctx data hAlloc Q
-    (LimitEntry.residualAllocBumpProg ++
-      LimitEntry.residualAllocFinishProg ++ rest) hBump
-  unfold LimitEntry.residualAllocProg
-  simpa only [List.append_assoc] using hSearch
+  obtain ⟨capacity, next, hFrame⟩ := LimitResidualAllocFrame.prepared base order ctx data hAlloc
+  have hParams := hAlloc.orderLocals.fields.params
+  have hLocals := hAlloc.orderLocals.fields.locals
+  have hSaved : (base.locals.take 49).length = 49 := by simp [hLocals]
+  rw [program_eq, List.append_assoc]
+  rw [hFrame]
+  apply FixedArrayAllocate.preparedProgram_spec «module» env st base.params
+    (base.locals.take 49) [] 55 (by omega) data.g0 (LimitResidualAllocation.need ctx) 5
+    capacity next ctx.expectedG2 data.nodes hOutput.global0 hOutput.global1 hOutput.global2
+    hOutput.freeList hBump hOutput.pageLimit rfl
+  intro previous current capacity next
+  apply finish_spec env st _ order ctx data
+  · exact LimitResidualAllocFrame.orderLocals base order ctx data hAlloc.orderLocals _ _ _ _ _ _
+  · simp [FixedArraySearch.frame, hSaved, LimitResidualAllocation.root]
+  · exact hFit
+  · exact hNext
 
 end Project.ClobLimit.LimitResidualAlloc

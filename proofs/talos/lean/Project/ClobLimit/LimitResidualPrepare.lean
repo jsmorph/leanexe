@@ -13,37 +13,40 @@ arithmetic begins in the next phase.
 namespace Project.ClobLimit.LimitResidualPrepare
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
 
 structure FieldsLocalsAt (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) : Prop where
+    (data : MatchOutput.OutputData) : Prop where
   params : base.params.length = 6
-  locals : base.locals.length = 53
+  locals : base.locals.length = 55
   values : base.values = []
   bookResult : base.locals[21]? = some (.i64 data.book)
   tradesResult : base.locals[23]? = some (.i64 data.trades)
   status : base.locals[31]? = some (.i64 0)
-  source : base.locals[34]? = some (.i64 data.book)
-  oid : base.locals[40]? = some (.i64 order.oid)
-  trader : base.locals[41]? = some (.i64 order.otrader)
-  side : base.locals[42]? = some (.i64 order.oside)
-  price : base.locals[43]? = some (.i64 order.oprice)
-  remaining : base.locals[44]? = some (.i64 ctx.result.remaining)
+  source : base.locals[36]? = some (.i64 data.book)
+  oid : base.locals[42]? = some (.i64 order.oid)
+  trader : base.locals[43]? = some (.i64 order.otrader)
+  side : base.locals[44]? = some (.i64 order.oside)
+  price : base.locals[45]? = some (.i64 order.oprice)
+  remaining : base.locals[46]? = some (.i64 ctx.result.remaining)
+  scratch : ∃ capacity next : UInt64,
+    base.locals[52]? = some (.i64 capacity) ∧
+    base.locals[53]? = some (.i64 next)
 
 structure OrderLocalsAt (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) : Prop where
+    (data : MatchOutput.OutputData) : Prop where
   fields : FieldsLocalsAt base order ctx data
-  length : base.locals[35]? =
+  length : base.locals[37]? =
     some (.i64 (UInt64.ofNat ctx.result.book.length))
-  total : base.locals[36]? =
+  total : base.locals[38]? =
     some (.i64 (UInt64.ofNat ctx.result.book.length * 5))
-  appendLength : base.locals[37]? =
+  appendLength : base.locals[39]? =
     some (.i64 (UInt64.ofNat (ctx.result.book.length + 1)))
 
 def lengthFrame (base : Locals) (n : Nat) : Locals :=
   { base with
-    locals := ((base.locals.set 35 (.i64 (UInt64.ofNat n))).set 36
-      (.i64 (UInt64.ofNat n * 5))).set 37
+    locals := ((base.locals.set 37 (.i64 (UInt64.ofNat n))).set 38
+      (.i64 (UInt64.ofNat n * 5))).set 39
       (.i64 (UInt64.ofNat (n + 1)))
     values := [] }
 
@@ -53,7 +56,7 @@ set_option Elab.async false in
 theorem residualOrderFieldsProg_spec
     (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final, FieldsLocalsAt final order ctx data →
       wp «module» rest Q st final env) :
@@ -69,12 +72,12 @@ theorem residualOrderFieldsProg_spec
 
 theorem lengthFrame_orderLocals
     (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (hFields : FieldsLocalsAt base order ctx data) :
     OrderLocalsAt (lengthFrame base ctx.result.book.length) order ctx data := by
   rcases hFields with
     ⟨hParams, hLocals, hValues, hBookResult, hTradesResult, hStatus,
-      hSource, hOid, hTrader, hSide, hPrice, hRemaining⟩
+      hSource, hOid, hTrader, hSide, hPrice, hRemaining, hScratch⟩
   constructor
   · refine {
       params := by simpa [lengthFrame] using hParams
@@ -97,7 +100,8 @@ theorem lengthFrame_orderLocals
       price := by
         simpa [lengthFrame] using hPrice
       remaining := by
-        simpa [lengthFrame] using hRemaining }
+        simpa [lengthFrame] using hRemaining
+      scratch := by simpa [lengthFrame] using hScratch }
   · simp [lengthFrame, hLocals]
   · simp [lengthFrame, hLocals]
   · simp [lengthFrame, hLocals]
@@ -106,9 +110,9 @@ set_option Elab.async false in
 theorem residualLengthProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (hFields : FieldsLocalsAt base order ctx data)
-    (hOutput : InternalLoopResult.OutputAt ctx st data)
+    (hOutput : MatchOutput.OutputAt ctx st data)
     (hLength : ctx.result.book.length + 1 < UInt64.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final, OrderLocalsAt final order ctx data →
@@ -125,7 +129,7 @@ theorem residualLengthProg_spec
   have hParams := hFields.params
   have hLocals := hFields.locals
   have hValues := hFields.values
-  have hSource : base.locals[34] = .i64 data.book := getElem_of_some hFields.source
+  have hSource : base.locals[36] = .i64 data.book := getElem_of_some hFields.source
   have hLengthRead := hOutput.bookOwned.2.1.1
   have hLengthBound := hOutput.bookOwned.2.1.2
   simp only [LimitEntry.residualLengthProg, List.cons_append,
@@ -141,8 +145,8 @@ set_option Elab.async false in
 theorem residualOrderPrepareProg_spec
     (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
-    (hOutput : InternalLoopResult.OutputAt ctx st data)
+    (data : MatchOutput.OutputData)
+    (hOutput : MatchOutput.OutputAt ctx st data)
     (hLength : ctx.result.book.length + 1 < UInt64.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final, OrderLocalsAt final order ctx data →

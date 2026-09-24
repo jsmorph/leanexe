@@ -285,8 +285,8 @@
       },
       {
         "path": "tools/artifact-manifest.js",
-        "byteLength": 10390,
-        "sha256": "eb45f6b633fae795caec46e64e0406bb6902a2927b7da9ad8f79de7353e60cb8"
+        "byteLength": 11031,
+        "sha256": "10935c3634cbe0ca6fd1ab6e7023a7b80e11ef4e32b20444faf0928698f5a2c6"
       },
       {
         "path": "tools/euler-rusanov-c-compare.js",
@@ -309,9 +309,9 @@
         "sha256": "8e49c5b75d582f13104bd895edacbe87f41919806186f3df43bc2588b87e83b6"
       }
     ],
-    "sha256": "7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895"
+    "sha256": "a380d2fa0d80a12a11cbe5345005593bc3aac6417bbf672fade426e7350d3349"
   },
-  "generatorRevision": "sha256:7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895",
+  "generatorRevision": "sha256:a380d2fa0d80a12a11cbe5345005593bc3aac6417bbf672fade426e7350d3349",
   "csvFile": "c-comparison-v1.csv",
   "csvByteLength": 4119,
   "csvSha256": "21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e",
