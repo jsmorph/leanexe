@@ -46,6 +46,7 @@ These environment variables configure local executables and the Wasmtime downloa
 
 | Variable | Meaning |
 |----------|---------|
+| `CC` | C compiler for the Euler regression comparison; defaults to `cc`. ARM macOS can use `gcc-15` to meet its advertised IEEE arithmetic checks. |
 | `WASMTIME` | Wasmtime CLI used by tests and comparison tools. |
 | `WASMTIME_C_API` | Directory containing `include/wasmtime.h` and `lib/libwasmtime.so`. |
 | `WASMTIME_VERSION` | Wasmtime release version downloaded by the setup script.  The default is 44.0.0. |
