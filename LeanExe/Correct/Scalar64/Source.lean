@@ -74,6 +74,16 @@ theorem Runs.cmp (leftRun : Runs program left env (.word .w64 a))
   exact prepend ((leftRun.withKont [.wordCmpLeft .w64 op right env]).trans
     (prepend ((rightRun.withKont [.wordCmpRight .w64 op (.word .w64 a)]).trans finish) rfl)) rfl
 
+theorem Runs.call2 (found : lookup program function = some body)
+    (leftRun : Runs program left env a) (rightRun : Runs program right env b)
+    (bodyRun : Runs program body [a, b] result) :
+    Runs program (.call function [left, right]) env result := by
+  have finish : Steps program (.ret b [.callArgs function [a] [] env])
+      (.ret result []) :=
+    prepend bodyRun (by simp [Step, step, enterCall, found])
+  exact prepend ((leftRun.withKont [.callArgs function [] [right] env]).trans
+    (prepend ((rightRun.withKont [.callArgs function [a] [] env]).trans finish) rfl)) rfl
+
 theorem encodeWord_typed (value : UInt64) : ValueTyped [] (encodeWord value) (.word .w64) :=
   .word value.toNat_lt
 
