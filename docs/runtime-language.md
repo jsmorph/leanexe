@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 663 semantic examples and audits all 357 declared
-theorems across the sixteen development modules, including helper proofs. It
+The maintained gate checks 680 semantic examples and audits all 365 declared
+theorems across the seventeen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -522,3 +522,24 @@ and `parametersUsed` equality only for an explicitly preserved prefix. This does
 not make newly inserted parameters used. `ProfileTyped.rename` and `.weaken`
 combine relevance invariance with raw typing transport. Runtime correspondence
 remains separate.
+
+
+### Exact environment support and pending execution correspondence
+
+`EnvCorresponds mapping source target` compares every lookup, including absence:
+`lookup target (mapping index) = lookup source index`. Its identity, empty,
+composition, one-binding lift, common-prefix lift, and insertion laws are proved.
+`renameBranches_lookup` preserves missing branches and the selected branch's
+explicit arity while renaming its body beneath that arity.
+
+This relation does not assume injectivity. Merging equal source values can satisfy
+it; merging different values or mapping an absent source index to an available
+target index cannot. Raw runtime values do not determine unique type contexts,
+so environment correspondence and `RenamingTyped` remain separate relations.
+
+The next proof relates captured frames and continuations, keeping the same stored
+values and metadata. Calls must enter the unchanged program body with equal fresh
+arguments under the identity map. The intended theorem matches actual step
+outputs, including missing steps, and transfers finite traces in both directions.
+Equal returned values, exact overflow records, and stuck reachability are the
+intended finite observations. These execution claims are not yet checked.

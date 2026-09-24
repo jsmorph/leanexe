@@ -14,6 +14,7 @@ import LeanExe.TypeSafety.Typing
 import LeanExe.TypeSafety.BoolDerived
 import LeanExe.TypeSafety.Renaming
 import LeanExe.TypeSafety.RenamingProfile
+import LeanExe.TypeSafety.RenamingEnvironments
 
 /-!
 An independently specified and proved type-safety core. The theorem

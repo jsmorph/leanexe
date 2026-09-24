@@ -542,3 +542,27 @@ from protected local uses, retain rejected unused fields/projections, and show
 that inserted unused parameters remain unused. Next is raw operational
 correspondence under exact environment lookup agreement; static/profile laws
 alone are not an execution-equivalence theorem.
+
+2026-09-24: Automated workspace maintenance again removed the local checkout
+and toolchain. The parent restored the published branch at 6f12ef1 and verified
+the pinned toolchain archive's exact SHA-256 before extraction. No uncommitted
+environment-support source had been written before this interruption, so no new
+proof draft was lost. The user asked how far the track had progressed; the
+response distinguished checked calculus metatheorems from substantial remaining
+language families and did not infer completion percentage from audit counts.
+Work resumed with exact environment correspondence and branch lookup support.
+
+
+Completed environment and branch lookup support. EnvCorresponds checks all
+indices, including absence; it is separate from RenamingTyped and permits
+noninjective maps only when the exact raw lookups agree. Identity, empty,
+composition, lifted prefix, and insertion laws are proved. Branch lookup returns
+the exact mapped branch option, retaining missing entries and explicit arity.
+All eight new proofs have no axiom dependencies. The first focused check passed.
+
+The restored full gate passed nineteen build jobs, all 680 examples, and all 365
+audits. The 17 new examples passed on their first run. They exercise equal-value
+merging versus invalid merging, missing lookup protection, prefix insertion,
+branch absence/arity, and raw sum values that inhabit different source types.
+This is support for the upcoming raw step/finite-observation correspondence
+proof; no execution-equivalence result is claimed at this checkpoint.
