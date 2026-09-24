@@ -161,6 +161,31 @@ def carried : LeanExe.ByteIO UInt32 := do
   let status ← carryReads
   pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
 
+def nestedCopy (steps : Nat) : LeanExe.ByteIO UInt32 := do
+  match ← read 1 50000000 with
+  | .error code => pure code
+  | .ok initial =>
+      for _ in [:2] do
+        let mut previous := initial
+        for _ in [:steps] do
+          match ← read 1 50000000 with
+          | .error code => return code
+          | .ok bytes =>
+              let status ← helper previous
+              if status != 0 then return status
+              previous := bytes
+        let status ← helper previous
+        if status != 0 then return status
+      helper initial
+
+def nestedReleased : LeanExe.ByteIO UInt32 := do
+  let status ← nestedCopy 2
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
+def nestedSkipped : LeanExe.ByteIO UInt32 := do
+  let status ← nestedCopy 0
+  pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
+
 def writeLiteral : LeanExe.ByteIO UInt32 :=
   write "ABC".toUTF8 1000000000
 

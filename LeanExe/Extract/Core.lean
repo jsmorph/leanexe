@@ -17,36 +17,62 @@ structure ExtractedForInStepBody where
   bodyDone : IRExpr
   nextLocal : Nat
 
+/-- A nested fold can return either a fresh replacement or a borrowed initial
+owner. Its final replacement still needs cleanup at the enclosing step boundary. -/
+def forInFoldTemporaryBorrowedSlots? : IRExpr → Option (List Nat)
+  | .arrayFoldMultiSlot _ _ _ _ _ _ initial _ _ _ _ _ releases offset
+  | .byteArrayFoldMultiSlot _ _ _ _ _ initial _ _ _ _ _ releases offset
+  | .rangeFoldMultiSlot _ _ _ _ initial _ _ _ _ _ releases offset
+  | .loopFoldMultiSlot _ initial _ _ _ _ releases offset =>
+      if releases.contains offset then
+        some ((releases.filterMap fun slot => initial[slot]?).flatMap
+          exprBorrowedOwnerSourceSlots)
+      else none
+  | _ => none
+
+def forInLocalFoldTemporaries : LeanExe.IR.LocalLet → List (Nat × List Nat)
+  | .expr slot expr =>
+      match forInFoldTemporaryBorrowedSlots? expr with
+      | some borrowed => [(slot, borrowed)]
+      | none => []
+  | .slots slots values => (slots.zip values).filterMap fun (slot, value) =>
+      (forInFoldTemporaryBorrowedSlots? value).map (slot, ·)
+  | _ => []
+
 partial def forInStepOwnedTemporaries (ctx : Context) (owned : List Nat)
-    (lets : List LeanExe.IR.LocalLet) : List Nat :=
+    (lets : List LeanExe.IR.LocalLet) : List (Nat × List Nat) :=
   match lets with
   | [] => []
   | localLet :: rest =>
       let created := match localLet with
         | .branch _ thenLets elseLets =>
-            addLiveSlots (forInStepOwnedTemporaries ctx owned thenLets)
-              (forInStepOwnedTemporaries ctx owned elseLets)
-        | _ => localLetCreatedNonrecursiveHeapSlots ctx owned localLet
+            forInStepOwnedTemporaries ctx owned thenLets ++
+              forInStepOwnedTemporaries ctx owned elseLets
+        | _ =>
+            let folds := forInLocalFoldTemporaries localLet
+            let ordinary := (localLetCreatedNonrecursiveHeapSlots ctx owned localLet).filter
+              fun slot => !folds.any (fun item => item.fst == slot)
+            ordinary.map (·, []) ++ folds
       let nextOwned := ownedHeapLocalsAfterLocalLet ctx.freshResultOwnerOffsets owned localLet
-      addLiveSlots created (forInStepOwnedTemporaries ctx nextOwned rest)
+      created ++ forInStepOwnedTemporaries ctx nextOwned rest
 
 def releaseForInStepTemporaries (ctx : Context) (ty : Ty)
     (step : ExtractedForInStepBody) : ExtractedForInStepBody :=
   let released := addLiveSlots (localLetsReleasedSlots step.bodyLets) (exprReleasedSlots step.bodyDone)
-  let owners := (forInStepOwnedTemporaries ctx [] step.bodyLets).filter fun slot =>
+  let owners := (forInStepOwnedTemporaries ctx [] step.bodyLets).filter fun (slot, _) =>
     !released.contains slot
   if owners.isEmpty then step else
     let protectedSlots := (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => step.bodyTargets[offset]?
     let doneSlot := step.nextLocal
     let releaseSlot := doneSlot + 1
-    let cleanup := owners.foldl (fun (prior, lets) slot =>
-      let cond := prior.foldl
+    let cleanup := owners.foldl (fun (prior, lets) (slot, borrowed) =>
+      let cond := (addLiveSlots prior borrowed).foldl
         (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
         (.not (.eqU64 (.local slot) (.u64 0)))
       (slot :: prior, lets ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
       (protectedSlots, [])
     { step with
-      bodyLets := owners.map (fun slot => .expr slot (.u64 0)) ++
+      bodyLets := owners.map (fun (slot, _) => .expr slot (.u64 0)) ++
         step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
       bodyDone := .local doneSlot
       nextLocal := releaseSlot + 1 }
