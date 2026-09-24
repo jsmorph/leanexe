@@ -324,7 +324,7 @@ def FunctionsValid (module_ : RawModule) : Prop :=
 
 def ModuleValid (module_ : RawModule) : Prop :=
   SectionsValid module_ ∧
-  (module_.memories = [] ∨ ∃ memory, module_.memories = [memory] ∧ LimitsValid memory.limits) ∧
+  (∃ memory, module_.memories = [memory] ∧ LimitsValid memory.limits) ∧
   GlobalsValid module_.globals ∧
   ExportsValid module_ ∧
   FunctionsValid module_

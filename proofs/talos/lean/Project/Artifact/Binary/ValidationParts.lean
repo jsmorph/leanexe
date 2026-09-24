@@ -19,15 +19,8 @@ theorem validateRaw_eq_of_parts {raw : RawModule} {functions : List FuncType}
     (types : Validator.resolveFunctionTypes raw = .ok functions)
     (bodies : Validator.validateFunctions raw functions = .ok ()) :
     Validator.validateRaw raw = .ok () := by
-  have memoryValid : Validator.validateMemories raw.memories = .ok () := by
-    cases hmem : raw.memories with
-    | nil => simp [hmem] at memory
-    | cons mem rest =>
-        cases rest with
-        | nil => simpa [Validator.validateMemories, hmem, List.head!] using limits
-        | cons next rest => simp [hmem] at memory
   simp [Validator.validateRaw, Bind.bind, Except.bind,
-    sections, memoryValid, globals, exports, types, bodies]
+    sections, memory, limits, globals, exports, types, bodies]
 
 #print axioms validateFunctionPairs_eq_cons
 #print axioms validateRaw_eq_of_parts

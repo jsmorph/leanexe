@@ -1,4 +1,4 @@
-import Interpreter.Wasm.Wp.Call
+import CodeLib.Entry
 
 namespace Wasm
 
