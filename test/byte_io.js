@@ -27,7 +27,7 @@ async function main() {
   const entries = ["echo", "ordered", "timeout", "handled", "reused", "unused",
     "invalid", "immediate", "blocked", "ignored", "emptyWrite", "maxTimeout", "called", "repeated",
     "discardRead", "ignoreReadError", "released", "streaming", "alternatingReads", "streamingTimeout",
-    "carried", "chosen", "literalReleased"];
+    "carried", "chosen", "literalReleased", "nestedReleased", "nestedSkipped"];
   const programs = Object.fromEntries(entries.map(name => [name, compile(name)]));
   let count = 0;
   async function expect(name, input, status, output, options) {
@@ -86,6 +86,16 @@ async function main() {
   await expect("carried", child => {
     child.stdout.destroy();
     child.stdin.end("Iabc");
+  }, 64, "");
+  await expect("nestedSkipped", "I", 0, "III");
+  await expect("nestedReleased", "", 0, "");
+  await expect("nestedReleased", child => child.stdin.write("I"), 73, "");
+  await expect("nestedReleased", "Iabcd", 0, "IabIcdI");
+  await expect("nestedReleased", "Iabc", 0, "IabIcI");
+  await expect("nestedReleased", child => child.stdin.write("Ia"), 73, "I");
+  await expect("nestedReleased", child => {
+    child.stdout.destroy();
+    child.stdin.end("Iabcd");
   }, 64, "");
   await expect("chosen", "", 0, "AC");
   await expect("chosen", "x", 0, "BC");

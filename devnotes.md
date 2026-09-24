@@ -1,5 +1,39 @@
 # Development Journal
 
+## 2026-09-24: Nested-loop byte-buffer cleanup
+
+The ownership audit followed effect-call retention in dead-value pruning,
+fresh read-result summaries, branch cleanup, and the emitter's initial/next
+accumulator protection.  It identified a missing nested-loop regression.  A
+new helper retained its initial input across two outer iterations, replacing
+an inner-loop buffer and writing the final buffer after each inner loop.
+The first run emitted the expected bytes but returned the allocation-balance
+failure status 99 (`io-nested-1.log`).
+
+The diagnostic IR (`nested-io.ir`) showed an inner result owner that could be
+either its borrowed initial buffer or a fresh read result.  The enclosing step
+only collected unconditionally owned temporaries and therefore never released
+the final fresh replacement.  Cleanup now collects nested fold result slots
+identified by their replacement-release offsets, carrying the initial owner
+sources as guards.  It protects these borrowed owners, the enclosing step's
+results, and earlier cleanup candidates.  Only owner offsets supply borrowed
+protection; scalar accumulator fields are excluded.
+
+The expanded suite passes 47 byte-I/O runs and four pure-mode rejections,
+including normal nested output, EOF, zero inner iterations, timeout before
+replacement, timeout after replacement, and broken output.  Every nested case
+checks allocation/free balance after the helper returns.  The 48 reference
+counting cases pass.  The full core suite passed 812 accepted, 48 rejected,
+and 14 expected traps before the final owner-offset-only guard refinement;
+the focused I/O and reference-counting suites passed again afterward.  Logs
+are `io-nested-2.log`, `io-nested-3.log`, `io-nested-final.log`,
+`refcount-nested.log`, `refcount-nested-final.log`, and `core-nested.log`.
+
+All 69 Talos cases regenerated with the annotation fix before this compiler
+repair.  They now need regeneration against the final ownership change and
+the complete source-driven behavior-proof check.  The proof refresh remains
+in progress; no full proof-gate claim is made at this checkpoint.
+
 ## 2026-09-24: Fold annotations follow current ownership emission
 
 `tools/talos-artifact.js prepare --all` refreshed the initial cases, then

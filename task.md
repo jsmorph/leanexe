@@ -102,6 +102,15 @@ The literal leak reproduced: `"ABC".toUTF8.size` returned `3` but allocated five
 
 Fresh checks passed: 7 native host cases; 40 byte-I/O runs and four pure-mode rejections; 48 reference-counting cases; 812 accepted, 48 rejected, and 14 expected-trap core cases; 70 byte-array allocation cases; 75 self-emitted LEB128 cases; and all 13 WAT/binary comparisons.  Session logs and the pre-fix failures are retained in the task workspace's `work` directory.  The initial pure-WASI adapter run failed because Wasmtime tried to create its default cache outside the sandbox; a wrapper now selects a workspace-local cache for reruns.
 
+The nested-loop review found a second leak: an inner loop's final fresh
+buffer was missed because its result could also alias the borrowed initial
+buffer.  Step cleanup now tracks that result with guards for initial owners
+and enclosing results.  New cases cover normal output, EOF, zero iterations,
+timeout before and after replacement, and broken output.  All 47 I/O cases,
+four pure-mode rejections, and 48 reference-counting cases pass.  The core
+suite also passed after the initial repair; final compiler proof validation
+continues below.
+
 ### Documentation and diagnostics
 
 The [user manual](docs/manual.md#byte-input-and-output), [overview](README.md), [compiler guide](docs/compiler.md), and [development instructions](DEVELOPING.md) now describe byte I/O, the nonblocking host, diagnostic scope, and current accumulator cleanup.  The CLI error suite passes 15 cases plus help output, including byte-I/O command shape, pure/IO/parameterized entry rejection, missing entry, and output-file failures.  All 28 ownership-report cases pass after updating three stale statement-release counts from two to three; the reports now include the guarded final loop-result owner release.  CLI and standard-comparison checks exclude only exact local-runner notices from compiler/program stderr, preserving unknown failures and other output.  Runtime reporting and WAT commands retain their existing pure-entry scope.
@@ -207,7 +216,7 @@ The proposed order below preserves the scope discussed in this session.  Impleme
 
 - [x] Establish the pinned local tools and authorized runner mode, then reproduce the focused I/O, host, ownership, and encoding results.
 - [x] Check both reported ownership defects: preserve passing array-alias regressions and repair the reproduced string-literal leak with failing-before/passing-after tests.
-- [ ] Review the shared ownership and effect rules across retained buffers, conditional replacements, nested loops, helper calls, ignored results, and early returns.  Add cases where the review identifies a specific coverage gap.
+- [x] Review shared ownership and effect rules across retained buffers, conditional replacements, nested loops, helper calls, ignored results, and early returns.  Repair the newly reproduced nested-loop final-buffer leak and pass 47 I/O cases, four pure rejections, and 48 reference-counting cases.
 - [x] Resolve the C comparison portability gate.  Every non-release execution suite and all 13 WAT/binary checks pass.
 - [ ] Complete existing Talos source-driven checks, diagnose inherited failures against the base, and review every changed generated program before updating its cache or proof.
 - [x] Reconcile the overview, manual, specification, compiler documentation, and development instructions.  Test the new CLI's required error behavior.
