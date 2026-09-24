@@ -1,6 +1,7 @@
 import Lean
 import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
+import LeanExe.Extract.Syntax
 import LeanExe.IR.Core
 
 open Lean
@@ -105,14 +106,6 @@ structure VariantLayout where
   ctors : List VariantCtorLayout
   deriving BEq, Repr
 
-partial def appFnArgsAux (expr : Expr) (args : List Expr) : Expr × List Expr :=
-  match expr.consumeMData with
-  | .app fn arg => appFnArgsAux fn (arg :: args)
-  | other => (other, args)
-
-def appFnArgs (expr : Expr) : Expr × List Expr :=
-  appFnArgsAux expr []
-
 def isConst (name : Name) (expr : Expr) : Bool :=
   expr.consumeMData.isConstOf name
 
@@ -120,13 +113,6 @@ def isBVar (index : Nat) (expr : Expr) : Bool :=
   match expr.consumeMData with
   | .bvar candidate => candidate == index
   | _ => false
-
-partial def collectLambdas (expr : Expr) : Nat → Option Expr
-  | 0 => some expr
-  | count + 1 =>
-      match expr.consumeMData with
-      | .lam _ _ body _ => collectLambdas body count
-      | _ => none
 
 def isIdType (expr : Expr) : Bool :=
   isConst ``Id expr
@@ -230,13 +216,6 @@ def scalarLiteralExpr? (expr : Expr) : Option (Except String IRExpr) :=
                   match ofNat? ``Nat expr with
                   | some value => some (boundedNatExpr value)
                   | none => none
-
-partial def peelForall (expr : Expr) : List Expr × Expr :=
-  match expr.consumeMData with
-  | .forallE _ domain body _ =>
-      let rest := peelForall body
-      (domain :: rest.fst, rest.snd)
-  | other => ([], other)
 
 def nonRuntimeEvidenceTypeNames : List Name :=
   [``Inhabited, ``Decidable, ``BEq, ``LT, ``LE, ``OfNat, ``HAdd, ``HSub, ``HMul, ``HDiv,
@@ -1108,11 +1087,7 @@ def isFunctionDomain (expr : Expr) : Bool :=
 def staticInlineArg (env : Environment) (domain arg : Expr) : Bool :=
   staticInlineDomain env domain || (isFunctionDomain domain && isDirectLambda arg)
 
-partial def rebuildApp (fn : Expr) : List Expr → Expr
-  | [] => fn
-  | arg :: rest => rebuildApp (.app fn arg) rest
-
-partial def betaReduceExpr (fuel : Nat) (expr : Expr) : Expr :=
+def betaReduceExpr (fuel : Nat) (expr : Expr) : Expr :=
   match fuel with
   | 0 => expr
   | fuel + 1 =>
