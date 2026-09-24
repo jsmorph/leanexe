@@ -335,3 +335,15 @@ returns their exact values. Proved the same roundtrip for every arithmetic
 opcode, literal, and bounded local read/write emitted by the actual instruction
 encoder. Parsing, LebParsing, and ArithmeticParsing all build. Structured
 conditionals, full functions/modules, and source-to-byte composition remain.
+
+### Arithmetic admission and sequence-parser lemmas; workspace recovery
+
+Proved that successful arithmetic extraction yields an arithmetic-only backend
+descriptor, and that evaluation bounds all local reads. Added the peek-and-bind,
+sequence terminator, sequence cons, and instruction-prefix lemmas. These files
+passed Lean before workspace maintenance removed the checkout, installed
+toolchain, and unpushed files. Restored the checkout from correct at a488bc3c
+and reconstructed these exact changes from the session. A fresh rebuild after
+recovery is pending while the pinned toolchain and dependencies are restored.
+The structured instruction roundtrip was still being repaired and is not
+counted as checked. The whole arithmetic milestone remains incomplete.

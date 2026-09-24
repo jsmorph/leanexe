@@ -52,4 +52,17 @@ theorem peek_byte (before after : List UInt8) (value : UInt8) (limit : Nat)
       .ok (value, cursor (before ++ value :: after) before.length limit) := by
   simp [Wasm.Binary.Parser.peekByte, cursor, available, List.getElem?_append_right]
 
+theorem peek_then {q : UInt8 → Parser α} {head : UInt8} {tail : List UInt8} {value : α}
+    (h : Parses (q head) (head :: tail) value) :
+    Parses (Wasm.Binary.Parser.peekByte >>= q) (head :: tail) value := by
+  intro before after limit enough within
+  have available : before.length < limit := by simp at enough; omega
+  have peek := peek_byte before (tail ++ after) head limit available
+  have result := h before after limit enough within
+  simp only [List.cons_append, List.append_assoc] at peek result ⊢
+  change Except.bind (Wasm.Binary.Parser.peekByte (cursor _ _ _))
+    (fun pair => q pair.1 pair.2) = _
+  rw [peek]
+  exact result
+
 end Project.Compiler.Parsing
