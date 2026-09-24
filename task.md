@@ -478,3 +478,12 @@ runtime definition; no runtime code or compiler output is replaced. The module
 builds, and RuntimeParsing therefore supplies instruction-expression decoding
 for these exact lists. Local declarations and body size prefixes, complete
 section assembly, module validation, and exported invocation remain to compose.
+
+### Complete runtime body containers (checked, length bounds explicit)
+
+RuntimeFunctionParsing composes the fixed runtime instruction proofs with actual
+local declarations and the production body size-prefix encoder. Each of the
+four body parsers is proved under its explicit U32 payload-length bound. The
+module builds. These fixed bounds are being discharged using general encoder
+length lemmas; complete section assembly, validation, and exported execution
+remain unfinished.
