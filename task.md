@@ -143,3 +143,23 @@ These theorems do NOT cover complete declarations, overloaded-source
 normalization, strict bindings, branches, helpers, loops, WASM lowering, or bytes.
 The full agreed subset and source-to-bytes theorem remain incomplete. Auditing
 current theorem dependencies in test/scalar_expr_axioms.lean.
+
+### Canonical elaborated scalar expressions (checked)
+
+Extended the same production traversal and general proofs to the canonical
+HAdd/HSub/HMul/HDiv/HMod/HAnd/HOr/HXor/HShiftLeft/HShiftRight applications emitted
+by Lean, including exact instance evidence, and canonical OfNat UInt64 literals.
+Custom instances are excluded from this proved traversal and continue through
+the existing evidence-normalizing path. A class recognizer soundness theorem
+connects accepted heads to the independent native-operation source relation.
+
+The 56 regression comparisons pass. They now also assert raw-source admission
+before any normalization: ordinary arithmetic, affine arithmetic with literals,
+bits, shifts, and a literal above 2^64 are accepted; custom instances and the
+still-unproved branch fragment are excluded. The extractor rebuild passes.
+
+Updated axiom audit: preservation/acceptance/combined extraction theorems now
+use propext, Quot.sound, and Classical.choice; recognizer soundness uses propext
+and Quot.sound. These are standard Lean axioms, with no sorryAx, fresh axioms,
+or native-decide shortcut. The independent TypeSafety policy is unchanged.
+Declaration application and source-to-bytes composition are still unproved.
