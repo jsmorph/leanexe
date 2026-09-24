@@ -6,10 +6,10 @@ namespace Project.Gpt2CachedStep.CachedHidden
 open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project.EulerRiemann.Execution LeanExe.Models.Gpt2
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerStep : (layerBody.drop 4).take 217 =
+theorem emitted_layerStep : (layerBody.drop 4).take 201 =
     (layerBody.drop 4).take 84 ++ (layerBody.drop 88).take 61 ++
-    (layerBody.drop 149).take 24 ++ (layerBody.drop 173).take 14 ++
-    (layerBody.drop 187).take 4 ++ (layerBody.drop 191).take 30 := rfl
+    (layerBody.drop 149).take 8 ++ (layerBody.drop 157).take 14 ++
+    (layerBody.drop 171).take 4 ++ (layerBody.drop 175).take 30 := rfl
 
 theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (before heap : Heap)
     (weightsOwner weightsPtr cacheOwner cachePtr embeddingPtr : UInt64) (inputNode oldUpdates : FreeNode)
@@ -49,7 +49,7 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
       regionsDisjoint (CachedBlock.hiddenNode heap position).region (updatesNode heap position layer).region →
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 217 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 4).take 201 ++ rest) Q initial frame env := by
   have hCacheBytes := CachedBlock.Spec.cachedBlock_cache_size weights input cache layer position
   have hNeed : PackedAppend.need updates (cachedBlock weights input cache layer position).cache = updatesNeed layer := by
     simp only [PackedAppend.need, updatesNeed, hCacheBytes, hUpdatesSize]

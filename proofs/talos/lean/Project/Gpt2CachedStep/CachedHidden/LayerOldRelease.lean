@@ -20,7 +20,7 @@ def oldReleaseCode : Wasm.Program :=
      .iff 0 0 [.localGet 25, .call 42] []] []]
 
 set_option maxRecDepth 32768 in
-theorem emitted_oldRelease : (layerBody.drop 187).take 4 = oldReleaseCode := rfl
+theorem emitted_oldRelease : (layerBody.drop 171).take 4 = oldReleaseCode := rfl
 
 theorem oldRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (input updates : FreeNode) (inputBytes updatesBytes : ByteArray) (layer : Nat) (frame : Locals)
@@ -35,7 +35,7 @@ theorem oldRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : (oldReleaseHeap heap input updates layer).At (oldReleaseStore heap initial input updates layer) →
       wp «module» rest Q (oldReleaseStore heap initial input updates layer) frame env) :
-    wp «module» ((layerBody.drop 187).take 4 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 171).take 4 ++ rest) Q initial frame env := by
   have hFrame : ({ frame with values := [] } : Locals) = frame := Frame.ext _ _ rfl rfl hValues.symm
   simp only [Locals.get] at hOld hInputRead hUpdatesRead
   rw [emitted_oldRelease]
