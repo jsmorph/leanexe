@@ -418,3 +418,10 @@ subject to the relevant U32 length bounds. It connects String.fromUTF8? to the
 original string and includes arbitrary byte prefixes, suffixes, and limits.
 The module builds. Complete sections, fixed runtime bodies, validation, and
 exported invocation still remain.
+
+### Export, memory, and global entries (checked)
+
+MetadataParsing proves exact production export-entry parsing, bounded function/
+memory/global indices, minimum memory limits, mutable i64 global types, and
+signed i64 global initializers. The module builds. These lemmas supply the
+metadata payloads for the forthcoming complete module decoder theorem.
