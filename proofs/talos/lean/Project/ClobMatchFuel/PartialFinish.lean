@@ -14,8 +14,8 @@ open Wasm Project.ClobMatchFuel
 
 def partialFinishProg : Wasm.Program :=
   [
-  .localSet 65,
-  .localGet 65,
+  .localSet 75,
+  .localGet 75,
   .localSet 22,
   .constI64 0,
   .localSet 23,
@@ -25,7 +25,7 @@ def partialFinishProg : Wasm.Program :=
 
 def partialFinishFrame (base : Locals) (newTrades : UInt64) : Locals :=
   { base with
-    locals := (((base.locals.set 56 (.i64 newTrades)).set 13
+    locals := (((base.locals.set 66 (.i64 newTrades)).set 13
       (.i64 newTrades)).set 14 (.i64 0)).set 15 (.i64 1)
     values := [] }
 
@@ -34,7 +34,7 @@ theorem partialFinishProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (newTrades : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [.i64 newTrades])
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : wp «module» rest Q st (partialFinishFrame base newTrades) env) :
