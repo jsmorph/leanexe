@@ -577,6 +577,11 @@ function checkCase(item) {
 }
 
 function checkAllProofs() {
+  for (const item of loadRegistry()) {
+    if (!item.complete) continue;
+    checkCase(item);
+    console.log(`Talos case passed: ${item.name}`);
+  }
   runLimited(
     "aggregate Talos proof build",
     "20m",
