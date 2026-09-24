@@ -302,3 +302,15 @@ certificate dependencies and canonical checking module, with no call to the
 encoder or package emitter. Final correctness and equality dependencies are
 audited against the three standard axioms. The remaining pilot CLI runs,
 mutations, and clean-checkout gate are pending.
+
+### 2026-09-24: acceptance gate and documentation checkpoint
+
+Added the repeatable check-correct driver, adversarial package mutations with
+recomputed hashes, clean-checkout verification, engine smoke cases, and a
+namespace-wide axiom audit. Added the scalar correctness guide and README entry.
+The affine portable package passes against published revision 44e9c7ab. The new
+full acceptance driver is being run next; this checkpoint does not yet claim that
+all mutations or the cold gate have passed.
+
+The new namespace audit passed: 494 scalar declarations use only the three
+standard axioms, and 2,181 independent TypeSafety declarations use propext alone.
