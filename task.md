@@ -123,3 +123,23 @@ Added test/scalar_class_evidence.lean: 48 source-versus-extracted-IR comparisons
 cover custom HAdd/HSub/HMul/OfNat, standard arithmetic, bit operations, shifts,
 and branching, including zero and overflow inputs. All passed via tools/leanrun.
 These are regression checks, not a substitute for the general compiler theorem.
+
+### Recursive primitive-expression extraction (checked)
+
+Added an independent source relation over actual Lean.Expr syntax. Its primitive
+constants are explicitly paired with their native Lean definitions, separately
+from the compiler's operator table. Added total extractScalarExpr and wired it
+into both production extractExprFrom and extractValueFrom for materialized
+scalar slots.
+
+Proved preservation for arbitrary expression trees and inputs; support implies
+compilation success; compilation success implies syntactic support; and a
+combined total-correctness theorem for this extraction fragment. No examples or
+per-function proof certificates occur in these proofs. Current fragment: direct
+UInt64 primitives, UInt64.ofNat literals, variables, and metadata. The actual
+extractor rebuild and the 48 class-evidence regression checks pass.
+
+These theorems do NOT cover complete declarations, overloaded-source
+normalization, strict bindings, branches, helpers, loops, WASM lowering, or bytes.
+The full agreed subset and source-to-bytes theorem remain incomplete. Auditing
+current theorem dependencies in test/scalar_expr_axioms.lean.
