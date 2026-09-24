@@ -212,3 +212,22 @@ Next connection is to the existing Talos ScalarTransition program theorem via
 an explicit interpretation of the production Instr syntax. That bridge is being
 implemented in Project.Compiler.ScalarLowering; it is not yet an established
 WebAssembly correctness result.
+
+### Emitted instruction correspondence and control annotations (checked)
+
+Added a total interpretation of the production structured instruction syntax
+into Talos instructions. Proved expression_program and condition_program for
+all existing scalar descriptors and scratch indices: the actual emitter's
+instruction list interprets to the existing ScalarTransition program. This
+includes division/remainder guards and short-circuit/conditional control.
+
+Separately proved that changing static block/loop/if type annotations while
+preserving arities and related bodies preserves Talos execution at every fuel,
+and consequently its total-correctness WP. The proof was split after an initial
+timeout; it now uses bounded interpreter unfolding and checks in seconds.
+
+Both proof modules build. The interpreter translation currently omits static
+type annotations to match ScalarTransition. Connecting it to the typed binary
+decoder requires the proved annotation relation; that connection is still open.
+Scratch-state correspondence, allocation bounds, module assembly, and byte
+roundtrips remain open. These results do not establish source-to-bytes correctness.
