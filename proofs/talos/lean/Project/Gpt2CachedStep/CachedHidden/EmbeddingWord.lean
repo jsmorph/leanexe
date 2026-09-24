@@ -41,7 +41,7 @@ theorem emitted_embedding : (func36.drop 42).take 1 =
     PackedGenerateLoop.program 9 103 104 embeddingWord := rfl
 
 def EmbeddingState (params : List Wasm.Value) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 119 ∧
+  frame.params = params ∧ frame.locals.length = 124 ∧
   frame.locals[0]? = some (.i64 3072) ∧ I64Values frame.locals
 
 theorem embeddingWord_spec (env : HostEnv Unit) (initial : Store Unit)

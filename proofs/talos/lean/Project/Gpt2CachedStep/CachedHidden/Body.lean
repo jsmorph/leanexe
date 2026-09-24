@@ -5,8 +5,8 @@ namespace Project.Gpt2CachedStep.CachedHidden
 open Wasm Project.Runtime Project.ProofKit PackedMemory Project.EulerRiemann.Execution LeanExe.Models.Gpt2
 
 set_option maxRecDepth 32768 in
-theorem emitted_body : func36 = func36.take 49 ++ (func36.drop 49).take 26 ++
-    (func36.drop 75).take 1 ++ (func36.drop 76).take 44 ++ (func36.drop 120).take 47 ++ func36.drop 167 := rfl
+theorem emitted_body : func36 = func36.take 49 ++ (func36.drop 49).take 28 ++
+    (func36.drop 77).take 1 ++ (func36.drop 78).take 44 ++ (func36.drop 122).take 47 ++ func36.drop 169 := rfl
 
 theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (weightsOwner weightsPtr cacheOwner cachePtr : UInt64) (weights cache : ByteArray)
@@ -25,7 +25,7 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hResources : Resources heap position cache.size (initial.memoryCap «module» 0))
     (hPages : initial.mem.pages ≤ 65536)
     (hParams : frame.params = parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
-    (hLocals : frame.locals.length = 119) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
+    (hLocals : frame.locals.length = 124) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
     (Q : Assertion Unit)
     (hNext : ∀ final result,
       result.values = [.i64 (UInt64.ofNat (cache.size + 73728)),

@@ -33,7 +33,7 @@ theorem logits_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       heap.PackedOutput initial final Vocabulary.outputNeed (vocabularyHead weights input) →
       wp «module» rest Q final result env) :
     wp «module» ((validBody.drop 94).take 34 ++ rest) Q initial frame env := by
-  rcases hState with ⟨⟨⟨hParams, hLocals, hValues, hTyped⟩, hHidden14, _, _, _, hCache23, hCache24, hCache25⟩,
+  rcases hState with ⟨⟨⟨hParams, hLocals, hValues, hTyped⟩, hHidden14, hHidden20, _, _, hCache23, hCache24, hCache25, hCache17, hEmpty6, hEmpty9⟩,
     hNorm36, hNorm39, hNorm40, hNorm41⟩
   have hCall := Vocabulary.Spec.vocabularyHead_exact env initial heap 0 normalizedPtr weightsPtr normalizedPtr weights input
     hHeap hWeights hInput hWeightsSize (by rw [hInputSize]) hWeightsProtected hInputProtected hResources hPages
@@ -49,7 +49,7 @@ theorem logits_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   apply hNext
   · simp (config := { maxDischargeDepth := 64 }) only [LogitsState, State, parameters, hLocals,
       List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
-      I64Values.set, hTyped, hHidden14, hNorm36, show UInt64.ofNat 201028 = 201028 from rfl, and_self]
+      I64Values.set, hTyped, hHidden14, hHidden20, hCache23, hCache17, hEmpty6, hEmpty9, hNorm36, show UInt64.ofNat 201028 = 201028 from rfl, and_self]
   · exact hOutput
 
 #print axioms logits_spec
