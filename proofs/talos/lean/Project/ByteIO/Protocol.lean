@@ -197,6 +197,91 @@ theorem retry_progress (s : WriteState) (now : Nat)
   simp [rank, observe, Nat.max_eq_right (Nat.le_of_lt hprogress)]
   omega
 
+/-- The only environmental liveness assumption is that a retry which
+continues observes a strictly later clock. Successful transfers already
+make progress by shortening the pending suffix. Errors terminate. -/
+def ProgressEvent (s : WriteState) : WriteEvent → Prop
+  | .retry (.ok now) => s.now < now
+  | _ => True
+
+theorem observe_rank_le (s : WriteState) (clock : Except UInt32 Nat) :
+    rank (observe s clock) ≤ rank s := by
+  cases clock <;> simp [rank, observe]
+  omega
+
+theorem writeStep_progress (s : WriteState) (event : WriteEvent)
+    (hs : s.result = none) (he : ProgressEvent s event)
+    (hc : (writeStep s event).result = none) :
+    rank (writeStep s event) < rank s := by
+  cases event with
+  | error errno => simp [writeStep, hs] at hc
+  | retry wait =>
+    cases wait with
+    | error errno => simp [writeStep, hs, observe] at hc
+    | ok now =>
+      simp only [writeStep, hs, Option.isSome_none, Bool.false_eq_true, ↓reduceIte] at hc ⊢
+      apply retry_progress s now he
+      have hb := observe_continues_before_deadline s (.ok now) hc
+      simp only [observe] at hb
+      omega
+  | transferred n clock =>
+    simp only [writeStep, hs, Option.isSome_none, Bool.false_eq_true, ↓reduceIte] at hc ⊢
+    split at hc
+    · simp at hc
+    · rename_i hn
+      rw [if_neg hn]
+      split at hc
+      · simp at hc
+      · rename_i hnonempty
+        rw [if_neg hnonempty]
+        have hle := observe_rank_le
+          { s with sent := s.sent ++ s.pending.take n, pending := s.pending.drop n } clock
+        simp only [rank, List.length_drop, hs] at hle ⊢
+        omega
+
+/-- A trace supplies environmental progress at each state, including after
+an earlier event has completed. The latter observations are ignored. -/
+def ProgressTrace : WriteState → List WriteEvent → Prop
+  | _, [] => True
+  | s, e :: es => ProgressEvent s e ∧ ProgressTrace (writeStep s e) es
+
+theorem completed_absorbing (s : WriteState) (events : List WriteEvent)
+    (hs : s.result ≠ none) : (run s events).result = s.result := by
+  induction events with
+  | nil => rfl
+  | cons e es ih =>
+    have he : writeStep s e = s := by simp [writeStep, Option.isSome_iff_ne_none.mpr hs]
+    simpa only [run, List.foldl_cons, he] using ih
+
+theorem continuing_trace_bounded (s : WriteState) (events : List WriteEvent)
+    (hp : ProgressTrace s events) (hc : (run s events).result = none) :
+    events.length ≤ rank s := by
+  induction events generalizing s with
+  | nil => simp
+  | cons e es ih =>
+    have hs : s.result = none := by
+      by_contra hn
+      exact hn ((completed_absorbing s (e :: es) hn).symm.trans hc)
+    have hn : (writeStep s e).result = none := by
+      by_contra hn
+      exact hn ((completed_absorbing (writeStep s e) es hn).symm.trans hc)
+    have hlt := writeStep_progress s e hs hp.1 hn
+    have hle := ih (writeStep s e) hp.2 hc
+    simp only [List.length_cons]
+    omega
+
+/-- Every trace longer than the finite byte/deadline budget has completed
+under the stated progress assumption. Host calls themselves must return. -/
+theorem write_terminates (s : WriteState) (events : List WriteEvent)
+    (hp : ProgressTrace s events) (hl : rank s < events.length) :
+    (run s events).result ≠ none := by
+  intro hc
+  have := continuing_trace_bounded s events hp hc
+  omega
+
+#print axioms writeStep_progress
+#print axioms write_terminates
+
 #print axioms emitted_prefix
 #print axioms successful_write_exact
 #print axioms retry_progress
