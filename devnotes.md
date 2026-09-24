@@ -1,3 +1,9 @@
+## 2026-09-24: Allocation without memory growth
+
+The new shared `FixedArrayAllocate.program_in_memory` theorem passes in five seconds. It composes the existing free-list search, reuse, bump, and header proofs, specializing the memory-size guard to an allocation that fits the current memory. This avoids introducing an unnecessary growth-limit premise into the refreshed depth proof: a no-growth execution never reads that limit. The theorem's axiom report contains only standard Lean axioms. The depth function's updated instruction decomposition also reduces by reflexivity in 4.4 seconds; the larger allocator invariant remains in progress.
+
+The next aggregate build reached its twelve-minute cold-build bound at 3,746 of 4,789 jobs. Besides the known depth decomposition, it exposed the changed search-loop layouts in ClobFindBest and ClobPostOnly. These changes include materialized candidate fields and zero borrowed-owner trackers, so they need updated execution scaffolding. The next checks are focused modules; the unchanged aggregate will not be repeated after its timeout.
+
 ## 2026-09-24: Validation proof follows borrowed ownership
 
 Validate.Loop now passes in 16 seconds and Validate.Spec in 4.6 seconds. The invariant carries the new current and staged owner trackers as zero. The new cleanup guard therefore makes no release call; its pointer-equality selection returns zero on both branches, preserving the original unchanged-store and exact digit-validation postconditions. Intermediate diagnostics caught the unhandled guard, tactic branch scoping, and an extra symbolic walk after simplification had already consumed the continuation. The accepted proof splits only the pointer equality and reuses the same invariant witnesses in both cases. The generated frame lemmas still reduce by reflexivity. No new assumptions or axioms were added.
