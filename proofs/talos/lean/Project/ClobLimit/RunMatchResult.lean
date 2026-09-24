@@ -18,20 +18,20 @@ set_option Elab.async false in
 theorem resultProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (values : List Value)
-    (ctx : InternalLoopInvariant.Context)
-    (data : InternalLoopResult.OutputData)
+    (ctx : MatchInvariant.Context)
+    (data : MatchOutput.OutputData)
     (hParams : base.params.length = 7)
     (hLocals : base.locals.length = 35)
-    (hValues : values = InternalLoopResult.outputValues ctx data)
+    (hValues : values = MatchOutput.outputValues ctx data)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final : Locals,
-      final.values = InternalLoopResult.outputValues ctx data →
+      final.values = MatchOutput.outputValues ctx data →
       wp «module» rest Q st final env) :
     wp «module» (RunMatchEntry.resultProg ++ rest) Q st
       { base with values := values } env := by
   simp only [RunMatchEntry.resultProg, List.cons_append, List.nil_append]
   simp (config := { maxSteps := 10000000 }) [wp_simp, hParams, hLocals,
-    hValues, InternalLoopResult.outputValues]
+    hValues, MatchOutput.outputValues]
   apply hNext
   rfl
 
