@@ -15,13 +15,20 @@ Completion requires the source-declaration compiler interface below.
 
 ## Required result
 
-A command accepts a checked Lean module and entry declaration in the supported
-scalar subset. It invokes the existing LeanExe extraction/compiler path, emits
-WASM, and produces a kernel-checked theorem connecting that original declaration
-to those exact bytes for every input. The user supplies no handwritten IR,
-source-correspondence certificate, or compiler-correctness proof per program.
-An untrusted proof-producing frontend is acceptable only when all its output is
-independently checked. A pilot registry is not a frontend.
+Prove the actual compiler correct once for every program in a precisely defined
+scalar source subset. The general theorem must connect the original checked Lean
+source declaration, the actual extraction and lowering functions, and the exact
+emitted WebAssembly bytes. It must quantify over every valid input. In addition
+to preservation on successful compilations, prove compilation succeeds for the
+defined supported subset. Define support from source syntax and types, not from
+whether an output happens to satisfy correctness.
+
+The executable must call the functions covered by these proofs. Source meaning
+must be independent of compilation and connected to Lean's operations. Each new
+supported program inherits correctness from the general compiler theorem. A
+separate backend, a registry of examples, or individual generated correspondence
+proofs does not fulfill this task. No handwritten IR or compiler-correctness
+certificate is required from the user.
 
 The profile uses concrete WASM values: UInt64 arguments/results, internal Bool,
 modular arithmetic, unsigned comparisons, bit operations and masked shifts,
@@ -32,11 +39,13 @@ excluded. Proof-level Nat and explicit termination arguments are permitted.
 
 ## Completion gates
 
-- [ ] Read and identify the actual existing extraction, IR, lowering, and emission paths.
+- [x] Read and identify the actual existing extraction, IR, lowering, and emission paths.
 - [ ] Define independent scalar semantics and precise source/ABI/termination contracts.
 - [ ] Implement source-only certified entry admission with explicit errors.
-- [ ] Automatically establish original-Lean-declaration to actual extracted-IR correspondence.
-- [ ] Prove or automatically certify every accepted scalar lowering pass.
+- [ ] Prove general original-Lean-source to actual extracted-IR semantic preservation.
+- [ ] Prove extraction succeeds for the defined source subset.
+- [ ] Prove every scalar lowering pass used by the accepted subset.
+- [ ] Compose a general theorem for the actual compiler entry point and emitted bytes.
 - [ ] Cover strict bindings, branching, numeric boundaries, and acyclic helper calls.
 - [ ] Cover the agreed structured-loop/termination cases without per-program WASM proofs.
 - [ ] Use actual compiler emission and prove full decoded-module equality for exact bytes.
@@ -67,3 +76,20 @@ to reusable descriptor code. The typesafety base also contains the Talos
 ScalarTransition proof library. The previous separate Correct/Scalar64 path,
 manual-certificate CLI, bundled pilot packages, and false completion report have
 been removed. The required source-only frontend is currently UNIMPLEMENTED.
+
+### Source traversal refactor (checked)
+
+The previous task text still allowed individual proof-producing compilation as
+the final result. Corrected it to the requested general compiler theorem and
+added a separate acceptance theorem to rule out vacuous success-by-rejection.
+
+The production source traversal used opaque partial definitions for application
+decomposition, lambda collection, forall collection, application reconstruction,
+and a fuel-bounded beta reducer. Moved the first four into Extract.Syntax as
+total functions, with reconstruction and metadata invariance proofs; made the
+existing beta reducer total on its fuel. This is source traversal infrastructure,
+not a source-to-IR semantics proof. No end-to-end theorem exists yet.
+
+Validation: `lake build LeanExe.Extract.Syntax LeanExe.Extract.Types` and
+`lake build LeanExe.Extract.Core` passed through tools/leanrun. The application
+spine reconstruction and metadata invariance proofs were checked by Lean.
