@@ -247,3 +247,23 @@ instructions, interpreted in Talos, terminate with the source value and unchange
 source slots. Also proved the initial parameter/local ABI state representation.
 All four new proof modules build. This execution theorem is for instructions;
 encoded module bytes and whole exported-function invocation remain unconnected.
+
+### Production source entry to complete function instructions (checked)
+
+Proved that every successful production scalar expression extraction is accepted
+by the existing backend descriptor recognizer. This is derived from source
+syntax; backend acceptance is not an extra per-program obligation.
+
+Added scalar_function_execution and extracted_function_execution, including
+actual zero-initialized locals, the production scratch allocation, result-slot
+store/load, and all source inputs. Composed compileEnvironment_instructions for
+the actual normal compiler entry: independent source support implies successful
+compilation and termination of the full emitted function instructions with the
+original source value. Its scope is the arithmetic declaration fragment, and its
+endpoint is Talos interpretation of structured instructions, not decoded bytes.
+
+All new modules build. Project.Compiler.AxiomAudit reports only propext,
+Classical.choice, and Quot.sound for the composed theorem and backend lemmas;
+no sorryAx or fresh axioms. Remaining obligations include binary encoding and
+full decoded-module equality, exported invocation, explicit admission errors,
+strict bindings/branches/helpers/loops at source, and the final release gates.
