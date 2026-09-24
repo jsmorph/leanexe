@@ -1,5 +1,5 @@
 import Project.ClobLimit.RunMatchAllocations
-import Project.ClobLimit.InternalCorrect
+import Project.ClobLimit.InternalEarlyExit
 
 /-!
 # `runMatch` internal call
