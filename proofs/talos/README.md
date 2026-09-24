@@ -6,11 +6,9 @@ The two source-driven proof tools regenerate the selected artifact and decoded m
 
 [Verifying a Program](../../docs/verifying.md) defines every stage, input, output, and failure boundary.  It also explains registration, runtime pins, proof structure, and the aggregate gate.  The development guide supplies the repository-wide process limits and test requirements.
 
-The separate [scalar64 corpus](scalar64/README.md) uses a proved generic scalar backend and checked source/IR certificates. Its memoryless modules have no allocator or host effects. `tools/compile-certified` and `tools/verify-certified` produce and independently check their portable packages.
-
 ## Architecture
 
-Modules from the ordinary compiler path end with the same four runtime functions: allocate, reset, retain, and release.  They are byte-identical across modules except that release embeds its own function index at its two recursive call sites.  [`lean/Project/Runtime/Defs.lean`](lean/Project/Runtime/Defs.lean) names those instruction streams once, while [`lean/Project/Runtime/Checks.lean`](lean/Project/Runtime/Checks.lean) pins every module's functions to the shared definitions by `rfl`.
+Every generated module ends with the same four runtime functions: allocate, reset, retain, and release.  They are byte-identical across modules except that release embeds its own function index at its two recursive call sites.  [`lean/Project/Runtime/Defs.lean`](lean/Project/Runtime/Defs.lean) names those instruction streams once, while [`lean/Project/Runtime/Checks.lean`](lean/Project/Runtime/Checks.lean) pins every module's functions to the shared definitions by `rfl`.
 
 [`lean/Project/Runtime/Spec.lean`](lean/Project/Runtime/Spec.lean) states the runtime's behavior generically over the module and the function index, with a lookup hypothesis each artifact discharges by `rfl`: the exported retain, the null release, the shared-object decrement, and the raw-object free.  An artifact proof consumes these through the call rule instead of re-proving them.
 
