@@ -58,7 +58,7 @@ function checkOptionByteArrayLoop() {
   const report = ownershipReport(correctnessModule, entry);
   assertContains(report, "LeanExe ownership report", entry);
   assertContains(report, "entry: LeanExe.Examples.Correctness.optionForByteArrayOutputReleaseStats", entry);
-  assertContains(report, "compiler statement releases: 2", entry);
+  assertContains(report, "compiler statement releases: 3", entry);
   assertContains(report, "byteArrayFoldMultiSlotAssign", entry);
   assertContains(report, "releaseOffsets=[1]", entry);
   assertOccurrenceCount(report, "byteArrayFoldMultiSlot", 1, entry);
@@ -68,7 +68,7 @@ function checkExceptByteArrayLoop() {
   const entry = `${correctnessModule}.exceptForByteArrayOutputReleaseStats`;
   const report = ownershipReport(correctnessModule, entry);
   assertContains(report, "entry: LeanExe.Examples.Correctness.exceptForByteArrayOutputReleaseStats", entry);
-  assertContains(report, "compiler statement releases: 2", entry);
+  assertContains(report, "compiler statement releases: 3", entry);
   assertContains(report, "resultWidth=5", entry);
   assertContains(report, "releaseOffsets=[2]", entry);
   assertContains(report, "byteArrayFoldMultiSlotAssign", entry);
@@ -79,7 +79,7 @@ function checkOptionByteArrayStateLoop() {
   const entry = `${correctnessModule}.optionForByteArrayStateReleaseStats`;
   const report = ownershipReport(correctnessModule, entry);
   assertContains(report, "entry: LeanExe.Examples.Correctness.optionForByteArrayStateReleaseStats", entry);
-  assertContains(report, "compiler statement releases: 2", entry);
+  assertContains(report, "compiler statement releases: 3", entry);
   assertContains(report, "resultWidth=5", entry);
   assertContains(report, "releaseOffsets=[2]", entry);
   assertContains(report, "byteArrayFoldMultiSlotAssign", entry);

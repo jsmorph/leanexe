@@ -172,16 +172,10 @@ def asciiStringBytes? (value : String) : Option (List UInt8) :=
   let bytes := value.toUTF8.data.toList
   if bytes.all (fun byte => byte.toNat < 128) then some bytes else none
 
-def byteArrayLiteralArrayExprAux (index : Nat) (array : IRExpr) : List UInt8 → IRExpr
-  | [] => array
-  | byte :: rest =>
-      byteArrayLiteralArrayExprAux
-        (index + 1)
-        (.arraySetSlots 1 0 0 array (.u64 index) [.u64 byte.toNat])
-        rest
-
 def byteArrayLiteralArrayExpr (bytes : List UInt8) : IRExpr :=
-  byteArrayLiteralArrayExprAux 0 (.arrayAllocSlots 1 0 (.u64 bytes.length)) bytes
+  -- A literal owns one backing array. Copying updates would leave their
+  -- intermediate arrays unbound and therefore outside temporary cleanup.
+  .arrayLiteralSlots 1 0 (bytes.map fun byte => (0, [.u64 byte.toNat]))
 
 def byteArrayLiteralValue (slot : Nat) (bytes : List UInt8) : ExtractedValue × Nat :=
   match bytes with

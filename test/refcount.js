@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const assert = require("node:assert/strict");
 const path = require("path");
 const { runChecked } = require("../tools/run-process");
 const host = require("./wasmtime_host");
@@ -192,6 +193,24 @@ function checkMatchedArrayRelease() {
   }
 }
 
+function checkLiteralAndConditionalOwnership() {
+  const cases = [
+    ["arraySetIfInBoundsSkipsValueTrap", "i64", "7", 0n],
+    ["arrayModifyOutOfBoundsSkipsFunctionTrap", "i64", "7", 0n],
+    ["byteArrayStringLiteralSize", "i64", "3", 0n],
+    ["byteArrayStringLiteralReturn", "bytes", "414243", 1n],
+    ["byteArrayStringAppendReturn", "bytes", "414243", 1n],
+    ["byteArrayStringLetReturn", "bytes", "415a", 1n],
+    ["byteArrayStringConstReturn", "bytes", "58595a", 1n],
+  ];
+  for (const [entry, kind, expected, live] of cases) {
+    const stats = host.callStats(compile(correctnessModule, entry), entry, kind);
+    assert.equal(stats.result, expected, entry);
+    // Returned byte arrays remain owned by the caller; scalar results retain nothing.
+    assert.equal(stats.allocs - stats.frees, live, `${entry}: leaked temporary`);
+  }
+}
+
 function checkRecursiveAbiStateOwnership() {
   const wasm = compile(correctnessModule, "recArrayStateFuel");
   const args = [host.i64(2), host.arrayU64([]), host.i64(7)];
@@ -218,7 +237,8 @@ function main() {
   checkLeakAccounting();
   checkMatchedArrayRelease();
   checkRecursiveAbiStateOwnership();
-  process.stdout.write("checked 41 refcount cases\n");
+  checkLiteralAndConditionalOwnership();
+  process.stdout.write("checked 48 refcount cases\n");
 }
 
 try {

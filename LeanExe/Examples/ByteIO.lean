@@ -161,6 +161,16 @@ def carried : LeanExe.ByteIO UInt32 := do
   let status ← carryReads
   pure (if LeanExe.Runtime.allocCount == LeanExe.Runtime.freeCount then status else 99)
 
+def writeLiteral : LeanExe.ByteIO UInt32 :=
+  write "ABC".toUTF8 1000000000
+
+def literalReleased : LeanExe.ByteIO UInt32 := do
+  for _ in [:3] do
+    let status ← writeLiteral
+    if LeanExe.Runtime.allocCount != LeanExe.Runtime.freeCount then return 99
+    if status != 0 then return status
+  pure 0
+
 def mark (bytes : ByteArray) : LeanExe.ByteIO Unit := do
   let _ ← write bytes 1000000000
   pure ()
