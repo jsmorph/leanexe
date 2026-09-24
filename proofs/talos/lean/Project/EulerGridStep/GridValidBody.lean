@@ -49,7 +49,7 @@ theorem grid_valid_body_spec {m : Wasm.Module} (layout : Layout m)
     hInitializedInput (by omega) (by simp) hState (by simpa only [Array.size_replicate] using hOwned)
     hSeparate (gridInitialScratch ratio base input.size) target
     (by simpa only [gridRemaining, Nat.sub_zero] using hTarget)
-    Q (gridValidBody.drop 93 ++ rest) (by
+    Q (gridValidBody.drop 95 ++ rest) (by
       intro current i out a r f sc hGrid hi hsz hStore hOwn hDone ht
       apply grid_finish_spec layout env current ratio pointer base (input.size / 3) i out a r f
         (grid_loop_done_positive hStore hCells hDone) hi hStore hOwn sc Q rest
