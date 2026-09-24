@@ -396,3 +396,16 @@ the earlier general source-extraction theorem supplies it, but the composed
 source-byte statement is not yet added. It does not cover the enclosing module
 or exported invocation. Both new modules build. Narrowed the binary translator's
 import to the interpreter syntax it uses; its implementation is unchanged.
+
+### Original arithmetic source to exact function-body bytes (checked and audited)
+
+FunctionParsing proves decoding of the actual emitFuncBody output, including
+local declarations and the size prefix. SourceFunctionBytes composes original
+source application, production extraction, actual encoding/decoding, and decoded
+body execution for every input, subject to explicit local-count and body-size
+format limits. There is no per-program semantic/correspondence hypothesis.
+This is still a function-body theorem, not a whole-module/export theorem.
+ArithmeticBytesAudit builds and reports only propext, Classical.choice, and
+Quot.sound for the composed theorem and decoder lemmas; no sorryAx or new axioms.
+Full module construction/validation, invocation, source admission limits, and
+final clean-checkout/independent-package/runtime gates remain unfinished.
