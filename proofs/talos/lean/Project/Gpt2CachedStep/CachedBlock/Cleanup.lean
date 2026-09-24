@@ -1,5 +1,5 @@
 import Project.Gpt2CachedStep.Program
-import Project.ProofKit.PackedReleaseMany
+import Project.Gpt2CachedStep.CachedBlock.CleanupBindings
 
 namespace Project.Gpt2CachedStep.CachedBlock
 open Wasm Project.Runtime Project.ProofKit PackedFloatFrame Project.EulerRiemann.Execution
@@ -7,11 +7,11 @@ open Wasm Project.Runtime Project.ProofKit PackedFloatFrame Project.EulerRiemann
 set_option maxRecDepth 32768 in
 theorem emitted_cleanup (items : List PackedReleaseMany.Item)
     (hLocals : items.map (·.ownerLocal) = [139, 122, 113, 96, 81, 69, 52, 38, 21]) :
-    func33.drop 533 = PackedReleaseMany.program items 164 161 42 ++
+    func33.drop 533 = PackedReleaseManyAliases.program items cleanupKept 42 ++
       [.localGet 161, .localGet 162, .localGet 163, .localGet 164, .localGet 165, .localGet 166] := by
-  have hProgram : PackedReleaseMany.program items 164 161 42 =
-      (items.map (·.ownerLocal)).flatMap (fun owner => PackedReleaseGuard.programTwo owner 164 161 42) := by
-    simp [PackedReleaseMany.program, List.flatMap_map]
+  have hProgram : PackedReleaseManyAliases.program items cleanupKept 42 =
+      (items.map (·.ownerLocal)).flatMap (fun owner => PackedReleaseAliases.program owner (cleanupKept owner) 42) := by
+    simp [PackedReleaseManyAliases.program, List.flatMap_map]
   rw [hProgram, hLocals]
   rfl
 
@@ -31,6 +31,8 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap before : 
       hi ≤ item.node.root.toNat - 48 ∨ item.node.root.toNat + item.node.capacity.toNat ≤ lo)
     (hValues : frame.values = [])
     (hBindings : ∀ item ∈ items, frame.get item.ownerLocal = some (.i64 item.node.root))
+    (hAliases : ∀ item ∈ items, ∀ slot ∈ ownerAliases item.ownerLocal,
+      frame.get slot = some (.i64 item.node.root))
     (hHiddenOwner : frame.get 161 = some (.i64 hiddenNode.root))
     (hHiddenPtr : frame.get 162 = some (.i64 hiddenNode.root))
     (hHiddenBytes : frame.get 163 = some (.i64 3072))
@@ -50,10 +52,12 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap before : 
       wp «module» rest Q (PackedReleaseMany.finalStore heap initial items) result env) :
     wp «module» (func33.drop 533 ++ rest) Q initial frame env := by
   rw [emitted_cleanup items hLocals, List.append_assoc]
-  apply PackedReleaseMany.program_spec env «module» 42 initial heap before original frame items
-    cacheNode hiddenNode cacheBytes hiddenBytes 164 161 (typeIdx := some 42) rfl rfl
+  apply PackedReleaseManyAliases.program_spec env «module» 42 initial heap before original frame items
+    cacheNode hiddenNode cacheBytes hiddenBytes cleanupKept (typeIdx := some 42) rfl rfl
     hHeap hOwners hCache hHidden hDisjoint hCacheSep hHiddenSep hFrame hProtected
-    hValues hBindings hCacheOwner hHiddenOwner
+    hValues hBindings
+    (cleanup_bindings heap initial frame items hiddenNode cacheNode hLocals hOwners hDisjoint
+      hHiddenSep hCacheSep hAliases hHiddenOwner hCacheOwner)
   intro hFinalHeap hFinalCache hFinalHidden hFinalFrame
   simp only [Locals.get] at hHiddenOwner hHiddenPtr hHiddenBytes hCacheOwner hCachePtr hCacheBytes
   simp only [List.cons_append, List.nil_append]

@@ -49,6 +49,7 @@ theorem projection_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
       KernelState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) (frame.locals.take 47) 47 58 61
         (allocatedNode heap.top projectionNeed heap.nodes).root 3072 result →
+      result.get 61 = some (.i64 attentionPtr) →
       (heap.allocate projectionNeed).At final →
       (heap.allocate projectionNeed).OwnsPacked final (allocatedNode heap.top projectionNeed heap.nodes)
         (linearRows weights attention (base + attnWeightOffset) (base + attnBiasOffset) 768 768 1) →
@@ -105,6 +106,9 @@ theorem projection_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
       List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hTyped, List.take_set_of_le, Nat.reduceLeDiff,
       show UInt64.ofNat (4 * (1 * 768)) = 3072 from rfl, and_self]
+  · simp only [Locals.get, hParams, parameters, hLocals, List.length_cons, List.length_nil,
+      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT,
+      Nat.reduceSub, reduceIte]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame
