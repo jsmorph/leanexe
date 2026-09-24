@@ -1,0 +1,72 @@
+\section{Accuracy diagnosis and grouped evaluation}
+\label{sec:accuracy}
+
+\subsection{Reference agreement and original failure}
+
+The first cached candidate reproduced its independent quantized reference on every logit and cache in the fixed 128-prefix trace.  That implementation agreement coexisted with poor agreement with binary32 inference.  Its greedy choice matched the binary32 model on 87 of 128 prefixes, and all nine retained completions differed within their first three generated tokens.  The first sampled continuation contained the fragment ``the first of the the Pisa, will to the that a the the''.  Its binary32 counterpart described a village.  The complete texts, token IDs, and shared sampling draws remain in the \dataref{candidates/4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5d8d35468483ac/completions.json}{original completion record}.
+
+We diagnosed projection error before completing the full-model proof.  A separate serial binary32 reference reproduced the frozen binary32 module's logits bit for bit.  For each of 49 projections at the first nine fixed prefixes, the diagnostic used that model's input and compared activation-only reconstruction, weight-only reconstruction, and the integer projection against the original projection.  Using the same input isolates a local operation's error.  It leaves the propagation of earlier quantization errors outside that comparison.
+
+The vocabulary projection had the largest local RMS error at eight of nine prefixes.  Its input maximum magnitude ranged from 53.4 to 198.5, while its median coordinate magnitude ranged from 0.115 to 0.312.  The complete-row scale quantized 79.2--95.6\% of its coordinates to zero.  At prefix seven, activation quantization alone gave RMS output error 1.812, weight quantization alone gave 0.318, and the complete integer projection gave 1.839.  Outliers also appeared within the transformer: block two's expansion at the first prefix quantized 97.3\% of its input coordinates to zero.  Its activation-only RMS output error was 0.270, compared with 0.022 from weight reconstruction.  The \dataref{projection-errors.json}{projection diagnostics} support activation scaling as a substantial local error source.
+
+\subsection{Group64 experiment and vocabulary control}
+
+The approved experiment used independent scales for consecutive groups of 64 activation coordinates.  It kept the coefficient payload and quantized embeddings fixed and adopted the ordered group-rescaling computation of Section~\ref{sec:arithmetic}.  A control kept complete-row transformer projections but used binary32 vocabulary activations and serial binary32 multiplication of reconstructed quantized vocabulary weights.  The control tests whether removing activation quantization at the last projection accounts for much of the original distribution error.
+
+Table~\ref{tab:accuracy} reports greedy agreement and the KL divergence from the binary32 softmax distribution to each candidate.  Each prefix supplies the same token sequence to both models, with each model maintaining its own cache.  The \dataref{experiments/group64/prefixes.json}{fixed-trace record} and \dataref{experiments/group64/prompts.json}{prompt-prefix record} retain every logit hash and per-prefix metric.  The control's improvement supports final-projection activation quantization as a major contributor on these inputs.  The experiment does not assign a causal share of final error to every transformer layer.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{llrrr}
+\toprule
+Input set & Arithmetic & Greedy matches & Median KL & Maximum KL\\
+\midrule
+Fixed trace & Complete-row & 87/128 & 0.506706 & 4.182229\\
+ & Group64 & 120/128 & 0.009023 & 0.251639\\
+ & Binary32 vocabulary control & 120/128 & 0.003522 & 0.150031\\
+\midrule
+Nine prompt prefixes & Complete-row & 49/101 & 0.677073 & 3.736186\\
+ & Group64 & 85/101 & 0.066768 & 0.244526\\
+ & Binary32 vocabulary control & 87/101 & 0.039378 & 0.240125\\
+\bottomrule
+\end{tabular}
+\caption{Agreement with the frozen serial binary32 model.  KL divergence is in nats.  The binary32 vocabulary control retains quantized transformer projections and quantized vocabulary weights.}
+\label{tab:accuracy}
+\end{table}
+
+Raw logit differences contain a component common to all vocabulary entries.  Such a shift preserves softmax probabilities and greedy order.  With differences $\delta_j=z^q_j-z^f_j$ and their mean $\bar\delta$, the centered RMS is $\sqrt{\sum_j(\delta_j-\bar\delta)^2/50{,}257}$.  On the fixed trace, grouping reduced the maximum centered RMS from 1.862 to 1.052.  Its largest absolute difference was 49.587 at prefix 57, where the mean shift was 43.054, centered RMS was 0.868, and KL divergence was 0.000507 nats.  On prompt prefixes, the grouped maximum raw difference rose from the original 13.893 to 19.296, while maximum centered RMS fell from 1.502 to 0.866.  Reporting both quantities separates a common offset from changed relative logits.
+
+The compiled grouped binary matches all 6,432,896 reference logits and each of 128 complete caches bit for bit.  Every logit vector also reproduces its grouped-experiment hash.  The \dataref{candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/cached-test.json}{cached comparison} therefore tests the complete deployed recurrence against the independently implemented serial quantized reference.  The reference preserves the specified polynomial approximations and operation order.  This test establishes agreement on its finite input set.  The execution theorem establishes exact source agreement for all inputs satisfying its session setup.
+
+\subsection{Generated text and held-out inputs}
+
+The compiled grouped model reproduces all nine reference completions, including the two sampled cases using the same Lean PRNG draws.  Table~\ref{tab:completions} gives the first generated position at which group64 and binary32 differ.  The village sample begins with a village and a monster, while the science sample starts ``to understand and test hypotheses''.  Greedy completions still contain repetition and factual errors.  The science, narrative, code, numerical, and explanatory prompts provide examples of changed behavior, but this small collection supplies no semantic-quality score.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{L{8.3cm}rr}
+\toprule
+Prompt & Requested tokens & First difference\\
+\midrule
+Once upon a time, in a small village & 64 & 1\\
+The purpose of science is & 32 & 2\\
+The capital of France is & 16 & 13\\
+A proof of the theorem begins with the following observation: & 32 & 4\\
+The train arrived at the station just before midnight. & 32 & 4\\
+\code{def sum\_of\_squares(values):} with initial total zero & 32 & 7\\
+The measurements were 0.125, 3.5, and 127.0. Their sum is & 32 & 1\\
+In the garden, the children found a small wooden box. & 32 & 2\\
+Q: Why does ice float on water? A: & 32 & 1\\
+\bottomrule
+\end{tabular}
+\caption{Group64 versus binary32 completion differences, with generated positions counted from one.  The first two cases use top-$k=40$, temperature 0.8, and seeds 42 and 7.  The remaining cases use greedy decoding.  Exact prompts, newlines, tokens, and draws appear in the completion record.}
+\label{tab:completions}
+\end{table}
+
+The six prompts initially designated held-out in the first candidate's manifest had already been evaluated when grouping was proposed.  We therefore fixed another six prompts after the group64 implementation and before evaluating them.  They cover narrative, exposition, dialogue, code, arithmetic prose, and matrix multiplication.  Their complete input token lists and 32-token greedy requests appear in the \dataref{heldout-group64.json}{held-out manifest}.  No quantizer tuning used their results.
+
+On all 73 prefixes of those six prompts, greedy choices agree at 58 positions.  The \dataref{experiments/group64-heldout/coverage.json}{held-out logit record} reports maximum absolute difference 18.1201.  Their six generated continuations all diverge from binary32, at generated positions 7, 3, 4, 11, 6, and 1.  Repetition occurs in both models.  The quantized code continuation repeats a loop fragment, and its matrix explanation confuses row and column conditions.  The \dataref{experiments/group64-heldout/completions.json}{complete held-out texts} preserve these failures.
+
+Across the fixed trace, nine original prompt-prefix sequences, and six later prompt-prefix sequences, group64 and binary32 agree on 263 of 302 evaluated positions.  These positions include repeated token prefixes across sets.  The fixed 128-token trace also repeats a short phrase through most of its length.  The observations characterize the retained tests and the six later prompts.  They supply no estimate of corpus-wide accuracy, perplexity, factual reliability, or long-context behavior.  The deployment decision remains opt-in quantized inference with binary32 as the default.

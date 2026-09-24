@@ -1,0 +1,23 @@
+\section{Checkpoint export correspondence}
+\label{sec:export}
+
+The exporter reads the pinned \code{openai-community/gpt2} checkpoint and writes the fixed quantized layout.  Its revision, source-file digest, tensor manifest, original binary32 weight digest, and quantized weight digest are recorded.  The learned block matrices change from the source layout to output-major coefficient rows.  The shared token embedding and vocabulary matrix retains its token-row orientation.  A mistaken transpose would change inference while leaving the byte count valid, so the export relation states the source index corresponding to every target row and coordinate.
+
+The checked export predicate compares the binary32 and quantized files.  For each of 49 projection matrices, it checks the specified row scale and every coefficient from Equations~\eqref{eq:scale} and~\eqref{eq:quant}.  For each retained tensor, it checks finiteness and equality of the binary32 words.  The complete-file run accepted 123,532,032 coefficients, 133,201 scales, and 907,776 retained words.  The first interpreted run timed out before completing its first matrix.  The retained successful run evaluates the checked definitions through the pinned native Lean compiler and runtime.  The \dataref{certificates/export-check.json}{export record} preserves both outcomes.
+
+The theorem \proofref{Gpt2QuantizedCached/Export.lean}{\code{Export.projection\_checked}} derives the per-row check from the whole-file predicate.  \code{Export.retained\_checked} supplies retained-word equality and finiteness.  \proofref{ProofKit/QuantizedExport.lean}{\code{QuantizedExport.reconstruction}} connects accepted quantizer rows to a real-valued reconstruction bound.  The proofs of these implications check in the Lean kernel.  The successful evaluation over all checkpoint bytes uses the native execution boundary described above.  The checkpoint's identity with the downloaded training artifact uses the recorded file hashes and exporter inputs.
+
+For a finite input $x$, positive finite scale $s$, and rounded quotient $r=\fl(x/s)$, the scalar theorem gives
+\begin{equation}
+ |s q_s(x)-x|
+ \leq s\left(\tfrac12+\max(0,|r|-127)+\varepsilon_{\rm div}\right).
+ \label{eq:reconstruct}
+\end{equation}
+Here $\varepsilon_{\rm div}$ is the checked quotient-rounding bound for an integer magnitude exponent $b$ with $24\leq b\leq275$.  The half-unit term comes from nearest-even rounding, the maximum term covers clipping, and the last term covers the initial binary32 division.  The quotient-range assumption is explicit in \proofref{ProofKit/QuantizedScalarError.lean}{\code{QuantizedScalarError.reconstruction}}.  The proof accounts for rounded scale selection and finite division.
+
+The retained activation records cover 233,580 groups and 14,949,120 coefficients at 229 evaluated positions.  A native Lean checker verifies the same quantizer relation, finite inputs, positive finite scales, and quotient range.  The largest observed scale is approximately 2.18501425, and the largest rounded quotient magnitude is $127+2^{-17}$.  The checked exponent 156 bounds quotient rounding by $2^{-17}$.  Equation~\eqref{eq:reconstruct} then gives a component bound $s(1/2+2^{-16})$ for those records.  Using their largest scale yields the exact uniform local bound
+\[
+ \frac{150{,}157{,}618{,}083}{137{,}438{,}953{,}472}
+ \approx1.09254046.
+\]
+This quantity bounds activation reconstruction at the captured quantizers.  Subsequent multiplication, rescaling, summation, and transformer operations add further error.  The full-model bound treats those stages separately.

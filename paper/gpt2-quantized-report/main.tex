@@ -1,0 +1,45 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype,xurl,seqsplit,upquote}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,array,tabularx,longtable}
+\usepackage[hidelinks]{hyperref}
+\DisableLigatures{encoding=*,family=tt*}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\longcode}[1]{\texttt{\seqsplit{#1}}}
+\newcommand{\src}[2]{\href{https://github.com/jsmorph/leanexe/blob/c655d35b5011c1703dfd22bcceaec4e5bee17088/#1}{#2}}
+\newcommand{\dataref}[2]{\src{data/gpt2-quantized-v1/#1}{#2}}
+\newcommand{\proofref}[2]{\src{proofs/talos/lean/Project/#1}{#2}}
+\newcommand{\fl}{\operatorname{fl}_{32}}
+\newcommand{\rne}{\operatorname{rne}}
+\newcommand{\clip}{\operatorname{clip}_{[-127,127]}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newtheorem{theorem}{Theorem}
+\emergencystretch=2em
+\setcounter{tocdepth}{2}
+\title{Quantized GPT-2 Inference with Exact WebAssembly Proofs:\\
+Arithmetic, Cached Execution, and Numerical Evidence}
+\author{Jamie Stephens\thanks{Morphism (\url{https://morphism.com}).  Contact: \href{mailto:js@morphism.com}{js@morphism.com}.}}
+\date{24 September 2026}
+\hypersetup{pdftitle={Quantized GPT-2 Inference with Exact WebAssembly Proofs: Arithmetic, Cached Execution, and Numerical Evidence},pdfauthor={Jamie Stephens},pdfsubject={Formal verification; quantized language-model inference; WebAssembly}}
+\begin{document}
+\maketitle
+\begin{abstract}
+Quantization changes a language model's arithmetic, storage, and output, while deployment adds obligations about compiled instructions and retained state.  We extend LeanExe's GPT-2 124M example with signed eight-bit weights and projection inputs, 32-bit integer accumulation, and binary32 operations elsewhere.  A Lean-checked theorem connects the exact 28,315-byte WebAssembly binary to the specified quantized cached-inference algorithm, including validation, termination, allocation, and buffer release for sessions of at most 128 tokens.  The specification fixes scale selection, nearest-even rounding, saturation, and the order of all rescaling operations.  An initial scale per activation row caused severe output degradation.  Scales for consecutive groups of 64 coordinates improved greedy agreement with the binary32 implementation from 87 to 120 of 128 retained prefixes.  The deployed grouped model matches its independent reference bit for bit on 6,432,896 logits, 128 complete caches, and nine completions.  Its checkpoint occupies 74.3\% less storage.  A controlled resident-session benchmark measures a 3.59-fold median speedup and a 34.7\% reduction in warm WebAssembly memory.  Across 302 evaluated positions, including prefixes of six held-out prompts, greedy choices agree at 263 positions.  Separate certificates derived from observed logit pairs establish 232 individual choices after removing a common offset.  Conditional numerical theorems propagate quantization and \mbox{floating-point} errors through the complete cached recurrence, but their evaluated forward bounds certify zero token choices.  We give the theorem boundary, data identities, measurement procedures, and remaining assumptions, including native checker execution and the identity of captured operands with source intermediates.
+\end{abstract}
+\tableofcontents
+\clearpage
+\input{sections/01-scope}
+\input{sections/02-arithmetic}
+\input{sections/03-proof}
+\input{sections/04-export}
+\input{sections/05-accuracy}
+\input{sections/06-runtime}
+\input{sections/07-numerical}
+\input{sections/08-boundaries}
+\appendix
+\input{sections/09-evidence}
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}

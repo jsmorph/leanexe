@@ -1,0 +1,34 @@
+{
+  "decision": "accepted",
+  "submission": "523fbdad5163",
+  "paper": "2609.00018",
+  "version": 2,
+  "status_url": "http://127.0.0.1:8405/status/523fbdad5163",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00018v2",
+  "title": "Quantized GPT-2 Inference with Exact WebAssembly Proofs: Arithmetic, Cached Execution, and Numerical Evidence",
+  "authors": "Jamie Stephens",
+  "subjects": [
+    "cs.PL",
+    "cs.CL"
+  ],
+  "pages": 20,
+  "pdf_sha256": "dbf1e0bbc88fd783b98fe3b51199c9cfed4b5b32e83cf9b8a2d3b3a4cf15cc69",
+  "source_revision": "c655d35b5011c1703dfd22bcceaec4e5bee17088",
+  "public": false,
+  "review": "submission-02/review.txt",
+  "remarks": [],
+  "submission_history": [
+    {
+      "submission": "a59591adb958",
+      "version": 1,
+      "decision": "accepted",
+      "remarks": 3
+    },
+    {
+      "submission": "523fbdad5163",
+      "version": 2,
+      "decision": "accepted",
+      "remarks": 0
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-09-24",
+  "result": "passed",
+  "pages": 20,
+  "pdf_sha256": "6f5156e663a24b7938d13d1b949a5991bfbd47eceb7b0f3d9614742a70b9d250",
+  "pdf_bytes": 392080,
+  "undefined_citations": false,
+  "undefined_references": false,
+  "overfull_boxes": 0,
+  "underfull_boxes": 3,
+  "bibtex_warnings": 0,
+  "metadata_abstract_characters": 1801,
+  "ascii_command_options_preserved": true,
+  "evidence_check": "passed",
+  "inventory_files": 67,
+  "toolchain": "pdfTeX 3.141592653-2.6-1.40.26, TeX Live 2025/dev/Debian; BibTeX 0.99d",
+  "commands": [
+    "pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/leanexe-quantized-report-build main.tex",
+    "env BIBINPUTS=/home/somebody/src/leanexe/paper/gpt2-quantized-report: bibtex main [in temporary build directory]",
+    "pdflatex [same arguments], twice",
+    "pdftotext main.pdf evidence/pdf-text.txt",
+    "python3 check-evidence.py"
+  ],
+  "earlier_build_failures": [
+    "A literal title escape was corrected before final compilation.",
+    "A fragile seqsplit macro in a caption was moved into body prose.",
+    "BibTeX rejected an absolute output path under openout_any=p; the successful build runs BibTeX in its temporary output directory with BIBINPUTS set."
+  ]
+}
