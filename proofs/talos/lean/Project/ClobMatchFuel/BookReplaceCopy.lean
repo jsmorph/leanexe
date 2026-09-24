@@ -22,7 +22,7 @@ set_option maxRecDepth 1048576
 
 def replaceCopyFrame (base : Locals) (target : UInt64) (word : Nat) : Locals :=
   { params := base.params
-    locals := (base.locals.set 61 (.i64 target)).set 62
+    locals := (base.locals.set 71 (.i64 target)).set 72
       (.i64 (UInt64.ofNat word))
     values := [] }
 
@@ -43,26 +43,26 @@ def replaceCopyInv (st0 : Store Unit) (base : Locals)
         orderWord st target copied = orderWord st0 source copied
 
 def replaceCopyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
-  match s.locals[62]? with
+  match s.locals[72]? with
   | some (Value.i64 word) => total - word.toNat
   | _ => 0
 
 def replaceCopyBodyProg : Wasm.Program :=
   [
-  .localGet 71,
-  .localGet 69,
+  .localGet 81,
+  .localGet 79,
   .geUI64,
   .br_if 1,
-  .localGet 70,
-  .localGet 71,
+  .localGet 80,
+  .localGet 81,
   .constI64 1,
   .addI64,
   .constI64 8,
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 66,
-  .localGet 71,
+  .localGet 76,
+  .localGet 81,
   .constI64 1,
   .addI64,
   .constI64 8,
@@ -71,10 +71,10 @@ def replaceCopyBodyProg : Wasm.Program :=
   .wrapI64,
   .load64 0,
   .store64 0,
-  .localGet 71,
+  .localGet 81,
   .constI64 1,
   .addI64,
-  .localSet 71,
+  .localSet 81,
   .br 0
 ]
 
@@ -84,14 +84,14 @@ def replaceCopyProg : Wasm.Program :=
   .constI64 1,
   .addI64,
   .globalSet 2,
-  .localGet 84,
-  .localSet 70,
-  .localGet 70,
+  .localGet 94,
+  .localSet 80,
+  .localGet 80,
   .wrapI64,
-  .localGet 68,
+  .localGet 78,
   .store64 0,
   .constI64 0,
-  .localSet 71,
+  .localSet 81,
   .block 0 0 [
     .loop 0 0 replaceCopyBodyProg
   ]
@@ -102,14 +102,14 @@ theorem replaceCopyProg_spec
     (env : HostEnv Unit) (st0 : Store Unit) (base : Locals)
     (target source g2 arrayCapacity : UInt64) (os : List OrderL)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hLengthLocal : base.locals[59]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hLengthLocal : base.locals[69]? =
       some (.i64 (UInt64.ofNat os.length)))
-    (hTotalLocal : base.locals[60]? =
+    (hTotalLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat os.length * 5)))
-    (hTargetLocal : base.locals[75]? = some (.i64 target))
+    (hTargetLocal : base.locals[85]? = some (.i64 target))
     (hTotalU : (UInt64.ofNat os.length * 5).toNat = os.length * 5)
     (hTotal64 : os.length * 5 < UInt64.size)
     (hTarget48 : 48 ≤ target.toNat)
@@ -130,12 +130,12 @@ theorem replaceCopyProg_spec
         wp «module» rest Q st1
           (replaceCopyFrame base target (os.length * 5)) env) :
     wp «module» (replaceCopyProg ++ rest) Q st0 base env := by
-  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
-  have hLengthGet : base.locals[59] =
+  have hSourceGet : base.locals[67] = .i64 source := getElem_of_some hSourceLocal
+  have hLengthGet : base.locals[69] =
       .i64 (UInt64.ofNat os.length) := getElem_of_some hLengthLocal
-  have hTotalGet : base.locals[60] =
+  have hTotalGet : base.locals[70] =
       .i64 (UInt64.ofNat os.length * 5) := getElem_of_some hTotalLocal
-  have hTargetGet : base.locals[75] = .i64 target := getElem_of_some hTargetLocal
+  have hTargetGet : base.locals[85] = .i64 target := getElem_of_some hTargetLocal
   simp only [replaceCopyProg, List.cons_append, List.nil_append]
   wp_run_with [hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet, hTargetGet]
   simp only [hg2]

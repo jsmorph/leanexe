@@ -23,40 +23,48 @@ def fullTradeFinishProg : Wasm.Program :=
   .localGet 46,
   .localSet 47,
   .localGet 18,
-  .localGet 15,
-  .localSet 66,
-  .localGet 33,
-  .localSet 67,
-  .localGet 67,
-  .localGet 66,
-  .wrapI64,
-  .load64 0,
-  .ltUI64,
-  .iff 0 1 [
-    .localGet 66,
-    .localGet 67,
-    .constI64 5,
-    .mulI64,
-    .constI64 5,
-    .addI64,
-    .constI64 8,
-    .mulI64,
-    .addI64,
-    .wrapI64,
-    .load64 0
-  ] [
-    .unreachable
-  ] [] [.i64],
+  .localGet 38,
   .subI64,
-  .localSet 48
+  .localSet 48,
+  .localGet 9,
+  .localSet 49,
+  .localGet 10,
+  .localSet 50,
+  .localGet 11,
+  .localSet 51,
+  .localGet 12,
+  .localSet 52,
+  .localGet 13,
+  .localSet 53,
+  .localGet 44,
+  .localSet 54,
+  .localGet 45,
+  .localSet 55,
+  .localGet 46,
+  .localSet 56,
+  .localGet 47,
+  .localSet 57,
+  .localGet 48,
+  .localSet 58
   ]
 
 def fullTradeFinishFrame (base : Locals) (newTrades oldBook : UInt64)
     (i : Nat) (remaining makerQty : UInt64) : Locals :=
   { base with
-    locals := ((((base.locals.set 37 (.i64 newTrades)).set 38
-      (.i64 newTrades)).set 57 (.i64 oldBook)).set 58
-      (.i64 (UInt64.ofNat i))).set 39 (.i64 (remaining - makerQty))
+    locals :=
+      let locals := base.locals.set 37 (.i64 newTrades)
+      let locals := locals.set 38 (.i64 newTrades)
+      let locals := locals.set 39 (.i64 (remaining - makerQty))
+      let locals := locals.set 40 (base.locals[0]!)
+      let locals := locals.set 41 (base.locals[1]!)
+      let locals := locals.set 42 (base.locals[2]!)
+      let locals := locals.set 43 (base.locals[3]!)
+      let locals := locals.set 44 (base.locals[4]!)
+      let locals := locals.set 45 (base.locals[35]!)
+      let locals := locals.set 46 (base.locals[36]!)
+      let locals := locals.set 47 (.i64 newTrades)
+      let locals := locals.set 48 (.i64 newTrades)
+      locals.set 49 (.i64 (remaining - makerQty))
     values := [] }
 
 set_option Elab.async false in
@@ -65,11 +73,12 @@ theorem fullTradeFinishProg_spec
     (newTrades oldBook remaining : UInt64)
     (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [.i64 newTrades])
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hBookLocal : base.locals[6]? = some (.i64 oldBook))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
+    (hMaker : SelectedOrder.At base os[i]!)
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
     (hOrders : OrdersAt st oldBook os)
@@ -79,38 +88,9 @@ theorem fullTradeFinishProg_spec
       env) :
     wp «module» (fullTradeFinishProg ++ rest) Q st base env := by
   have hRemainingGet : base.locals[9] = .i64 remaining := getElem_of_some hRemainingLocal
-  have hBookGet : base.locals[6] = .i64 oldBook := getElem_of_some hBookLocal
-  have hIndexGet : base.locals[24] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
-  have hBookLengthRead :
-      st.mem.read64 (UInt32.ofNat (oldBook.toNat % 4294967296)) =
-        UInt64.ofNat os.length := hOrders.1.1
-  have hBookLengthBound :
-      oldBook.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536 := hOrders.1.2
-  have hQtyBound :
-      (oldBook.toNat + (i * 5 + 5) * 8) % 4294967296 + 8 ≤
-        st.mem.pages * 65536 := by
-    simpa only [show i * 5 + 4 + 1 = i * 5 + 5 by omega] using
-      hOrders.orderWord_bound i 4 hi (by omega)
-  have hQtyRead :
-      st.mem.read64 (UInt32.ofNat
-        ((oldBook.toNat + (i * 5 + 5) * 8) % 4294967296)) =
-        os[i]!.oqty := by
-    have hRead := hOrders.orderWord_eq i 4 hi (by omega)
-    simpa only [orderWord, OrderL.word,
-      show i * 5 + 4 + 1 = i * 5 + 5 by omega] using hRead
-  have hIndexLt : UInt64.ofNat i < UInt64.ofNat os.length := by
-    rw [UInt64.lt_iff_toNat_lt, toNat_ofNat_lt (by omega),
-      toNat_ofNat_lt hOrdersLength64]
-    exact hi
+  have hQtyGet := getElem_of_some hMaker.2.2.2.2
   simp only [fullTradeFinishProg, List.cons_append, List.nil_append]
-  wp_run_with [hParams, hLocals, hValues, hRemainingGet, hBookGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
-    if_pos hIndexLt]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run_with [hParams, hLocals, hValues, hRemainingGet, hBookGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr hQtyBound), hQtyRead]
-  simpa only [fullTradeFinishFrame, List.getElem!_eq_getElem?_getD] using
-    hDone
+  wp_run_with [hParams, hLocals, hValues, hRemainingGet, hQtyGet]
+  simpa [fullTradeFinishFrame, List.getElem!_eq_getElem?_getD, hLocals] using hDone
 
 end Project.ClobMatchFuel.FullTradeFinish
