@@ -1,3 +1,9 @@
+## 2026-09-24: Complete post-only proof accepted
+
+ClobPostOnly.Spec passes after updating the generated result-owner slots, scratch indices, local-frame lengths, and result assertions. The final trade bump, trade allocator, order finalizer, and append branch take 4.0, 4.3, 10, and 16 seconds respectively; the specification import completes in 3.8 seconds. All three branches retain exact returned arrays, ownership, allocation counters, page preservation, and memory frames. The final failure was a copied trade tail still using physical local 26 rather than the new owner local 34. The successful focused output is work/postonly-final-1.log. Explicit local lists were then reformatted with a whitespace-insensitive equality check.
+
+The five-minute matcher/runtime diagnostic reached 3,424 jobs and timed out while checking additional cold matcher helpers. It identified an early-exit frame length of 76 where the generated function now has 86 locals. The current matcher caches selected maker fields and stages the recursive arguments before cleanup. Its next proof work shifts the scratch frames and supplies the cached-field bridge; the unfinished aggregate is not rerun unchanged.
+
 ## 2026-09-24: Shared search loop and public wrappers accepted
 
 The whole-loop theorem passes in 6.6 seconds. It combines the checked iteration with a prefix-selection invariant and decreasing fuel, including the final done-flag iteration. All three public search wrappers pass in 3.9 seconds each; the standalone exported search specification and the post-only wrapper each pass in 5.3 seconds. Their original exact source result and unchanged-store postconditions are retained, including the matcher theorem for arbitrary borrowed owners. The new public audits contain only the three standard logical axioms. Three duplicated instruction proofs, about 3,000 lines altogether, are replaced by wrappers around the shared proof.

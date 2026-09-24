@@ -30,21 +30,15 @@ def appendCopyFrame (ptr g0 : UInt64) (order : OrderL)
     (n k : Nat) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-    locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 ptr, .i64 (UInt64.ofNat n),
-      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
-      .i64 (g0 + 48), .i64 (UInt64.ofNat k),
-      .i64 order.oid, .i64 order.otrader, .i64 order.oside,
-      .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0,
-      .i64 (orderArrayBytesU (n + 1)), .i64 0, .i64 0,
-      .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
-      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1),
-      .i64 (g0 + 48)],
+    locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
+      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64
+      order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
+      0, .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n
+      + 1), .i64 (g0 + 48), .i64 (UInt64.ofNat k), .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64
+      (orderArrayBytesU (n + 1)), .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n +
+      1)), .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1), .i64 (g0 + 48)],
     values := [] }
 
 def appendCopyInv (st0 : Store Unit) (ptr g0 g2 : UInt64)
@@ -64,26 +58,26 @@ def appendCopyInv (st0 : Store Unit) (ptr g0 g2 : UInt64)
       ∀ w : Nat, w < k → orderWord st (g0 + 48) w = orderWord st0 ptr w
 
 def appendCopyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
-  match s.locals[33]? with
+  match s.locals[35]? with
   | some (Value.i64 k) => total - k.toNat
   | _ => 0
 
 def appendOrderCopyBodyProg : Wasm.Program :=
   [
-  .localGet 39,
-  .localGet 36,
+  .localGet 41,
+  .localGet 38,
   .geUI64,
   .br_if 1,
-  .localGet 38,
-  .localGet 39,
+  .localGet 40,
+  .localGet 41,
   .constI64 (1 : UInt64),
   .addI64,
   .constI64 (8 : UInt64),
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 34,
-  .localGet 39,
+  .localGet 36,
+  .localGet 41,
   .constI64 (1 : UInt64),
   .addI64,
   .constI64 (8 : UInt64),
@@ -92,10 +86,10 @@ def appendOrderCopyBodyProg : Wasm.Program :=
   .wrapI64,
   .load64 (0 : UInt32),
   .store64 (0 : UInt32),
-  .localGet 39,
+  .localGet 41,
   .constI64 (1 : UInt64),
   .addI64,
-  .localSet 39,
+  .localSet 41,
   .br 0
 ]
 
