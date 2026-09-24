@@ -412,6 +412,11 @@ output, and at most 512 MiB of linear memory.  It covers explicit failure
 returns.  Status zero establishes the specified numerical trace through
 time 0.8 and admissibility of the final cells.
 
+The current source proof follows the compiler's guarded singleton cleanup
+and scan frame. Its public solver specification was rechecked on 2026-09-24.
+The frozen binary identity and independent package result below describe the
+earlier artifact; this source-proof refresh does not revalidate that identity.
+
 The [artifact theorems](lean/Project/EulerRiemann/ArtifactTranslation.lean),
 `artifact_solve_exact` and `artifact_solve_success`, transfer those
 specifications through complete byte decoding, validation, and Talos
