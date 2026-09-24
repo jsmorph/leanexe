@@ -267,3 +267,16 @@ Classical.choice, and Quot.sound for the composed theorem and backend lemmas;
 no sorryAx or fresh axioms. Remaining obligations include binary encoding and
 full decoded-module equality, exported invocation, explicit admission errors,
 strict bindings/branches/helpers/loops at source, and the final release gates.
+
+### Unsigned production byte encoding (checked)
+
+Proved that the shipped UInt64-based LEB encoder emits the independent Wasm
+binary grammar's U32 encoding for every value below 2^32, and its U64 encoding
+for every UInt64. The proof establishes length, continuation bits, final-byte
+bounds, and decoded numeric value. It connects directly to Binary.u32leb.
+Added the list-view equivalence needed for the actual ByteArray.toList calls.
+The proof builds; signed constants and complete module encoding are next.
+
+A first signed-bit helper attempted bv_decide and Lean exited with code 139.
+That failed attempt is not committed or counted as evidence; replacing it with
+explicit bitvector/arithmetic lemmas.
