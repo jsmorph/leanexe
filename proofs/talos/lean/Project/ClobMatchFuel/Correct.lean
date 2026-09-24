@@ -88,7 +88,7 @@ theorem matchFuel_correct : MatchFuelSpec := by
         refine ⟨LoopInitial.initialData ctx book bookCapacity trades
           tradesCapacity g0 nodes, ?_⟩
         apply LoopInitial.of_initial ctx st _ book bookCapacity trades
-          tradesCapacity g0 nodes
+          tradesCapacity g0 nodes 0
         · exact Entry.initialized_loop_locals ctx book bookCapacity trades
             tradesCapacity g0 nodes
         · exact hBook48
