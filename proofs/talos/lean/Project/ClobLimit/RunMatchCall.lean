@@ -64,7 +64,7 @@ theorem callProg_spec
     (P : Store Unit → List Value → Prop)
     (hCall : TerminatesWith (m := «module») (id := 17)
       (initial := st) (env := env)
-      (InternalEarlyExit.internalArgs fuel taker bookOwner book
+      (MatchEntry.internalArgs fuel taker bookOwner book
         tradesOwner trades remaining) P)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (st' : Store Unit) (values : List Value), P st' values →

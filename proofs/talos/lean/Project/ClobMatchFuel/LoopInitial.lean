@@ -16,10 +16,10 @@ open Wasm Project.Clob Project.Runtime Project.ClobMatchFuel
   Project.ClobMatchFuel.LoopInvariant
 
 def initialData (ctx : Context) (book bookCapacity trades tradesCapacity g0 : UInt64)
-    (nodes : List FreeNode) : RunningData :=
+    (nodes : List FreeNode) (bookOwner : UInt64 := 0) : RunningData :=
   { steps := 0
     fuel := ctx.initialFuel
-    bookOwner := 0
+    bookOwner := bookOwner
     book := book
     bookCapacity := bookCapacity
     trades := trades
@@ -36,9 +36,9 @@ def initialData (ctx : Context) (book bookCapacity trades tradesCapacity g0 : UI
 
 theorem of_initial (ctx : Context) (st : Store Unit) (s : Locals)
     (book bookCapacity trades tradesCapacity g0 : UInt64)
-    (nodes : List FreeNode)
+    (nodes : List FreeNode) (bookOwner : UInt64)
     (hLocals : LoopLocalsAt ctx
-      (initialData ctx book bookCapacity trades tradesCapacity g0 nodes) s)
+      (initialData ctx book bookCapacity trades tradesCapacity g0 nodes bookOwner) s)
     (hBook48 : 48 ≤ book.toNat)
     (hBook32 : book.toNat +
       fixedArrayBytes ctx.initialState.book.length 5 < 4294967296)
@@ -72,7 +72,7 @@ theorem of_initial (ctx : Context) (st : Store Unit) (s : Locals)
     (hBudget : g0.toNat + ctx.initialFuel.toNat *
       Budget.stepBytes ctx.bookLimit ctx.tradeLimit ≤ ctx.limit) :
     RunningFacts ctx st s
-      (initialData ctx book bookCapacity trades tradesCapacity g0 nodes) := by
+      (initialData ctx book bookCapacity trades tradesCapacity g0 nodes bookOwner) := by
   refine {
     locals := hLocals
     oldTradesTracker := by simp [initialData]

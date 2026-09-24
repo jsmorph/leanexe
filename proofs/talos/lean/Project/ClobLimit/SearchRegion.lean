@@ -5,7 +5,7 @@ import Project.ClobLimit.Program
 /-!
 # Reused search-function region
 
-The matching and limit artifacts contain the same six search functions at
+The matching and limit artifacts contain the same search functions and release helper at
 different indices.  This module records their exact function renaming and
 their closed portable syntax.
 -/
@@ -15,7 +15,7 @@ namespace Project.ClobLimit.SearchRegion
 open Project.FunctionRegion
 
 def SearchDomain (id : Nat) : Prop :=
-  id = 2 ∨ id = 5 ∨ id = 6 ∨ id = 7 ∨ id = 8 ∨ id = 9
+  id = 2 ∨ id = 5 ∨ id = 6 ∨ id = 7 ∨ id = 8 ∨ id = 9 ∨ id = 18
 
 def searchRename : Nat → Nat
   | 2 => 8
@@ -24,6 +24,7 @@ def searchRename : Nat → Nat
   | 7 => 12
   | 8 => 13
   | 9 => 14
+  | 18 => 25
   | id => id
 
 /-- The reused functions' nominal types occupy the corresponding embedded
@@ -38,7 +39,7 @@ theorem searchShift : Shift Project.ClobMatchFuel.«module»
       memory := rfl
       functions := ?_ }
   intro id hDomain
-  rcases hDomain with rfl | rfl | rfl | rfl | rfl | rfl
+  rcases hDomain with rfl | rfl | rfl | rfl | rfl | rfl | rfl
   · refine ⟨Project.ClobMatchFuel.func2Def, rfl, rfl, ?_⟩
     prove_portable
   · refine ⟨Project.ClobMatchFuel.func5Def, rfl, rfl, ?_⟩
@@ -52,6 +53,9 @@ theorem searchShift : Shift Project.ClobMatchFuel.«module»
     prove_portable
     all_goals simp [SearchDomain]
   · refine ⟨Project.ClobMatchFuel.func9Def, rfl, rfl, ?_⟩
+    prove_portable
+    all_goals simp [SearchDomain]
+  · refine ⟨Project.ClobMatchFuel.func18Def, rfl, rfl, ?_⟩
     prove_portable
     all_goals simp [SearchDomain]
 
