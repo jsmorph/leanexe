@@ -4,6 +4,8 @@ LeanExe compiles a checked declaration from a restricted Lean 4 program to a sta
 
 LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  A source-agreement theorem uses Lean definitions as its specification.  The proof establishes the connection to the binary without assuming compiler correctness.
 
+The `scalar64` certified compiler path proves source agreement for UInt64 arithmetic, branches, helper calls, and terminating loops using a shared backend theorem. `tools/compile-certified` produces proof-carrying WASM packages; `tools/verify-certified` checks them independently. See [Certified scalar64 compilation](docs/scalar64-correctness.md) for the scope, commands, and trust assumptions.
+
 Ordinary library-mode binary serialization can also run through LeanExe's experimental [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler remains the production path; the LeanExe-compiled emitter is a non-blocking deterministic regression experiment.
 
 ![LeanExe architecture](docs/leanexe.png)
