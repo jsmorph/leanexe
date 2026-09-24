@@ -1,5 +1,5 @@
 import Project.Gpt2CachedStep.CachedAttention.Mixed
-import Project.ProofKit.PackedReleaseGuard
+import Project.ProofKit.PackedReleaseAliases
 
 namespace Project.Gpt2CachedStep.CachedAttention
 open Wasm Project.Runtime Project.ProofKit PackedFloatFrame Project.EulerRiemann.Execution
@@ -17,10 +17,10 @@ def cleanupStore (heap : Heap) (initial : Store Unit)
 
 set_option maxRecDepth 32768 in
 theorem emitted_cleanup : func29.drop 329 =
-    PackedReleaseGuard.program 73 106 42 ++
-    PackedReleaseGuard.program 59 106 42 ++
-    PackedReleaseGuard.program 48 106 42 ++
-    PackedReleaseGuard.program 33 106 42 ++
+    PackedReleaseAliases.program 73 [106, 60, 59, 49, 48, 34, 33, 23, 22] 42 ++
+    PackedReleaseAliases.program 59 [106, 49, 48, 34, 33, 23, 22] 42 ++
+    PackedReleaseAliases.program 48 [106, 34, 33, 23, 22] 42 ++
+    PackedReleaseAliases.program 33 [106, 23, 22] 42 ++
     PackedReleaseGuard.program 22 106 42 ++
     [.localGet 106, .localGet 107, .localGet 108] := rfl
 
@@ -60,8 +60,8 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       result.values = [.i64 3072, .i64 outputNode.root, .i64 outputNode.root] →
       wp «module» rest Q final result env) :
     wp «module» (func29.drop 329 ++ rest) Q initial frame env := by
-  rcases hState with ⟨⟨⟨⟨⟨⟨hFrameParams, hLocals, hValues, _, hScoreOwner, _, _, _⟩,
-    hMaximumOwner, _, _⟩, hExponentialOwner, _, _⟩, hSumOwner, _, _⟩, hProbabilityOwner, _, _⟩,
+  rcases hState with ⟨⟨⟨⟨⟨⟨hFrameParams, hLocals, hValues, _, hScoreOwner, hScorePtr, _, _⟩,
+    hMaximumOwner, hMaximumPtr, _⟩, hExponentialOwner, hExponentialPtr, _⟩, hSumOwner, hSumPtr, _⟩, hProbabilityOwner, _, _⟩,
     hOutputOwner, hOutputPtr, hOutputSize⟩
   have hParamLength : frame.params.length = 8 := by rw [hFrameParams, hParams]
   have hGetScore : frame.get 22 = some (.i64 scoreNode.root) := by
@@ -74,6 +74,14 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     simpa [Locals.get, hParamLength, hLocals] using hSumOwner
   have hGetProbability : frame.get 73 = some (.i64 probabilityNode.root) := by
     simpa [Locals.get, hParamLength, hLocals] using hProbabilityOwner
+  have hGetScorePtr : frame.get 23 = some (.i64 scoreNode.root) := by
+    simpa [Locals.get, hParamLength, hLocals] using hScorePtr
+  have hGetMaximumPtr : frame.get 34 = some (.i64 maximumNode.root) := by
+    simpa [Locals.get, hParamLength, hLocals] using hMaximumPtr
+  have hGetExponentialPtr : frame.get 49 = some (.i64 exponentialNode.root) := by
+    simpa [Locals.get, hParamLength, hLocals] using hExponentialPtr
+  have hGetSumPtr : frame.get 60 = some (.i64 sumNode.root) := by
+    simpa [Locals.get, hParamLength, hLocals] using hSumPtr
   have hGetOutput : frame.get 106 = some (.i64 outputNode.root) := by
     simpa [Locals.get, hParamLength, hLocals] using hOutputOwner
   have hProbabilityRoot := hProbability.buffer.rootBound
@@ -98,33 +106,65 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     omega
   rw [emitted_cleanup]
   simp only [List.append_assoc]
-  apply PackedReleaseGuard.program_spec env «module» 42 _ _ frame probabilityNode probabilityBytes
-    outputNode.root 73 106 (typeIdx := some 42) rfl rfl hHeap hProbability hValues hGetProbability hGetOutput
-    (hProbability.root_ne hProbabilityOutput)
+  apply PackedReleaseAliases.program_spec env «module» 42 _ _ frame probabilityNode probabilityBytes
+    73 [106, 60, 59, 49, 48, 34, 33, 23, 22] (typeIdx := some 42) rfl rfl hHeap hProbability hValues hGetProbability
+  · intro slot hSlot
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hSlot
+    rcases hSlot with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    · exact ⟨outputNode.root, hGetOutput, hProbability.root_ne hProbabilityOutput⟩
+    · exact ⟨sumNode.root, hGetSumPtr, hProbability.root_ne (regionsDisjoint_symm hSumProbability)⟩
+    · exact ⟨sumNode.root, hGetSum, hProbability.root_ne (regionsDisjoint_symm hSumProbability)⟩
+    · exact ⟨exponentialNode.root, hGetExponentialPtr, hProbability.root_ne (regionsDisjoint_symm hExponentialProbability)⟩
+    · exact ⟨exponentialNode.root, hGetExponential, hProbability.root_ne (regionsDisjoint_symm hExponentialProbability)⟩
+    · exact ⟨maximumNode.root, hGetMaximumPtr, hProbability.root_ne (regionsDisjoint_symm hMaximumProbability)⟩
+    · exact ⟨maximumNode.root, hGetMaximum, hProbability.root_ne (regionsDisjoint_symm hMaximumProbability)⟩
+    · exact ⟨scoreNode.root, hGetScorePtr, hProbability.root_ne (regionsDisjoint_symm hScoreProbability)⟩
+    · exact ⟨scoreNode.root, hGetScore, hProbability.root_ne (regionsDisjoint_symm hScoreProbability)⟩
   intro hHeap1
   have hScoreAfter1 := hScore.released probabilityNode hProbabilityRoot hProbability32 hScoreProbability
   have hMaximumAfter1 := hMaximum.released probabilityNode hProbabilityRoot hProbability32 hMaximumProbability
   have hExponentialAfter1 := hExponential.released probabilityNode hProbabilityRoot hProbability32 hExponentialProbability
   have hSumAfter1 := hSum.released probabilityNode hProbabilityRoot hProbability32 hSumProbability
   have hOutputAfter1 := hOutput.released probabilityNode hProbabilityRoot hProbability32 (regionsDisjoint_symm hProbabilityOutput)
-  apply PackedReleaseGuard.program_spec env «module» 42 _ _ frame sumNode sumBytes
-    outputNode.root 59 106 (typeIdx := some 42) rfl rfl hHeap1 hSumAfter1 hValues hGetSum hGetOutput
-    (hSumAfter1.root_ne hSumOutput)
+  apply PackedReleaseAliases.program_spec env «module» 42 _ _ frame sumNode sumBytes
+    59 [106, 49, 48, 34, 33, 23, 22] (typeIdx := some 42) rfl rfl hHeap1 hSumAfter1 hValues hGetSum
+  · intro slot hSlot
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hSlot
+    rcases hSlot with rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    · exact ⟨outputNode.root, hGetOutput, hSumAfter1.root_ne hSumOutput⟩
+    · exact ⟨exponentialNode.root, hGetExponentialPtr, hSumAfter1.root_ne (regionsDisjoint_symm hExponentialSum)⟩
+    · exact ⟨exponentialNode.root, hGetExponential, hSumAfter1.root_ne (regionsDisjoint_symm hExponentialSum)⟩
+    · exact ⟨maximumNode.root, hGetMaximumPtr, hSumAfter1.root_ne (regionsDisjoint_symm hMaximumSum)⟩
+    · exact ⟨maximumNode.root, hGetMaximum, hSumAfter1.root_ne (regionsDisjoint_symm hMaximumSum)⟩
+    · exact ⟨scoreNode.root, hGetScorePtr, hSumAfter1.root_ne (regionsDisjoint_symm hScoreSum)⟩
+    · exact ⟨scoreNode.root, hGetScore, hSumAfter1.root_ne (regionsDisjoint_symm hScoreSum)⟩
   intro hHeap2
   have hScoreAfter2 := hScoreAfter1.released sumNode hSumRoot hSum32 hScoreSum
   have hMaximumAfter2 := hMaximumAfter1.released sumNode hSumRoot hSum32 hMaximumSum
   have hExponentialAfter2 := hExponentialAfter1.released sumNode hSumRoot hSum32 hExponentialSum
   have hOutputAfter2 := hOutputAfter1.released sumNode hSumRoot hSum32 (regionsDisjoint_symm hSumOutput)
-  apply PackedReleaseGuard.program_spec env «module» 42 _ _ frame exponentialNode exponentialBytes
-    outputNode.root 48 106 (typeIdx := some 42) rfl rfl hHeap2 hExponentialAfter2 hValues hGetExponential hGetOutput
-    (hExponentialAfter2.root_ne hExponentialOutput)
+  apply PackedReleaseAliases.program_spec env «module» 42 _ _ frame exponentialNode exponentialBytes
+    48 [106, 34, 33, 23, 22] (typeIdx := some 42) rfl rfl hHeap2 hExponentialAfter2 hValues hGetExponential
+  · intro slot hSlot
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hSlot
+    rcases hSlot with rfl | rfl | rfl | rfl | rfl
+    · exact ⟨outputNode.root, hGetOutput, hExponentialAfter2.root_ne hExponentialOutput⟩
+    · exact ⟨maximumNode.root, hGetMaximumPtr, hExponentialAfter2.root_ne (regionsDisjoint_symm hMaximumExponential)⟩
+    · exact ⟨maximumNode.root, hGetMaximum, hExponentialAfter2.root_ne (regionsDisjoint_symm hMaximumExponential)⟩
+    · exact ⟨scoreNode.root, hGetScorePtr, hExponentialAfter2.root_ne (regionsDisjoint_symm hScoreExponential)⟩
+    · exact ⟨scoreNode.root, hGetScore, hExponentialAfter2.root_ne (regionsDisjoint_symm hScoreExponential)⟩
   intro hHeap3
   have hScoreAfter3 := hScoreAfter2.released exponentialNode hExponentialRoot hExponential32 hScoreExponential
   have hMaximumAfter3 := hMaximumAfter2.released exponentialNode hExponentialRoot hExponential32 hMaximumExponential
   have hOutputAfter3 := hOutputAfter2.released exponentialNode hExponentialRoot hExponential32 (regionsDisjoint_symm hExponentialOutput)
-  apply PackedReleaseGuard.program_spec env «module» 42 _ _ frame maximumNode maximumBytes
-    outputNode.root 33 106 (typeIdx := some 42) rfl rfl hHeap3 hMaximumAfter3 hValues hGetMaximum hGetOutput
-    (hMaximumAfter3.root_ne hMaximumOutput)
+  apply PackedReleaseAliases.program_spec env «module» 42 _ _ frame maximumNode maximumBytes
+    33 [106, 23, 22] (typeIdx := some 42) rfl rfl hHeap3 hMaximumAfter3 hValues hGetMaximum
+  · intro slot hSlot
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hSlot
+    rcases hSlot with rfl | rfl | rfl
+    · exact ⟨outputNode.root, hGetOutput, hMaximumAfter3.root_ne hMaximumOutput⟩
+    · exact ⟨scoreNode.root, hGetScorePtr, hMaximumAfter3.root_ne (regionsDisjoint_symm hScoreMaximum)⟩
+    · exact ⟨scoreNode.root, hGetScore, hMaximumAfter3.root_ne (regionsDisjoint_symm hScoreMaximum)⟩
   intro hHeap4
   have hScoreAfter4 := hScoreAfter3.released maximumNode hMaximumRoot hMaximum32 hScoreMaximum
   have hOutputAfter4 := hOutputAfter3.released maximumNode hMaximumRoot hMaximum32 (regionsDisjoint_symm hMaximumOutput)

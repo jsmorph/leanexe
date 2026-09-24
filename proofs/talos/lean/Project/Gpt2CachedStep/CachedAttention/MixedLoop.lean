@@ -3,11 +3,11 @@ import Project.Gpt2CachedStep.CachedAttention.MixedStep
 namespace Project.Gpt2CachedStep.CachedAttention
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
-def mixedWord : Wasm.Program := (mixedBody.drop 12).take 27
+def mixedWord : Wasm.Program := (mixedBody.drop 12).take 25
 
 set_option maxRecDepth 32768 in
-theorem emitted_mixed_fold : mixedWord = mixedWord.take 21 ++
-    RangeFoldLoop.program 111 112 mixedStep ++ mixedWord.drop 22 := rfl
+theorem emitted_mixed_fold : mixedWord = mixedWord.take 19 ++
+    RangeFoldLoop.program 111 112 mixedStep ++ mixedWord.drop 20 := rfl
 
 set_option maxRecDepth 32768 in
 theorem emitted_mixed : (func29.drop 320).take 1 = PackedGenerateLoop.program 77 109 110 mixedWord := rfl
