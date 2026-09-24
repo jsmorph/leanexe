@@ -409,3 +409,12 @@ ArithmeticBytesAudit builds and reports only propext, Classical.choice, and
 Quot.sound for the composed theorem and decoder lemmas; no sorryAx or new axioms.
 Full module construction/validation, invocation, source admission limits, and
 final clean-checkout/independent-package/runtime gates remain unfinished.
+
+### Function signatures and UTF-8 names (checked)
+
+HeaderParsing proves exact parsing of production byte vectors, arbitrary UTF-8
+export names, repeated i64 parameter/result types, and complete function types,
+subject to the relevant U32 length bounds. It connects String.fromUTF8? to the
+original string and includes arbitrary byte prefixes, suffixes, and limits.
+The module builds. Complete sections, fixed runtime bodies, validation, and
+exported invocation still remain.
