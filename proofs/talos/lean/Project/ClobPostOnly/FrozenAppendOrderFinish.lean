@@ -1,6 +1,6 @@
-import Project.ClobPostOnly.AppendOrderCopy
-import Project.ClobPostOnly.AppendStore
-import Project.ClobPostOnly.AppendTrade
+import Project.ClobPostOnly.FrozenAppendOrderCopy
+import Project.ClobPostOnly.FrozenAppendStore
+import Project.ClobPostOnly.FrozenAppendTrade
 
 /-!
 # Appended order-array finalization
@@ -11,11 +11,11 @@ module proves that generated instruction slice and reconstructs the completed
 order array before passing control to an opaque rest program.
 -/
 
-namespace Project.ClobPostOnly.AppendOrderFinish
+namespace Project.ClobPostOnly.Frozen.AppendOrderFinish
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobPostOnly.Allocation Project.ClobPostOnly.AppendOrderCopy
-  Project.ClobPostOnly.AppendStore
+  Project.ClobPostOnly.Frozen.Allocation Project.ClobPostOnly.Frozen.AppendOrderCopy
+  Project.ClobPostOnly.Frozen.AppendStore
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -29,8 +29,8 @@ macro "wp_run_big" : tactic => `(tactic|
 
 def appendOrderFinishProg : Wasm.Program :=
   [
-  .localGet 40,
-  .localGet 37,
+  .localGet 38,
+  .localGet 35,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (1 : UInt64),
@@ -39,10 +39,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 42,
-  .store64 (0 : UInt32),
   .localGet 40,
-  .localGet 37,
+  .store64 (0 : UInt32),
+  .localGet 38,
+  .localGet 35,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (2 : UInt64),
@@ -51,10 +51,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 43,
+  .localGet 41,
   .store64 (0 : UInt32),
-  .localGet 40,
-  .localGet 37,
+  .localGet 38,
+  .localGet 35,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (3 : UInt64),
@@ -63,10 +63,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 44,
+  .localGet 42,
   .store64 (0 : UInt32),
-  .localGet 40,
-  .localGet 37,
+  .localGet 38,
+  .localGet 35,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (4 : UInt64),
@@ -75,10 +75,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 45,
+  .localGet 43,
   .store64 (0 : UInt32),
-  .localGet 40,
-  .localGet 37,
+  .localGet 38,
+  .localGet 35,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (5 : UInt64),
@@ -87,12 +87,12 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 46,
+  .localGet 44,
   .store64 (0 : UInt32),
-  .localGet 40,
+  .localGet 38,
+  .localSet 25,
+  .localGet 25,
   .localSet 32,
-  .localGet 32,
-  .localSet 33,
   .constI64 (8 : UInt64),
   .constI64 (0 : UInt64),
   .constI64 (4 : UInt64),
@@ -106,20 +106,20 @@ def appendOrderFinishProg : Wasm.Program :=
   .divUI64,
   .constI64 (8 : UInt64),
   .mulI64,
-  .localSet 43,
-  .localGet 43,
+  .localSet 41,
+  .localGet 41,
   .constI64 (8 : UInt64),
   .ltUI64,
   .iff 0 0 [
     .constI64 (8 : UInt64),
-    .localSet 43
+    .localSet 41
   ] [],
   .constI64 (0 : UInt64),
-  .localSet 48,
+  .localSet 46,
   .constI64 (0 : UInt64),
-  .localSet 44,
+  .localSet 42,
   .globalGet 1,
-  .localSet 45
+  .localSet 43
 ]
 
 def appendOrderFinishPost (st0 st6 : Store Unit) (g0 g2 : UInt64)
@@ -162,7 +162,7 @@ theorem appendOrderFinishProg_spec (env : HostEnv Unit)
       (appendCopyFrame ptr g0 order os.length (os.length * 5)) env := by
   obtain ⟨k, hk, hFrame, hpg, hgl, hfresh, hlength, hlo, hcopied⟩ := hInv
   have hkU : UInt64.ofNat (os.length * 5) = UInt64.ofNat k := by
-    have h := congrArg (fun s : Locals => s.locals[35]?) hFrame
+    have h := congrArg (fun s : Locals => s.locals[33]?) hFrame
     simpa [appendCopyFrame] using h
   have hkEq : k = os.length * 5 := by
     have h := congrArg UInt64.toNat hkU
@@ -439,4 +439,4 @@ theorem appendOrderFinishProg_spec (env : HostEnv Unit)
     AppendTradeBump.appendTradeAllocFrame,
     AppendTradeBumpChecks.appendTradeAllocFrame, htotalEq] using hRest
 
-end Project.ClobPostOnly.AppendOrderFinish
+end Project.ClobPostOnly.Frozen.AppendOrderFinish

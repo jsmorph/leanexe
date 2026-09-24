@@ -1,5 +1,5 @@
-import Project.ClobPostOnly.ValidOrder
-import Project.ClobPostOnly.Allocation
+import Project.ClobPostOnly.FrozenValidOrder
+import Project.ClobPostOnly.FrozenAllocation
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 
@@ -11,11 +11,11 @@ allocates one owned empty trade array when the free list is empty.  The proof
 states the resulting header, counter changes, and preserved input region.
 -/
 
-namespace Project.ClobPostOnly.Invalid
+namespace Project.ClobPostOnly.Frozen.Invalid
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobPostOnly.Model Project.ClobPostOnly.ValidOrder
-  Project.ClobPostOnly.Allocation Project.ClobPostOnly.SearchHelpers
+  Project.ClobPostOnly.Frozen.Model Project.ClobPostOnly.Frozen.ValidOrder
+  Project.ClobPostOnly.Frozen.Allocation Project.ClobPostOnly.Frozen.SearchHelpers
 
 set_option maxHeartbeats 64000000
 set_option maxRecDepth 1048576
@@ -24,18 +24,13 @@ private def invalidAllocFrame (ptr : UInt64) (order : OrderL) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 1,
-      .i64 0, .i64 1, .i64 0, .i64 ptr,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 8, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0],
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 1, .i64 0, .i64 1, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 8, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
 theorem postOnly_invalid
@@ -69,24 +64,18 @@ theorem postOnly_invalid
   · change wp «module» func17 _ st
       { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
           .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-        locals := [.i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0],
+        locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func17
     wp_run
     refine wp_call_tw
-      (Project.ClobPostOnly.ValidOrder.func6_spec env st ptr os order hlen
+      (Project.ClobPostOnly.Frozen.ValidOrder.func6_spec env st ptr os order hlen
         hInput) ?_
     rintro st1 vs ⟨rfl, rfl⟩
     simp only [boolWord, if_neg hInvalid]
@@ -100,7 +89,7 @@ theorem postOnly_invalid
     rw [if_neg (by simp)]
     wp_run
     refine wp_call_tw
-      (Project.ClobPostOnly.Allocation.func16_spec env st1) ?_
+      (Project.ClobPostOnly.Frozen.Allocation.func16_spec env st1) ?_
     rintro st2 vs ⟨rfl, rfl⟩
     wp_run
     simp
@@ -259,4 +248,4 @@ theorem postOnly_invalid
           write64_bytes_lo _ _ _
               (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
 
-end Project.ClobPostOnly.Invalid
+end Project.ClobPostOnly.Frozen.Invalid
