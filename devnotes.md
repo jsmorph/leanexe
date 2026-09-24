@@ -1,3 +1,7 @@
+## 2026-09-24: Both grid scan maintained gates pass fresh compiler output
+
+`tools/talos-proof.js check euler_grid_scan` passes in work/gridscan-maintained-1.log (3,382 jobs), and `check euler_outward_grid` passes in work/outward-maintained-1.log (3,528 jobs). The checked maximum-speed scan now performs one loop and returns both projections from its final state. The outward scan no longer writes the unused visited flag. Both retain their quantified exact-result and physical-safety contracts with only standard logical axioms. The source cache and annotation changes are maintained generator output. Grid-scan documentation now distinguishes the current single-loop source proof from the historical frozen binary identity. Runtime grid regressions already passed earlier in this branch; these repairs change only proof code and caches.
+
 ## 2026-09-24: Cached normalization and attention public kernels pass current cleanup
 
 The current LayerNorm.Spec and CachedAttention.Spec pass together in work/cached-kernels-1.log (3,582 jobs). Their complete generated functions retain exact packed source bytes, owned results, caller memory frames, and resource bounds. Inverse-buffer cleanup checks the retained mean aliases; attention cleanup checks every earlier temporary alias before releasing probability, sum, exponential, maximum, and score buffers. Existing pairwise ownership separation supplies each comparison through PackedReleaseAliases. The inner variance and mixed-value loops now match the removed unused flag assignments. Public axiom audits remain standard-only.
