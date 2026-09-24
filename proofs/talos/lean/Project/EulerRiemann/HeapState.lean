@@ -11,10 +11,12 @@ structure Heap where
   retains : UInt64
   releases : UInt64
   frees : UInt64
+  retainsOverride : Option Wasm.Value := none
+  extraGlobals : List Wasm.Value := []
 
 def Heap.globals (heap : Heap) : List Wasm.Value :=
   [.i64 heap.top, .i64 (freeHead heap.nodes), .i64 heap.allocations,
-    .i64 heap.retains, .i64 heap.releases, .i64 heap.frees]
+    heap.retainsOverride.getD (.i64 heap.retains), .i64 heap.releases, .i64 heap.frees] ++ heap.extraGlobals
 
 structure Heap.At (heap : Heap) (store : Store Unit) : Prop where
   globals : store.globals.globals = heap.globals
