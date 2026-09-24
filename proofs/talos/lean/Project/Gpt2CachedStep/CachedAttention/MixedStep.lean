@@ -12,7 +12,7 @@ def mixedBody : Wasm.Program :=
   | _ => []
 
 def mixedStep : Wasm.Program :=
-  match (mixedBody[33]? : Option Wasm.Instruction) with
+  match (mixedBody[31]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 

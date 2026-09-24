@@ -1,3 +1,9 @@
+## 2026-09-24: Cached normalization and attention public kernels pass current cleanup
+
+The current LayerNorm.Spec and CachedAttention.Spec pass together in work/cached-kernels-1.log (3,582 jobs). Their complete generated functions retain exact packed source bytes, owned results, caller memory frames, and resource bounds. Inverse-buffer cleanup checks the retained mean aliases; attention cleanup checks every earlier temporary alias before releasing probability, sum, exponential, maximum, and score buffers. Existing pairwise ownership separation supplies each comparison through PackedReleaseAliases. The inner variance and mixed-value loops now match the removed unused flag assignments. Public axiom audits remain standard-only.
+
+The preceding work/scans-aliases-1.log checked the single-loop Euler grid scan, both generic alias-release helpers, exponential reduction/squaring, row sums, and attention cleanup. Its sole final error was the normalization guard's list-membership simplification retaining an empty-list disjunct; explicitly simplifying that disjunct repaired the focused retry. No timeout occurred in these focused builds. The broader cached block, hidden traversal, token step, and session remain to be checked against current output.
+
 ## 2026-09-24: Reusable retained-owner cleanup proofs checked
 
 ProofKit.PackedReleaseAliases composes the existing alias-comparison lemma with release of an owned packed buffer for an arbitrary list of retained locals. ProofKit.PackedReleaseManyAliases lifts that contract to a sequence of releases, preserving two retained buffers, ownership of remaining temporaries, and the caller's protected memory frame. Both pass in work/scans-aliases-1.log (4.2 and 3.9 seconds), with only standard logical axioms. Existing single-guard and two-guard examples remain valid and are retained. These helpers will support the longer current cached GPT-2 owner guards without copying their control-flow proof at each cleanup site.
