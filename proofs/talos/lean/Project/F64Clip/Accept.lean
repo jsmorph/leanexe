@@ -36,15 +36,15 @@ theorem accept_program_spec (env : HostEnv Unit) (initial : Store Unit)
   wp_fixed_frame [prepareFrame]
   simp [hInput.pointerAddress_eq, hInput.lengthRead]
   rw [ite_eq_right (Nat.not_lt.mpr hInput.generatedLengthBound)]
-  apply FixedArrayCapacity.localProgram_spec 16 (UInt64.ofNat w.size) 1 21
-    Project.F64Clip.module env initial _ rfl rfl (by change 3 ≤ 21; decide)
-    (by change 21 < 27; decide)
+  apply FixedArrayCapacity.localProgram_spec 17 (UInt64.ofNat w.size) 1 22
+    Project.F64Clip.module env initial _ rfl rfl (by change 3 ≤ 22; decide)
+    (by change 22 < 28; decide)
   rw [clip_capacity_normalized base w.size hFit]
   change wp Project.F64Clip.module _ Q initial
     (acceptAllocationFrame count bound ptr w.size (clipCapacity w.size) 0 0 0 0 0) env
   apply FixedArrayAllocateNone.program_spec Project.F64Clip.module env initial
     [.i64 count, .i64 bound, .i64 ptr] (mapFrame count bound ptr 0 w.size 0 0 0 0 []).locals
-    [] 21 rfl (FixedArrayReuse.program 21 1) base (clipCapacity w.size) 1 0 0 0 0 0 allocations []
+    [] 22 rfl (FixedArrayReuse.program 22 1) base (clipCapacity w.size) 1 0 0 0 0 0 allocations []
   · simp [hGlobals]
   · simp [hGlobals, freeHead]
   · simp [hGlobals]
@@ -58,7 +58,7 @@ theorem accept_program_spec (env : HostEnv Unit) (initial : Store Unit)
   · intro previous
     wp_fixed_frame [FixedArraySearch.frame, mapFrame]
     apply FixedArrayResult.lengthStoreLocal_spec Project.F64Clip.module env
-      (clipAllocate initial base w.size allocations) _ (base+48) (UInt64.ofNat w.size) 17 16 rfl rfl
+      (clipAllocate initial base w.size allocations) _ (base+48) (UInt64.ofNat w.size) 18 17 rfl rfl
     · rw [Memory.toUInt32_toNat, hWords.2, Nat.mod_eq_of_lt (by omega), hAllocatedPages]
       omega
     · wp_fixed_frame
