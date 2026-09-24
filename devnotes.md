@@ -1,3 +1,9 @@
+## 2026-09-24: Shared search instruction proofs accepted
+
+The standalone, post-only, and matcher search bodies are definitionally equal after substituting eligibility and release call indices. Six shared modules now check their instruction decomposition, frame contract, bounded candidate reads, tag and payload selection, borrowed-owner advance, and complete iteration. The selection proof takes 9.6 seconds and the composed iteration 4.1 seconds; their audits contain only propext, Classical.choice, and Quot.sound. The advance contract supports arbitrary borrowed owners and proves its cleanup guards cannot release them. Price choice retains the original source model for arbitrary represented books.
+
+The first composition drafts exposed a record-layout parse error, a redundant simplification, and the orientation of the list-update index equality. The focused diagnostics are retained in work/search-slices-6.log through search-slices-8.log. The accepted split proofs replace repeated instruction reasoning; whole-loop termination and the three public wrappers are still being checked. The separately repaired post-only invalid-order branch passes in 16 seconds. No full source-gate result is claimed yet.
+
 ## 2026-09-24: Cancellation frame repair accepted
 
 ClobCancel.Scan passes in 5.8 seconds and ClobCancel.Spec in 25 seconds. The generated function has one additional owner slot, shifting its scan, allocation, and copy scratch locals. Updating the explicit frames and the two decreasing measures preserves the absent-id unchanged-store theorem and the found-id exact copied array, fresh ownership, allocator counters, and memory frame. The first scan attempt exposed its measure still reading the old cursor slot; it was actually reading the length, so no decrease was possible. Moving that index completes the original termination argument without new premises.
