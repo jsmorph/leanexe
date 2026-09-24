@@ -1,3 +1,9 @@
+## 2026-09-24: BoxFree and SharedPair proofs refreshed
+
+The focused builds accepted BoxFree.Spec and SharedPair.Spec against their regenerated programs. BoxFree removes the obsolete proof branch for a child retain that extraction no longer emits. SharedPair carries the additional result-owner slot through its local frames and shifts scratch indices. Its copied bytes, shared reference count, returned pair, allocation bounds, and memory-frame postconditions are unchanged. BoxFree elaborated in 46 seconds; the largest SharedPair tail took 134 seconds, with the final specification taking ten seconds. The combined command returned failure only for a separate new protocol-progress lemma, whose diagnostic identified a missing state-field rewrite; both legacy specifications built successfully. The next run isolates that new lemma.
+
+The first monolithic byte-I/O artifact proof hit its five-minute limit without a diagnostic. It is now split into an explicit decoded cache, a decoding theorem, a validation theorem, and the public artifact statements. Cache generation is untrusted; the Lean decoding theorem must establish its exact equality to the embedded bytes. The smaller host and binary-grammar checkpoint is already pushed as `097c0111`.
+
 ## 2026-09-24: Byte-I/O host contracts and binary grammar
 
 The first focused formal pass now checks the protocol prefix and successful-output laws, byte-memory frames and preservation of other store resources, and all six generated-program WASI host contracts. The general contracts quantify over syscall and clock oracles; they cover short transfers, EOF, errors, monotonic clock observations, absolute-deadline polling, nonblocking flags, and exit status. The new import-bearing binary profile reuses the established instruction decoder and type validator and proves its complete section grammar and validation relation independently. Existing import-free artifact profiles remain unchanged.
