@@ -18,9 +18,9 @@
   "cacheEqualityTheorem": "Project.ClobPostOnly.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobPostOnly.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobPostOnly.Invalid.postOnly_invalid",
-    "Project.ClobPostOnly.Crossing.postOnly_crossing",
-    "Project.ClobPostOnly.Append.postOnly_appended"
+    "Project.ClobPostOnly.Frozen.Invalid.postOnly_invalid",
+    "Project.ClobPostOnly.Frozen.Crossing.postOnly_crossing",
+    "Project.ClobPostOnly.Frozen.Append.postOnly_appended"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

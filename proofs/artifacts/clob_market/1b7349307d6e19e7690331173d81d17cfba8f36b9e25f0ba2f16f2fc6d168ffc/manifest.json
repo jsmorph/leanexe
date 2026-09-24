@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.ClobMarket.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobMarket.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobMarket.Correct.func21_correct"
+    "Project.ClobMarket.Frozen.Correct.func21_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

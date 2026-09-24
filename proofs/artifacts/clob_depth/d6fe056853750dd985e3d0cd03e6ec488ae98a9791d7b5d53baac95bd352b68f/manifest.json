@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.ClobDepth.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobDepth.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobDepth.Func7.func7_terminates"
+    "Project.ClobDepth.Frozen.Func7.func7_terminates"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

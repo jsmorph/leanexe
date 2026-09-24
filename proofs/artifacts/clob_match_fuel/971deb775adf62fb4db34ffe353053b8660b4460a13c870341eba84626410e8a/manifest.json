@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.ClobMatchFuel.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobMatchFuel.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobMatchFuel.Correct.matchFuel_correct"
+    "Project.ClobMatchFuel.Frozen.Correct.matchFuel_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
