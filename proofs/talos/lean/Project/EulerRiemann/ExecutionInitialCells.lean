@@ -1,6 +1,5 @@
 import Project.EulerRiemann.InitialCellsGuard
 import Project.EulerRiemann.InitialSingletonResources
-import Project.EulerRiemann.AdvanceResources
 
 namespace Project.EulerRiemann.Execution
 open Wasm Project.ProofKit Project.Runtime FixedArrayCapacity
@@ -71,6 +70,28 @@ theorem initial_cells_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
   have hRelease := release_owned env current currentHeap source #[Traversal.initialCell n 0]
     hCurrent.heapState hSource
   rw [hRoot] at hRelease
+  have hNonzero : heap.top + 48 ≠ 0 := by
+    rw [← hRoot]
+    intro hZero
+    have := hSource.buffer.rootBound
+    rw [hZero] at this
+    contradiction
+  have hDifferent : source.root ≠ result.root := by
+    intro hEqual
+    have hSame := congrArg UInt64.toNat hEqual
+    have hBound := hSource.buffer.rootBound
+    have hSep := hOldNew
+    simp only [regionsDisjoint, FreeNode.region] at hSep
+    omega
+  rw [hRoot] at hDifferent
+  wp_run [List.set, List.length_set, List.getElem?_set,
+    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte]
+  refine wp_iff_cons rfl ?_
+  rw [ite_eq_left (by simp [hNonzero])]
+  wp_run [List.set, List.length_set, List.getElem?_set,
+    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte]
+  refine wp_iff_cons rfl ?_
+  rw [ite_eq_left (by simp [hDifferent])]
   wp_run [List.set, List.length_set, List.getElem?_set,
     Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte]
   refine wp_call_tw hRelease ?_
