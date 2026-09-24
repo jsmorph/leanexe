@@ -1,7 +1,8 @@
-import Project.EulerRiemann.ComponentResidualExecution
+import Project.EulerRiemann.FrozenComponentResidualExecution
 import Project.EulerRiemann.ArtifactModule
 
 namespace Project.EulerRiemann.ComponentResidual
+open Project.EulerRiemann.Frozen.ComponentResidual
 
 theorem artifact_component_residual :
     ∃ raw validated,
