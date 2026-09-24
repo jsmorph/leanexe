@@ -50,6 +50,10 @@ Nat-tail let lowering materializes used supported bindings with the same machine
 
 ## WebAssembly backend
 
+The byte-I/O path uses `LeanExe.ByteIO`, `LeanExe.IR.ByteIO`, and `LeanExe.Wasm.ByteIO`.  `compile-wasi-io` checks for a zero-argument `ByteIO UInt32` entry and emits six WASI Preview 1 imports for nonblocking reads, writes, descriptor flags, monotonic time, polling, and exit.  Effect analysis preserves sequenced calls through unused results, arguments, and conditions.  `LocalLet.effectCall` carries those effects through pruning before lowering to ordinary calls.  The runtime retains each operation's deadline across retries and partial transfers.  The [byte-I/O specification](spec.md#byte-input-and-output) defines errors and host requirements.
+
+Loop cleanup visits conditional branch temporaries and clears their owner slots on each iteration.  Replaced accumulators are released only when distinct from both the initial and next owner; result cleanup also protects enclosing owners.  ASCII string literals use a single `arrayLiteralSlots` backing array before byte conversion, so copying updates cannot strand intermediate arrays.
+
 `LeanExe.Wasm.Instr` is the structured instruction language shared by binary emission, WAT rendering, and annotation analysis.  The backend lowers each IR function to a `List Instr`, adds allocator and reference-counting runtime functions, assembles the required sections, and serializes the module as WASM bytes.  `compile-wat` prints the same instruction trees, and `tools/check-wat.sh` checks that `wasm-tools parse` reconstructs the direct binary byte for byte.
 
 | Module | Responsibility |

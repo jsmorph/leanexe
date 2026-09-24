@@ -1,5 +1,88 @@
 # Development Journal
 
+## 2026-09-24: Byte I/O resumed on ARM macOS
+
+Resumed `origin/io` at `4f3c3a39` in a fresh checkout.  The user explicitly
+authorized local Lean execution.  The repository Darwin runner retains the
+shared lock, pinned toolchain, one Lean thread, and timeouts; its existing
+Mac environment selects the approved inherited-priority fallback.  Existing
+pinned tool installations were reused, and the proof dependency tree was
+copied with APFS clones into this checkout before running the Talos gate.
+No dependency pins changed.
+
+The initial compiler build passed.  All seven native host cases, 38 existing
+byte-I/O runs with four pure-mode rejections, and 41 reference-counting cases
+passed.  The reported array alias trap was already absent: both the guarded
+out-of-bounds set and modify examples returned `7`, with one allocation and
+one free.  The set example's IR contains the enclosing-owner protection added
+by `cd20f9cf`; its binary hash differs from the old failing record.  This
+corrects the continuation document's assumption that the defect remained open.
+
+The string-literal leak did reproduce.  `"ABC".toUTF8.size` allocated five
+blocks and freed two.  Extraction constructed the temporary scalar array by
+nesting three copying `arraySetSlots` expressions around `arrayAllocSlots`.
+Only the outer array had a cleanup binding.  The repair uses the existing
+`arrayLiteralSlots` representation, which constructs one backing array before
+conversion to bytes.  It changes neither the I/O API nor runtime ownership
+rules.
+
+Regression assertions were added before the repair.  The reference-counting
+case failed with three leaked blocks, and a sequenced literal-write helper
+failed its post-call balance check with status 99.  After the repair, all 48
+reference-counting cases and 40 byte-I/O runs passed.  New cases cover scalar
+literal use, returned strings, constants and concatenation, repeated writes,
+and cleanup when output is broken.  Returned byte arrays intentionally retain
+one caller-owned allocation.
+
+The broader core suite passed 812 accepted, 48 rejected, and 14 expected-trap
+cases.  All 70 byte-array allocation cases, 75 self-emitted LEB128 cases, and
+13 WAT/binary comparisons passed.  The first pure-WASI suite attempt could
+not create Wasmtime's default cache outside the sandbox.  Its rerun uses a
+workspace-local cache configuration, without changing the CLI or engine pin.
+
+The overview, manual, compiler guide, and development guide now distinguish
+byte I/O from the pure adapters, describe the required nonblocking host, and
+record current accumulator ownership guards.  CLI error tests were extended.
+Removing a temporary checkout path from the historic WGSL review allows the
+documentation check to pass all 161 maintained Markdown files.  Logs,
+failing regressions, and generated diagnostic IR are retained in the session
+workspace's `work` directory.  Release-identity work remains deferred, and
+formal I/O host proofs remain an explicit scope decision.
+
+The non-release execution inventory has now run.  Three ownership-report
+expectations predated the guarded final loop-result release and were updated
+from two statement releases to three after inspecting the emitted report.
+All 28 ownership-report cases pass.  The CLI help and standard-comparison
+drivers had treated local-runner operating notices as program diagnostics.
+They now remove only those exact notices when local mode is enabled; tests
+preserve unknown runner failures, prefixed messages, blank lines, and other
+bytes.  The shared process runner still returns the original captured output.
+All 15 CLI error cases and help output pass.  Standard comparisons pass 340
+native Lean/Wasm cases and 62 IR interpreter cases.
+
+All other non-release inventory suites pass except the C reference comparison.
+Its default Clang invocation rejects old-style declarations and a missing
+newline in the pinned upstream fixture under warnings-as-errors.  Repeating
+with the installed GCC 15 reaches execution, but the executable rejects the
+absent `__STDC_IEC_559__` capability declaration.  The fixture, flags, and
+numeric assumptions were not weakened.  This is a remaining Mac portability
+gate.  The pure-WASI rerun passes 33 execution cases, two traps, nine
+rejections, and 16 compiles; fuzz validation passes 56 cases.
+
+The Talos aggregate built its pinned verifier and source inputs successfully,
+then stopped at the already documented `gcd` generated-program mismatch.
+Current WASM and WAT are retained under `proofs/talos/.generated/gcd`.
+Tracked caches and handwritten proofs remain unchanged, and the aggregate
+behavior-proof stage did not run.  Resolving that mismatch remains required
+before claiming the current compiler passes the full proof gate.
+
+`git diff --check`, the 161-file documentation gate, and a separate check of
+all 42 local continuation links and heading anchors passed.  This validation used local changes over `4f3c3a39`.  The user subsequently
+requested continuing through completion with frequent commits and pushes.
+The validated literal repair, regression checks, runner compatibility, and
+documentation form the first checkpoint; proof and C portability repairs
+follow separately.
+
 ## 2026-09-24: Resume byte I/O work
 
 Fetched `origin/io` and checked out the local tracking branch at

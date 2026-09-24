@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { spawnResult } = require("./run-process");
+const { spawnResult, withoutLeanrunNotices } = require("./run-process");
 const host = require("../test/wasmtime_host");
 const {
   HostPlan,
@@ -506,16 +506,19 @@ function runStandard(config, paths, fullEntry) {
     encoding: null,
     timeout: 10000,
   });
+  // latin1 preserves arbitrary stderr bytes while removing exact ASCII notices.
+  const programStderr = Buffer.from(withoutLeanrunNotices(
+    (result.stderr || Buffer.alloc(0)).toString("latin1")), "latin1");
   if (config.mode === "pure") {
     return {
       status: result.status,
       stdout: result.stdout || Buffer.alloc(0),
-      stderr: result.stderr || Buffer.alloc(0),
+      stderr: programStderr,
     };
   }
   const stdout = fs.readFileSync(paths.standardStdout);
   const stderr = fs.readFileSync(paths.standardStderr);
-  const processOutput = outputText(result).trim();
+  const processOutput = outputText({ ...result, stderr: programStderr }).trim();
   if (processOutput.length !== 0) {
     throw new Error(`standard Lean runner produced process output:\n${processOutput}`);
   }

@@ -27,7 +27,7 @@ async function main() {
   const entries = ["echo", "ordered", "timeout", "handled", "reused", "unused",
     "invalid", "immediate", "blocked", "ignored", "emptyWrite", "maxTimeout", "called", "repeated",
     "discardRead", "ignoreReadError", "released", "streaming", "alternatingReads", "streamingTimeout",
-    "carried", "chosen"];
+    "carried", "chosen", "literalReleased"];
   const programs = Object.fromEntries(entries.map(name => [name, compile(name)]));
   let count = 0;
   async function expect(name, input, status, output, options) {
@@ -89,6 +89,11 @@ async function main() {
   }, 64, "");
   await expect("chosen", "", 0, "AC");
   await expect("chosen", "x", 0, "BC");
+  await expect("literalReleased", "", 0, "ABCABCABC");
+  await expect("literalReleased", child => {
+    child.stdout.destroy();
+    child.stdin.end();
+  }, 64, "");
   await expect("blocked", child => {
     child.stdin.end();
     const timer = setInterval(() => child.stdout.read(4096), 10);

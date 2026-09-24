@@ -1,6 +1,6 @@
 # LeanExe
 
-LeanExe compiles a checked declaration from a restricted Lean 4 program to a standalone WebAssembly module.  The accepted language consists of pure, monomorphic, first-order programs over supported scalar and heap representations, including bounded arrays and internal recursive data.  The [language specification](docs/spec.md) defines that language, while the [user manual](docs/manual.md) explains how to write programs within it.
+LeanExe compiles a checked declaration from a restricted Lean 4 program to a standalone WebAssembly module.  The accepted language consists of monomorphic, first-order programs over supported scalar and heap representations, including bounded arrays and internal recursive data.  It supports pure computation and explicit byte I/O through `LeanExe.ByteIO`.  The [language specification](docs/spec.md) defines that language, while the [user manual](docs/manual.md) explains how to write programs within it.
 
 LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  A source-agreement theorem uses Lean definitions as its specification.  The proof establishes the connection to the binary without assuming compiler correctness.
 
@@ -66,7 +66,7 @@ build/tools/wasmtime/current/wasmtime run \
   --invoke choose build/choose.wasm 0 41
 ```
 
-Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  WASI command modes provide bounded stdin, argv, stdout, stderr, and explicit error results while keeping the selected Lean entry pure.
+Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  Pure WASI adapters provide bounded stdin, argv, stdout, stderr, and explicit error results.  `compile-wasi-io` instead runs a `LeanExe.ByteIO UInt32` entry with sequenced stdin reads and stdout writes, explicit error codes, and operation timeouts; its return value becomes the exit status.  See the [byte I/O guide](docs/manual.md#byte-input-and-output) for the required nonblocking host.
 
 The [pseudorandom generator](docs/prng.md) runs with
 `tools/prng.js 42 5 100`: seed 42, five results, modulus 100.  It compiles
