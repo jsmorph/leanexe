@@ -3,7 +3,7 @@ import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.Extract.ReleaseCheck
 import LeanExe.Extract.StructuralRec
-import LeanExe.Extract.ScalarExpr
+import LeanExe.Extract.ScalarFunc
 import LeanExe.IR.Core
 import LeanExe.Runtime
 
@@ -7370,11 +7370,32 @@ structure CompiledModule where
   module : IRModule
   releaseJudgments : Array ReleaseJudgment
 
+/-- The proved scalar declaration case of the production entry point. This
+uses the same IR, result-slot ABI, and downstream emitter as other declarations.
+The general extractor remains the fallback for source forms outside the fragment. -/
+def extractScalarEntry? (exportEntry : Bool) (env : Environment)
+    (moduleName entry : Name) : Option CompiledModule := do
+  let info ← env.find? entry
+  if info.isUnsafe || info.isPartial then none else do
+    let value ← info.value?
+    let candidate := shortExportName entry
+    if exportEntry && reservedExportNames.contains candidate then none else do
+      let exportName := if exportEntry then some candidate else none
+      let func ← extractScalarFunc entry exportName info.type value
+      pure {
+        ctx := {
+          env, root := moduleName.getRoot, names := #[entry], synthetics := #[],
+          freshResultOwnerOffsets := #[[]], inlineStack := [] }
+        module := { funcs := #[func] }
+        releaseJudgments := #[] }
+
 def compileEnvironmentWithEntryModeDetailed
     (exportEntry : Bool)
     (env : Environment)
     (moduleName entry : Name) :
     Except String CompiledModule := do
+  if let some scalar := extractScalarEntry? exportEntry env moduleName entry then
+    return scalar
   let entryInfo ←
     match env.find? entry with
     | some info => .ok info

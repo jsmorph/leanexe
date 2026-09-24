@@ -163,3 +163,24 @@ use propext, Quot.sound, and Classical.choice; recognizer soundness uses propext
 and Quot.sound. These are standard Lean axioms, with no sorryAx, fresh axioms,
 or native-decide shortcut. The independent TypeSafety policy is unchanged.
 Declaration application and source-to-bytes composition are still unproved.
+
+### Production entry point to IR (checked)
+
+Added scalar function application semantics over the original elaborated lambda
+term, argument-order and finite-local-slot proofs, and scalar IR statement and
+single-result function semantics. Proved extractScalarFunc_correct for every
+successful declaration extraction and every argument list of the declared arity,
+and extractScalarFunc_accepts for the independent source support predicate.
+
+The normal compileEnvironmentWithEntryModeDetailed now handles the proved scalar
+declaration case before the general opaque recursive extractor. It uses the same
+IR and result-slot ABI and continues into the existing emitter. The generic
+compileEnvironment_scalar_total_correct theorem references that actual entry
+point, the original environment declaration/body, syntactic source support, and
+all inputs. Its endpoint is IR.Func.ScalarEval. Native scalar constants have
+explicit meanings in the independent source grammar; arbitrary Lean syntax is
+not included. Existing unsafe/partial and reserved-export exclusions remain.
+
+The proof and production extractor build pass. The 56 regression checks pass
+through the changed entry point. This is NOT the end-to-end compiler theorem:
+WASM lowering/encoding and the rest of the agreed language features remain open.
