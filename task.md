@@ -90,7 +90,7 @@ the dividend, and shift counts modulo 64.
 - [x] Arithmetic.affine certificate.
 - [x] Arithmetic.choose certificate.
 - [x] Loop certificate before large backend work.
-- [ ] Certificate generation with explicit rejection of unsupported source forms.
+- [x] Certificate generation with explicit rejection of unsupported source forms.
 
 ### 4. Verified scalar backend
 
@@ -111,21 +111,21 @@ the dividend, and shift counts modulo 64.
 - [x] Full decoded-module equality with verified lowering.
 - [x] Composition of source correspondence, lowering, and byte equality.
 - [x] Explicit compile-certified --profile scalar64 command or equivalent.
-- [ ] Fail closed on unsupported source, stale evidence, or failed checking.
-- [ ] Portable package recording source, core/IR, ABI, export, bytes, certificates,
+- [x] Fail closed on unsupported source, stale evidence, or failed checking.
+- [x] Portable package recording source, core/IR, ABI, export, bytes, certificates,
       theorem names, and pinned dependencies.
-- [ ] Independent verification without running the compiler or proof generator.
+- [x] Independent verification without running the compiler or proof generator.
 
 ### 6. Acceptance and reproducibility
 
-- [ ] Arithmetic.affine: multiple inputs and modular arithmetic.
-- [ ] Arithmetic.choose: both branches.
-- [ ] Prng.mix: bitwise arithmetic, shifts, and large constants.
-- [ ] Helper-call fixture: call graph, staging, and return convention.
-- [ ] TalosGcd.gcd: carried loop state, remainder, and termination.
-- [ ] All pilots share compiler theorems; program-specific work is source
+- [x] Arithmetic.affine: multiple inputs and modular arithmetic.
+- [x] Arithmetic.choose: both branches.
+- [x] Prng.mix: bitwise arithmetic, shifts, and large constants.
+- [x] Helper-call fixture: call graph, staging, and return convention.
+- [x] TalosGcd.gcd: carried loop state, remainder, and termination.
+- [x] All pilots share compiler theorems; program-specific work is source
       correspondence and termination.
-- [ ] Dependency audits retaining the type-safety policy: no proof holes, added
+- [x] Dependency audits retaining the type-safety policy: no proof holes, added
       axioms, or native-evaluation proof shortcuts.
 - [ ] Mutation rejection for source linkage, operations, calls, bytes, exports,
       ABI, and manifest declarations.
@@ -314,3 +314,14 @@ all mutations or the cold gate have passed.
 
 The new namespace audit passed: 494 scalar declarations use only the three
 standard axioms, and 2,181 independent TypeSafety declarations use propext alone.
+
+### 2026-09-24: all five portable packages accepted
+
+At published revision 9c0975a2, compile-certified and independent verification
+passed for affine, choose, mix, helper, and gcd. Node's WASM engine accepted every
+binary, exposed exactly its intended export with no imports, and passed 333
+boundary/branch/modular/call/loop cases. These tests supplement the universal
+Lean theorems. The three source/admission test modules and the full namespace
+axiom audit also passed. Mutation checks are in progress; source linkage and IR
+arithmetic mutations already fail their Lean obligations with recomputed hashes.
+The cold gate has not yet finished.
