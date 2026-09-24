@@ -49,6 +49,7 @@ theorem expanded_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       KernelState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) (frame.locals.take 91) 91 102 105
         (allocatedNode heap.top expandedNeed heap.nodes).root 12288 result →
+      result.get 105 = some (.i64 normalized2Ptr) →
       (heap.allocate expandedNeed).At final →
       (heap.allocate expandedNeed).OwnsPacked final (allocatedNode heap.top expandedNeed heap.nodes)
         (linearRows weights normalized2 (base + fcWeightOffset) (base + fcBiasOffset) 768 3072 1) →
@@ -105,6 +106,9 @@ theorem expanded_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hTyped, List.take_set_of_le, Nat.reduceLeDiff,
       show UInt64.ofNat (4 * (1 * 3072)) = 12288 from rfl, and_self]
+  · simp only [Locals.get, hParams, parameters, hLocals, List.length_cons, List.length_nil,
+      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT,
+      Nat.reduceSub, reduceIte]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame
