@@ -2,13 +2,13 @@
 
 ## Current state and scope
 
-Updated 2026-09-24 after resuming on ARM macOS.  Branch `io` tracks `origin/io`; this session resumed from `4f3c3a394a8f13c4e897478b334c3cc9de16c989`.  Its implementation baseline is `fb19b5efdd6cc171033adf888667764203c14f14`, based on `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b` on `main`.  Local changes repair string-literal temporary ownership, add regression and CLI checks, and reconcile the documentation.  The user requested frequent commits and pushes as validation proceeds.
+Updated 2026-09-24 after resuming on ARM macOS.  Branch `io` tracks `origin/io`; this session resumed from `4f3c3a394a8f13c4e897478b334c3cc9de16c989`.  Its implementation baseline is `fb19b5efdd6cc171033adf888667764203c14f14`, based on `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b` on `main`.  The resumed work repairs string-literal and nested-loop temporary ownership, adds regression and CLI checks, proves the modeled byte-I/O host and protocol behavior, refreshes the existing compiler proofs, and reconciles the documentation.  The user requested frequent commits and pushes as validation proceeds.
 
 The current task is to complete primitive byte I/O, validate its shared compiler changes, and reconcile the documentation.  The user deferred release-identity work on 2026-09-24.  Release receipts, release-input digests, and cold release verification remain deferred.  The user included formal verification of the new byte-I/O host behavior on 2026-09-24.  Rechecking the existing Talos proofs is part of compiler validation.
 
 This document owns the current continuation agenda.  The [Development Journal](devnotes.md#2026-09-23-byte-io-on-branch-io) preserves the implementation history and reported test evidence.  Its September 23 entry contains both intermediate and final results.  The current I/O count is 47 execution cases.  Counts of 26, 30, and 38 describe earlier revisions.
 
-The resumed session has built the compiler and reproduced the focused execution checks.  Current results below distinguish fresh runs from earlier reports.  The non-release inventory has run, including a successful source/IR comparison rerun after a local-runner compatibility fix.  All 69 source caches have been regenerated; focused proof repairs follow the aggregate build diagnostics.  Release identity remains deferred.
+The resumed session has built the compiler and reproduced the focused execution checks.  Current results below distinguish fresh runs from earlier reports.  The non-release inventory has run, including a successful source/IR comparison rerun after a local-runner compatibility fix.  All 69 regenerated source caches match, and the complete current source-proof library passes for all 68 registered complete specifications.  Release identity remains deferred.
 
 ## Agreed behavior
 
@@ -127,7 +127,7 @@ The immediate obligation is to recheck existing programs after the shared extrac
 
 `tools/talos-proof.js check --all` is the aggregate source-driven check.  `tools/talos-artifact.js prepare <case>` explicitly refreshes a generated cache.  Handwritten edits to `Program.lean` are prohibited.  Frozen exact-artifact packages retain their own bytes and identity; any deliberate replacement requires artifact and proof review.
 
-All 69 source caches have been refreshed through maintained preparation. Focused gates now pass the repaired GCD, allocator, CLOB, floating-point, Euler grid and solver, cached GPT-2, LEB encoder, and tiny GPT-2 cases. The tiny inference and checked-entry specifications preserve their original quantified inputs and numerical contracts. The LEB encoder now returns an existential buffer root because released buffers can be reused, with explicit typed release-counter slots. The certificate public gate, retained partial sequence helpers, and full aggregate source check are the remaining proof validation. Current checkpoint evidence is recorded in the journal.
+`tools/talos-proof.js check --all` passes on 2026-09-24: all 69 regenerated caches match, registry/import checks pass, and the complete library builds for all 68 registered complete specifications. The retained partial sequence-softmax proof also passes separately; the full sequence registration remains incomplete as before. The completed source gate covers the compiler ownership changes, including current GCD, CLOB, Euler, cached GPT-2, LEB, and tiny-model instruction streams. Public model input ranges and numerical contracts are preserved. The LEB encoder returns an existential root because buffers can be reused, with explicitly typed runtime release-counter slots. No new axiom or admitted proof term was introduced. Evidence is recorded in the journal; frozen release identity remains deferred.
 
 ### Completed non-release execution inventory on this Mac
 
@@ -216,13 +216,13 @@ The proposed order below preserves the scope discussed in this session.  Impleme
 - [x] Check both reported ownership defects: preserve passing array-alias regressions and repair the reproduced string-literal leak with failing-before/passing-after tests.
 - [x] Review shared ownership and effect rules across retained buffers, conditional replacements, nested loops, helper calls, ignored results, and early returns.  Repair the newly reproduced nested-loop final-buffer leak and pass 47 I/O cases, four pure rejections, and 48 reference-counting cases.
 - [x] Resolve the C comparison portability gate.  Every non-release execution suite and all 13 WAT/binary checks pass.
-- [ ] Complete existing Talos source-driven checks, diagnose inherited failures against the base, and review every changed generated program before updating its cache or proof.
+- [x] Complete existing Talos source-driven checks, diagnose inherited failures against the base, and review every changed generated program before updating its cache or proof.
 - [x] Reconcile the overview, manual, specification, compiler documentation, and development instructions.  Test the new CLI's required error behavior.
 - [x] Record the resumed revision, local changes, per-command results, remaining failures, and agreed exclusions in this document and the journal.
 - [x] Include formal byte-I/O host proofs, as requested by the user.
 - [x] Prove the modeled host contracts and byte-transfer protocol, connect representative generated WASM to Talos execution, and record assumptions and axiom audits. The maintained gate passes all 46 public-theorem audits.
 
-Completion of the current implementation work requires tested I/O behavior, resolution of the ownership defects included in scope, completed compiler and existing-proof validation or explicit decisions on remaining failures, and documentation matching the implementation.  Release identity remains deferred.  The status of formal I/O verification must remain explicit.
+The current implementation task is complete: I/O behavior and the included ownership defects pass their execution checks, compiler source-proof validation passes, modeled byte-I/O host and protocol proofs are checked, and the documentation records their assumptions. The execution aggregate itself remains deferred because it includes release checks; all non-release execution constituents passed separately. Release identity remains deferred.
 
 ## Maintenance
 

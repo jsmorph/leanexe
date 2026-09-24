@@ -1,3 +1,15 @@
+## 2026-09-24: Byte-I/O continuation complete; full source-proof gate passes
+
+`tools/talos-proof.js check --all` passes in work/talos-all-final-2.log: all 69 regenerated Program and annotation caches match, registry/import checks pass, and the complete library builds in 5,487 jobs for all 68 registered complete specifications. The aggregate also checks the four named-field initial heap constructions. The log contains no proof errors or sorryAx. Earlier focused results include the complete certificate, both Riemann solvers, cached GPT-2, the recycled LEB encoder, all three tiny-model cases, and the retained partial sequence-softmax proof. The sequence registration remains incomplete; no new full sequence claim was added.
+
+The first full aggregate in work/talos-all-final-1.log checked all 69 caches and completed 5,481 of its then-scheduled 5,487 jobs before the twenty-minute build limit, with no proof error. A narrowed cached-model check completed the remaining dependency work before this successful maintained rerun.
+
+This closes the compiler-proof obligation for the resumed byte-I/O task. All non-release execution constituents and all 13 WAT/binary comparisons passed earlier on the same compiler implementation. The separate byte-I/O gate passed all 46 public theorem audits and six kernel-checked exact-binary echo executions. The modeled host and protocol contracts retain their documented host/clock-progress assumptions; C, Wasmtime, and OS behavior remain external assumptions tested by native execution. Source proof repairs introduced no axioms, admitted terms, or new public model-input restrictions. LEB's prior fixed bump-address statement was replaced by the actual reusable-buffer result and typed release-counter requirements.
+
+The current status guide, source-proof inventory, development plan, and task record now report the successful aggregate instead of historical cache failures. Frozen artifact and release identity work remains deferred by the user. The top-level execution driver includes those release checks, so its aggregate status is not claimed as passed; its non-release constituents are the execution evidence.
+
+Final documentation validation passes all 162 maintained Markdown files in work/io-final-docs.log. The task record's 41 local links resolve, and git diff --check passes.
+
 ## 2026-09-24: Aggregate dependency rebuild completed through a narrowed final target
 
 work/talos-all-final-1.log matches all 69 regenerated caches and completes 5,481 of its then-scheduled 5,487 proof-library jobs without a proof error before the maintained twenty-minute build limit. It checks the refreshed Riemann and reconstructed initializers and public specifications, all tiny cases, certificate results, and cached hidden-state/entry components. This is an aggregate time limit with continuous successful module completions, not a silent theorem timeout.
