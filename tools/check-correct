@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Repeatable acceptance, mutation, audit, and clean-checkout gate for scalar64."""
 import argparse
-import copy
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -34,7 +32,11 @@ def mutate(packages, name, pilot, change, diagnostic):
         (target/'decoded.json').write_bytes(cs.canonical(raw))
         # Regenerate canonical checking text and every file hash. Rejection must
         # come from the binding/proof/pin, not an accidentally stale checksum.
-        (target/'Check.lean').write_text(cs.checking_text(m, t, raw, data))
+        try:
+            checker=cs.checking_text(m, t, raw, data)
+        except cs.Rejected:
+            checker=(target/'Check.lean').read_text()
+        (target/'Check.lean').write_text(checker)
         m['files'] = {f:cs.sha((target/f).read_bytes()) for f in sorted(cs.FILES)}
         (target/'manifest.json').write_bytes(cs.canonical(m))
         output = command([cs.ROOT/'tools/verify-certified', target], expected=1)
@@ -60,6 +62,8 @@ def mutations(packages):
         m['arity']=1;t['arity']=1;m['abi']={'params':['i64'],'result':'i64','argument_order':[0]};return b
     def declaration(m,t,r,b):m['certificate']=cs.PREFIX+'Pilots.chooseCertificate';return b
     def pin(m,t,r,b):m['pins']['lean-toolchain']='0'*64;return b
+    def placeholder(m,t,r,b):m['source']='_';return b
+    def wrong_namespace(m,t,r,b):m['source']='LeanExe.Examples.Prng.mix';return b
     def theorem(m,t,r,b):m['theorems'][0]='ScalarPackageCheck.fake';return b
     cases=[('source linkage','affine',source,'type mismatch'),
            ('IR arithmetic','affine',operation,'Lean check failed'),
@@ -73,7 +77,9 @@ def mutations(packages):
            ('ABI arity','affine',arity,'Lean check failed'),
            ('certificate declaration','affine',declaration,'type mismatch'),
            ('dependency pin','affine',pin,'pin mismatch'),
-           ('theorem declaration','affine',theorem,'theorem declarations')]
+           ('theorem declaration','affine',theorem,'theorem declarations'),
+           ('placeholder declaration','affine',placeholder,'invalid Lean identifier'),
+           ('source module namespace','affine',wrong_namespace,'outside its named module')]
     for case in cases:mutate(packages,*case)
     command([cs.ROOT/'tools/compile-certified','unknown','--profile','scalar64','--output',packages/'unknown'], expected=1)
     command([cs.ROOT/'tools/compile-certified','affine','--profile','nat','--output',packages/'nat'], expected=1)
@@ -118,6 +124,7 @@ def main():
         print(command(['node',cs.ROOT/'test/scalar64_runtime.js',packages]),end='',flush=True)
         for test in ['scalar64_profile.lean','scalar64_gcd.lean','scalar64_sources.lean']:
             print(cs.lean(['env','lean',str(cs.ROOT/'test'/test)]),end='',flush=True)
+        print(cs.lean(['build',cs.PREFIX+'AdmissionTests']),end='',flush=True)
         print(cs.lean(['build',cs.PREFIX+'Audit']),end='',flush=True)
         if o.mutations:mutations(packages)
         if o.cold:cold(packages)
