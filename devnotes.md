@@ -1,3 +1,9 @@
+## 2026-09-24: Clipping proof accepted; LEB allocator change identified
+
+F64Clip.Spec passes all 3,428 required jobs in work/clip-final-1.log. The preparation decomposition, accepted and rejected allocation branches, traversal frame, and result owner now match the generated function. The public clip and preparation theorems retain their original numerical and memory contracts, with only standard logical axioms. Individual repaired modules take 3.8–5.1 seconds. The prior PrepareCode failure is retained in work/frames-clip-leb-1.log.
+
+That earlier run also diagnosed LebU32.Main at its stale entry frames. Inspection of the regenerated program shows a substantive change beyond local numbering: the continuation loop releases the prior buffer and can reuse freed chunks. Its former fixed bump addresses and permanently empty free list are no longer valid postconditions. The refreshed proof must preserve exact encoded bytes while describing the actual reusable allocator. No LEB proof completion is claimed.
+
 ## 2026-09-24: Internal search and result frames accepted
 
 The limit matcher's search-frame relation, completion frame, and cached-maker read composition now pass. A reusable update lemma preserves related layouts under corresponding local writes. The cached-read theorem executes the existing five checked loads and retains their exact values in the internal frame; its audit uses only standard logical axioms. The output is work/frames-clip-leb-1.log. The preceding combined run exposed an uninstantiated assertion parameter and a conjunction left after simplification; explicitly selecting the source assertion resolves both without new premises.
