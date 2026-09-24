@@ -94,7 +94,7 @@ the dividend, and shift counts modulo 64.
 
 - [ ] Total scalar lowering used by the actual certified compiler path.
 - [ ] Explicit semantics and well-formedness for any intervening IR.
-- [ ] Primitive lowering, including guarded division and remainder.
+- [x] Primitive lowering, including guarded division and remainder.
 - [ ] Locals, strict staging, scratch noninterference, and branches.
 - [ ] Helper calls, arguments, and returns.
 - [ ] Loops, simultaneous carried updates, and termination transfer.
@@ -213,3 +213,23 @@ Backend work is in progress: typed expression lowering and a scalar IR with
 explicit assignment, calls, structured conditionals, and terminating loops.
 These drafts are not yet counted as checked. Mathlib cache acquisition is being
 kept in the workspace so interrupted downloads can resume without losing archives.
+
+### 2026-09-24: generic expression lowering checked
+
+The typed scalar expression lowerer and its structural correctness theorem pass
+Lean. The theorem covers every expression constructor and arbitrary input/local
+states and stack continuations, preserving the surrounding store. It reuses the
+existing ScalarTransition expression semantics and scratch noninterference proof,
+while retaining explicit WASM control result types for later exact module equality.
+
+Passed: lake build Project.Correct.Scalar64.Model in proofs/talos/lean; lake env
+lean Project/Correct/Scalar64/ExpressionTests.lean. The latter checks zero-divisor
+division/remainder and masking a shift count of 65, and audits the generic lowering
+and scratch preservation theorems. Only the declared standard axioms occur.
+
+The scalar command IR and total execution rules are defined and kernel checked.
+Its loop rule states an invariant and decreasing measure entirely in IR semantics.
+Call/loop lowering correctness, module checking, byte closure, and the command-line
+gates remain unfinished. The independent binary validator's legacy one-memory
+requirement is being extended, with a soundness proof, to permit scalar modules
+with zero memories while still rejecting memory operations in those modules.
