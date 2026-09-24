@@ -1,12 +1,8 @@
-import Project.ClobFindBest.Advance
-import Project.ClobFindBest.Selection
-import Project.ProofKit.PackedFloatFrame
-import Interpreter.Wasm.Wp.Block
-import Interpreter.Wasm.Wp.Loop
+import Project.ClobFindBest.FrozenStep
 
-namespace Project.ClobFindBest.Loop
+namespace Project.ClobFindBest.Frozen.Loop
 open Wasm Project.Common Project.Clob Project.ClobFindBest
-  Project.ClobFindBest.Model Project.ClobFindBest.Helpers Project.ProofKit.PackedFloatFrame
+  Project.ClobFindBest.Frozen.Model Project.ClobFindBest.Frozen.Helpers Project.ProofKit.PackedFloatFrame
 
 set_option maxHeartbeats 64000000
 set_option maxRecDepth 100000
@@ -29,7 +25,7 @@ theorem func7_spec_owner (env : HostEnv Unit) (st : Store Unit) (owner ptr : UIn
   apply wp_block_cons
   apply wp_loop_cons (Inv := fbInv st owner ptr os taker) (μ := fbMeasure)
   · refine ⟨rfl, 0, Nat.zero_le _, UInt64.ofNat (os.length+1), 0, 0, 0,
-      List.replicate 52 (.i64 0), by simp, ?_, Or.inl ⟨rfl, rfl⟩⟩
+      List.replicate 44 (.i64 0), by simp, ?_, Or.inl ⟨rfl, rfl⟩⟩
     simp [fbFrame, bestPrefixL, optionTag, optionPayload, List.replicate]
   · rintro st2 s ⟨rfl, k, hk, fuel, tag, payload, done, scratch, hScratch, rfl, hState⟩
     rcases hState with ⟨rfl, rfl⟩ | ⟨rfl, rfl, rfl, rfl⟩
@@ -84,24 +80,18 @@ theorem func7_spec_owner (env : HostEnv Unit) (st : Store Unit) (owner ptr : UIn
         change wp module stepCode _ st2
           (fbFrame (UInt64.ofNat (os.length+1-k)) owner ptr taker k
             (bestPrefixL os taker k) tag payload 0
-            (scratch.set 49 (.i64 ptr))) env
-        have hCode : stepCode = stepCode.take 65 ++ advanceCode :=
-          (List.take_append_drop 65 stepCode).symm
-        rw [hCode]
-        apply select_spec env st2 (UInt64.ofNat (os.length+1-k)) owner ptr taker os k
+            (scratch.set 41 (.i64 ptr))) env
+        have hEmpty : stepCode = stepCode ++ [] := by simp
+        rw [hEmpty]
+        apply step_spec env st2 (UInt64.ofNat (os.length+1-k)) owner ptr taker os k
           (bestPrefixL os taker k) tag payload _ hlen ⟨⟨hHead, hHeadB⟩, hElems⟩ hklt
           (fun j h => Nat.lt_of_lt_of_le (bestPrefixL_some_lt os taker k j h) hk)
           (by simpa only [List.length_set] using hScratch)
-        intro selected hSelected hTag hPayload
-        have hEmpty : advanceCode = advanceCode ++ [] := by simp
-        rw [hEmpty]
-        apply advance_spec env st2 (UInt64.ofNat (os.length+1-k)) owner ptr taker k
-          (bestPrefixL os taker k) (bestStepL os taker k (bestPrefixL os taker k))
-          tag payload selected (by rw [size_eq]; omega) hSelected hTag hPayload
         intro next hNext
         wp_packed_frame [fbFrame]
         norm_num
-        rw [hfuel_next, hkadd]
+        rw [hfuel_next]
+        try rw [hkadd]
         constructor
         · refine ⟨rfl, k+1, by omega, _, tag, payload, 0, next, hNext, ?_, Or.inl ⟨rfl, rfl⟩⟩
           rfl
@@ -140,4 +130,4 @@ theorem func7_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
       (fun st' vs => vs = optionVals (findBestL os taker) ∧ st' = st) :=
   func7_spec_owner env st 0 ptr os taker hlen hInput
 
-end Project.ClobFindBest.Loop
+end Project.ClobFindBest.Frozen.Loop
