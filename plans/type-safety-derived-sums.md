@@ -1,7 +1,8 @@
 # Derived Option and Except: specification and proof obligations
 
 This plan is for the independent strict language on `typesafety`. The definitions
-and theorems below are intended work, not completed results. Representation by
+and combinator theorems below remain intended work. General continuation
+sequencing is now checked; the individual sum expansions are pending. Representation by
 an existing type constructor does not establish an API's evaluation behavior.
 
 ## Representation and initial scope
@@ -70,7 +71,7 @@ contracts before admission is claimed.
 
 ## Required results
 
-1. Reusable continuation laws: exact stepping away from the empty-return
+1. Checked reusable continuation laws: exact stepping away from the empty-return
    boundary, successful trace extension, and finite execution decomposition at
    that boundary. Appending a continuation can enable a step from `ret value []`,
    so unconditional equality of optional step results would be false.
