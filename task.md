@@ -93,3 +93,19 @@ not a source-to-IR semantics proof. No end-to-end theorem exists yet.
 Validation: `lake build LeanExe.Extract.Syntax LeanExe.Extract.Types` and
 `lake build LeanExe.Extract.Core` passed through tools/leanrun. The application
 spine reconstruction and metadata invariance proofs were checked by Lean.
+
+### Native scalar operations (checked)
+
+Added independent relational semantics over the existing IR for finite locals,
+strict bindings, arithmetic, branches, and short-circuit conditions. Unsupported
+operators and out-of-range locals have no evaluation rule. This semantics is not
+the diagnostic partial evaluator. Calls and loops still need semantic rules.
+
+Refactored the ten direct UInt64 primitive branches in the production extractor
+to call ScalarPrimitive.lower. Proved ofName_sound, ofName_name, denote_toIR, and
+lower_correct against Lean's native UInt64 operations and the IR relation for
+arbitrary operands. The extractor rebuild passes. This proves the primitive
+lowering step only, not the enclosing opaque recursive extractor or WebAssembly.
+
+Identified that overloaded arithmetic dispatch ignores its typeclass evidence;
+checking a concrete custom-instance counterexample before changing that boundary.
