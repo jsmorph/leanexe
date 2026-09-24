@@ -1,3 +1,9 @@
+## 2026-09-24: Depth updates support reusable heap chunks
+
+The allocator-aware missing-price branch passes in 4.1 seconds, the matched-price branch in 4.2 seconds, and the combined function-3 termination theorem in four seconds. They cover arbitrary valid free lists and retain the exact add-level result, unique ownership, allocator state, page equality, and protection of every live input region. The release theorem executes the actual recursive release function and establishes its free-list and counter effects. Existing bump-only branch proofs remain as worked examples.
+
+The final branch integration diagnostics were local-frame index bounds and definitional root equalities; supplying the frame length and unfolding the root aliases resolved them. New allocation, frame, and release facts use only standard Lean axioms. The combined update theorem inherits the existing Talos memory round-trip native bit-vector axiom from the older copy proofs; it introduces no new axiom. The separate byte-I/O gate remains strictly kernel checked. The allocator-aware outer fold and two search-loop repairs are still pending.
+
 ## 2026-09-24: Allocation without memory growth
 
 The new shared `FixedArrayAllocate.program_in_memory` theorem passes in five seconds. It composes the existing free-list search, reuse, bump, and header proofs, specializing the memory-size guard to an allocation that fits the current memory. This avoids introducing an unnecessary growth-limit premise into the refreshed depth proof: a no-growth execution never reads that limit. The theorem's axiom report contains only standard Lean axioms. The depth function's updated instruction decomposition also reduces by reflexivity in 4.4 seconds; the larger allocator invariant remains in progress.
