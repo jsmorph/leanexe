@@ -4,7 +4,7 @@
 
 Updated 2026-09-24 after resuming on ARM macOS.  Branch `io` tracks `origin/io`; this session resumed from `4f3c3a394a8f13c4e897478b334c3cc9de16c989`.  Its implementation baseline is `fb19b5efdd6cc171033adf888667764203c14f14`, based on `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b` on `main`.  Local changes repair string-literal temporary ownership, add regression and CLI checks, and reconcile the documentation.  The user requested frequent commits and pushes as validation proceeds.
 
-The current task is to complete primitive byte I/O, validate its shared compiler changes, and reconcile the documentation.  The user deferred release-identity work on 2026-09-24.  Release receipts, release-input digests, and cold release verification remain deferred.  Formal verification of the new I/O operations is an open scope decision.  Rechecking the existing Talos proofs is part of compiler validation.
+The current task is to complete primitive byte I/O, validate its shared compiler changes, and reconcile the documentation.  The user deferred release-identity work on 2026-09-24.  Release receipts, release-input digests, and cold release verification remain deferred.  The user included formal verification of the new byte-I/O host behavior on 2026-09-24.  Rechecking the existing Talos proofs is part of compiler validation.
 
 This document owns the current continuation agenda.  The [Development Journal](devnotes.md#2026-09-23-byte-io-on-branch-io) preserves the implementation history and reported test evidence.  Its September 23 entry contains both intermediate and final results.  The current I/O count is 40 execution cases.  Counts of 26, 30, and 38 describe earlier revisions.
 
@@ -135,7 +135,7 @@ The non-release inventory passes the runner, artifact identity/conformance/migra
 
 The C comparison now passes with `CC=/opt/homebrew/bin/gcc-15 node test/euler_rusanov_c.js`.  The driver accepts GCC's documented `__GCC_IEC_559 >= 2` advertisement while preserving all runtime format, evaluation-width, layout, rounding, strict-flag, and exact-word checks.  All eight mirror rows and seven Lanyon rows match the pinned CSV, whose bytes are unchanged.  The regression manifest records updated local source identities; vendored upstream source and frozen artifacts are unchanged.  The default Mac Clang still lacks the required advertisement, so the C comparison uses the explicit `CC` override.
 
-### Formal I/O proofs: scope decision pending
+### Formal I/O proofs: included in completion
 
 There is no registered `ByteIO` proof case.  The current [binary decoder](proofs/talos/lean/Project/Artifact/Binary/Decode.lean) rejects import sections.  The [translation field theorem](proofs/talos/lean/Project/Artifact/Binary/Proof/Translate.lean) records an empty import list for every accepted module.  This restriction belongs to this repository's exact-binary verification profile.  The pinned upstream Talos support for host calls requires inspection before choosing an extension.
 
@@ -143,7 +143,7 @@ A proof of an I/O program needs a model of the host interaction: returned bytes,
 
 Whole-operation deadline reasoning must include partial progress and interruptions.  Termination and claims about elapsed time require explicit assumptions about clock progress, polling, and host scheduling.  A theorem over modeled WASI calls relies on the host satisfying that model.  Verification of the C host, Wasmtime, or operating system would require further scope decisions.
 
-If the user includes formal I/O verification in completion, agree on the theorem and host assumptions first.  The resulting work would include inspection of pinned Talos import semantics, a source I/O specification, required execution rules and lemmas, import syntax/decoding/validation/translation with their soundness proofs, and an exact-binary theorem for a representative I/O program.  Existing Talos checks establish the status of existing verified programs.  I/O execution tests establish the recorded runtime cases.
+The user approved this scope. The proof target is generated WASM executing against explicit modeled WASI contracts, with byte-prefix preservation, exact output on success, bounded memory effects, and deadline checks across retries and partial progress. Native C, Wasmtime, and the operating system remain outside the proof boundary. The work includes inspection of pinned Talos import semantics, a source I/O specification, required execution rules and lemmas, import syntax/decoding/validation/translation with their soundness proofs, and an exact-binary theorem for a representative I/O program.  Existing Talos checks establish the status of existing verified programs.  I/O execution tests establish the recorded runtime cases.
 
 ## Environment and commands
 
@@ -221,7 +221,8 @@ The proposed order below preserves the scope discussed in this session.  Impleme
 - [ ] Complete existing Talos source-driven checks, diagnose inherited failures against the base, and review every changed generated program before updating its cache or proof.
 - [x] Reconcile the overview, manual, specification, compiler documentation, and development instructions.  Test the new CLI's required error behavior.
 - [x] Record the resumed revision, local changes, per-command results, remaining failures, and agreed exclusions in this document and the journal.
-- [ ] Obtain a scope decision on formal I/O proofs before extending host semantics or the exact-binary verification profile.
+- [x] Include formal byte-I/O host proofs, as requested by the user.
+- [ ] Prove the modeled host contracts and byte-transfer protocol, connect representative generated WASM to Talos execution, and record assumptions and axiom audits.
 
 Completion of the current implementation work requires tested I/O behavior, resolution of the ownership defects included in scope, completed compiler and existing-proof validation or explicit decisions on remaining failures, and documentation matching the implementation.  Release identity remains deferred.  The status of formal I/O verification must remain explicit.
 
