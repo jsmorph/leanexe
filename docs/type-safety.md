@@ -183,6 +183,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [RenamingEnvironments.lean](../LeanExe/TypeSafety/RenamingEnvironments.lean) | Exact raw environment lookup correspondence and arity-preserving branch lookup. |
 | [RenamingDynamics.lean](../LeanExe/TypeSafety/RenamingDynamics.lean) | Raw frame/state correspondence, exact step-result matching, both finite-trace directions, and return/overflow/stuck-reachability equivalences. |
 | [Continuations.lean](../LeanExe/TypeSafety/Continuations.lean) | Continuation extension, exact finite boundary decomposition, and return/overflow/stuck sequencing equivalences. |
+| [Execution.lean](../LeanExe/TypeSafety/Execution.lean) | First-step decomposition, inversion at no-successor endpoints, and exact first-operand sequencing laws. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -209,8 +210,8 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [27 renaming-profile examples](../test/type_safety_renaming_profile.lean),
 [17 environment-correspondence examples](../test/type_safety_renaming_environments.lean),
 [26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean), and
-[24 continuation examples](../test/type_safety_continuations.lean). It audits the
-transitive axiom dependencies of all 403 declared theorems across the nineteen
+[29 continuation/execution examples](../test/type_safety_continuations.lean). It audits the
+transitive axiom dependencies of all 411 declared theorems across the twenty
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -251,9 +252,10 @@ these modules. This remains a proof checked by Lean's kernel and standard
 foundation, not a proof of the kernel's consistency.
 
 Every Lean invocation goes through `tools/leanrun` with a timeout and the shared
-process lock.  The 2026-09-23 development session used explicitly authorized
-local execution without systemd cgroups, using `LEANRUN_LOCAL=1`.  The current
-session follows the default resource policy in the [repository instructions](../AGENTS.md).
+process lock. The user explicitly authorized local execution without systemd
+cgroups in the ongoing proof conversation, using `LEANRUN_LOCAL=1`; the complete
+2026-09-24 checks below used that mode. Other sessions retain the default resource
+policy in the [repository instructions](../AGENTS.md) unless separately authorized.
 An explicitly installed pinned toolchain can be selected with `LEANRUN_TOOLCHAIN`.
 
 ## Boundary and next work
@@ -390,3 +392,13 @@ intermediate source value. `appendKont_overflows_iff` and
 failure afterward in the continuation. All statements are raw, same-program
 facts without typing or termination premises. Overflow-record reachability does
 not remove the separate validity condition in `Terminal`.
+
+
+`Steps.head_iff` decomposes a finite execution at its first transition.
+`steps_from_no_step_iff` characterizes executions beginning at a state with no
+successor. Given a known first step and a no-successor endpoint,
+`steps_iff_of_step_to_no_step` removes or restores that step using determinism.
+The `sequence_returns_iff`, `sequence_overflows_iff`, and
+`sequence_reaches_stuck_iff` corollaries combine first-step inversion with the
+continuation equations. Their premises include the actual operand transition;
+they impose no typing or termination assumption.

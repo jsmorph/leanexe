@@ -623,3 +623,30 @@ and applications of both directions of the exact equations. The maintained gate
 passed twenty-one build jobs, all 730 examples, and all 403 audits. No primitive
 syntax, typing rule, or machine transition changed. Next is general first-step
 inversion followed by the specified derived-sum constructors and combinators.
+
+
+Completed reusable first-step inversion. Steps.head_iff exposes an empty trace
+or its first transition. No-successor starts admit only reflexive traces. A
+known first transition can be removed/restored for a no-successor endpoint;
+this endpoint premise is necessary and has a concrete counterexample without
+it. Exact first-operand sequencing then reuses continuation decomposition for
+returns, overflow records, and stuck reachability. No-successor states are not
+identified with permitted terminals.
+
+All eight support declarations passed their first focused build and depend only
+on propext. The first parent regression run found two underdetermined starting
+states in theorem applications; explicitly naming those states resolved the
+elaboration failure. The full gate passed twenty-two build jobs, all 735
+examples, and all 411 audits. Five new continuation/execution examples exercise
+the missing-premise counterexample, a malformed no-successor frame, and all
+three first-operand outcome laws. Core injection, Unit, and sum-elimination
+execution laws are next, before claiming the derived Option/Except APIs.
+
+
+Publication of the execution checkpoint encountered concurrent documentation
+commit 72c89e7f, which created task.md and moved the current agenda there. The
+non-fast-forward update was rejected. The parent preserved that commit, resolved
+the plan conflict by retaining the new document ownership, and updated task.md
+with the completed 735-example/411-audit check and the next core-sum execution
+work. The other checkout's lock failure remains recorded as a distinct attempt;
+it is not substituted for the successful checks in this proof session.

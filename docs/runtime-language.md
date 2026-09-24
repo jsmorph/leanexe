@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 730 semantic examples and audits all 403 declared
-theorems across the nineteen development modules, including helper proofs. It
+The maintained gate checks 735 semantic examples and audits all 411 declared
+theorems across the twenty development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -576,3 +576,12 @@ and a subsequent continuation execution. Its corollaries give exact equivalences
 These statements concern arbitrary raw states and a fixed program; they require
 neither typing nor termination. They supply sequencing laws for future derived
 forms. They do not themselves establish any Option/Except API.
+
+
+`Execution` additionally proves first-step decomposition and inversion for a
+fixed no-successor endpoint. This endpoint premise matters: a zero-step trace
+back to an active initial state need not exist after taking its first step.
+`sequence_returns_iff`, `sequence_overflows_iff`, and
+`sequence_reaches_stuck_iff` combine a known first operand transition with the
+continuation laws. No-successor endpoints still include stuck states; they are
+not all declared permitted terminal outcomes.
