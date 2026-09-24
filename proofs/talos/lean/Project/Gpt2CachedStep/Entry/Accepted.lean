@@ -38,7 +38,7 @@ theorem cachedStep_accepted (env : HostEnv Unit) (initial : Store Unit) (heap : 
   apply body_spec env initial heap weightsPtr cachePtr weights cache token position checkedFrame
     hHeap hWeights hCache hWeightsProtected hCacheProtected hValid hResources hPages hChecked
   intro final result hResult hFinalHeap hFinalCache hFinalLogits hFrame hSeparated hCacheFresh hLogitsFresh hFinalPages hCapacity
-  rcases hResult with ⟨⟨hParams, hLocals, hValues, _⟩, _, _, _, hCachePtr, hCacheSize, _, hLogitsPtr, hLogitsSize⟩
+  rcases hResult with ⟨⟨hParams, hLocals, hValues, _⟩, _, _, _, hCachePtr, hCacheSize, _, hLogitsPtr, hLogitsSize, _⟩
   simp only [FixedArrayEqNode.branchPost, returnCode]
   wp_packed_frame [hParams, parameters, hLocals, hValues, hCachePtr, hCacheSize, hLogitsPtr, hLogitsSize]
   have hPost := And.intro hFinalHeap (And.intro hFinalCache (And.intro hFinalLogits

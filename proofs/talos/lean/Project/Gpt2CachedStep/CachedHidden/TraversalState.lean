@@ -50,6 +50,7 @@ theorem traversalState_initial (initial : Store Unit) (heap : Heap) (embeddingNo
 theorem traversalStep_spec (env : HostEnv Unit) (initial current : Store Unit) (heap : Heap)
     (embeddingNode : FreeNode) (weightsOwner weightsPtr cacheOwner cachePtr : UInt64)
     (weights cache : ByteArray) (token : UInt32) (position index : Nat) (frame : Locals)
+    (hEmbedding : heap.OwnsPacked initial embeddingNode (embedding weights token position))
     (hWeights : ByteArrayAt initial.mem weightsPtr.toNat weights)
     (hCache : ByteArrayAt initial.mem cachePtr.toNat cache)
     (hWeightsProtected : heap.Protects weightsPtr.toNat (weightsPtr.toNat + weights.size))
@@ -65,7 +66,7 @@ theorem traversalStep_spec (env : HostEnv Unit) (initial current : Store Unit) (
     (hNext : ∀ final result, TraversalState initial heap embeddingNode
       (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
       weights cache token position (index + 1) final result → wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 217 ++ rest) Q current frame env := by
+    wp «module» ((layerBody.drop 4).take 261 ++ rest) Q current frame env := by
   have hLayerWeights : (blocksOffset + index * blockWords + blockWords) * 4 ≤ weights.size := by
     apply Nat.le_trans _ hWeightsSize
     apply Nat.mul_le_mul_right 4
@@ -88,7 +89,11 @@ theorem traversalStep_spec (env : HostEnv Unit) (initial current : Store Unit) (
     (hState.preserved.packed hWeightsProtected hWeights) (hState.preserved.packed hCacheProtected hCache)
     hState.hidden hState.updates hState.updatesOwned
     (hState.preserved.protects _ _ hWeightsProtected) (hState.preserved.protects _ _ hCacheProtected)
-    hState.updatesProtected hState.hiddenFresh hState.updatesFresh hState.separated hIndex hPosition
+    hState.updatesProtected hState.hiddenFresh hState.updatesFresh hState.separated
+    (by intro hz; subst index; exact ⟨rfl, rfl⟩)
+    (fun h => ⟨hState.hidden.root_ne ((hState.hiddenFresh h).owns_disjoint hState.hidden.buffer.rootBound hEmbedding),
+      (hState.updatesOwned h).root_ne ((hState.updatesFresh h).owns_disjoint
+        (hState.updatesOwned h).buffer.rootBound hEmbedding)⟩) hIndex hPosition
     (layerPrefix_sizes weights cache token position index).1 (layerPrefix_sizes weights cache token position index).2
     hCacheSize hLayerWeights hLayerResources hState.pages hState.state
   intro final result hResult hHeap hHidden hUpdates hPreserved hHiddenFresh hUpdatesFresh hSeparated hPages hCapacity
