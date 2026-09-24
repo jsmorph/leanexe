@@ -61,4 +61,88 @@ mutual
       if x then pure true else right.eval store
 end
 
+mutual
+  theorem Expr.ofIR_eval {expression : LeanExe.IR.Expr} {s next : LeanExe.IR.ScalarStore}
+      {value : UInt64} (semantics : expression.ScalarEval s value next)
+      {descriptor : Expr} (recognized : Expr.ofIR expression = some descriptor) :
+      descriptor.eval s = some value ∧ next = s := by
+    cases semantics with
+    | «local» h =>
+      simp only [Expr.ofIR, Option.some.injEq] at recognized
+      subst descriptor
+      exact ⟨h, rfl⟩
+    | const =>
+      simp only [Expr.ofIR, Option.some.injEq] at recognized
+      subst descriptor
+      exact ⟨rfl, rfl⟩
+    | bin left right operation =>
+      simp only [Expr.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨op, hop, a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hx, hs₁⟩ := Expr.ofIR_eval left ha
+      obtain ⟨hy, hs₂⟩ := Expr.ofIR_eval right hb
+      subst_vars
+      rw [U64Op.ofIR_apply hop] at operation
+      have hv := Option.some.inj operation
+      exact ⟨by simp [Expr.eval, hx, hy, hv], rfl⟩
+    | iteTrue condition branch =>
+      simp only [Expr.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨c, hc, a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hv, hs₁⟩ := Cond.ofIR_eval condition hc
+      obtain ⟨hr, hs₂⟩ := Expr.ofIR_eval branch ha
+      subst_vars
+      exact ⟨by simp [Expr.eval, hv, hr], rfl⟩
+    | iteFalse condition branch =>
+      simp only [Expr.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨c, hc, a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hv, hs₁⟩ := Cond.ofIR_eval condition hc
+      obtain ⟨hr, hs₂⟩ := Expr.ofIR_eval branch hb
+      subst_vars
+      exact ⟨by simp [Expr.eval, hv, hr], rfl⟩
+    | letE => simp [Expr.ofIR] at recognized
+  termination_by sizeOf expression
+  decreasing_by all_goals decreasing_tactic
+
+  theorem Cond.ofIR_eval {condition : LeanExe.IR.Cond} {s next : LeanExe.IR.ScalarStore}
+      {value : Bool} (semantics : condition.ScalarEval s value next)
+      {descriptor : Cond} (recognized : Cond.ofIR condition = some descriptor) :
+      descriptor.eval s = some value ∧ next = s := by
+    cases semantics with
+    | true =>
+      simp only [Cond.ofIR, Option.some.injEq] at recognized
+      subst descriptor
+      exact ⟨rfl, rfl⟩
+    | false =>
+      simp only [Cond.ofIR, Option.some.injEq] at recognized
+      subst descriptor
+      exact ⟨rfl, rfl⟩
+    | eq left right | lt left right | le left right =>
+      simp only [Cond.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hx, hs₁⟩ := Expr.ofIR_eval left ha
+      obtain ⟨hy, hs₂⟩ := Expr.ofIR_eval right hb
+      subst_vars
+      exact ⟨by simp [Cond.eval, hx, hy], rfl⟩
+    | not condition =>
+      simp only [Cond.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨c, hc, rfl⟩ := recognized
+      obtain ⟨hv, hs⟩ := Cond.ofIR_eval condition hc
+      subst_vars
+      exact ⟨by simp [Cond.eval, hv], rfl⟩
+    | andTrue left right | orFalse left right =>
+      simp only [Cond.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hx, hs₁⟩ := Cond.ofIR_eval left ha
+      obtain ⟨hy, hs₂⟩ := Cond.ofIR_eval right hb
+      subst_vars
+      exact ⟨by simp [Cond.eval, hx, hy], rfl⟩
+    | andFalse left | orTrue left =>
+      simp only [Cond.ofIR, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at recognized
+      obtain ⟨a, ha, b, hb, rfl⟩ := recognized
+      obtain ⟨hx, hs⟩ := Cond.ofIR_eval left ha
+      subst_vars
+      exact ⟨by simp [Cond.eval, hx], rfl⟩
+  termination_by sizeOf condition
+  decreasing_by all_goals decreasing_tactic
+end
+
 end LeanExe.Wasm.ScalarDescriptor
