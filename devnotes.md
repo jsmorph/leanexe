@@ -1,3 +1,9 @@
+## 2026-09-24: Limit and market search regions refreshed
+
+The bounded clob_limit gate completed with diagnostics in the invalid branch and search-region equality. Both are repaired. The search region now includes the recursive release helper at its generated index; the limit-to-market region also includes that helper. Their checked renamings take 5.9 and 10 seconds. The invalid-order branch passes in 16 seconds after adding the two generated result-owner slots to its explicit frames. Its exact returned values, allocation counters, and input-memory preservation are unchanged. The generated caches are from the maintained preparation tool, not handwritten edits.
+
+The complete limit matcher remains unfinished. Its current loop cleans up superseded trade arrays and can reuse free chunks, invalidating the old permanently empty free-list invariant. The existing exported matcher already proves those effects. A reusable local-frame transport theorem is in progress so that proof can be applied across the internal matcher's different parameter/local layout. The first transport draft diagnosed tactic quotation and dependent-elimination issues; no failed draft is counted as accepted. Logs are work/limit-check-1.log and work/limit-transport-1.log.
+
 ## 2026-09-24: Complete matcher proof accepted
 
 ClobMatchFuel.Spec passes all 3,445 required jobs. The full-fill branch, release composition, and recursive transition pass in 17, 4.1, and 29 seconds; the partial-fill branch passes in 10 seconds. The common dispatcher passes in 12 seconds after normalizing list lookup notation at the quantity comparison. The outer loop, initial state, result extraction, generated-body decomposition, and public correctness theorem pass. The exact source book, trades, remaining quantity, ownership, allocator counters, termination, and memory frame are retained for the original represented inputs and heap assumptions.
