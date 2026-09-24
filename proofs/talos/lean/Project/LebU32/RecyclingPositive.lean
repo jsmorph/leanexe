@@ -13,7 +13,7 @@ theorem positive_spec (env : HostEnv Unit) (initial store : Store Unit) (base : 
     (hLow : frame.get 10 = some (.i64 (v % 128)))
     (hSize : bytes.size < 5) (hFit32 : base.toNat + 560 < 4294967296)
     (hFit : base.toNat + 560 ≤ initial.mem.pages * 65536)
-    (hPages : initial.mem.pages ≤ 65536) (hCap : initial.mem.pages ≤ initial.memoryCap «module» 0)
+    (hPages : initial.mem.pages ≤ 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final result,
       Finished result fuel (allocatedNode heap.top 8 heap.nodes).root (bytes.size + 1) →
@@ -28,13 +28,13 @@ theorem positive_spec (env : HostEnv Unit) (initial store : Store Unit) (base : 
   have hLength := hRunning.size
   have hFuel := hRunning.fuel
   have hNeed := need_small bytes hSize
-  have hBump := hArena.bump hSize hFit32 hFit hCap
+  have hBump := hArena.bump hSize hFit32 hFit
   simp only [Locals.get, hParams, hLocals, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte] at hLow hPointer hLength hFuel
   rw [positive_shape]
   simp only [List.append_assoc]
   simp only [positiveHead, positiveTail, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, hLocals, hValues, hLow, hPointer, hLength, byte_mask]
-  apply PackedPush.program_spec 29 «module» env store heap _ node.root bytes (v % 128).toUInt8
+  apply PackedPush.program_spec_available 29 «module» env store heap _ node.root bytes (v % 128).toUInt8
     hArena.heapAt hBuffer.values hBuffer.protection (by omega)
     (by simpa only [hNeed] using fun _ => hBump) (hArena.pages.le.trans hPages) rfl
     (by simpa [List.length_set, hParams]) (by simp [List.length_set, hParams, hLocals]) rfl
