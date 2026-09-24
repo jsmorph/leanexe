@@ -1,3 +1,9 @@
+## 2026-09-24: Internal search and result frames accepted
+
+The limit matcher's search-frame relation, completion frame, and cached-maker read composition now pass. A reusable update lemma preserves related layouts under corresponding local writes. The cached-read theorem executes the existing five checked loads and retains their exact values in the internal frame; its audit uses only standard logical axioms. The output is work/frames-clip-leb-1.log. The preceding combined run exposed an uninstantiated assertion parameter and a conjunction left after simplification; explicitly selecting the source assertion resolves both without new premises.
+
+The next smaller-case diagnostic exposed the F64Clip preparation decomposition. Its generated function has one new result-owner slot, shifting allocator and traversal scratch locals. The explicit frames and helper arguments are updated for the next focused check. The LEB encoder check is still running in the same bounded diagnostic; neither unfinished case is counted as complete.
+
 ## 2026-09-24: Four GPT-2 scalar and row proofs refreshed
 
 Gpt2AttentionScore.Spec, Gpt2LinearRows.Spec, Gpt2RowMean.Spec, and Gpt2RowInvStd.Spec pass against the maintained regenerated programs. The compiler removed unused loop-flag assignments. Updating the extracted instruction-region boundaries restores the exact loop decompositions; the original numerical, unchanged-input, allocation, and output-memory contracts remain in force. The public theorem audits report only standard logical axioms. The cold five-minute diagnostic completed with two stale extraction failures, preserved in work/gpt2-slices-1.log. The repaired specifications pass in work/frames-gpt2-1.log; that combined command reports failure only for a separate limit cached-read assertion adapter, which is being checked independently.
