@@ -2,7 +2,8 @@
 
 This plan is for the independent strict language on `typesafety`. The definitions
 and combinator theorems below remain intended work. General continuation
-sequencing is now checked; the individual sum expansions are pending. Representation by
+sequencing and core injection/Unit/sum execution laws are now checked; the
+individual combinator expansions are pending. Representation by
 an existing type constructor does not establish an API's evaluation behavior.
 
 ## Representation and initial scope

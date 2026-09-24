@@ -12,18 +12,19 @@ preserves the history of proofs, failed approaches, and test results.
 |------|-------|
 | Objective | Complete the independent runtime-language definition and its type-safety proofs, extending the checked core through the remaining operation families. |
 | Branch base | `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`. |
-| Latest proof milestone | First-step inversion and exact first-operand sequencing in this revision; preceding published proof checkpoint `08a7d50a` established continuation decomposition. |
+| Latest proof milestone | Exact core injection, Unit, and sum-elimination execution in this revision; preceding published proof checkpoint `e9470e55` established first-step inversion. |
 | Latest specification commit | `2a3747f4`: first derived Option/Except increment. |
 | Active branch | `typesafety`, tracking `origin/typesafety`. The ongoing proof session incorporated the concurrent working-record update `72c89e7f` before publishing this milestone. |
-| Last complete proof check | The ongoing proof session passed twenty-two build jobs, 735 semantic examples, and 411 theorem audits on 2026-09-24. Every audited theorem uses at most `propext`. |
+| Last complete proof check | The ongoing proof session passed twenty-three build jobs, 758 semantic examples, and 438 theorem audits on 2026-09-24. Every audited theorem uses at most `propext`. |
 | Separate checkout attempt | The documentation session attempted a check at `6f12ef18` and stopped while acquiring the shared Lean lock. This historical attempt is distinct from the completed checks in the ongoing proof session. |
-| Next proof | Exact injection, Unit-elimination, and sum-elimination execution laws, followed by the specified derived-sum constructors and combinators. |
+| Next proof | Transparent derived-sum constructors and combinators, exact typing/inference/relevance, followed by their exact public execution laws. |
 | First derived-sum increment | Transparent Option/Except constructors, map/bind, and map-error, with exact typing, inference, relevance, and execution laws. |
 | Open language decision | Inclusion or exclusion of payload-discarding APIs under the relevance profile. |
 
 The latest completed sequence is exact environment and branch lookup support
 (`049fd3b7`), raw operational correspondence (`afc81685`), and continuation
-decomposition (`08a7d50a`), followed by first-step inversion in this revision.
+decomposition (`08a7d50a`), first-step inversion (`e9470e55`), and core sum
+execution in this revision.
 The [derived-sum specification](plans/type-safety-derived-sums.md)
 records the next increment.  Its definitions and proofs remain pending.
 
@@ -88,6 +89,7 @@ All module paths below belong to `LeanExe/TypeSafety` and are imported by the
 | Operational transport | Per-frame environment relations, exact optional step results, both finite-trace directions, terminality/stuckness, and exact return/overflow/stuck-reachability equivalences. | [Renaming dynamics](LeanExe/TypeSafety/RenamingDynamics.lean). |
 | Continuation sequencing | Continuation extension, exact finite boundary decomposition, and return/overflow/stuck sequencing equivalences. | [Continuation proofs](LeanExe/TypeSafety/Continuations.lean). |
 | First-step inversion | Exact head decomposition; no-successor start and endpoint laws; exact first-operand return/overflow/stuck sequencing. | [Execution proofs](LeanExe/TypeSafety/Execution.lean). |
+| Core sum execution | Exact arbitrary-expression injection/Unit/sum return, overflow-record, and stuck-reachability laws, including malformed shapes and selected-body behavior. | [Sum execution](LeanExe/TypeSafety/SumExecution.lean). |
 
 `inferRaw_iff` characterizes raw expression typing.  Public inference additionally
 checks formation of declarations, signatures, and context.  The checker-to-safety
@@ -106,10 +108,11 @@ Every field of every constructor participates in equality-domain admission.
 - [x] Prove exact continuation-extension stepping laws with an explicit boundary at `ret value []`.
 - [x] Prove successful finite-trace extension and execution decomposition at that return boundary.
 - [x] Prove general first-step inversion for the derived-form execution arguments.
-- [ ] Prove exact raw injection, Unit-elimination, and sum-elimination outcomes, including malformed shapes.
+- [x] Prove exact raw injection, Unit-elimination, and sum-elimination outcomes, including malformed shapes.
 - [ ] Use those laws to characterize derived-form returns and faults in both directions for arbitrary scrutinee executions.
 - [x] Add focused continuation/execution examples and all support theorem audits, run the maintained check, and record the results and proof difficulties in the journal.
-- [ ] Repeat that integration for core sum execution and the individual derived APIs.
+- [x] Integrate core sum execution into the gate with focused semantic examples and all new theorem audits.
+- [ ] Repeat that integration for the individual derived APIs.
 
 Appending a continuation can enable a step from `ret value []`.  An
 unconditional equality of optional step results across continuation extension
@@ -194,7 +197,7 @@ explicit hygienic expansion and typing, relevance, and evaluation proofs.
 ### Maintained checks
 
 The [type-safety check](tools/type-safety.js) builds the independent target,
-runs eighteen semantic example files with warnings treated as errors, and checks
+runs nineteen semantic example files with warnings treated as errors, and checks
 the transitive axiom dependencies of every listed theorem.  Its accepted axiom
 set is `{propext}`.  The recorded toolchain is Lean `4.34.0-rc2`, commit
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`, selected by `lean-toolchain`.
@@ -271,6 +274,12 @@ frame, and the three first-operand sequencing laws. The initial example run
 needed explicit starting states in two theorem applications; the corrected full
 gate passed. The concurrent documentation commit `72c89e7f` was preserved during
 publication rather than replacing its working record.
+
+Core sum execution adds 27 audited declarations and 23 semantic examples. The
+laws quantify over arbitrary scrutinees and distinguish malformed shapes from
+selected branch behavior. The documentation checker was also rerun in the
+ongoing proof session: its only reported failure remains the existing absolute
+temporary path in the WGSL review noted above.
 
 The original development record calls for checked milestones with status
 updates, commits, and pushes.  Important design changes and added dependencies
