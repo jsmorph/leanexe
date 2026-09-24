@@ -1,4 +1,5 @@
 import Project.ClobLimit.LimitResidualAllocFacts
+import Project.ClobLimit.LimitResidualAlloc
 
 /-!
 # Residual copy invariant
@@ -12,12 +13,12 @@ loop iteration.
 namespace Project.ClobLimit.LimitResidualCopyInvariant
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
   Project.ClobMatchFuel.Allocation
 
 def copyLoopFrame (base : Locals) (word : Nat) : Locals :=
   { base with
-    locals := base.locals.set 39 (.i64 (UInt64.ofNat word))
+    locals := base.locals.set 41 (.i64 (UInt64.ofNat word))
     values := [] }
 
 structure CopyState (st0 st : Store Unit) (target source capacity : UInt64)
@@ -40,7 +41,7 @@ def CopyInvariant (st0 : Store Unit) (base : Locals)
       CopyState st0 st target source capacity os word
 
 def copyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
-  match s.locals[39]? with
+  match s.locals[41]? with
   | some (Value.i64 word) => total - word.toNat
   | _ => 0
 
@@ -54,13 +55,13 @@ def copyWriteStore (st : Store Unit) (target source : UInt64)
 
 theorem copyLoopFrame_zero
     (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (target : UInt64)
+    (data : MatchOutput.OutputData) (target : UInt64)
     (hCopy : LimitResidualAlloc.CopyLocalsAt base order ctx data target) :
     copyLoopFrame base 0 = base := by
   have hLocals := hCopy.orderLocals.fields.locals
   have hValues := hCopy.orderLocals.fields.values
-  have hCounter : base.locals[39] = .i64 0 := getElem_of_some hCopy.counter
-  have hSet : base.locals.set 39 (.i64 0) = base.locals := by
+  have hCounter : base.locals[41] = .i64 0 := getElem_of_some hCopy.counter
+  have hSet : base.locals.set 41 (.i64 0) = base.locals := by
     rw [← hCounter]
     exact List.set_getElem_self (by omega)
   cases base
@@ -68,64 +69,39 @@ theorem copyLoopFrame_zero
 
 theorem initial
     (st : Store Unit) (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
-    (hCopy : LimitResidualAlloc.CopyLocalsAt base order ctx data data.g0)
-    (hNeed : 8 ≤
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat)
-    (hFit32 : data.g0.toNat + 48 +
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat < 4294967296)
-    (hRoot : (data.g0 + 48).toNat = data.g0.toNat + 48)
-    (hOutput : InternalLoopResult.OutputAt ctx st data) :
-    CopyInvariant
-      (LimitResidualAlloc.allocStore st data.g0 ctx.expectedG2
-        (orderArrayBytesU (ctx.result.book.length + 1))
-        (UInt64.ofNat (ctx.result.book.length + 1)))
-      base (data.g0 + 48) data.book
-      (orderArrayBytesU (ctx.result.book.length + 1)) ctx.result.book
-      (LimitResidualAlloc.allocStore st data.g0 ctx.expectedG2
-        (orderArrayBytesU (ctx.result.book.length + 1))
-        (UInt64.ofNat (ctx.result.book.length + 1))) base := by
-  let need := orderArrayBytesU (ctx.result.book.length + 1)
-  let length := UInt64.ofNat (ctx.result.book.length + 1)
-  let st1 := LimitResidualAlloc.allocStore st data.g0 ctx.expectedG2 need
-    length
-  have hOwned := LimitResidualAllocFacts.ownedOrderArrayAt_allocStore
-    (g2 := ctx.expectedG2) (need := need) (length := length)
-    hNeed hFit32 hRoot hOutput.book48 hOutput.book32
-    hOutput.bookCapacity hOutput.bookBelow hOutput.bookOwned
+    (data : MatchOutput.OutputData)
+    (hCopy : LimitResidualAlloc.CopyLocalsAt base order ctx data (LimitResidualAllocation.root ctx data))
+    (hNeed : 8 ≤ (LimitResidualAllocation.need ctx).toNat)
+    (hFacts : LimitResidualAllocFacts.Facts st ctx data)
+    (hOutput : MatchOutput.OutputAt ctx st data) :
+    CopyInvariant (LimitResidualAllocation.store st ctx data) base
+      (LimitResidualAllocation.root ctx data) data.book
+      (LimitResidualAllocation.capacity ctx data) ctx.result.book
+      (LimitResidualAllocation.store st ctx data) base := by
+  have hOwned := LimitResidualAllocFacts.store_book hFacts hNeed hOutput
   refine ⟨0, Nat.zero_le _, ?_, ?_⟩
-  · exact (copyLoopFrame_zero base order ctx data data.g0 hCopy).symm
-  · refine {
+  · exact (copyLoopFrame_zero base order ctx data _ hCopy).symm
+  · exact {
       pages := rfl
       globals := rfl
-      fresh := ?_
-      length := ?_
-      sourceInitial := ?_
-      sourceCurrent := ?_
-      outside := ?_
-      copied := ?_ }
-    · exact LimitResidualAllocFacts.allocStore_fresh st data.g0
-        ctx.expectedG2 need length hNeed hFit32 hRoot
-    · exact LimitResidualAllocFacts.allocStore_length st data.g0
-        ctx.expectedG2 need length
-    · simpa only [st1, need, length] using hOwned.2
-    · simpa only [st1, need, length] using hOwned.2
-    · intro _ _
-      rfl
-    · intro _ h
-      omega
+      fresh := LimitResidualAllocFacts.store_fresh hFacts
+      length := LimitResidualAllocFacts.store_length st ctx data
+      sourceInitial := hOwned.2
+      sourceCurrent := hOwned.2
+      outside := fun _ _ => rfl
+      copied := by intro _ h; omega }
 
 theorem CopyInvariant.at_end
     {st0 st : Store Unit} {base : Locals} {target source capacity : UInt64}
     {os : List OrderL}
     (hInvariant : CopyInvariant st0 base target source capacity os st
       (copyLoopFrame base (os.length * 5)))
-    (hLocals : base.locals.length = 53)
+    (hLocals : base.locals.length = 55)
     (hTotalU : (UInt64.ofNat os.length * 5).toNat = os.length * 5)
     (hTotal64 : os.length * 5 < UInt64.size) :
     CopyState st0 st target source capacity os (os.length * 5) := by
   obtain ⟨word, hWord, hFrame, hState⟩ := hInvariant
-  have hCounter := congrArg (fun s : Locals => s.locals[39]?) hFrame
+  have hCounter := congrArg (fun s : Locals => s.locals[41]?) hFrame
   have hWordEq : UInt64.ofNat os.length * 5 = UInt64.ofNat word := by
     simpa [copyLoopFrame, hLocals] using hCounter
   have hWordNat : word < UInt64.size := by omega

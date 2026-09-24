@@ -11,35 +11,33 @@ allocation bounds and receives the complete physical residual result.
 namespace Project.ClobLimit.LimitResidualBranch
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
   Project.ClobMatchFuel.Allocation
 
 set_option Elab.async false in
 theorem residualProg_spec
     (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (hLength : ctx.result.book.length + 1 < UInt64.size)
     (hBytes : orderArrayBytes (ctx.result.book.length + 1) + 7 <
       UInt64.size)
-    (hTop : (data.g0 + 48 + orderArrayBytesU
-      (ctx.result.book.length + 1)).toNat =
-        data.g0.toNat + 48 +
-          (orderArrayBytesU (ctx.result.book.length + 1)).toNat)
+    (hFloor : 48 ≤ ctx.initialG0.toNat)
     (hFit32 : data.g0.toNat + 48 +
       (orderArrayBytesU (ctx.result.book.length + 1)).toNat < 4294967296)
     (hFit : data.g0.toNat + 48 +
       (orderArrayBytesU (ctx.result.book.length + 1)).toNat <=
         st.mem.pages * 65536)
-    (hOutput : InternalLoopResult.OutputAt ctx st data)
+    (hOutput : MatchOutput.OutputAt ctx st data)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : forall st1,
       LimitResidualResult.ResultAt st st1 ctx data order ->
-      forall final, LimitResidualFinish.ResultLocalsAt final ctx data ->
+      forall final, LimitResidualFinish.ResultLocalsAt final ctx data (LimitResidualAllocation.root ctx data) ->
         wp «module» rest Q st1 final env) :
     wp «module» (LimitEntry.residualProg ++ rest) Q st
       { LimitRunMatchResult.residualConditionFrame book order ctx data with
         values := [] } env := by
+  have hBounds := LimitResidualBounds.derive st ctx data hLength hBytes hFloor hFit32 hFit hOutput
   rw [LimitEntry.residualProg_decomposition]
   simp only [LimitEntry.residualPrepareProg,
     LimitEntry.residualArrayPrepareProg, List.append_assoc]
@@ -51,11 +49,10 @@ theorem residualProg_spec
     prepared order ctx data hOrder hOutput hLength hBytes
   intro allocated hAlloc
   apply LimitResidualBook.residualBookProg_spec env st allocated order ctx data
-    hAlloc hLength hBytes hTop hFit32 hFit hOutput
+    hAlloc hOutput hBounds
   intro st1 hFinish final hResult
   exact hDone st1
-    (LimitResidualResult.of_finish st st1 ctx data order hLength hBytes
-      hFit32 hFit hOutput hFinish)
+    (LimitResidualResult.of_finish st st1 ctx data order hOutput hBounds hFinish)
     final hResult
 
 end Project.ClobLimit.LimitResidualBranch

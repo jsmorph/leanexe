@@ -12,7 +12,7 @@ predicate retains the branch-specific ownership and allocator facts.
 namespace Project.ClobMarket.Correct
 
 open Wasm Project.Common Project.Clob Project.ClobMarket
-  Project.ClobMarket.Model Project.ClobLimit.InternalLoopInvariant
+  Project.ClobMarket.Model Project.ClobLimit.MatchInvariant
   Project.ClobMatchFuel.AllocatorFrame Project.ClobPostOnly.Model
 
 def SourceResultAt (st : Store Unit) (values : List Value)
@@ -23,7 +23,7 @@ def SourceResultAt (st : Store Unit) (values : List Value)
     TradesAt st tradesPtr result.trades
 
 inductive OutcomeAt (initial final : Store Unit)
-    (book bookCapacity g0 g2 : UInt64) (os : List OrderL)
+    (book bookCapacity g0 g2 g4 g5 : UInt64) (os : List OrderL)
     (order : OrderL) (limit : Nat) (values : List Value) : Prop where
   | invalid
       (hInvalid : ¬validOrderL os order)
@@ -31,22 +31,22 @@ inductive OutcomeAt (initial final : Store Unit)
         g0 g2 os values)
   | valid
       (hValid : validOrderL os order)
-      (data : Project.ClobLimit.InternalLoopResult.OutputData)
+      (data : Project.ClobLimit.MatchOutput.OutputData)
       (hValues : values = [.i64 data.trades, .i64 data.book, .i64 0])
-      (hOutput : Project.ClobLimit.InternalLoopResult.OutputAt
+      (hOutput : Project.ClobLimit.MatchOutput.OutputAt
         (Project.ClobLimit.RunMatchCorrect.runMatchContext initial os
-          (unlimitedTakerL order) g0 g2 limit) final data)
+          (unlimitedTakerL order) g0 g2 g4 g5 limit) final data)
 
 def Postcondition (initial : Store Unit)
-    (book bookCapacity g0 g2 : UInt64) (os : List OrderL)
+    (book bookCapacity g0 g2 g4 g5 : UInt64) (os : List OrderL)
     (order : OrderL) (limit : Nat)
     (final : Store Unit) (values : List Value) : Prop :=
   SourceResultAt final values (marketL os order) ∧
-  OutcomeAt initial final book bookCapacity g0 g2 os order limit values
+  OutcomeAt initial final book bookCapacity g0 g2 g4 g5 os order limit values
 
 def CorrectSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit)
-    (book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat),
     os.length < 4294967296 →
     48 ≤ book.toNat →
@@ -60,6 +60,8 @@ def CorrectSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) →
     st.globals.globals[1]? = some (.i64 0) →
     st.globals.globals[2]? = some (.i64 g2) →
+    st.globals.globals[4]? = some (.i64 g4) →
+    st.globals.globals[5]? = some (.i64 g5) →
     limit < 4294967296 →
     limit ≤ st.mem.pages * 65536 →
     g0.toNat + 112 + (os.length + 1) *
@@ -67,25 +69,25 @@ def CorrectSpec : Prop :=
         limit →
     TerminatesWith (m := Project.ClobMarket.«module») (id := 21)
       (initial := st) (env := env) (Entry.marketArgs book order)
-      (Postcondition st book bookCapacity g0 g2 os order limit)
+      (Postcondition st book bookCapacity g0 g2 g4 g5 os order limit)
 
 set_option maxRecDepth 1048576
 
 set_option Elab.async false in
 theorem func21_correct : CorrectSpec := by
-  intro env st book bookCapacity g0 g2 os order limit hLength hBook48
-    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2
+  intro env st book bookCapacity g0 g2 g4 g5 os order limit hLength hBook48
+    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2 hg4 hg5
     hAddressLimit hMemoryLimit hBudget
   by_cases hValid : validOrderL os order
   · refine TerminatesWith.mono
-      (Valid.func21_valid env st book bookCapacity g0 g2 os order limit
+      (Valid.func21_valid env st book bookCapacity g0 g2 g4 g5 os order limit
         hLength hBook48 hBook32 hBookCapacity hBookBelow hBook hFit32 hFit
-        hPages hg0 hg1 hg2 hAddressLimit hMemoryLimit hBudget hValid) ?_
+        hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget hValid) ?_
     rintro final values ⟨data, hValues, hOutput⟩
     have hModel := Model.marketL_valid os order hValid
     have hContext :=
       Project.ClobLimit.RunMatchCorrect.runMatchContext_result st os
-        (unlimitedTakerL order) g0 g2 limit hLength
+        (unlimitedTakerL order) g0 g2 g4 g5 limit hLength
     constructor
     · refine ⟨data.book, data.trades, ?_, ?_, ?_⟩
       · simpa [hModel] using hValues

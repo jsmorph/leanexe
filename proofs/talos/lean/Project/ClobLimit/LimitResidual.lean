@@ -13,13 +13,13 @@ stride-five allocation above the matcher's heap limit.
 namespace Project.ClobLimit.LimitResidual
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
   Project.ClobMatchFuel.Allocation Project.ClobMatchFuel.AllocatorFrame
   Project.ClobPostOnly.Model
 
 def ResidualSpec : Prop :=
   forall (env : HostEnv Unit) (st : Store Unit)
-    (book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat),
     os.length < 4294967296 ->
     48 <= book.toNat ->
@@ -33,6 +33,8 @@ def ResidualSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) ->
     st.globals.globals[1]? = some (.i64 0) ->
     st.globals.globals[2]? = some (.i64 g2) ->
+    st.globals.globals[4]? = some (.i64 g4) ->
+    st.globals.globals[5]? = some (.i64 g5) ->
     limit < 4294967296 ->
     limit <= st.mem.pages * 65536 ->
     g0.toNat + 112 + (os.length + 1) *
@@ -49,20 +51,21 @@ def ResidualSpec : Prop :=
       (LimitEntry.limitArgs book order)
       (fun st' values =>
         exists data,
-          values = [.i64 data.trades, .i64 (data.g0 + 48), .i64 0] /\
+          values = [.i64 data.trades, .i64 (LimitResidualAllocation.root
+            (RunMatchCorrect.runMatchContext st os order g0 g2 g4 g5 limit) data), .i64 0] /\
           LimitResidualExport.ExportedResultAt st st'
-            (RunMatchCorrect.runMatchContext st os order g0 g2 limit)
+            (RunMatchCorrect.runMatchContext st os order g0 g2 g4 g5 limit)
             data order g0)
 
 set_option Elab.async false in
 theorem func21_residual : ResidualSpec := by
-  intro env st book bookCapacity g0 g2 os order limit hLength hBook48
+  intro env st book bookCapacity g0 g2 g4 g5 os order limit hLength hBook48
     hBook32 hBookCapacity hBookBelow hBook hInitial32 hInitialFit hPages
-    hg0 hg1 hg2 hAddressLimit hMemoryLimit hBudget hReserve32 hReserveFit
+    hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget hReserve32 hReserveFit
     hValid hRemaining
-  let ctx := RunMatchCorrect.runMatchContext st os order g0 g2 limit
+  let ctx := RunMatchCorrect.runMatchContext st os order g0 g2 g4 g5 limit
   have hContextResult : ctx.result = Model.runMatchL os order := by
-    exact RunMatchCorrect.runMatchContext_result st os order g0 g2 limit
+    exact RunMatchCorrect.runMatchContext_result st os order g0 g2 g4 g5 limit
       hLength
   have hContextRemaining : ctx.result.remaining ≠ 0 := by
     rw [hContextResult]
@@ -73,10 +76,10 @@ theorem func21_residual : ResidualSpec := by
   have hRunMatch : TerminatesWith (m := «module») (id := 18)
       (initial := st) (env := env)
       (RunMatchCorrect.runMatchArgs 0 book order)
-      (InternalLoopResult.Postcondition ctx) := by
-    apply RunMatchCorrect.func18_correct env st 0 book bookCapacity g0 g2 os
+      (MatchOutput.Postcondition ctx) := by
+    apply RunMatchCorrect.func18_correct env st 0 book bookCapacity g0 g2 g4 g5 os
       order limit hLength hBook48 hBook32 hBookCapacity hBookBelow hBook
-      hInitial32 hInitialFit hPages hg0 hg1 hg2 hAddressLimit hMemoryLimit
+      hInitial32 hInitialFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit
       hBudget
   apply TerminatesWith.of_wp_entry_for (f := func21Def)
   · simp [«module»]
@@ -92,7 +95,7 @@ theorem func21_residual : ResidualSpec := by
     simp only [LimitEntry.validProg, LimitEntry.validPrefixProg,
       List.append_assoc]
     apply LimitRunMatchCall.validCallProg_spec env st book order
-      (InternalLoopResult.Postcondition ctx) hRunMatch
+      (MatchOutput.Postcondition ctx) hRunMatch
     rintro st2 values ⟨data, hValues, hOutput⟩
     apply LimitRunMatchResult.validResultPrefixProg_residual_spec env st2 book
       order ctx data values hValues hContextRemaining
@@ -146,18 +149,17 @@ theorem func21_residual : ResidualSpec := by
     have hFit32Nat : data.g0.toNat + 48 +
         orderArrayBytes (ctx.result.book.length + 1) < 4294967296 := by
       simpa only [hNeedNat] using hFit32
-    have hTop : (data.g0 + 48 +
-        orderArrayBytesU (ctx.result.book.length + 1)).toNat =
-          data.g0.toNat + 48 +
-            (orderArrayBytesU (ctx.result.book.length + 1)).toNat :=
-      by
-        simpa only [hNeedNat] using
-          (Project.ClobMatchFuel.Budget.allocationTop_toNat data.g0
-            (orderArrayBytesU (ctx.result.book.length + 1))
-            (orderArrayBytes (ctx.result.book.length + 1)) hNeedNat
-            hFit32Nat)
+    have hHeapNat : (g0 + 112).toNat = g0.toNat + 112 := by
+      rw [UInt64.toNat_add]
+      have h112 : (112 : UInt64).toNat = 112 := rfl
+      rw [h112]
+      omega
+    have hFloor : 48 ≤ ctx.initialG0.toNat := by
+      change 48 ≤ (g0 + 112).toNat
+      rw [hHeapNat]
+      omega
     apply LimitResidualBranch.residualProg_spec env st2 book order ctx data
-      hLengthResult hBytesResult hTop hFit32 hFit hOutput
+      hLengthResult hBytesResult hFloor hFit32 hFit hOutput
     intro st3 hResult final hResultLocals
     simp only [wp_simp]
     have hFinalValues : final.values = [] := hResultLocals.values
@@ -165,10 +167,10 @@ theorem func21_residual : ResidualSpec := by
       cases final
       simp_all
     rw [hFinalFrame, ← List.append_nil LimitEntry.resultProg]
-    apply LimitResult.resultProg_spec env st3 final ctx data hResultLocals
+    apply LimitResult.resultProg_spec env st3 final ctx data (LimitResidualAllocation.root ctx data) hResultLocals
     simp only [wp_simp, LimitResult.outputFrame, func21Def]
     exact ⟨data, rfl,
-      LimitResidualExport.of_result st st2 st3 book bookCapacity g0 g2 os
+      LimitResidualExport.of_result st st2 st3 book bookCapacity g0 g2 g4 g5 os
         order limit data (by
           rw [UInt64.toNat_add]
           have h112 : (112 : UInt64).toNat = 112 := rfl

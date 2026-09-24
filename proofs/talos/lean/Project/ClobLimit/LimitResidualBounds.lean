@@ -1,127 +1,83 @@
-import Project.ClobLimit.LimitResidualCopyInvariant
-
-/-!
-# Residual allocation bounds
-
-The residual array allocation and its copy and finish phases use the same
-normalized byte, address, and separation facts.  This module derives them once
-from the matcher output and the allocation premises.
--/
+import Project.ClobLimit.LimitResidualAllocFacts
 
 namespace Project.ClobLimit.LimitResidualBounds
 
-open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
-  Project.ClobMatchFuel.Allocation
+open Wasm Project.Runtime Project.Common Project.Clob Project.ClobLimit
+  Project.ClobLimit.MatchInvariant Project.ClobMatchFuel.Allocation
+  Project.ClobMatchFuel.AllocatorFrame Project.ProofKit LimitResidualAllocation
 
-structure Facts (st : Store Unit) (ctx : Context)
-    (data : InternalLoopResult.OutputData) : Prop where
-  needNat :
-    (orderArrayBytesU (ctx.result.book.length + 1)).toNat =
-      orderArrayBytes (ctx.result.book.length + 1)
-  needMin : 8 <=
-    (orderArrayBytesU (ctx.result.book.length + 1)).toNat
+structure Facts (st : Store Unit) (ctx : Context) (data : MatchOutput.OutputData) : Prop where
+  allocation : LimitResidualAllocFacts.Facts st ctx data
+  needNat : (need ctx).toNat = orderArrayBytes (ctx.result.book.length + 1)
+  needMin : 8 ≤ (need ctx).toNat
   total64 : ctx.result.book.length * 5 < UInt64.size
-  totalU : (UInt64.ofNat ctx.result.book.length * 5).toNat =
-    ctx.result.book.length * 5
-  targetNat : (data.g0 + 48).toNat = data.g0.toNat + 48
-  target48 : 48 <= (data.g0 + 48).toNat
-  source32 : data.book.toNat +
-    (ctx.result.book.length * 5 + 1) * 8 < 4294967296
-  target32 : (data.g0 + 48).toNat +
-    ((ctx.result.book.length + 1) * 5 + 1) * 8 < 4294967296
-  targetFit : (data.g0 + 48).toNat +
-    ((ctx.result.book.length + 1) * 5 + 1) * 8 <=
-      st.mem.pages * 65536
-  separated : flatWordsDisjoint
-    (flatWordsRegion (data.g0 + 48)
-      ((ctx.result.book.length + 1) * 5))
+  totalU : (UInt64.ofNat ctx.result.book.length * 5).toNat = ctx.result.book.length * 5
+  target32 : (root ctx data).toNat + ((ctx.result.book.length + 1) * 5 + 1) * 8 < 4294967296
+  targetFit : (root ctx data).toNat + ((ctx.result.book.length + 1) * 5 + 1) * 8 ≤ st.mem.pages * 65536
+  bookSeparated : flatWordsDisjoint
+    (flatWordsRegion (root ctx data) ((ctx.result.book.length + 1) * 5))
     (flatWordsRegion data.book (ctx.result.book.length * 5))
+  tradesSeparated : regionsDisjoint
+    (flatWordsRegion (root ctx data) ((ctx.result.book.length + 1) * 5))
+    (fixedArrayRegion data.trades data.tradesCapacity)
+  bump : data.g0.toNat + 48 + (need ctx).toNat ≤ 4294967296 ∧
+    (st.mem.pages < FixedArrayBump.requiredPages data.g0 (need ctx) →
+      FixedArrayBump.requiredPages data.g0 (need ctx) ≤ st.memoryCap «module» 0)
+  headerFit : (root ctx data).toUInt32.toNat + 8 ≤ (allocated st ctx data).mem.pages * 65536
 
-theorem derive
-    (st : Store Unit) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+theorem derive (st : Store Unit) (ctx : Context) (data : MatchOutput.OutputData)
     (hLength : ctx.result.book.length + 1 < UInt64.size)
-    (hBytes : orderArrayBytes (ctx.result.book.length + 1) + 7 <
-      UInt64.size)
-    (hFit32 : data.g0.toNat + 48 +
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat < 4294967296)
-    (hFit : data.g0.toNat + 48 +
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat <=
-        st.mem.pages * 65536)
-    (hOutput : InternalLoopResult.OutputAt ctx st data) :
-    Facts st ctx data := by
-  have hNeedNat :
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat =
-        orderArrayBytes (ctx.result.book.length + 1) :=
+    (hBytes : orderArrayBytes (ctx.result.book.length + 1) + 7 < UInt64.size)
+    (hFloor : 48 ≤ ctx.initialG0.toNat)
+    (hFit32 : data.g0.toNat + 48 + (need ctx).toNat < 4294967296)
+    (hFit : data.g0.toNat + 48 + (need ctx).toNat ≤ st.mem.pages * 65536)
+    (hOutput : MatchOutput.OutputAt ctx st data) : Facts st ctx data := by
+  have hNeedNat : (need ctx).toNat = orderArrayBytes (ctx.result.book.length + 1) :=
     fixedArrayBytesU_toNat (ctx.result.book.length + 1) 5 hLength
       (by decide) (by
-        change fixedArrayBytes (ctx.result.book.length + 1) 5 + 7 <
-          UInt64.size at hBytes
+        change fixedArrayBytes (ctx.result.book.length + 1) 5 + 7 < UInt64.size at hBytes
         omega)
-  have hNeedMin : 8 <=
-      (orderArrayBytesU (ctx.result.book.length + 1)).toNat := by
+  have hNeedMin : 8 ≤ (need ctx).toNat := by
     rw [hNeedNat]
     unfold orderArrayBytes fixedArrayBytes
     omega
   have hTotal64 : ctx.result.book.length * 5 < UInt64.size := by
     unfold orderArrayBytes fixedArrayBytes at hBytes
     omega
-  have hTotalU : (UInt64.ofNat ctx.result.book.length * 5).toNat =
-      ctx.result.book.length * 5 := by
-    rw [UInt64.toNat_mul,
-      toNat_ofNat_lt (by omega : ctx.result.book.length < UInt64.size)]
-    have hFive : (5 : UInt64).toNat = 5 := rfl
-    rw [hFive, Nat.mod_eq_of_lt hTotal64]
-  have hTargetNat : (data.g0 + 48).toNat = data.g0.toNat + 48 :=
-    fixedArrayBumpRoot_toNat data.g0 (by
-      have hSize : UInt64.size = 18446744073709551616 := rfl
-      rw [hSize]
-      omega)
-  have hTarget48 : 48 <= (data.g0 + 48).toNat := by
-    rw [hTargetNat]
+  have hTotalU : (UInt64.ofNat ctx.result.book.length * 5).toNat = ctx.result.book.length * 5 := by
+    rw [UInt64.toNat_mul, toNat_ofNat_lt (by omega : ctx.result.book.length < UInt64.size)]
+    change (ctx.result.book.length * 5) % UInt64.size = ctx.result.book.length * 5
+    exact Nat.mod_eq_of_lt hTotal64
+  have hAlloc := LimitResidualAllocFacts.derive st ctx data hOutput hFloor hNeedMin hFit32 hFit
+  have hCapacity := hAlloc.capacityMin
+  have hTarget32 := hAlloc.root32
+  have hTargetFit := hAlloc.rootFit
+  have hTarget48 := hAlloc.root48
+  have hWords : ((ctx.result.book.length + 1) * 5 + 1) * 8 ≤ (capacity ctx data).toNat := by
+    rw [hNeedNat] at hCapacity
+    unfold orderArrayBytes fixedArrayBytes at hCapacity
     omega
-  have hSource32 : data.book.toNat +
-      (ctx.result.book.length * 5 + 1) * 8 < 4294967296 := by
-    have h := hOutput.book32
-    unfold fixedArrayBytes at h
-    omega
-  have hTarget32 : (data.g0 + 48).toNat +
-      ((ctx.result.book.length + 1) * 5 + 1) * 8 < 4294967296 := by
-    rw [hTargetNat]
-    have hFit32Nat := hFit32
-    rw [hNeedNat] at hFit32Nat
-    unfold orderArrayBytes fixedArrayBytes at hFit32Nat
-    omega
-  have hTargetFit : (data.g0 + 48).toNat +
-      ((ctx.result.book.length + 1) * 5 + 1) * 8 <=
-        st.mem.pages * 65536 := by
-    rw [hTargetNat]
-    have hFitNat := hFit
-    rw [hNeedNat] at hFitNat
-    unfold orderArrayBytes fixedArrayBytes at hFitNat
-    omega
-  have hSeparated : flatWordsDisjoint
-      (flatWordsRegion (data.g0 + 48)
-        ((ctx.result.book.length + 1) * 5))
-      (flatWordsRegion data.book (ctx.result.book.length * 5)) := by
-    unfold flatWordsDisjoint flatWordsRegion
-    right
-    have hCapacity := hOutput.bookCapacity
-    have hBelow := hOutput.bookBelow
-    unfold fixedArrayBytes at hCapacity
-    rw [hTargetNat]
-    omega
-  exact {
+  refine {
+    allocation := hAlloc
     needNat := hNeedNat
     needMin := hNeedMin
     total64 := hTotal64
     totalU := hTotalU
-    targetNat := hTargetNat
-    target48 := hTarget48
-    source32 := hSource32
-    target32 := hTarget32
-    targetFit := hTargetFit
-    separated := hSeparated }
+    target32 := by omega
+    targetFit := by omega
+    bookSeparated := ?_
+    tradesSeparated := ?_
+    bump := ⟨by omega, ?_⟩
+    headerFit := ?_ }
+  · exact flatWordsDisjoint_of_fixedArrayRegions hTarget48 hOutput.book48 hWords
+      (by have h := hOutput.bookCapacity; unfold fixedArrayBytes at h; omega) hAlloc.bookSeparate
+  · have hSeparate := hAlloc.tradesSeparate
+    unfold regionsDisjoint fixedArrayRegion flatWordsRegion at *
+    omega
+  · intro hGrow
+    unfold FixedArrayBump.requiredPages at hGrow
+    omega
+  · rw [toUInt32_toNat, Nat.mod_eq_of_lt (by omega), hAlloc.pages]
+    omega
 
 end Project.ClobLimit.LimitResidualBounds
