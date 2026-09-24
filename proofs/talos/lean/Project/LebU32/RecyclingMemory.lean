@@ -31,16 +31,16 @@ theorem need_small (bytes : ByteArray) (hSize : bytes.size < 5) : PackedPush.nee
 theorem Arena.bump {initial store : Store Unit} {base : UInt64} {count : Nat} {heap : Heap}
     (h : Arena initial base count heap store) (hCount : count < 5)
     (hFit32 : base.toNat + 560 < 4294967296)
-    (hFit : base.toNat + 560 ≤ initial.mem.pages * 65536)
-    (hCap : initial.mem.pages ≤ initial.memoryCap «module» 0) :
+    (hFit : base.toNat + 560 ≤ initial.mem.pages * 65536) :
     heap.top.toNat + 48 + (8 : UInt64).toNat < 4294967296 ∧
-    FixedArrayBump.requiredPages heap.top 8 ≤ store.memoryCap «module» 0 := by
+    (store.mem.pages < FixedArrayBump.requiredPages heap.top 8 →
+      FixedArrayBump.requiredPages heap.top 8 ≤ store.memoryCap «module» 0) := by
   have ht := h.top
   refine ⟨by change _ + 48 + 8 < _; omega, ?_⟩
-  rw [h.cap]
-  apply Nat.le_trans _ hCap
-  unfold FixedArrayBump.requiredPages
-  change (heap.top.toNat + 48 + 8 - 1) / 65536 + 1 ≤ _
+  intro hGrowth
+  rw [h.pages] at hGrowth
+  unfold FixedArrayBump.requiredPages at hGrowth
+  change initial.mem.pages < (heap.top.toNat + 48 + 8 - 1) / 65536 + 1 at hGrowth
   omega
 
 theorem Arena.pushed {initial store final : Store Unit} {base : UInt64} {count : Nat}

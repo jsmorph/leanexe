@@ -14,7 +14,7 @@ theorem negative_spec (env : HostEnv Unit) (initial store : Store Unit) (base : 
     (hRest : frame.get 11 = some (.i64 (v / 128)))
     (hSize : bytes.size < 5) (hFit32 : base.toNat + 560 < 4294967296)
     (hFit : base.toNat + 560 ≤ initial.mem.pages * 65536)
-    (hPages : initial.mem.pages ≤ 65536) (hCap : initial.mem.pages ≤ initial.memoryCap «module» 0)
+    (hPages : initial.mem.pages ≤ 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final result nextHeap,
       Running result (fuel - 1) (v / 128) (allocatedNode heap.top 8 heap.nodes).root (bytes.size + 1) →
@@ -25,7 +25,7 @@ theorem negative_spec (env : HostEnv Unit) (initial store : Store Unit) (base : 
   rw [negative_prefix_shape]
   simp only [List.append_assoc]
   apply negative_push_spec env initial store base heap node bytes frame fuel v
-    hArena hBuffer hRunning hLow hRest hSize hFit32 hFit hPages hCap
+    hArena hBuffer hRunning hLow hRest hSize hFit32 hFit hPages
   intro pushed ready hReady hArena' hBuffer' hOutput
   by_cases hEmpty : bytes.size = 0
   · have hZero : ready.get 5 = some (.i64 0) := by
@@ -48,7 +48,7 @@ theorem negative_spec (env : HostEnv Unit) (initial store : Store Unit) (base : 
     exact hNext pushed result (heap.allocate 8) hResult hArena' hBuffer'
   · have hOld := hBuffer.owned hEmpty
     have hKept := hOutput.frame.ownsPacked hOutput.heapAt hOld
-    have hBump := (hArena.bump hSize hFit32 hFit hCap).1.le
+    have hBump := (hArena.bump hSize hFit32 hFit).1.le
     have hSep := hOld.allocation_disjoint 8 (fun _ => hBump)
     apply PackedReleaseGuard.program_spec env «module» 5 pushed (heap.allocate 8) ready node bytes
       (allocatedNode heap.top 8 heap.nodes).root 5 21 release_function rfl hOutput.heapAt hKept
