@@ -35,21 +35,21 @@ theorem tradeAllocAppendProg_spec
     (ts : List TradeL) (trade : TradeL) (liveOrders : List OrderL)
     (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hOldLengthLocal : base.locals[58]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hOldLengthLocal : base.locals[68]? =
       some (.i64 (UInt64.ofNat ts.length)))
-    (hTotalLocal : base.locals[59]? =
+    (hTotalLocal : base.locals[69]? =
       some (.i64 (UInt64.ofNat ts.length * 4)))
-    (hNewLengthLocal : base.locals[60]? =
+    (hNewLengthLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat (ts.length + 1))))
-    (hTakerLocal : base.locals[63]? = some (.i64 trade.ttakerId))
-    (hMakerLocal : base.locals[64]? = some (.i64 trade.tmakerId))
-    (hPriceLocal : base.locals[65]? = some (.i64 trade.tprice))
-    (hQtyLocal : base.locals[66]? = some (.i64 trade.tqty))
-    (hCapacityLocal : base.locals[72]? = some (.i64 capacity))
-    (hNextLocal : base.locals[73]? = some (.i64 next))
+    (hTakerLocal : base.locals[73]? = some (.i64 trade.ttakerId))
+    (hMakerLocal : base.locals[74]? = some (.i64 trade.tmakerId))
+    (hPriceLocal : base.locals[75]? = some (.i64 trade.tprice))
+    (hQtyLocal : base.locals[76]? = some (.i64 trade.tqty))
+    (hCapacityLocal : base.locals[82]? = some (.i64 capacity))
+    (hNextLocal : base.locals[83]? = some (.i64 next))
     (hn : ts.length + 1 < UInt64.size)
     (hbytes : tradeArrayBytes (ts.length + 1) + 7 < UInt64.size)
     (hTotalU : (UInt64.ofNat ts.length * 4).toNat = ts.length * 4)

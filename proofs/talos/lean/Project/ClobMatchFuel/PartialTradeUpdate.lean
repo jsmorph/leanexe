@@ -26,7 +26,7 @@ def PartialResultAt (s : Locals) (book trades fuel : UInt64) : Prop :=
   s.locals[13]? = some (.i64 trades) ∧
   s.locals[14]? = some (.i64 0) ∧
   s.locals[15]? = some (.i64 1) ∧
-  s.params.length = 9 ∧ s.locals.length = 76 ∧ s.values = [] ∧
+  s.params.length = 9 ∧ s.locals.length = 86 ∧ s.values = [] ∧
   s.get 0 = some (.i64 fuel)
 
 set_option Elab.async false in
@@ -38,7 +38,7 @@ theorem partialTradeUpdateProg_spec
     (newOrders : List OrderL) (nodes : List FreeNode)
     (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [.i64 newBook])
     (hFuelLocal : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
@@ -46,8 +46,9 @@ theorem partialTradeUpdateProg_spec
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
-    (hCapacityLocal : base.locals[72]? = some (.i64 capacity))
-    (hNextLocal : base.locals[73]? = some (.i64 next))
+    (hCapacityLocal : base.locals[82]? = some (.i64 capacity))
+    (hNextLocal : base.locals[83]? = some (.i64 next))
+    (hMaker : SelectedOrder.At base os[i]!)
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
     (hn : ts.length + 1 < UInt64.size)
@@ -120,7 +121,7 @@ theorem partialTradeUpdateProg_spec
   rw [List.append_assoc, List.append_assoc]
   apply PartialTradePrepare.partialTradePrepareProg_spec env st base newBook
     oldBook oldTrades remaining taker os ts i hParams hLocals hValues
-    hTakerLocal hBookLocal hTradesLocal hRemainingLocal hIndexLocal hi
+    hTakerLocal hBookLocal hTradesLocal hRemainingLocal hIndexLocal hMaker hi
     hOrdersLength64 hOrders hOldTradesOwned.2 Q
     (TradeAllocAppend.tradeAllocAppendProg ++
       PartialFinish.partialFinishProg ++ rest)

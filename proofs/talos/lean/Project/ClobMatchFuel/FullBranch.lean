@@ -25,32 +25,33 @@ theorem fullBookThenTrade_spec
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode) (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
     (hBookLocal : base.locals[6]? = some (.i64 book))
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
-    (hSourceLocal : base.locals[57]? = some (.i64 book))
-    (hPrefixLocal : base.locals[60]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 book))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat (i * 5))))
-    (hSuffixLocal : base.locals[61]? =
+    (hSuffixLocal : base.locals[71]? =
       some (.i64 (UInt64.ofNat ((os.length - 1 - i) * 5))))
-    (hLengthLocal : base.locals[62]? =
+    (hLengthLocal : base.locals[72]? =
       some (.i64 (UInt64.ofNat (os.length - 1))))
-    (hCapacityLocal : base.locals[70]? = some (.i64 capacity))
-    (hNextLocal : base.locals[71]? = some (.i64 next))
-    (hTradeNextLocal : base.locals[73]? = some (.i64 tradeNext))
+    (hCapacityLocal : base.locals[80]? = some (.i64 capacity))
+    (hNextLocal : base.locals[81]? = some (.i64 next))
+    (hTradeNextLocal : base.locals[83]? = some (.i64 tradeNext))
     (hFuel : base.get 0 = some (.i64 fuel))
     (hOldBookTracker : base.get 19 = some (.i64 oldBookTracker))
     (hOldTradesTracker : base.get 20 = some (.i64 oldTradesTracker))
     (hDoneLocal : base.get 24 = some (.i64 0))
-    (hCarryOid : base.get 34 = some (.i64 taker.oid))
-    (hCarryTrader : base.get 35 = some (.i64 taker.otrader))
-    (hCarrySide : base.get 36 = some (.i64 taker.oside))
-    (hCarryPrice : base.get 37 = some (.i64 taker.oprice))
-    (hCarryQty : base.get 38 = some (.i64 taker.oqty))
+    (hCarryOid : base.get 9 = some (.i64 taker.oid))
+    (hCarryTrader : base.get 10 = some (.i64 taker.otrader))
+    (hCarrySide : base.get 11 = some (.i64 taker.oside))
+    (hCarryPrice : base.get 12 = some (.i64 taker.oprice))
+    (hCarryQty : base.get 13 = some (.i64 taker.oqty))
+    (hMaker : SelectedOrder.At base os[i]!)
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
     (hErasedLength64 : os.length - 1 < UInt64.size)
@@ -165,7 +166,7 @@ theorem fullBookThenTrade_spec
     have h2 : (2 : UInt64) = 1 + 1 := by decide
     rw [h2]
     ac_rfl
-  have hTradeNextElem : base.locals[73] = .i64 tradeNext :=
+  have hTradeNextElem : base.locals[83] = .i64 tradeNext :=
     (List.getElem?_eq_some_iff.mp hTradeNextLocal).2
   apply FullBookUpdate.fullBookUpdateProg_spec env st base book bookCapacity
     oldTrades oldTradesCapacity g0 g2 capacity next os ts i nodes hParams
@@ -310,6 +311,9 @@ theorem fullBookThenTrade_spec
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
         Locals.get, hParams, hLocals] using hCarryQty
+    · simpa [SelectedOrder.At, BookEraseSuffix.eraseResultFrame,
+        BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
+        hLocals] using hMaker
     · exact hi
     · exact hOrdersLength64
     · exact hTradeLength64
@@ -529,6 +533,9 @@ theorem fullBookThenTrade_spec
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
         Locals.get, hParams, hLocals] using hCarryQty
+    · simpa [SelectedOrder.At, BookEraseSuffix.eraseResultFrame,
+        BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
+        hLocals] using hMaker
     · exact hi
     · exact hOrdersLength64
     · exact hTradeLength64

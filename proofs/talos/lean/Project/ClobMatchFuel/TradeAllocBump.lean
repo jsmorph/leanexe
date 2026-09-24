@@ -13,35 +13,35 @@ set_option maxRecDepth 1048576
 
 def tradeAllocBumpProg : Wasm.Program :=
   [
-  .localGet 83,
+  .localGet 93,
   .constI64 (0 : UInt64),
   .eqI64,
   .iff 0 0 [
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localGet 78,
+    .localGet 88,
     .addI64,
-    .localTee 81,
+    .localTee 91,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
       .unreachable
     ] [],
-    .localGet 81,
+    .localGet 91,
     .constI64 (1 : UInt64),
     .subI64,
     .constI64 (65536 : UInt64),
     .divUI64,
     .constI64 (1 : UInt64),
     .addI64,
-    .localSet 82,
+    .localSet 92,
     .memorySize,
     .extendUI32,
-    .localGet 82,
+    .localGet 92,
     .ltUI64,
     .iff 0 0 [
-      .localGet 82,
+      .localGet 92,
       .memorySize,
       .extendUI32,
       .subI64,
@@ -56,40 +56,40 @@ def tradeAllocBumpProg : Wasm.Program :=
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localSet 83,
-    .localGet 81,
+    .localSet 93,
+    .localGet 91,
     .globalSet 0,
-    .localGet 83,
+    .localGet 93,
     .constI64 (48 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5501223100278326855 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 83,
+    .localGet 93,
     .constI64 (40 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (1 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 83,
+    .localGet 93,
     .constI64 (32 : UInt64),
     .subI64,
     .wrapI64,
-    .localGet 78,
+    .localGet 88,
     .store64 (0 : UInt32),
-    .localGet 83,
+    .localGet 93,
     .constI64 (24 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (2 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 83,
+    .localGet 93,
     .constI64 (16 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (4 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 83,
+    .localGet 93,
     .constI64 (8 : UInt64),
     .subI64,
     .wrapI64,
@@ -107,7 +107,7 @@ theorem tradeAllocBumpProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (g0 need previous capacity next : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hNeed8 : 8 ≤ need.toNat)
     (htop : (g0 + 48 + need).toNat =
@@ -231,11 +231,11 @@ theorem tradeAllocBumpProg_spec
     if_neg (Nat.not_lt.mpr hBase40Bound)]
   have hFinalFrame :
       { params := base.params,
-        locals := ((((((((base.locals.set 69 (.i64 need)).set 70
-          (.i64 previous)).set 71 (.i64 0)).set 72
-          (.i64 capacity)).set 73 (.i64 next)).set 74 (.i64 0)).set 72
-          (.i64 (g0 + 48 + need))).set 73
-          (.i64 ((g0 + 48 + need - 1) / 65536 + 1))).set 74
+        locals := ((((((((base.locals.set 79 (.i64 need)).set 80
+          (.i64 previous)).set 81 (.i64 0)).set 82
+          (.i64 capacity)).set 83 (.i64 next)).set 84 (.i64 0)).set 82
+          (.i64 (g0 + 48 + need))).set 83
+          (.i64 ((g0 + 48 + need - 1) / 65536 + 1))).set 84
           (.i64 (g0 + 48)) } =
         TradeAllocSearch.tradeAllocSearchFrame base need previous 0
           (g0 + 48 + need)
@@ -245,13 +245,13 @@ theorem tradeAllocBumpProg_spec
     congr 1
     apply List.ext_getElem?
     intro i
-    by_cases h74 : 74 = i
+    by_cases h74 : 84 = i
     · subst i
       simp [List.getElem?_set]
-    by_cases h73 : 73 = i
+    by_cases h73 : 83 = i
     · subst i
       simp [List.getElem?_set, h74]
-    by_cases h72 : 72 = i
+    by_cases h72 : 82 = i
     · subst i
       simp [List.getElem?_set, h74, h73]
     · simp [List.getElem?_set, h74, h73, h72]
@@ -266,7 +266,7 @@ theorem tradeAllocBumpProg_skip
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (need previous current capacity next result : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hResult : result ≠ 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
@@ -290,7 +290,7 @@ theorem tradeAllocNoFitProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (g0 need capacity next : UInt64) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hNeed8 : 8 ≤ need.toNat)
     (htop : (g0 + 48 + need).toNat =

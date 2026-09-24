@@ -27,10 +27,10 @@ private def fitInv (st0 : Store Unit) (base : Locals) (need : UInt64)
 
 private def fitMeasure (nodes : List FreeNode) (_ : Store Unit)
     (s : Locals) : Nat :=
-  match s.get 81 with
+  match s.get 91 with
   | some (.i64 result) =>
       if result = 0 then
-        match s.get 78 with
+        match s.get 88 with
         | some (.i64 current) => scanRemaining nodes current
         | _ => 0
       else
@@ -43,7 +43,7 @@ theorem bookAllocSearchProg_fit
     (need capacity next : UInt64) (nodes : List FreeNode)
     (choice : FreeChoice)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hGlobal1 : st.globals.globals[1]? =
       some (.i64 (freeHead nodes)))
@@ -158,17 +158,17 @@ theorem bookAllocSearchProg_fit
                 congr 1
                 apply List.ext_getElem?
                 intro i
-                by_cases h68 : 68 = i
+                by_cases h68 : 78 = i
                 · subst i
                   simp [List.getElem?_set,
                     previousRoot_append_singleton]
-                by_cases h69 : 69 = i
+                by_cases h69 : 79 = i
                 · subst i
                   simp [List.getElem?_set]
-                by_cases h70 : 70 = i
+                by_cases h70 : 80 = i
                 · subst i
                   simp [List.getElem?_set]
-                by_cases h71 : 71 = i
+                by_cases h71 : 81 = i
                 · subst i
                   simp [List.getElem?_set]
                 · simp [List.getElem?_set, h68, h69, h70, h71]
@@ -232,9 +232,9 @@ theorem bookAllocSearchProg_fit
                   { params := base.params,
                     locals := (((BookAllocSearch.bookAllocSearchFrame base
                       need (previousRoot 0 visited) choice.node.root
-                      currentCapacity currentNext 0).locals.set 70
-                        (.i64 choice.node.capacity)).set 71
-                        (.i64 (freeHead tail))).set 72
+                      currentCapacity currentNext 0).locals.set 80
+                        (.i64 choice.node.capacity)).set 81
+                        (.i64 (freeHead tail))).set 82
                         (.i64 choice.node.root) } =
                     BookAllocSearch.bookAllocSearchFrame base need
                       choice.previous choice.node.root choice.node.capacity
@@ -244,13 +244,13 @@ theorem bookAllocSearchProg_fit
                 congr 1
                 apply List.ext_getElem?
                 intro i
-                by_cases h72 : 72 = i
+                by_cases h72 : 82 = i
                 · subst i
                   simp [List.getElem?_set]
-                by_cases h71 : 71 = i
+                by_cases h71 : 81 = i
                 · subst i
                   simp [List.getElem?_set, h72, hnext]
-                by_cases h70 : 70 = i
+                by_cases h70 : 80 = i
                 · subst i
                   simp [List.getElem?_set, h72, h71]
                 · simp [List.getElem?_set, h72, h71, h70,
