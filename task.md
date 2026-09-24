@@ -12,18 +12,19 @@ preserves the history of proofs, failed approaches, and test results.
 |------|-------|
 | Objective | Complete the independent runtime-language definition and its type-safety proofs, extending the checked core through the remaining operation families. |
 | Branch base | `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`. |
-| Latest proof commit | `08a7d50a`: continuation decomposition and exact sequencing outcomes. |
+| Latest proof milestone | First-step inversion and exact first-operand sequencing in this revision; preceding published proof checkpoint `08a7d50a` established continuation decomposition. |
 | Latest specification commit | `2a3747f4`: first derived Option/Except increment. |
-| Checkout | `/home/somebody/src2/leanexe`, tracking `origin/typesafety`.  The 2026-09-24 publication attempts found newer remote commits and incorporated them before publishing this working record. |
-| Last recorded complete proof check | The 2026-09-24 journal records twenty-one build jobs, 730 semantic examples, and 403 theorem audits passing.  Every audited theorem uses at most `propext`. |
-| Local verification | The 2026-09-24 attempt at `6f12ef18` stopped while acquiring the machine-wide Lean lock, before `lean --version` ran.  A successful check in this checkout remains pending. |
-| Next proof | General first-step inversion, followed by the specified derived-sum constructors and combinators. |
+| Active branch | `typesafety`, tracking `origin/typesafety`. The ongoing proof session incorporated the concurrent working-record update `72c89e7f` before publishing this milestone. |
+| Last complete proof check | The ongoing proof session passed twenty-two build jobs, 735 semantic examples, and 411 theorem audits on 2026-09-24. Every audited theorem uses at most `propext`. |
+| Separate checkout attempt | The documentation session attempted a check at `6f12ef18` and stopped while acquiring the shared Lean lock. This historical attempt is distinct from the completed checks in the ongoing proof session. |
+| Next proof | Exact injection, Unit-elimination, and sum-elimination execution laws, followed by the specified derived-sum constructors and combinators. |
 | First derived-sum increment | Transparent Option/Except constructors, map/bind, and map-error, with exact typing, inference, relevance, and execution laws. |
 | Open language decision | Inclusion or exclusion of payload-discarding APIs under the relevance profile. |
 
 The latest completed sequence is exact environment and branch lookup support
 (`049fd3b7`), raw operational correspondence (`afc81685`), and continuation
-decomposition (`08a7d50a`).  The [derived-sum specification](plans/type-safety-derived-sums.md)
+decomposition (`08a7d50a`), followed by first-step inversion in this revision.
+The [derived-sum specification](plans/type-safety-derived-sums.md)
 records the next increment.  Its definitions and proofs remain pending.
 
 ## Scope and established semantics
@@ -86,6 +87,7 @@ All module paths below belong to `LeanExe/TypeSafety` and are imported by the
 | Environment transport | Exact raw lookup agreement, identity/composition, lifting, prefix insertion, and branch lookup preserving absence and arity. | [Renaming environments](LeanExe/TypeSafety/RenamingEnvironments.lean). |
 | Operational transport | Per-frame environment relations, exact optional step results, both finite-trace directions, terminality/stuckness, and exact return/overflow/stuck-reachability equivalences. | [Renaming dynamics](LeanExe/TypeSafety/RenamingDynamics.lean). |
 | Continuation sequencing | Continuation extension, exact finite boundary decomposition, and return/overflow/stuck sequencing equivalences. | [Continuation proofs](LeanExe/TypeSafety/Continuations.lean). |
+| First-step inversion | Exact head decomposition; no-successor start and endpoint laws; exact first-operand return/overflow/stuck sequencing. | [Execution proofs](LeanExe/TypeSafety/Execution.lean). |
 
 `inferRaw_iff` characterizes raw expression typing.  Public inference additionally
 checks formation of declarations, signatures, and context.  The checker-to-safety
@@ -100,12 +102,14 @@ Every field of every constructor participates in equality-domain admission.
 
 ### Derived-sum execution support
 
-- [ ] Obtain a successful local baseline with `tools/type-safety.js check` after the shared Lean slot becomes available.
+- [x] Run the complete maintained proof gate in the ongoing proof session; the latest successful result is recorded above.
 - [x] Prove exact continuation-extension stepping laws with an explicit boundary at `ret value []`.
 - [x] Prove successful finite-trace extension and execution decomposition at that return boundary.
-- [ ] Prove general first-step inversion for the derived-form execution arguments.
+- [x] Prove general first-step inversion for the derived-form execution arguments.
+- [ ] Prove exact raw injection, Unit-elimination, and sum-elimination outcomes, including malformed shapes.
 - [ ] Use those laws to characterize derived-form returns and faults in both directions for arbitrary scrutinee executions.
-- [ ] Add focused semantic examples and all new theorem audits to the maintained check, run it, and record the result and proof difficulties in the journal.
+- [x] Add focused continuation/execution examples and all support theorem audits, run the maintained check, and record the results and proof difficulties in the journal.
+- [ ] Repeat that integration for core sum execution and the individual derived APIs.
 
 Appending a continuation can enable a step from `ret value []`.  An
 unconditional equality of optional step results across continuation extension
@@ -205,8 +209,9 @@ command timeout and a 30-second lock wait.  Standard execution applies
 `LEAN_NUM_THREADS=1`, `nice -n 10`, and `ionice -c 3`, with the shared machine
 lock.  The [repository instructions](AGENTS.md) govern runner failures and
 diagnostic timeouts.  Local execution without cgroups requires explicit user
-authorization for the session.  The journal's earlier authorization belongs to
-the 2026-09-23 session.
+authorization. The user authorized local execution in the ongoing proof
+conversation, including its 2026-09-24 checks. That authorization does not
+change the default for separate sessions.
 
 Documentation checks are:
 
@@ -217,11 +222,14 @@ tools/check-docs.js
 
 ### Current notes
 
-On 2026-09-24, the first local check failed because the sandbox blocked spawning
+In the separate documentation checkout on 2026-09-24, its local check failed
+because the sandbox blocked spawning
 `tools/leanrun` with `EPERM`.  The approved retry reached the runner and exhausted
 its 30-second wait for the machine-wide slot.  The driver reported status 75
 for `lean --version`.  This records lock acquisition failure before Lean
-execution.  A fresh successful proof check remains an agenda item.
+execution. The ongoing proof session has independently completed the full gate,
+as recorded above; that result does not claim a successful run in the other
+checkout.
 
 The documentation review passed whitespace and checker-syntax checks.  The
 complete documentation check reports one existing failure in the
@@ -255,6 +263,14 @@ Exact occurrence transport uses an existential image under arbitrary maps.
 Protected-prefix laws preserve the use of existing local bindings.  Newly
 inserted function parameters still need their own uses, and public admission
 still checks formation of an inserted context.
+
+First-step inversion added eight audited proofs using only `propext`. Five
+additional examples bring the continuation/execution file to 29 examples. They
+exercise a counterexample without the endpoint premise, a malformed no-successor
+frame, and the three first-operand sequencing laws. The initial example run
+needed explicit starting states in two theorem applications; the corrected full
+gate passed. The concurrent documentation commit `72c89e7f` was preserved during
+publication rather than replacing its working record.
 
 The original development record calls for checked milestones with status
 updates, commits, and pushes.  Important design changes and added dependencies

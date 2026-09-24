@@ -825,9 +825,9 @@ open decisions, verification evidence, and resume notes.  The
 
 The current independent calculus has checked type safety, exact executable
 admission, structural equality, static/profile/operational renaming laws, and
-continuation extension with exact finite sequencing.  The next work is general
-first-step inversion and the individual derived-sum expansions with their
-complete behavior laws.  The
+continuation extension with exact finite sequencing, and first-step inversion.
+The next work is exact core sum-elimination execution laws and the individual
+derived-sum expansions with their complete behavior laws.  The
 [derived-sum plan](plans/type-safety-derived-sums.md) specifies constructors,
 map/bind, and map-error for Option/Except.  Payload-discarding APIs require an
 explicit inclusion or exclusion decision.  The
