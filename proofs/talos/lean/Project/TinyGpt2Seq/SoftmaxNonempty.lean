@@ -80,14 +80,28 @@ theorem softmax_nonempty_exact (env : HostEnv Unit) (initial : Store Unit) (heap
     intro hZero
     rw [hZero] at h48
     contradiction
+  have hBump2 := hBudget2.bump need (by omega)
+  have hSeparate := hWeights.allocation_disjoint need (fun h => (hBump2 h).1.le)
+  have hRootsNe : mapRoot heap input.size ≠ mapRoot heap1 input.size := by
+    change node1.root ≠ node2.root
+    intro heq
+    have h48 := hWeights.buffer.rootBound
+    have hCap1 := hWeights.buffer.capacity
+    have hCap2 := hOutput.buffer.capacity
+    change regionsDisjoint node1.region node2.region at hSeparate
+    simp only [regionsDisjoint, FreeNode.region] at hSeparate
+    rw [← heq] at hSeparate
+    omega
   wp_fixed_frame
   refine wp_iff_cons rfl ?_
   rw [ite_eq_left (by simp [hRoot])]
   wp_fixed_frame
+  refine wp_iff_cons rfl ?_
+  rw [ite_eq_left (by simp [hSize, hRootsNe])]
+  wp_fixed_frame
   refine wp_call_tw (Project.FunctionRegion.terminatesWith releaseRegion 15 rfl (release_exact env second heap2 node1 weighted hHeap2 hTemp)) ?_
   rintro final values ⟨rfl, rfl, hHeap3⟩
-  wp_fixed_frame [func49Def]
-  have hBump2 := hBudget2.bump need (by omega)
+  wp_fixed_frame [func49Def, List.append]
   have hOutSep := regionsDisjoint_symm
     (hWeights.allocation_disjoint need (fun h => (hBump2 h).1.le))
   have hOutFinal := hOutput.released node1 hTemp.buffer.rootBound
