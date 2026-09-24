@@ -1,5 +1,27 @@
 # Development Journal
 
+## 2026-09-24: GCD proof refreshed after loop lowering changes
+
+The first implementation checkpoint is pushed as `d6a4d3bc`.  The user
+requested frequent commits and pushes while completing the remaining gates.
+
+`tools/talos-artifact.js prepare gcd` regenerated the source-driven cache.
+Review found three additional local slots, shifted remainder operands and
+next-iteration scratch slots, removal of the unused first-iteration flag, and
+explicit final-result moves.  The executable Euclidean algorithm and the
+quantified theorem are unchanged.  The first proof attempt failed because
+its concrete frame still described the old local list.  The repaired invariant
+extends that list and updates the next-iteration witnesses; it uses the same
+GCD identity and strictly decreasing remainder measure.  No additional axioms,
+source-specific mathematical facts, or frozen artifact changes were needed.
+
+`tools/talos-proof.js check gcd` passed, building `Project.Gcd.Spec` in 10
+seconds.  The preserved failure and success logs are `gcd-proof-1.log` and
+`gcd-proof-2.log` in the session workspace's `work` directory.  Review of the
+accepted proof and diagnostics supports retaining the existing frame-based
+loop abstraction.  The aggregate source-driven gate is running again to
+identify the next stale cache or proof.
+
 ## 2026-09-24: Byte I/O resumed on ARM macOS
 
 Resumed `origin/io` at `4f3c3a39` in a fresh checkout.  The user explicitly
