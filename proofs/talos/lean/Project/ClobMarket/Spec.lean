@@ -29,7 +29,7 @@ represented input.  Its branch theorems state result ownership, allocator
 counters, page preservation, and a budgeted memory frame.  The aggregate proof
 library imports this completed specification.
 
-The seven-function matcher region is definitionally equal to the completed
+The eight-function matcher region is definitionally equal to the completed
 limit region.  Its certificate transports the complete function 18 theorem,
 including owned result arrays and exact allocator and memory facts.  The
 exported function 21 proof composes that result with its validity branches.

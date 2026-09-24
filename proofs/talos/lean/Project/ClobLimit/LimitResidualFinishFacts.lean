@@ -1,5 +1,5 @@
-import Project.ClobLimit.LimitResidualAllocCopy
-import Project.ClobPostOnly.AppendStore
+import Project.ClobLimit.LimitResidualCopyInvariant
+import Project.ClobLimit.OrderAppendStore
 
 /-!
 # Residual book finalization facts
@@ -15,44 +15,42 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
   Project.ClobLimit.LimitResidualCopyInvariant
-  Project.ClobPostOnly.AppendStore
+  Project.ClobLimit.OrderAppendStore
 
-def finishStore (st : Store Unit) (g0 : UInt64) (n : Nat)
+def finishStore (st : Store Unit) (target : UInt64) (n : Nat)
     (order : OrderL) : Store Unit :=
-  appendOrderStore st g0 n order
+  appendOrderStore st target n order
 
-structure FinishState (st0 st : Store Unit) (g0 capacity source : UInt64)
+structure FinishState (st0 st : Store Unit) (target capacity source : UInt64)
     (os : List OrderL) (order : OrderL) : Prop where
   pages : st.mem.pages = st0.mem.pages
   globals : st.globals.globals = st0.globals.globals
-  bookOwned : OwnedOrderArrayAt st (g0 + 48) capacity (os ++ [order])
-  outside : MemEqOutsideFlatWords st0 st (g0 + 48)
+  bookOwned : OwnedOrderArrayAt st target capacity (os ++ [order])
+  outside : MemEqOutsideFlatWords st0 st target
     ((os.length + 1) * 5)
 
 theorem finish
-    {st0 st1 : Store Unit} {g0 capacity source : UInt64}
+    {st0 st1 : Store Unit} {target capacity source : UInt64}
     {os : List OrderL} {order : OrderL}
-    (hState : CopyState st0 st1 (g0 + 48) source capacity os
+    (hState : CopyState st0 st1 target source capacity os
       (os.length * 5))
-    (hRoot : (g0 + 48).toNat = g0.toNat + 48)
-    (hTarget48 : 48 ≤ (g0 + 48).toNat)
-    (hTarget32 : (g0 + 48).toNat +
+    (hTarget48 : 48 ≤ target.toNat)
+    (hTarget32 : target.toNat +
       ((os.length + 1) * 5 + 1) * 8 < 4294967296)
-    (hTargetFit : (g0 + 48).toNat +
+    (hTargetFit : target.toNat +
       ((os.length + 1) * 5 + 1) * 8 ≤ st0.mem.pages * 65536) :
-    FinishState st0 (finishStore st1 g0 os.length order) g0 capacity source
+    FinishState st0 (finishStore st1 target os.length order) target capacity source
       os order := by
   have hAddr (field : Nat) (hField1 : 1 ≤ field) (hField5 : field ≤ 5) :
-      g0.toNat + 48 + (os.length * 5 + field) * 8 < 4294967296 := by
-    rw [← hRoot]
+      target.toNat + (os.length * 5 + field) * 8 < 4294967296 := by
     omega
   have hData (field : Nat) (hField1 : 1 ≤ field) (hField5 : field ≤ 5) :
-      (g0 + 48).toNat ≤
+      target.toNat ≤
         (UInt32.ofNat
-          ((g0.toNat + 48 + (os.length * 5 + field) * 8) %
+          ((target.toNat + (os.length * 5 + field) * 8) %
             4294967296)).toNat := by
     rw [toUInt32_ofNat_mod_toNat,
-      Nat.mod_eq_of_lt (hAddr field hField1 hField5), hRoot]
+      Nat.mod_eq_of_lt (hAddr field hField1 hField5)]
     omega
   have hFresh1 := FreshFixedArrayAt.write64_data (value := order.oid)
     hState.fresh hTarget48 (hData 1 (by omega) (by omega))
@@ -79,21 +77,21 @@ theorem finish
     (value := order.oqty) hTarget32 (slot := os.length * 5 + 5)
     (by omega)
   have hStoreAddr :
-      g0.toNat + 48 + (os.length * 5 + 5) * 8 < 4294967296 :=
+      target.toNat + (os.length * 5 + 5) * 8 < 4294967296 :=
     hAddr 5 (by omega) (by omega)
-  have hReads := appendOrderStore_reads st1 g0 os.length order hStoreAddr
-  have hBook : OrdersAt (finishStore st1 g0 os.length order) (g0 + 48)
+  have hReads := appendOrderStore_reads st1 target os.length order hTarget48 hStoreAddr
+  have hBook : OrdersAt (finishStore st1 target os.length order) target
       (os ++ [order]) := by
     apply OrdersAt.ofFlatWords
-    · have hRead := appendOrderStore_read_before st1 g0 os.length order
-          (UInt32.ofNat ((g0 + 48).toNat % 4294967296)) hStoreAddr
+    · have hRead := appendOrderStore_read_before st1 target os.length order
+          (UInt32.ofNat (target.toNat % 4294967296)) hTarget48 hStoreAddr
           (by
             rw [toUInt32_ofNat_mod_toNat,
-              Nat.mod_eq_of_lt (by omega), hRoot]
+              Nat.mod_eq_of_lt (by omega)]
             omega)
       calc
         _ = st1.mem.read64
-            (UInt32.ofNat ((g0 + 48).toNat % 4294967296)) := by
+            (UInt32.ofNat (target.toNat % 4294967296)) := by
           simpa only [finishStore] using hRead
         _ = UInt64.ofNat (os.length + 1) := by
           rw [← toUInt32_eq_ofNat]
@@ -110,14 +108,14 @@ theorem finish
           exact List.getElem_append_left hOld
         rw [hGet]
         calc
-          orderWord (finishStore st1 g0 os.length order) (g0 + 48)
+          orderWord (finishStore st1 target os.length order) target
               (j * 5 + field) =
-              orderWord st1 (g0 + 48) (j * 5 + field) := by
+              orderWord st1 target (j * 5 + field) := by
             unfold orderWord
-            apply appendOrderStore_read_before st1 g0 os.length order _
-              hStoreAddr
+            apply appendOrderStore_read_before st1 target os.length order _
+              hTarget48 hStoreAddr
             rw [toUInt32_ofNat_mod_toNat,
-              Nat.mod_eq_of_lt (by omega), hRoot]
+              Nat.mod_eq_of_lt (by omega)]
             omega
           _ = orderWord st0 source (j * 5 + field) :=
             hState.copied _ (by omega)
@@ -133,19 +131,14 @@ theorem finish
         obtain ⟨h1, h2, h3, h4, h5⟩ := hReads
         interval_cases field
         · unfold orderWord
-          rw [hRoot]
           simpa only [finishStore, OrderL.word] using h1
         · unfold orderWord
-          rw [hRoot]
           simpa only [finishStore, OrderL.word] using h2
         · unfold orderWord
-          rw [hRoot]
           simpa only [finishStore, OrderL.word] using h3
         · unfold orderWord
-          rw [hRoot]
           simpa only [finishStore, OrderL.word] using h4
         · unfold orderWord
-          rw [hRoot]
           simpa only [finishStore, OrderL.word] using h5
     · intro j hj field hField
       have hj' : j < os.length + 1 := by simpa using hj
@@ -158,7 +151,7 @@ theorem finish
     globals := hState.globals
     bookOwned := ⟨?_, hBook⟩
     outside := ?_ }
-  · simpa only [finishStore, appendOrderStore, hRoot] using hFresh5
-  · simpa only [finishStore, appendOrderStore, hRoot] using hOutside5
+  · simpa only [finishStore, appendOrderStore] using hFresh5
+  · simpa only [finishStore, appendOrderStore] using hOutside5
 
 end Project.ClobLimit.LimitResidualFinishFacts

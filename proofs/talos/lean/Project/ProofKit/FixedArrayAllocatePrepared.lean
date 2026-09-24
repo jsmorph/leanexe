@@ -21,7 +21,8 @@ theorem preparedProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store
     (hList : FreeListAt store.mem nodes)
     (hBump : takeFirstFitFrom 0 need nodes = none →
       base.toNat + 48 + need.toNat ≤ 4294967296 ∧
-      FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0)
+      (store.mem.pages < FixedArrayBump.requiredPages base need →
+        FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0))
     (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ previous current capacity next : UInt64, wp module_ rest Q
@@ -43,7 +44,7 @@ theorem preparedProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store
     simp [wp_simp, frame, Nat.add_assoc]
     refine wp_iff_cons rfl ?_
     simp only
-    apply FixedArrayBump.program_spec _ _ _ _ module_ env store
+    apply FixedArrayBump.program_spec_of_grow _ _ _ _ module_ env store
       (frame params saved tail need previous 0 oldCapacity oldNext 0) base need stride rfl
     · simp [frame, Locals.get, Nat.add_assoc]
     · simp [frame, Locals.validIndex, Nat.add_assoc]

@@ -14,7 +14,7 @@ proof boundary.
 namespace Project.ClobLimit.LimitResidualCopy
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
   Project.ClobLimit.LimitResidualCopyInvariant
 
 set_option maxHeartbeats 8000000
@@ -25,28 +25,27 @@ set_option Elab.async false in
 theorem residualCopyProg_spec
     (env : HostEnv Unit) (st0 : Store Unit) (base : Locals)
     (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) (g0 capacity : UInt64)
-    (hCopy : LimitResidualAlloc.CopyLocalsAt base order ctx data g0)
+    (data : MatchOutput.OutputData) (target capacity : UInt64)
+    (hCopy : LimitResidualAlloc.CopyLocalsAt base order ctx data target)
     (hTotalU : (UInt64.ofNat ctx.result.book.length * 5).toNat =
       ctx.result.book.length * 5)
     (hTotal64 : ctx.result.book.length * 5 < UInt64.size)
-    (hTargetNat : (g0 + 48).toNat = g0.toNat + 48)
-    (hTarget48 : 48 ≤ (g0 + 48).toNat)
+    (hTarget48 : 48 ≤ target.toNat)
     (hSource32 : data.book.toNat +
       (ctx.result.book.length * 5 + 1) * 8 < 4294967296)
-    (hTarget32 : (g0 + 48).toNat +
+    (hTarget32 : target.toNat +
       ((ctx.result.book.length + 1) * 5 + 1) * 8 < 4294967296)
-    (hTargetFit : (g0 + 48).toNat +
+    (hTargetFit : target.toNat +
       ((ctx.result.book.length + 1) * 5 + 1) * 8 ≤
         st0.mem.pages * 65536)
     (hsep : flatWordsDisjoint
-      (flatWordsRegion (g0 + 48) ((ctx.result.book.length + 1) * 5))
+      (flatWordsRegion target ((ctx.result.book.length + 1) * 5))
       (flatWordsRegion data.book (ctx.result.book.length * 5)))
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hInit : CopyInvariant st0 base (g0 + 48) data.book capacity
+    (hInit : CopyInvariant st0 base target data.book capacity
       ctx.result.book st0 base)
     (hDone : ∀ st1,
-      CopyInvariant st0 base (g0 + 48) data.book capacity
+      CopyInvariant st0 base target data.book capacity
         ctx.result.book st1
         (copyLoopFrame base (ctx.result.book.length * 5)) →
       wp «module» rest Q st1
@@ -55,15 +54,15 @@ theorem residualCopyProg_spec
   have hParams := hCopy.orderLocals.fields.params
   have hLocals := hCopy.orderLocals.fields.locals
   have hValues := hCopy.orderLocals.fields.values
-  have hSource : base.locals[34] = .i64 data.book := getElem_of_some hCopy.orderLocals.fields.source
-  have hTotal : base.locals[36] =
+  have hSource : base.locals[36] = .i64 data.book := getElem_of_some hCopy.orderLocals.fields.source
+  have hTotal : base.locals[38] =
       .i64 (UInt64.ofNat ctx.result.book.length * 5) := getElem_of_some hCopy.orderLocals.total
-  have hTarget : base.locals[38] = .i64 (g0 + 48) := getElem_of_some hCopy.target
+  have hTarget : base.locals[40] = .i64 target := getElem_of_some hCopy.target
   simp only [LimitEntry.residualCopyProg, List.cons_append,
     List.nil_append]
   apply wp_block_cons
   apply wp_loop_cons
-    (Inv := CopyInvariant st0 base (g0 + 48) data.book capacity
+    (Inv := CopyInvariant st0 base target data.book capacity
       ctx.result.book)
     (μ := copyMeasure (ctx.result.book.length * 5))
   · exact hInit
@@ -92,13 +91,13 @@ theorem residualCopyProg_spec
         Nat.lt_of_le_of_ne hWord hEnd
       have hSourceBound := hState.sourceCurrent.orderWord_bound_flat
         word hWordLt
-      have hTargetLt : (g0 + 48).toNat + (word + 1) * 8 <
+      have hTargetLt : target.toNat + (word + 1) * 8 <
           4294967296 := by
         omega
       have hTargetBound :
-          (g0.toNat + 48 + (word + 1) * 8) % 4294967296 + 8 ≤
+          (target.toNat + (word + 1) * 8) % 4294967296 + 8 ≤
             st1.mem.pages * 65536 := by
-        rw [← hTargetNat, Nat.mod_eq_of_lt hTargetLt, hState.pages]
+        rw [Nat.mod_eq_of_lt hTargetLt, hState.pages]
         omega
       rw [if_neg (Nat.not_lt.mpr hSourceBound),
         if_neg (Nat.not_lt.mpr hTargetBound)]
@@ -110,7 +109,7 @@ theorem residualCopyProg_spec
             toNat_ofNat_lt (by omega)]
         refine ⟨word + 1, by omega, ?_, ?_⟩
         · simp only [copyLoopFrame, hWordNext]
-        · simpa only [copyWriteStore, hTargetNat] using
+        · simpa only [copyWriteStore] using
             hState.advance hWordLt hTarget48 hSource32 hTarget32 hsep
       · simp [copyMeasure, hLocals, hWordU]
         rw [Nat.mod_eq_of_lt (by omega)]

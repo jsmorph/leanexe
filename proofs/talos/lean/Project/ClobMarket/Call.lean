@@ -21,7 +21,7 @@ def callFrame (book : UInt64) (order : OrderL) : Locals :=
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
       .i64 taker.oprice, .i64 taker.oqty, .i64 0, .i64 book,
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
-      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 29 (.i64 0)
+      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 31 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576

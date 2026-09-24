@@ -29,13 +29,13 @@ theorem invalidSearchProg_empty
   have hParams : base.params.length = 6 := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
-  have hLocals : base.locals.length = 49 := by
+  have hLocals : base.locals.length = 51 := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
   have hValues : base.values = [] := by
     simp [base, InvalidPrepare.prepareFrame]
-  have hIndex : 45 < base.locals.length := by omega
-  have hCurrent : base.locals[45]'hIndex = .i64 0 :=
+  have hIndex : 47 < base.locals.length := by omega
+  have hCurrent : base.locals[47]'hIndex = .i64 0 :=
     getElem_of_some
       (by simp [base, InvalidPrepare.prepareFrame,
         InvalidPrepare.branchFrame, InvalidEntry.invalidFrame])

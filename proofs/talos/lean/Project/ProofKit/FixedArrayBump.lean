@@ -53,7 +53,7 @@ theorem requiredPages_fit (store : Store Unit) (base need : UInt64) :
     omega
   exact hTotal.trans (Nat.mul_le_mul_right 65536 hPages)
 
-theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
+theorem prepareProgram_spec_of_grow (needLocal topLocal pagesLocal resultLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
     (base need : UInt64) (hValues : frame.values = [])
     (hNeed : frame.get needLocal = some (.i64 need))
@@ -62,7 +62,8 @@ theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
     (hGlobal : store.globals.globals[0]? = some (.i64 base))
     (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
     (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
-    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
+    (hCap : store.mem.pages < requiredPages base need →
+      requiredPages base need ≤ store.memoryCap module_ 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module_ rest Q (preparedStore store base need)
       (result frame topLocal pagesLocal resultLocal base need) env) :
@@ -90,7 +91,7 @@ theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
   simp only [prepareProgram, List.append_assoc]
   apply prefixProgram_spec needLocal topLocal pagesLocal module_ env store frame base need hValues
     hNeed (by omega) hTopValid (by omega) hPagesValid hGlobal hFit32
-  apply ensureProgram_spec module_ env store prepared pagesLocal (requiredPages base need)
+  apply ensureProgram_spec_of_grow module_ env store prepared pagesLocal (requiredPages base need)
     hMemory32 rfl hPreparedPages hPages (requiredPages_le base need hFit32) hCap
   apply installProgram_spec resultLocal topLocal module_ env _ prepared base (base + 48 + need)
     rfl hPreparedTop (by exact le_trans hOrder.1 (by omega)) hPreparedValid
@@ -101,7 +102,24 @@ theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
     split <;> exact hGlobal
   simpa only [preparedStore, result] using hNext
 
-theorem program_spec (needLocal topLocal pagesLocal resultLocal : Nat)
+theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
+    (base need : UInt64) (hValues : frame.values = [])
+    (hNeed : frame.get needLocal = some (.i64 need))
+    (hOrder : frame.params.length ≤ needLocal ∧ needLocal < topLocal ∧
+      topLocal < pagesLocal ∧ pagesLocal < resultLocal ∧ frame.validIndex resultLocal)
+    (hGlobal : store.globals.globals[0]? = some (.i64 base))
+    (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
+    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
+    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q (preparedStore store base need)
+      (result frame topLocal pagesLocal resultLocal base need) env) :
+    wp module_ (prepareProgram needLocal topLocal pagesLocal resultLocal ++ rest) Q store frame env := by
+  exact prepareProgram_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame base need
+    hValues hNeed hOrder hGlobal hFit32 hPages hMemory32 (fun _ => hCap) Q rest hNext
+
+theorem program_spec_of_grow (needLocal topLocal pagesLocal resultLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
     (base need stride : UInt64) (hValues : frame.values = [])
     (hNeed : frame.get needLocal = some (.i64 need))
@@ -110,7 +128,8 @@ theorem program_spec (needLocal topLocal pagesLocal resultLocal : Nat)
     (hGlobal : store.globals.globals[0]? = some (.i64 base))
     (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
     (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
-    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
+    (hCap : store.mem.pages < requiredPages base need →
+      requiredPages base need ≤ store.memoryCap module_ 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module_ rest Q (allocated store base need stride)
       (result frame topLocal pagesLocal resultLocal base need) env) :
@@ -144,13 +163,30 @@ theorem program_spec (needLocal topLocal pagesLocal resultLocal : Nat)
       some (.i64 (base + 48)) :=
     resultFrame_get_result prepared resultLocal _ (by exact le_trans hOrder.1 (by omega)) hPreparedValid
   simp only [program, List.append_assoc]
-  apply prepareProgram_spec needLocal topLocal pagesLocal resultLocal module_ env store frame
+  apply prepareProgram_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame
     base need hValues hNeed hOrder hGlobal hFit32 hPages hMemory32 hCap
   apply FixedArrayHeader.program_spec module_ env _ _ resultLocal needLocal base need stride
     rfl hFinalRoot hFinalNeed (by omega)
   · exact le_trans (by omega) (requiredPages_fit store base need)
   · simpa only [allocated, preparedStore, fixedArrayAllocBumpStore]
       using hNext
+
+theorem program_spec (needLocal topLocal pagesLocal resultLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
+    (base need stride : UInt64) (hValues : frame.values = [])
+    (hNeed : frame.get needLocal = some (.i64 need))
+    (hOrder : frame.params.length ≤ needLocal ∧ needLocal < topLocal ∧
+      topLocal < pagesLocal ∧ pagesLocal < resultLocal ∧ frame.validIndex resultLocal)
+    (hGlobal : store.globals.globals[0]? = some (.i64 base))
+    (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
+    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
+    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q (allocated store base need stride)
+      (result frame topLocal pagesLocal resultLocal base need) env) :
+    wp module_ (program needLocal topLocal pagesLocal resultLocal stride ++ rest) Q store frame env := by
+  exact program_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame base need stride
+    hValues hNeed hOrder hGlobal hFit32 hPages hMemory32 (fun _ => hCap) Q rest hNext
 
 #print axioms requiredPages_word
 #print axioms requiredPages_fit

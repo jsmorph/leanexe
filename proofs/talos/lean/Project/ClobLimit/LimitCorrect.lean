@@ -13,7 +13,7 @@ the ownership, allocator, page, and memory facts specific to each branch.
 namespace Project.ClobLimit.LimitCorrect
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
   Project.ClobMatchFuel.Allocation Project.ClobMatchFuel.AllocatorFrame
   Project.ClobPostOnly.Model
 
@@ -24,7 +24,7 @@ def SourceResultAt (st : Store Unit) (values : List Value)
     OrdersAt st bookPtr result.book ∧
     TradesAt st tradesPtr result.trades
 
-inductive OutcomeAt (initial final : Store Unit) (book g0 g2 : UInt64)
+inductive OutcomeAt (initial final : Store Unit) (book g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat)
     (values : List Value) : Prop where
   | invalid
@@ -44,30 +44,31 @@ inductive OutcomeAt (initial final : Store Unit) (book g0 g2 : UInt64)
   | filled
       (hValid : validOrderL os order)
       (hRemaining : (Model.runMatchL os order).remaining = 0)
-      (data : InternalLoopResult.OutputData)
+      (data : MatchOutput.OutputData)
       (hValues : values = [.i64 data.trades, .i64 data.book, .i64 0])
-      (hOutput : InternalLoopResult.OutputAt
-        (RunMatchCorrect.runMatchContext initial os order g0 g2 limit)
+      (hOutput : MatchOutput.OutputAt
+        (RunMatchCorrect.runMatchContext initial os order g0 g2 g4 g5 limit)
         final data)
   | residual
       (hValid : validOrderL os order)
       (hRemaining : (Model.runMatchL os order).remaining ≠ 0)
-      (data : InternalLoopResult.OutputData)
+      (data : MatchOutput.OutputData)
       (hValues : values =
-        [.i64 data.trades, .i64 (data.g0 + 48), .i64 0])
+        [.i64 data.trades, .i64 (LimitResidualAllocation.root
+          (RunMatchCorrect.runMatchContext initial os order g0 g2 g4 g5 limit) data), .i64 0])
       (hOutput : LimitResidualExport.ExportedResultAt initial final
-        (RunMatchCorrect.runMatchContext initial os order g0 g2 limit)
+        (RunMatchCorrect.runMatchContext initial os order g0 g2 g4 g5 limit)
         data order g0)
 
-def Postcondition (initial : Store Unit) (book g0 g2 : UInt64)
+def Postcondition (initial : Store Unit) (book g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat)
     (final : Store Unit) (values : List Value) : Prop :=
   SourceResultAt final values (Model.limitL os order) ∧
-    OutcomeAt initial final book g0 g2 os order limit values
+    OutcomeAt initial final book g0 g2 g4 g5 os order limit values
 
 def CorrectSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit)
-    (book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat),
     os.length < 4294967296 →
     48 ≤ book.toNat →
@@ -81,6 +82,8 @@ def CorrectSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) →
     st.globals.globals[1]? = some (.i64 0) →
     st.globals.globals[2]? = some (.i64 g2) →
+    st.globals.globals[4]? = some (.i64 g4) →
+    st.globals.globals[5]? = some (.i64 g5) →
     limit < 4294967296 →
     limit ≤ st.mem.pages * 65536 →
     g0.toNat + 112 + (os.length + 1) *
@@ -93,24 +96,24 @@ def CorrectSpec : Prop :=
         st.mem.pages * 65536 →
     TerminatesWith (m := «module») (id := 21) (initial := st) (env := env)
       (LimitEntry.limitArgs book order)
-      (Postcondition st book g0 g2 os order limit)
+      (Postcondition st book g0 g2 g4 g5 os order limit)
 
 set_option Elab.async false in
 theorem func21_correct : CorrectSpec := by
-  intro env st book bookCapacity g0 g2 os order limit hLength hBook48
+  intro env st book bookCapacity g0 g2 g4 g5 os order limit hLength hBook48
     hBook32 hBookCapacity hBookBelow hBook hInitial32 hInitialFit hPages
-    hg0 hg1 hg2 hAddressLimit hMemoryLimit hBudget hReserve32 hReserveFit
+    hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget hReserve32 hReserveFit
   by_cases hValid : validOrderL os order
   · by_cases hRemaining : (Model.runMatchL os order).remaining = 0
     · refine TerminatesWith.mono
-        (LimitFilled.func21_filled env st book bookCapacity g0 g2 os order
+        (LimitFilled.func21_filled env st book bookCapacity g0 g2 g4 g5 os order
           limit hLength hBook48 hBook32 hBookCapacity hBookBelow hBook
-          hInitial32 hInitialFit hPages hg0 hg1 hg2 hAddressLimit
+          hInitial32 hInitialFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit
           hMemoryLimit hBudget hValid hRemaining) ?_
       rintro final values ⟨data, hValues, hOutput⟩
       have hModel := Model.limitL_filled os order hValid hRemaining
       have hContext := RunMatchCorrect.runMatchContext_result st os order g0
-        g2 limit hLength
+        g2 g4 g5 limit hLength
       constructor
       · refine ⟨data.book, data.trades, ?_, ?_, ?_⟩
         · simpa [hModel] using hValues
@@ -118,16 +121,17 @@ theorem func21_correct : CorrectSpec := by
         · simpa [hModel, hContext] using hOutput.tradesOwned.2
       · exact .filled hValid hRemaining data hValues hOutput
     · refine TerminatesWith.mono
-        (LimitResidual.func21_residual env st book bookCapacity g0 g2 os
+        (LimitResidual.func21_residual env st book bookCapacity g0 g2 g4 g5 os
           order limit hLength hBook48 hBook32 hBookCapacity hBookBelow hBook
-          hInitial32 hInitialFit hPages hg0 hg1 hg2 hAddressLimit
+          hInitial32 hInitialFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit
           hMemoryLimit hBudget hReserve32 hReserveFit hValid hRemaining) ?_
       rintro final values ⟨data, hValues, hOutput⟩
       have hModel := Model.limitL_residual os order hValid hRemaining
       have hContext := RunMatchCorrect.runMatchContext_result st os order g0
-        g2 limit hLength
+        g2 g4 g5 limit hLength
       constructor
-      · refine ⟨data.g0 + 48, data.trades, ?_, ?_, ?_⟩
+      · refine ⟨LimitResidualAllocation.root
+          (RunMatchCorrect.runMatchContext st os order g0 g2 g4 g5 limit) data, data.trades, ?_, ?_, ?_⟩
         · simpa [hModel] using hValues
         · simpa [hModel, hContext] using hOutput.bookOwned.2
         · simpa [hModel, hContext] using hOutput.tradesOwned.2
