@@ -44,6 +44,11 @@ structure GridScratch where
   l42 : UInt64 := 0
   l43 : UInt64 := 0
   l44 : UInt64 := 0
+  l45 : UInt64 := 0
+  l47 : UInt64 := 0
+  l48 : UInt64 := 0
+  l49 : UInt64 := 0
+  l50 : UInt64 := 0
   deriving Inhabited
 
 def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index : Nat)
@@ -92,7 +97,13 @@ def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index 
       .i64 scratch.l41,
       .i64 scratch.l42,
       .i64 scratch.l43,
-      .i64 scratch.l44]
+      .i64 scratch.l44,
+      .i64 scratch.l45,
+      .i64 initialRoot,
+      .i64 scratch.l47,
+      .i64 scratch.l48,
+      .i64 scratch.l49,
+      .i64 scratch.l50]
     values := [] }
 
 def gridLoopInvariant (ratio pointer : UInt64) (input : Array UInt64) (base : Nat)
@@ -137,14 +148,14 @@ def gridSteppedScratch (scratch : GridScratch) (ratio pointer currentRoot nextRo
     l27 := nextRoot
     l28 := nextRoot
     l29 := UInt64.ofNat (index + 1)
-    l33 := currentRoot
-    l34 := 0
-    l35 := UInt64.ofNat (index + 1)
-    l36 := 0
-    l37 := nextRoot
-    l38 := nextRoot
-    l39 := UInt64.ofNat (index + 1)
-    l40 := 1 }
+    l30 := 0
+    l39 := currentRoot
+    l40 := 0
+    l41 := UInt64.ofNat (index + 1)
+    l42 := 0
+    l43 := nextRoot
+    l44 := nextRoot
+    l45 := UInt64.ofNat (index + 1) }
 
 def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index : Nat) : GridScratch :=
   { scratch with
@@ -154,13 +165,15 @@ def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index 
     l27 := currentRoot
     l28 := currentRoot
     l29 := UInt64.ofNat index
-    l33 := if index < count then currentRoot else scratch.l33
-    l34 := if index < count then 0 else scratch.l34
-    l36 := 1
-    l37 := currentRoot
-    l38 := currentRoot
-    l39 := UInt64.ofNat index
-    l40 := 1 }
+    l22 := 0
+    l30 := 1
+    l39 := if index < count then currentRoot else scratch.l39
+    l40 := if index < count then 0 else scratch.l40
+    l42 := 1
+    l43 := currentRoot
+    l44 := currentRoot
+    l45 := UInt64.ofNat index
+ }
 
 #print axioms gridLoopMeasure_frame
 end Project.EulerGridStep.Execution
