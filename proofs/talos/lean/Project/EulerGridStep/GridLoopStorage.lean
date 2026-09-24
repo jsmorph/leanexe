@@ -1,19 +1,38 @@
 import Project.EulerGridStep.ProtectedArenaAdvance
+import Project.EulerGridStep.AdvanceRotatingRejected
 
 namespace Project.EulerGridStep.Execution
 open Wasm
 open Project.ProofKit
 
+def rotatingRejectedRoot (base count completed : Nat) : UInt64 :=
+  if completed = 1 then arenaRoot base count 1 else rotatingRoots base count (completed - 1) 1
+
+def rotatingRejectedPool (base count completed : Nat) : List UInt64 :=
+  if completed = 1 then []
+  else rotatingRoots base count (completed - 1) 0 :: rotatingPoolTail base count (completed - 1)
+
+def rotatingRejectedHeapSlot (completed : Nat) : Nat :=
+  if completed = 1 then 2 else rotatingHeapSlot (completed - 1)
+
+structure RotatingRejectedState (current : Store Unit) (base cells completed : Nat) (output : Array UInt64)
+    (allocs releases frees : UInt64) : Prop where
+  buffers : BufferState current output.size [⟨rotatingRejectedRoot base output.size completed, output⟩]
+    (rotatingRejectedPool base output.size completed) allocs releases frees
+  heap : current.globals.globals[0]? = some (.i64 (arenaHeap base output.size (rotatingRejectedHeapSlot completed)))
+  budget : base + (cells + 6) * arenaObjectSize output.size ≤ current.mem.pages * 65536
+  status : output[0]! = 1
+
 def gridLoopRoot (base count index : Nat) (status : UInt64) : UInt64 :=
   if index = 0 then arenaRoot base count 0
-  else if status = 0 then arenaRoot base count (index + 5) else arenaRoot base count 1
+  else if status = 0 then rotatingRoots base count index 0 else rotatingRejectedRoot base count index
 
 def gridLoopPool (base count index : Nat) (status : UInt64) : List UInt64 :=
   if index = 0 then []
-  else if status = 0 then writerPool (arenaRoot base count) 0 else rejectedPool base count (index - 1)
+  else if status = 0 then rotatingPool base count index else rotatingRejectedPool base count index
 
 def gridLoopHeapSlot (index : Nat) (status : UInt64) : Nat :=
-  if index = 0 then 1 else if status = 0 then index + 6 else rejectedHeapSlot (index - 1)
+  if index = 0 then 1 else if status = 0 then rotatingHeapSlot index else rotatingRejectedHeapSlot index
 
 /-- The three storage phases visited by the emitted outer loop. -/
 inductive GridLoopStorage (current : Store Unit) (base cells : Nat) :
@@ -26,11 +45,11 @@ inductive GridLoopStorage (current : Store Unit) (base cells : Nat) :
       GridLoopStorage current base cells 0 (Array.replicate (1 + 6 * cells) 0) allocs releases frees
   | accepted (index : Nat) (output : Array UInt64) (allocs releases frees : UInt64)
       (positive : 0 < index) (status : output[0]! = 0)
-      (arena : LaterArenaState current base cells index output allocs releases frees) :
+      (arena : RotatingArenaState current base cells index output allocs releases frees) :
       GridLoopStorage current base cells index output allocs releases frees
   | rejected (index : Nat) (output : Array UInt64) (allocs releases frees : UInt64)
       (positive : 0 < index)
-      (arena : RejectedArenaState current base cells (index - 1) output allocs releases frees) :
+      (arena : RotatingRejectedState current base cells index output allocs releases frees) :
       GridLoopStorage current base cells index output allocs releases frees
 
 theorem GridLoopStorage.buffers {current : Store Unit} {base cells index : Nat} {output : Array UInt64}
