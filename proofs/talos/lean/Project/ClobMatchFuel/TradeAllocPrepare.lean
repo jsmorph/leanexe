@@ -21,7 +21,7 @@ set_option maxRecDepth 1048576
 def tradeAllocPrepareProg : Wasm.Program :=
   [
   .constI64 8,
-  .localGet 69,
+  .localGet 79,
   .constI64 4,
   .mulI64,
   .constI64 8,
@@ -33,20 +33,20 @@ def tradeAllocPrepareProg : Wasm.Program :=
   .divUI64,
   .constI64 8,
   .mulI64,
-  .localSet 78,
-  .localGet 78,
+  .localSet 88,
+  .localGet 88,
   .constI64 8,
   .ltUI64,
   .iff 0 0 [
     .constI64 8,
-    .localSet 78
+    .localSet 88
   ] [],
   .constI64 0,
-  .localSet 83,
+  .localSet 93,
   .constI64 0,
-  .localSet 79,
+  .localSet 89,
   .globalGet 1,
-  .localSet 80
+  .localSet 90
 ]
 
 set_option Elab.async false in
@@ -54,11 +54,11 @@ theorem tradeAllocPrepareProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (n : Nat) (g1 capacity next : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hLengthLocal : base.locals[60]? = some (.i64 (UInt64.ofNat n)))
-    (hCapacityLocal : base.locals[72]? = some (.i64 capacity))
-    (hNextLocal : base.locals[73]? = some (.i64 next))
+    (hLengthLocal : base.locals[70]? = some (.i64 (UInt64.ofNat n)))
+    (hCapacityLocal : base.locals[82]? = some (.i64 capacity))
+    (hNextLocal : base.locals[83]? = some (.i64 next))
     (hn : n < UInt64.size)
     (hbytes : tradeArrayBytes n + 7 < UInt64.size)
     (hg1 : st.globals.globals[1]? = some (.i64 g1))
@@ -67,9 +67,9 @@ theorem tradeAllocPrepareProg_spec
       (TradeAllocSearch.tradeAllocSearchFrame base
         (tradeArrayBytesU n) 0 g1 capacity next 0) env) :
     wp «module» (tradeAllocPrepareProg ++ rest) Q st base env := by
-  have hLengthGet : base.locals[60] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
-  have hCapacityGet : base.locals[72] = .i64 capacity := getElem_of_some hCapacityLocal
-  have hNextGet : base.locals[73] = .i64 next := getElem_of_some hNextLocal
+  have hLengthGet : base.locals[70] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
+  have hCapacityGet : base.locals[82] = .i64 capacity := getElem_of_some hCapacityLocal
+  have hNextGet : base.locals[83] = .i64 next := getElem_of_some hNextLocal
   have hRound : (tradeArrayBytesU n + 7) / 8 * 8 =
       tradeArrayBytesU n :=
     fixedArrayBytesU_round n 4 hn (by decide) hbytes
@@ -90,8 +90,8 @@ theorem tradeAllocPrepareProg_spec
     omega
   have hFinalFrame :
       { base with
-        locals := (((base.locals.set 69 (.i64 (tradeArrayBytesU n))).set
-          74 (.i64 0)).set 70 (.i64 0)).set 71 (.i64 g1)
+        locals := (((base.locals.set 79 (.i64 (tradeArrayBytesU n))).set
+          84 (.i64 0)).set 80 (.i64 0)).set 81 (.i64 g1)
         values := [] } =
       TradeAllocSearch.tradeAllocSearchFrame base
         (tradeArrayBytesU n) 0 g1 capacity next 0 := by
@@ -100,22 +100,22 @@ theorem tradeAllocPrepareProg_spec
     congr 1
     apply List.ext_getElem?
     intro i
-    by_cases h69 : 69 = i
+    by_cases h69 : 79 = i
     · subst i
       simp [List.getElem?_set]
-    by_cases h70 : 70 = i
+    by_cases h70 : 80 = i
     · subst i
       simp [List.getElem?_set]
-    by_cases h71 : 71 = i
+    by_cases h71 : 81 = i
     · subst i
       simp [List.getElem?_set]
-    by_cases h72 : 72 = i
+    by_cases h72 : 82 = i
     · subst i
       simpa [List.getElem?_set, hLocals] using hCapacityGet
-    by_cases h73 : 73 = i
+    by_cases h73 : 83 = i
     · subst i
       simpa [List.getElem?_set, hLocals] using hNextGet
-    by_cases h74 : 74 = i
+    by_cases h74 : 84 = i
     · subst i
       simp [List.getElem?_set, h70, h71]
     · simp [h69, h70, h71, h72, h73, h74]

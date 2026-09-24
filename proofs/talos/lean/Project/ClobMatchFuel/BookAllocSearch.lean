@@ -14,93 +14,93 @@ set_option maxRecDepth 1048576
 def bookAllocSearchFrame (base : Locals)
     (need previous current capacity next result : UInt64) : Locals :=
   { base with
-    locals := ((((((base.locals.set 67 (.i64 need)).set 68 (.i64 previous)).set
-      69 (.i64 current)).set 70 (.i64 capacity)).set 71 (.i64 next)).set
-      72 (.i64 result)) }
+    locals := ((((((base.locals.set 77 (.i64 need)).set 78 (.i64 previous)).set
+      79 (.i64 current)).set 80 (.i64 capacity)).set 81 (.i64 next)).set
+      82 (.i64 result)) }
 
 def bookAllocSearchBodyProg : Wasm.Program :=
   [
-  .localGet 78,
+  .localGet 88,
   .constI64 (0 : UInt64),
   .eqI64,
   .br_if 1,
-  .localGet 81,
+  .localGet 91,
   .constI64 (0 : UInt64),
   .neI64,
   .br_if 1,
-  .localGet 78,
+  .localGet 88,
   .constI64 (32 : UInt64),
   .subI64,
   .wrapI64,
   .load64 (0 : UInt32),
-  .localSet 79,
-  .localGet 78,
+  .localSet 89,
+  .localGet 88,
   .constI64 (8 : UInt64),
   .subI64,
   .wrapI64,
   .load64 (0 : UInt32),
-  .localSet 80,
-  .localGet 79,
-  .localGet 76,
+  .localSet 90,
+  .localGet 89,
+  .localGet 86,
   .geUI64,
   .iff 0 0 [
-    .localGet 77,
+    .localGet 87,
     .constI64 (0 : UInt64),
     .eqI64,
     .iff 0 0 [
-      .localGet 80,
+      .localGet 90,
       .globalSet 1
     ] [
-      .localGet 77,
+      .localGet 87,
       .constI64 (8 : UInt64),
       .subI64,
       .wrapI64,
-      .localGet 80,
+      .localGet 90,
       .store64 (0 : UInt32)
     ],
-    .localGet 78,
+    .localGet 88,
     .constI64 (48 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5501223100278326855 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 78,
+    .localGet 88,
     .constI64 (40 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (1 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 78,
+    .localGet 88,
     .constI64 (32 : UInt64),
     .subI64,
     .wrapI64,
-    .localGet 79,
+    .localGet 89,
     .store64 (0 : UInt32),
-    .localGet 78,
+    .localGet 88,
     .constI64 (24 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (2 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 78,
+    .localGet 88,
     .constI64 (16 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 78,
+    .localGet 88,
     .constI64 (8 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (0 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 78,
-    .localSet 81
+    .localGet 88,
+    .localSet 91
   ] [
-    .localGet 78,
-    .localSet 77,
-    .localGet 80,
-    .localSet 78
+    .localGet 88,
+    .localSet 87,
+    .localGet 90,
+    .localSet 88
   ],
   .br 0
 ]
@@ -123,7 +123,7 @@ private def noFitInv (st0 : Store Unit) (base : Locals) (need : UInt64)
 
 private def noFitMeasure (original : List FreeNode) (_ : Store Unit)
     (s : Locals) : Nat :=
-  match s.get 78 with
+  match s.get 88 with
   | some (.i64 current) => scanRemaining original current
   | _ => 0
 
@@ -131,7 +131,7 @@ theorem bookAllocSearchProg_no_fit
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (need capacity next : UInt64) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hList : FreeListAt st.mem nodes)
     (hNoFit : takeFirstFit need nodes = none)
@@ -218,16 +218,16 @@ theorem bookAllocSearchProg_no_fit
               congr 1
               apply List.ext_getElem?
               intro i
-              by_cases h68 : 68 = i
+              by_cases h68 : 78 = i
               · subst i
                 simp [List.getElem?_set]
-              by_cases h69 : 69 = i
+              by_cases h69 : 79 = i
               · subst i
                 simp [List.getElem?_set]
-              by_cases h70 : 70 = i
+              by_cases h70 : 80 = i
               · subst i
                 simp [List.getElem?_set]
-              by_cases h71 : 71 = i
+              by_cases h71 : 81 = i
               · subst i
                 simp [List.getElem?_set]
               · simp [List.getElem?_set, h68, h69, h70, h71]

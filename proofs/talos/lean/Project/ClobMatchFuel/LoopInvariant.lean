@@ -75,7 +75,7 @@ def RunningData.sourceState (data : RunningData) : Model.MatchStateL :=
 
 def LoopLocalsAt (ctx : Context) (data : RunningData) (s : Locals) : Prop :=
   s.params.length = 9 ∧
-  s.locals.length = 76 ∧
+  s.locals.length = 86 ∧
   s.values = [] ∧
   s.get 0 = some (.i64 data.fuel) ∧
   s.get 9 = some (.i64 ctx.taker.oid) ∧

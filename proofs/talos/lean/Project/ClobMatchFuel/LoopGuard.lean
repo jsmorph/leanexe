@@ -31,7 +31,7 @@ set_option Elab.async false in
 theorem loopGuard_done_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals) (fuel : UInt64)
     (_hParams : base.params.length = 9)
-    (_hLocals : base.locals.length = 76)
+    (_hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
     (hDone : base.get 24 = some (.i64 1))
@@ -45,7 +45,7 @@ set_option Elab.async false in
 theorem loopGuard_zero_fuel_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (_hParams : base.params.length = 9)
-    (_hLocals : base.locals.length = 76)
+    (_hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 0))
     (Q : Assertion Unit) (rest : Wasm.Program)
@@ -58,7 +58,7 @@ set_option Elab.async false in
 theorem loopGuard_running_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals) (fuel : UInt64)
     (_hParams : base.params.length = 9)
-    (_hLocals : base.locals.length = 76)
+    (_hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
     (hFuelNonzero : fuel ≠ 0)

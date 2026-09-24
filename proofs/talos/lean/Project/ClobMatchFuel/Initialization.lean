@@ -69,7 +69,7 @@ set_option Elab.async false in
 theorem initProg_spec (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book trades remaining : UInt64) (taker : OrderL)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hOid : base.get 1 = some (.i64 taker.oid))
     (hTrader : base.get 2 = some (.i64 taker.otrader))

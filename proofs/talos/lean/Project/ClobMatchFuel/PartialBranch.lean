@@ -31,7 +31,7 @@ theorem partialBranchProg_spec
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode) (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuelLocal : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
@@ -39,8 +39,9 @@ theorem partialBranchProg_spec
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
-    (hCapacityLocal : base.locals[73]? = some (.i64 capacity))
-    (hNextLocal : base.locals[74]? = some (.i64 next))
+    (hCapacityLocal : base.locals[83]? = some (.i64 capacity))
+    (hNextLocal : base.locals[84]? = some (.i64 next))
+    (hMaker : SelectedOrder.At base os[i]!)
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
     (hBookBytes : orderArrayBytes os.length + 7 < UInt64.size)
@@ -130,7 +131,7 @@ theorem partialBranchProg_spec
     ac_rfl
   have hPreparedLength :
       (PartialBookPrepare.partialBookPrepareFrame base book remaining os i).locals.length =
-        76 := by
+        86 := by
     simpa [PartialBookPrepare.partialBookPrepareFrame,
       PartialBookPrepare.partialBookPrepareLocals, List.length_set] using
       hLocals
@@ -138,7 +139,7 @@ theorem partialBranchProg_spec
   rw [List.append_assoc]
   apply PartialBookControl.partialBookBranchProg_spec env st base book
     remaining os i hParams hLocals hValues hBookLocal hIndexLocal
-    hRemainingLocal hi hOrdersLength64 hBookOwned.2 Q
+    hRemainingLocal hMaker hi hOrdersLength64 hBookOwned.2 Q
     (PartialTradeUpdate.partialTradeUpdateProg ++ rest)
   apply PartialBookUpdate.partialBookUpdateProg_spec env st
     (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
@@ -359,6 +360,11 @@ theorem partialBranchProg_spec
     · simp [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
         PartialBookAllocSearch.bookAllocSearchFrame, hPreparedLength]
+    · simpa [SelectedOrder.At, BookReplaceFinish.replaceResultFrame,
+        BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
+        PartialBookAllocSearch.bookAllocSearchFrame,
+        PartialBookPrepare.partialBookPrepareFrame,
+        PartialBookPrepare.partialBookPrepareLocals, hLocals] using hMaker
     · exact hi
     · exact hOrdersLength64
     · exact hTradeLength64
@@ -591,6 +597,11 @@ theorem partialBranchProg_spec
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
         PartialBookAllocSearch.bookAllocSearchFrame, g0AfterBook, bookNeed,
         hPreparedLength]
+    · simpa [SelectedOrder.At, BookReplaceFinish.replaceResultFrame,
+        BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
+        PartialBookAllocSearch.bookAllocSearchFrame,
+        PartialBookPrepare.partialBookPrepareFrame,
+        PartialBookPrepare.partialBookPrepareLocals, hLocals] using hMaker
     · exact hi
     · exact hOrdersLength64
     · exact hTradeLength64
