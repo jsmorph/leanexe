@@ -26,14 +26,10 @@ private def invalidAllocFrame (ptr : UInt64) (order : OrderL) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 1, .i64 0, .i64 1, .i64 ptr, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 8, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty] ++
+      List.replicate 22 (.i64 0) ++
+      [.i64 1, .i64 0, .i64 1, .i64 0, .i64 ptr] ++
+      List.replicate 9 (.i64 0) ++ [.i64 8] ++ List.replicate 11 (.i64 0),
     values := [] }
 
 theorem limit_invalid
@@ -67,15 +63,7 @@ theorem limit_invalid
   · change wp «module» func21 _ st
       { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
           .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-        locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+        locals := List.replicate 55 (.i64 0),
         values := [] } env
     unfold func21
     wp_run

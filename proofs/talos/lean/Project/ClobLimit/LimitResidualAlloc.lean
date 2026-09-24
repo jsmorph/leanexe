@@ -92,8 +92,9 @@ theorem residualAllocProg_spec
     (hOutput : MatchOutput.OutputAt ctx st data)
     (hBump : takeFirstFitFrom 0 (LimitResidualAllocation.need ctx) data.nodes = none →
       data.g0.toNat + 48 + (LimitResidualAllocation.need ctx).toNat ≤ 4294967296 ∧
-      FixedArrayBump.requiredPages data.g0 (LimitResidualAllocation.need ctx) ≤
-        st.memoryCap «module» 0)
+      (st.mem.pages < FixedArrayBump.requiredPages data.g0 (LimitResidualAllocation.need ctx) →
+        FixedArrayBump.requiredPages data.g0 (LimitResidualAllocation.need ctx) ≤
+          st.memoryCap «module» 0))
     (hFit : (LimitResidualAllocation.root ctx data).toUInt32.toNat + 8 ≤
       (LimitResidualAllocation.allocated st ctx data).mem.pages * 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
