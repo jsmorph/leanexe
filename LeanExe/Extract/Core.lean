@@ -3,13 +3,25 @@ import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.Extract.ReleaseCheck
 import LeanExe.Extract.StructuralRec
-import LeanExe.Extract.ScalarPrimitive
+import LeanExe.Extract.ScalarExpr
 import LeanExe.IR.Core
 import LeanExe.Runtime
 
 open Lean
 
 namespace LeanExe.Extract.Core
+
+/-- Restrict the local map to already materialized scalar slots. -/
+def scalarBindingSlots? (locals : List Binding) : Option (List Nat) :=
+  locals.mapM fun binding =>
+    match binding with
+    | .slot index => some index
+    | .value (.scalar (.local index)) => some index
+    | _ => none
+
+def extractScalarTree? (locals : List Binding) (expr : Expr) : Option IRExpr := do
+  let slots ← scalarBindingSlots? locals
+  extractScalarExpr slots expr
 
 structure ExtractedForInStepBody where
   bodyTargets : List Nat
@@ -1040,6 +1052,8 @@ mutual
       (nextLocal : Nat)
       (expr : Expr) :
       Except String (ExtractedValue × Nat) := do
+    if let some scalar := extractScalarTree? locals expr then
+      return (.scalar scalar, nextLocal)
     match expr.consumeMData with
     | .bvar index =>
         match ← lookupBinding locals index with
@@ -3578,6 +3592,8 @@ mutual
       (nextLocal : Nat)
       (expr : Expr) :
       Except String (IRExpr × Nat) := do
+    if let some scalar := extractScalarTree? locals expr then
+      return (scalar, nextLocal)
     match expr.consumeMData with
     | .bvar index =>
         match ← lookupBinding locals index with
