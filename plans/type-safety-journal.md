@@ -594,3 +594,13 @@ and finite execution decomposition for exact derived-form semantics. An
 unconditional optional-step extension equation would be false at ret value []:
 appending a continuation enables a new transition there. The upcoming statement
 must isolate that return boundary explicitly.
+
+
+Specified the next derived-sum increment in a separate plan: transparent
+Sum Unit α / Sum ε α aliases, constructors, map/bind, and map-error. Callback
+code is explicitly scoped beneath its payload. The None branch uses Unit
+elimination, so malformed raw non-Unit left payloads remain stuck. Other
+forwarding branches retain their actual payload. This is a specification
+checkpoint only: derived definitions, exact inference/profile equations, and
+execution laws remain pending. Payload-discarding observers and conversions
+are outside this first increment, with their final disposition still tracked.
