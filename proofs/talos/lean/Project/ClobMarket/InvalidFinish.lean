@@ -20,8 +20,8 @@ set_option maxHeartbeats 8000000
 def finishFrame (base : Locals) (g0 : UInt64) : Locals :=
   let bumped := InvalidBump.bumpFrame base g0
   { bumped with
-    locals := ((bumped.locals.set 36 (.i64 (g0 + 48))).set 32
-      (.i64 (g0 + 48))).set 35 (.i64 (g0 + 48))
+    locals := ((bumped.locals.set 38 (.i64 (g0 + 48))).set 36
+      (.i64 (g0 + 48))).set 37 (.i64 (g0 + 48))
     values := [] }
 
 set_option Elab.async false in
@@ -29,7 +29,7 @@ theorem invalidFinishProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (g0 g2 : UInt64)
     (hParams : base.params.length = 6)
-    (hLocals : base.locals.length = 49)
+    (hLocals : base.locals.length = 51)
     (hFit32 : g0.toNat + 56 < 4294967296)
     (hFit : g0.toNat + 56 ≤ st.mem.pages * 65536)
     (hg2 : st.globals.globals[2]? = some (.i64 g2))

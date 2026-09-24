@@ -21,7 +21,7 @@ def priceFrame (book : UInt64) (order : OrderL) : Locals :=
     locals := [.i64 0, .i64 book, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1,
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
-      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 36 (.i64 0)
+      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 38 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576
