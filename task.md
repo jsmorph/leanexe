@@ -425,3 +425,14 @@ MetadataParsing proves exact production export-entry parsing, bounded function/
 memory/global indices, minimum memory limits, mutable i64 global types, and
 signed i64 global initializers. The module builds. These lemmas supply the
 metadata payloads for the forthcoming complete module decoder theorem.
+
+### Module header and section-loop composition (checked)
+
+SectionParsing proves complete-input parser composition and section-loop steps,
+including duplicate-section and order checks. ModuleParsing connects a completed
+section stream to the actual module magic/version parser; ParsesEnd.runAll
+connects that result to the public complete-input decoder. Both modules build.
+Split the original module-header proof after an elaboration heartbeat limit;
+explicit parser continuations now check without raising the limit. The exact
+compiler module still needs its six concrete sections and fixed runtime bodies
+instantiated, followed by validation and exported invocation.
