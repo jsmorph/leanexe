@@ -73,6 +73,14 @@ The current compiler emits fifteen region kinds.  The parameter object differs b
 | `leanexe.array.lt-node.v1` | One unsigned comparison node with operand order and branch roles. |
 | `leanexe.array.pair-result.v1` | Construction and return of a two-word fixed-array result. |
 
+Current fold annotations identify `initialValueStart`, the base of saved
+initial accumulator pointers; only `releaseOffsets` occupy these slots.
+Their scalar descriptors omit the former first-iteration flag, and folds
+that release pointer accumulators do not claim a scalar-only descriptor.
+Readers also accept the historical `releaseReadyLocal` layout for frozen
+artifacts and check its distinct initialization and back-edge instructions.
+The field sets are mutually exclusive.
+
 Structured LTG also uses semantic labels such as `leanexe.array.allocator.v1`, `leanexe.array.allocator-window.v1`, and `leanexe.array.singleton-wrapper.v1`.  Those labels identify artifact-side matched or composed proof motifs rather than additional compiler-emitted region records.  The distinction prevents the LTG vocabulary from being mistaken for the sidecar schema.
 
 ## Scalar descriptors and compiler theorems

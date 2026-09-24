@@ -567,7 +567,9 @@ function validateLoopFold(region, description) {
   exactKeys(region.parameters, [
     "accumulatorLocals", "accumulatorStart", "bodyLets", "bodyValues",
     "continuation", "doneLocal", "doneValue", "initialValues", "releaseOffsets",
-    "releaseReadyLocal", "resultLocals", "resultWidth", "scratchStart",
+    (Object.hasOwn(region.parameters, "initialValueStart")
+      ? "initialValueStart" : "releaseReadyLocal"),
+    "resultLocals", "resultWidth", "scratchStart",
     "stagedValueStart",
   ], `${description}.parameters`);
   const parameters = region.parameters;
@@ -577,7 +579,9 @@ function validateLoopFold(region, description) {
   natural(parameters.scratchStart, `${description}.parameters.scratchStart`);
   natural(parameters.doneLocal, `${description}.parameters.doneLocal`);
   natural(parameters.stagedValueStart, `${description}.parameters.stagedValueStart`);
-  natural(parameters.releaseReadyLocal, `${description}.parameters.releaseReadyLocal`);
+  const ownershipLocal = Object.hasOwn(parameters, "initialValueStart")
+    ? "initialValueStart" : "releaseReadyLocal";
+  natural(parameters[ownershipLocal], `${description}.parameters.${ownershipLocal}`);
   const accumulatorLocals = array(
     parameters.accumulatorLocals, `${description}.parameters.accumulatorLocals`);
   const initialValues = array(parameters.initialValues, `${description}.parameters.initialValues`);
@@ -611,7 +615,7 @@ function validateLoopFold(region, description) {
     natural(local, `${description}.parameters.resultLocals[${index}]`));
   if (parameters.doneLocal < parameters.scratchStart ||
       parameters.stagedValueStart !== parameters.doneLocal + 1 ||
-      parameters.releaseReadyLocal !== parameters.stagedValueStart + parameters.resultWidth ||
+      parameters[ownershipLocal] !== parameters.stagedValueStart + parameters.resultWidth ||
       parameters.continuation !== "function-results") {
     fail(`${description}.parameters has an invalid scratch layout or continuation`);
   }
@@ -627,11 +631,13 @@ function validateArrayFold(region, description) {
   const parameters = region.parameters;
   const hasDescriptor = Object.hasOwn(parameters, "descriptor") ||
     Object.hasOwn(parameters, "descriptorVersion");
+  const ownershipLocal = Object.hasOwn(parameters, "initialValueStart")
+    ? "initialValueStart" : "releaseReadyLocal";
   exactKeys(parameters, [
     "accumulatorLocals", "accumulatorStart", "array", "arrayLocal", "bodyLets",
     "bodyValues", "continuation", "doneLocal", "doneValue", "effectiveStopLocal",
     "indexLocal", "initialValues", "itemLocals", "itemStart", "lengthLocal",
-    "releaseOffsets", "releaseReadyLocal", "resultLocals", "resultSlots", "resultWidth",
+    "releaseOffsets", ownershipLocal, "resultLocals", "resultSlots", "resultWidth",
     "reverse", "scratchStart", "sourceWidth", "stagedValueStart", "start", "stop",
     "stopLocal", ...(hasDescriptor ? ["descriptor", "descriptorVersion"] : []),
   ], `${description}.parameters`);
@@ -665,7 +671,7 @@ function validateArrayFold(region, description) {
   [
     "accumulatorStart", "itemStart", "scratchStart", "arrayLocal", "lengthLocal",
     "indexLocal", "stopLocal", "effectiveStopLocal", "doneLocal", "stagedValueStart",
-    "releaseReadyLocal",
+    ownershipLocal,
   ].forEach((field) => natural(parameters[field], `${description}.parameters.${field}`));
   const accumulatorLocals = array(
     parameters.accumulatorLocals, `${description}.parameters.accumulatorLocals`);
@@ -729,7 +735,7 @@ function validateArrayFold(region, description) {
       parameters.effectiveStopLocal !== parameters.scratchStart + 4 ||
       parameters.doneLocal < parameters.scratchStart + 5 ||
       parameters.stagedValueStart !== parameters.doneLocal + 1 ||
-      parameters.releaseReadyLocal !== parameters.stagedValueStart + parameters.resultWidth ||
+      parameters[ownershipLocal] !== parameters.stagedValueStart + parameters.resultWidth ||
       parameters.continuation !== "fallthrough") {
     fail(`${description}.parameters has an invalid scratch layout or continuation`);
   }
@@ -1719,11 +1725,21 @@ function matchLoopFoldRegion(program, function_, region) {
   if (selected.length !== region.location.endIndex - region.location.startIndex) {
     fail(`${region.id}: decoded loop-fold region is truncated`);
   }
+  const parameters = region.parameters;
+  const savesInitial = Object.hasOwn(parameters, "initialValueStart");
   const normalized = normalizeInstructions(selected);
   const blockIndex = normalized.findIndex((instruction) => instruction.startsWith(".block "));
-  if (blockIndex < 2 || normalized.slice(0, blockIndex)
-    .slice(-2).join("\n") !==
-      `.constI64 (0 : UInt64)\n.localSet ${region.parameters.releaseReadyLocal}`) {
+  const expectedInitialization = savesInitial
+    ? parameters.releaseOffsets.flatMap((offset) => [
+      `.localGet ${parameters.accumulatorStart + offset}`,
+      `.localSet ${parameters.initialValueStart + offset}`,
+    ]) : [".constI64 (0 : UInt64)", `.localSet ${parameters.releaseReadyLocal}`];
+  const prefix = normalized.slice(0, blockIndex);
+  if (blockIndex < 2 ||
+      (expectedInitialization.length > 0 &&
+        JSON.stringify(prefix.slice(-expectedInitialization.length)) !==
+          JSON.stringify(expectedInitialization)) ||
+      parameters.accumulatorLocals.some((local) => !prefix.includes(`.localSet ${local}`))) {
     fail(`${region.id}: decoded loop-fold initialization boundary does not match`);
   }
   const expectedTargets = region.parameters.accumulatorLocals.flatMap((local, index) => [
@@ -1750,12 +1766,11 @@ function matchLoopFoldRegion(program, function_, region) {
       `.localGet ${region.parameters.stagedValueStart + index}`,
       `.localSet ${local}`,
     ]),
-    ".constI64 (1 : UInt64)",
-    `.localSet ${region.parameters.releaseReadyLocal}`,
+    ...(!savesInitial ? [".constI64 (1 : UInt64)",
+      `.localSet ${parameters.releaseReadyLocal}`] : []),
     `.localGet ${region.parameters.doneLocal}`,
     ".constI64 (0 : UInt64)",
-    ".eqI64",
-    ".eqz",
+    ...(savesInitial ? [".neI64"] : [".eqI64", ".eqz"]),
     ".br_if 1",
     ".br 0",
   ];
@@ -1778,6 +1793,7 @@ function matchArrayFoldRegion(program, function_, region) {
     fail(`${region.id}: decoded array-fold region is truncated`);
   }
   const parameters = region.parameters;
+  const savesInitial = Object.hasOwn(parameters, "initialValueStart");
   const normalized = normalizeInstructions(selected);
   const boundaryLocal = parameters.reverse
     ? parameters.indexLocal : parameters.effectiveStopLocal;
@@ -1787,7 +1803,7 @@ function matchArrayFoldRegion(program, function_, region) {
   const releaseInitialization = normalized.findIndex((instruction, index) =>
     instruction === ".constI64 (0 : UInt64)" &&
       normalized[index + 1] === `.localSet ${parameters.releaseReadyLocal}`);
-  if (blockIndex < 2 || releaseInitialization < 0) {
+  if (blockIndex < 2 || (!savesInitial && releaseInitialization < 0)) {
     fail(`${region.id}: decoded array-fold initialization boundary does not match`);
   }
   const initializedLocals = [
@@ -1797,11 +1813,19 @@ function matchArrayFoldRegion(program, function_, region) {
     parameters.stopLocal,
     ...parameters.accumulatorLocals,
     parameters.effectiveStopLocal,
-    parameters.releaseReadyLocal,
+    ...(savesInitial
+      ? parameters.releaseOffsets.map((offset) => parameters.initialValueStart + offset)
+      : [parameters.releaseReadyLocal]),
   ];
   const prefix = new Set(normalized.slice(0, blockIndex));
   if (initializedLocals.some((local) => !prefix.has(`.localSet ${local}`))) {
     fail(`${region.id}: decoded array-fold initialization locals do not match`);
+  }
+  if (savesInitial && parameters.releaseOffsets.some((offset) =>
+    !normalized.slice(0, blockIndex).some((instruction, index) =>
+      instruction === `.localGet ${parameters.accumulatorStart + offset}` &&
+      normalized[index + 1] === `.localSet ${parameters.initialValueStart + offset}`))) {
+    fail(`${region.id}: decoded array-fold initial owner copies do not match`);
   }
   const expectedResults = parameters.resultSlots.flatMap((slot, index) => [
     `.localGet ${parameters.accumulatorStart + slot}`,
@@ -1864,8 +1888,8 @@ function matchArrayFoldRegion(program, function_, region) {
       `.localGet ${parameters.stagedValueStart + index}`,
       `.localSet ${local}`,
     ]),
-    ".constI64 (1 : UInt64)",
-    `.localSet ${parameters.releaseReadyLocal}`,
+    ...(!savesInitial ? [".constI64 (1 : UInt64)",
+      `.localSet ${parameters.releaseReadyLocal}`] : []),
     `.localGet ${parameters.doneLocal}`,
     ".constI64 (0 : UInt64)",
     ".neI64",
@@ -1883,7 +1907,7 @@ function matchArrayFoldRegion(program, function_, region) {
     fail(`${region.id}: decoded array-fold transition does not match`);
   }
   const setupInitial = normalized[14]?.match(/^\.constI64 \(([0-9]+) : UInt64\)$/);
-  const forwardSetupCandidate = parameters.resultWidth === 1 &&
+  const forwardSetupCandidate = !savesInitial && parameters.resultWidth === 1 &&
     parameters.accumulatorLocals.length === 1 && !parameters.reverse &&
     blockIndex === 23 && normalized[21] === ".iff 0 1 [";
   const forwardSetupExpected = forwardSetupCandidate ? [
@@ -2142,7 +2166,12 @@ function arrayFoldFrameRoleLabels(parameters) {
   add(parameters.stopLocal, "stopLocal");
   add(parameters.effectiveStopLocal, "effectiveStopLocal");
   add(parameters.doneLocal, "doneLocal");
-  add(parameters.releaseReadyLocal, "releaseReadyLocal");
+  if (Object.hasOwn(parameters, "initialValueStart")) {
+    parameters.releaseOffsets.forEach((offset) =>
+      add(parameters.initialValueStart + offset, `initialValueStart+${offset}`));
+  } else {
+    add(parameters.releaseReadyLocal, "releaseReadyLocal");
+  }
   parameters.accumulatorLocals.forEach((local, index) =>
     add(local, `accumulatorLocals[${index}]`));
   parameters.itemLocals.forEach((local, index) =>

@@ -2171,6 +2171,29 @@ def func0Def : Wasm.Function :=
   assert(foldPlan.recipes.length === 1 &&
     foldPlan.recipes[0].direct.module === "Project.ProofKit.Control",
   "loop-fold annotation did not select the generic loop recipe");
+  const currentFoldDocument = structuredClone(foldDocument);
+  const currentFoldRegion = currentFoldDocument.functions[0].regions[0];
+  currentFoldRegion.parameters.initialValueStart = currentFoldRegion.parameters.releaseReadyLocal;
+  delete currentFoldRegion.parameters.releaseReadyLocal;
+  currentFoldRegion.location.endIndex -= 2;
+  const currentFoldProgram = foldProgram
+    .replace("  .constI64 (0 : UInt64),\n  .localSet 6,\n", "")
+    .replace("      .constI64 (1 : UInt64),\n      .localSet 6,\n", "")
+    .replace("      .eqI64,\n      .eqz,", "      .neI64,");
+  validateAnnotationDocument(currentFoldDocument, wasm);
+  validateProofRecipePlan(proofRecipePlan(currentFoldDocument, currentFoldProgram),
+    currentFoldDocument);
+  expectFailure(() => proofRecipePlan(currentFoldDocument,
+    currentFoldProgram.replace(".localGet 5,", ".localGet 6,")), /back edge/);
+  const savedFoldDocument = structuredClone(currentFoldDocument);
+  savedFoldDocument.functions[0].regions[0].parameters.releaseOffsets = [0];
+  savedFoldDocument.functions[0].regions[0].location.endIndex += 2;
+  const savedFoldProgram = currentFoldProgram.replace("  .block 0 0 [",
+    "  .localGet 1,\n  .localSet 6,\n  .block 0 0 [");
+  validateProofRecipePlan(proofRecipePlan(savedFoldDocument, savedFoldProgram), savedFoldDocument);
+  expectFailure(() => proofRecipePlan(savedFoldDocument,
+    savedFoldProgram.replace("  .localGet 1,\n  .localSet 6,",
+      "  .localGet 2,\n  .localSet 6,")), /initialization boundary/);
   const wrongAccumulator = structuredClone(foldDocument);
   wrongAccumulator.functions[0].regions[0].parameters.accumulatorLocals = [2];
   expectFailure(() => validateAnnotationDocument(wrongAccumulator, wasm), /must be consecutive/);
@@ -2367,6 +2390,40 @@ def func0Def : Wasm.Function :=
     }],
   };
   validateAnnotationDocument(arrayFoldDocument, wasm);
+  const currentArrayFoldDocument = structuredClone(arrayFoldDocument);
+  const currentArrayFoldRegion = currentArrayFoldDocument.functions[0].regions[0];
+  currentArrayFoldRegion.parameters.initialValueStart =
+    currentArrayFoldRegion.parameters.releaseReadyLocal;
+  delete currentArrayFoldRegion.parameters.releaseReadyLocal;
+  currentArrayFoldRegion.parameters.descriptor.body =
+    currentArrayFoldRegion.parameters.descriptor.body.first;
+  currentArrayFoldRegion.location.endIndex -= 2;
+  const currentArrayFoldProgram = arrayFoldProgram
+    .replace("    .constI64 (0 : UInt64),\n    .localSet 11,\n", "")
+    .replace("        .constI64 (1 : UInt64),\n        .localSet 11,\n", "");
+  validateAnnotationDocument(currentArrayFoldDocument, wasm);
+  const currentArrayFoldPlan = proofRecipePlan(currentArrayFoldDocument, currentArrayFoldProgram);
+  validateProofRecipePlan(currentArrayFoldPlan, currentArrayFoldDocument);
+  const currentArrayMatches = annotationMatchesSource(currentArrayFoldDocument, {
+    namespace: "Example.Generated", programModule: "Example.Generated.Artifact",
+  }, currentArrayFoldProgram);
+  assert(currentArrayMatches.source.includes("_step_program") &&
+    !currentArrayMatches.source.includes(".assign 11 (.const (1 : UInt64))"),
+  "current array-fold descriptor still writes the obsolete first-iteration flag");
+  expectFailure(() => proofRecipePlan(currentArrayFoldDocument,
+    currentArrayFoldProgram.replace("        .localGet 10,", "        .localGet 11,")),
+  /transition/);
+  const savedArrayFoldDocument = structuredClone(currentArrayFoldDocument);
+  savedArrayFoldDocument.functions[0].regions[0].parameters.releaseOffsets = [0];
+  savedArrayFoldDocument.functions[0].regions[0].parameters.descriptor = null;
+  savedArrayFoldDocument.functions[0].regions[0].location.endIndex += 2;
+  const savedArrayFoldProgram = currentArrayFoldProgram.replace(
+    "    .localSet 1,\n", "    .localSet 1,\n    .localGet 1,\n    .localSet 11,\n");
+  validateProofRecipePlan(proofRecipePlan(savedArrayFoldDocument, savedArrayFoldProgram),
+    savedArrayFoldDocument);
+  expectFailure(() => proofRecipePlan(savedArrayFoldDocument,
+    savedArrayFoldProgram.replace("    .localGet 1,\n    .localSet 11,",
+      "    .localGet 2,\n    .localSet 11,")), /initial owner copies/);
   const arrayFoldWithAllocatorBlock = arrayFoldProgram.replace(
     `    .localGet 7,
     .localGet 5,`,

@@ -3490,9 +3490,10 @@ def fixedArrayFolds
           (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneLocal := foldScratch + 5 + bodyScratch
     let stagedValueStart := doneLocal + 1
-    let releaseReadyLocal := stagedValueStart + resultWidth
-    let descriptor := ScalarDescriptor.PostTest.ofIR accStart doneLocal
-      stagedValueStart releaseReadyLocal bodyValues bodyLets bodyDone
+    let initialValueStart := stagedValueStart + resultWidth
+    let descriptor := if releaseOffsets.isEmpty then
+      ScalarDescriptor.PostTest.ofIR accStart doneLocal
+        stagedValueStart bodyValues bodyLets bodyDone else none
     { listPath := #[]
       startIndex
       endIndex
@@ -3521,7 +3522,7 @@ def fixedArrayFolds
       effectiveStopLocal := foldScratch + 4
       doneLocal
       stagedValueStart
-      releaseReadyLocal
+      initialValueStart
       resultSlots
       resultLocals
       continuation := "fallthrough"
@@ -3816,9 +3817,8 @@ partial def scalarPostTestLoopInStmt?
               (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
         let doneLocal := scratch + bodyScratch
         let stagedValueStart := doneLocal + 1
-        let releaseReadyLocal := stagedValueStart + resultWidth
         let descriptor ← ScalarDescriptor.PostTest.ofIR accumulatorStart doneLocal
-          stagedValueStart releaseReadyLocal bodyValues bodyLets doneValue
+          stagedValueStart bodyValues bodyLets doneValue
         let expressionCode := emitExprWithRelease releaseIndex scratch expression
         if expressionCode.length < 2 then none else
           let blockIndex := expressionCode.length - 2
@@ -3917,7 +3917,7 @@ def loopFold?
         scratchStart := func.locals
         doneLocal
         stagedValueStart
-        releaseReadyLocal := stagedValueStart + resultWidth
+        initialValueStart := stagedValueStart + resultWidth
         resultLocals := targets.toArray
         continuation := "function-results"
       }
@@ -4591,7 +4591,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                 effectiveStopLocal := fold.effectiveStopLocal
                 doneLocal := fold.doneLocal
                 stagedValueStart := fold.stagedValueStart
-                releaseReadyLocal := fold.releaseReadyLocal
+                initialValueStart := fold.initialValueStart
                 resultSlots := fold.resultSlots
                 resultLocals := fold.resultLocals
                 continuation := fold.continuation }
