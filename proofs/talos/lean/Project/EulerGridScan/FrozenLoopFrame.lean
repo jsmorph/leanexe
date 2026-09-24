@@ -1,6 +1,6 @@
-import Project.EulerGridScan.LoopShape
+import Project.EulerGridScan.FrozenLoopShape
 
-namespace Project.EulerGridScan.Execution
+namespace Project.EulerGridScan.Frozen.Execution
 open Wasm
 
 /-- Scratch slots written by the generated loop; local 27 is preserved separately. -/
@@ -37,9 +37,6 @@ structure Scratch where
   l38 : UInt64 := 0
   l39 : UInt64 := 0
   l40 : UInt64 := 0
-  l41 : UInt64 := 0
-  l42 : UInt64 := 0
-  l43 : UInt64 := 0
   deriving Inhabited
 
 def loopFrame (pointer : UInt64) (count index : Nat) (status speed preserved27 : UInt64)
@@ -85,14 +82,11 @@ def loopFrame (pointer : UInt64) (count index : Nat) (status speed preserved27 :
       .i64 scratch.l37,
       .i64 scratch.l38,
       .i64 scratch.l39,
-      .i64 scratch.l40,
-      .i64 scratch.l41,
-      .i64 scratch.l42,
-      .i64 scratch.l43],
+      .i64 scratch.l40],
     values := [] }
 
 def loopInvariant (initial : Store Unit) (pointer : UInt64) (input : Array UInt64)
-    (count : Nat) (preserved27 : UInt64) (target : Project.EulerGridStep.Model.CheckedSpeed) : AssertionF Unit :=
+    (count : Nat) (preserved27 : UInt64) (target : Project.EulerGridStep.Frozen.Model.CheckedSpeed) : AssertionF Unit :=
   fun current frame => current = initial ∧
     ∃ (index : Nat) (status speed : UInt64) (scratch : Scratch),
       index ≤ count ∧ target = remaining input count index status speed ∧
@@ -132,14 +126,14 @@ def steppedScratch (scratch : Scratch) (pointer : UInt64) (index : Nat)
     l24 := UInt64.ofNat (index + 1)
     l25 := nextStatus
     l26 := nextSpeed
-    l36 := UInt64.ofNat index
-    l37 := 1
-    l38 := UInt64.ofNat (index + 1)
-    l39 := 0
-    l40 := UInt64.ofNat (index + 1)
-    l41 := nextStatus
-    l42 := nextSpeed
-    l43 := 1 }
+    l33 := UInt64.ofNat index
+    l34 := 1
+    l35 := UInt64.ofNat (index + 1)
+    l36 := 0
+    l37 := UInt64.ofNat (index + 1)
+    l38 := nextStatus
+    l39 := nextSpeed
+    l40 := 1 }
 
 def doneScratch (scratch : Scratch) (index : Nat) (status speed : UInt64) : Scratch :=
   { scratch with
@@ -151,10 +145,10 @@ def doneScratch (scratch : Scratch) (index : Nat) (status speed : UInt64) : Scra
     l24 := UInt64.ofNat index
     l25 := status
     l26 := speed
-    l39 := 1
-    l40 := UInt64.ofNat index
-    l41 := status
-    l42 := speed
-    l43 := 1 }
+    l36 := 1
+    l37 := UInt64.ofNat index
+    l38 := status
+    l39 := speed
+    l40 := 1 }
 
-end Project.EulerGridScan.Execution
+end Project.EulerGridScan.Frozen.Execution

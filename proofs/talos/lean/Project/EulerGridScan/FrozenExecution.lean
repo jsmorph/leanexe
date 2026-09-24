@@ -1,12 +1,12 @@
-import Project.EulerGridScan.Loop
+import Project.EulerGridScan.FrozenLoop
 
-namespace Project.EulerGridScan.Execution
+namespace Project.EulerGridScan.Frozen.Execution
 open Wasm
 set_option maxRecDepth 16384
 set_option maxHeartbeats 1000000
 
 def resultValues (input : Array UInt64) : List Value :=
-  let result := Project.EulerGridStep.Model.maxSpeedCheckedBits input
+  let result := Project.EulerGridStep.Frozen.Model.maxSpeedCheckedBits input
   [.i64 result.speed, .i64 result.status]
 
 macro "entry_peel" : tactic => `(tactic|
@@ -47,7 +47,7 @@ theorem maxSpeedCheckedBits_exact_in_module {m : Wasm.Module} (layout : Layout m
     · intro h
       simp [h]
   dsimp only [resultValues]
-  generalize hModel : Project.EulerGridStep.Model.maxSpeedCheckedBits input = target
+  generalize hModel : Project.EulerGridStep.Frozen.Model.maxSpeedCheckedBits input = target
   refine TerminatesWith.of_wp_entry_for (f := func11Def)
     (by simpa [layout.noImports] using layout.scan) ?_ (by simp [layout.noImports])
   change wp m func11 _ initial (func11Def.toLocals [.i64 pointer]) env
@@ -55,25 +55,30 @@ theorem maxSpeedCheckedBits_exact_in_module {m : Wasm.Module} (layout : Layout m
   by_cases hEmpty : input.size = 0
   · have hTarget : target = ⟨1, 0⟩ := by
       rw [← hModel]
-      simp [Project.EulerGridStep.Model.maxSpeedCheckedBits, hEmpty]
+      simp [Project.EulerGridStep.Frozen.Model.maxSpeedCheckedBits, hEmpty]
     entry_peel
   · by_cases hRem : input.size % 3 = 0
     · entry_peel
       have hTarget : target = remaining input (input.size / 3) 0 0 0 := by
         rw [← hModel]
-        simp [Project.EulerGridStep.Model.maxSpeedCheckedBits, hEmpty, hRem, remaining]
+        simp [Project.EulerGridStep.Frozen.Model.maxSpeedCheckedBits, hEmpty, hRem, remaining]
       apply scan_loop_spec layout env initial pointer input hArray
         (input.size / 3) 0 rfl (by omega) 0 0 0
-        { l36 := UInt64.ofNat input.size, l37 := 3, l38 := pointer } target hTarget
-      intro finalIndex finalStatus finalSpeed finalScratch hFinal
+        { l33 := UInt64.ofNat input.size, l34 := 3, l35 := pointer } target hTarget
+      intro firstIndex firstStatus firstSpeed firstScratch hFirst
       entry_peel
-      have hStatus := congrArg Project.EulerGridStep.Model.CheckedSpeed.status hFinal
-      have hSpeed := congrArg Project.EulerGridStep.Model.CheckedSpeed.speed hFinal
+      apply scan_loop_spec layout env initial pointer input hArray
+        (input.size / 3) 0 rfl (by omega) 0 0 firstStatus
+        { firstScratch with l40 := 0 } target hTarget
+      intro secondIndex secondStatus secondSpeed secondScratch hSecond
+      entry_peel
+      have hStatus := congrArg Project.EulerGridStep.Frozen.Model.CheckedSpeed.status hFirst
+      have hSpeed := congrArg Project.EulerGridStep.Frozen.Model.CheckedSpeed.speed hSecond
       simp_all
     · have hTarget : target = ⟨1, 0⟩ := by
         rw [← hModel]
-        simp [Project.EulerGridStep.Model.maxSpeedCheckedBits, hEmpty, hRem]
+        simp [Project.EulerGridStep.Frozen.Model.maxSpeedCheckedBits, hEmpty, hRem]
       entry_peel
 
 #print axioms maxSpeedCheckedBits_exact_in_module
-end Project.EulerGridScan.Execution
+end Project.EulerGridScan.Frozen.Execution

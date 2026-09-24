@@ -1,6 +1,6 @@
-import Project.EulerGridScan.LoopModel
+import Project.EulerGridScan.FrozenLoopModel
 
-namespace Project.EulerGridScan.Execution
+namespace Project.EulerGridScan.Frozen.Execution
 open Wasm
 
 /-- Derived directly from the generated entry, without a copied instruction cache. -/
@@ -16,5 +16,9 @@ def loopCode : Wasm.Program :=
 
 theorem first_loop_shape : acceptedBody[27]? = some (.block 0 0 [.loop 0 0 loopCode]) := rfl
 
+/-- Both output projections run the same exact read-only scan loop. -/
+theorem second_loop_shape : acceptedBody[38]? = some (.block 0 0 [.loop 0 0 loopCode]) := rfl
+
 #print axioms first_loop_shape
-end Project.EulerGridScan.Execution
+#print axioms second_loop_shape
+end Project.EulerGridScan.Frozen.Execution
