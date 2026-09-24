@@ -467,3 +467,14 @@ axiom inspection, independent portable-package verification, independent Wasm
 engine edge cases, and the existing mutation gates remain required. Arithmetic
 source-to-function-body bytes is checked; whole-module assembly, validation,
 exported invocation, admission limits, and final gates remain incomplete.
+
+### Actual fixed runtime instruction lists (checked)
+
+RuntimeBodies constructs raw Wasm syntax together with the encoding-relation
+proofs for the existing allocator, reset, retain, and release instruction lists.
+The release function uses index four, as in an actual single-source-function
+module. Each construction applies checked relation constructors to the real
+runtime definition; no runtime code or compiler output is replaced. The module
+builds, and RuntimeParsing therefore supplies instruction-expression decoding
+for these exact lists. Local declarations and body size prefixes, complete
+section assembly, module validation, and exported invocation remain to compose.
