@@ -24,8 +24,8 @@ def tradeResultFrame (base : Locals) (target : UInt64)
 
 def tradeFinishProg : Wasm.Program :=
   [
-  .localGet 70,
-  .localGet 67,
+  .localGet 80,
+  .localGet 77,
   .constI64 4,
   .mulI64,
   .constI64 1,
@@ -34,10 +34,10 @@ def tradeFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 72,
+  .localGet 82,
   .store64 0,
-  .localGet 70,
-  .localGet 67,
+  .localGet 80,
+  .localGet 77,
   .constI64 4,
   .mulI64,
   .constI64 2,
@@ -46,10 +46,10 @@ def tradeFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 73,
+  .localGet 83,
   .store64 0,
-  .localGet 70,
-  .localGet 67,
+  .localGet 80,
+  .localGet 77,
   .constI64 4,
   .mulI64,
   .constI64 3,
@@ -58,10 +58,10 @@ def tradeFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 74,
+  .localGet 84,
   .store64 0,
-  .localGet 70,
-  .localGet 67,
+  .localGet 80,
+  .localGet 77,
   .constI64 4,
   .mulI64,
   .constI64 4,
@@ -70,9 +70,9 @@ def tradeFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 75,
+  .localGet 85,
   .store64 0,
-  .localGet 70
+  .localGet 80
 ]
 
 set_option Elab.async false in
@@ -81,13 +81,13 @@ theorem tradeFinishProg_spec
     (target source g2 arrayCapacity : UInt64)
     (ts : List TradeL) (trade : TradeL)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
-    (hLengthLocal : base.locals[58]? =
+    (hLocals : base.locals.length = 86)
+    (hLengthLocal : base.locals[68]? =
       some (.i64 (UInt64.ofNat ts.length)))
-    (hTakerLocal : base.locals[63]? = some (.i64 trade.ttakerId))
-    (hMakerLocal : base.locals[64]? = some (.i64 trade.tmakerId))
-    (hPriceLocal : base.locals[65]? = some (.i64 trade.tprice))
-    (hQtyLocal : base.locals[66]? = some (.i64 trade.tqty))
+    (hTakerLocal : base.locals[73]? = some (.i64 trade.ttakerId))
+    (hMakerLocal : base.locals[74]? = some (.i64 trade.tmakerId))
+    (hPriceLocal : base.locals[75]? = some (.i64 trade.tprice))
+    (hQtyLocal : base.locals[76]? = some (.i64 trade.tqty))
     (hTarget48 : 48 ≤ target.toNat)
     (hTarget32 : target.toNat + ((ts.length + 1) * 4 + 1) * 8 <
       4294967296)
@@ -119,7 +119,7 @@ theorem tradeFinishProg_spec
     change ts.length < 18446744073709551616
     omega
   have hWordU : UInt64.ofNat ts.length * 4 = UInt64.ofNat word := by
-    have h := congrArg (fun s : Locals => s.locals[62]?) hFrame
+    have h := congrArg (fun s : Locals => s.locals[72]?) hFrame
     simpa [tradeCopyFrame, hLocals] using h
   have hWordEq : word = ts.length * 4 := by
     have h := congrArg UInt64.toNat hWordU
@@ -135,11 +135,11 @@ theorem tradeFinishProg_spec
       toNat_ofNat_lt hLength64]
     have h4 : (4 : UInt64).toNat = 4 := rfl
     rw [h4, Nat.mod_eq_of_lt hTotal64]
-  have hLengthGet : base.locals[58] = .i64 (UInt64.ofNat ts.length) := getElem_of_some hLengthLocal
-  have hTakerGet : base.locals[63] = .i64 trade.ttakerId := getElem_of_some hTakerLocal
-  have hMakerGet : base.locals[64] = .i64 trade.tmakerId := getElem_of_some hMakerLocal
-  have hPriceGet : base.locals[65] = .i64 trade.tprice := getElem_of_some hPriceLocal
-  have hQtyGet : base.locals[66] = .i64 trade.tqty := getElem_of_some hQtyLocal
+  have hLengthGet : base.locals[68] = .i64 (UInt64.ofNat ts.length) := getElem_of_some hLengthLocal
+  have hTakerGet : base.locals[73] = .i64 trade.ttakerId := getElem_of_some hTakerLocal
+  have hMakerGet : base.locals[74] = .i64 trade.tmakerId := getElem_of_some hMakerLocal
+  have hPriceGet : base.locals[75] = .i64 trade.tprice := getElem_of_some hPriceLocal
+  have hQtyGet : base.locals[76] = .i64 trade.tqty := getElem_of_some hQtyLocal
   simp only [tradeFinishProg, tradeCopyFrame, List.cons_append,
     List.nil_append]
   wp_run_with [hParams, hLocals, hLengthGet, hTakerGet, hMakerGet, hPriceGet, hQtyGet]

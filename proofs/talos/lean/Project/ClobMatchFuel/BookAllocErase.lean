@@ -26,14 +26,14 @@ theorem bookCopiesProg_spec
       newLength : UInt64)
     (os : List OrderL) (i targetWords prefixWords suffixWords : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hPrefixLocal : base.locals[60]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat prefixWords)))
-    (hSuffixLocal : base.locals[61]? =
+    (hSuffixLocal : base.locals[71]? =
       some (.i64 (UInt64.ofNat suffixWords)))
-    (hLengthLocal : base.locals[62]? = some (.i64 newLength))
+    (hLengthLocal : base.locals[72]? = some (.i64 newLength))
     (hPrefixU : (UInt64.ofNat prefixWords).toNat = prefixWords)
     (hSuffixU : (UInt64.ofNat suffixWords).toNat = suffixWords)
     (hPrefix64 : prefixWords < UInt64.size)
@@ -97,17 +97,17 @@ theorem bookAllocEraseProg_spec
     (source sourceCapacity g0 g2 capacity next : UInt64)
     (os : List OrderL) (i : Nat) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hPrefixLocal : base.locals[60]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat (i * 5))))
-    (hSuffixLocal : base.locals[61]? =
+    (hSuffixLocal : base.locals[71]? =
       some (.i64 (UInt64.ofNat ((os.length - 1 - i) * 5))))
-    (hLengthLocal : base.locals[62]? =
+    (hLengthLocal : base.locals[72]? =
       some (.i64 (UInt64.ofNat (os.length - 1))))
-    (hCapacityLocal : base.locals[70]? = some (.i64 capacity))
-    (hNextLocal : base.locals[71]? = some (.i64 next))
+    (hCapacityLocal : base.locals[80]? = some (.i64 capacity))
+    (hNextLocal : base.locals[81]? = some (.i64 next))
     (hi : i < os.length)
     (hn : os.length - 1 < UInt64.size)
     (hOrderWords64 : os.length * 5 < UInt64.size)
