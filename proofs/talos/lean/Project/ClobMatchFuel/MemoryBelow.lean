@@ -64,6 +64,64 @@ theorem fixedArrayReleaseMem_bytesBelow
     hPtr48 hPtr32 (Or.inr (by simp only [fixedArrayRegion]; omega))
     (Nat.zero_le a) (by simpa using ha)
 
+def AllocationEffect (before after : Store Unit) (heap : UInt64)
+    (nodes nextNodes : List FreeNode) (roots : List UInt64) : Prop :=
+  ∀ floor : UInt64, 48 ≤ floor.toNat → floor.toNat ≤ heap.toNat →
+    (∀ node ∈ nodes, floor.toNat + 48 ≤ node.root.toNat) →
+    BytesEqBelow before.mem after.mem floor.toNat ∧
+    (∀ root ∈ roots, floor.toNat + 48 ≤ root.toNat) ∧
+    (∀ node ∈ nextNodes, floor.toNat + 48 ≤ node.root.toNat)
+
+theorem AllocationEffect.fit
+    {before after : Store Unit} {heap need stride : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice} {words : Nat}
+    (hList : FreeListAt before.mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice)
+    (hOutside : MemEqOutsideFlatWords
+      (BookAllocFit.fixedArrayAllocFitStore before choice stride) after
+      choice.node.root words) :
+    AllocationEffect before after heap nodes choice.remaining [choice.node.root] := by
+  intro floor hFloor hHeap hNodes
+  have hRoot := hNodes choice.node (takeFirstFitFrom_some_mem hTake)
+  refine ⟨(fixedArrayAllocFitStore_bytesBelow hList hTake hFloor hNodes).trans
+    (BytesEqBelow.of_outsideFlatWords (by omega) hOutside), ?_, ?_⟩
+  · simpa using hRoot
+  · intro node hNode
+    exact hNodes node (takeFirstFitFrom_some_remaining_mem hTake hNode)
+
+theorem AllocationEffect.bump
+    {before after : Store Unit} {heap need stride root : UInt64}
+    {nodes : List FreeNode} {words : Nat}
+    (hFit32 : heap.toNat + 48 + need.toNat < 4294967296)
+    (hRoot : root.toNat = heap.toNat + 48)
+    (hOutside : MemEqOutsideFlatWords
+      (BookAllocBump.fixedArrayAllocBumpStore before heap need stride) after
+      root words) :
+    AllocationEffect before after heap nodes nodes [root] := by
+  intro floor hFloor hHeap hNodes
+  refine ⟨(fixedArrayAllocBumpStore_bytesBelow before heap need stride
+    floor.toNat hFit32 hHeap).trans
+      (BytesEqBelow.of_outsideFlatWords (by omega) hOutside), ?_, hNodes⟩
+  simpa using (show floor.toNat + 48 ≤ root.toNat by omega)
+
+theorem AllocationEffect.trans
+    {before middle after : Store Unit} {heap nextHeap : UInt64}
+    {nodes middleNodes finalNodes : List FreeNode} {firstRoots lastRoots : List UInt64}
+    (first : AllocationEffect before middle heap nodes middleNodes firstRoots)
+    (last : AllocationEffect middle after nextHeap middleNodes finalNodes lastRoots)
+    (hHeap : heap.toNat ≤ nextHeap.toNat) :
+    AllocationEffect before after heap nodes finalNodes (firstRoots ++ lastRoots) := by
+  intro floor hFloor hStart hNodes
+  obtain ⟨hFirst, hFirstRoots, hMiddleNodes⟩ := first floor hFloor hStart hNodes
+  obtain ⟨hLast, hLastRoots, hFinalNodes⟩ :=
+    last floor hFloor (hStart.trans hHeap) hMiddleNodes
+  refine ⟨hFirst.trans hLast, ?_, hFinalNodes⟩
+  intro root hRoot
+  rcases List.mem_append.mp hRoot with hFirstRoot | hLastRoot
+  · exact hFirstRoots root hFirstRoot
+  · exact hLastRoots root hLastRoot
+
 #print axioms fixedArrayAllocFitStore_bytesBelow
 #print axioms fixedArrayReleaseMem_bytesBelow
+#print axioms AllocationEffect.trans
 end Project.ClobMatchFuel.MemoryBelow

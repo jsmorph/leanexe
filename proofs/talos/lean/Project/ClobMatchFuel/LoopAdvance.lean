@@ -127,7 +127,6 @@ theorem of_full (ctx : Context) (st : Store Unit) (s : Locals)
     facts.budget
   refine {
     locals := ?_
-    bookOwner := by simp [nextData]
     oldTradesTracker := by simp [nextData]
     fuelSpent := ?_
     source := ?_
@@ -164,7 +163,7 @@ theorem of_full (ctx : Context) (st : Store Unit) (s : Locals)
     budget := hBudget }
   · rcases hRecursive with ⟨hParams, hLocals, hValues, hFuelLocal, hOid,
       hTrader, hSide, hPrice, hQtyLocal, hBookOwner, hBook, hTrades,
-      hRemainingLocal, hOldBook, hOldTrades, hDone⟩
+      hRemainingLocal, hOldBook, hOldTrades, hDone, hTradesOwner⟩
     exact ⟨hParams, hLocals, hValues, hFuelLocal, hOid, hTrader, hSide,
       hPrice, hQtyLocal, hBookOwner, hBook, hTrades, hRemainingLocal,
       hOldBook, hOldTrades, hDone, hScratch⟩

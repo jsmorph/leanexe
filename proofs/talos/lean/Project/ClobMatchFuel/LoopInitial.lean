@@ -75,7 +75,6 @@ theorem of_initial (ctx : Context) (st : Store Unit) (s : Locals)
       (initialData ctx book bookCapacity trades tradesCapacity g0 nodes) := by
   refine {
     locals := hLocals
-    bookOwner := by simp [initialData]
     oldTradesTracker := by simp [initialData]
     fuelSpent := by simp [initialData]
     source := rfl

@@ -37,7 +37,7 @@ def RecursiveResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
   s.get 18 = some (.i64 remaining) ∧
   s.get 19 = some (.i64 0) ∧
   s.get 20 = some (.i64 trades) ∧
-  s.get 24 = some (.i64 0)
+  s.get 24 = some (.i64 0) ∧ s.get 16 = some (.i64 trades)
 
 theorem allocScratchAt_fullTransitionFrame
     (base : Locals) (fuel newBook newTrades remaining oldBookTracker
@@ -88,7 +88,7 @@ theorem recursiveResultAt_fullTransitionFrame
   rcases hResult with ⟨hParams, hLocals, hValues, hFuel, _, _, hDone, hOid,
     hTrader, hSide, hPrice, hQty, _, _, _, _, _⟩
   refine ⟨?_, ?_, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hOldBook,
-    ?_, ?_⟩
+    ?_, ?_, ?_⟩
   all_goals
     simp [FullTransition.fullTransitionFrame,
       FullTransition.fullTransitionLocals, Locals.get, hParams, hLocals]
@@ -236,6 +236,12 @@ theorem fullBookThenStep_spec
         some (.i64 (g4 + releaseCount oldTradesTracker)) →
       st1.globals.globals[5]? =
         some (.i64 (g5 + releaseCount oldTradesTracker)) →
+      (∀ floor : UInt64, 48 ≤ floor.toNat → floor.toNat ≤ g0.toNat →
+        (∀ node ∈ nodes, floor.toNat + 48 ≤ node.root.toNat) →
+        (oldTradesTracker ≠ 0 → floor.toNat + 48 ≤ oldTrades.toNat) →
+        MemoryBelow.BytesEqBelow st.mem st1.mem floor.toNat ∧
+        (∀ root ∈ [newBook, newTrades], floor.toNat + 48 ≤ root.toNat) ∧
+        (∀ node ∈ nodes1, floor.toNat + 48 ≤ node.root.toNat)) →
       wp «module» rest Q st1
         (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
           (remaining - os[i]!.oqty) 0 oldTradesTracker) env) :
@@ -266,6 +272,7 @@ theorem fullBookThenStep_spec
     hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hMemoryFrame1
     hPageEq
     hOldTradesNewBook hOldTradesNewTrades hOldTradesNodes hG0 hG1 hG2 hG4 hG5
+    hEffect
   rcases hTracker with hNoTracker | hTradeTracker
   · subst oldTradesTracker
     apply FullReleaseTransition.fullReleaseTransitionProg_none env st1 s fuel
@@ -307,6 +314,8 @@ theorem fullBookThenStep_spec
     · exact hG2
     · simpa [releaseCount] using hG4
     · simpa [releaseCount] using hG5
+    · intro floor hFloor hHeap hNodes _
+      exact hEffect floor hFloor hHeap hNodes
   · subst oldTradesTracker
     have hOldTradesNe : oldTrades ≠ 0 := by
       intro h
@@ -409,5 +418,18 @@ theorem fullBookThenStep_spec
     · exact hG2After
     · simpa [releaseCount, hOldTradesNe] using hG4After
     · simpa [releaseCount, hOldTradesNe] using hG5After
+    · intro floor hFloor hHeap hNodes hTracked
+      obtain ⟨hBefore, hRoots, hNodes1⟩ := hEffect floor hFloor hHeap hNodes
+      have hStart := hTracked hOldTradesNe
+      have hRelease : MemoryBelow.BytesEqBelow st1.mem st2.mem floor.toNat := by
+        rw [hMem]
+        exact MemoryBelow.fixedArrayReleaseMem_bytesBelow st1 oldTrades
+          oldTradesCapacity (freeHead nodes1) floor.toNat hOldTrades48
+          hOldTradesFull32 hStart
+      refine ⟨hBefore.trans hRelease, hRoots, ?_⟩
+      intro node hNode
+      rcases List.mem_cons.mp hNode with rfl | hNode
+      · exact hStart
+      · exact hNodes1 node hNode
 
 end Project.ClobMatchFuel.FullStep
