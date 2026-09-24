@@ -16,7 +16,7 @@ def outerBody : Wasm.Program :=
   | _ => []
 
 def dotStep : Wasm.Program :=
-  match (outerBody[42]? : Option Wasm.Instruction) with
+  match (outerBody[40]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
