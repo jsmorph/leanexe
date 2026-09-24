@@ -776,10 +776,13 @@ uses the checked adjacent-value enclosure width.  All public audits use
 standard axioms.  The [complete numerical specification](lean/Project/EulerReconstructed/Spec.lean)
 now combines these results with termination, exact output, the memory
 bound, status-zero completion, state and face safety, hyperbolicity, and
-CFL bounds throughout each accepted trace.  Source regeneration passes
-with unchanged bytes.  The [exact-byte theorems](lean/Project/EulerReconstructed/ArtifactTranslation.lean)
-now transfer all four specifications through complete decoding, validation,
-and translation equality.  Independent package checking passes.  The
+CFL bounds throughout each accepted trace. The maintained source gate passed
+on 2026-09-24 with the current scan layout and generated cache. The
+[exact-byte theorems](lean/Project/EulerReconstructed/ArtifactTranslation.lean)
+and independent package result describe the earlier frozen artifact. That
+historical check transferred all four specifications through complete decoding,
+validation, and translation equality; the source refresh does not revalidate
+its binary identity. The
 153 function-body decoder proofs use shared parser composition and
 balanced byte lookup.  All public and manifest audits use standard axioms.
 The [startup reset proof](lean/Project/EulerReconstructed/HostInitial.lean)
