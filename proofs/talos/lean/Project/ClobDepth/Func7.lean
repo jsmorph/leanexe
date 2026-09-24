@@ -77,7 +77,7 @@ theorem func7_terminates
   · change wp «module» Project.ClobDepth.func7 _ st
       { params := [.i64 orders],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     simp only [Project.ClobDepth.func7]
     simp (config := { maxSteps := 10000000 }) [wp_simp,

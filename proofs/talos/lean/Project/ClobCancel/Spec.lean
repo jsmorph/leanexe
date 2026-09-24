@@ -30,7 +30,7 @@ private def cAllocFrame (ptr cid f2 f3 f4 f5 f6 idx len : UInt64) : Locals :=
   { params := [.i64 ptr, .i64 cid],
     locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6,
       .i64 (idx + 1), .i64 0, .i64 0, .i64 ptr, .i64 idx, .i64 0,
-      .i64 0, .i64 0, .i64 ptr, .i64 idx, .i64 len,
+      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 idx, .i64 len,
       .i64 (idx * 5), .i64 ((len - 1 - idx) * 5), .i64 (len - 1),
       .i64 0, .i64 0, .i64 0, .i64 0,
       .i64 ((8 + (len - 1) * 5 * 8 + 7) / 8 * 8),
@@ -42,7 +42,7 @@ private def cCopyFrame (ptr cid f2 f3 f4 f5 f6 g0 : UInt64)
   { params := [.i64 ptr, .i64 cid],
     locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6,
       .i64 (UInt64.ofNat i + 1), .i64 0, .i64 0, .i64 ptr,
-      .i64 (UInt64.ofNat i), .i64 0, .i64 0, .i64 0, .i64 ptr,
+      .i64 (UInt64.ofNat i), .i64 0, .i64 0, .i64 0, .i64 0, .i64 ptr,
       .i64 (UInt64.ofNat i), .i64 (UInt64.ofNat n),
       .i64 (UInt64.ofNat i * 5),
       .i64 ((UInt64.ofNat n - 1 - UInt64.ofNat i) * 5),
@@ -82,7 +82,7 @@ private def cCopyInv (st0 : Store Unit) (ptr cid g0 g2 : UInt64)
 private def cCopyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
   match s.locals with
   | _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ ::
-    _ :: _ :: _ :: _ :: _ :: _ :: _ :: .i64 k :: _ => total - k.toNat
+    _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: .i64 k :: _ => total - k.toNat
   | _ => 0
 
 theorem func1_spec (env : HostEnv Unit) (st : Store Unit) :
@@ -131,7 +131,7 @@ theorem cancel_notFound : CancelNotFoundSpec := by
   · change wp «module» func3 _ st
       { params := [.i64 ptr, .i64 cid],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
@@ -257,7 +257,7 @@ theorem cancel_found
   · change wp «module» func3 _ st
       { params := [.i64 ptr, .i64 cid],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env

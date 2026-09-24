@@ -59,7 +59,7 @@ theorem copyBuildTail_correct
         (UInt32.ofNat ((g0.toNat + 48 + bytes.length) % 4294967296)) 33) }
       (vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
         (UInt64.ofNat bytes.length) 0 (g0 + 48) (g0 + 48)
-        (UInt64.ofNat bytes.length + 1) 0 0 ptr
+        (UInt64.ofNat bytes.length + 1) 0 0 0 ptr
         (UInt64.ofNat bytes.length) 33 (g0 + 48)
         (UInt64.ofNat bytes.length + 1) (UInt64.ofNat bytes.length) 56
         0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length))
