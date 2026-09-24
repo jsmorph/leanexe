@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 680 semantic examples and audits all 365 declared
-theorems across the seventeen development modules, including helper proofs. It
+The maintained gate checks 706 semantic examples and audits all 383 declared
+theorems across the eighteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -504,10 +504,10 @@ results. They do not establish evaluation equivalence, public checker equivalenc
 under arbitrary maps, or relevance of newly inserted function parameters. Public
 admission still requires formation of the entire ambient context.
 
-Occurrence/admissibility preservation is checked below. An operational
-simulation remains a separate obligation. In particular, noninjective renaming may merge free variables;
-a forward context map can turn an originally out-of-range raw variable into a
-valid one. Exact checker or runtime correspondence needs stronger hypotheses.
+Occurrence/admissibility preservation and operational correspondence are checked
+below under their respective hypotheses. Noninjective renaming may merge free
+variables; a forward type-context map can turn an originally out-of-range raw
+variable into a valid one. It alone does not establish runtime correspondence.
 
 ### Checked relevance preservation under renaming
 
@@ -521,10 +521,10 @@ proofs establish exact Boolean equality of `admissible` before and after renamin
 and `parametersUsed` equality only for an explicitly preserved prefix. This does
 not make newly inserted parameters used. `ProfileTyped.rename` and `.weaken`
 combine relevance invariance with raw typing transport. Runtime correspondence
-remains separate.
+uses the separate exact environment relation below.
 
 
-### Exact environment support and pending execution correspondence
+### Checked environment and execution correspondence
 
 `EnvCorresponds mapping source target` compares every lookup, including absence:
 `lookup target (mapping index) = lookup source index`. Its identity, empty,
@@ -537,9 +537,16 @@ it; merging different values or mapping an absent source index to an available
 target index cannot. Raw runtime values do not determine unique type contexts,
 so environment correspondence and `RenamingTyped` remain separate relations.
 
-The next proof relates captured frames and continuations, keeping the same stored
-values and metadata. Calls must enter the unchanged program body with equal fresh
-arguments under the identity map. The intended theorem matches actual step
-outputs, including missing steps, and transfers finite traces in both directions.
-Equal returned values, exact overflow records, and stuck reachability are the
-intended finite observations. These execution claims are not yet checked.
+`FrameCorresponds` gives each captured environment its own variable map, keeping
+stored values and metadata identical. Related states take related steps or both
+lack a successor. Calls enter the unchanged program body with identical fresh
+arguments under the identity map. Finite traces transfer in both directions;
+reflection does not require an inverse map.
+
+For expressions under corresponding environments and initially empty
+continuations, `rename_returns_iff`, `rename_overflows_iff`, and
+`rename_reaches_stuck_iff` preserve and reflect each exact returned value, each
+exact overflow record, and finite stuck reachability. There are no typing
+premises. The original `Terminal` predicate still requires mathematical overflow;
+a forged record remains stuck. These are same-program finite-execution laws,
+not termination or compiler-correctness results.
