@@ -30,8 +30,8 @@ theorem compute_nonempty_exact (env : HostEnv Unit) (initial : Store Unit) (heap
   change wp module func11 _ initial (func11Def.toLocals [.i64 source.root]) env
   rw [function_11_length_dispatch_0_function_eq]
   unfold function_11_length_dispatch_0_dispatch_program
-  apply FixedArrayLengthDispatch.eqProgram_spec (booleanResults := [.i64]) 21 0 _ _ _ module env initial _ source.root input
-    rfl rfl (by decide) (by change 21 < 31; decide) (by decide) hInput.buffer.values
+  apply FixedArrayLengthDispatch.eqProgram_spec (booleanResults := [.i64]) 22 0 _ _ _ module env initial _ source.root input
+    rfl rfl (by decide) (by change 22 < 32; decide) (by decide) hInput.buffer.values
   · intro _
     unfold function_11_length_dispatch_0_invalid_branch_program
     wp_fixed_frame [FixedArrayLengthDispatch.branchFrame, func11Def]
@@ -64,14 +64,28 @@ theorem compute_nonempty_exact (env : HostEnv Unit) (initial : Store Unit) (heap
       intro hZero
       rw [hZero] at h48
       contradiction
+    have hBump2 := hBudget2.bump need (by omega)
+    have hSeparate := hWeights.allocation_disjoint need (fun h => (hBump2 h).1.le)
+    have hRootsNe : mapRoot heap input.size ≠ mapRoot heap1 input.size := by
+      change node1.root ≠ node2.root
+      intro heq
+      have h48 := hWeights.buffer.rootBound
+      have hCap1 := hWeights.buffer.capacity
+      have hCap2 := hOutput.buffer.capacity
+      change regionsDisjoint node1.region node2.region at hSeparate
+      simp only [regionsDisjoint, FreeNode.region] at hSeparate
+      rw [← heq] at hSeparate
+      omega
     wp_fixed_frame
     refine wp_iff_cons rfl ?_
     rw [ite_eq_left (by simp [hRoot])]
     wp_fixed_frame
+    refine wp_iff_cons rfl ?_
+    rw [ite_eq_left (by simp [hSize, hRootsNe])]
+    wp_fixed_frame
     refine wp_call_tw (release_exact env second heap2 node1 weighted hHeap2 hTemp) ?_
     rintro final values ⟨rfl, rfl, hHeap3⟩
     wp_fixed_frame [FixedArrayEqNode.branchPost, function_11_length_dispatch_0_suffix_program, func11Def]
-    have hBump2 := hBudget2.bump need (by omega)
     have hOutSep := regionsDisjoint_symm
       (hWeights.allocation_disjoint need (fun h => (hBump2 h).1.le))
     have hOutFinal := hOutput.released node1 hTemp.buffer.rootBound
