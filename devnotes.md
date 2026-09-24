@@ -1,3 +1,9 @@
+## 2026-09-24: Maintained recycled LEB export gate passes
+
+`tools/talos-proof.js check leb_u32` passes in work/leb-maintained-1.log (3,530 jobs). Both public entry theorems cover every input below 2^32, exact unsigned LEB128 bytes and length, unchanged pages, and preservation below the original heap top. Their audits contain only the three standard logical axioms. The existing 560-byte reservation suffices without a new memory-cap premise. The counter slots read by emitted release code are explicitly typed; untouched slot 3 and extra globals stay arbitrary.
+
+The old fixed bump-address result is false when released buffers are reused, so the current contract quantifies the returned root. Main imports the new execution proof while retaining the valid earlier bump-only iteration fragments as checked worked examples. The focused entry diagnostic caught only function-result arity normalization and byte-array indexing conversion. Generated caches were not edited by hand. Tiny-model output guards, the certificate public gate, and the full maintained source gate remain pending.
+
 ## 2026-09-24: Heap framing and allocation contracts broadened without new caller restrictions
 
 work/leb-helpers-1.log passes all 3,492 jobs. Heap now preserves an optional arbitrary value in untouched global slot 3 and any globals beyond the six runtime slots; default heaps retain their prior layout. Heap.fromGlobals_at constructs the model from the slots actually read by allocation and release. Allocation, release, ownership framing, and packed push recheck with standard logical axioms.

@@ -11,7 +11,7 @@ theorem loop_spec (env : HostEnv Unit) (initial store : Store Unit) (base : UInt
     (hInv : loopInvariant initial base target store frame)
     (hFit32 : base.toNat + 560 < 4294967296)
     (hFit : base.toNat + 560 ≤ initial.mem.pages * 65536)
-    (hPages : initial.mem.pages ≤ 65536) (hCap : initial.mem.pages ≤ initial.memoryCap «module» 0)
+    (hPages : initial.mem.pages ≤ 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final result heap node bytes fuel,
       Arena initial base bytes.size heap final → Buffer base heap final node bytes →
@@ -46,7 +46,7 @@ theorem loop_spec (env : HostEnv Unit) (initial store : Store Unit) (base : UInt
       · intro hZero
         have hFinalSplit := split_final target bytes fuel v hFuel hSplit hZero
         apply positive_spec env initial current base heap node bytes prepared (UInt64.ofNat fuel) v
-          hArena hBuffer hPrepared hLow hSize hFit32 hFit hPages hCap (rest := [])
+          hArena hBuffer hPrepared hLow hSize hFit32 hFit hPages (rest := [])
         intro final result hFinished hArena' hBuffer'
         have hResultFrame : ({ result with values := [] } : Locals) = result :=
           Frame.ext _ _ rfl rfl hFinished.values.symm
@@ -62,7 +62,7 @@ theorem loop_spec (env : HostEnv Unit) (initial store : Store Unit) (base : UInt
         have hSub : UInt64.ofNat fuel - 1 = UInt64.ofNat (fuel - 1) := by
           simpa using (UInt64.ofNat_sub (show 1 ≤ fuel by omega)).symm
         apply negative_spec env initial current base heap node bytes prepared (UInt64.ofNat fuel) v
-          hArena hBuffer hPrepared hLow hRest hSize hFit32 hFit hPages hCap (rest := [])
+          hArena hBuffer hPrepared hLow hRest hSize hFit32 hFit hPages (rest := [])
         intro final result nextHeap hContinued hArena' hBuffer'
         rw [hSub] at hContinued
         have hResultFrame : ({ result with values := [] } : Locals) = result :=
