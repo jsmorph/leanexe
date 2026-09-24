@@ -2,8 +2,6 @@
 
 This report describes the repository state on 2026-09-19.  The source-driven registry contains sixty-nine Talos cases, of which sixty-eight are complete.  The separate exact-artifact registry contains forty-three frozen packages, and the source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its sixty-nine cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
-The 2026-09-24 `correct` branch adds a [certified scalar64 path](scalar64-correctness.md): original-source certificates, generic lowering proofs for arithmetic/control/calls/loops, and exact-byte validity and execution theorems. Five pilots pass independent package verification, 333 engine checks, adversarial mutations, and a clean-checkout gate. This corpus is separate from the historical registries counted above.
-
 ## Current capabilities
 
 | Boundary | Current evidence |
@@ -19,7 +17,7 @@ The 2026-09-24 `correct` branch adds a [certified scalar64 path](scalar64-correc
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
 | Proof support | The compiler emits annotation schema 1, ProofKit supplies checked semantic lemmas and tactics, and the knowledge forest selects filtered entries from versioned LTG packages. |
 | Stateful proving | `leanexegen` records accepted runs with distinct attempt identities and exact generated proof adapters.  A separate Codex task can compose selected package-local modules into one candidate, promotion checks its declarations and axioms, and a later run selects the resulting forest.  Live proving receives catalogs and checked sources without archived proof evidence; an accepted Demo 10 run used a Demo 9 worked example through this boundary. |
-| Compiler theorems | Compiler-side scalar-certificate theorems prove agreement between selected IR emitters and the structured WASM instruction sequences used by annotation checks.  The current Phase 3 increment applies this path to the recurring zero-or-index-plus-one decoder.  The scalar64 certificate checker now composes original-source correspondence with a generic backend theorem and exact-byte closure. A correctness theorem for the full ordinary compiler remains open. |
+| Compiler theorems | Compiler-side scalar-certificate theorems prove agreement between selected IR emitters and the structured WASM instruction sequences used by annotation checks.  The current Phase 3 increment applies this path to the recurring zero-or-index-plus-one decoder.  A general source-to-WASM correctness theorem does not yet exist. |
 
 The checked conservative-state Euler side now has total exact generated-WAT
 execution and safety theorems, plus 38 passing compiled regression vectors.
