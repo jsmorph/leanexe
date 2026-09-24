@@ -46,7 +46,7 @@ def CompletedResultAt (base : Locals) (book trades remaining : UInt64) : Prop :=
   base.locals[13]? = some (.i64 trades) ∧
   base.locals[14]? = some (.i64 remaining) ∧
   base.locals[15]? = some (.i64 1) ∧
-  base.params.length = 9 ∧ base.locals.length = 76 ∧ base.values = []
+  base.params.length = 9 ∧ base.locals.length = 86 ∧ base.values = []
 
 set_option Elab.async false in
 theorem resultEpilogue_completed_spec
@@ -111,7 +111,7 @@ theorem resultEpilogue_running_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book trades remaining : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hBook : base.get 15 = some (.i64 book))
     (hTrades : base.get 17 = some (.i64 trades))
