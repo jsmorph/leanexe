@@ -8705,81 +8705,13 @@ def func36 : Wasm.Program :=
     .localSet 77,
     .constI64 0,
     .localSet 78,
-    .localGet 69,
-    .constI64 0,
-    .eqI64,
-    .eqz,
-    .iff 0 1 [
-     .localGet 69,
-     .localGet 75,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 1 [
-     .localGet 69,
-     .localGet 72,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 0 [
-     .localGet 69,
-     .call 42,
-     .globalGet 5,
-     .localSet 79
-    ] [],
-    .localGet 49,
-    .constI64 0,
-    .eqI64,
-    .eqz,
-    .iff 0 1 [
-     .localGet 49,
-     .localGet 69,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 1 [
-     .localGet 49,
-     .localGet 75,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 1 [
-     .localGet 49,
-     .localGet 72,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 0 [
-     .localGet 49,
-     .call 42,
-     .globalGet 5,
-     .localSet 79
-    ] [],
     .localGet 52,
     .constI64 0,
     .eqI64,
     .eqz,
     .iff 0 1 [
      .localGet 52,
-     .localGet 49,
-     .eqI64,
-     .eqz
-    ] [
-     .const 0
-    ] [] [.i32],
-    .iff 0 1 [
-     .localGet 52,
-     .localGet 69,
+     .localGet 72,
      .eqI64,
      .eqz
     ] [
@@ -8795,7 +8727,7 @@ def func36 : Wasm.Program :=
     ] [] [.i32],
     .iff 0 1 [
      .localGet 52,
-     .localGet 72,
+     .localGet 78,
      .eqI64,
      .eqz
     ] [
@@ -9190,6 +9122,14 @@ def func36 : Wasm.Program :=
   .constI64 0,
   .eqI64,
   .eqz,
+  .iff 0 1 [
+   .localGet 83,
+   .localGet 19,
+   .eqI64,
+   .eqz
+  ] [
+   .const 0
+  ] [] [.i32],
   .iff 0 1 [
    .localGet 83,
    .localGet 100,

@@ -65,7 +65,7 @@ theorem traversalStep_spec (env : HostEnv Unit) (initial current : Store Unit) (
     (hNext : ∀ final result, TraversalState initial heap embeddingNode
       (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
       weights cache token position (index + 1) final result → wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 217 ++ rest) Q current frame env := by
+    wp «module» ((layerBody.drop 4).take 201 ++ rest) Q current frame env := by
   have hLayerWeights : (blocksOffset + index * blockWords + blockWords) * 4 ≤ weights.size := by
     apply Nat.le_trans _ hWeightsSize
     apply Nat.mul_le_mul_right 4

@@ -42,7 +42,7 @@ def prepareLayerCode : Wasm.Program :=
    .localGet 78, .localSet 119]
 
 set_option maxRecDepth 32768 in
-theorem emitted_prepareLayer : (layerBody.drop 173).take 14 = prepareLayerCode := rfl
+theorem emitted_prepareLayer : (layerBody.drop 157).take 14 = prepareLayerCode := rfl
 
 theorem prepareLayer_spec (env : HostEnv Unit) (store : Store Unit) (params : List Value)
     (embeddingPtr inputPtr updatesPtr hiddenPtr cachePtr outputPtr : UInt64) (layer updatesSize : Nat)
@@ -51,7 +51,7 @@ theorem prepareLayer_spec (env : HostEnv Unit) (store : Store Unit) (params : Li
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ result, LayerPreparedState params embeddingPtr inputPtr updatesPtr hiddenPtr outputPtr layer updatesSize result →
       wp «module» rest Q store result env) :
-    wp «module» ((layerBody.drop 173).take 14 ++ rest) Q store frame env := by
+    wp «module» ((layerBody.drop 157).take 14 ++ rest) Q store frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
     hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hOld⟩,
     _, _, _, hHiddenOwner, hHiddenPtr, hHiddenBytes, hOutputOwner, hOutputPtr, hOutputBytes, hBreak⟩
@@ -75,7 +75,7 @@ def advanceLayerCode : Wasm.Program :=
    .iff 0 1 [.unreachable] [.localGet 108] [] [.i64], .localSet 103]
 
 set_option maxRecDepth 32768 in
-theorem emitted_advanceLayer : (layerBody.drop 191).take 30 = advanceLayerCode := rfl
+theorem emitted_advanceLayer : (layerBody.drop 175).take 30 = advanceLayerCode := rfl
 
 theorem advanceLayer_spec (env : HostEnv Unit) (store : Store Unit) (params : List Value)
     (embeddingPtr inputPtr updatesPtr hiddenPtr outputPtr : UInt64) (layer updatesSize : Nat)
@@ -84,7 +84,7 @@ theorem advanceLayer_spec (env : HostEnv Unit) (store : Store Unit) (params : Li
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ result, LayerState params embeddingPtr hiddenPtr outputPtr (layer + 1) (updatesSize + 6144) result →
       wp «module» rest Q store result env) :
-    wp «module» ((layerBody.drop 191).take 30 ++ rest) Q store frame env := by
+    wp «module» ((layerBody.drop 175).take 30 ++ rest) Q store frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
     _, _, _, _, _, _, hCounter, hLimit, hStep, _⟩,
     hHiddenOwner, hHiddenPtr, hHiddenBytes, hOutputOwner, hOutputPtr, hOutputBytes, hBreak⟩
