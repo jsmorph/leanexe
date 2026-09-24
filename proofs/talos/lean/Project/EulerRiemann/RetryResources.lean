@@ -3,6 +3,12 @@ import Project.EulerRiemann.RetryInvariant
 namespace Project.EulerRiemann.Execution
 open Wasm Project.Runtime
 
+theorem RetryStoreAt.trans {initial current final : Store Unit} {initialHeap heap finalHeap : Heap}
+    (h : RetryStoreAt initial initialHeap current heap) (hNext : RetryStoreAt current heap final finalHeap) :
+    RetryStoreAt initial initialHeap final finalHeap :=
+  ⟨hNext.heapState, hNext.pages, hNext.cap.trans h.cap,
+    fun saved grid hSaved => hNext.held saved grid (h.held saved grid hSaved)⟩
+
 theorem RetryStoreAt.after_step {initial current final : Store Unit}
     {initialHeap heap finalHeap : Heap}
     (h : RetryStoreAt initial initialHeap current heap)
@@ -35,6 +41,7 @@ theorem RetryStoreAt.released {initial current : Store Unit} {initialHeap heap :
   · intro saved savedGrid hSaved
     exact (h.held saved savedGrid hSaved).released result hRoot hRoot32 (hSep saved savedGrid hSaved)
 
+#print axioms RetryStoreAt.trans
 #print axioms RetryStoreAt.after_step
 #print axioms RetryStoreAt.released
 
