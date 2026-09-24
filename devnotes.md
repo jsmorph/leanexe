@@ -1,3 +1,9 @@
+## 2026-09-24: Maintained certificate solver gate passes
+
+`tools/talos-proof.js check euler_certificate` passes in work/certificate-maintained-2.log (4,099 proof jobs), including the public exact-output and physical residual-enclosure theorems for the existing full input range. All audits contain only standard logical axioms. The narrowed work/certificate-run-1.log completed the full run theorem (4,019 jobs) after the earlier bounded dependency build.
+
+The first maintained pass found that the broadened Heap record invalidated a six-field positional constructor at the certificate entry. It is now a named-field initialization with the same six runtime values and the default untouched-slot/suffix fields. A repository search found and repaired the same construction in Riemann, reconstructed Riemann, and cached GPT-2 initializers; their verification is included in the full aggregate now running. Certificate artifact regeneration matched the maintained cache. Full aggregate success has not yet been claimed.
+
 ## 2026-09-24: Existing partial sequence softmax proof preserved
 
 work/sequence-softmax-1.log passes all 3,535 jobs, including the sequence function-region transports, empty and nonempty softmax branches, and public internal softmax contract. The nonempty branch now proves the temporary and returned roots distinct before following the generated alias guard. Audits contain only standard logical axioms. Program and annotation changes are maintained generated output. The sequence registration remains incomplete: no full sequence-inference theorem is claimed.
