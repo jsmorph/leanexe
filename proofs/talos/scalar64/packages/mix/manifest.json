@@ -1,0 +1,40 @@
+{
+  "abi": {
+    "argument_order": [
+      0
+    ],
+    "params": [
+      "i64"
+    ],
+    "result": "i64"
+  },
+  "arity": 1,
+  "certificate": "Project.Correct.Scalar64.Pilots.mixCertificate",
+  "certificate_module": "Project.Correct.Scalar64.Pilots",
+  "files": {
+    "Check.lean": "d227c2804c2c3dc8d5f3928fff8fa2be6f5fbc078a013d496aa045756ea011dc",
+    "decoded.json": "97190d7693e5122a84cce8ef84e111dc47fa016d94811761b3226f2e3a006130",
+    "program.wasm": "e5d78696521f2af08cccd5e94000fd826b2d06885f60faca1a4e22f9dda5fbc6",
+    "source.lean": "fcfb67870e30eaf400ad95689ea1a37ccbc5ce6b7623e38e3a8cc84581c2b71d",
+    "translation.json": "074dc1906eff9170b5236eb820c0394d33574f3d8ca7d03fe1c9afe908df22a5"
+  },
+  "pins": {
+    "lake-manifest.json": "711c2891e8478abde7a6a5b856e9ed7af41268514798fb97dab7d9f3f46c741e",
+    "lakefile.lean": "3e0cc59a65a1ebb9d31b0bbdb1154f1fb82efb0bc8e04290ffcf4dd7cbabc514",
+    "lean-toolchain": "8190e75a201741065fe508b28955dd64dd72d090babe5f70ce6848879d68ae88",
+    "proofs/talos/lean/lake-manifest.json": "5b2bf96d5367909c0c9422ebcebecb1f7ee456d340a2be05e94c5c327312fa85",
+    "proofs/talos/lean/lakefile.toml": "15d74cf3990e32eb0c95bc3a20f731e20c51dba5456a4b5cbb29668a30f0bf51"
+  },
+  "profile": "scalar64",
+  "repository": "jsmorph/leanexe",
+  "revision": "e4bb6d08670e6fa6495e0cc32efa4e84ee2e95fc",
+  "schema": 1,
+  "source": "LeanExe.Examples.Prng.mix",
+  "source_module": "LeanExe.Examples.Prng",
+  "theorems": [
+    "ScalarPackageCheck.correctness",
+    "ScalarPackageCheck.closed",
+    "ScalarPackageCheck.coreMatches",
+    "ScalarPackageCheck.irMatches"
+  ]
+}
