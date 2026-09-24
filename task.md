@@ -375,3 +375,11 @@ correspondence certificate. Parsing, SequenceParsing, StructuredParsing,
 ArithmeticAdmission, and ArithmeticEmission passed the fresh restored build.
 Container parsing/encoding and translation to execution are still being checked;
 complete module decoding, validation, exported invocation, and final gates remain.
+
+### Length-prefixed containers (checked)
+
+ContainerEncoding identifies the production byte-vector, item-vector, and
+section emitters with their exact list-of-bytes encodings. ContainerParsing
+proves exact consumption for bounded parsers, sized payloads, and vectors,
+including the decoder's remaining-input checks. Both modules build. These are
+general module/body assembly lemmas, not yet a complete module theorem.
