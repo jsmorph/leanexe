@@ -1,3 +1,7 @@
+## 2026-09-24: Four GPT-2 scalar and row proofs refreshed
+
+Gpt2AttentionScore.Spec, Gpt2LinearRows.Spec, Gpt2RowMean.Spec, and Gpt2RowInvStd.Spec pass against the maintained regenerated programs. The compiler removed unused loop-flag assignments. Updating the extracted instruction-region boundaries restores the exact loop decompositions; the original numerical, unchanged-input, allocation, and output-memory contracts remain in force. The public theorem audits report only standard logical axioms. The cold five-minute diagnostic completed with two stale extraction failures, preserved in work/gpt2-slices-1.log. The repaired specifications pass in work/frames-gpt2-1.log; that combined command reports failure only for a separate limit cached-read assertion adapter, which is being checked independently.
+
 ## 2026-09-24: Local-frame transport and internal fill branches accepted
 
 The new LocalRegion library proves execution and total-correctness transport under a relation between parameter/local layouts. It handles the closed portable instruction set, stack discipline, structured control flow, direct calls, memory declarations, and the original fuel bound. A finite-layout constructor proves read/write compatibility from bounded injective slot maps, and constructs a related source frame. The general execution proof takes 3.2 seconds, the instruction proof 1.8 seconds, and frame construction two seconds. All general theorem audits contain only standard logical axioms.
