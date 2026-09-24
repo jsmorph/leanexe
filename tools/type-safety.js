@@ -419,6 +419,33 @@ const auditedTheorems = [
   "sequence_returns_iff",
   "sequence_overflows_iff",
   "sequence_reaches_stuck_iff",
+  "SumExecution.ret_returns_iff",
+  "SumExecution.ret_not_overflows",
+  "SumExecution.ret_not_reaches_stuck",
+  "SumExecution.returns_iff_of_step_to_return",
+  "SumExecution.not_overflows_of_step_to_return",
+  "SumExecution.not_reaches_stuck_of_step_to_return",
+  "SumExecution.frame_not_returns_of_no_step",
+  "SumExecution.frame_not_overflows_of_no_step",
+  "SumExecution.frame_reaches_stuck_of_no_step",
+  "SumExecution.unitBody_returns_iff",
+  "SumExecution.unitBody_overflows_iff",
+  "SumExecution.unitBody_reaches_stuck_iff",
+  "SumExecution.sumBranches_returns_iff",
+  "SumExecution.sumBranches_overflows_iff",
+  "SumExecution.sumBranches_reaches_stuck_iff",
+  "inl_returns_iff",
+  "inl_overflows_iff",
+  "inl_reaches_stuck_iff",
+  "inr_returns_iff",
+  "inr_overflows_iff",
+  "inr_reaches_stuck_iff",
+  "unitCase_returns_iff",
+  "unitCase_overflows_iff",
+  "unitCase_reaches_stuck_iff",
+  "sumCase_returns_iff",
+  "sumCase_overflows_iff",
+  "sumCase_reaches_stuck_iff",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and
@@ -472,6 +499,7 @@ function main() {
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming_environments.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_renaming_dynamics.lean"]);
   run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_continuations.lean"]);
+  run(["lake", "env", "lean", "-DwarningAsError=true", "test/type_safety_sum_execution.lean"]);
 
   const auditDir = path.join(root, ".lake", "type-safety");
   fs.mkdirSync(auditDir, { recursive: true });
