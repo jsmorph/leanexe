@@ -1,3 +1,9 @@
+## 2026-09-24: Softmax ownership guard and grid initialization checked
+
+The maintained sequence_softmax gate passes against fresh compiler output (work/softmax-maintained-1.log, 3,536 jobs). The maximum and total loops no longer carry unused flag assignments. Empty-result allocation includes the new owner slot. Nonempty cleanup proves the intermediate and returned allocations disjoint from the existing heap ownership and budget, then discharges the emitted alias guard before release. Its exact output, preserved source heap, and remaining budget contract is unchanged. The empty and nonempty proofs take 5.2 and 4.4 seconds, respectively, and use only standard logical axioms.
+
+Euler grid initialization passes through InitialArena in work/grid-initial-softmax-1.log: its scratch locals shift by six, with unchanged allocation and zero-fill contracts. Individual modules take 4–7.6 seconds. The same run diagnosed a softmax nested Boolean guard requiring simplification of the emitted comparison rather than just its pointer inequality; the maintained run resolves it. The grid loop and writer cleanup proofs remain in progress, and the full compiler proof gate is still open.
+
 ## 2026-09-24: Maintained limit and market gates pass
 
 Both maintained source-driven gates pass against fresh compiler output: work/limit-maintained-1.log checks clob_limit (3,660 jobs), and work/market-maintained-1.log checks clob_market (3,502 jobs). The market export transports the complete eight-function limit matcher region, including recursive release. Its generated result-owner copies and invalid-branch allocation frames are refreshed. The public market theorem takes 4.5 seconds and retains exact source results, owned arrays, counters, free-list state, pages, and the shared memory frame. Its audit inherits only the previously recorded Talos memory round-trip axiom alongside standard logical axioms.
