@@ -1,3 +1,9 @@
+## 2026-09-24: Aggregate dependency rebuild completed through a narrowed final target
+
+work/talos-all-final-1.log matches all 69 regenerated caches and completes 5,481 of its then-scheduled 5,487 proof-library jobs without a proof error before the maintained twenty-minute build limit. It checks the refreshed Riemann and reconstructed initializers and public specifications, all tiny cases, certificate results, and cached hidden-state/entry components. This is an aggregate time limit with continuous successful module completions, not a silent theorem timeout.
+
+The narrowed work/cached-final-1.log then passes the complete Gpt2CachedStep.Spec (3,698 jobs), including its named-field initializer, accepted/rejected cached steps, and up-to-128-position session theorem. Audits remain standard-only. The maintained aggregate is rerunning with those dependencies checked; full aggregate success remains pending until its final result.
+
 ## 2026-09-24: Maintained certificate solver gate passes
 
 `tools/talos-proof.js check euler_certificate` passes in work/certificate-maintained-2.log (4,099 proof jobs), including the public exact-output and physical residual-enclosure theorems for the existing full input range. All audits contain only standard logical axioms. The narrowed work/certificate-run-1.log completed the full run theorem (4,019 jobs) after the earlier bounded dependency build.
