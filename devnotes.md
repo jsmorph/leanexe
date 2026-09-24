@@ -1,3 +1,9 @@
+## 2026-09-24: Internal matcher dispatcher and decreasing iteration accepted
+
+The limit matcher's selected-maker path, search/stop dispatcher, lifted invariant, and complete iteration now pass in work/limit-dispatch-3.log (3,457 jobs). The selected path transports the checked five reads, cached quantity comparison, and both allocator branches together. It takes 8.9 seconds; the dispatcher takes 6.4 seconds and invariant composition 4.1 seconds. The control and measure facts use only standard logical axioms; the complete iteration inherits the already recorded Talos memory round-trip axiom from the shared matcher. No new axiom or weakened data premise was introduced. The first two logs preserve assertion simplification and empty-stack frame diagnostics. The outer loop is the next focused check.
+
+A separate five-minute cold diagnostic for EulerGridStep, EulerGridScan, Gpt2CachedStep, and SequenceSoftmax stopped at 3,461 of 3,474 currently discovered jobs. It produced the Euler initialization-shape diagnostics before reaching that limit; the later specifications were not reached. The generated grid entry shifts scratch slots by six and adds owner staging, while the writer adds alias-aware release guards. These changes require refreshed region and frame proofs before another complete-case run. The failed output is work/euler-cache-softmax-1.log.
+
 ## 2026-09-24: Clipping proof accepted; LEB allocator change identified
 
 F64Clip.Spec passes all 3,428 required jobs in work/clip-final-1.log. The preparation decomposition, accepted and rejected allocation branches, traversal frame, and result owner now match the generated function. The public clip and preparation theorems retain their original numerical and memory contracts, with only standard logical axioms. Individual repaired modules take 3.8–5.1 seconds. The prior PrepareCode failure is retained in work/frames-clip-leb-1.log.
