@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.ClobFindBest.ArtifactBytes",
   "artifactBytesDefinition": "Project.ClobFindBest.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.ClobFindBest.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.ClobFindBest.Program",
-  "cachedProgramDefinition": "Project.ClobFindBest.module",
-  "specModule": "Project.ClobFindBest.Spec",
+  "cachedProgramModule": "Project.ClobFindBest.FrozenProgram",
+  "cachedProgramDefinition": "Project.ClobFindBest.Frozen.module",
+  "specModule": "Project.ClobFindBest.FrozenSpec",
   "proofTarget": "Project.ClobFindBest.ArtifactTranslation",
   "identityTheorem": "Project.ClobFindBest.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,7 +18,7 @@
   "cacheEqualityTheorem": "Project.ClobFindBest.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobFindBest.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobFindBest.Spec.findBest_correct"
+    "Project.ClobFindBest.Frozen.Spec.findBest_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
