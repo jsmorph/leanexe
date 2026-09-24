@@ -109,3 +109,17 @@ lowering step only, not the enclosing opaque recursive extractor or WebAssembly.
 
 Identified that overloaded arithmetic dispatch ignores its typeclass evidence;
 checking a concrete custom-instance counterexample before changing that boundary.
+
+### Source instance dispatch regression (checked)
+
+Reproduced a real mismatch through compileEnvironment: a custom HAdd UInt64
+instance implementing subtraction evaluated to 7 on (10,3), while extracted IR
+returned 13. Removed the bypass that skipped class-evidence normalization for
+arithmetic projections. The same source now extracts subtraction and returns 7.
+Made the existing fuel-bounded class normalizer total. Its semantic preservation
+has not yet been proved.
+
+Added test/scalar_class_evidence.lean: 48 source-versus-extracted-IR comparisons
+cover custom HAdd/HSub/HMul/OfNat, standard arithmetic, bit operations, shifts,
+and branching, including zero and overflow inputs. All passed via tools/leanrun.
+These are regression checks, not a substitute for the general compiler theorem.

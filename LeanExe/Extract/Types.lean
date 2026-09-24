@@ -1145,7 +1145,7 @@ def constructorFieldArg? (env : Environment) (typeName : Name) (index : Nat) (ex
   else
     none
 
-partial def normalizeClassEvidenceExpr
+def normalizeClassEvidenceExpr
     (env : Environment)
     (fuel : Nat)
     (expr : Expr) : Expr :=
