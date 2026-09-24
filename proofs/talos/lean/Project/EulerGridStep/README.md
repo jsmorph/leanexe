@@ -26,20 +26,29 @@ speeds. Complete generated-WAT array execution and accepted-payload safety are p
 in [Spec.lean](Spec.lean), under the explicit input representation, empty free
 list, page/counter and disjoint arena assumptions of
 [GridEntryReady.lean](GridEntryReady.lean). For N cells, that arena reserves
-N+6 objects of 64+48N bytes each. The 8,866-byte frozen package passes
-independent exact-byte decoding, validation, translation and behavioral checks.
+N+6 objects of 64+48N bytes each. The current source proof covers guarded
+owner cleanup and recycling of old loop outputs without increasing that budget.
+The separate 8,866-byte frozen package records an earlier compiler output;
+its identity and translation to the refreshed source model have not been
+revalidated in this I/O branch work.
 
 The named writeCellField helper isolates the common copying array write;
-writeCell calls it six times and releases five intermediate arrays. The
-current binary has 8,866 bytes (SHA256
+writeCell calls it six times and releases five intermediate arrays. An
+earlier frozen binary has 8,866 bytes (SHA256
 bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297),
 reduced from 11,222 bytes without changing any of the 31 regression results.
-The separate verified scan remains byte-identical. [Program.lean](Program.lean)
+That historical size comparison does not identify current compiler output.
+[Program.lean](Program.lean)
 is the exact generated Talos model. [Helpers.lean](Helpers.lean) identifies
 field write27, writer34, advance35, entry36 and release40, and proves the
 complete checked-cell layout unchanged at functions0–25. The accepted-writer theorem below proves multi-buffer ownership
 composition under explicit storage assumptions. Initialization, the outer loop and the final release are proved below;
 full entry composition is supplied below.
+
+The helper notes below retain the sequence of proof development. Statements
+that a later composition remained open describe those historical checkpoints;
+the current complete source composition is documented at the end.
+
 [FieldMemory.lean](FieldMemory.lean) proves an in-bounds physical word store
 realizes the logical array update, preserves a disjoint input array and
 leaves all bytes outside that word unchanged. Its
@@ -415,29 +424,37 @@ for first/later cells. These checks take 3.5–3.8s with standard axioms. They
 supply the observations needed for the actual loop's post-body condition and
 final release of the initial output; both are composed by the checked modules below.
 
-[GridLoopModel.lean](GridLoopModel.lean) relates the remaining recurrence to
-each advance and exact header. [GridLoopStorage.lean](GridLoopStorage.lean)
-unifies initial, accepted and rejected arena states.
-[GridLoopTransition.lean](GridLoopTransition.lean) and
-[GridLoopAdvance.lean](GridLoopAdvance.lean) prove that each actual cell call
-establishes the next storage phase, retaining both required old buffers.
-[GridLoopShape.lean](GridLoopShape.lean) extracts the exact outer loop;
-[GridLoopFrame.lean](GridLoopFrame.lean) defines its complete locals, invariant
-and decreasing measure. The focused dependency check passes with standard
-axioms. [GridLoop.lean](GridLoop.lean) proves the complete terminating outer
-loop, including rejection and the extra no-call exit iteration, in 12s.
-[GridFinalGeometry.lean](GridFinalGeometry.lean) proves that initial slot zero
-is separate from the final current output and remaining free-list nodes.
-[GridFinalRelease.lean](GridFinalRelease.lean) proves its actual release40 call
-preserves the output, heap and pages, and records exact counters/free pool.
-[GridFinish.lean](GridFinish.lean) composes return-pointer staging and the
-guarded final release. All public audits use only standard logical axioms.
+[GridLoopModel.lean](GridLoopModel.lean) relates each advance to the remaining
+source recurrence. [GridLoopStorage.lean](GridLoopStorage.lean) and the earlier
+arena helpers retain checked examples for the first and mixed allocation
+phases. The current loop releases its old result after each later cell call.
+[RecycledPool.lean](RecycledPool.lean) records the live output and six free
+buffers as a permutation of seven disjoint roots. The initial output remains
+separately protected. The first accepted cell allocates six fresh buffers;
+the second uses five free buffers and one fresh buffer. Later accepted calls
+reuse all six available buffers. Rejection needs only one clone. Releasing
+the old result restores the pool, with exact allocation and release counters.
+
+[RecyclingFirst.lean](RecyclingFirst.lean),
+[RecyclingSecond.lean](RecyclingSecond.lean), and
+[RecycledAdvance.lean](RecycledAdvance.lean) prove these phases, while
+[RecyclingAdvance.lean](RecyclingAdvance.lean) combines them.
+[RecyclingState.lean](RecyclingState.lean) retains the input, initial owner,
+current output, and separation needed by cleanup.
+[GridLoopFrame.lean](GridLoopFrame.lean) describes the emitted locals.
+[RecyclingLoop.lean](RecyclingLoop.lean) proves the complete terminating loop,
+including owner alias guards, numerical rejection, and the final condition
+iteration. It preserves the original N+6 arena bound for every valid input.
+[RecyclingFinish.lean](RecyclingFinish.lean) proves the final initial-owner
+release; [RecyclingFinishCode.lean](RecyclingFinishCode.lean) connects it to
+the emitted return-pointer staging and guard.
 [GridSetup.lean](GridSetup.lean) and [GridInitialFacts.lean](GridInitialFacts.lean)
-join the concrete initialized frame to the loop.
-[GridValidBody.lean](GridValidBody.lean) composes the entire valid branch, and
-[GridExecution.lean](GridExecution.lean) proves the complete exported function
-for all raw ratio/shape and numerical outcomes under the arena assumptions.
-The public execution and safety declarations audit to standard logical axioms.
+join allocation and initialization to the loop.
+[RecyclingValidBody.lean](RecyclingValidBody.lean) composes the valid branch,
+and [GridExecution.lean](GridExecution.lean) proves the complete export for
+all raw ratio, shape, and numerical outcomes under the existing arena
+assumptions. The public execution and safety declarations use only the
+standard logical axioms.
 [GridReset.lean](GridReset.lean) proves the actual reset export38 preserves
 memory and restores the six allocator globals; its ready-state lemma
 establishes the step preconditions at base4096. Spec registers reset_exact
@@ -448,8 +465,9 @@ as a third behavior contract for the repeated-step runner.
 [ArtifactRawCache.lean](ArtifactRawCache.lean) and [ArtifactDecode.lean](ArtifactDecode.lean)
 identify their decoded syntax; [ArtifactValidation.lean](ArtifactValidation.lean)
 proves profile validation, and [ArtifactTranslation.lean](ArtifactTranslation.lean)
-proves exact equality to the execution model. The independent package gate
-checks that closure and all three behavior declarations. The decoder cache
+records the earlier equality to the execution model. The independent package
+gate checks that closure and all three behavior declarations when validating
+that frozen identity; it has not been rerun against this refreshed source model. The decoder cache
 witnesses use the existing native-decision policy; execution/safety/reset
 proofs use only the accepted standard logical axioms.
 The repeated-step recurrence and [scientific data](../../../../../data/euler-sod-v2/README.md) are complete. The 2D extension remains.
@@ -461,8 +479,8 @@ ratios, CFL rejection and final-state rejection. IR/WAT checks confirm that
 the array wrapper reuses one cell-call boundary without additional floating
 point arithmetic. A preliminary compiled 100-cell run reaches t=0.2 in 93
 steps and matches all 300 final raw state words of the independent host
-calculation. That run is runtime evidence; runner proofs and a maintained
-scientific data package are still pending.
+calculation. That run is runtime evidence. The later runner proofs and maintained
+scientific data package are recorded above.
 
 Run focused checks serially:
 

@@ -1,4 +1,4 @@
-import Project.EulerGridStep.GridValidBody
+import Project.EulerGridStep.RecyclingValidBody
 import Project.EulerGridStep.GridEntryReady
 
 namespace Project.EulerGridStep.Execution
@@ -25,18 +25,18 @@ theorem step_valid_entry_exact {m : Wasm.Module} (layout : Layout m)
       { gridGuardFrame ratio pointer input.size with values := [.i32 0] } := by
     simp [gridGuardFrame, hValid]
   rw [hGuard]
-  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 32] _ initial
+  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 38] _ initial
     { gridGuardFrame ratio pointer input.size with values := [.i32 0] } env
   apply wp_iff_cons rfl
   rw [ite_eq_right (by decide : ¬ (0 : UInt32) ≠ 0)]
   change wp m (gridValidBody ++ []) _ initial (gridValidEntryFrame ratio pointer input.size) env
-  apply grid_valid_body_spec layout env initial ratio pointer allocs releases frees base input
+  apply recycling_valid_body_spec layout env initial ratio pointer allocs releases frees base input
     (Model.stepCheckedBits ratio input) hReady.inputAt (grid_valid_cells ratio input hValid)
     hReady.pages hReady.budget hReady.heap hReady.freeHead hReady.allocations hReady.releases hReady.frees
     hReady.separate (grid_model_valid ratio input hValid) _ []
-  intro final index output scratch hOutput hArray
+  intro final index output root scratch hOutput hArray
   rw [wp_nil]
-  wp_alloc_window_lists [gridFinishFrame, gridLoopFrame, func36Def]
+  wp_alloc_window_lists [recyclingFinishFrame, gridLoopFrame, func36Def]
   simpa only [hOutput] using hArray
 
 /-- Exact grid export for all raw ratios and input shapes under explicit bounded arena assumptions. -/

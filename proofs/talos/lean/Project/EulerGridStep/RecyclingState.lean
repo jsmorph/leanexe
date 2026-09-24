@@ -42,9 +42,22 @@ def RecyclingRunning (current : Store Unit) (base : Nat) (pointer : UInt64)
 structure RecyclingState (current : Store Unit) (base : Nat) (pointer : UInt64)
     (input output : Array UInt64) (index : Nat) (root : UInt64) : Prop where
   outputAt : UInt64Array.At current root output
+  rootNonzero : root ≠ 0
   finish : 0 < index → GridFinishReady current root (arenaRoot base output.size 0) output
   running : output[0]! = 0 → index < input.size / 3 →
     RecyclingRunning current base pointer input output index root
+
+theorem RecycledPool.recyclingState {current : Store Unit} {roots : Nat → UInt64}
+    {pointer : UInt64} {base index : Nat} {input output : Array UInt64} {a r f : UInt64}
+    (h : RecycledPool current roots pointer (arenaRoot base output.size 0) input output a r f) :
+    RecyclingState current base pointer input output index (roots 0) := by
+  have hLive := h.buffers.liveAt ⟨roots 0, output⟩ (by simp)
+  refine ⟨hLive.2.2, ?_, fun _ => h.finishReady, fun _ _ => Or.inr (Or.inr ?_)⟩
+  · intro hz
+    have h48 := hLive.2.1.root48
+    rw [hz] at h48
+    contradiction
+  · exact ⟨roots, a, r, f, rfl, h⟩
 
 #print axioms gridFinishReady_of_buffers
 #print axioms RecycledPool.finishReady

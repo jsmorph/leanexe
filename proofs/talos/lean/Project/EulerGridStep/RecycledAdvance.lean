@@ -13,7 +13,7 @@ def RecycledAdvancePost (m : Wasm.Module) (env : HostEnv Unit)
     (input oldOutput initialOutput : Array UInt64) (index : Nat)
     (final : Store Unit) (values : List Value) : Prop :=
   ∃ nextRoots : Nat → UInt64,
-    values = [.i64 (nextRoots 0), .i64 (nextRoots 0)] ∧
+    values = [.i64 (nextRoots 0), .i64 (nextRoots 0)] ∧ nextRoots 0 ≠ 0 ∧
     roots 0 ≠ nextRoots 0 ∧ nextRoots 0 ≠ initialRoot ∧
     UInt64Array.At final (roots 0) oldOutput ∧
     TerminatesWith env m 40 final [.i64 (roots 0)]
@@ -42,7 +42,12 @@ theorem recycled_advance {m : Wasm.Module} (layout : Layout m)
       (by simpa only [cellLive] using hPool.buffers) hPool.separate hPool.inputSeparate
       ⟨initialRoot, initialOutput⟩ hInitial (fun a _ ha => hPool.initialSeparate a ha)).mono
     rintro final values ⟨hv, hBuffers, _, hInputFinal, hInitialFinal⟩
-    refine ⟨roots ∘ acceptedPoolSlot, hv,
+    refine ⟨roots ∘ acceptedPoolSlot, hv, (by
+      intro hz
+      have h48 := (hBuffers.liveAt ⟨roots 6, next⟩ (by simp [next])).2.1.root48
+      change roots 6 = 0 at hz
+      rw [hz] at h48
+      contradiction),
       objectsSeparate_ne (hPool.separate 0 (by decide) 6 (by decide) (by decide)),
       objectsSeparate_ne (hPool.initialSeparate 6 (by decide)),
       (hBuffers.liveAt ⟨roots 0, output⟩ (by simp)).2.2, ?_⟩
@@ -63,7 +68,12 @@ theorem recycled_advance {m : Wasm.Module} (layout : Layout m)
       (hPool.separate 1 (by decide) 0 (by decide) (by decide)) hFree (hPool.inputSeparate 1 (by decide))).mono
     rintro final values ⟨hv, hBuffers, _, _, hResult, hInputFinal⟩
     have hInitialFinal := hResult.preserves_buffer _ _ hInitial (hPool.initialSeparate 1 (by decide))
-    refine ⟨roots ∘ rejectedPoolSlot, hv,
+    refine ⟨roots ∘ rejectedPoolSlot, hv, (by
+      intro hz
+      have h48 := (hBuffers.liveAt ⟨roots 1, next⟩ (by simp [next])).2.1.root48
+      change roots 1 = 0 at hz
+      rw [hz] at h48
+      contradiction),
       objectsSeparate_ne (hPool.separate 0 (by decide) 1 (by decide) (by decide)),
       objectsSeparate_ne (hPool.initialSeparate 1 (by decide)),
       (hBuffers.liveAt ⟨roots 0, output⟩ (by simp)).2.2, ?_⟩
