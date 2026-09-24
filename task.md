@@ -19,6 +19,7 @@ The preceding working state is preserved in
 - Pinned Lean 4.34.0-rc2 / 6a10ac8c22beadecabdbb0919c2b50214762f91d is installed and checked.
 - Independent scalar grammar/admission and affine/choose source certificates pass; audits use only propext.
 - The GCD loop feasibility gate passes against the unchanged TalosGcd.gcd.
+- All five pilot source certificates pass, including Prng.mix and ScalarHelper.caller.
 - Next: generic lowering and exact bytes.
 - Talos dependencies are cloned; targeted Mathlib cache acquisition is in progress.
 
@@ -193,3 +194,22 @@ test/scalar64_gcd.lean. Audits report only Lean's three standard logical axioms.
 Lean 4.34 hides generated matchers across module boundaries: exported an explicit
 Loop.forIn unfolding lemma and used full-transparency rewriting for the final
 source equality. No source replacement or computational axiom was introduced.
+
+### 2026-09-24: all pilot source certificates checked
+
+Added constructive bridges from the independent arithmetic bit specification to
+Lean UInt64 AND, OR, XOR, and masked shifts. Prng.mix now has a universal strict-let
+source certificate with the original large constants. Added a scalar helper-call
+fixture and certificate covering left-to-right argument staging, a fresh callee
+environment, and restoration of caller bindings after the call.
+
+Passed: lake build LeanExe.Correct.Scalar64.Prng; lake build
+LeanExe.Correct.Scalar64.Helper; lake env lean test/scalar64_sources.lean.
+Eleven dependency audits contain only the declared standard logical axioms;
+affine, choose, helper calls, and shifts still use propext alone. The independent
+TypeSafety files have not been changed.
+
+Backend work is in progress: typed expression lowering and a scalar IR with
+explicit assignment, calls, structured conditionals, and terminating loops.
+These drafts are not yet counted as checked. Mathlib cache acquisition is being
+kept in the workspace so interrupted downloads can resume without losing archives.
