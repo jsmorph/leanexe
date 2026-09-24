@@ -5,7 +5,7 @@ open Wasm Project.Runtime Project.ProofKit PackedMemory Project.EulerRiemann.Exe
 
 set_option maxRecDepth 32768 in
 theorem emitted_layerBody : layerBody =
-    [.localGet 103, .localGet 104, .geUI64, .br_if 1] ++ (layerBody.drop 4).take 217 ++ [.br 0] := rfl
+    [.localGet 103, .localGet 104, .geUI64, .br_if 1] ++ (layerBody.drop 4).take 201 ++ [.br 0] := rfl
 
 theorem layerLoop_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (embeddingNode : FreeNode) (weightsOwner weightsPtr cacheOwner cachePtr : UInt64)
