@@ -14,57 +14,57 @@ theorem writer_release_setup_shape : writerReleaseTail =
     _ = writerReleaseTail.take 6 ++ writerReleaseTail.drop 6 := (List.take_append_drop 6 _).symm
     _ = _ := by rw [writer_release_setup_prefix]
 
-theorem writer_release_stage0_prefix : (writerReleaseTail.drop 6).take 5 =
-    writerReleaseOne 51 := rfl
+theorem writer_release_stage0_prefix : (writerReleaseTail.drop 6).take 18 =
+    writerReleaseOne 51 (writerProtected 5) := rfl
 
 theorem writer_release_stage0_shape : writerReleaseTail.drop 6 =
-    writerReleaseOne 51 ++ writerReleaseTail.drop 11 := by
+    writerReleaseOne 51 (writerProtected 5) ++ writerReleaseTail.drop 24 := by
   calc
-    _ = (writerReleaseTail.drop 6).take 5 ++ (writerReleaseTail.drop 6).drop 5 :=
-      (List.take_append_drop 5 _).symm
+    _ = (writerReleaseTail.drop 6).take 18 ++ (writerReleaseTail.drop 6).drop 18 :=
+      (List.take_append_drop 18 _).symm
     _ = _ := by rw [writer_release_stage0_prefix, List.drop_drop]
 
-theorem writer_release_stage1_prefix : (writerReleaseTail.drop 11).take 5 =
-    writerReleaseOne 42 := rfl
+theorem writer_release_stage1_prefix : (writerReleaseTail.drop 24).take 15 =
+    writerReleaseOne 42 (writerProtected 4) := rfl
 
-theorem writer_release_stage1_shape : writerReleaseTail.drop 11 =
-    writerReleaseOne 42 ++ writerReleaseTail.drop 16 := by
+theorem writer_release_stage1_shape : writerReleaseTail.drop 24 =
+    writerReleaseOne 42 (writerProtected 4) ++ writerReleaseTail.drop 39 := by
   calc
-    _ = (writerReleaseTail.drop 11).take 5 ++ (writerReleaseTail.drop 11).drop 5 :=
-      (List.take_append_drop 5 _).symm
+    _ = (writerReleaseTail.drop 24).take 15 ++ (writerReleaseTail.drop 24).drop 15 :=
+      (List.take_append_drop 15 _).symm
     _ = _ := by rw [writer_release_stage1_prefix, List.drop_drop]
 
-theorem writer_release_stage2_prefix : (writerReleaseTail.drop 16).take 5 =
-    writerReleaseOne 33 := rfl
+theorem writer_release_stage2_prefix : (writerReleaseTail.drop 39).take 12 =
+    writerReleaseOne 33 (writerProtected 3) := rfl
 
-theorem writer_release_stage2_shape : writerReleaseTail.drop 16 =
-    writerReleaseOne 33 ++ writerReleaseTail.drop 21 := by
+theorem writer_release_stage2_shape : writerReleaseTail.drop 39 =
+    writerReleaseOne 33 (writerProtected 3) ++ writerReleaseTail.drop 51 := by
   calc
-    _ = (writerReleaseTail.drop 16).take 5 ++ (writerReleaseTail.drop 16).drop 5 :=
-      (List.take_append_drop 5 _).symm
+    _ = (writerReleaseTail.drop 39).take 12 ++ (writerReleaseTail.drop 39).drop 12 :=
+      (List.take_append_drop 12 _).symm
     _ = _ := by rw [writer_release_stage2_prefix, List.drop_drop]
 
-theorem writer_release_stage3_prefix : (writerReleaseTail.drop 21).take 5 =
-    writerReleaseOne 24 := rfl
+theorem writer_release_stage3_prefix : (writerReleaseTail.drop 51).take 9 =
+    writerReleaseOne 24 (writerProtected 2) := rfl
 
-theorem writer_release_stage3_shape : writerReleaseTail.drop 21 =
-    writerReleaseOne 24 ++ writerReleaseTail.drop 26 := by
+theorem writer_release_stage3_shape : writerReleaseTail.drop 51 =
+    writerReleaseOne 24 (writerProtected 2) ++ writerReleaseTail.drop 60 := by
   calc
-    _ = (writerReleaseTail.drop 21).take 5 ++ (writerReleaseTail.drop 21).drop 5 :=
-      (List.take_append_drop 5 _).symm
+    _ = (writerReleaseTail.drop 51).take 9 ++ (writerReleaseTail.drop 51).drop 9 :=
+      (List.take_append_drop 9 _).symm
     _ = _ := by rw [writer_release_stage3_prefix, List.drop_drop]
 
-theorem writer_release_stage4_prefix : (writerReleaseTail.drop 26).take 5 =
-    writerReleaseOne 15 := rfl
+theorem writer_release_stage4_prefix : (writerReleaseTail.drop 60).take 6 =
+    writerReleaseOne 15 (writerProtected 1) := rfl
 
-theorem writer_release_stage4_shape : writerReleaseTail.drop 26 =
-    writerReleaseOne 15 ++ writerReleaseTail.drop 31 := by
+theorem writer_release_stage4_shape : writerReleaseTail.drop 60 =
+    writerReleaseOne 15 (writerProtected 1) ++ writerReleaseTail.drop 66 := by
   calc
-    _ = (writerReleaseTail.drop 26).take 5 ++ (writerReleaseTail.drop 26).drop 5 :=
-      (List.take_append_drop 5 _).symm
+    _ = (writerReleaseTail.drop 60).take 6 ++ (writerReleaseTail.drop 60).drop 6 :=
+      (List.take_append_drop 6 _).symm
     _ = _ := by rw [writer_release_stage4_prefix, List.drop_drop]
 
-theorem writer_release_end : writerReleaseTail.drop 31 = [] := rfl
+theorem writer_release_end : writerReleaseTail.drop 66 = [] := rfl
 
 #print axioms writer_release_setup_shape
 #print axioms writer_release_stage0_shape

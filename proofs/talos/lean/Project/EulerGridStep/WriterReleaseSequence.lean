@@ -9,6 +9,7 @@ theorem writer_release_sequence_spec (m : Wasm.Module) (env : HostEnv Unit) (ini
     (cell : Project.EulerCellStep.Model.CheckedCell) (P : Nat → Store Unit → Prop)
     (hInitial : P 5 initial)
     (hNonzero : ∀ count, 1 ≤ count → count ≤ 5 → roots count ≠ 0)
+    (hDistinct : ∀ a ≤ 6, ∀ b ≤ 6, a ≠ b → roots a ≠ roots b)
     (hCall : ∀ count, 1 ≤ count → count ≤ 5 → ∀ current, P count current →
       TerminatesWith env m 40 current [.i64 (roots count)]
         (fun final values => values = [] ∧ P (count - 1) final))
@@ -24,41 +25,51 @@ theorem writer_release_sequence_spec (m : Wasm.Module) (env : HostEnv Unit) (ini
   rw [writer_release_stage0_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env initial (writerReleaseFrame roots unused index cell)
-    51 (roots 5) (P 4) rfl
+    51 (writerProtected 5) (roots 5) (P 4) rfl
     (writerReleaseFrame_pointer roots unused index 5 cell (by decide) (by decide))
     (hNonzero 5 (by decide) (by decide))
+    (writerReleaseFrame_distinct roots unused index 5 cell (by decide) (by decide)
+      (hNonzero 5 (by decide) (by decide)) hDistinct)
     (hCall 5 (by decide) (by decide) initial hInitial) Q _
   intro current4 hP4
   rw [writer_release_stage1_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current4 (writerReleaseFrame roots unused index cell)
-    42 (roots 4) (P 3) rfl
+    42 (writerProtected 4) (roots 4) (P 3) rfl
     (writerReleaseFrame_pointer roots unused index 4 cell (by decide) (by decide))
     (hNonzero 4 (by decide) (by decide))
+    (writerReleaseFrame_distinct roots unused index 4 cell (by decide) (by decide)
+      (hNonzero 4 (by decide) (by decide)) hDistinct)
     (hCall 4 (by decide) (by decide) current4 hP4) Q _
   intro current3 hP3
   rw [writer_release_stage2_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current3 (writerReleaseFrame roots unused index cell)
-    33 (roots 3) (P 2) rfl
+    33 (writerProtected 3) (roots 3) (P 2) rfl
     (writerReleaseFrame_pointer roots unused index 3 cell (by decide) (by decide))
     (hNonzero 3 (by decide) (by decide))
+    (writerReleaseFrame_distinct roots unused index 3 cell (by decide) (by decide)
+      (hNonzero 3 (by decide) (by decide)) hDistinct)
     (hCall 3 (by decide) (by decide) current3 hP3) Q _
   intro current2 hP2
   rw [writer_release_stage3_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current2 (writerReleaseFrame roots unused index cell)
-    24 (roots 2) (P 1) rfl
+    24 (writerProtected 2) (roots 2) (P 1) rfl
     (writerReleaseFrame_pointer roots unused index 2 cell (by decide) (by decide))
     (hNonzero 2 (by decide) (by decide))
+    (writerReleaseFrame_distinct roots unused index 2 cell (by decide) (by decide)
+      (hNonzero 2 (by decide) (by decide)) hDistinct)
     (hCall 2 (by decide) (by decide) current2 hP2) Q _
   intro current1 hP1
   rw [writer_release_stage4_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current1 (writerReleaseFrame roots unused index cell)
-    15 (roots 1) (P 0) rfl
+    15 (writerProtected 1) (roots 1) (P 0) rfl
     (writerReleaseFrame_pointer roots unused index 1 cell (by decide) (by decide))
     (hNonzero 1 (by decide) (by decide))
+    (writerReleaseFrame_distinct roots unused index 1 cell (by decide) (by decide)
+      (hNonzero 1 (by decide) (by decide)) hDistinct)
     (hCall 1 (by decide) (by decide) current1 hP1) Q _
   intro current0 hP0
   rw [writer_release_end, List.nil_append]
