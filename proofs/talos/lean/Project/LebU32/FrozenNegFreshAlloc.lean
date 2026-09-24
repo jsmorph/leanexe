@@ -1,4 +1,4 @@
-import Project.LebU32.Frame
+import Project.LebU32.FrozenFrame
 
 /-!
 # Continuation-byte fresh allocation
@@ -10,7 +10,7 @@ header stores.  Both program fragments come from the decoded artifact program.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
@@ -161,4 +161,4 @@ theorem negFreshAllocationPreludeWp (env : HostEnv Unit)
   exact negFreshHeaderWritesWp env st st0 g0 v k e Q hk5 hFit32 hFit
     hpg0 hs40 hs32 hs24 hs16 hs8 hs0m hTrap hDone
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

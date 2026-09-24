@@ -1,5 +1,5 @@
-import Project.LebU32.Frame
-import Project.LebU32.IterResult
+import Project.LebU32.FrozenFrame
+import Project.LebU32.FrozenIterResult
 
 /-!
 # Completed continuation-byte iteration
@@ -11,7 +11,7 @@ loop and a theorem application at its exit branch.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 
@@ -262,4 +262,4 @@ theorem negAllocDone (env : HostEnv Unit) (st st1 stC : Store Unit)
     rw [h01]
     omega
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

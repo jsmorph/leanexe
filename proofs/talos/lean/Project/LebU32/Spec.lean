@@ -3,20 +3,23 @@ import Project.LebU32.Main
 /-!
 # Specification for the self-compiled LEB128 encoder
 
-The artifact is the compiler's own unsigned LEB128 encoder, compiled by the
-compiler.  `Main.lean` proves `u32lebU64_correct`: for every `n` below
-`2 ^ 32` the export returns a pointer to a buffer holding exactly the bytes
-of `lebList 10 n`, together with its length, leaving every byte below the
-old heap top unchanged.
+The current generated encoder reuses two 56-byte objects.  `u32lebU64_correct`
+proves termination, exact bytes, the returned pointer and length, ownership,
+the final allocator globals, an unchanged page count, and preservation of
+bytes below the starting heap top.  Its entry conditions describe the six
+allocator globals, an empty free list, 112 bytes of available memory, and
+a memory limit consistent with the store.  `u32leb_initial_correct` discharges
+these conditions for the generated module's initial store and covers every
+input below `2 ^ 32`.
 
 `lebList` is the pure recursion that `LeanExe/Wasm/LebTheorems.lean` proves
 equal to the shipped source encoder (`u32lebU64_eq_lebList`).  Composing the
 two gives the end-to-end statement: the WASM the compiler emits for its own
 encoder computes the encoder.
 
-The byte-identity check pins the decoded model to the artifact the compiler
-ships, and `test/self_emit.js` independently exercises the compiled encoder
-against a reference.
+The historical exact-byte package uses `FrozenSpec` and its original
+allocation schedule.  `test/self_emit.js` exercises the current compiled
+encoder against a reference.
 -/
 
 namespace Project.LebU32.Spec

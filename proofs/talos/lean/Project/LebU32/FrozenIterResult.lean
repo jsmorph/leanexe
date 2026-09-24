@@ -1,4 +1,4 @@
-import Project.LebU32.Defs
+import Project.LebU32.FrozenDefs
 
 /-!
 # Final-byte iteration result
@@ -10,7 +10,7 @@ boundary keeps the continuation and the generated instruction suffix out of
 the same elaboration goal.
 -/
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm
 
@@ -66,4 +66,4 @@ def posPOST (st : Store Unit) (n g0 g2 : UInt64) (m0 : Nat)
   | .Fallthrough st' s' => Nonempty (PosResult st n g0 g2 m0 st' s')
   | other => POST other
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec

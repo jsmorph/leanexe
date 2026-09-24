@@ -1,8 +1,8 @@
-import Project.LebU32.Defs
-import Project.LebU32.Copy
-import Project.LebU32.Frame
-import Project.LebU32.IterAlloc
-import Project.LebU32.IterResult
+import Project.LebU32.FrozenDefs
+import Project.LebU32.FrozenCopy
+import Project.LebU32.FrozenFrame
+import Project.LebU32.FrozenIterAlloc
+import Project.LebU32.FrozenIterResult
 
 /-!
 # The final-byte iteration of the compiled fuel loop
@@ -14,7 +14,7 @@ the repeat and trap hypotheses.
 
 set_option maxRecDepth 1048576
 
-namespace Project.LebU32.Spec
+namespace Project.LebU32.Frozen.Spec
 
 open Wasm Project.Common Project.Runtime
 set_option maxHeartbeats 4000000 in
@@ -310,4 +310,4 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
       hloL
 
 
-end Project.LebU32.Spec
+end Project.LebU32.Frozen.Spec
