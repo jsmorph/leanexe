@@ -13,6 +13,13 @@ theorem objectsSeparate_symm {left right : UInt64} {leftCount rightCount : Nat}
     (h : ObjectsSeparate left leftCount right rightCount) :
     ObjectsSeparate right rightCount left leftCount := h.symm
 
+theorem ObjectsSeparate.ne {left right : UInt64} {leftCount rightCount : Nat}
+    (h : ObjectsSeparate left leftCount right rightCount) : left ≠ right := by
+  intro hEq
+  subst right
+  unfold ObjectsSeparate at h
+  omega
+
 theorem ownedHeader_of_byte_frame (initial final : Store Unit) (root capacity : UInt64)
     (hHeader : OwnedHeader initial root capacity)
     (hBytes : ∀ address, root.toNat - 48 ≤ address → address < root.toNat →
