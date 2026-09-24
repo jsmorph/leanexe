@@ -27,12 +27,11 @@ private def crossingAllocFrame (ptr : UInt64) (order : OrderL)
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
-      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64
-      order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1, .i64 (UInt64.ofNat maker),
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 2, .i64 0, .i64 0, .i64 0, .i64 2, .i64 0, .i64
-      ptr, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 8,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0],
+      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1, .i64 (UInt64.ofNat maker),
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 2, .i64 0, .i64 0, .i64 0, .i64 2, .i64 0, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 8, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
 theorem postOnly_crossing
@@ -68,10 +67,10 @@ theorem postOnly_crossing
       { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
           .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func17
     wp_run
