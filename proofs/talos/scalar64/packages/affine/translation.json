@@ -1,0 +1,26 @@
+{"signatures": [2],
+ "functions":
+ [{"scratch": 2,
+   "result":
+   ["bin",
+    "add",
+    ["bin",
+     "add",
+     ["bin", "mul", ["get", 0], ["const", 3]],
+     ["bin", "mul", ["get", 1], ["const", 2]]],
+    ["const", 7]],
+   "locals": 0,
+   "body": ["skip"],
+   "arity": 2}],
+ "export": "affine",
+ "entry": 0,
+ "core_entry": 0,
+ "core":
+ [["wordBin",
+   "add",
+   ["wordBin",
+    "add",
+    ["wordBin", "mul", ["var", 0], ["word", 3]],
+    ["wordBin", "mul", ["var", 1], ["word", 2]]],
+   ["word", 7]]],
+ "arity": 2}

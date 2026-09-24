@@ -1,0 +1,30 @@
+{"signatures": [2, 2],
+ "functions":
+ [{"scratch": 2,
+   "result":
+   ["bin", "add", ["bin", "mul", ["get", 0], ["const", 5]], ["get", 1]],
+   "locals": 0,
+   "body": ["skip"],
+   "arity": 2},
+  {"scratch": 3,
+   "result": ["bin", "add", ["get", 2], ["get", 0]],
+   "locals": 1,
+   "body":
+   ["call",
+    2,
+    0,
+    [["bin", "add", ["get", 0], ["const", 1]],
+     ["bin", "mul", ["get", 1], ["const", 2]]]],
+   "arity": 2}],
+ "export": "helper",
+ "entry": 1,
+ "core_entry": 1,
+ "core":
+ [["wordBin", "add", ["wordBin", "mul", ["var", 0], ["word", 5]], ["var", 1]],
+  ["letE",
+   ["call",
+    0,
+    [["wordBin", "add", ["var", 0], ["word", 1]],
+     ["wordBin", "mul", ["var", 1], ["word", 2]]]],
+   ["wordBin", "add", ["var", 0], ["var", 1]]]],
+ "arity": 2}
