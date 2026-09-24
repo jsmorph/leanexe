@@ -87,5 +87,20 @@ def Layout.frame (layout : Layout slots domain) : Frame slots domain where
       ⟨layout.injective i j hi hj, congrArg slots⟩
     simp only [hEq, h.reads j hj]
 
+/-- Updating corresponding live cells preserves the complete frame relation. -/
+theorem Layout.update_related (layout : Layout slots domain)
+    (h : layout.Related s t) (hi : domain i) (value : Value) :
+    layout.Related (update s i value) (update t (slots i) value) := by
+  have hSource : i < s.params.length + s.locals.length := by
+    rw [h.sourceParams, h.sourceLocals]
+    exact layout.sourceBound i hi
+  have hTarget : slots i < t.params.length + t.locals.length := by
+    rw [h.targetParams, h.targetLocals]
+    exact layout.targetBound i hi
+  have hWrite := layout.frame.write h hi value
+  rw [set?_eq_update hSource, set?_eq_update hTarget] at hWrite
+  cases hWrite
+  assumption
+
 #print axioms Layout.frame
 end Project.LocalRegion
