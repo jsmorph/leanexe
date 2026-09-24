@@ -1,6 +1,6 @@
 # Verified quantized GPT-2 124M
 
-This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  The grouped model has complete source-session and exact-binary proofs.  Conditional numerical propagation and evaluation are complete.  Repository proof and execution tests remain active.  On 2026-09-24, the user excluded release-record maintenance from the remaining work.
+This plan expands [phase 15 of the Development Plan](../plan.md#15-extend-gpt-2-with-quantized-inference).  The user approved implementation and the [file and session API](gpt2-quantized-format.md) on 2026-09-22.  Work runs on `gpt2-quantized`.  The scalar projection has checked execution and exact-binary proofs and retained measurements.  The grouped model has complete source-session and exact-binary proofs.  Conditional numerical propagation and evaluation are complete.  Repository proof and execution tests passed on 2026-09-24.  The user excluded release-record maintenance and separate-checkout reproduction from this work.
 
 The execution milestone is a deployed WebAssembly binary that implements a specified mixed-precision GPT-2 algorithm: eight-bit weights and activations for learned linear projections, wider integer accumulation, and FP32 computation between projections.  It includes cached inference through 128 tokens, termination, allocation bounds, and buffer release.  Evaluation determines the storage reduction, execution speed, and output differences.  A subsequent milestone proves numerical error bounds and sufficient conditions for preserving greedy token choices.
 
@@ -120,16 +120,15 @@ Completion requires termination and exact source agreement for the complete sess
 
 - [x] Register the quantized case and freeze its compiled WASM bytes.  Complete decoding, grammar membership, validation, `CoreValid`, execution-model equality, and transfer of the session theorem.
 - [x] Run the focused quantized source and artifact checks, declaration/axiom audit, and independent package check.
-- [ ] Complete the required compiler, conformance, and aggregate artifact tests after shared changes.
+- [x] Complete the required compiler, conformance, and aggregate artifact tests after shared changes.
 - [x] Make the quantized host command load the verified frozen artifact and check its hash and model manifest before execution.  Record both identities in every result.
 - [x] Run the retained cached-inference and generation tests against those exact bytes.  Preserve the binary, proof package, model manifest, and evaluation records.
-- [ ] Complete and retain the cold-checkout reproduction result.
 
 Use the existing repository verification drivers and checked corpus configuration.  Every Lean invocation follows the [development process limits](../DEVELOPING.md#lean-process-limits).  A timeout without a diagnostic requires a smaller proof boundary or a reusable lemma before another attempt.  Review accepted proofs, journals, and telemetry together, including proof effort and shared theorem use.
 
 Binary-profile changes alter the verifier-source identity.  Preserve historical packages and issue updated manifests and certificates where the [artifact format](../docs/artifact-format.md) requires them.  Recheck the FP32 package against the resulting shared verifier.
 
-The current-source limit and market proofs now account for the changed ownership locals, intermediate-buffer releases, and free-list reuse.  Their complete specifications pass.  Historical binary packages retain separate checked proofs of their original allocation behavior.  The full execution suite, WAT/binary comparison, and official conformance gate pass.  The aggregate source check is running, and a clean-checkout artifact check remains pending.  Quantized inference remains opt-in while output-quality criteria for default adoption remain unresolved.
+The current-source limit and market proofs now account for the changed ownership locals, intermediate-buffer releases, and free-list reuse.  Their complete specifications pass.  Historical binary packages retain separate checked proofs of their original allocation behavior.  The full execution suite, WAT/binary comparison, and official conformance gate pass.  The aggregate source check passes all seventy-two generated models and seventy-one completed specifications.  The final artifact check passes all forty-six packages, their behavioral specifications, and registered declaration audits.  Quantized inference remains opt-in while output-quality criteria for default adoption remain unresolved.
 
 The theorem specifies calls and byte input/output under Talos semantics.  The runtime uses the pinned Wasmtime configuration, including canonical NaNs.  Tokenization, native host execution, and Wasmtime retain the [existing trust boundary](../training/gpt2/README.md#verification-boundary).  The quantized deployment command must establish which frozen binary it executes.  The current FP32 command recompiles source on invocation, so its build step alone cannot establish that identity.
 

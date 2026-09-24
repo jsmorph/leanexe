@@ -158,7 +158,7 @@ The proof workspace has seventy-two registered source entries and seventy-one co
 
 `tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to refresh the tracked `Project/<Case>/Program.lean` proof cache.  The tool creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree there, and removes only that same newly created staging directory before returning.  It never treats pre-existing `tmp/` entries as cleanup targets.  It replaces the three requested outputs only after generation succeeds, leaves a byte-identical cache untouched, and never edits handwritten proof modules.  Under the local operating envelope, invoke this Node driver directly: it invokes `tools/leanrun` for its own children, and an outer `tools/leanrun` wrapper is rejected as a nested runner.
 
-`tools/talos-proof.js check <case>` performs the same generation into a temporary candidate, requires byte equality with the tracked program cache, then builds the registered specification target.  `tools/talos-proof.js check --all` checks all registered caches, compares the registry with `Project.lean` and `Project.Runtime.Checks`, and builds the complete proof library.  Neither check mode changes tracked cache files; `tools/talos-artifact.js prepare` provides the explicit refresh operation.
+`tools/talos-proof.js check <case>` performs the same generation into a temporary candidate, requires byte equality with the tracked program cache, then builds the registered specification target.  `tools/talos-proof.js check --all` checks all registered caches, compares the registry with `Project.lean` and `Project.Runtime.Checks`, builds each completed specification under its fifteen-minute limit, and then builds the complete proof library.  Neither check mode changes tracked cache files; `tools/talos-artifact.js prepare` provides the explicit refresh operation.
 
 ```sh
 tools/talos-artifact.js prepare clob_cancel
@@ -201,7 +201,7 @@ does not record that run.
 
 `tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator, then computes each artifact theorem's and behavioral specification's repository-local import closure.  It builds those dependencies in order, with a separate limit for every module, before building each root target.  Artifact and behavioral checks share the set of completed dependencies within one run.  These divisions bound each build invocation's dependency work, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
 
-Quantized GPT-2 verification includes reproduction from a clean checkout of the committed proof sources.  Its remaining work excludes release-record maintenance.  The independent artifact and conformance drivers can run directly in that checkout without updating the release record.
+Quantized GPT-2 verification completed in the existing checkout on 2026-09-24.  The user excluded release-record maintenance and separate-checkout reproduction from this work.
 
 ## Generated Files and Dependencies
 
