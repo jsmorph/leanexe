@@ -436,3 +436,12 @@ Split the original module-header proof after an elaboration heartbeat limit;
 explicit parser continuations now check without raising the limit. The exact
 compiler module still needs its six concrete sections and fixed runtime bodies
 instantiated, followed by validation and exported invocation.
+
+### Fixed-runtime instruction forms (checked)
+
+RuntimeAtoms proves roundtrip decoding for the additional indexed, memory,
+global, call, branch, conversion, comparison, and signed -1 instructions used
+by the production runtime. RuntimeStructure proves their structured-control byte
+shapes and non-terminator opcode prefixes. Both modules build. The runtime's
+nested instruction-sequence decoder proof and the four concrete runtime bodies
+are still pending; arithmetic source support has not been expanded.
