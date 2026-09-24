@@ -48,6 +48,22 @@ Do not extend source bindings, branches, helpers, or loops until this milestone
 is proved, pushed, audited, and demonstrated on unregistered source functions.
 The larger agenda below remains deferred, not reported complete.
 
+The arithmetic milestone is complete only when all of these hold:
+
+- [ ] Production instruction bytes decode correctly, including div/rem guards.
+- [ ] The complete production module decodes and validates, including runtime
+      bodies, function types, locals, exports, and all section lengths.
+- [ ] Export lookup and invocation initialize the ABI correctly, terminate,
+      and return the original source's UInt64 result for every input.
+- [ ] One general theorem composes original source, actual compiler entry,
+      exact emitted bytes, decoded module, and exported execution. Admission
+      follows source syntax and explicit format limits, with no per-program
+      correspondence certificates or assumed correctness of generated code.
+- [ ] An explicit usable compiler mode rejects unsupported and oversized source
+      rather than presenting compilation outside the proved subset as covered.
+- [ ] Clean-checkout proof build, axiom audit, independent package verification,
+      and fresh real-CLI/Wasm-engine examples and edge cases all pass.
+
 ## Completion gates
 
 - [x] Read and identify the actual existing extraction, IR, lowering, and emission paths.
@@ -347,3 +363,15 @@ and reconstructed these exact changes from the session. A fresh rebuild after
 recovery is pending while the pinned toolchain and dependencies are restored.
 The structured instruction roundtrip was still being repaired and is not
 counted as checked. The whole arithmetic milestone remains incomplete.
+
+### Complete arithmetic instruction-sequence decoding (checked after recovery)
+
+StructuredParsing now proves the actual decoder roundtrips production arithmetic
+instruction sequences, including nested i64 conditionals and final terminators,
+at arbitrary prefixes/suffixes and section limits. ArithmeticEmission derives
+binary-grammar coverage for every arithmetic descriptor with bounded local
+indices and sufficient scratch-index range; it requires no per-program
+correspondence certificate. Parsing, SequenceParsing, StructuredParsing,
+ArithmeticAdmission, and ArithmeticEmission passed the fresh restored build.
+Container parsing/encoding and translation to execution are still being checked;
+complete module decoding, validation, exported invocation, and final gates remain.
