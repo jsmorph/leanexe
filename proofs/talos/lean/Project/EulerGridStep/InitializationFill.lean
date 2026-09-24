@@ -16,20 +16,20 @@ structure InitializedArray (initial final : Store Unit) (target : UInt64) (count
     final.mem.bytes address = initial.mem.bytes address
 
 theorem initial_fill_program_shape : (gridValidBody.drop 71).take 7 =
-    [.localGet 34, .wrapI64, .localGet 33, .store64 0] ++ fillProgram 34 33 35 36 := rfl
+    [.localGet 40, .wrapI64, .localGet 39, .store64 0] ++ fillProgram 40 39 41 42 := rfl
 
 /-- The actual length store and zero loop initialize an allocated array from arbitrary payload bytes. -/
 theorem initial_fill_spec (m : Wasm.Module) (env : HostEnv Unit)
     (initial : Store Unit) (frame : Locals) (target : UInt64) (count : Nat)
-    (hCounter : frame.validIndex 35) (hValues : frame.values = [])
-    (hTarget : frame.get 34 = some (.i64 target))
-    (hCount : frame.get 33 = some (.i64 (UInt64.ofNat count)))
-    (hValue : frame.get 36 = some (.i64 0))
+    (hCounter : frame.validIndex 41) (hValues : frame.values = [])
+    (hTarget : frame.get 40 = some (.i64 target))
+    (hCount : frame.get 39 = some (.i64 (UInt64.ofNat count)))
+    (hValue : frame.get 42 = some (.i64 0))
     (hFit32 : target.toNat + 8 * (count + 1) ≤ 4294967296)
     (hFitMemory : target.toNat + 8 * (count + 1) ≤ initial.mem.pages * 65536)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final, InitializedArray initial final target count →
-      wp m rest Q final (counterFrame frame 35 count hCounter) env) :
+      wp m rest Q final (counterFrame frame 41 count hCounter) env) :
     wp m ((gridValidBody.drop 71).take 7 ++ rest) Q initial frame env := by
   have hTargetNat : target.toUInt32.toNat = target.toNat := by
     simpa [UInt64Array.wordAddress] using UInt64Array.wordAddress_toNat hFit32 (by omega : 0 < count + 1)
@@ -45,10 +45,10 @@ theorem initial_fill_spec (m : Wasm.Module) (env : HostEnv Unit)
   rw [hWrap]
   simp only [UInt32.add_zero, UInt32.toNat_zero, Nat.add_zero]
   rw [ite_eq_right (Nat.not_lt.mpr hHeaderBound)]
-  change wp m (fillProgram 34 33 35 36 ++ rest) Q (writeLength initial target count)
+  change wp m (fillProgram 40 39 41 42 ++ rest) Q (writeLength initial target count)
     { params := frame.params, locals := frame.locals } env
   rw [copyFrame_ofParts frame hValues]
-  apply fill_loop_spec 34 33 35 36 m env (writeLength initial target count) frame target 0
+  apply fill_loop_spec 40 39 41 42 m env (writeLength initial target count) frame target 0
     (payloadSnapshot initial target count) hCounter (by decide) (by decide) (by decide) hValues hTarget
     (by simpa only [payloadSnapshot, Array.size_ofFn] using hCount) hValue
     (writeLength_array initial target count hFit32 hFitMemory) Q rest

@@ -2482,6 +2482,110 @@ def func34 : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 65,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 44,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 42,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 37,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 35,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 33,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 28,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 26,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 24,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 19,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 17,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 15,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 51,
+    .localGet 13,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 51,
     .call 40
@@ -2490,6 +2594,86 @@ def func34 : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 65,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 35,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 33,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 28,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 26,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 24,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 19,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 17,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 15,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 42,
+    .localGet 13,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 42,
     .call 40
@@ -2498,6 +2682,62 @@ def func34 : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 65,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 26,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 24,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 19,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 17,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 15,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 33,
+    .localGet 13,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 33,
     .call 40
@@ -2506,6 +2746,38 @@ def func34 : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 24,
+    .localGet 65,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 24,
+    .localGet 17,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 24,
+    .localGet 15,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
+   .iff 0 1 [
+    .localGet 24,
+    .localGet 13,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 24,
     .call 40
@@ -2514,6 +2786,14 @@ def func34 : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 15,
+    .localGet 65,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 15,
     .call 40
@@ -3464,8 +3744,8 @@ def func36 : Wasm.Program :=
    .const 1
   ] [
    .localGet 1,
-   .localSet 33,
-   .localGet 33,
+   .localSet 39,
+   .localGet 39,
    .wrapI64,
    .load64 0,
    .constI64 0,
@@ -3483,21 +3763,21 @@ def func36 : Wasm.Program :=
    .const 1
   ] [
    .localGet 1,
-   .localSet 35,
-   .localGet 35,
+   .localSet 41,
+   .localGet 41,
    .wrapI64,
    .load64 0,
-   .localSet 33,
+   .localSet 39,
    .constI64 3,
-   .localSet 34,
-   .localGet 34,
+   .localSet 40,
+   .localGet 40,
    .constI64 0,
    .eqI64,
    .iff 0 1 [
-    .localGet 33
+    .localGet 39
    ] [
-    .localGet 33,
-    .localGet 34,
+    .localGet 39,
+    .localGet 40,
     .remUI64
    ] [] [.i64],
    .constI64 0,
@@ -3541,136 +3821,136 @@ def func36 : Wasm.Program :=
    .divUI64,
    .constI64 8,
    .mulI64,
-   .localSet 37,
-   .localGet 37,
+   .localSet 43,
+   .localGet 43,
    .constI64 8,
    .ltUI64,
    .iff 0 0 [
     .constI64 8,
-    .localSet 37
+    .localSet 43
    ] [],
    .constI64 0,
-   .localSet 42,
+   .localSet 48,
    .constI64 0,
-   .localSet 38,
+   .localSet 44,
    .globalGet 1,
-   .localSet 39,
+   .localSet 45,
    .block 0 0 [
     .loop 0 0 [
-     .localGet 39,
+     .localGet 45,
      .constI64 0,
      .eqI64,
      .br_if 1,
-     .localGet 42,
+     .localGet 48,
      .constI64 0,
      .neI64,
      .br_if 1,
-     .localGet 39,
+     .localGet 45,
      .constI64 32,
      .subI64,
      .wrapI64,
      .load64 0,
-     .localSet 40,
-     .localGet 39,
+     .localSet 46,
+     .localGet 45,
      .constI64 8,
      .subI64,
      .wrapI64,
      .load64 0,
-     .localSet 41,
-     .localGet 40,
-     .localGet 37,
+     .localSet 47,
+     .localGet 46,
+     .localGet 43,
      .geUI64,
      .iff 0 0 [
-      .localGet 38,
+      .localGet 44,
       .constI64 0,
       .eqI64,
       .iff 0 0 [
-       .localGet 41,
+       .localGet 47,
        .globalSet 1
       ] [
-       .localGet 38,
+       .localGet 44,
        .constI64 8,
        .subI64,
        .wrapI64,
-       .localGet 41,
+       .localGet 47,
        .store64 0
       ],
-      .localGet 39,
+      .localGet 45,
       .constI64 48,
       .subI64,
       .wrapI64,
       .constI64 5501223100278326855,
       .store64 0,
-      .localGet 39,
+      .localGet 45,
       .constI64 40,
       .subI64,
       .wrapI64,
       .constI64 1,
       .store64 0,
-      .localGet 39,
+      .localGet 45,
       .constI64 32,
       .subI64,
       .wrapI64,
-      .localGet 40,
+      .localGet 46,
       .store64 0,
-      .localGet 39,
+      .localGet 45,
       .constI64 24,
       .subI64,
       .wrapI64,
       .constI64 2,
       .store64 0,
-      .localGet 39,
+      .localGet 45,
       .constI64 16,
       .subI64,
       .wrapI64,
       .constI64 1,
       .store64 0,
-      .localGet 39,
+      .localGet 45,
       .constI64 8,
       .subI64,
       .wrapI64,
       .constI64 0,
       .store64 0,
-      .localGet 39,
-      .localSet 42
+      .localGet 45,
+      .localSet 48
      ] [
-      .localGet 39,
-      .localSet 38,
-      .localGet 41,
-      .localSet 39
+      .localGet 45,
+      .localSet 44,
+      .localGet 47,
+      .localSet 45
      ],
      .br 0
     ]
    ],
-   .localGet 42,
+   .localGet 48,
    .constI64 0,
    .eqI64,
    .iff 0 0 [
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localGet 37,
+    .localGet 43,
     .addI64,
-    .localTee 40,
+    .localTee 46,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
      .unreachable
     ] [],
-    .localGet 40,
+    .localGet 46,
     .constI64 1,
     .subI64,
     .constI64 65536,
     .divUI64,
     .constI64 1,
     .addI64,
-    .localSet 41,
+    .localSet 47,
     .memorySize,
     .extendUI32,
-    .localGet 41,
+    .localGet 47,
     .ltUI64,
     .iff 0 0 [
-     .localGet 41,
+     .localGet 47,
      .memorySize,
      .extendUI32,
      .subI64,
@@ -3685,40 +3965,40 @@ def func36 : Wasm.Program :=
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localSet 42,
-    .localGet 40,
+    .localSet 48,
+    .localGet 46,
     .globalSet 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 48,
     .subI64,
     .wrapI64,
     .constI64 5501223100278326855,
     .store64 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 40,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 32,
     .subI64,
     .wrapI64,
-    .localGet 37,
+    .localGet 43,
     .store64 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 24,
     .subI64,
     .wrapI64,
     .constI64 2,
     .store64 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 16,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 42,
+    .localGet 48,
     .constI64 8,
     .subI64,
     .wrapI64,
@@ -3729,15 +4009,15 @@ def func36 : Wasm.Program :=
    .constI64 1,
    .addI64,
    .globalSet 2,
-   .localGet 42,
-   .localSet 33,
-   .localGet 33,
+   .localGet 48,
+   .localSet 39,
+   .localGet 39,
    .wrapI64,
    .constI64 1,
    .store64 0,
    .constI64 1,
-   .localSet 36,
-   .localGet 33,
+   .localSet 42,
+   .localGet 39,
    .constI64 0,
    .constI64 1,
    .mulI64,
@@ -3747,76 +4027,78 @@ def func36 : Wasm.Program :=
    .mulI64,
    .addI64,
    .wrapI64,
-   .localGet 36,
+   .localGet 42,
    .store64 0,
-   .localGet 33,
+   .localGet 39,
    .localSet 3,
    .localGet 3,
-   .localSet 32
+   .localSet 37,
+   .localGet 3,
+   .localSet 38
   ] [
    .localGet 1,
-   .localSet 35,
-   .localGet 35,
+   .localSet 41,
+   .localGet 41,
    .wrapI64,
    .load64 0,
-   .localSet 33,
+   .localSet 39,
    .constI64 3,
-   .localSet 34,
-   .localGet 34,
+   .localSet 40,
+   .localGet 40,
    .constI64 0,
    .eqI64,
    .iff 0 1 [
     .constI64 0
    ] [
-    .localGet 33,
-    .localGet 34,
+    .localGet 39,
+    .localGet 40,
     .divUI64
    ] [] [.i64],
    .localSet 4,
    .constI64 1,
-   .localSet 33,
+   .localSet 39,
    .constI64 6,
-   .localSet 36,
+   .localSet 42,
    .localGet 4,
-   .localSet 37,
-   .localGet 37,
+   .localSet 43,
+   .localGet 43,
    .constI64 0,
    .eqI64,
    .iff 0 1 [
     .constI64 0
    ] [
     .constI64 (-1),
-    .localGet 37,
+    .localGet 43,
     .divUI64,
-    .localGet 36,
+    .localGet 42,
     .ltUI64,
     .iff 0 1 [
      .unreachable
     ] [
-     .localGet 36,
-     .localGet 37,
+     .localGet 42,
+     .localGet 43,
      .mulI64
     ] [] [.i64]
    ] [] [.i64],
-   .localSet 34,
-   .localGet 33,
-   .localGet 34,
+   .localSet 40,
+   .localGet 39,
+   .localGet 40,
    .addI64,
-   .localTee 35,
-   .localGet 33,
+   .localTee 41,
+   .localGet 39,
    .ltUI64,
    .iff 0 1 [
     .unreachable
    ] [
-    .localGet 35
+    .localGet 41
    ] [] [.i64],
    .localSet 5,
    .localGet 5,
-   .localSet 33,
+   .localSet 39,
    .constI64 0,
-   .localSet 36,
+   .localSet 42,
    .constI64 8,
-   .localGet 33,
+   .localGet 39,
    .constI64 1,
    .mulI64,
    .constI64 8,
@@ -3828,136 +4110,136 @@ def func36 : Wasm.Program :=
    .divUI64,
    .constI64 8,
    .mulI64,
-   .localSet 39,
-   .localGet 39,
+   .localSet 45,
+   .localGet 45,
    .constI64 8,
    .ltUI64,
    .iff 0 0 [
     .constI64 8,
-    .localSet 39
+    .localSet 45
    ] [],
    .constI64 0,
-   .localSet 44,
+   .localSet 50,
    .constI64 0,
-   .localSet 40,
+   .localSet 46,
    .globalGet 1,
-   .localSet 41,
+   .localSet 47,
    .block 0 0 [
     .loop 0 0 [
-     .localGet 41,
+     .localGet 47,
      .constI64 0,
      .eqI64,
      .br_if 1,
-     .localGet 44,
+     .localGet 50,
      .constI64 0,
      .neI64,
      .br_if 1,
-     .localGet 41,
+     .localGet 47,
      .constI64 32,
      .subI64,
      .wrapI64,
      .load64 0,
-     .localSet 42,
-     .localGet 41,
+     .localSet 48,
+     .localGet 47,
      .constI64 8,
      .subI64,
      .wrapI64,
      .load64 0,
-     .localSet 43,
-     .localGet 42,
-     .localGet 39,
+     .localSet 49,
+     .localGet 48,
+     .localGet 45,
      .geUI64,
      .iff 0 0 [
-      .localGet 40,
+      .localGet 46,
       .constI64 0,
       .eqI64,
       .iff 0 0 [
-       .localGet 43,
+       .localGet 49,
        .globalSet 1
       ] [
-       .localGet 40,
+       .localGet 46,
        .constI64 8,
        .subI64,
        .wrapI64,
-       .localGet 43,
+       .localGet 49,
        .store64 0
       ],
-      .localGet 41,
+      .localGet 47,
       .constI64 48,
       .subI64,
       .wrapI64,
       .constI64 5501223100278326855,
       .store64 0,
-      .localGet 41,
+      .localGet 47,
       .constI64 40,
       .subI64,
       .wrapI64,
       .constI64 1,
       .store64 0,
-      .localGet 41,
+      .localGet 47,
       .constI64 32,
       .subI64,
       .wrapI64,
-      .localGet 42,
+      .localGet 48,
       .store64 0,
-      .localGet 41,
+      .localGet 47,
       .constI64 24,
       .subI64,
       .wrapI64,
       .constI64 2,
       .store64 0,
-      .localGet 41,
+      .localGet 47,
       .constI64 16,
       .subI64,
       .wrapI64,
       .constI64 1,
       .store64 0,
-      .localGet 41,
+      .localGet 47,
       .constI64 8,
       .subI64,
       .wrapI64,
       .constI64 0,
       .store64 0,
-      .localGet 41,
-      .localSet 44
+      .localGet 47,
+      .localSet 50
      ] [
-      .localGet 41,
-      .localSet 40,
-      .localGet 43,
-      .localSet 41
+      .localGet 47,
+      .localSet 46,
+      .localGet 49,
+      .localSet 47
      ],
      .br 0
     ]
    ],
-   .localGet 44,
+   .localGet 50,
    .constI64 0,
    .eqI64,
    .iff 0 0 [
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localGet 39,
+    .localGet 45,
     .addI64,
-    .localTee 42,
+    .localTee 48,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
      .unreachable
     ] [],
-    .localGet 42,
+    .localGet 48,
     .constI64 1,
     .subI64,
     .constI64 65536,
     .divUI64,
     .constI64 1,
     .addI64,
-    .localSet 43,
+    .localSet 49,
     .memorySize,
     .extendUI32,
-    .localGet 43,
+    .localGet 49,
     .ltUI64,
     .iff 0 0 [
-     .localGet 43,
+     .localGet 49,
      .memorySize,
      .extendUI32,
      .subI64,
@@ -3972,40 +4254,40 @@ def func36 : Wasm.Program :=
     .globalGet 0,
     .constI64 48,
     .addI64,
-    .localSet 44,
-    .localGet 42,
+    .localSet 50,
+    .localGet 48,
     .globalSet 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 48,
     .subI64,
     .wrapI64,
     .constI64 5501223100278326855,
     .store64 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 40,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 32,
     .subI64,
     .wrapI64,
-    .localGet 39,
+    .localGet 45,
     .store64 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 24,
     .subI64,
     .wrapI64,
     .constI64 2,
     .store64 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 16,
     .subI64,
     .wrapI64,
     .constI64 1,
     .store64 0,
-    .localGet 44,
+    .localGet 50,
     .constI64 8,
     .subI64,
     .wrapI64,
@@ -4016,22 +4298,22 @@ def func36 : Wasm.Program :=
    .constI64 1,
    .addI64,
    .globalSet 2,
-   .localGet 44,
-   .localSet 34,
-   .localGet 34,
+   .localGet 50,
+   .localSet 40,
+   .localGet 40,
    .wrapI64,
-   .localGet 33,
+   .localGet 39,
    .store64 0,
    .constI64 0,
-   .localSet 35,
+   .localSet 41,
    .block 0 0 [
     .loop 0 0 [
-     .localGet 35,
-     .localGet 33,
+     .localGet 41,
+     .localGet 39,
      .geUI64,
      .br_if 1,
-     .localGet 34,
-     .localGet 35,
+     .localGet 40,
+     .localGet 41,
      .constI64 1,
      .mulI64,
      .constI64 1,
@@ -4040,16 +4322,16 @@ def func36 : Wasm.Program :=
      .mulI64,
      .addI64,
      .wrapI64,
-     .localGet 36,
+     .localGet 42,
      .store64 0,
-     .localGet 35,
+     .localGet 41,
      .constI64 1,
      .addI64,
-     .localSet 35,
+     .localSet 41,
      .br 0
     ]
    ],
-   .localGet 34,
+   .localGet 40,
    .localSet 7,
    .localGet 7,
    .localSet 8,
@@ -4061,10 +4343,12 @@ def func36 : Wasm.Program :=
    .localSet 11,
    .localGet 9,
    .localSet 12,
-   .constI64 0,
-   .localSet 40,
+   .localGet 10,
+   .localSet 46,
    .block 0 0 [
     .loop 0 0 [
+     .constI64 0,
+     .localSet 22,
      .localGet 10,
      .localSet 13,
      .localGet 11,
@@ -4076,17 +4360,17 @@ def func36 : Wasm.Program :=
      .ltUI64,
      .iff 0 1 [
       .localGet 14,
-      .localSet 33,
+      .localSet 39,
       .constI64 0,
-      .localSet 34,
-      .localGet 34,
-      .localGet 33,
+      .localSet 40,
+      .localGet 40,
+      .localGet 39,
       .wrapI64,
       .load64 0,
       .ltUI64,
       .iff 0 1 [
-       .localGet 33,
-       .localGet 34,
+       .localGet 39,
+       .localGet 40,
        .constI64 1,
        .mulI64,
        .constI64 1,
@@ -4154,19 +4438,19 @@ def func36 : Wasm.Program :=
       .localGet 23,
       .localSet 25,
       .localGet 15,
-      .localSet 33,
+      .localSet 39,
       .constI64 1,
-      .localSet 34,
-      .localGet 33,
-      .localGet 34,
+      .localSet 40,
+      .localGet 39,
+      .localGet 40,
       .addI64,
-      .localTee 35,
-      .localGet 33,
+      .localTee 41,
+      .localGet 39,
       .ltUI64,
       .iff 0 1 [
        .unreachable
       ] [
-       .localGet 35
+       .localGet 41
       ] [] [.i64],
       .localSet 26,
       .localGet 24,
@@ -4183,28 +4467,22 @@ def func36 : Wasm.Program :=
       .localGet 15,
       .localSet 29
      ],
-     .localGet 27,
-     .localSet 37,
-     .localGet 28,
-     .localSet 38,
-     .localGet 29,
-     .localSet 39,
      .localGet 12,
      .localGet 4,
      .ltUI64,
      .iff 0 1 [
       .localGet 11,
-      .localSet 33,
+      .localSet 39,
       .constI64 0,
-      .localSet 34,
-      .localGet 34,
-      .localGet 33,
+      .localSet 40,
+      .localGet 40,
+      .localGet 39,
       .wrapI64,
       .load64 0,
       .ltUI64,
       .iff 0 1 [
-       .localGet 33,
-       .localGet 34,
+       .localGet 39,
+       .localGet 40,
        .constI64 1,
        .mulI64,
        .constI64 1,
@@ -4250,40 +4528,97 @@ def func36 : Wasm.Program :=
      ] [
       .constI64 1
      ] [] [.i64],
-     .localSet 36,
-     .localGet 37,
+     .localSet 30,
+     .localGet 22,
+     .constI64 0,
+     .eqI64,
+     .eqz,
+     .iff 0 1 [
+      .localGet 22,
+      .localGet 27,
+      .eqI64,
+      .eqz
+     ] [
+      .const 0
+     ] [] [.i32],
+     .iff 0 0 [
+      .localGet 22,
+      .call 40,
+      .globalGet 5,
+      .localSet 31
+     ] [],
+     .localGet 27,
+     .localSet 43,
+     .localGet 28,
+     .localSet 44,
+     .localGet 29,
+     .localSet 45,
+     .localGet 30,
+     .localSet 42,
+     .localGet 10,
+     .constI64 0,
+     .neI64,
+     .localGet 10,
+     .localGet 46,
+     .neI64,
+     .and,
+     .localGet 10,
+     .localGet 43,
+     .neI64,
+     .and,
+     .iff 0 0 [
+      .localGet 10,
+      .call 40
+     ] [],
+     .localGet 43,
      .localSet 10,
-     .localGet 38,
+     .localGet 44,
      .localSet 11,
-     .localGet 39,
+     .localGet 45,
      .localSet 12,
-     .constI64 1,
-     .localSet 40,
-     .localGet 36,
+     .localGet 42,
      .constI64 0,
      .neI64,
      .br_if 1,
      .br 0
     ]
    ],
-   .localGet 11,
-   .localSet 31,
-   .localGet 31,
+   .localGet 10,
    .localSet 32,
+   .localGet 11,
+   .localSet 33,
+   .localGet 12,
+   .localSet 34,
+   .localGet 32,
+   .localSet 35,
+   .localGet 33,
+   .localSet 36,
+   .localGet 35,
+   .localSet 37,
+   .localGet 36,
+   .localSet 38,
    .localGet 7,
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [
+    .localGet 7,
+    .localGet 37,
+    .eqI64,
+    .eqz
+   ] [
+    .const 0
+   ] [] [.i32],
    .iff 0 0 [
     .localGet 7,
     .call 40
    ] []
   ],
-  .localGet 32
+  .localGet 38
  ]
 
 def func36Def : Wasm.Function :=
-  { params := [.i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func36, results := [.i64], typeIdx := some 36 }
+  { params := [.i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func36, results := [.i64], typeIdx := some 36 }
 
 /-- Exported function. -/
 def func37 : Wasm.Program :=

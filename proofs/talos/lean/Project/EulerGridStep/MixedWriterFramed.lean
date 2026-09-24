@@ -55,6 +55,8 @@ theorem writeCell_mixed_framed {m : Wasm.Module} (layout : Layout m)
       · simpa [mixedHeap] using hCurrent.heap
       · exact hPages
       · exact hObserved) (by
+      intro a ha b hb hab
+      exact objectsSeparate_ne (hSlots a ha b hb hab)) (by
       intro count hLo hHi current hCurrent
       exact releasing_cell_call layout env current (heapTop + 48 + fieldRequest output.size)
         (allocs + 6) releases frees roots output index count cell initial.mem.pages P hLo hHi

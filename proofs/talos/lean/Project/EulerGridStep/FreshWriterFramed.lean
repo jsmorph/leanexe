@@ -63,6 +63,8 @@ theorem writeCell_fresh_framed {m : Wasm.Module} (layout : Layout m)
       · exact hCurrent.heap
       · exact hPages
       · exact hObserved) (by
+      intro a ha b hb hab
+      exact objectsSeparate_ne (hSlots a ha b hb hab)) (by
       intro count hLo hHi current hCurrent
       exact releasing_cell_call layout env current (arenaHeap base output.size 7)
         (allocs + 6) releases frees roots output index count cell initial.mem.pages P hLo hHi
