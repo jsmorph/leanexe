@@ -29,10 +29,13 @@ represented input.  Its branch theorems state result ownership, allocator
 counters, page preservation, and a budgeted memory frame.  The aggregate proof
 library imports this completed specification.
 
-The seven-function matcher region is definitionally equal to the completed
-limit region.  Its certificate transports the complete function 18 theorem,
+The eight-function matcher region is definitionally equal to the completed
+limit region, including the recursive release helper. Its certificate transports the complete function 18 theorem,
 including owned result arrays and exact allocator and memory facts.  The
 exported function 21 proof composes that result with its validity branches.
+
+The entry requires initialized UInt64 allocation and release counters. The shared
+matcher theorem covers the zero book owner supplied by the export.
 
 The valid exported branch proves the exact unlimited-price transformation,
 transports function 18, and returns its represented book and trades with status

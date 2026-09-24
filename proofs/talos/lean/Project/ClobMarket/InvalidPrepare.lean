@@ -19,8 +19,8 @@ def branchFrame (book : UInt64) (order : OrderL) : Locals :=
 def prepareFrame (book : UInt64) (order : OrderL) : Locals :=
   { branchFrame book order with
     locals := (((((((branchFrame book order).locals.set 31
-      (.i64 1)).set 33 (.i64 1)).set 34 (.i64 book)).set 43
-      (.i64 8)).set 48 (.i64 0)).set 44 (.i64 0)).set 45 (.i64 0)
+      (.i64 1)).set 33 (.i64 1)).set 35 (.i64 book)).set 45
+      (.i64 8)).set 50 (.i64 0)).set 46 (.i64 0)).set 47 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576

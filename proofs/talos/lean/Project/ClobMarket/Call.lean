@@ -21,7 +21,7 @@ def callFrame (book : UInt64) (order : OrderL) : Locals :=
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
       .i64 taker.oprice, .i64 taker.oqty, .i64 0, .i64 book,
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
-      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 29 (.i64 0)
+      .i64 taker.oprice, .i64 taker.oqty] ++ List.replicate 31 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576
@@ -32,7 +32,7 @@ theorem callProg_spec (env : HostEnv Unit) (st : Store Unit)
     (P : Store Unit → List Value → Prop)
     (hCall : TerminatesWith (m := Project.ClobMarket.«module») (id := 18)
       (initial := st) (env := env)
-      (Project.ClobLimit.RunMatchCorrect.runMatchArgs 0 book
+      (Project.ClobLimit.HeapRunMatch.runMatchArgs 0 book
         (unlimitedTakerL order)) P)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (st' : Store Unit) (values : List Value), P st' values →
@@ -46,7 +46,7 @@ theorem callProg_spec (env : HostEnv Unit) (st : Store Unit)
         .i64 (unlimitedTakerL order).oside,
         .i64 (unlimitedTakerL order).otrader,
         .i64 (unlimitedTakerL order).oid, .i64 book, .i64 0] P := by
-    simpa [Project.ClobLimit.RunMatchCorrect.runMatchArgs] using hCall
+    simpa [Project.ClobLimit.HeapRunMatch.runMatchArgs] using hCall
   simp only [Entry.callProg, List.cons_append, List.nil_append]
   simp (config := { maxSteps := 10000000 }) [wp_simp, Price.priceFrame]
   refine wp_call_tw hCall' ?_
