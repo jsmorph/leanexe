@@ -124,7 +124,7 @@ The resumed `tools/talos-proof.js check --all` built the pinned verifier, compil
 
 The non-release inventory passes the runner, artifact identity/conformance/migration unit checks, proof-tool unit checks, classification, floating-point, packed-data, Euler/WASM, matched-value, ASCII, integer-map, JSON, WASI adapter, and fuzz suites.  Standard comparisons pass all 340 native Lean/Wasm cases and 62 IR interpreter cases, including the string-constant byte result affected by this repair.  The pure-WASI rerun passes 33 execution cases, two traps, nine rejections, and 16 compiles with the local cache; fuzz validation passes 56 cases.
 
-`test/euler_rusanov_c.js` remains a platform limitation: the default Clang rejects old-style declarations and the missing final newline in the pinned upstream source under `-Werror`.  Selecting the installed GCC 15 allows compilation, but its executable refuses to run because `__STDC_IEC_559__` is absent.  Do not force that macro or claim the numeric contract passed.  Resolve the C portability contract separately or reproduce this check on its supported environment.  The pinned upstream source and dataset were not changed.
+The C comparison now passes with `CC=/opt/homebrew/bin/gcc-15 node test/euler_rusanov_c.js`.  The driver accepts GCC's documented `__GCC_IEC_559 >= 2` advertisement while preserving all runtime format, evaluation-width, layout, rounding, strict-flag, and exact-word checks.  All eight mirror rows and seven Lanyon rows match the pinned CSV, whose bytes are unchanged.  The regression manifest records updated local source identities; vendored upstream source and frozen artifacts are unchanged.  The default Mac Clang still lacks the required advertisement, so the C comparison uses the explicit `CC` override.
 
 ### Formal I/O proofs: scope decision pending
 
@@ -208,7 +208,7 @@ The proposed order below preserves the scope discussed in this session.  Impleme
 - [x] Establish the pinned local tools and authorized runner mode, then reproduce the focused I/O, host, ownership, and encoding results.
 - [x] Check both reported ownership defects: preserve passing array-alias regressions and repair the reproduced string-literal leak with failing-before/passing-after tests.
 - [ ] Review the shared ownership and effect rules across retained buffers, conditional replacements, nested loops, helper calls, ignored results, and early returns.  Add cases where the review identifies a specific coverage gap.
-- [ ] Resolve the remaining C comparison portability gate.  The rest of the non-release execution inventory and all 13 WAT/binary checks pass.
+- [x] Resolve the C comparison portability gate.  Every non-release execution suite and all 13 WAT/binary checks pass.
 - [ ] Complete existing Talos source-driven checks, diagnose inherited failures against the base, and review every changed generated program before updating its cache or proof.
 - [x] Reconcile the overview, manual, specification, compiler documentation, and development instructions.  Test the new CLI's required error behavior.
 - [x] Record the resumed revision, local changes, per-command results, remaining failures, and agreed exclusions in this document and the journal.

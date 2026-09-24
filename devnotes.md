@@ -1,5 +1,25 @@
 # Development Journal
 
+## 2026-09-24: C regression comparison on ARM macOS
+
+The C comparison now accepts a positive standard IEC 60559 macro or GCC's
+`__GCC_IEC_559 >= 2` advertisement.  GCC's documentation distinguishes that
+compiler arithmetic/NaN-encoding intention from full Annex F support.  All
+existing format, evaluation-width, word-layout, and rounding-mode checks and
+strict floating-point flags remain in force.  The generator accepts `CC` as
+one executable name, defaulting to `cc`, and records that selection policy.
+The checked Mac run used the installed GCC 15; no capability macro was forced.
+
+Both `CC=/opt/homebrew/bin/gcc-15 node tools/euler-rusanov-c-compare.js write`
+and `CC=/opt/homebrew/bin/gcc-15 node test/euler_rusanov_c.js` passed.  All
+eight mirror rows remain bit-exact with the frozen WASM, and all seven Lanyon
+rows retain their pinned words.  CSV SHA-256 remains
+`21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e`.
+The regression manifest records the revised local drivers, documentation,
+generator, and prior process-runner update.  Vendored source, numerical data,
+frozen artifacts, and release identity receipts are unchanged.  Logs are
+`euler-c-write.log` and `euler-c-pass.log` in the session workspace.
+
 ## 2026-09-24: GCD proof refreshed after loop lowering changes
 
 The first implementation checkpoint is pushed as `d6a4d3bc`.  The user
