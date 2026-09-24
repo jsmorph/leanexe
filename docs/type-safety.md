@@ -181,6 +181,7 @@ presentation. No premise assumes one of these safety conclusions.
 | [RenamingProfile.lean](../LeanExe/TypeSafety/RenamingProfile.lean) | Exact free-occurrence images, protected-prefix use, relevance invariance, and profile typing transport. |
 | [RenamingEnvironments.lean](../LeanExe/TypeSafety/RenamingEnvironments.lean) | Exact raw environment lookup correspondence and arity-preserving branch lookup. |
 | [RenamingDynamics.lean](../LeanExe/TypeSafety/RenamingDynamics.lean) | Raw frame/state correspondence, exact step-result matching, both finite-trace directions, and return/overflow/stuck-reachability equivalences. |
+| [Continuations.lean](../LeanExe/TypeSafety/Continuations.lean) | Continuation extension, exact finite boundary decomposition, and return/overflow/stuck sequencing equivalences. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -205,9 +206,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [35 source equality examples](../test/type_safety_structural_equality.lean),
 [26 renaming examples](../test/type_safety_renaming.lean),
 [27 renaming-profile examples](../test/type_safety_renaming_profile.lean),
-[17 environment-correspondence examples](../test/type_safety_renaming_environments.lean), and
-[26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean). It audits the
-transitive axiom dependencies of all 383 declared theorems across the eighteen
+[17 environment-correspondence examples](../test/type_safety_renaming_environments.lean),
+[26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean), and
+[24 continuation examples](../test/type_safety_continuations.lean). It audits the
+transitive axiom dependencies of all 403 declared theorems across the nineteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -394,3 +396,22 @@ They give equivalence of each exact returned value, each exact tagged overflow
 record, and finite stuck reachability. No typing, termination, injectivity, or
 compiler assumption appears in these theorems. The same program table is used
 on both sides.
+
+
+## Checked continuation decomposition
+
+`State.appendKont` appends a suffix to existing evaluation/return frames and
+leaves overflow records unchanged. `step_appendKont_of_not_boundary` gives exact
+optional-step correspondence under `¬ ReturnBoundary state`, where the boundary
+is exactly an empty-stack return. `Step.appendKont` and `Steps.appendKont`
+preserve successful transitions and finite traces without that extra premise.
+`steps_appendKont_decompose` splits any finite combined trace into a source
+prefix that has not reached the value-return boundary, or a source return
+followed by a continuation trace.
+
+`appendKont_returns_iff` characterizes exact returned values through an
+intermediate source value. `appendKont_overflows_iff` and
+`appendKont_reaches_stuck_iff` distinguish failure before a source return from
+failure afterward in the continuation. All statements are raw, same-program
+facts without typing or termination premises. Overflow-record reachability does
+not remove the separate validity condition in `Terminal`.

@@ -604,3 +604,22 @@ forwarding branches retain their actual payload. This is a specification
 checkpoint only: derived definitions, exact inference/profile equations, and
 execution laws remain pending. Payload-discarding observers and conversions
 are outside this first increment, with their final disposition still tracked.
+
+
+Completed continuation extension and exact finite sequencing. State.appendKont
+leaves overflow records unchanged. The optional-step equation excludes precisely
+the empty-return boundary; successful Step/Steps extension needs no extra
+premise. A constructive boundary split and finite-trace induction yield exact
+decomposition. Return, exact overflow-record, and stuck-reachability equivalences
+then distinguish operand behavior from continuation behavior. The statements
+apply to raw states and a fixed program without typing or termination premises.
+
+The focused checks proceeded through boundary/step support, finite decomposition,
+and outcome corollaries; all twenty declarations use only propext. The parent's
+24 examples passed on their first run and include the counterexample to an
+unconditional step equation, existing frames before the suffix, a fresh zero-arg
+callee, operand versus continuation faults, forged overflow, blocked operands,
+and applications of both directions of the exact equations. The maintained gate
+passed twenty-one build jobs, all 730 examples, and all 403 audits. No primitive
+syntax, typing rule, or machine transition changed. Next is general first-step
+inversion followed by the specified derived-sum constructors and combinators.
