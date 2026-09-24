@@ -12,10 +12,10 @@ or allocation arithmetic.
 namespace Project.ClobLimit.LimitResidualStatus
 
 open Wasm Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobLimit.MatchInvariant
 
 def statusFrame (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) : Locals :=
+    (data : MatchOutput.OutputData) : Locals :=
   { params := [.i64 book, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty]
     locals := [.i64 0, .i64 book, .i64 order.oid, .i64 order.otrader,
@@ -23,11 +23,11 @@ def statusFrame (book : UInt64) (order : OrderL) (ctx : Context)
       .i64 0, .i64 book, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
       .i64 data.bookOwner, .i64 data.book, .i64 data.tradesOwner,
-      .i64 data.trades, .i64 ctx.result.remaining, .i64 0,
-      .i64 data.book, .i64 0, .i64 data.trades,
+      .i64 data.trades, .i64 ctx.result.remaining, .i64 data.bookOwner,
+      .i64 data.book, .i64 data.tradesOwner, .i64 data.trades,
       .i64 ctx.result.remaining, .i64 0, .i64 0, .i64 data.book,
       .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 data.book] ++ List.replicate 18 (.i64 0)
+      .i64 0, .i64 0, .i64 data.book] ++ List.replicate 18 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576
@@ -36,7 +36,7 @@ set_option Elab.async false in
 theorem residualStatusProg_spec
     (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp «module» rest Q st (statusFrame book order ctx data) env) :
     wp «module» (LimitEntry.residualStatusProg ++ rest) Q st
