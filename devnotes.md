@@ -1,3 +1,9 @@
+## 2026-09-24: Complete matcher proof accepted
+
+ClobMatchFuel.Spec passes all 3,445 required jobs. The full-fill branch, release composition, and recursive transition pass in 17, 4.1, and 29 seconds; the partial-fill branch passes in 10 seconds. The common dispatcher passes in 12 seconds after normalizing list lookup notation at the quantity comparison. The outer loop, initial state, result extraction, generated-body decomposition, and public correctness theorem pass. The exact source book, trades, remaining quantity, ownership, allocator counters, termination, and memory frame are retained for the original represented inputs and heap assumptions.
+
+The only dispatcher diagnostic was a rewrite expecting os[i]! after the WP simplifier had expanded it to getD. Rewriting back to the source notation resolves both fill branches without changing the quantity condition. The final output is work/matcher-public-1.log. The earlier bounded consumer logs preserve the partial runs and accepted helper timings. The matcher checkpoint completes this case; the full source-driven library gate and remaining compiler cases are still pending.
+
 ## 2026-09-24: Cached maker consumers and allocation copies accepted
 
 The complete full-fill trade update passes in 16 seconds after composing the cached-maker fields with the allocator and the new argument stage. Its instruction bridges pass in 4.3 and 4.2 seconds. Partial-fill book preparation passes in 4.2 seconds. The newly audited bridges use only standard logical axioms. The shifted copy, replacement, trade-allocation, and release modules also pass; the first-fit and bump proofs are the slowest cold targets at approximately 93 and 40 seconds. Runtime helper equalities pass, including the refreshed AssocList function indices.

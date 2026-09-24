@@ -24,67 +24,67 @@ def nextBookTracker (newBook oldBookTracker oldTradesTracker : UInt64) :
 
 def fullTransitionProg : Wasm.Program :=
   [
-  .localGet 34,
-  .localSet 49,
-  .localGet 35,
-  .localSet 50,
-  .localGet 36,
-  .localSet 51,
-  .localGet 37,
-  .localSet 52,
-  .localGet 38,
-  .localSet 53,
-  .localGet 44,
-  .localSet 54,
-  .localGet 45,
-  .localSet 55,
-  .localGet 46,
-  .localSet 56,
-  .localGet 47,
-  .localSet 57,
-  .localGet 48,
-  .localSet 58,
-  .localGet 44,
+  .localGet 49,
+  .localSet 59,
+  .localGet 50,
+  .localSet 60,
+  .localGet 51,
+  .localSet 61,
+  .localGet 52,
+  .localSet 62,
+  .localGet 53,
+  .localSet 63,
+  .localGet 54,
+  .localSet 64,
+  .localGet 55,
+  .localSet 65,
+  .localGet 56,
+  .localSet 66,
+  .localGet 57,
+  .localSet 67,
+  .localGet 58,
+  .localSet 68,
+  .localGet 54,
   .localGet 19,
   .eqI64,
   .iff 0 1 [
-    .localGet 44
+    .localGet 54
   ] [
-    .localGet 44,
+    .localGet 54,
     .localGet 20,
     .eqI64,
     .iff 0 1 [
-      .localGet 44
+      .localGet 54
     ] [
       .constI64 0
     ] [] [.i64]
   ] [] [.i64],
-  .localSet 59,
-  .localGet 46,
-  .localSet 60,
-  .localGet 49,
-  .localSet 9,
-  .localGet 50,
-  .localSet 10,
-  .localGet 51,
-  .localSet 11,
-  .localGet 52,
-  .localSet 12,
-  .localGet 53,
-  .localSet 13,
-  .localGet 54,
-  .localSet 14,
-  .localGet 55,
-  .localSet 15,
+  .localSet 69,
   .localGet 56,
-  .localSet 16,
-  .localGet 57,
-  .localSet 17,
-  .localGet 58,
-  .localSet 18,
+  .localSet 70,
   .localGet 59,
-  .localSet 19,
+  .localSet 9,
   .localGet 60,
+  .localSet 10,
+  .localGet 61,
+  .localSet 11,
+  .localGet 62,
+  .localSet 12,
+  .localGet 63,
+  .localSet 13,
+  .localGet 64,
+  .localSet 14,
+  .localGet 65,
+  .localSet 15,
+  .localGet 66,
+  .localSet 16,
+  .localGet 67,
+  .localSet 17,
+  .localGet 68,
+  .localSet 18,
+  .localGet 69,
+  .localSet 19,
+  .localGet 70,
   .localSet 20,
   .localGet 0,
   .constI64 1,
@@ -95,19 +95,19 @@ def fullTransitionProg : Wasm.Program :=
 def fullTransitionLocals (base : Locals) (taker : OrderL)
     (newBook newTrades remaining oldBookTracker oldTradesTracker : UInt64) :
     List Value :=
-  let locals := base.locals.set 40 (.i64 taker.oid)
-  let locals := locals.set 41 (.i64 taker.otrader)
-  let locals := locals.set 42 (.i64 taker.oside)
-  let locals := locals.set 43 (.i64 taker.oprice)
-  let locals := locals.set 44 (.i64 taker.oqty)
-  let locals := locals.set 45 (.i64 newBook)
-  let locals := locals.set 46 (.i64 newBook)
-  let locals := locals.set 47 (.i64 newTrades)
-  let locals := locals.set 48 (.i64 newTrades)
-  let locals := locals.set 49 (.i64 remaining)
-  let locals := locals.set 50
+  let locals := base.locals.set 50 (.i64 taker.oid)
+  let locals := locals.set 51 (.i64 taker.otrader)
+  let locals := locals.set 52 (.i64 taker.oside)
+  let locals := locals.set 53 (.i64 taker.oprice)
+  let locals := locals.set 54 (.i64 taker.oqty)
+  let locals := locals.set 55 (.i64 newBook)
+  let locals := locals.set 56 (.i64 newBook)
+  let locals := locals.set 57 (.i64 newTrades)
+  let locals := locals.set 58 (.i64 newTrades)
+  let locals := locals.set 59 (.i64 remaining)
+  let locals := locals.set 60
     (.i64 (nextBookTracker newBook oldBookTracker oldTradesTracker))
-  let locals := locals.set 51 (.i64 newTrades)
+  let locals := locals.set 61 (.i64 newTrades)
   let locals := locals.set 0 (.i64 taker.oid)
   let locals := locals.set 1 (.i64 taker.otrader)
   let locals := locals.set 2 (.i64 taker.oside)
@@ -141,19 +141,19 @@ theorem fullTransitionProg_spec
     (fuel newBook newTrades remaining oldBookTracker oldTradesTracker : UInt64)
     (taker : OrderL)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
-    (hOid : base.get 34 = some (.i64 taker.oid))
-    (hTrader : base.get 35 = some (.i64 taker.otrader))
-    (hSide : base.get 36 = some (.i64 taker.oside))
-    (hPrice : base.get 37 = some (.i64 taker.oprice))
-    (hQty : base.get 38 = some (.i64 taker.oqty))
-    (hNewBookOwner : base.get 44 = some (.i64 newBook))
-    (hNewBookPointer : base.get 45 = some (.i64 newBook))
-    (hNewTradesOwner : base.get 46 = some (.i64 newTrades))
-    (hNewTradesPointer : base.get 47 = some (.i64 newTrades))
-    (hRemaining : base.get 48 = some (.i64 remaining))
+    (hOid : base.get 49 = some (.i64 taker.oid))
+    (hTrader : base.get 50 = some (.i64 taker.otrader))
+    (hSide : base.get 51 = some (.i64 taker.oside))
+    (hPrice : base.get 52 = some (.i64 taker.oprice))
+    (hQty : base.get 53 = some (.i64 taker.oqty))
+    (hNewBookOwner : base.get 54 = some (.i64 newBook))
+    (hNewBookPointer : base.get 55 = some (.i64 newBook))
+    (hNewTradesOwner : base.get 56 = some (.i64 newTrades))
+    (hNewTradesPointer : base.get 57 = some (.i64 newTrades))
+    (hRemaining : base.get 58 = some (.i64 remaining))
     (hOldBookTracker : base.get 19 = some (.i64 oldBookTracker))
     (hOldTradesTracker : base.get 20 = some (.i64 oldTradesTracker))
     (Q : Assertion Unit) (rest : Wasm.Program)

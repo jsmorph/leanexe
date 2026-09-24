@@ -29,7 +29,7 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       measure st1 s1 < measure st base →
       wp «module» rest Q st1 s1 env) :
     wp «module» (PartialBranch.partialBranchProg ++ rest) Q st
-      (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) env := by
+      (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i data.orders[i]!) env := by
   rcases facts.locals with ⟨hParams, hLocals, hValues, hFuelLocal, hOid,
     hTrader, hSide, hPrice, hQtyLocal, hBookOwner, hBook, hTrades, hRemainingLocal,
     hOldBook, hOldTrades, hRunning, hScratch⟩
@@ -41,28 +41,31 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     simp only [Locals.get] at hOid
     simpa [hParams, hLocals] using hOid
   apply PartialBranch.partialBranchProg_spec env st
-    (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i)
+    (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i data.orders[i]!)
     data.book data.bookCapacity data.trades data.tradesCapacity data.remaining
     data.fuel data.g0 data.g2 data.g4 data.g5 tradeNext tradeResult ctx.taker
     data.orders data.tradeValues i data.nodes ctx.initialMem ctx.limit
-  · simpa [Iteration.quantityFrame] using hParams
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, List.length_set]
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame] using hParams
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set]
       using hLocals
-  · simp [Iteration.quantityFrame]
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simp [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame]
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hFuelLocal
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, hLocals] using
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using
       hOidElem
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hBook
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hTrades
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hRemainingLocal
-  · simp [Iteration.quantityFrame, Iteration.searchLocals, optionPayload,
+  · simp [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, optionPayload,
       hLocals]
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, hLocals] using h73
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, hLocals] using h74
+  · simp [SelectedMaker.At, Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+      Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals,
+      Iteration.searchFrame, Iteration.searchLocals, hLocals]
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using h73
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using h74
   · exact hi
   · exact bounds.ordersLength64
   · exact bounds.partialBookBytes
@@ -127,7 +130,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       measure st1 s1 < measure st base →
       wp «module» rest Q st1 s1 env) :
     wp «module» (Iteration.fullBranchProg ++ rest) Q
-      st (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) env := by
+      st (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i data.orders[i]!) env := by
   rcases facts.locals with ⟨hParams, hLocals, hValues, hFuelLocal, hOid,
     hTrader, hSide, hPrice, hQtyLocal, hBookOwner, hBook, hTrades, hRemainingLocal,
     hOldBook, hOldTrades, hRunning, hScratch⟩
@@ -147,25 +150,25 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       rw [facts.oldTradesTracker]
       simp [hSteps]
   apply Iteration.fullBranchProg_spec env st
-    (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) data.book
+    (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i data.orders[i]!) data.book
     ctx.taker data.orders i
-  · simpa [Iteration.quantityFrame] using hParams
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, List.length_set]
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame] using hParams
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set]
       using hLocals
-  · simp [Iteration.quantityFrame]
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simp [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame]
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hOid
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hTrader
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hSide
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hPrice
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hQtyLocal
-  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+  · simpa [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
       hLocals] using hBook
-  · simp [Iteration.quantityFrame, Iteration.searchLocals, optionPayload,
+  · simp [Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, optionPayload,
       Locals.get, hParams, hLocals]
   · exact hi
   · exact bounds.ordersLength64
@@ -173,75 +176,78 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.bookOwned.2
   · apply FullStep.fullBookThenStep_spec env st
       (Iteration.fullPrepareFrame
-        (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i)
+        (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i data.orders[i]!)
         data.book ctx.taker data.orders i)
       data.fuel data.book data.bookCapacity data.trades data.tradesCapacity
       data.remaining data.g0 data.g2 data.g4 data.g5 bookCapacity bookNext
       tradeNext data.oldTradesTracker ctx.taker data.orders data.tradeValues i
       data.nodes ctx.initialMem ctx.limit
-    · simpa [Iteration.fullPrepareFrame, Iteration.quantityFrame] using hParams
+    · simpa [Iteration.fullPrepareFrame, Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame] using hParams
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.length_set] using
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set] using
         hLocals
     · simp [Iteration.fullPrepareFrame]
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.getElem?_set]
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.getElem?_set]
         using hOidAt
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hBook
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hTrades
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hRemainingLocal
     · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, optionPayload, hLocals]
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, optionPayload, hLocals]
+    · simp [SelectedMaker.At, Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals,
+        Iteration.searchFrame, Iteration.searchLocals, hLocals]
     · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.length_set,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set,
         hLocals]
     · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.length_set,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set,
         hLocals]
     · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.length_set,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set,
         hLocals]
     · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, List.length_set,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, List.length_set,
         hLocals]
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, hLocals] using h70
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using h70
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, hLocals] using h71
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using h71
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, hLocals] using h73
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, hLocals] using h73
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Locals.get, hParams, hLocals] using hFuelLocal
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Locals.get, hParams, hLocals] using hFuelLocal
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hOldBook
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hOldTrades
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
         hLocals] using hRunning
-    · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
-        hLocals]
-    · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
-        hLocals]
-    · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
-        hLocals]
-    · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
-        hLocals]
-    · simp [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
-        Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
-        hLocals]
+    · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
+        hLocals] using hOid
+    · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
+        hLocals] using hTrader
+    · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
+        hLocals] using hSide
+    · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
+        hLocals] using hPrice
+    · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
+        Iteration.quantityFrame, SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, Iteration.searchFrame, Iteration.searchLocals, Locals.get, hParams,
+        hLocals] using hQtyLocal
     · exact hTracker
     · exact hi
     · exact bounds.ordersLength64
