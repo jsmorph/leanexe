@@ -1,3 +1,9 @@
+## 2026-09-24: Reusable packed byte-push contract checked
+
+ProofKit.PackedPush.program_spec passes in work/packed-push-6.log (3,491 jobs). It composes existing capacity selection, fresh/reused allocation, and packed byte copying with a proved final byte store. The result owns exactly bytes.push byte, preserves protected caller memory, and preserves all locals outside the twelve-slot scratch region. PackedPushMemory proves the byte-array representation extension separately. Both audits use only standard logical axioms. These are reusable lemmas for the remaining LEB encoder proof; that public encoder proof is not yet refreshed.
+
+Focused diagnostics caught the distinction between default and bounded byte-array indexing, numeric normalization of the address-space bound, and explicit names needed to relate copy/store memory ranges. The final proof states the resolved bounds and ranges directly. No silent timeout or generated-program edit occurred. The complete certificate observer and tiny inference specifications are now under a separate bounded diagnostic build. Cached GPT-2 documentation checking passed all 162 maintained files in work/cached-docs-1.log.
+
 ## 2026-09-24: Complete cached GPT-2 source gate passes current ownership code
 
 `tools/talos-proof.js check gpt2_cached_step` passes in work/cached-maintained-1.log (3,698 proof jobs). The preceding work/cached-complete-2.log checks the complete hidden traversal, accepted and rejected token entries, and up-to-128-token session. Public theorems preserve the arbitrary correctly sized weight bytes, exceptional binary32 values, exact cache/logit results, input memory frames, and existing memory budget. Axiom audits contain only propext, Classical.choice, and Quot.sound.
