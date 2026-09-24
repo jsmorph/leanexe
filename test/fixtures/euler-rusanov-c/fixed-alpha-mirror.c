@@ -18,7 +18,9 @@ supported_binary64_environment(void)
 {
   const double one = 1.0;
   uint64_t one_bits;
-#if !defined(__STDC_IEC_559__)
+/* GCC on Darwin advertises compiler IEEE arithmetic separately from libc. */
+#if !(defined(__STDC_IEC_559__) && __STDC_IEC_559__ >= 1) && \
+    !(defined(__GCC_IEC_559) && __GCC_IEC_559 >= 2)
   fprintf(stderr, "fixed-alpha-mirror: C implementation does not advertise IEC 60559 arithmetic\n");
   return 0;
 #endif
