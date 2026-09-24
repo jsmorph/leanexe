@@ -445,3 +445,25 @@ by the production runtime. RuntimeStructure proves their structured-control byte
 shapes and non-terminator opcode prefixes. Both modules build. The runtime's
 nested instruction-sequence decoder proof and the four concrete runtime bodies
 are still pending; arithmetic source support has not been expanded.
+
+### Nested runtime instruction decoding (checked)
+
+RuntimeParsing proves decoding for nested runtime instruction sequences,
+including blocks, loops, empty-result conditionals with and without else arms,
+and expression terminators. The proof uses the production instruction encoder
+and the existing decoder with sufficient byte-derived fuel. The focused build
+completed successfully. This is a general parser lemma, not yet its instantiation
+for the four actual runtime bodies or a complete module theorem.
+
+### Arithmetic milestone completion requirements (restated)
+
+Completion requires the actual normal source compiler's emitted whole Wasm file
+to decode, validate, and execute the requested export with the original source
+result for every UInt64 argument list of the right arity. The accepted source
+syntax and format limits must imply compilation success without per-program
+semantic or compiler-correspondence certificates. A usable proved-subset mode
+must reject unsupported source and exceeded bounds. Clean-checkout builds,
+axiom inspection, independent portable-package verification, independent Wasm
+engine edge cases, and the existing mutation gates remain required. Arithmetic
+source-to-function-body bytes is checked; whole-module assembly, validation,
+exported invocation, admission limits, and final gates remain incomplete.
