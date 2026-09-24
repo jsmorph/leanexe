@@ -98,8 +98,8 @@ premises. It states that every reachable runtime state remains typed and cannot
 be stuck. Restricting source admission does not require a second execution
 relation or a compiler theorem.
 
-The maintained gate checks 706 semantic examples and audits all 383 declared
-theorems across the eighteen development modules, including helper proofs. It
+The maintained gate checks 730 semantic examples and audits all 403 declared
+theorems across the nineteen development modules, including helper proofs. It
 passed with the pinned Lean version; each audited theorem depends on no axioms
 or only `propext`. See [the proof reference](type-safety.md) for
 the exact theorem boundary and verification command.
@@ -550,3 +550,29 @@ exact overflow record, and finite stuck reachability. There are no typing
 premises. The original `Terminal` predicate still requires mathematical overflow;
 a forged record remains stuck. These are same-program finite-execution laws,
 not termination or compiler-correctness results.
+
+
+## Checked continuation sequencing
+
+`State.appendKont` appends pending frames to an evaluation or return state;
+overflow has already discarded its stack. `ReturnBoundary` means precisely
+`ret value []`. Away from this boundary, extending a state commutes with its
+actual optional step, including missing steps. At the boundary an appended
+frame can enable a new transition, so no unconditional optional-step equation
+is claimed. Successful steps and arbitrary finite traces do extend.
+
+`steps_appendKont_decompose` proves that every finite combined execution either
+has not crossed a value-return boundary, or factors through the source's return
+and a subsequent continuation execution. Its corollaries give exact equivalences:
+
+- A final returned value requires a source return followed by that continuation
+  result, and those two executions suffice.
+- An exact overflow record is reached either in the source computation or after
+  a source return in the continuation. The record's validity remains governed
+  by the unchanged mathematical overflow predicate.
+- A stuck state is reached either in the source computation or after a source
+  return in the continuation. It is never reclassified as permitted failure.
+
+These statements concern arbitrary raw states and a fixed program; they require
+neither typing nor termination. They supply sequencing laws for future derived
+forms. They do not themselves establish any Option/Except API.

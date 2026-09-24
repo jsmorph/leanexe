@@ -847,7 +847,7 @@ memory-management implementation, or compiler correctness.
 - [x] Prove exact occurrence/relevance preservation under arbitrary renaming and protected-prefix parameter use.
 - [x] Prove exact raw environment lookup correspondence and branch lookup support.
 - [x] Prove operational renaming correspondence for derived callback work.
-- [ ] Prove continuation extension and execution decomposition for exact derived-form semantics.
+- [x] Prove continuation extension and execution decomposition for exact derived-form semantics.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -873,9 +873,10 @@ an exact checker, strict source semantics, full metatheory, and exact result
 laws. Hygienic renaming, its algebra, typing transport, and weakening are now
 checked, as are exact occurrence/relevance preservation and profile typing
 transport. Raw step correspondence and finite-execution equivalences now hold
-under exact environment agreement, with the same program on both sides. Next,
-prove continuation extension and execution decomposition to support complete
-derived-form behavior laws.
+under exact environment agreement, with the same program on both sides.
+Continuation extension and finite boundary decomposition now give exact
+return/overflow/stuck sequencing laws. Next, prove the individual derived-sum
+expansions and their complete behavior laws.
 The [derived-sum plan](plans/type-safety-derived-sums.md) specifies the first
 constructors/map/bind/map-error increment. Payload-discarding APIs remain outside
 that increment and require explicit inclusion or exclusion.
