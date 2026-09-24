@@ -198,3 +198,17 @@ result-slot store/load. Added descriptor scalar evaluation and operator meaning
 lemmas as preparation for the IR-to-WASM semantic proof. The descriptor evaluator
 alone is not a WebAssembly execution theorem. Talos semantics, scratch bounds,
 module assembly, and exact binary correspondence still need to be connected.
+
+### IR descriptor semantic preservation (checked)
+
+Proved Expr.ofIR_eval and Cond.ofIR_eval for the existing descriptor recognizers.
+Every recognized scalar IR evaluation has the same descriptor value and leaves
+source locals unchanged. The proof covers arithmetic, branches, comparisons,
+negation, and short-circuit conjunction/disjunction. Strict bindings cannot be
+silently discarded: this pure recognizer rejects them. The proof is generic over
+IR expressions, stores, and results and passes the kernel.
+
+Next connection is to the existing Talos ScalarTransition program theorem via
+an explicit interpretation of the production Instr syntax. That bridge is being
+implemented in Project.Compiler.ScalarLowering; it is not yet an established
+WebAssembly correctness result.
