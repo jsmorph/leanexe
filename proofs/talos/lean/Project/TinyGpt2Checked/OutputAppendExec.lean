@@ -7,23 +7,24 @@ namespace Project.TinyGpt2Checked.Spec
 open Project.TinyGpt2Infer
 open Wasm Project.TinyGpt2 Project.Runtime Project.ProofKit ArrayPushLayout FixedArrayFold
 
-theorem output_append_shape : (outputBody.drop 67).take 64 =
-    (outputBody.drop 67).take 21 ++ (outputBody.drop 88).take 15 ++
-      (outputBody.drop 103).take 28 := rfl
+theorem output_append_shape : (outputBody.drop 69).take 78 =
+    (outputBody.drop 69).take 21 ++ (outputBody.drop 90).take 15 ++
+      (outputBody.drop 105).take 42 := rfl
 
 theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (owner pointer empty value : UInt64) (x : Row) (start count : Nat) (input : Array UInt64)
     (hSaved : OutputSaved owner pointer empty x frame)
     (hState : OutputMemory.State start count initial)
     (hInput : UInt64Array.At initial (node start count).root input) (hSize : input.size = count)
-    (hSource : frame.get 50 = some (.i64 (node start count).root))
-    (hCount : frame.get 52 = some (.i64 (UInt64.ofNat count)))
-    (hLength : frame.get 51 = some (.i64 (UInt64.ofNat count)))
-    (hValue : frame.get 56 = some (.i64 value))
-    (hNextLength : frame.get 53 = some (.i64 (UInt64.ofNat (count + 1))))
-    (hNeed : frame.get 59 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
+    (hSource : frame.get 54 = some (.i64 (node start count).root))
+    (hCount : frame.get 56 = some (.i64 (UInt64.ofNat count)))
+    (hLength : frame.get 55 = some (.i64 (UInt64.ofNat count)))
+    (hValue : frame.get 60 = some (.i64 value))
+    (hNextLength : frame.get 57 = some (.i64 (UInt64.ofNat (count + 1))))
+    (hNeed : frame.get 63 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
     (hCurrent : frame.get 24 = some (.i64 (node start count).root))
-    (hOwned : frame.get 68 = some (.i64 (if count = 0 then 0 else 1)))
+    (hOwned : frame.get 72 = some (.i64 empty))
+    (hEmpty : empty = (node start 0).root)
     (hFit : top start (count + 1) < 4294967296)
     (hMemory : top start (count + 1) ≤ initial.mem.pages * 65536)
     (hPages : initial.mem.pages ≤ 65536)
@@ -35,12 +36,12 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
       OutputSaved owner pointer empty x finalFrame →
       finalFrame.get 24 = some (.i64 (node start (count + 1)).root) →
       finalFrame.get 25 = some (.i64 (node start (count + 1)).root) →
-      finalFrame.get 47 = frame.get 47 → finalFrame.get 68 = some (.i64 1) →
+      finalFrame.get 51 = frame.get 51 → finalFrame.get 72 = some (.i64 empty) →
       final.mem.pages = initial.mem.pages →
       (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) →
       final = { initial with mem := final.mem, globals := final.globals } →
       wp module rest Q final finalFrame env) :
-    wp module ((outputBody.drop 67).take 64 ++ rest) Q initial frame env := by
+    wp module ((outputBody.drop 69).take 78 ++ rest) Q initial frame env := by
   obtain ⟨allocations, retains, releases, frees, hGlobals⟩ := hState.globals
   have hOldFit := (top_mono start (show count ≤ count + 1 by omega)).trans_lt hFit
   have hOld := node_toNat start count hOldFit
@@ -61,13 +62,13 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
   have hPreparedPages : preparedStore.mem.pages = initial.mem.pages :=
     OutputMemory.prepare_pages initial start (count + 1) allocations hFit hMemory
   have hPreparedArray := OutputMemory.prepare_array allocations hInput hSize hFit hMemory
-  have hCounter : prepared.validIndex 55 := hPrepared.valid 55 (by decide)
+  have hCounter : prepared.validIndex 59 := hPrepared.valid 59 (by decide)
   apply output_copy_spec env preparedStore prepared (node start count).root
     (node start (count + 1)).root input value hCounter hPrepared.values
-    ((hPreserved 50 (by decide) (by decide)).trans hSource) hTarget
-    (by rw [hSize]; exact (hPreserved 52 (by decide) (by decide)).trans hCount)
-    (by rw [hSize]; exact (hPreserved 51 (by decide) (by decide)).trans hLength)
-    ((hPreserved 56 (by decide) (by decide)).trans hValue)
+    ((hPreserved 54 (by decide) (by decide)).trans hSource) hTarget
+    (by rw [hSize]; exact (hPreserved 56 (by decide) (by decide)).trans hCount)
+    (by rw [hSize]; exact (hPreserved 55 (by decide) (by decide)).trans hLength)
+    ((hPreserved 60 (by decide) (by decide)).trans hValue)
     hPreparedArray (by rw [hEnd]; exact hFit.le)
     (by rw [hEnd, hPreparedPages]; exact hMemory)
     (by rw [hSize]; exact OutputMemory.prepare_length ..)
@@ -92,16 +93,42 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
     exact OutputMemory.allocate_globals initial start (count + 1) allocations
       (freeHead (freed start count)) retains releases frees
       (by simpa only [OutputMemory.globals, top_eq_next_base] using hGlobals)
-  let copied := FixedArrayCopy.counterFrame prepared 55 input.size hCounter
+  let copied := FixedArrayCopy.counterFrame prepared 59 input.size hCounter
   have hCopied : OutputSaved owner pointer empty x copied := hPrepared.counter input.size hCounter
-  have hCopiedGet (index : Nat) (hIndex : index ≠ 55) : copied.get index = prepared.get index :=
-    FixedArrayCopy.counterFrame_get_ne prepared 55 input.size index hCounter hIndex
-  apply output_release_region_spec env middle copied (node start count).root
+  have hCopiedGet (index : Nat) (hIndex : index ≠ 59) : copied.get index = prepared.get index :=
+    FixedArrayCopy.counterFrame_get_ne prepared 59 input.size index hCounter hIndex
+  apply output_release_region_spec env middle copied (node start count).root empty
     (node start count).capacity (freeHead (freed start count)) releases frees
     (node start (count + 1)).root input count hCopied.params hCopied.locals hCopied.values
     (by rw [hCopiedGet 24 (by decide), hPreserved 24 (by decide) (by decide)]; exact hCurrent)
-    ((hCopiedGet 54 (by decide)).trans hTarget)
-    (by rw [hCopiedGet 68 (by decide), hPreserved 68 (by decide) (by decide)]; exact hOwned)
+    ((hCopiedGet 58 (by decide)).trans hTarget)
+    (by rw [hCopiedGet 72 (by decide), hPreserved 72 (by decide) (by decide)]; exact hOwned)
+    (by
+      rw [hEmpty]
+      constructor
+      · intro hEq
+        by_contra hCount
+        have hSep := separated start (show 0 < count by omega)
+        have hZero := node_toNat start 0 ((top_mono start (show 0 ≤ count + 1 by omega)).trans_lt hFit)
+        have hNat := congrArg UInt64.toNat hEq
+        rw [hOld.1, hZero.1] at hNat
+        simp only [top, root, capacity] at hSep hNat
+        omega
+      · rintro rfl
+        rfl)
+    (by
+      intro hEq
+      have hNat := congrArg UInt64.toNat hEq
+      rw [hOld.1, hNew.1] at hNat
+      have hSep := separated start (show count < count + 1 by omega)
+      simp only [top, root, capacity] at hSep hNat
+      omega)
+    (by
+      intro hEq
+      have hNat := congrArg UInt64.toNat hEq
+      rw [hNew.1] at hNat
+      change root start (count + 1) = 0 at hNat
+      omega)
     (by rw [hOld.1]; omega) hMiddleBuffers.currentHeader hOldArray
     (by simp [hMiddleGlobals]) (by simp [hMiddleGlobals]) (by simp [hMiddleGlobals])
   have hResult := OutputMemory.append_result initial middle start count allocations retains releases frees
@@ -109,8 +136,9 @@ theorem output_append_spec (env : HostEnv Unit) (initial : Store Unit) (frame : 
   have hGets := outputReleaseFrame_get copied (node start (count + 1)).root hCopied.params hCopied.locals
   apply hNext _ _ hResult.1 hResult.2.1
     (outputReleaseFrame_saved hCopied _) hGets.1 hGets.2.1
-    (hGets.2.2.1.trans ((hCopiedGet 47 (by decide)).trans (hPreserved 47 (by decide) (by decide))))
-    hGets.2.2.2 hResult.2.2.1 hResult.2.2.2.1 hResult.2.2.2.2
+    (hGets.2.2.1.trans ((hCopiedGet 51 (by decide)).trans (hPreserved 51 (by decide) (by decide))))
+    (hGets.2.2.2.trans ((hCopiedGet 72 (by decide)).trans
+      ((hPreserved 72 (by decide) (by decide)).trans hOwned))) hResult.2.2.1 hResult.2.2.2.1 hResult.2.2.2.2
 
 #print axioms output_append_spec
 end Project.TinyGpt2Checked.Spec

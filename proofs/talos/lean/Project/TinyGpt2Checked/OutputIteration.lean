@@ -8,33 +8,34 @@ namespace Project.TinyGpt2Checked.Spec
 open Project.TinyGpt2Infer
 open Wasm Project.TinyGpt2 Project.ProofKit ArrayPushLayout
 
-structure OutputLoopLocals (owner pointer empty : UInt64) (x : Row) (root : UInt64)
-    (count : Nat) (frame : Locals) : Prop extends OutputSaved owner pointer empty x frame where
+structure OutputLoopLocals (owner pointer emptyRoot : UInt64) (x : Row) (root : UInt64)
+    (count : Nat) (frame : Locals) : Prop extends OutputSaved owner pointer emptyRoot x frame where
   current : frame.get 24 = some (.i64 root)
   output : frame.get 25 = some (.i64 root)
-  counter : frame.get 47 = some (.i64 (UInt64.ofNat count))
-  owned : frame.get 68 = some (.i64 (if count = 0 then 0 else 1))
+  counter : frame.get 51 = some (.i64 (UInt64.ofNat count))
+  owned : frame.get 72 = some (.i64 emptyRoot)
 
 theorem output_iteration_shape : outputBody.drop 4 =
-    (outputBody.drop 4).take 29 ++ (outputBody.drop 33).take 34 ++
-      (outputBody.drop 67).take 64 ++ outputBody.drop 131 := by
+    (outputBody.drop 4).take 31 ++ (outputBody.drop 35).take 34 ++
+      (outputBody.drop 69).take 78 ++ outputBody.drop 147 := by
   have hSplit (start count : Nat) : outputBody.drop start =
       (outputBody.drop start).take count ++ outputBody.drop (start + count) := by
     simpa only [List.drop_drop] using (List.take_append_drop count (outputBody.drop start)).symm
   calc
-    outputBody.drop 4 = (outputBody.drop 4).take 29 ++ outputBody.drop 33 := hSplit 4 29
-    _ = (outputBody.drop 4).take 29 ++
-        ((outputBody.drop 33).take 34 ++ outputBody.drop 67) :=
-      congrArg ((outputBody.drop 4).take 29 ++ ·) (hSplit 33 34)
-    _ = (outputBody.drop 4).take 29 ++ ((outputBody.drop 33).take 34 ++
-        ((outputBody.drop 67).take 64 ++ outputBody.drop 131)) :=
-      congrArg (fun rest => (outputBody.drop 4).take 29 ++ ((outputBody.drop 33).take 34 ++ rest))
-        (hSplit 67 64)
+    outputBody.drop 4 = (outputBody.drop 4).take 31 ++ outputBody.drop 35 := hSplit 4 31
+    _ = (outputBody.drop 4).take 31 ++
+        ((outputBody.drop 35).take 34 ++ outputBody.drop 69) :=
+      congrArg ((outputBody.drop 4).take 31 ++ ·) (hSplit 35 34)
+    _ = (outputBody.drop 4).take 31 ++ ((outputBody.drop 35).take 34 ++
+        ((outputBody.drop 69).take 78 ++ outputBody.drop 147)) :=
+      congrArg (fun rest => (outputBody.drop 4).take 31 ++ ((outputBody.drop 35).take 34 ++ rest))
+        (hSplit 69 78)
     _ = _ := by simp only [List.append_assoc]
 
 theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (owner pointer empty : UInt64) (weights : Array UInt64) (x : Row) (start count : Nat)
     (hLocals : OutputLoopLocals owner pointer empty x (node start count).root count frame)
+    (hEmpty : empty = (node start 0).root)
     (hState : OutputMemory.State start count initial)
     (hInput : UInt64Array.At initial (node start count).root (logitPrefix weights x count))
     (hWeights : UInt64Array.At initial pointer weights) (hSize : 2488 ≤ weights.size)
@@ -79,9 +80,9 @@ theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame
     (logitPrefix weights x count) hCapacity hState hInput (logitPrefix_size weights x count)
     hSource hCopyCount hLength hVal hNextLength hNeed
     (hCur.trans (hCurrent.trans hLocals.current))
-    (hOwn.trans (hOwned.trans hLocals.owned)) hFit hMemory hPages hCap
+    (hOwn.trans (hOwned.trans hLocals.owned)) hEmpty hFit hMemory hPages hCap
   intro final released hFinal hArray hReleased hCur' hOut' hCtr' hOwn' hPages' hBytes hStore
-  have hCounter' : released.get 47 = some (.i64 (UInt64.ofNat count)) :=
+  have hCounter' : released.get 51 = some (.i64 (UInt64.ofNat count)) :=
     hCtr'.trans (hCtr.trans (hCounter.trans hLocals.counter))
   apply output_advance_spec env final released count hCount hReleased.params hReleased.locals
     hReleased.values hCounter' hReleased.step
@@ -91,7 +92,7 @@ theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame
   apply hNext final (outputAdvanceFrame released count) hFinal
     (by simpa only [logitPrefix_succ] using hArray)
     ⟨hAdvanced, hCur''.trans hCur', hOut''.trans hOut', hCtr'', ?_⟩ hPages' hBytes hStore
-  simpa only [Nat.add_eq_zero_iff, Nat.one_ne_zero, and_false, ite_false] using hOwn''.trans hOwn'
+  exact hOwn''.trans hOwn'
 
 #print axioms output_iteration_spec
 end Project.TinyGpt2Checked.Spec

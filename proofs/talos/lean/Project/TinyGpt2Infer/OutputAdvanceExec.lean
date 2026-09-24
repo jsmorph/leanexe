@@ -6,15 +6,15 @@ namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit FixedArrayFold
 
 def outputAdvanceProgram : Wasm.Program :=
-  [.localGet 45, .localSet 48, .localGet 47, .localSet 49,
-   .localGet 48, .localGet 49, .addI64, .localTee 50, .localGet 48, .ltUI64,
-   .iff 0 1 [.unreachable] [.localGet 50] [] [.i64], .localSet 45, .br 0]
+  [.localGet 50, .localSet 53, .localGet 52, .localSet 54,
+   .localGet 53, .localGet 54, .addI64, .localTee 55, .localGet 53, .ltUI64,
+   .iff 0 1 [.unreachable] [.localGet 55] [] [.i64], .localSet 50, .br 0]
 
-theorem output_advance_shape : outputBody.drop 131 = outputAdvanceProgram := rfl
+theorem output_advance_shape : outputBody.drop 147 = outputAdvanceProgram := rfl
 
 def outputAdvanceFrame (frame : Locals) (count : Nat) : Locals :=
-  [(48, UInt64.ofNat count), (49, 1), (50, UInt64.ofNat (count + 1)),
-    (45, UInt64.ofNat (count + 1))].foldl
+  [(53, UInt64.ofNat count), (54, 1), (55, UInt64.ofNat (count + 1)),
+    (50, UInt64.ofNat (count + 1))].foldl
       (fun current assignment => resultFrame current assignment.1 assignment.2) frame
 
 theorem outputAdvanceFrame_saved {frame : Locals} {pointer empty : UInt64} {x : Row}
@@ -27,24 +27,24 @@ theorem outputAdvanceFrame_saved {frame : Locals} {pointer empty : UInt64} {x : 
     | refine OutputSaved.result ?_ _ _ (by decide) (by decide) (by decide)
 
 theorem outputAdvanceFrame_get (frame : Locals) (count : Nat)
-    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 62) :
+    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 68) :
     let next := outputAdvanceFrame frame count
     next.get 23 = frame.get 23 ∧ next.get 24 = frame.get 24 ∧
-    next.get 45 = some (.i64 (UInt64.ofNat (count + 1))) ∧ next.get 66 = frame.get 66 := by
+    next.get 50 = some (.i64 (UInt64.ofNat (count + 1))) ∧ next.get 71 = frame.get 71 := by
   simp [outputAdvanceFrame, List.foldl, resultFrame, Locals.get, hParams, hLocals,
     List.getElem?_set]
 
 theorem output_advance_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (count : Nat) (hCount : count < 256)
-    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 62)
+    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 68)
     (hValues : frame.values = [])
-    (hCounter : frame.get 45 = some (.i64 (UInt64.ofNat count)))
-    (hStep : frame.get 47 = some (.i64 1))
+    (hCounter : frame.get 50 = some (.i64 (UInt64.ofNat count)))
+    (hStep : frame.get 52 = some (.i64 1))
     (Q : Assertion Unit) (hNext : Q (.Break 0 initial (outputAdvanceFrame frame count))) :
-    wp module (outputBody.drop 131) Q initial frame env := by
-  have hCounter' := Frame.internal_getElem?_of_get frame 5 40 (.i64 (UInt64.ofNat count))
+    wp module (outputBody.drop 147) Q initial frame env := by
+  have hCounter' := Frame.internal_getElem?_of_get frame 5 45 (.i64 (UInt64.ofNat count))
     hParams (by rw [hLocals]; decide) hCounter
-  have hStep' := Frame.internal_getElem?_of_get frame 5 42 (.i64 1)
+  have hStep' := Frame.internal_getElem?_of_get frame 5 47 (.i64 1)
     hParams (by rw [hLocals]; decide) hStep
   have hAdd : UInt64.ofNat count + 1 = UInt64.ofNat (count + 1) := by
     change UInt64.ofNat count + UInt64.ofNat 1 = _
