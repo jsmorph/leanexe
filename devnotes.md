@@ -1,3 +1,9 @@
+## 2026-09-24: Existing partial sequence softmax proof preserved
+
+work/sequence-softmax-1.log passes all 3,535 jobs, including the sequence function-region transports, empty and nonempty softmax branches, and public internal softmax contract. The nonempty branch now proves the temporary and returned roots distinct before following the generated alias guard. Audits contain only standard logical axioms. Program and annotation changes are maintained generated output. The sequence registration remains incomplete: no full sequence-inference theorem is claimed.
+
+The combined certificate/sequence dependency build in work/certificate-sequence-1.log reached its twelve-minute bound after completing certificate retry-loop and solver ownership dependencies, without a proof error. Follow-up checks split out the softmax helper and certificate run theorem. Completed modules are reused; the complete certificate and aggregate source gates remain pending. No unchanged silent theorem timeout was repeated.
+
 ## 2026-09-24: All three tiny-model maintained gates pass
 
 `tools/talos-proof.js check tiny_gpt2_checked` passes in work/tiny-checked-maintained-1.log (3,793 proof jobs), and `check tiny_gpt2_hidden` passes in work/tiny-hidden-maintained-1.log (3,425 jobs). Together with the earlier inference gate, all three regenerated source cases are checked with their original public numerical and execution scope. work/tiny-docs-1.log passes all 162 maintained Markdown files; a separate task.md link review finds 41 local links and no missing targets.
