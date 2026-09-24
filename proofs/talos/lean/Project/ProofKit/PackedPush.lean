@@ -37,6 +37,7 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
     (hNext : ∀ final result,
       result.values = [.i64 (allocatedRoot heap.top (need bytes) heap.nodes)] →
       Preserved frame result scratch → heap.PackedOutput initial final (need bytes) (bytes.push value.toUInt8) →
+      final.mem.pages = (heap.allocatePackedStore initial (need bytes)).mem.pages →
       wp module_ rest Q final result env) :
     wp module_ (program scratch ++ rest) Q initial frame env := by
   have hFit := fun h => (hBump h).1.le
@@ -164,6 +165,7 @@ theorem program_spec (scratch : Nat) (module_ : Wasm.Module) (env : HostEnv Unit
   · exact heap.packedOutput initial final (need bytes) (bytes.push value.toUInt8) hHeap
       (by rw [ByteArray.size_push]; exact hNeed) (fun h => (hBump h).1) hPages
       (by simpa only [ByteArray.size_push, Nat.add_assoc] using hWrites) hBytes
+  · exact hWrites.2.1
 
 #print axioms program_spec
 end Project.ProofKit.PackedPush
