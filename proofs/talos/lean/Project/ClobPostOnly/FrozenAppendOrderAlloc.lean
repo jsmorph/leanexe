@@ -1,4 +1,4 @@
-import Project.ClobPostOnly.AppendOrderCopy
+import Project.ClobPostOnly.FrozenAppendOrderCopy
 import Project.FixedArrayAllocation
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
@@ -12,10 +12,10 @@ bump allocation, header writes, and length initialization.  Its postcondition
 is the copy-loop invariant at an empty prefix.
 -/
 
-namespace Project.ClobPostOnly.AppendOrderAlloc
+namespace Project.ClobPostOnly.Frozen.AppendOrderAlloc
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobPostOnly.Allocation Project.ClobPostOnly.AppendOrderCopy
+  Project.ClobPostOnly.Frozen.Allocation Project.ClobPostOnly.Frozen.AppendOrderCopy
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -24,103 +24,103 @@ def appendAllocFrame (ptr : UInt64) (order : OrderL) (n : Nat) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1,
-      .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0,
-      .i64 0, .i64 0, .i64 ptr, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
-      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1), .i64 0, .i64 0,
-      .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
-      .i64 order.oqty, .i64 0, .i64 0, .i64 (orderArrayBytesU (n + 1)),
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0],
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 ptr, .i64 (UInt64.ofNat n),
+      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
+      .i64 0, .i64 0, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 0, .i64 0,
+      .i64 (orderArrayBytesU (n + 1)),
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
 def appendOrderAllocScanBodyProg : Wasm.Program :=
   [
-  .localGet 51,
+  .localGet 49,
   .constI64 (0 : UInt64),
   .eqI64,
   .br_if 1,
-  .localGet 54,
+  .localGet 52,
   .constI64 (0 : UInt64),
   .neI64,
   .br_if 1,
-  .localGet 51,
+  .localGet 49,
   .constI64 (32 : UInt64),
   .subI64,
   .wrapI64,
   .load64 (0 : UInt32),
-  .localSet 52,
-  .localGet 51,
+  .localSet 50,
+  .localGet 49,
   .constI64 (8 : UInt64),
   .subI64,
   .wrapI64,
   .load64 (0 : UInt32),
-  .localSet 53,
-  .localGet 52,
-  .localGet 49,
+  .localSet 51,
+  .localGet 50,
+  .localGet 47,
   .geUI64,
   .iff 0 0 [
-    .localGet 50,
+    .localGet 48,
     .constI64 (0 : UInt64),
     .eqI64,
     .iff 0 0 [
-      .localGet 53,
+      .localGet 51,
       .globalSet 1
     ] [
-      .localGet 50,
+      .localGet 48,
       .constI64 (8 : UInt64),
       .subI64,
       .wrapI64,
-      .localGet 53,
+      .localGet 51,
       .store64 (0 : UInt32)
     ],
-    .localGet 51,
+    .localGet 49,
     .constI64 (48 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5501223100278326855 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 51,
+    .localGet 49,
     .constI64 (40 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (1 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 51,
+    .localGet 49,
     .constI64 (32 : UInt64),
     .subI64,
     .wrapI64,
-    .localGet 52,
+    .localGet 50,
     .store64 (0 : UInt32),
-    .localGet 51,
+    .localGet 49,
     .constI64 (24 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (2 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 51,
+    .localGet 49,
     .constI64 (16 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 51,
+    .localGet 49,
     .constI64 (8 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (0 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 51,
-    .localSet 54
+    .localGet 49,
+    .localSet 52
   ] [
+    .localGet 49,
+    .localSet 48,
     .localGet 51,
-    .localSet 50,
-    .localGet 53,
-    .localSet 51
+    .localSet 49
   ],
   .br 0
 ]
@@ -130,35 +130,35 @@ def appendOrderAllocProg : Wasm.Program :=
   .block 0 0 [
     .loop 0 0 appendOrderAllocScanBodyProg
   ],
-  .localGet 54,
+  .localGet 52,
   .constI64 (0 : UInt64),
   .eqI64,
   .iff 0 0 [
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localGet 49,
+    .localGet 47,
     .addI64,
-    .localTee 52,
+    .localTee 50,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
       .unreachable
     ] [],
-    .localGet 52,
+    .localGet 50,
     .constI64 (1 : UInt64),
     .subI64,
     .constI64 (65536 : UInt64),
     .divUI64,
     .constI64 (1 : UInt64),
     .addI64,
-    .localSet 53,
+    .localSet 51,
     .memorySize,
     .extendUI32,
-    .localGet 53,
+    .localGet 51,
     .ltUI64,
     .iff 0 0 [
-      .localGet 53,
+      .localGet 51,
       .memorySize,
       .extendUI32,
       .subI64,
@@ -173,40 +173,40 @@ def appendOrderAllocProg : Wasm.Program :=
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localSet 54,
-    .localGet 52,
+    .localSet 52,
+    .localGet 50,
     .globalSet 0,
-    .localGet 54,
+    .localGet 52,
     .constI64 (48 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5501223100278326855 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 54,
+    .localGet 52,
     .constI64 (40 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (1 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 54,
+    .localGet 52,
     .constI64 (32 : UInt64),
     .subI64,
     .wrapI64,
-    .localGet 49,
+    .localGet 47,
     .store64 (0 : UInt32),
-    .localGet 54,
+    .localGet 52,
     .constI64 (24 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (2 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 54,
+    .localGet 52,
     .constI64 (16 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 54,
+    .localGet 52,
     .constI64 (8 : UInt64),
     .subI64,
     .wrapI64,
@@ -217,14 +217,14 @@ def appendOrderAllocProg : Wasm.Program :=
   .constI64 (1 : UInt64),
   .addI64,
   .globalSet 2,
-  .localGet 54,
-  .localSet 40,
-  .localGet 40,
+  .localGet 52,
+  .localSet 38,
+  .localGet 38,
   .wrapI64,
-  .localGet 39,
+  .localGet 37,
   .store64 (0 : UInt32),
   .constI64 (0 : UInt64),
-  .localSet 41
+  .localSet 39
 ]
 
 set_option Elab.async false in
@@ -419,4 +419,4 @@ theorem appendOrderAllocProg_spec (env : HostEnv Unit) (st0 : Store Unit)
     · intro w hw
       omega
 
-end Project.ClobPostOnly.AppendOrderAlloc
+end Project.ClobPostOnly.Frozen.AppendOrderAlloc

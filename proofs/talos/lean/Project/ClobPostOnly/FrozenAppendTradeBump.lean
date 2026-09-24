@@ -1,4 +1,4 @@
-import Project.ClobPostOnly.AppendTradeBumpChecks
+import Project.ClobPostOnly.FrozenAppendTradeBumpChecks
 import Interpreter.Wasm.Wp.Block
 
 /-!
@@ -11,10 +11,10 @@ this proof separately keeps the scan and order-copy proofs out of its
 elaboration unit.
 -/
 
-namespace Project.ClobPostOnly.AppendTradeBump
+namespace Project.ClobPostOnly.Frozen.AppendTradeBump
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobPostOnly.Allocation
+  Project.ClobPostOnly.Frozen.Allocation
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -23,35 +23,35 @@ abbrev appendTradeAllocFrame := AppendTradeBumpChecks.appendTradeAllocFrame
 
 def appendTradeBumpProg : Wasm.Program :=
   [
-  .localGet 48,
+  .localGet 46,
   .constI64 (0 : UInt64),
   .eqI64,
   .iff 0 0 [
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localGet 43,
+    .localGet 41,
     .addI64,
-    .localTee 46,
+    .localTee 44,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
       .unreachable
     ] [],
-    .localGet 46,
+    .localGet 44,
     .constI64 (1 : UInt64),
     .subI64,
     .constI64 (65536 : UInt64),
     .divUI64,
     .constI64 (1 : UInt64),
     .addI64,
-    .localSet 47,
+    .localSet 45,
     .memorySize,
     .extendUI32,
-    .localGet 47,
+    .localGet 45,
     .ltUI64,
     .iff 0 0 [
-      .localGet 47,
+      .localGet 45,
       .memorySize,
       .extendUI32,
       .subI64,
@@ -66,40 +66,40 @@ def appendTradeBumpProg : Wasm.Program :=
     .globalGet 0,
     .constI64 (48 : UInt64),
     .addI64,
-    .localSet 48,
-    .localGet 46,
+    .localSet 46,
+    .localGet 44,
     .globalSet 0,
-    .localGet 48,
+    .localGet 46,
     .constI64 (48 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (5501223100278326855 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 48,
+    .localGet 46,
     .constI64 (40 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (1 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 48,
+    .localGet 46,
     .constI64 (32 : UInt64),
     .subI64,
     .wrapI64,
-    .localGet 43,
+    .localGet 41,
     .store64 (0 : UInt32),
-    .localGet 48,
+    .localGet 46,
     .constI64 (24 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (2 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 48,
+    .localGet 46,
     .constI64 (16 : UInt64),
     .subI64,
     .wrapI64,
     .constI64 (4 : UInt64),
     .store64 (0 : UInt32),
-    .localGet 48,
+    .localGet 46,
     .constI64 (8 : UInt64),
     .subI64,
     .wrapI64,
@@ -110,16 +110,16 @@ def appendTradeBumpProg : Wasm.Program :=
   .constI64 (1 : UInt64),
   .addI64,
   .globalSet 2,
-  .localGet 48,
-  .localSet 36,
-  .localGet 36,
+  .localGet 46,
+  .localSet 34,
+  .localGet 34,
   .wrapI64,
   .constI64 (0 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 36,
-  .localSet 34,
   .localGet 34,
-  .localSet 35
+  .localSet 26,
+  .localGet 26,
+  .localSet 33
 ]
 
 abbrev appendTradePost := AppendTradeStore.appendTradePost
@@ -191,4 +191,4 @@ theorem appendTradeBumpProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
   | ReturnCall fid st' vs => simpa only [appendTradeAssertion] using hc
   | Throwing tag args st' s' => simpa only [appendTradeAssertion] using hc
 
-end Project.ClobPostOnly.AppendTradeBump
+end Project.ClobPostOnly.Frozen.AppendTradeBump

@@ -1,10 +1,10 @@
-import Project.ClobPostOnly.SearchHelpers
-import Project.ClobPostOnly.SearchRegion
-import Project.ClobFindBest.Loop
+import Project.ClobPostOnly.FrozenSearchHelpers
+import Project.ClobPostOnly.FrozenSearchRegion
+import Project.ClobFindBest.FrozenLoop
 
-namespace Project.ClobPostOnly.FindBest
+namespace Project.ClobPostOnly.Frozen.FindBest
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobFindBest.Model
+  Project.ClobFindBest.Frozen.Model
 
 theorem func12_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
     (os : List OrderL) (taker : OrderL)
@@ -15,6 +15,6 @@ theorem func12_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
        .i64 0, .i64 (UInt64.ofNat (os.length + 1))]
       (fun st' vs => vs = optionVals (findBestL os taker) ∧ st' = st) := by
   exact Project.FunctionRegion.terminatesWith SearchRegion.searchShift 7 (by simp [SearchRegion.SearchDomain])
-    (Project.ClobFindBest.Loop.func7_spec_owner env st 0 ptr os taker hlen hInput)
+    (Project.ClobFindBest.Frozen.Loop.func7_spec_owner env st 0 ptr os taker hlen hInput)
 
-end Project.ClobPostOnly.FindBest
+end Project.ClobPostOnly.Frozen.FindBest

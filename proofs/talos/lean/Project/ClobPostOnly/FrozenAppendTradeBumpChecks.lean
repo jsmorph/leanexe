@@ -1,4 +1,4 @@
-import Project.ClobPostOnly.AppendTradeBranchStore
+import Project.ClobPostOnly.FrozenAppendTradeBranchStore
 
 /-!
 # Trade-array bump checks
@@ -9,10 +9,10 @@ program, so symbolic execution cannot expand the stores or the outer tail.  The
 result separates control-flow arithmetic from memory initialization.
 -/
 
-namespace Project.ClobPostOnly.AppendTradeBumpChecks
+namespace Project.ClobPostOnly.Frozen.AppendTradeBumpChecks
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobPostOnly.Allocation
+  Project.ClobPostOnly.Frozen.Allocation
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -22,17 +22,18 @@ def appendTradeAllocFrame (ptr g0 : UInt64) (order : OrderL)
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1,
-      .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0,
-      .i64 0, .i64 0, .i64 ptr, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 (g0 + 48), .i64 (g0 + 48),
-      .i64 0, .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
-      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1), .i64 (g0 + 48), .i64 (UInt64.ofNat (n * 5)),
-      .i64 order.oid, .i64 8, .i64 0, .i64 0,
-      .i64 order.oqty, .i64 0, .i64 0, .i64 (orderArrayBytesU (n + 1)),
-      .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)), .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1),
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
+      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 (g0 + 48),
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 (g0 + 48), .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
+      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
+      .i64 (g0 + 48), .i64 (UInt64.ofNat (n * 5)),
+      .i64 order.oid, .i64 8, .i64 0, .i64 0, .i64 order.oqty,
+      .i64 0, .i64 0, .i64 (orderArrayBytesU (n + 1)),
+      .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
+      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1),
       .i64 (g0 + 48)],
     values := [] }
 
@@ -41,28 +42,28 @@ def appendTradeBumpBranchProg : Wasm.Program :=
   .globalGet 0,
   .constI64 (48 : UInt64),
   .addI64,
-  .localGet 43,
+  .localGet 41,
   .addI64,
-  .localTee 46,
+  .localTee 44,
   .globalGet 0,
   .ltUI64,
   .iff 0 0 [
     .unreachable
   ] [],
-  .localGet 46,
+  .localGet 44,
   .constI64 (1 : UInt64),
   .subI64,
   .constI64 (65536 : UInt64),
   .divUI64,
   .constI64 (1 : UInt64),
   .addI64,
-  .localSet 47,
+  .localSet 45,
   .memorySize,
   .extendUI32,
-  .localGet 47,
+  .localGet 45,
   .ltUI64,
   .iff 0 0 [
-    .localGet 47,
+    .localGet 45,
     .memorySize,
     .extendUI32,
     .subI64,
@@ -77,40 +78,40 @@ def appendTradeBumpBranchProg : Wasm.Program :=
   .globalGet 0,
   .constI64 (48 : UInt64),
   .addI64,
-  .localSet 48,
-  .localGet 46,
+  .localSet 46,
+  .localGet 44,
   .globalSet 0,
-  .localGet 48,
+  .localGet 46,
   .constI64 (48 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (5501223100278326855 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 48,
+  .localGet 46,
   .constI64 (40 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (1 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 48,
+  .localGet 46,
   .constI64 (32 : UInt64),
   .subI64,
   .wrapI64,
-  .localGet 43,
+  .localGet 41,
   .store64 (0 : UInt32),
-  .localGet 48,
+  .localGet 46,
   .constI64 (24 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (2 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 48,
+  .localGet 46,
   .constI64 (16 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (4 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 48,
+  .localGet 46,
   .constI64 (8 : UInt64),
   .subI64,
   .wrapI64,
@@ -198,4 +199,4 @@ theorem appendTradeBumpBranchProg_spec (env : HostEnv Unit)
     AppendTradeStore.appendTradeStoreHeaderProg,
     AppendTradeStore.appendTradeStoreFrame] using hHeader
 
-end Project.ClobPostOnly.AppendTradeBumpChecks
+end Project.ClobPostOnly.Frozen.AppendTradeBumpChecks

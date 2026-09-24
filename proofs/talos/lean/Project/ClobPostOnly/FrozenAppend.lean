@@ -1,8 +1,8 @@
-import Project.ClobPostOnly.FindBestWrapper
-import Project.ClobPostOnly.ValidOrder
-import Project.ClobPostOnly.AppendOrderAlloc
-import Project.ClobPostOnly.AppendOrderFinish
-import Project.ClobPostOnly.AppendTrade
+import Project.ClobPostOnly.FrozenFindBestWrapper
+import Project.ClobPostOnly.FrozenValidOrder
+import Project.ClobPostOnly.FrozenAppendOrderAlloc
+import Project.ClobPostOnly.FrozenAppendOrderFinish
+import Project.ClobPostOnly.FrozenAppendTrade
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 
@@ -15,14 +15,14 @@ and the emitted word-copy loop.  The result states exact contents, ownership,
 counter changes, and the preserved input region.
 -/
 
-namespace Project.ClobPostOnly.Append
+namespace Project.ClobPostOnly.Frozen.Append
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
-  Project.ClobFindBest.Model Project.ClobPostOnly.Model
-  Project.ClobPostOnly.ValidOrder Project.ClobPostOnly.FindBestWrapper
-  Project.ClobPostOnly.Allocation Project.ClobPostOnly.AppendStore
-  Project.ClobPostOnly.AppendTrade
-  Project.ClobPostOnly.SearchHelpers
+  Project.ClobFindBest.Frozen.Model Project.ClobPostOnly.Frozen.Model
+  Project.ClobPostOnly.Frozen.ValidOrder Project.ClobPostOnly.Frozen.FindBestWrapper
+  Project.ClobPostOnly.Frozen.Allocation Project.ClobPostOnly.Frozen.AppendStore
+  Project.ClobPostOnly.Frozen.AppendTrade
+  Project.ClobPostOnly.Frozen.SearchHelpers
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -132,24 +132,18 @@ theorem postOnly_appended
   · change wp «module» func17 _ st
       { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
           .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-        locals := [.i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 0],
+        locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func17
     wp_run
     refine wp_call_tw
-      (Project.ClobPostOnly.ValidOrder.func6_spec env st ptr os order hlen
+      (Project.ClobPostOnly.Frozen.ValidOrder.func6_spec env st ptr os order hlen
         hInput) ?_
     rintro st1 vs ⟨rfl, rfl⟩
     simp only [boolWord, if_pos hValid]
@@ -163,7 +157,7 @@ theorem postOnly_appended
     rw [if_pos (by simp)]
     wp_run
     refine wp_call_tw
-      (Project.ClobPostOnly.FindBestWrapper.func13_spec env st1 ptr os order
+      (Project.ClobPostOnly.Frozen.FindBestWrapper.func13_spec env st1 ptr os order
         hlen hInput) ?_
     rintro st2 vs ⟨hvs, rfl⟩
     simp [optionVals, hNoCross] at hvs
@@ -175,7 +169,7 @@ theorem postOnly_appended
     rw [if_pos (by simp)]
     wp_run
     refine wp_call_tw
-      (Project.ClobPostOnly.Allocation.func15_spec env st2) ?_
+      (Project.ClobPostOnly.Frozen.Allocation.func15_spec env st2) ?_
     rintro st3 vs ⟨rfl, rfl⟩
     wp_run
     simp
@@ -230,4 +224,4 @@ theorem postOnly_appended
         simp only [AppendTrade.appendTradeAssertion,
           AppendTradeStore.appendTradeAssertion] at hc
 
-end Project.ClobPostOnly.Append
+end Project.ClobPostOnly.Frozen.Append
