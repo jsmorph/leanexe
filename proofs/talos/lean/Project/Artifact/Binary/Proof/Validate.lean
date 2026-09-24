@@ -1192,6 +1192,16 @@ theorem exists_eq_singleton_of_length_eq_one {α : Type} (values : List α)
       | nil => exact ⟨head, rfl⟩
       | cons next rest => simp at h
 
+theorem validateMemories_sound {memories : List MemoryType}
+    (h : Validator.validateMemories memories = .ok ()) :
+    memories = [] ∨ ∃ memory, memories = [memory] ∧ Validity.LimitsValid memory.limits := by
+  cases memories with
+  | nil => exact .inl rfl
+  | cons memory rest =>
+      cases rest with
+      | nil => exact .inr ⟨memory, rfl, validateLimits_sound h⟩
+      | cons next rest => contradiction
+
 theorem validateRaw_sound {module_ : RawModule}
     (h : Validator.validateRaw module_ = .ok ()) :
     CoreValid module_ := by
@@ -1201,33 +1211,22 @@ theorem validateRaw_sound {module_ : RawModule}
   · contradiction
   · rename_i parsedSections _ hsections
     split at h
-    · rename_i hmemoryCount
+    · contradiction
+    · rename_i parsedMemories _ hmemories
       split at h
       · contradiction
-      · rename_i parsedLimits _ hlimits
+      · rename_i parsedGlobals _ hglobals
         split at h
         · contradiction
-        · rename_i parsedGlobals _ hglobals
+        · rename_i parsedExports _ hexports
           split at h
           · contradiction
-          · rename_i parsedExports _ hexports
-            split at h
-            · contradiction
-            · rename_i parsedTypes functions htypes
-              unfold CoreValid Validity.ModuleValid
-              refine ⟨validateSections_sound (by simpa using hsections), ?_,
-                validateGlobals_sound module_.globals (by simpa using hglobals),
-                validateExports_sound (by simpa using hexports), ?_⟩
-              · rcases exists_eq_singleton_of_length_eq_one
-                    module_.memories hmemoryCount with ⟨memory, hmemory⟩
-                refine ⟨memory, hmemory, ?_⟩
-                apply validateLimits_sound
-                rw [hmemory] at hlimits
-                change Validator.validateLimits memory.limits = .ok _ at hlimits
-                simpa using hlimits
-              · exact ⟨functions, resolveFunctionTypes_sound htypes,
-                  validateFunctions_sound h⟩
-    · contradiction
+          · rename_i parsedTypes functions htypes
+            exact ⟨validateSections_sound (by simpa using hsections),
+              validateMemories_sound (by simpa using hmemories),
+              validateGlobals_sound module_.globals (by simpa using hglobals),
+              validateExports_sound (by simpa using hexports),
+              functions, resolveFunctionTypes_sound htypes, validateFunctions_sound h⟩
 
 theorem validate_sound {module_ : RawModule} {validated : ValidatedModule}
     (h : validate module_ = .ok validated) :

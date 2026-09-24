@@ -488,12 +488,14 @@ def validateFunctions (module_ : RawModule) (functions : List FuncType) :
     Except ValidationError Unit :=
   validateFunctionPairs module_ functions 0 functions module_.codes
 
+def validateMemories : List MemoryType → Except ValidationError Unit
+  | [] => pure ()
+  | [memory] => validateLimits memory.limits
+  | memories => moduleFailure (.memoryCount memories.length)
+
 def validateRaw (module_ : RawModule) : Except ValidationError Unit := do
   validateSections module_
-  if module_.memories.length = 1 then
-    validateLimits module_.memories.head!.limits
-  else
-    moduleFailure (.memoryCount module_.memories.length)
+  validateMemories module_.memories
   validateGlobals module_.globals
   validateExports module_
   let functions ← resolveFunctionTypes module_

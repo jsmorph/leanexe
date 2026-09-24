@@ -65,26 +65,26 @@ the dividend, and shift counts modulo 64.
 
 - [x] Independent scalar admission judgment and terminating checker.
 - [x] Checker soundness and completeness.
-- [ ] Explicit ABI, core execution contract, value representation, source
+- [x] Explicit ABI, core execution contract, value representation, source
       certificate, and final artifact contract.
-- [ ] Well-formed locals, calls, indices, signatures, exports, and result arities.
-- [ ] Explicit numeric behavior and termination premises.
+- [x] Well-formed locals, calls, indices, signatures, exports, and result arities.
+- [x] Explicit numeric behavior and termination premises.
 
 ### 2. Existing type work
 
-- [ ] Reuse word w64, arithmetic laws, typing, machine semantics, renaming,
+- [x] Reuse word w64, arithmetic laws, typing, machine semantics, renaming,
       and sequencing.
 - [x] Use ordinary typing and strict evaluation; relevance is separate.
-- [ ] Allow unused scalar parameters/bindings and justify discarded evaluation.
-- [ ] Specify loops independently, directly or by proved recursive expansion.
-- [ ] Relate the profile to the independent language; do not substitute the
+- [x] Allow unused scalar parameters/bindings and justify discarded evaluation.
+- [x] Specify loops independently, directly or by proved recursive expansion.
+- [x] Relate the profile to the independent language; do not substitute the
       diagnostic compiler IR evaluator as its semantics.
 
 ### 3. Source certificates: early feasibility gate
 
-- [ ] Freeze scalar-core representations and prove certificates naming the
+- [x] Freeze scalar-core representations and prove certificates naming the
       original Lean functions.
-- [ ] Reusable arithmetic, binding, branch, call, and iteration certificate rules.
+- [x] Reusable arithmetic, binding, branch, call, and iteration certificate rules.
 - [x] Arithmetic.affine certificate.
 - [x] Arithmetic.choose certificate.
 - [x] Loop certificate before large backend work.
@@ -92,22 +92,22 @@ the dividend, and shift counts modulo 64.
 
 ### 4. Verified scalar backend
 
-- [ ] Total scalar lowering used by the actual certified compiler path.
-- [ ] Explicit semantics and well-formedness for any intervening IR.
+- [x] Total scalar lowering used by the actual certified compiler path.
+- [x] Explicit semantics and well-formedness for any intervening IR.
 - [x] Primitive lowering, including guarded division and remainder.
-- [ ] Locals, strict staging, scratch noninterference, and branches.
-- [ ] Helper calls, arguments, and returns.
-- [ ] Loops, simultaneous carried updates, and termination transfer.
-- [ ] Module validity and function/type/export indexing.
-- [ ] Scalar-only module assembly without unused allocator machinery.
-- [ ] Generic correctness for every admitted well-formed program, without
+- [x] Locals, strict staging, scratch noninterference, and branches.
+- [x] Helper calls, arguments, and returns.
+- [x] Loops, simultaneous carried updates, and termination transfer.
+- [x] Module validity and function/type/export indexing.
+- [x] Scalar-only module assembly without unused allocator machinery.
+- [x] Generic correctness for every admitted well-formed program, without
       handwritten per-program WASM instruction proofs.
 
 ### 5. Exact bytes and certified compilation
 
-- [ ] Independent artifact decoding and validation.
+- [x] Independent artifact decoding and validation.
 - [ ] Full decoded-module equality with verified lowering.
-- [ ] Composition of source correspondence, lowering, and byte equality.
+- [x] Composition of source correspondence, lowering, and byte equality.
 - [ ] Explicit compile-certified --profile scalar64 command or equivalent.
 - [ ] Fail closed on unsupported source, stale evidence, or failed checking.
 - [ ] Portable package recording source, core/IR, ABI, export, bytes, certificates,
@@ -233,3 +233,37 @@ Call/loop lowering correctness, module checking, byte closure, and the command-l
 gates remain unfinished. The independent binary validator's legacy one-memory
 requirement is being extended, with a soundness proof, to permit scalar modules
 with zero memories while still rejecting memory operations in those modules.
+
+### 2026-09-24: generic backend and all source/IR pilots checked
+
+Added the total command lowerer, explicit IR total-execution semantics, argument
+staging proof, store-preserving function/call theorem, structured loop proof,
+scalar-only module assembly, and local/scratch/signature/DAG admission checks.
+Executes.lower_spec is generic across commands, functions, inputs, surrounding
+stacks, stores, and host environments. Termination is a semantic premise of the
+IR execution evidence; each pilot supplies it. The loop invariant/measure is
+stated entirely in IR semantics and transferred through the shared backend theorem.
+
+Added Certificate.correct and Artifact.valid_and_correct, composing the original
+source declaration, independent core execution, IR evidence, full-module byte
+closure, formal decoder grammar, independent validity, and WASM termination with
+the source result and unchanged store. This is certificate-checked compilation:
+source/IR correspondence is checked per accepted translation; generation itself
+is untrusted. No correctness claim is made for the ordinary uncertified compiler.
+
+All five pilot source/IR certificates pass. GCD stages carried updates and uses
+the generic loop lowering theorem; it contains no WASM instruction proof. Added
+the encoder, which consumes the actual proved lowerer. Exact-byte equalities are
+now being checked; they are not yet marked complete.
+
+The binary validator now accepts zero or one memory, with its soundness theorem
+updated. The prior one-memory composition helper remains checked. ValidationTests
+passes acceptance and formal validity for zero/one memory and rejects a memory
+load without memory, an invalid local, an invalid callee, and two memories.
+Backend and validator dependency audits contain only the declared standard axioms.
+
+Passed in proofs/talos/lean: lake build Project.Correct.Scalar64.Backend;
+lake build Project.Correct.Scalar64.Encode; lake build
+Project.Correct.Scalar64.Pilots; lake build Project.Correct.Scalar64.Gcd;
+lake build Project.Correct.Scalar64.ValidationTests. Module/byte closure packages,
+CLI rejection gates, mutation tests, and clean verification remain open.
