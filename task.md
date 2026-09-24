@@ -383,3 +383,16 @@ section emitters with their exact list-of-bytes encodings. ContainerParsing
 proves exact consumption for bounded parsers, sized payloads, and vectors,
 including the decoder's remaining-input checks. Both modules build. These are
 general module/body assembly lemmas, not yet a complete module theorem.
+
+### Decoded arithmetic instructions to execution (checked)
+
+ArithmeticTranslation proves raw decoded arithmetic syntax translates to the
+previously proved executable program, including exact signed-constant bit
+reconstruction and static control annotations. ArithmeticFunctionBytes composes
+this with the actual function emitter and decoder: the complete emitted
+instruction bytes decode to a program that executes with the arithmetic IR's
+proved value. This theorem still assumes the existing IR evaluation premise;
+the earlier general source-extraction theorem supplies it, but the composed
+source-byte statement is not yet added. It does not cover the enclosing module
+or exported invocation. Both new modules build. Narrowed the binary translator's
+import to the interpreter syntax it uses; its implementation is unchanged.
