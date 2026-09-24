@@ -179,7 +179,8 @@ presentation. No premise assumes one of these safety conclusions.
 | [EqualityTypes.lean](../LeanExe/TypeSafety/EqualityTypes.lean) | Independent equality-domain judgments, formation, exact terminating admission checker. |
 | [Renaming.lean](../LeanExe/TypeSafety/Renaming.lean) | Capture-avoiding traversal, pointwise algebra, context transport, typing preservation and weakening. |
 | [RenamingProfile.lean](../LeanExe/TypeSafety/RenamingProfile.lean) | Exact free-occurrence images, protected-prefix use, relevance invariance, and profile typing transport. |
-| [RenamingEnvironments.lean](../LeanExe/TypeSafety/RenamingEnvironments.lean) | Exact raw environment lookup correspondence and arity-preserving branch lookup; machine correspondence is pending. |
+| [RenamingEnvironments.lean](../LeanExe/TypeSafety/RenamingEnvironments.lean) | Exact raw environment lookup correspondence and arity-preserving branch lookup. |
+| [RenamingDynamics.lean](../LeanExe/TypeSafety/RenamingDynamics.lean) | Raw frame/state correspondence, exact step-result matching, both finite-trace directions, and return/overflow/stuck-reachability equivalences. |
 | [TypeSafety.lean](../LeanExe/TypeSafety.lean) | Independent import target. |
 
 Run the maintained [verification gate](../tools/type-safety.js):
@@ -203,9 +204,10 @@ The gate checks the version against `lean-toolchain`, builds only the independen
 [38 equality-domain examples](../test/type_safety_equality_domain.lean),
 [35 source equality examples](../test/type_safety_structural_equality.lean),
 [26 renaming examples](../test/type_safety_renaming.lean),
-[27 renaming-profile examples](../test/type_safety_renaming_profile.lean), and
-[17 environment-correspondence examples](../test/type_safety_renaming_environments.lean). It audits the
-transitive axiom dependencies of all 365 declared theorems across the seventeen
+[27 renaming-profile examples](../test/type_safety_renaming_profile.lean),
+[17 environment-correspondence examples](../test/type_safety_renaming_environments.lean), and
+[26 renaming-execution examples](../test/type_safety_renaming_dynamics.lean). It audits the
+transitive axiom dependencies of all 383 declared theorems across the eighteen
 development modules. The maintained list includes helper proofs as well as the
 main safety results.
 Missing audit results or any axiom other than `propext` fail the gate.
@@ -353,8 +355,9 @@ a preserved prefix.
 
 These are raw typing and syntax results. Public admission still requires
 formation of the inserted context. Relevance preservation is checked below.
-Operational correspondence and any signature-changing program transformation
-remain separate obligations. A forward context map alone does not imply inference
+Operational correspondence is proved under the separate environment relation
+below; signature-changing program transformations remain separate obligations.
+A forward context map alone does not imply inference
 equivalence for originally ill-typed expressions.
 
 
@@ -373,6 +376,21 @@ including missing entries, after applying the map. Its identity, empty,
 composition, lifting, prefix, and insertion laws are checked.
 `renameBranches_lookup` preserves selected position, arity, and absence.
 These support laws use no axioms. They are independent of type-context transport:
-a raw sum value may inhabit more than one sum type. The next step is the raw
-frame/state relation and proof that machine steps and finite observations
-correspond under these environment hypotheses.
+a raw sum value may inhabit more than one sum type.
+
+`FrameCorresponds`, `KontCorresponds`, and `StateCorresponds` relate raw
+configurations. Each suspended frame retains its own map and corresponding
+environment; stored values and metadata agree exactly. Fresh calls use identical
+argument lists and unchanged program bodies, under the identity map.
+`StateCorresponds.step` relates the actual optional successor results, including
+absence on both sides. Terminality and stuckness are equivalent; the overflow
+terminal predicate is unchanged.
+
+`steps_forward` and `steps_backward` transfer arbitrary finite traces using the
+same oriented relation, without assuming an inverse variable map. The public
+`rename_returns_iff`, `rename_overflows_iff`, and `rename_reaches_stuck_iff` compare
+expressions under corresponding environments and initially empty continuations.
+They give equivalence of each exact returned value, each exact tagged overflow
+record, and finite stuck reachability. No typing, termination, injectivity, or
+compiler assumption appears in these theorems. The same program table is used
+on both sides.

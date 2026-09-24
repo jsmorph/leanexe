@@ -846,7 +846,8 @@ memory-management implementation, or compiler correctness.
 - [x] Prove hygienic renaming, pointwise algebra, context transport, typing preservation and weakening.
 - [x] Prove exact occurrence/relevance preservation under arbitrary renaming and protected-prefix parameter use.
 - [x] Prove exact raw environment lookup correspondence and branch lookup support.
-- [ ] Prove operational renaming correspondence for derived callback work.
+- [x] Prove operational renaming correspondence for derived callback work.
+- [ ] Prove continuation extension and execution decomposition for exact derived-form semantics.
 - [ ] Define and prove Option/Except combinators, resolving captured-variable hygiene and payload-discard policy.
 - [ ] Extend raw binary64, bytes, remaining data generalizations, and collection operations with complete semantics and operation laws.
 - [ ] Extend canonical forms, binding lemmas, preservation, progress, and reachable-state safety to each specified language extension.
@@ -871,8 +872,10 @@ are also checked. Structural equality now has an independent admission domain,
 an exact checker, strict source semantics, full metatheory, and exact result
 laws. Hygienic renaming, its algebra, typing transport, and weakening are now
 checked, as are exact occurrence/relevance preservation and profile typing
-transport. Next, prove operational correspondence with explicit environment
-and continuation relations.
+transport. Raw step correspondence and finite-execution equivalences now hold
+under exact environment agreement, with the same program on both sides. Next,
+prove continuation extension and execution decomposition to support complete
+derived-form behavior laws.
 Option/Except payload-discard policy remains an explicit obligation.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.
