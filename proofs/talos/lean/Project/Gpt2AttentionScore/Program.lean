@@ -82,8 +82,6 @@ def func1 : Wasm.Program :=
   .localSet 28,
   .localGet 5,
   .localSet 6,
-  .constI64 0,
-  .localSet 42,
   .block 0 0 [
    .loop 0 0 [
     .localGet 26,
@@ -310,8 +308,6 @@ def func1 : Wasm.Program :=
     .localSet 40,
     .localGet 41,
     .localSet 6,
-    .constI64 1,
-    .localSet 42,
     .localGet 40,
     .constI64 0,
     .neI64,
