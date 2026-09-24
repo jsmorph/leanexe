@@ -411,6 +411,14 @@ const auditedTheorems = [
   "appendKont_returns_iff",
   "appendKont_overflows_iff",
   "appendKont_reaches_stuck_iff",
+  "Steps.head_iff",
+  "Steps.eq_of_no_step",
+  "steps_from_no_step_iff",
+  "steps_iff_of_step_to_no_step",
+  "reaches_stuck_iff_of_step",
+  "sequence_returns_iff",
+  "sequence_overflows_iff",
+  "sequence_reaches_stuck_iff",
 ].map(name => `LeanExe.TypeSafety.${name}`);
 // Match the reviewed dependency set; expanding it requires an explicit review.
 // In particular this rejects sorryAx, native evaluation certificates, and

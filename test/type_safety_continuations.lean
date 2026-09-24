@@ -102,4 +102,27 @@ example : ∃ final, Steps [] ((initial (.bool true)).appendKont [.natBinRight .
     .ret (.bool true) [.natBinRight .add (.nat 1)],
     run_steps [] 20 (initial (.bool true)), .refl, rfl, fun impossible => impossible⟩)
 
+-- First-step removal needs its no-successor endpoint premise.
+example : ¬ (Steps [] (initial (.nat 4)) (initial (.nat 4)) ↔
+    Steps [] (.ret (.nat 4) []) (initial (.nat 4))) := by
+  intro equivalence
+  have backward := equivalence.mp Steps.refl
+  have impossible := backward.eq_of_no_step rfl
+  cases impossible
+example : Steps [] (.ret .unit [.fst]) final ↔ final = .ret .unit [.fst] :=
+  steps_from_no_step_iff rfl
+example : ∃ value, Steps [] (initial (.nat 4)) (.ret value []) ∧
+    Steps [] (.ret value [.inr]) (.ret (.inr (.nat 4)) []) :=
+  (sequence_returns_iff (program := []) (before := initial (.inr .unit (.nat 4)))
+    (operand := initial (.nat 4)) (suffix := [.inr]) rfl).mp
+      (run_steps [] 20 (initial (.inr .unit (.nat 4))))
+example : Steps [] (initial (.inr .unit overflowMul)) (.overflow .mul largest 2) :=
+  (sequence_overflows_iff (program := []) (before := initial (.inr .unit overflowMul))
+    (operand := initial overflowMul) (suffix := [.inr]) rfl).mpr
+    (.inl (run_steps [] 30 (initial overflowMul)))
+example : ∃ final, Steps [] (initial (.inr .unit (.var 0))) final ∧ Stuck [] final :=
+  (sequence_reaches_stuck_iff (program := []) (before := initial (.inr .unit (.var 0)))
+    (operand := initial (.var 0)) (suffix := [.inr]) rfl).mpr
+    (.inl ⟨initial (.var 0), .refl, rfl, fun impossible => impossible⟩)
+
 end LeanExe.TypeSafety.ContinuationTests
