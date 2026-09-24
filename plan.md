@@ -876,6 +876,8 @@ transport. Raw step correspondence and finite-execution equivalences now hold
 under exact environment agreement, with the same program on both sides. Next,
 prove continuation extension and execution decomposition to support complete
 derived-form behavior laws.
-Option/Except payload-discard policy remains an explicit obligation.
+The [derived-sum plan](plans/type-safety-derived-sums.md) specifies the first
+constructors/map/bind/map-error increment. Payload-discarding APIs remain outside
+that increment and require explicit inclusion or exclusion.
 The [coverage ledger](docs/type-safety-coverage.md) tracks remaining primitive and
 derived families; representation ingredients alone do not establish their APIs.
