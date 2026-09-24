@@ -46,6 +46,7 @@ theorem normalized2_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       KernelState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) (frame.locals.take 76) 76 85 88
         (LayerNorm.outputNode heap 1).root 3072 result →
+      result.get 90 = some (.i64 residualPtr) →
       (LayerNorm.finalHeap heap 1).At final →
       (LayerNorm.finalHeap heap 1).OwnsPacked final (LayerNorm.outputNode heap 1)
         (layerNorm weights residual (base + ln2ScaleOffset) (base + ln2BiasOffset) 1) →
@@ -102,6 +103,9 @@ theorem normalized2_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hTyped, List.take_set_of_le, Nat.reduceLeDiff,
       show UInt64.ofNat (4 * (1 * 768)) = 3072 from rfl, and_self]
+  · simp only [Locals.get, hParams, parameters, hLocals, List.length_cons, List.length_nil,
+      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT,
+      Nat.reduceSub, reduceIte]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame
