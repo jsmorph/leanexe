@@ -18,7 +18,8 @@ The preceding working state is preserved in
 - Branch created and cloned at the base commit.
 - Pinned Lean 4.34.0-rc2 / 6a10ac8c22beadecabdbb0919c2b50214762f91d is installed and checked.
 - Independent scalar grammar/admission and affine/choose source certificates pass; audits use only propext.
-- Next: source loop certificate, then generic lowering and exact bytes.
+- The GCD loop feasibility gate passes against the unchanged TalosGcd.gcd.
+- Next: generic lowering and exact bytes.
 - Talos dependencies are cloned; targeted Mathlib cache acquisition is in progress.
 
 ## Objective and precise claim
@@ -85,7 +86,7 @@ the dividend, and shift counts modulo 64.
 - [ ] Reusable arithmetic, binding, branch, call, and iteration certificate rules.
 - [x] Arithmetic.affine certificate.
 - [x] Arithmetic.choose certificate.
-- [ ] Loop certificate before large backend work.
+- [x] Loop certificate before large backend work.
 - [ ] Certificate generation with explicit rejection of unsupported source forms.
 
 ### 4. Verified scalar backend
@@ -137,6 +138,12 @@ pinned toolchain and one Lean thread, and bound diagnostic runtimes. Reduce a
 timed-out proof before retrying. Authorized branch edits, checks, commits, and
 pushes require no further permission. Do not modify main or typesafety.
 
+Audit scopes: the existing TypeSafety library and its admission proofs retain
+the propext-only policy. The source-loop bridge and Talos backend may inherit
+Lean's standard propext, Quot.sound, and Classical.choice axioms. Lean's own
+repeatM definition already uses choice. No newly declared axioms, sorryAx, or
+native-evaluation proof shortcuts are permitted in either scope.
+
 Never mark unchecked work proved or incomplete gates complete. Keep the original
 source and exact-byte trust boundaries. The reviewed specifications, Lean proof
 checker, pinned Talos semantics, and stated host assumptions remain explicit.
@@ -171,3 +178,18 @@ acyclic helper admission and the separate iteration boundary remain open.
 The shell has no GitHub push credential. Commits are published through the
 connected GitHub Git-data interface, then the local branch is synchronized to
 that exact remote commit. No changes are made to main or typesafety.
+
+### 2026-09-24: source loop feasibility completed
+
+Added an independent terminating iteration relation, a checked bridge to Lean's
+actual repeatM/Loop.forIn, a reusable two-argument call execution rule, and a GCD
+source certificate. The original TalosGcd.gcd source remains unchanged. The proof
+connects its actual while loop to the carried-state iteration and then to the
+independent core's recursive execution, for all UInt64 inputs. Remainder strictly
+decreases the second word's natural measure until zero; zero input is covered.
+
+Passed: lake build LeanExe.Correct.Scalar64.Gcd; lake env lean
+test/scalar64_gcd.lean. Audits report only Lean's three standard logical axioms.
+Lean 4.34 hides generated matchers across module boundaries: exported an explicit
+Loop.forIn unfolding lemma and used full-transparency rewriting for the final
+source equality. No source replacement or computational axiom was introduced.
