@@ -24,13 +24,13 @@ def appendAllocFrame (ptr : UInt64) (order : OrderL) (n : Nat) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
     locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
-      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64
-      order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64
-      0, .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n
-      + 1), .i64 0, .i64 0, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64
-      order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 (orderArrayBytesU (n + 1)), .i64
-      0, .i64 0, .i64 0, .i64 0, .i64 0],
+      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
+      .i64 0, .i64 0, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
+      .i64 order.oqty, .i64 0, .i64 0, .i64 (orderArrayBytesU (n + 1)), .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0],
     values := [] }
 
 def appendOrderAllocScanBodyProg : Wasm.Program :=

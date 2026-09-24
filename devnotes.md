@@ -1,3 +1,9 @@
+## 2026-09-24: Matcher cache and allocator-frame checkpoint
+
+The selected-maker cache now has a separate checked instruction proof. It reads the five represented fields with bounds checks, records their exact values, and preserves other locals. The target passes in 6.3 seconds and its public audit lists only propext, Classical.choice, and Quot.sound. The frame preserves arbitrary caller parameters and book values.
+
+The matcher’s early exits pass in 28 seconds after changing the local count to 86. Shifted book search, first-fit allocation, bump allocation, preparation, and complete allocation pass in 4.7, 94, 40, 4.6, and 4.4 seconds. Partial-book search and first-fit allocation pass in 4.7 and 95 seconds. The five-minute diagnostic then stopped while other targets remained cold; follow-up checks use the new cache module and individual consumers. Public full matcher composition is still unfinished. The post-only whitespace formatter initially had a Python syntax error; correcting it completed the intended formatting, with equality after removing whitespace checked for every edited file.
+
 ## 2026-09-24: Complete post-only proof accepted
 
 ClobPostOnly.Spec passes after updating the generated result-owner slots, scratch indices, local-frame lengths, and result assertions. The final trade bump, trade allocator, order finalizer, and append branch take 4.0, 4.3, 10, and 16 seconds respectively; the specification import completes in 3.8 seconds. All three branches retain exact returned arrays, ownership, allocation counters, page preservation, and memory frames. The final failure was a copied trade tail still using physical local 26 rather than the new owner local 34. The successful focused output is work/postonly-final-1.log. Explicit local lists were then reformatted with a whitespace-insensitive equality check.
