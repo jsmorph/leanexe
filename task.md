@@ -115,7 +115,7 @@ continues below.
 
 The [user manual](docs/manual.md#byte-input-and-output), [overview](README.md), [compiler guide](docs/compiler.md), and [development instructions](DEVELOPING.md) now describe byte I/O, the nonblocking host, diagnostic scope, and current accumulator cleanup.  The CLI error suite passes 15 cases plus help output, including byte-I/O command shape, pure/IO/parameterized entry rejection, missing entry, and output-file failures.  All 28 ownership-report cases pass after updating three stale statement-release counts from two to three; the reports now include the guarded final loop-result owner release.  CLI and standard-comparison checks exclude only exact local-runner notices from compiler/program stderr, preserving unknown failures and other output.  Runtime reporting and WAT commands retain their existing pure-entry scope.
 
-The documentation checker now passes all 161 maintained Markdown files after removing the obsolete temporary checkout path from the WGSL review notes.  Root `task.md` and `devnotes.md` remain outside that checker's inventory and require separate review.
+The documentation checker now passes all 162 maintained Markdown files after removing the obsolete temporary checkout path from the WGSL review notes.  Root `task.md` and `devnotes.md` remain outside that checker's inventory and require separate review.
 
 ## Talos relationship and proof scope
 
@@ -127,9 +127,9 @@ The immediate obligation is to recheck existing programs after the shared extrac
 
 `tools/talos-proof.js check --all` is the aggregate source-driven check.  `tools/talos-artifact.js prepare <case>` explicitly refreshes a generated cache.  Handwritten edits to `Program.lean` are prohibited.  Frozen exact-artifact packages retain their own bytes and identity; any deliberate replacement requires artifact and proof review.
 
-The resumed `tools/talos-proof.js check --all` built the pinned verifier, compiler inputs, and proof-workspace inputs successfully, then stopped at `gcd`: regenerated `Program.lean` differs from the tracked cache.  This first failure was already recorded in the development plan and status guide.  The generated current WASM and WAT remain under `proofs/talos/.generated/gcd`.  The cache was subsequently refreshed with `tools/talos-artifact.js prepare gcd`, and the concrete loop invariant was updated for the changed locals.  `tools/talos-proof.js check gcd` now passes with the original quantified theorem.  The aggregate is continuing; a complete current proof gate is still pending.
+All 69 source caches have been refreshed through maintained preparation. Focused gates now pass the repaired GCD, allocator, CLOB, floating-point, Euler grid and solver, cached GPT-2, LEB encoder, and tiny GPT-2 cases. The tiny inference and checked-entry specifications preserve their original quantified inputs and numerical contracts. The LEB encoder now returns an existential buffer root because released buffers can be reused, with explicit typed release-counter slots. The certificate public gate, retained partial sequence helpers, and full aggregate source check are the remaining proof validation. Current checkpoint evidence is recorded in the journal.
 
-### Remaining execution gate on this Mac
+### Completed non-release execution inventory on this Mac
 
 The non-release inventory passes the runner, artifact identity/conformance/migration unit checks, proof-tool unit checks, classification, floating-point, packed-data, Euler/WASM, matched-value, ASCII, integer-map, JSON, WASI adapter, and fuzz suites.  Standard comparisons pass all 340 native Lean/Wasm cases and 62 IR interpreter cases, including the string-constant byte result affected by this repair.  The pure-WASI rerun passes 33 execution cases, two traps, nine rejections, and 16 compiles with the local cache; fuzz validation passes 56 cases.
 
