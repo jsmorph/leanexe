@@ -758,7 +758,7 @@ def emitRetainArrayRangeWithSpecial
         [Instr.br 0])]])
 
 mutual
-  partial def exprScratch : Expr → Nat
+  def exprScratch : Expr → Nat
     | .local _ => 0
     | .trap => 0
     | .u64 _ => 0
@@ -926,7 +926,15 @@ mutual
           (lets.foldl (fun count item => max count (localLetScratch item)) 0)
           (exprScratch body)
 
-  partial def localLetScratch : LocalLet → Nat
+  termination_by expression => sizeOf expression
+  decreasing_by
+    all_goals decreasing_tactic
+    have member := List.sizeOf_lt_of_mem ‹element ∈ elements›
+    cases element
+    simp_all only [Prod.mk.sizeOf_spec]
+    omega
+
+  def localLetScratch : LocalLet → Nat
     | .expr _ value => exprScratch value
     | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
     | .slots _ values => values.foldl (fun count value => max count (exprScratch value)) 0
@@ -936,7 +944,10 @@ mutual
             (thenLets.foldl (fun count item => max count (localLetScratch item)) 0)
             (elseLets.foldl (fun count item => max count (localLetScratch item)) 0))
 
-  partial def condScratch : Cond → Nat
+  termination_by item => sizeOf item
+  decreasing_by all_goals decreasing_tactic
+
+  def condScratch : Cond → Nat
     | .true => 0
     | .false => 0
     | .eqU64 left right => max (exprScratch left) (exprScratch right)
@@ -945,9 +956,12 @@ mutual
     | .not cond => condScratch cond
     | .and left right => max (condScratch left) (condScratch right)
     | .or left right => max (condScratch left) (condScratch right)
+  termination_by condition => sizeOf condition
+  decreasing_by all_goals decreasing_tactic
+
 end
 
-partial def stmtScratch : Stmt → Nat
+def stmtScratch : Stmt → Nat
   | .skip => 0
   | .assign _ value => exprScratch value
   | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -3608,7 +3622,7 @@ def fixedArrayFolds
       scanElements allocation.length 0 elements
   | _ => #[]
 
-partial def emitStmtAnnotated
+def emitStmtAnnotated
     (releaseIndex scratch : Nat) (stmt : Stmt) : Annotations.Emitted :=
   match stmt with
   | .call slots calleeIndex arguments =>
