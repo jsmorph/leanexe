@@ -326,3 +326,12 @@ used by division/remainder guards. The proof uses the production signed and
 unsigned encoders and exact opcode bytes, including nested instruction lists.
 ArithmeticEncoding builds. The relation still needs to be derived for every
 admitted source expression and connected to the decoder and module theorem.
+
+### Production integer and atomic-instruction decoder roundtrips (checked)
+
+Proved parser composition with arbitrary prefixes, suffixes, and section limits.
+Proved the existing decoder consumes production U32 and signed I64 encodings and
+returns their exact values. Proved the same roundtrip for every arithmetic
+opcode, literal, and bounded local read/write emitted by the actual instruction
+encoder. Parsing, LebParsing, and ArithmeticParsing all build. Structured
+conditionals, full functions/modules, and source-to-byte composition remain.
