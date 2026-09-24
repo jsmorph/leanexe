@@ -1,3 +1,11 @@
+## 2026-09-24: Byte-I/O host contracts and binary grammar
+
+The first focused formal pass now checks the protocol prefix and successful-output laws, byte-memory frames and preservation of other store resources, and all six generated-program WASI host contracts. The general contracts quantify over syscall and clock oracles; they cover short transfers, EOF, errors, monotonic clock observations, absolute-deadline polling, nonblocking flags, and exit status. The new import-bearing binary profile reuses the established instruction decoder and type validator and proves its complete section grammar and validation relation independently. Existing import-free artifact profiles remain unchanged.
+
+Eight short model iterations preceded the accepted build. Diagnostics were ordinary Lean elaboration issues: let-bound matches needed reduction before splitting, UInt comparisons needed their natural-number lemmas, and `section` was a reserved parser name. Smaller shared lemmas for memory frames, UInt64 maxima, and parser composition resolved them. The final focused build took about six seconds of new-module elaboration. The printed theorem dependencies contain only `propext`, `Classical.choice`, and `Quot.sound`. Exact-binary execution, protocol termination, maintained gate integration, and native-host correspondence documentation remain in progress. These theorems specify a modeled host; they do not certify the C compiler, Wasmtime, or the operating system.
+
+The full refreshed source-proof build reached its twenty-minute limit while building the cold dependency graph. Its diagnostics name six stale modules: BoxFree.Spec, Validate.Loop, SharedPair.Frame, F64DotCheckedBits.Execution, ClobDepth.Entry, and ClobQuote.Spec. The unchanged aggregate will not be retried: work is split into focused targets. ClobDepth's existing physical allocator invariant assumes that replaced arrays never enter the free list, so this case requires a semantic invariant revision in addition to local-layout changes. Failures and timing are retained in the task workspace logs.
+
 # Development Journal
 
 ## 2026-09-24: Nested-loop byte-buffer cleanup
