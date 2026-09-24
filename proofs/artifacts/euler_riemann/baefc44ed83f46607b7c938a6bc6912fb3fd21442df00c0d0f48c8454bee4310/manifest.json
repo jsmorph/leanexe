@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.EulerRiemann.ArtifactBytes",
   "artifactBytesDefinition": "Project.EulerRiemann.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.EulerRiemann.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.EulerRiemann.Program",
-  "cachedProgramDefinition": "Project.EulerRiemann.module",
-  "specModule": "Project.EulerRiemann.Spec",
+  "cachedProgramModule": "Project.EulerRiemann.FrozenProgram",
+  "cachedProgramDefinition": "Project.EulerRiemann.Frozen.module",
+  "specModule": "Project.EulerRiemann.FrozenSpec",
   "proofTarget": "Project.EulerRiemann.ArtifactTranslation",
   "identityTheorem": "Project.EulerRiemann.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,10 +18,10 @@
   "cacheEqualityTheorem": "Project.EulerRiemann.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.EulerRiemann.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.EulerRiemann.Spec.solve_exact",
-    "Project.EulerRiemann.Spec.solve_success",
-    "Project.EulerRiemann.Spec.solve_hyperbolic",
-    "Project.EulerRiemann.Spec.solve_balance"
+    "Project.EulerRiemann.Frozen.Spec.solve_exact",
+    "Project.EulerRiemann.Frozen.Spec.solve_success",
+    "Project.EulerRiemann.Frozen.Spec.solve_hyperbolic",
+    "Project.EulerRiemann.Frozen.Spec.solve_balance"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

@@ -1,7 +1,8 @@
-import Project.EulerRiemann.InterfaceResidualExecution
+import Project.EulerRiemann.FrozenInterfaceResidualExecution
 import Project.EulerRiemann.ArtifactModule
 
 namespace Project.EulerRiemann.InterfaceResidual
+open Project.EulerRiemann.Frozen.InterfaceResidual
 
 theorem artifact_interface_residual :
     ∃ raw validated,
