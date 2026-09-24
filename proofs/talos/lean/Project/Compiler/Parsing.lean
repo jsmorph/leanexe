@@ -35,6 +35,12 @@ theorem bind_parses {p : Parser α} {q : α → Parser β}
   rw [one]
   exact two
 
+theorem bind_last {p : Parser α} {q : α → Parser β}
+    {bytes : List UInt8} {x : α} {y : β}
+    (first : Parses p bytes x) (last : Parses (q x) [] y) :
+    Parses (p >>= q) bytes y := by
+  simpa only [List.append_nil] using bind_parses first last
+
 theorem map_parses {p : Parser α} {bytes : List UInt8} {value : α}
     (h : Parses p bytes value) (f : α → β) :
     Parses (p >>= fun x => pure (f x)) bytes (f value) := by
