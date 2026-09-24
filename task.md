@@ -118,7 +118,7 @@ The immediate obligation is to recheck existing programs after the shared extrac
 
 `tools/talos-proof.js check --all` is the aggregate source-driven check.  `tools/talos-artifact.js prepare <case>` explicitly refreshes a generated cache.  Handwritten edits to `Program.lean` are prohibited.  Frozen exact-artifact packages retain their own bytes and identity; any deliberate replacement requires artifact and proof review.
 
-The resumed `tools/talos-proof.js check --all` built the pinned verifier, compiler inputs, and proof-workspace inputs successfully, then stopped at `gcd`: regenerated `Program.lean` differs from the tracked cache.  This first failure was already recorded in the development plan and status guide.  The generated current WASM and WAT remain under `proofs/talos/.generated/gcd`; tracked program caches and handwritten proofs were not changed.  The gate did not reach the aggregate behavior-proof build.  Review and resolve this mismatch before claiming a complete current proof gate.
+The resumed `tools/talos-proof.js check --all` built the pinned verifier, compiler inputs, and proof-workspace inputs successfully, then stopped at `gcd`: regenerated `Program.lean` differs from the tracked cache.  This first failure was already recorded in the development plan and status guide.  The generated current WASM and WAT remain under `proofs/talos/.generated/gcd`.  The cache was subsequently refreshed with `tools/talos-artifact.js prepare gcd`, and the concrete loop invariant was updated for the changed locals.  `tools/talos-proof.js check gcd` now passes with the original quantified theorem.  The aggregate is continuing; a complete current proof gate is still pending.
 
 ### Remaining execution gate on this Mac
 
