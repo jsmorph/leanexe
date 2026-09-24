@@ -23,7 +23,7 @@ def eraseCopyFrame (base : Locals) (need previous current capacity next target :
     (word : Nat) : Locals :=
   { params := base.params
     locals := ((BookAllocSearch.bookAllocSearchFrame base need previous current
-      capacity next target).locals.set 63 (.i64 target)).set 64
+      capacity next target).locals.set 73 (.i64 target)).set 74
         (.i64 (UInt64.ofNat word))
     values := [] }
 
@@ -44,26 +44,26 @@ def erasePrefixInv (st0 : Store Unit) (base : Locals)
         orderWord st target copied = orderWord st0 source copied
 
 def erasePrefixMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
-  match s.locals[64]? with
+  match s.locals[74]? with
   | some (Value.i64 word) => total - word.toNat
   | _ => 0
 
 def erasePrefixBodyProg : Wasm.Program :=
   [
-  .localGet 73,
-  .localGet 69,
+  .localGet 83,
+  .localGet 79,
   .geUI64,
   .br_if 1,
-  .localGet 72,
-  .localGet 73,
+  .localGet 82,
+  .localGet 83,
   .constI64 1,
   .addI64,
   .constI64 8,
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 66,
-  .localGet 73,
+  .localGet 76,
+  .localGet 83,
   .constI64 1,
   .addI64,
   .constI64 8,
@@ -72,10 +72,10 @@ def erasePrefixBodyProg : Wasm.Program :=
   .wrapI64,
   .load64 0,
   .store64 0,
-  .localGet 73,
+  .localGet 83,
   .constI64 1,
   .addI64,
-  .localSet 73,
+  .localSet 83,
   .br 0
 ]
 
@@ -85,14 +85,14 @@ def erasePrefixProg : Wasm.Program :=
   .constI64 1,
   .addI64,
   .globalSet 2,
-  .localGet 81,
-  .localSet 72,
-  .localGet 72,
+  .localGet 91,
+  .localSet 82,
+  .localGet 82,
   .wrapI64,
-  .localGet 71,
+  .localGet 81,
   .store64 0,
   .constI64 0,
-  .localSet 73,
+  .localSet 83,
   .block 0 0 [
     .loop 0 0 erasePrefixBodyProg
   ]
@@ -104,12 +104,12 @@ theorem erasePrefixProg_spec
     (need previous current capacity next target source g2 arrayCapacity newLength : UInt64)
     (os : List OrderL) (targetWords prefixWords : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hPrefixLocal : base.locals[60]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat prefixWords)))
-    (hLengthLocal : base.locals[62]? = some (.i64 newLength))
+    (hLengthLocal : base.locals[72]? = some (.i64 newLength))
     (hPrefixU : (UInt64.ofNat prefixWords).toNat = prefixWords)
     (hPrefix64 : prefixWords < UInt64.size)
     (hPrefixTarget : prefixWords ≤ targetWords)
@@ -138,10 +138,10 @@ theorem erasePrefixProg_spec
     wp «module» (erasePrefixProg ++ rest) Q st0
       (BookAllocSearch.bookAllocSearchFrame base need previous current capacity
         next target) env := by
-  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
-  have hPrefixGet : base.locals[60] =
+  have hSourceGet : base.locals[67] = .i64 source := getElem_of_some hSourceLocal
+  have hPrefixGet : base.locals[70] =
       .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
-  have hLengthGet : base.locals[62] = .i64 newLength := getElem_of_some hLengthLocal
+  have hLengthGet : base.locals[72] = .i64 newLength := getElem_of_some hLengthLocal
   simp only [erasePrefixProg, List.cons_append, List.nil_append,
     BookAllocSearch.bookAllocSearchFrame]
   wp_run_with [hParams, hLocals, hValues, hSourceGet, hPrefixGet, hLengthGet]

@@ -1,3 +1,9 @@
+## 2026-09-24: Cached maker consumers and allocation copies accepted
+
+The complete full-fill trade update passes in 16 seconds after composing the cached-maker fields with the allocator and the new argument stage. Its instruction bridges pass in 4.3 and 4.2 seconds. Partial-fill book preparation passes in 4.2 seconds. The newly audited bridges use only standard logical axioms. The shifted copy, replacement, trade-allocation, and release modules also pass; the first-fit and bump proofs are the slowest cold targets at approximately 93 and 40 seconds. Runtime helper equalities pass, including the refreshed AssocList function indices.
+
+The five-minute consumer batch accepted the full-fill bridges, trade append, and partial allocator before its timeout. The follow-up narrowed to the complete full-fill update and partial book preparation, and passed all 3,398 required jobs. The matcher iteration and outer loop remain in progress. Cached-field premises are internal frame facts established by the selected-maker read proof; the public book-input contracts are being retained.
+
 ## 2026-09-24: Matcher cache and allocator-frame checkpoint
 
 The selected-maker cache now has a separate checked instruction proof. It reads the five represented fields with bounds checks, records their exact values, and preserves other locals. The target passes in 6.3 seconds and its public audit lists only propext, Classical.choice, and Quot.sound. The frame preserves arbitrary caller parameters and book values.
