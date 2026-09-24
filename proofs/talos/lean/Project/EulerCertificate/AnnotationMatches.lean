@@ -35,15 +35,15 @@ theorem function_52_while_loop_0_guard_tail_eq :
   rfl
 
 def function_74_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.EulerCertificate.func74 [] 37 107).getD []
+  (Project.ProofKit.Annotation.region Project.EulerCertificate.func74 [] 37 105).getD []
 
 theorem function_74_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.EulerCertificate.func74 [] 37 107 = some function_74_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.EulerCertificate.func74 [] 37 105 = some function_74_array_fold_0_program := by
   rfl
 
 theorem function_74_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func74 []).getD []).drop 37 =
-      Project.EulerCertificate.AnnotationMatches.function_74_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func74 []).getD []).drop 107 := by
+      Project.EulerCertificate.AnnotationMatches.function_74_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func74 []).getD []).drop 105 := by
   rfl
 
 
@@ -55,15 +55,15 @@ theorem function_74_array_fold_0_tail_eq :
 
 
 def function_89_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.EulerCertificate.func89 [] 0 30).getD []
+  (Project.ProofKit.Annotation.region Project.EulerCertificate.func89 [] 0 28).getD []
 
 theorem function_89_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.EulerCertificate.func89 [] 0 30 = some function_89_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.EulerCertificate.func89 [] 0 28 = some function_89_array_fold_0_program := by
   rfl
 
 theorem function_89_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func89 []).getD []).drop 0 =
-      Project.EulerCertificate.AnnotationMatches.function_89_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func89 []).getD []).drop 30 := by
+      Project.EulerCertificate.AnnotationMatches.function_89_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func89 []).getD []).drop 28 := by
   rfl
 
 
@@ -87,15 +87,15 @@ theorem function_114_while_loop_0_guard_tail_eq :
   rfl
 
 def function_173_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.EulerCertificate.func173 [] 37 103).getD []
+  (Project.ProofKit.Annotation.region Project.EulerCertificate.func173 [] 37 101).getD []
 
 theorem function_173_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.EulerCertificate.func173 [] 37 103 = some function_173_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.EulerCertificate.func173 [] 37 101 = some function_173_array_fold_0_program := by
   rfl
 
 theorem function_173_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func173 []).getD []).drop 37 =
-      Project.EulerCertificate.AnnotationMatches.function_173_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func173 []).getD []).drop 103 := by
+      Project.EulerCertificate.AnnotationMatches.function_173_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerCertificate.func173 []).getD []).drop 101 := by
   rfl
 
 

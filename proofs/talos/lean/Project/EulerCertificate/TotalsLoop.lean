@@ -91,7 +91,7 @@ theorem totals_loop_spec (env : HostEnv Unit) (initial : Store Unit)
       totals_peel
       refine ⟨?_, ?_⟩
       · refine ⟨rfl, i + 1,
-          ⟨grid[i], totalsPrefix grid i, 0, 1⟩, by omega, ?_⟩
+          ⟨grid[i], totalsPrefix grid i, 0⟩, by omega, ?_⟩
         rw [totalsPrefix_succ grid i hlt, hout]
         rfl
       · change grid.size - (UInt64.ofNat (i + 1)).toNat + 1 <
