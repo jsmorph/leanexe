@@ -21,6 +21,7 @@ function main() {
   run([process.execPath, path.join("test", "artifact_migrate.js")]);
   run([process.execPath, path.join("test", "artifact_release.js")]);
   run([process.execPath, path.join("test", "talos_cache.js")]);
+  run([process.execPath, path.join("test", "byte_io_proof.js")]);
   run([process.execPath, path.join("test", "leanexegen.js")]);
   run([process.execPath, path.join("test", "knowledge.js")]);
   run(["lake", "build"]);

@@ -6,9 +6,9 @@ Updated 2026-09-24 after resuming on ARM macOS.  Branch `io` tracks `origin/io`;
 
 The current task is to complete primitive byte I/O, validate its shared compiler changes, and reconcile the documentation.  The user deferred release-identity work on 2026-09-24.  Release receipts, release-input digests, and cold release verification remain deferred.  The user included formal verification of the new byte-I/O host behavior on 2026-09-24.  Rechecking the existing Talos proofs is part of compiler validation.
 
-This document owns the current continuation agenda.  The [Development Journal](devnotes.md#2026-09-23-byte-io-on-branch-io) preserves the implementation history and reported test evidence.  Its September 23 entry contains both intermediate and final results.  The current I/O count is 40 execution cases.  Counts of 26, 30, and 38 describe earlier revisions.
+This document owns the current continuation agenda.  The [Development Journal](devnotes.md#2026-09-23-byte-io-on-branch-io) preserves the implementation history and reported test evidence.  Its September 23 entry contains both intermediate and final results.  The current I/O count is 47 execution cases.  Counts of 26, 30, and 38 describe earlier revisions.
 
-The resumed session has built the compiler and reproduced the focused execution checks.  Current results below distinguish fresh runs from earlier reports.  The non-release inventory has run, including a successful source/IR comparison rerun after a local-runner compatibility fix.  The Talos gate stops at its known generated-cache mismatch.  Release identity remains deferred.
+The resumed session has built the compiler and reproduced the focused execution checks.  Current results below distinguish fresh runs from earlier reports.  The non-release inventory has run, including a successful source/IR comparison rerun after a local-runner compatibility fix.  All 69 source caches have been regenerated; focused proof repairs follow the aggregate build diagnostics.  Release identity remains deferred.
 
 ## Agreed behavior
 
@@ -137,13 +137,11 @@ The C comparison now passes with `CC=/opt/homebrew/bin/gcc-15 node test/euler_ru
 
 ### Formal I/O proofs: included in completion
 
-There is no registered `ByteIO` proof case.  The current [binary decoder](proofs/talos/lean/Project/Artifact/Binary/Decode.lean) rejects import sections.  The [translation field theorem](proofs/talos/lean/Project/Artifact/Binary/Proof/Translate.lean) records an empty import list for every accepted module.  This restriction belongs to this repository's exact-binary verification profile.  The pinned upstream Talos support for host calls requires inspection before choosing an extension.
+The separate [byte-I/O proof gate](proofs/byte-io/README.md) now specifies all six generated WASI imports using pinned Talos `HostFn`, relational contracts, and `HostEnv.Satisfies`. It proves read/write prefix effects, EOF, bounded memory changes, preservation of other store resources, nonblocking flags, monotonic clock observations, canonical two-subscription polling, and exit status. Protocol theorems preserve byte order and the original saturated deadline, characterize successful complete output, and prove termination under explicit retry-clock progress.
 
-A proof of an I/O program needs a model of the host interaction: returned bytes, partial transfers, EOF, errors, memory writes, descriptor state, clock observations, polling results, and exit.  The model must state which memory regions each host call may change.  A streaming theorem could relate bytes read to bytes written, preserve their order, describe prefixes emitted before failure, and account for buffer lifetimes.
+A separate import-bearing binary profile proves decoding, validation, and translation without changing the existing import-free profile or frozen packages. The representative 2,082-byte echo binary has SHA-256 `a4eef742abcf9f01336de122839ebbc9db18a469a70d9ee11ac7586ac4615be5`. Six kernel-checked execution theorems cover partial writes, EOF, a committed prefix before a broken pipe, retry after readiness, absolute-deadline expiry, and the exported `_start` exit. Memory ownership checks include balanced allocation/free counts. The complete maintained gate compares the bytes with fresh compiler output and audits the public theorem axioms.
 
-Whole-operation deadline reasoning must include partial progress and interruptions.  Termination and claims about elapsed time require explicit assumptions about clock progress, polling, and host scheduling.  A theorem over modeled WASI calls relies on the host satisfying that model.  Verification of the C host, Wasmtime, or operating system would require further scope decisions.
-
-The user approved this scope. The proof target is generated WASM executing against explicit modeled WASI contracts, with byte-prefix preservation, exact output on success, bounded memory effects, and deadline checks across retries and partial progress. Native C, Wasmtime, and the operating system remain outside the proof boundary. The work includes inspection of pinned Talos import semantics, a source I/O specification, required execution rules and lemmas, import syntax/decoding/validation/translation with their soundness proofs, and an exact-binary theorem for a representative I/O program.  Existing Talos checks establish the status of existing verified programs.  I/O execution tests establish the recorded runtime cases.
+These are modeled-host and concrete generated-program theorems. They are not a universal compiler-refinement proof for every I/O program. Native C, Wasmtime, and the OS remain outside the proof boundary. A final nonblocking syscall may finish after the last clock observation; no strict wall-clock return guarantee is asserted. Release identity remains deferred. Existing compiler proof repairs continue independently.
 
 ## Environment and commands
 
@@ -222,7 +220,7 @@ The proposed order below preserves the scope discussed in this session.  Impleme
 - [x] Reconcile the overview, manual, specification, compiler documentation, and development instructions.  Test the new CLI's required error behavior.
 - [x] Record the resumed revision, local changes, per-command results, remaining failures, and agreed exclusions in this document and the journal.
 - [x] Include formal byte-I/O host proofs, as requested by the user.
-- [ ] Prove the modeled host contracts and byte-transfer protocol, connect representative generated WASM to Talos execution, and record assumptions and axiom audits.
+- [x] Prove the modeled host contracts and byte-transfer protocol, connect representative generated WASM to Talos execution, and record assumptions and axiom audits. The maintained gate passes all 46 public-theorem audits.
 
 Completion of the current implementation work requires tested I/O behavior, resolution of the ownership defects included in scope, completed compiler and existing-proof validation or explicit decisions on remaining failures, and documentation matching the implementation.  Release identity remains deferred.  The status of formal I/O verification must remain explicit.
 
