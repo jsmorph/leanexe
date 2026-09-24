@@ -31,6 +31,9 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
     have h48 := hLive.2.1.root48
     rw [hz] at h48
     simp at h48
+  have hDistinct : ∀ a ≤ 6, ∀ b ≤ 6, a ≠ b → roots a ≠ roots b := by
+    intro a ha b hb hab
+    exact objectsSeparate_ne (hSlots a ha b hb hab)
   rw [writer_release_setup_shape]
   simp only [List.append_assoc]
   apply writer_release_setup_spec m env initial (writerStageFrame roots unused index cell 5) (roots 6)
@@ -46,11 +49,13 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
   rw [writer_release_stage0_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env initial (writerReleaseFrame roots unused index cell)
-    51 (roots 5)
+    51 (writerProtected 5) (roots 5)
     (fun final => BufferState final output.size (cellKept roots output index cell 4)
       ([roots 5] ++ free) allocs (releases + 1) (frees + 1) ∧ P final) rfl
     (writerReleaseFrame_pointer roots unused index 5 cell (by decide) (by decide))
     (hNonzero 5 (by decide))
+    (writerReleaseFrame_distinct roots unused index 5 cell (by decide) (by decide)
+      (hNonzero 5 (by decide)) hDistinct)
     hCall0 Q _
   intro current1 ⟨hState1, hP1⟩
   have hCall1 := cell_release_call_framed layout env current1 allocs (releases + 1) (frees + 1)
@@ -64,11 +69,13 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
   rw [writer_release_stage1_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current1 (writerReleaseFrame roots unused index cell)
-    42 (roots 4)
+    42 (writerProtected 4) (roots 4)
     (fun final => BufferState final output.size (cellKept roots output index cell 3)
       ([roots 4, roots 5] ++ free) allocs (releases + 2) (frees + 2) ∧ P final) rfl
     (writerReleaseFrame_pointer roots unused index 4 cell (by decide) (by decide))
     (hNonzero 4 (by decide))
+    (writerReleaseFrame_distinct roots unused index 4 cell (by decide) (by decide)
+      (hNonzero 4 (by decide)) hDistinct)
     (by simpa only [Nat.reduceSub, List.cons_append, List.nil_append, UInt64.add_assoc, show (1 : UInt64) + 1 = 2 from by decide] using hCall1) Q _
   intro current2 ⟨hState2, hP2⟩
   have hCall2 := cell_release_call_framed layout env current2 allocs (releases + 2) (frees + 2)
@@ -83,11 +90,13 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
   rw [writer_release_stage2_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current2 (writerReleaseFrame roots unused index cell)
-    33 (roots 3)
+    33 (writerProtected 3) (roots 3)
     (fun final => BufferState final output.size (cellKept roots output index cell 2)
       ([roots 3, roots 4, roots 5] ++ free) allocs (releases + 3) (frees + 3) ∧ P final) rfl
     (writerReleaseFrame_pointer roots unused index 3 cell (by decide) (by decide))
     (hNonzero 3 (by decide))
+    (writerReleaseFrame_distinct roots unused index 3 cell (by decide) (by decide)
+      (hNonzero 3 (by decide)) hDistinct)
     (by simpa only [Nat.reduceSub, List.cons_append, List.nil_append, UInt64.add_assoc, show (2 : UInt64) + 1 = 3 from by decide] using hCall2) Q _
   intro current3 ⟨hState3, hP3⟩
   have hCall3 := cell_release_call_framed layout env current3 allocs (releases + 3) (frees + 3)
@@ -103,11 +112,13 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
   rw [writer_release_stage3_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current3 (writerReleaseFrame roots unused index cell)
-    24 (roots 2)
+    24 (writerProtected 2) (roots 2)
     (fun final => BufferState final output.size (cellKept roots output index cell 1)
       ([roots 2, roots 3, roots 4, roots 5] ++ free) allocs (releases + 4) (frees + 4) ∧ P final) rfl
     (writerReleaseFrame_pointer roots unused index 2 cell (by decide) (by decide))
     (hNonzero 2 (by decide))
+    (writerReleaseFrame_distinct roots unused index 2 cell (by decide) (by decide)
+      (hNonzero 2 (by decide)) hDistinct)
     (by simpa only [Nat.reduceSub, List.cons_append, List.nil_append, UInt64.add_assoc, show (3 : UInt64) + 1 = 4 from by decide] using hCall3) Q _
   intro current4 ⟨hState4, hP4⟩
   have hCall4 := cell_release_call_framed layout env current4 allocs (releases + 4) (frees + 4)
@@ -124,11 +135,13 @@ theorem writer_releases_framed_spec {m : Wasm.Module} (layout : Layout m)
   rw [writer_release_stage4_shape]
   simp only [List.append_assoc]
   apply writer_release_one_spec m env current4 (writerReleaseFrame roots unused index cell)
-    15 (roots 1)
+    15 (writerProtected 1) (roots 1)
     (fun final => BufferState final output.size (cellKept roots output index cell 0)
       ([roots 1, roots 2, roots 3, roots 4, roots 5] ++ free) allocs (releases + 5) (frees + 5) ∧ P final) rfl
     (writerReleaseFrame_pointer roots unused index 1 cell (by decide) (by decide))
     (hNonzero 1 (by decide))
+    (writerReleaseFrame_distinct roots unused index 1 cell (by decide) (by decide)
+      (hNonzero 1 (by decide)) hDistinct)
     (by simpa only [Nat.reduceSub, List.cons_append, List.nil_append, UInt64.add_assoc, show (4 : UInt64) + 1 = 5 from by decide] using hCall4) Q _
   intro current5 ⟨hState5, hP5⟩
   rw [writer_release_end, List.nil_append]

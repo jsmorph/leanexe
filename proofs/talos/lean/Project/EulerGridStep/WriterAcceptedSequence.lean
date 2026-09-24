@@ -19,6 +19,7 @@ theorem writer_accepted_sequence {m : Wasm.Module} (layout : Layout m)
           W (field + 1) final))
     (hBridge : ∀ current, W 6 current → R 5 current ∧
       ∀ count, 1 ≤ count → count ≤ 5 → roots count ≠ 0)
+    (hDistinct : ∀ a ≤ 6, ∀ b ≤ 6, a ≠ b → roots a ≠ roots b)
     (hRelease : ∀ count, 1 ≤ count → count ≤ 5 → ∀ current, R count current →
       TerminatesWith env m 40 current [.i64 (roots count)]
         (fun final values => values = [] ∧ R (count - 1) final)) :
@@ -41,7 +42,7 @@ theorem writer_accepted_sequence {m : Wasm.Module} (layout : Layout m)
   intro current hCurrent
   obtain ⟨hReady, hNonzero⟩ := hBridge current hCurrent
   change wp m (writerReleaseTail ++ []) _ current (writerStageFrame roots unused index cell 5) env
-  apply writer_release_sequence_spec m env current unused roots index cell R hReady hNonzero
+  apply writer_release_sequence_spec m env current unused roots index cell R hReady hNonzero hDistinct
     hRelease _ []
   intro final hFinal
   have hOutput := writerReleaseFrame_output roots unused index cell

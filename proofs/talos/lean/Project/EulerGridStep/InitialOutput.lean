@@ -13,7 +13,7 @@ set_option maxHeartbeats 1000000
 def initialOutputFrame (frame : Locals) (heap : UInt64) (count : Nat) : Locals :=
   let allocated := initialFreshAllocFrame (initialCapacityFrame frame (UInt64.ofNat count)) heap (fieldRequest count)
   { allocated with
-    locals := allocated.locals.set 33 (.i64 (UInt64.ofNat count))
+    locals := allocated.locals.set 39 (.i64 (UInt64.ofNat count))
     values := [] }
 
 theorem initial_output_shape : (gridValidBody.drop 36).take 42 =
@@ -22,9 +22,9 @@ theorem initial_output_shape : (gridValidBody.drop 36).take 42 =
 /-- Actual capacity, allocation, length store and zero loop establish the initialized output. -/
 theorem initial_output_spec (m : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (heap pointer allocs releases frees : UInt64) (count : Nat) (input : Array UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 43)
-    (hValues : frame.values = []) (hCount : frame.locals[31]? = some (.i64 (UInt64.ofNat count)))
-    (hZero : frame.locals[34]? = some (.i64 0))
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 49)
+    (hValues : frame.values = []) (hCount : frame.locals[37]? = some (.i64 (UInt64.ofNat count)))
+    (hZero : frame.locals[40]? = some (.i64 0))
     (hFit : heap.toNat + 48 + 8 * (count + 1) ≤ initial.mem.pages * 65536)
     (hPages : initial.mem.pages ≤ 65536) (hMemory32 : m.memIs64 = false)
     (hHeap : initial.globals.globals[0]? = some (.i64 heap))
