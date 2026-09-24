@@ -405,136 +405,136 @@ def function_11_length_dispatch_0_valid_branch_program : Wasm.Program :=
   .divUI64,
   .constI64 8,
   .mulI64,
-  .localSet 25,
-  .localGet 25,
+  .localSet 26,
+  .localGet 26,
   .constI64 8,
   .ltUI64,
   .iff 0 0 [
    .constI64 8,
-   .localSet 25
+   .localSet 26
   ] [],
   .constI64 0,
-  .localSet 30,
+  .localSet 31,
   .constI64 0,
-  .localSet 26,
-  .globalGet 1,
   .localSet 27,
+  .globalGet 1,
+  .localSet 28,
   .block 0 0 [
    .loop 0 0 [
-    .localGet 27,
+    .localGet 28,
     .constI64 0,
     .eqI64,
     .br_if 1,
-    .localGet 30,
+    .localGet 31,
     .constI64 0,
     .neI64,
     .br_if 1,
-    .localGet 27,
+    .localGet 28,
     .constI64 32,
-    .subI64,
-    .wrapI64,
-    .load64 0,
-    .localSet 28,
-    .localGet 27,
-    .constI64 8,
     .subI64,
     .wrapI64,
     .load64 0,
     .localSet 29,
     .localGet 28,
-    .localGet 25,
+    .constI64 8,
+    .subI64,
+    .wrapI64,
+    .load64 0,
+    .localSet 30,
+    .localGet 29,
+    .localGet 26,
     .geUI64,
     .iff 0 0 [
-     .localGet 26,
+     .localGet 27,
      .constI64 0,
      .eqI64,
      .iff 0 0 [
-      .localGet 29,
+      .localGet 30,
       .globalSet 1
      ] [
-      .localGet 26,
+      .localGet 27,
       .constI64 8,
       .subI64,
       .wrapI64,
-      .localGet 29,
+      .localGet 30,
       .store64 0
      ],
-     .localGet 27,
+     .localGet 28,
      .constI64 48,
      .subI64,
      .wrapI64,
      .constI64 5501223100278326855,
      .store64 0,
-     .localGet 27,
+     .localGet 28,
      .constI64 40,
      .subI64,
      .wrapI64,
      .constI64 1,
      .store64 0,
-     .localGet 27,
+     .localGet 28,
      .constI64 32,
      .subI64,
      .wrapI64,
-     .localGet 28,
+     .localGet 29,
      .store64 0,
-     .localGet 27,
+     .localGet 28,
      .constI64 24,
      .subI64,
      .wrapI64,
      .constI64 2,
      .store64 0,
-     .localGet 27,
+     .localGet 28,
      .constI64 16,
      .subI64,
      .wrapI64,
      .constI64 1,
      .store64 0,
-     .localGet 27,
+     .localGet 28,
      .constI64 8,
      .subI64,
      .wrapI64,
      .constI64 0,
      .store64 0,
-     .localGet 27,
-     .localSet 30
+     .localGet 28,
+     .localSet 31
     ] [
-     .localGet 27,
-     .localSet 26,
-     .localGet 29,
-     .localSet 27
+     .localGet 28,
+     .localSet 27,
+     .localGet 30,
+     .localSet 28
     ],
     .br 0
    ]
   ],
-  .localGet 30,
+  .localGet 31,
   .constI64 0,
   .eqI64,
   .iff 0 0 [
    .globalGet 0,
    .constI64 48,
    .addI64,
-   .localGet 25,
+   .localGet 26,
    .addI64,
-   .localTee 28,
+   .localTee 29,
    .globalGet 0,
    .ltUI64,
    .iff 0 0 [
     .unreachable
    ] [],
-   .localGet 28,
+   .localGet 29,
    .constI64 1,
    .subI64,
    .constI64 65536,
    .divUI64,
    .constI64 1,
    .addI64,
-   .localSet 29,
+   .localSet 30,
    .memorySize,
    .extendUI32,
-   .localGet 29,
+   .localGet 30,
    .ltUI64,
    .iff 0 0 [
-    .localGet 29,
+    .localGet 30,
     .memorySize,
     .extendUI32,
     .subI64,
@@ -549,40 +549,40 @@ def function_11_length_dispatch_0_valid_branch_program : Wasm.Program :=
    .globalGet 0,
    .constI64 48,
    .addI64,
-   .localSet 30,
-   .localGet 28,
+   .localSet 31,
+   .localGet 29,
    .globalSet 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 48,
    .subI64,
    .wrapI64,
    .constI64 5501223100278326855,
    .store64 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 40,
    .subI64,
    .wrapI64,
    .constI64 1,
    .store64 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 32,
    .subI64,
    .wrapI64,
-   .localGet 25,
+   .localGet 26,
    .store64 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 24,
    .subI64,
    .wrapI64,
    .constI64 2,
    .store64 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 16,
    .subI64,
    .wrapI64,
    .constI64 1,
    .store64 0,
-   .localGet 30,
+   .localGet 31,
    .constI64 8,
    .subI64,
    .wrapI64,
@@ -593,16 +593,18 @@ def function_11_length_dispatch_0_valid_branch_program : Wasm.Program :=
   .constI64 1,
   .addI64,
   .globalSet 2,
-  .localGet 30,
-  .localSet 21,
-  .localGet 21,
+  .localGet 31,
+  .localSet 22,
+  .localGet 22,
   .wrapI64,
   .constI64 0,
   .store64 0,
-  .localGet 21,
+  .localGet 22,
   .localSet 1,
   .localGet 1,
-  .localSet 20
+  .localSet 20,
+  .localGet 1,
+  .localSet 21
 ]
 
 def function_11_length_dispatch_0_invalid_branch_program : Wasm.Program :=
@@ -651,12 +653,22 @@ def function_11_length_dispatch_0_invalid_branch_program : Wasm.Program :=
   .call 9,
   .localSet 19,
   .localSet 18,
-  .localGet 19,
+  .localGet 18,
   .localSet 20,
+  .localGet 19,
+  .localSet 21,
   .localGet 8,
   .constI64 0,
   .eqI64,
   .eqz,
+  .iff 0 1 [
+   .localGet 8,
+   .localGet 20,
+   .eqI64,
+   .eqz
+  ] [
+   .const 0
+  ] [] [.i32],
   .iff 0 0 [
    .localGet 8,
    .call 15
@@ -665,12 +677,12 @@ def function_11_length_dispatch_0_invalid_branch_program : Wasm.Program :=
 
 def function_11_length_dispatch_0_dispatch_program : Wasm.Program :=
   Project.ProofKit.FixedArrayLengthDispatch.eqProgram
-    21 0
+    22 0
     function_11_length_dispatch_0_invalid_branch_program function_11_length_dispatch_0_valid_branch_program [.i64]
 
 def function_11_length_dispatch_0_suffix_program : Wasm.Program :=
   [
-  .localGet 20
+  .localGet 21
 ]
 
 theorem function_11_length_dispatch_0_dispatch_eq :
@@ -686,7 +698,7 @@ theorem function_11_length_dispatch_0_function_eq :
 
 def function_11_length_dispatch_0_valid_capacity_program : Wasm.Program :=
   Project.ProofKit.FixedArrayCapacity.constantProgram
-    0 1 25
+    0 1 26
 
 theorem function_11_length_dispatch_0_valid_capacity_eq :
     Project.ProofKit.Annotation.region Project.SequenceSoftmax.func11
