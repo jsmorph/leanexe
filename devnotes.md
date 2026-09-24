@@ -1,3 +1,7 @@
+## 2026-09-24: Validation proof follows borrowed ownership
+
+Validate.Loop now passes in 16 seconds and Validate.Spec in 4.6 seconds. The invariant carries the new current and staged owner trackers as zero. The new cleanup guard therefore makes no release call; its pointer-equality selection returns zero on both branches, preserving the original unchanged-store and exact digit-validation postconditions. Intermediate diagnostics caught the unhandled guard, tactic branch scoping, and an extra symbolic walk after simplification had already consumed the continuation. The accepted proof splits only the pointer equality and reuses the same invariant witnesses in both cases. The generated frame lemmas still reduce by reflexivity. No new assumptions or axioms were added.
+
 ## 2026-09-24: Dot-product and quote frame proofs refreshed
 
 The focused build accepts F64DotCheckedBits.Execution (7.7 seconds), its numerical specifications (3.6 seconds), ClobQuote.Epilogue (4.9 seconds), and ClobQuote.Spec (7.4 seconds). The proofs preserve their original numerical, source-fold, and unchanged-store postconditions. The first frame repair miscounted the generated local lists; counting the actual function declarations exposed 23 dot-product locals and 64 quote locals. Correcting the explicit frames and preserving the now-unused ownership-flag slots resolved the failures. The dot-product theorem audits list only standard Lean axioms. The new byte-I/O README is also included in the maintained documentation gate, which now checks 162 files.
