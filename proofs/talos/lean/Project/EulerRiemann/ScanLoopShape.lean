@@ -5,18 +5,17 @@ namespace Project.EulerRiemann.Execution
 open Wasm
 
 def scanLoop : Wasm.Program :=
-  match (func32[25]? : Option Wasm.Instruction) with
+  match (func32[23]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem scan_loop_shape :
-    func32[25]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
+    func32[23]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
 
 structure ScanScratch where
   cell : Traversal.Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩
   previous : Traversal.Scan := ⟨0, 0⟩
   borrowed : UInt64 := 0
-  visited : UInt64 := 0
 
 def scanFrame (owner pointer : UInt64) (count index : Nat)
     (acc : Traversal.Scan) (scratch : ScanScratch) : Locals :=
@@ -36,8 +35,8 @@ def scanFrame (owner pointer : UInt64) (count index : Nat)
       .i64 0, .i64 0,
       .i64 pointer, .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat index),
       .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat count),
-      .i64 scratch.borrowed, .i64 acc.status, .i64 acc.alpha, .i64 scratch.visited,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0]
+      .i64 scratch.borrowed, .i64 acc.status, .i64 acc.alpha, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0]
     values := [] }
 
 def scanPrefix (grid : Array Traversal.Cell) (index : Nat) : Traversal.Scan :=
