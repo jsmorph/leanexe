@@ -19,6 +19,11 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       (left : EvalWith a (values.map Value.toScalar) x) (right : EvalWith b (values.map Value.toScalar) y)
       (chosen : Eval (if op.denote x y then onTrue else onFalse) values outcome) :
       Eval (branch op type a b onTrue onFalse) values outcome
+  | chooseCompound (guard : CompoundGuard) (type : ResultAnnotation) {native : Lean.Expr → UInt64}
+      (arguments : ∀ expression, expression ∈ guard.operands →
+        EvalWith expression (values.map Value.toScalar) (native expression))
+      (chosen : Eval (if guard.denote native then onTrue else onFalse) values outcome) :
+      Eval (guard.branch (resultType type) onTrue onFalse) values outcome
   | letE (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values outcome
@@ -115,6 +120,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (right : SupportedWith (types.map BindingKind.toScalar) b)
       (onTrue : Supported types t) (onFalse : Supported types e) :
       Supported types (branch op type a b t e)
+  | chooseCompound (guard : CompoundGuard) (type : ResultAnnotation)
+      (arguments : ∀ expression, expression ∈ guard.operands →
+        SupportedWith (types.map BindingKind.toScalar) expression)
+      (onTrue : Supported types t) (onFalse : Supported types e) :
+      Supported types (guard.branch (resultType type) t e)
   | letE (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
@@ -218,6 +228,22 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     | true =>
       obtain ⟨outcome, evaluated⟩ := it values typed
       exact ⟨outcome, .choose op type hx hy (by simpa [flag] using evaluated)⟩
+  | chooseCompound guard type arguments _ _ it ie =>
+    have total := fun expression member =>
+      (arguments expression member).evaluates (values.map Value.toScalar) (typed_projection typed)
+    let native : Lean.Expr → UInt64 := fun expression =>
+      if member : expression ∈ guard.operands then (total expression member).choose else 0
+    have meanings : ∀ expression, expression ∈ guard.operands →
+        EvalWith expression (values.map Value.toScalar) (native expression) := by
+      intro expression member
+      simpa [native, member] using (total expression member).choose_spec
+    cases flag : guard.denote native with
+    | false =>
+      obtain ⟨outcome, evaluated⟩ := ie values typed
+      exact ⟨outcome, .chooseCompound guard type meanings (by simpa [flag] using evaluated)⟩
+    | true =>
+      obtain ⟨outcome, evaluated⟩ := it values typed
+      exact ⟨outcome, .chooseCompound guard type meanings (by simpa [flag] using evaluated)⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])

@@ -57,6 +57,15 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨ev, ed⟩ := ihe he bindings htypes
     exact ⟨choice op a b t.value e.value (scalar ha bindings) (scalar hb bindings) tv ev,
       choice op a b t.done e.done (scalar ha bindings) (scalar hb bindings) td ed⟩
+  | chooseCompound guard type arguments _ _ iht ihe =>
+    rw [extractScalarStepWith_compoundBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
+    obtain ⟨tv, td⟩ := iht ht bindings htypes
+    obtain ⟨ev, ed⟩ := ihe he bindings htypes
+    have preserve := extractGuard_choice P literal binary choice guard.tree _ hc
+      (fun operand member expression found => scalar found bindings)
+    exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
   | letE value _ ih =>
     rw [extractScalarStepWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

@@ -1140,6 +1140,87 @@ def rangeComplementStep (count seed : UInt64) : UInt64 :=
       else .yield (~~~(y + UInt64.ofNat i))
     finish (a + seed) a
 
+def compoundAnd (x y : UInt64) : UInt64 :=
+  if x % 2 = 1 ∧ y % 2 = 1 then 11 else 29
+
+def compoundOr (x y : UInt64) : UInt64 :=
+  if x % 2 = 1 ∨ y % 2 = 1 then 31 else 47
+
+def compoundNested (x y : UInt64) : UInt64 :=
+  if (x < y ∧ x + y ≠ 0) ∨ (x ≥ y ∧ y ≤ x * 3) then x + 13 else y - 17
+
+def compoundNegatedLeaves (x y : UInt64) : UInt64 :=
+  if (¬ x = y) ∧ (¬ x < y ∨ !(x == 0)) then ~~~x else ~~~y
+
+def compoundZeroDivisor (x y : UInt64) : UInt64 :=
+  if x = 0 ∨ (x / y = 3 ∧ y % x ≠ 0) then x / y + 1 else y % x + 7
+
+def compoundFunction (x y : UInt64) : UInt64 :=
+  let captured := x + 7
+  let f := fun a b : UInt64 =>
+    if (a = b ∨ a < captured) ∧ (b ≠ 0 ∨ a = 0) then a + b else a - b
+  f x y + f y x
+
+def compoundDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  let z ← if x = 0 ∨ y = 0 then pure (x + y) else pure (x * y)
+  if z ≥ a ∧ y ≠ 1 then a := a + z else a := a - z
+  return a ^^^ y
+
+def compoundOperand (x y : UInt64) : UInt64 :=
+  if (if x < y ∧ x ≠ 0 then ~~~x else y) < (x + y) ∨ x = y
+  then (if x = 0 ∧ y = 0 then 19 else x + y) else ~~~(x + y)
+
+def rangeCompoundBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if UInt64.ofNat i ≥ seed % 5 ∧ a % 3 = 0 then break
+  return a
+
+def rangeCompoundContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if UInt64.ofNat i % 3 = 0 ∨ UInt64.ofNat i = seed % 7 then continue
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeCompoundJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let z ← if a = seed ∨ UInt64.ofNat i < 3 then pure (a + 5) else pure (a - 2)
+    if (z > a ∧ a ≠ 0) ∨ (UInt64.ofNat i ≥ 3 ∧ seed = 0) then
+      a := z
+    else
+      a := z + UInt64.ofNat i
+    if a = 7 ∨ (a % 5 = 0 ∧ UInt64.ofNat i > 2) then break
+  return a
+
+def rangeCompoundHelper (count seed : UInt64) : UInt64 :=
+  let f := fun x y : UInt64 =>
+    if (x < y ∨ y = 0) ∧ (x + seed ≠ 0 ∨ y ≤ seed) then x + y + 1 else x - y
+  let result := Id.run do
+    let mut a := seed
+    for i in [1:count.toNat:2] do
+      a := f a (UInt64.ofNat i)
+    return a
+  f result seed
+
+def rangeCompoundStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if (UInt64.ofNat i ≥ seed % 5 ∧ x % 3 = 0) ∨ y = 7
+      then .done (x + 11) else .yield (y + UInt64.ofNat i + 1)
+    finish (a + seed) a
+
+def rangeCompoundResult (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => Id.run do
+    let r : ForInStep UInt64 ←
+      if (UInt64.ofNat i = seed % 7 ∨ a = 0) ∧ UInt64.ofNat i > 1
+      then pure (.done (a + 3)) else pure (.yield (a + UInt64.ofNat i + 1))
+    let keep : ForInStep UInt64 → ForInStep UInt64 := fun result => result
+    return keep r
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1264,7 +1345,13 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeComplement", rangeComplement),
    ("rangeComplementContinue", rangeComplementContinue),
    ("rangeComplementHelper", rangeComplementHelper),
-   ("rangeComplementStep", rangeComplementStep)]
+   ("rangeComplementStep", rangeComplementStep),
+   ("rangeCompoundBreak", rangeCompoundBreak),
+   ("rangeCompoundContinue", rangeCompoundContinue),
+   ("rangeCompoundJoined", rangeCompoundJoined),
+   ("rangeCompoundHelper", rangeCompoundHelper),
+   ("rangeCompoundStep", rangeCompoundStep),
+   ("rangeCompoundResult", rangeCompoundResult)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -1317,7 +1404,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("complementChoice", complementChoice),
    ("complementFunction", complementFunction),
    ("complementDo", complementDo),
-   ("complementOperand", complementOperand)]
+   ("complementOperand", complementOperand),
+   ("compoundAnd", compoundAnd),
+   ("compoundOr", compoundOr),
+   ("compoundNested", compoundNested),
+   ("compoundNegatedLeaves", compoundNegatedLeaves),
+   ("compoundZeroDivisor", compoundZeroDivisor),
+   ("compoundFunction", compoundFunction),
+   ("compoundDo", compoundDo),
+   ("compoundOperand", compoundOperand)]
 
 end ArithmeticMilestone
 
