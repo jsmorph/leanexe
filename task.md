@@ -533,14 +533,14 @@ erased binder positions preserve captures throughout helper and loop scopes.
 The full corpus contains 367 declarations; this run checked 34. Type validation
 used cached dependencies; the fixed archive and runtime suite were not rebuilt.
 
-Next increment: accept the standard UInt64 literal instance when Lean places it
-behind inert let/lambda/application wrappers. The condition tests exposed this
-in a helper with a proof binder. The original failure and source are preserved
-with the completed evidence; the positive condition fixture binds its multiplier
-before the proof scope. Prove the exact constant-instance grammar and checker,
-then run the original source unchanged through the real compiler and engine.
-A second observed form, UInt64.ofNat applied to a standard Nat OfNat expression
-with borrowed-type metadata, remains a separate following capability.
+Current increment: standard UInt64 numeral instances behind inert
+let/lambda/application/metadata wrappers. The independently specified constant
+instance grammar, exact checker and scalar extraction proofs pass. The original
+helper that failed in the preceding condition increment is included unchanged
+in the new test corpus. Loop integration, focused tests and compiler gates are
+being checked; this increment is not yet complete. The checker tracks unapplied
+arguments and requires the exact standard instance for the same numeral.
+The separately observed UInt64.ofNat/Nat-OfNat metadata form remains next.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
