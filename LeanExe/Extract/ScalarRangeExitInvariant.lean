@@ -233,9 +233,13 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact hx
       · exact bindings binding member
     · exact bindings binding member
-  | case26 locals data body rejected ih =>
+  | case26 locals name type value body nondep rejected ih =>
+    change extractScalarRangeExitWith locals slot
+      (LeanExe.Source.Scalar.idLetExpr name type value body nondep) = some plan at compiled
+    exact ih (by simpa only [extractScalarRangeExitWith_idLet] using compiled) bindings
+  | case27 locals data body rejected ih =>
     exact ih (by simpa only [extractScalarRangeExitWith_metadata] using compiled) bindings
-  | case27 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hmetadata =>
+  | case28 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hidLet hmetadata =>
     rw [extractScalarRangeExitWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core

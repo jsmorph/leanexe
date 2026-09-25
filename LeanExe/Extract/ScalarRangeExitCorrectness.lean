@@ -318,6 +318,10 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     intro flag
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop flag).cons (resultEval flag))
+  | idLet _ ih =>
+    rw [extractScalarRangeExitWith_idLet] at compiled
+    obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
+    exact ⟨value, .idLet hv, result⟩
   | metadata _ ih =>
     rw [extractScalarRangeExitWith_metadata] at compiled
     obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings

@@ -144,6 +144,8 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
               let function := ScalarBinding.booleanFunction fun argument =>
                 extractScalarExprWith (.boolean argument :: locals) value
               extractScalarRangeExitWith (function :: locals) slot body
+      | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
+          extractScalarRangeExitWith locals slot (.letE name type value body nondep)
       | .mdata _ body => extractScalarRangeExitWith locals slot body
       | _ => none
 termination_by sizeOf source
@@ -192,6 +194,7 @@ theorem rangeExitSupported_excludes_pure {types : List BindingKind} {source : Le
     rw [extractScalarExprWith_letUnitFn]
     cases extractScalarExprWith _ _ <;> simp [ih]
   | letLeft value body ih => simp [extractScalarExprWith, ih]
+  | idLet _ ih => simpa only [extractScalarExprWith_idLet] using ih locals
   | metadata _ ih => simpa only [extractScalarExprWith] using ih locals
 
 theorem extractScalarRangeExitWith_call (locals : List ScalarBinding) (slot : Nat)
@@ -331,6 +334,13 @@ theorem extractScalarRangeExitWith_idBind (locals : List ScalarBinding) (slot : 
           pure { plan with result }) := by
   rw [Identity.bind, extractScalarRangeExitWith, scalarBindTypes_accepts]
   cases output <;> rfl
+
+@[simp] theorem extractScalarRangeExitWith_idLet (locals : List ScalarBinding) (slot : Nat)
+    (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool) :
+    extractScalarRangeExitWith locals slot (idLetExpr name type value body nondep) =
+      extractScalarRangeExitWith locals slot (.letE name type value body nondep) := by
+  rw [idLetExpr, extractScalarRangeExitWith]
+  rfl
 
 @[simp] theorem extractScalarRangeExitWith_metadata (locals : List ScalarBinding) (slot : Nat)
     (data : Lean.MData) (body : Lean.Expr) :
@@ -489,6 +499,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
       (by simp [ScalarBinding.kind, typed]) (extend total plan.result)
     exact ⟨{ plan with result }, by
       rw [extractScalarRangeExitWith_letE, rangeExitSupported_excludes_pure value]; simp [hp, hr]⟩
+  | idLet _ ih => simpa only [extractScalarRangeExitWith_idLet] using ih locals typed total
   | metadata _ ih => simpa using ih locals typed total
 
 /-- Successful range extraction admits the independently stated source grammar. -/
@@ -647,9 +658,12 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBooleanFn type (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case26 locals data body rejected ih =>
+  | case26 locals name type value body nondep rejected ih =>
+    change extractScalarRangeExitWith locals slot (idLetExpr name type value body nondep) = some plan at compiled
+    exact .idLet (ih (by simpa only [extractScalarRangeExitWith_idLet] using compiled))
+  | case27 locals data body rejected ih =>
     exact .metadata (ih (by simpa only [extractScalarRangeExitWith_metadata] using compiled))
-  | case27 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hmetadata =>
+  | case28 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hidLet hmetadata =>
     rw [extractScalarRangeExitWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core
