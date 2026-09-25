@@ -36,6 +36,61 @@ mutual
         apply bind_parses lp
         apply bind_last rp
         exact pure_parses _
+      | @if0 a ra b rb left right =>
+        have shape : LeanExe.Wasm.Binary.CoreWasm.encodeInstr (.iff false a (some b)) =
+            [4, 64] ++ (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [5]) ++
+              (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs b ++ [11]) := by
+          simp [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+            image_sequence, List.append_assoc]
+        rw [shape] at room ⊢
+        simp only [List.length_append, List.length_cons, List.length_nil] at room
+        have lp := ProgramEncoding.parses left fuel true .otherwise (by omega) (fun _ => rfl)
+        have rp := ProgramEncoding.parses right fuel false .end (by omega) (by intro h; cases h)
+        suffices parsed : Parses (Wasm.Binary.instruction (fuel + 1))
+            ([4] ++ ([64] ++ ((LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [5]) ++
+              (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs b ++ [11]))))
+            (Wasm.Binary.Instr.iff .empty ra (some rb)) by
+          simpa only [List.append_assoc, List.cons_append, List.nil_append] using parsed
+        unfold Wasm.Binary.instruction
+        apply bind_parses (a := [4]) (read_byte 4)
+        apply bind_parses (a := [64]) block_empty
+        apply bind_parses lp
+        apply bind_last rp
+        exact pure_parses _
+      | @block0 a ra body =>
+        have shape : LeanExe.Wasm.Binary.CoreWasm.encodeInstr (.block a) =
+            [2, 64] ++ (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [11]) := by
+          simp [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+            image_sequence, List.append_assoc]
+        rw [shape] at room ⊢
+        simp only [List.length_append, List.length_cons, List.length_nil] at room
+        have bp := ProgramEncoding.parses body fuel false .end (by omega) (by intro h; cases h)
+        suffices parsed : Parses (Wasm.Binary.instruction (fuel + 1))
+            ([2] ++ ([64] ++ (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [11])))
+            (Wasm.Binary.Instr.block .empty ra) by
+          simpa only [List.append_assoc, List.cons_append, List.nil_append] using parsed
+        unfold Wasm.Binary.instruction
+        apply bind_parses (a := [2]) (read_byte 2)
+        apply bind_parses (a := [64]) block_empty
+        apply bind_last bp
+        exact pure_parses _
+      | @loop0 a ra body =>
+        have shape : LeanExe.Wasm.Binary.CoreWasm.encodeInstr (.loop a) =
+            [3, 64] ++ (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [11]) := by
+          simp [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+            image_sequence, List.append_assoc]
+        rw [shape] at room ⊢
+        simp only [List.length_append, List.length_cons, List.length_nil] at room
+        have bp := ProgramEncoding.parses body fuel false .end (by omega) (by intro h; cases h)
+        suffices parsed : Parses (Wasm.Binary.instruction (fuel + 1))
+            ([3] ++ ([64] ++ (LeanExe.Wasm.Binary.CoreWasm.encodeInstrs a ++ [11])))
+            (Wasm.Binary.Instr.loop .empty ra) by
+          simpa only [List.append_assoc, List.cons_append, List.nil_append] using parsed
+        unfold Wasm.Binary.instruction
+        apply bind_parses (a := [3]) (read_byte 3)
+        apply bind_parses (a := [64]) block_empty
+        apply bind_last bp
+        exact pure_parses _
   termination_by sizeOf a
 
   theorem ProgramEncoding.parses {a : List LeanExe.Wasm.Instr} {b : List Wasm.Binary.Instr}

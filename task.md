@@ -66,8 +66,12 @@ while execution agrees with this iteration under a local-state invariant.
 standalone scalar while loops; the production emitter uses it after existing
 recognizers and its exact emission theorem passes. This permits a complete
 setup/loop/result function to use the kernel-checkable emitter instead of its
-opaque fallback. Source admission, full byte/validation proofs and execution
-checks are still pending; loops are not yet in the completed certified grammar.
+opaque fallback. The exact encoding, parsing and Talos translation now cover
+empty-result blocks, loops and conditionals, plus bounded branch depths. Their
+focused builds and the affected runtime encoding/length proofs pass. The first
+combined build timed out after completing the structured parsing and translation
+targets; smaller targets completed with cached dependencies. Source admission,
+whole-function validation/execution proofs and execution checks are still pending; loops are not yet in the completed certified grammar.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
