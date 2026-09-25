@@ -51,13 +51,24 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               let e ← extractScalarStepWith locals onFalse
               pure { value := .ite (lowerComparison op a b) t.value e.value
                      done := .ite (lowerComparison op a b) t.done e.done }
-  | .letE _ (.forallE _ (.const ``UInt64 [])
-      (.forallE _ (.const ``UInt64 []) resultType _) _)
-      (.lam _ (.const ``UInt64 []) (.lam _ (.const ``UInt64 []) value _) _) body _ =>
+  | .letE _ (.forallE firstTypeName (.const ``UInt64 [])
+      (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body _ =>
       match scalarResultType? resultType with
       | none =>
           match scalarStepResultType? resultType with
-          | none => none
+          | none =>
+              match scalarManyFunction?
+                  (.forallE firstTypeName (.const ``UInt64 [])
+                    (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+                  (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
+              | none => none
+              | some shape => do
+                  let _ ← extractScalarExprWith
+                    (List.replicate shape.arity (.word (.u64 0)) ++ locals.map ScalarStepBinding.toScalar) shape.body
+                  let function := ScalarBinding.manyFunction shape.arity fun arguments =>
+                    extractScalarExprWith (arguments.reverse.map ScalarBinding.word ++ locals.map ScalarStepBinding.toScalar) shape.body
+                  extractScalarStepWith (.scalar function :: locals) body
           | some _ => do
               let _ ← extractScalarStepWith (.scalar (.word (.u64 0)) :: .scalar (.word (.u64 0)) :: locals) value
               let function := ScalarStepBinding.binaryFunction fun first second =>

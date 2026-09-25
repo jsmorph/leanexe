@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarCall
+import LeanExe.Extract.ScalarHead
 
 namespace LeanExe.Extract.Core
 
@@ -49,5 +50,16 @@ theorem scalarManyCall_size {head first second : Lean.Expr} {call : ManyCall}
     sizeOf operand < sizeOf (.app (.app head first) second : Lean.Expr) := by
   rw [scalarManyCall_sound parsed]
   exact call.argument_size member
+
+theorem scalarLocalCall_not_primitive (call : LocalCall) : ScalarPrimitive.ofHead? call.expr = none := by
+  unfold ScalarPrimitive.ofHead?
+  split
+  · rename_i name levels same
+    have h := congrArg Lean.Expr.getAppFn same
+    simp [LocalCall.head, Lean.Expr.getAppFn] at h
+  · rename_i a b c same
+    have h := congrArg Lean.Expr.getAppFn same
+    simp [LocalCall.head, Lean.Expr.getAppFn] at h
+  · rfl
 
 end LeanExe.Extract.Core

@@ -179,6 +179,26 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
             (total_word_cons (total_word_cons totalBindings first) second)
         · exact totalBindings binding member)
     exact ⟨result, .letBinaryFn type (fun x y => (total x y).choose_spec) hs, hm⟩
+  | letManyFn shape function _ ih =>
+    rw [extractScalarRangeExitWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, hp⟩ := compiled
+    obtain ⟨f, meanings⟩ := function.manyFunction_evaluates values valuesTyped
+    obtain ⟨result, hs, hm⟩ := ih (values := .manyFunction shape.arity f :: values) hp
+      (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
+        intro accumulator index stop flag
+        apply (bindings accumulator index stop flag).cons
+        intro arguments native target len argumentsMeaning hc
+        exact extractScalarExprWith_correct (meanings native (argumentsMeaning.length.symm.trans len)) hc
+          ((bindings accumulator index stop flag).words argumentsMeaning.reverse)) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · intro arguments len
+          exact extractScalarExprWith_accepts function (arguments.reverse.map ScalarBinding.word ++ locals)
+            (by simp [List.map_map, Function.comp_def, ScalarBinding.kind, List.map_const', len, localsTyped])
+            (scalarWords_total _ totalBindings)
+        · exact totalBindings binding member)
+    exact ⟨result, .letManyFn shape meanings hs, hm⟩
   | letUnitFn type unitForm function _ ih =>
     rw [extractScalarRangeExitWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

@@ -83,6 +83,15 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact extractScalarExprWith_correct (function x y) hc
       ((bindings.toScalar.cons (binding := .word first) (value := .word x) hx).cons
         (binding := .word second) (value := .word y) hy)
+  | letManyFn shape function body ih =>
+    rw [extractScalarStepWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht
+    apply bindings.cons
+    intro arguments native target len meanings compiled
+    exact extractScalarExprWith_correct (function native (meanings.length.symm.trans len))
+      compiled (bindings.toScalar.words meanings.reverse)
   | letFn type function body ih =>
     rw [extractScalarStepWith_letFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
