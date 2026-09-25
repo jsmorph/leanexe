@@ -614,3 +614,21 @@ export-name uniqueness for every source entry outside the runtime reserved list.
 The module builds. This closes the metadata portion of validation; retain,
 allocator, release, full validator composition, normal-entry composition,
 usable arithmetic mode, and final gates remain unfinished.
+
+### Execution blocked after metadata checkpoint (2026-09-25)
+
+MetadataValidation completed successfully (3148 jobs) and was pushed at
+62cb863e3d105f98d11604925c1aed8682492929. The subsequent bounded retain-validation
+attempt used a restricted simp set, but the execution connection disconnected
+before its result could be retrieved. New commands now fail with HTTP 409,
+environment_offline: Environment is not connected. Resuming the existing process
+also fails. This is not evidence that files were deleted or that the proof
+passed. No retain validation result is claimed. The GitHub workflow-directory
+lookup returned 404, so an existing CI runner was not available as a fallback.
+
+Resume from the pushed metadata checkpoint, recover the retain attempt if it
+remains on disk, and reduce its proof boundary before another long check. Finish
+retain/allocator/release validation, compose full validation and the normal
+compiler-entry theorem, implement the arithmetic admission mode, then run every
+remaining clean-build, axiom, package, runtime, and mutation gate. The arithmetic
+milestone remains INCOMPLETE.
