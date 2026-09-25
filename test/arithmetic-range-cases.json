@@ -179,5 +179,13 @@
   "stepManyBind",
   "stepManyScalarMix",
   "stepManyUnused",
-  "stepManyWrapped"
+  "stepManyWrapped",
+  "rangeDependentYield",
+  "rangeDependentBreak",
+  "rangeDependentContinue",
+  "rangeDependentJoined",
+  "rangeDependentStep",
+  "rangeDependentResult",
+  "rangeDependentBounds",
+  "rangeDependentOuter"
 ]

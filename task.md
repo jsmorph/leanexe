@@ -507,8 +507,11 @@ proof-lambda domains. Source semantics and support retain an erased binder in
 each branch's lexical context. Scalar and step extraction acceptance, support,
 correctness and invariants pass, including function extraction and range output
 invariants. The source literal-count inversion now excludes this additional
-conditional shape explicitly. Focused execution tests and complete audits are
-still pending; this increment is not complete.
+conditional shape explicitly. All 304 focused native Lean/IR comparisons, four
+declaration rejection tests and four proof-domain rejection tests pass. A fixture
+initially inferred a Nat range start; its explicit UInt64 annotation now checks.
+Complete audits and focused V8 execution are still pending; this increment is
+not complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
