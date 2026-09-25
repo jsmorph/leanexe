@@ -99,7 +99,9 @@ printf 'abcd' | build/tools/leanexe-wasi-io-host build/echo.wasm
 
 Use the [development setup](../DEVELOPING.md#prerequisites) first.  The native host implements nonblocking WASI Preview 1 streams, a monotonic clock, and polling.  The pinned Wasmtime CLI's standard streams do not satisfy the required nonblocking contract.  Use this host or another host with that contract to enforce operation deadlines.
 
-Sequenced actions execute exactly once even when their result is ignored.  Binding an action to a local name defers it until sequencing, and sequencing that name again executes it again.  Actions cannot be stored in arrays or passed as runtime function arguments.  The primitives have compiler implementations and cannot execute natively in Lean.  `compile-wat`, `report`, and `ownership-report` retain their pure-entry scope; inspect an I/O binary with `wasm-tools print`.  I/O behavior currently has execution tests; the existing Talos proofs do not certify these imported host calls.
+Sequenced actions execute exactly once even when their result is ignored.  Binding an action to a local name defers it until sequencing, and sequencing that name again executes it again.  Actions cannot be stored in arrays or passed as runtime function arguments.  The primitives have compiler implementations and cannot execute natively in Lean.  `compile-wat`, `report`, and `ownership-report` retain their pure-entry scope; inspect an I/O binary with `wasm-tools print`.
+
+The [byte-I/O verification gate](../proofs/byte-io/README.md) checks modeled WASI host contracts, byte-transfer protocol laws, and six exact-binary execution cases. Run `tools/byte-io-proof.js check` in the configured development environment. These proofs use explicit host and clock-progress assumptions; they do not prove every compiled I/O program correct. The native C host, Wasmtime, and OS remain outside the formal proof boundary and are checked by execution tests.
 
 ## Memory Management
 

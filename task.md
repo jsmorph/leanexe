@@ -117,6 +117,8 @@ The [user manual](docs/manual.md#byte-input-and-output), [overview](README.md), 
 
 The documentation checker now passes all 162 maintained Markdown files after removing the obsolete temporary checkout path from the WGSL review notes.  Root `task.md` and `devnotes.md` remain outside that checker's inventory and require separate review.
 
+The follow-up review's two P2 native-host findings are repaired. Shared stdin/stdout flags are captured before either stream changes, and the host uses Cranelift with NaN canonicalization. The host suite passes seven I/O cases and twelve shared-descriptor restorations; source tests pass 53 executions, including six binary32/binary64 NaN cases, and four pure-mode rejections. Both regressions failed before their fixes. The byte-I/O proof gate passes again with identical echo bytes and 46 standard-axiom audits. The P3 manual finding is resolved by linking the modeled-host and exact-binary proof boundary while retaining its native-host assumptions.
+
 ## Talos relationship and proof scope
 
 Talos supplies the WebAssembly semantics used by the Lean proofs.  LeanExe emits a module, the source-driven proof tools regenerate its Talos representation, and the Lean kernel checks the behavioral theorem.  The exact-binary path additionally proves decoding, validation, and translation of the embedded binary.  The [Talos Proofs guide](proofs/talos/README.md), [verification procedure](docs/verifying.md), and [artifact format](docs/artifact-format.md) define those paths.
@@ -141,7 +143,7 @@ The separate [byte-I/O proof gate](proofs/byte-io/README.md) now specifies all s
 
 A separate import-bearing binary profile proves decoding, validation, and translation without changing the existing import-free profile or frozen packages. The representative 2,082-byte echo binary has SHA-256 `a4eef742abcf9f01336de122839ebbc9db18a469a70d9ee11ac7586ac4615be5`. Six kernel-checked execution theorems cover partial writes, EOF, a committed prefix before a broken pipe, retry after readiness, absolute-deadline expiry, and the exported `_start` exit. Memory ownership checks include balanced allocation/free counts. The complete maintained gate compares the bytes with fresh compiler output and audits the public theorem axioms.
 
-These are modeled-host and concrete generated-program theorems. They are not a universal compiler-refinement proof for every I/O program. Native C, Wasmtime, and the OS remain outside the proof boundary. A final nonblocking syscall may finish after the last clock observation; no strict wall-clock return guarantee is asserted. Release identity remains deferred. Existing compiler proof repairs continue independently.
+These are modeled-host and concrete generated-program theorems. They are not a universal compiler-refinement proof for every I/O program. Native C, Wasmtime, and the OS remain outside the proof boundary. A final nonblocking syscall may finish after the last clock observation; no strict wall-clock return guarantee is asserted. Release identity remains deferred. Existing compiler source-proof validation is complete.
 
 ## Environment and commands
 
