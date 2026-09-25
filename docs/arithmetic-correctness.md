@@ -128,6 +128,11 @@ scalar computations. Dependent Boolean-result choices also compose in these
 contexts. Exact proof-lambda domains and names are preserved; structural binder
 insertion/removal proves reconstruction and preserves captures through nested
 scopes. Branches that use the proof as an executable value are rejected.
+Boolean expressions also admit exact Bool-typed lets, including nesting,
+shadowing, unused values and captures. Body scalar operands retain their original
+Boolean let scope, while direct flag references distinguish the new flag from
+external captures. Both the bound value and body are checked. Pure computations
+may repeat in generated expressions.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -896,3 +901,12 @@ with 304 comparisons and 44/ten rejections. Binder transformations have checked
 inverse/size proofs and independent native comparisons over 4,452 positions.
 Five original examples now compile unchanged; eighteen selected prior modules
 kept identical bytes. The complete corpus has 568 declarations; this run was focused.
+
+The [Boolean-let increment](../proofs/compiler/boolean-let-2026-09-25/README.md)
+adds Bool bindings inside Boolean expressions. Candidate `d7368686` passed all
+nine audits and 623 native Lean/V8 comparisons across 34 declarations. The first
+focused fixture passed 304 native/IR comparisons and 44 rejection checks. Prior
+dependent-choice and Boolean-local fixtures passed unchanged with 304 comparisons
+and 76/eight rejections. Five original examples now compile unchanged; eighteen
+selected prior modules kept identical bytes. The complete corpus has 584
+declarations; this execution run was focused.
