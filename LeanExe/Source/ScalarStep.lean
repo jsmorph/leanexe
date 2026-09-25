@@ -44,13 +44,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
-  | letUnitFn (type : ResultType)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : ∀ x, EvalWith a (.word x :: .unit :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.function true f) :: values) outcome) :
       Eval (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | binaryApply (function : values[index]? = some (.binaryFunction f))
       (first : EvalWith a (values.map Value.toScalar) x)
@@ -67,22 +67,22 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | apply (function : values[index]? = some (.function false f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
       Eval (.app (.bvar index) a) values (f x)
-  | unitApply (function : values[index]? = some (.function true f))
+  | unitApply (unitForm : UnitSyntax) (function : values[index]? = some (.function true f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
-      Eval (.app (.app (.bvar index) (.const ``Unit.unit [])) a) values (f x)
+      Eval (.app (.app (.bvar index) unitForm.value) a) values (f x)
   | letStepFn (type : ResultAnnotation)
       (function : ∀ x, Eval a (.scalar (.word x) :: values) (f x))
       (body : Eval b (.function false f :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
-  | letUnitStepFn (type : ResultAnnotation)
+  | letUnitStepFn (type : ResultAnnotation) (unitForm : UnitSyntax)
       (function : ∀ x, Eval a (.scalar (.word x) :: .scalar .unit :: values) (f x))
       (body : Eval b (.function true f :: values) outcome) :
       Eval (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | applyResult (function : values[index]? = some (.resultFunction f))
       (argument : Eval a values input) : Eval (.app (.bvar index) a) values (f input)
@@ -145,13 +145,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | letUnitFn (type : ResultType)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : SupportedWith (.word :: .unit :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.function true) :: types) b) :
       Supported types (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | binaryApply (function : types[index]? = some .binaryFunction)
       (first : SupportedWith (types.map BindingKind.toScalar) a)
@@ -168,21 +168,21 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | apply (function : types[index]? = some (.function false))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (.app (.bvar index) a)
-  | unitApply (function : types[index]? = some (.function true))
+  | unitApply (unitForm : UnitSyntax) (function : types[index]? = some (.function true))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
-      Supported types (.app (.app (.bvar index) (.const ``Unit.unit [])) a)
+      Supported types (.app (.app (.bvar index) unitForm.value) a)
   | letStepFn (type : ResultAnnotation) (function : Supported (.scalar .word :: types) a)
       (body : Supported (.function false :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | letUnitStepFn (type : ResultAnnotation)
+  | letUnitStepFn (type : ResultAnnotation) (unitForm : UnitSyntax)
       (function : Supported (.scalar .word :: .scalar .unit :: types) a)
       (body : Supported (.function true :: types) b) :
       Supported types (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | applyResult (function : types[index]? = some .resultFunction)
       (argument : Supported types a) : Supported types (.app (.bvar index) a)
@@ -265,12 +265,12 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function false f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letFn type (fun x => (total x).choose_spec) evaluated⟩
-  | letUnitFn type function _ ih =>
+  | letUnitFn type unitForm function _ ih =>
     have total := fun x => function.evaluates (.word x :: .unit :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function true f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
-    exact ⟨outcome, .letUnitFn type (fun x => (total x).choose_spec) evaluated⟩
+    exact ⟨outcome, .letUnitFn type unitForm (fun x => (total x).choose_spec) evaluated⟩
   | binaryApply present first second =>
     obtain ⟨f, hf⟩ := binaryFunction_lookup typed present
     obtain ⟨x, hx⟩ := first.evaluates (values.map Value.toScalar) (typed_projection typed)
@@ -286,20 +286,20 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
     exact ⟨f x, .apply hf hx⟩
-  | unitApply present argument =>
+  | unitApply unitForm present argument =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
-    exact ⟨f x, .unitApply hf hx⟩
+    exact ⟨f x, .unitApply unitForm hf hx⟩
   | letStepFn type _ _ ihf ihb =>
     have total := fun x => ihf (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letStepFn type (fun x => (total x).choose_spec) evaluated⟩
-  | letUnitStepFn type _ _ ihf ihb =>
+  | letUnitStepFn type unitForm _ _ ihf ihb =>
     have total := fun x => ihf (.scalar (.word x) :: .scalar .unit :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
-    exact ⟨outcome, .letUnitStepFn type (fun x => (total x).choose_spec) evaluated⟩
+    exact ⟨outcome, .letUnitStepFn type unitForm (fun x => (total x).choose_spec) evaluated⟩
   | applyResult present _ ih =>
     obtain ⟨f, hf⟩ := resultFunction_lookup typed present
     obtain ⟨input, evaluated⟩ := ih values typed

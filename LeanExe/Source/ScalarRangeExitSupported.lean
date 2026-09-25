@@ -37,13 +37,13 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
-  | letUnitFn (type : ResultType)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : ∀ x, EvalWith a (.word x :: .unit :: values) (f x))
       (body : Eval b (.function true f :: values) outcome) :
       Eval (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | letLeft (value : Eval a values x) (body : EvalWith b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
@@ -76,12 +76,12 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
-  | letUnitFn (type : ResultType) (function : SupportedWith (.word :: .unit :: types) a)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax) (function : SupportedWith (.word :: .unit :: types) a)
       (body : Supported (.function true :: types) b) :
       Supported types (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | letLeft (value : Supported types a) (body : SupportedWith (.word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
@@ -131,11 +131,11 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     let f := fun x y => (total x y).choose
     obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
-  | letUnitFn type function _ ihb =>
+  | letUnitFn type unitForm function _ ihb =>
     have total := fun x => function.evaluates (.word x :: .unit :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
-    exact ⟨value, .letUnitFn type (fun x => (total x).choose_spec) hv⟩
+    exact ⟨value, .letUnitFn type unitForm (fun x => (total x).choose_spec) hv⟩
   | letLeft _ body ih =>
     obtain ⟨x, hx⟩ := ih values typed
     obtain ⟨y, hy⟩ := body.evaluates (.word x :: values) (by simp [Scalar.Value.kind, typed])

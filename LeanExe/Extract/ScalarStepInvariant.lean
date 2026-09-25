@@ -101,8 +101,8 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨arg, ha, ht⟩ := compiled
     exact bindings _ (List.mem_of_getElem? hf) arg target (scalar ha bindings) ht
-  | unitApply present argument =>
-    rw [extractScalarStepWith] at compiled
+  | unitApply unitForm present argument =>
+    rw [extractScalarStepWith_unitApply] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, ⟨binding, hb, matched⟩, arg, ha, ht⟩ := compiled
     have same := ScalarStepBinding.function?_some.mp matched
@@ -132,7 +132,7 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact ha
     · exact scalarStepBindings_holds bindings binding member
-  | letUnitFn type function _ ih =>
+  | letUnitFn type unitForm function _ ih =>
     rw [extractScalarStepWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, ht⟩ := compiled
@@ -153,7 +153,7 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro argument result ha compiled
     exact ihf compiled (extend bindings ha)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
-  | letUnitStepFn type _ _ ihf ihb =>
+  | letUnitStepFn type unitForm _ _ ihf ihb =>
     rw [extractScalarStepWith_letUnitStepFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, ht⟩ := compiled

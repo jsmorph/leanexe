@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarUnit
 import LeanExe.Source.ScalarDo
 import LeanExe.Source.ScalarRange
 import LeanExe.Source.ScalarYieldType
@@ -66,9 +67,9 @@ inductive YieldScalar : Lean.Expr → Lean.Expr → Prop where
   | lambda (body : YieldScalar source scalar) :
       YieldScalar (.lam name domain source bi) (.lam name domain scalar bi)
   | call : YieldScalar (.app (.bvar index) argument) (.app (.bvar index) argument)
-  | unitCall : YieldScalar
-      (.app (.app (.bvar index) (.const ``Unit.unit [])) argument)
-      (.app (.app (.bvar index) (.const ``Unit.unit [])) argument)
+  | unitCall (unitForm : UnitSyntax) : YieldScalar
+      (.app (.app (.bvar index) unitForm.value) argument)
+      (.app (.app (.bvar index) unitForm.value) argument)
   | branch (type : YieldType sourceType scalarType)
       (onTrue : YieldScalar sourceTrue scalarTrue) (onFalse : YieldScalar sourceFalse scalarFalse) :
       YieldScalar (branch sourceType condition evidence sourceTrue sourceFalse)
