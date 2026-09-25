@@ -59,8 +59,9 @@ top-level helper calls remain separate capabilities.
 
 A function may also contain one ascending `for i in [:count.toNat]` loop with
 one UInt64 accumulator. The stop is a supported UInt64 expression; iteration
-starts at zero and has unit step. Steps may yield or finish early with `break`. The source index retains its
-Nat type, including Lean borrowing metadata on that type, and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
+starts at zero and has unit step. Steps may yield or finish early with `break`.
+The source index retains its Nat type, including Lean borrowing metadata on
+that type, and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
 bindings and arithmetic may precede and follow the loop. The step supports
 UInt64 bindings and updates, direct supported local-function bindings, and
 supported scalar expressions on their right hand sides. Functions can capture
@@ -77,13 +78,12 @@ preserving input domains, binder positions and captured values. Both branches
 and every continuation body are checked, including unused continuations.
 `continue` yields the current accumulator and advances the range index.
 `break` returns the current accumulator, including updates made before it.
-The early-exit path also accepts explicit standard `pure (ForInStep.done …)`/`pure (ForInStep.yield …)`
-results and local functions returning them, with the same unary and Unit-prefixed
+The early-exit path also accepts explicit standard `pure (ForInStep.done …)`
+and `pure (ForInStep.yield …)` results and local functions returning them, with the same unary and Unit-prefixed
 shapes. Scalar and step-valued functions have distinct binding kinds; both
 compiled projections describe the same native step result. Additional
 accumulators, multiple/nested loops and other range starts/steps remain
-separate capabilities. Constant bounds must
-currently be written as a UInt64 value followed by `.toNat`.
+separate capabilities. Constant bounds must currently be written as a UInt64 value followed by `.toNat`.
 
 Compilation reserves locals for the accumulator, index and stop and emits an
 ordinary Wasm block/loop with a conditional exit and back edge. The early-exit
@@ -92,8 +92,7 @@ before updating the accumulator, then moves the index to the stop on done.
 Both value and decision expressions are read-only and checked for every prior
 flag value; neither can observe an intermediate accumulator update. Compiling
 the two projections can duplicate pure computations, subject to the existing
-numeric output limits. The proof ties
-native ascending range iteration to the emitted loop using the remaining
+numeric output limits. The proof ties native ascending range iteration to the emitted loop using the remaining
 iteration count, and covers setup, final result, exact byte parsing and module
 validation. Zero iterations preserve the initial accumulator. All bounds up to
 the maximum UInt64 stop are covered by the theorem, regardless of practical
@@ -284,3 +283,11 @@ audits and 289 matching results across thirteen range declarations.
 The [branching loop-step increment](../proofs/compiler/range-branches-2026-09-25/README.md)
 adds yielding branch continuations and continue, with all nine audits and 385
 matching results across seventeen range declarations.
+
+
+The [early-exit range increment](../proofs/compiler/range-break-2026-09-25/README.md)
+adds break and done-returning continuations, with all nine audits and 601
+matching results across twenty-six range declarations. It preserves the initial
+borrowed-Nat metadata failure and the checked correction. The full suite's
+1,038-case count above describes its current configuration; this increment ran
+the focused range group.

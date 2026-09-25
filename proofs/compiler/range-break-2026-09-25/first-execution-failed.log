@@ -1,0 +1,34 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: passed
+native-results: passed
+compile-rangeConstant: passed
+compile-rangeIndexed: passed
+compile-rangeIndexFree: passed
+compile-rangeBindings: passed
+compile-rangeChoice: passed
+compile-rangeBeforeAfter: passed
+compile-rangeCaptured: passed
+compile-rangeLocalFunction: passed
+compile-rangeChainedFunctions: passed
+compile-rangeUnusedFunction: passed
+compile-rangeMonadic: passed
+compile-rangeNestedDo: passed
+compile-rangeUnusedBind: passed
+compile-rangeMonadicJoined: passed
+compile-rangeBranchUpdates: passed
+compile-rangeContinue: passed
+compile-rangeNestedBranches: passed
+compile-rangeBreak: passed
+compile-rangeBreakUpdated: passed
+compile-rangeBreakJoined: passed
+compile-rangeBreakBeforeAfter: passed
+compile-rangeBreakBranchUpdates: passed
+compile-rangeContinueBreak: passed
+compile-rangeDoneFunction: passed
+compile-rangeDoneUnitFunction: exit 3
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+lean-wasm: source: command "compile-arithmetic", module "test.ArithmeticMilestone", entry "ArithmeticMilestone.rangeDoneUnitFunction", out "/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/arithmetic-check/range/rangeDoneUnitFunction.wasm": unsupported scalar source: expected UInt64 arguments and result, supported let/local-function bindings, standard Id do operations, arithmetic, comparisons, or one unit-step range loop with a UInt64 accumulator
+
