@@ -120,7 +120,7 @@ def boolLetUnsupportedBody (x y : UInt64) : UInt64 :=
   let _unused := (let flag := x == 0; if flag then true else toString x == toString y)
   x + y
 
-def boolLetUnsupportedType (x y : UInt64) : UInt64 :=
+def boolWordLetOriginal (x y : UInt64) : UInt64 :=
   (let word := x + y; word == 0).toUInt64
 
 def rangeBoolLetUnsupported (count seed : UInt64) : UInt64 :=
@@ -146,6 +146,7 @@ run_elab do
     (`BooleanLetTest.boolLetHelper, BooleanLetTest.boolLetHelper, false),
     (`BooleanLetTest.boolLetDo, BooleanLetTest.boolLetDo, false),
     (`BooleanLetTest.boolLetNegated, BooleanLetTest.boolLetNegated, false),
+    (`BooleanLetTest.boolWordLetOriginal, BooleanLetTest.boolWordLetOriginal, false),
     (`BooleanLetTest.rangeBoolLetYield, BooleanLetTest.rangeBoolLetYield, true),
     (`BooleanLetTest.rangeBoolLetJoined, BooleanLetTest.rangeBoolLetJoined, true),
     (`BooleanLetTest.rangeBoolLetContinue, BooleanLetTest.rangeBoolLetContinue, true),
@@ -169,7 +170,7 @@ run_elab do
       let actual := module_.evalFunc 0 [x, y]
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
-  for name in [`BooleanLetTest.boolLetUnsupportedBound, `BooleanLetTest.boolLetUnsupportedBody, `BooleanLetTest.boolLetUnsupportedType, `BooleanLetTest.rangeBoolLetUnsupported] do
+  for name in [`BooleanLetTest.boolLetUnsupportedBound, `BooleanLetTest.boolLetUnsupportedBody, `BooleanLetTest.rangeBoolLetUnsupported] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
@@ -190,8 +191,15 @@ run_elab do
     unless (LeanExe.Extract.Core.extractScalarStepWith stepLocals
         (.letE `unused boolType valid (LeanExe.Source.Scalar.Step.yieldDirect one) false)).isSome do
       throwError "valid Boolean let rejected in step code"
+    let wordValid := make wordType one yes
+    unless (LeanExe.Extract.Core.extractScalarExprWith scalarLocals
+        (.letE `unused boolType wordValid one false)).isSome do
+      throwError "promoted word let rejected in scalar code"
+    unless (LeanExe.Extract.Core.extractScalarStepWith stepLocals
+        (.letE `unused boolType wordValid (LeanExe.Source.Scalar.Step.yieldDirect one) false)).isSome do
+      throwError "promoted word let rejected in step code"
     let invalid := [make boolType one yes, make boolType yes one,
-      make wordType one yes, make (.const ``Bool [.zero]) yes yes,
+      make (.const ``Bool [.zero]) yes yes,
       make boolType (.bvar 1) yes, make boolType yes (.bvar 2),
       make boolType (.bvar 7) yes, make boolType yes (.bvar 7),
       make boolType yes (make boolType one yes),
@@ -205,4 +213,4 @@ run_elab do
           (.letE `unused boolType argument (LeanExe.Source.Scalar.Step.yieldDirect one) false)).isNone do
         throwError "invalid Boolean let accepted in step code"
       rawRejections := rawRejections + 1
-  Lean.logInfo m!"304 native/Boolean-let IR comparisons, four declaration rejection tests and {rawRejections} raw let rejection tests passed"
+  Lean.logInfo m!"318 native/Boolean-let IR comparisons, three declaration rejection tests and {rawRejections} raw let rejection tests passed"
