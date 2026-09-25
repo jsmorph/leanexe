@@ -252,5 +252,13 @@
   "rangeDecideCapture",
   "rangeDecideBounds",
   "rangeDecideStep",
-  "rangeDecideOuter"
+  "rangeDecideOuter",
+  "rangeBoolWordYield",
+  "rangeBoolWordBreak",
+  "rangeBoolWordContinue",
+  "rangeBoolWordJoined",
+  "rangeBoolWordCapture",
+  "rangeBoolWordBounds",
+  "rangeBoolWordStep",
+  "rangeBoolWordOuter"
 ]
