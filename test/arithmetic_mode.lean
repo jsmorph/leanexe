@@ -2119,7 +2119,8 @@ run_elab do
       `ArithmeticModeTest.rangeManyYield,
       `ArithmeticModeTest.rangeManyStride,
       `ArithmeticModeTest.rangeManyGuard,
-      `ArithmeticModeTest.rangeManyResult] do
+      `ArithmeticModeTest.rangeManyResult,
+      `ArithmeticModeTest.rangeOuterThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -2148,7 +2149,7 @@ run_elab do
       `ArithmeticModeTest.compoundCustom, `ArithmeticModeTest.compoundUnsupported, `ArithmeticModeTest.compoundUnusedCustom,
       `ArithmeticModeTest.complementCustom, `ArithmeticModeTest.complementHelper, `ArithmeticModeTest.complementUnusedCustom,
       `ArithmeticModeTest.rangeLetUnsupported, `ArithmeticModeTest.rangeLetTwoLoops, `ArithmeticModeTest.rangeLetBool,
-      `ArithmeticModeTest.rangeOuterUnsupported, `ArithmeticModeTest.rangeOuterThree, `ArithmeticModeTest.rangeOuterNat, `ArithmeticModeTest.rangeOuterPartial,
+      `ArithmeticModeTest.rangeOuterUnsupported, `ArithmeticModeTest.rangeOuterNat, `ArithmeticModeTest.rangeOuterPartial,
       `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepThree, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,
       `ArithmeticModeTest.rangeBinaryUnsupported, `ArithmeticModeTest.rangeBinaryPartial,
       `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,
