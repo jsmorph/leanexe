@@ -25,8 +25,10 @@ are connected to the actual public entry. Checked segment theorems establish
 continuous clearance, component kinematic bounds, physical-time derivatives,
 exact tick timing and bounded word arithmetic. `Safety.lean` now exposes
 those continuous guarantees directly for every segment of the returned output.
-Remaining work is to assemble a global real-time path with position/velocity
-joins, and to prove the emitted WASM semantics.
+`Trajectory.compute_global_smooth` now assembles the actual output into a
+global real-time path and proves its position derivative and continuous velocity,
+including joins. Remaining work is the interval correspondence/safety packaging
+for that global path, and the emitted WASM semantics.
 **There is no exact-artifact execution theorem yet.**
 
 ## Repository and execution environment
@@ -232,6 +234,8 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `History.lean` | Actual input guard, flat parent-history size/indexing, correspondence with the row recurrence |
 | `Output.lean` | Actual unwind loop, encoded route, `compute_correct`, invalid/empty cases and exact endpoint pairs |
 | `Safety.lean` | Direct output-index interior clearance, admitted adjacent pairs, continuous segment clearance, component limits and exact duration/tick correspondence |
+| `Gluing.lean` | Reusable finite-curve construction on cumulative time; matching value/derivative gluing and continuous velocity |
+| `Trajectory.lean` | Returned primitive endpoints and derivatives, moving/rest joins, `compute_global_smooth` for the assembled path |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
 `Planner.layers` is a reference sequence of the actual executable `initial`
@@ -341,9 +345,15 @@ commits should continue respecting that file scope unless the user changes it.
    duration and all horizontal/vertical speed/acceleration bounds on that same
    interval. `compute_segment_timing` identifies edge ticks/840 with the actual
    real primitive duration. These use the public output-to-state/edge bridge.
-   **Remaining:** package the segments as one global real-time path and prove
-   its position/velocity joins. Existing physical-time derivative and endpoint
-   lemmas are checked; acceleration may jump at waypoints.
+   **Global joins — checked:** `Trajectory.compute_joins` proves matching
+   positions and velocities, including moving/rest transitions.
+   `compute_global_smooth` proves the assembled global coordinate functions
+   have the stated velocity derivatives everywhere and continuous velocities.
+   The construction is constant before takeoff and extends the final polynomial
+   after arrival. Only the finite flight interval carries safety requirements.
+   **Remaining:** explicitly identify each cumulative-time segment interval
+   of the global path with its local primitive, transporting the existing
+   segment safety bounds to the global-time formulation. Acceleration may jump.
 6. **Exact WASM semantics.** Freeze the compiled artifact and digest. Prepare
    Talos's decoded program and annotations, prove ABI/array/allocator/loop
    behavior and an actual `Wasm.TerminatesWith` theorem for that artifact.
@@ -455,3 +465,39 @@ No executable behavior changed in this proof increment, so the previously
 passed runtime suite and the rechecked four graph outputs remain applicable.
 Graphs/HTML remain outside commits. The exact-WASM theorem and a packaged
 global real-time path remain future work; neither is claimed by this checkpoint.
+
+
+### 2026-09-25 — global trajectory and velocity continuity checkpoint
+
+Resumed from published commit `1e56a01f2bcdc335c90e2e4771678d7b870f1701` after
+the transient checkout had been cleared. Restored branch `drone`, the exact
+pinned Lean release (version/commit checked) and pinned proof dependencies.
+The bounded cache restore made progress to 96% before its time limit; a second
+bounded call restored the remaining files. The initial archive extraction had
+ownership-setting warnings in this managed workspace; file extraction and the
+pinned Lean version check succeeded. Future extractions should use
+`tar --no-same-owner`.
+
+Added `Gluing.lean` and `Trajectory.lean`. The generic `stitch_smooth` theorem
+constructs one finite curve on cumulative physical time and proves its
+specified derivative and continuous velocity from local derivatives and matching
+endpoints. The public `compute_joins` and `compute_global_smooth` instantiate
+that result for the actual returned drone words, including stopped/moving
+transitions and the singleton constant path. Position and velocity are
+continuous at internal joins; no second-derivative claim is made there.
+The focused trajectory target and aggregate source checks pass, with only
+standard Lean axioms. Executable code is unchanged.
+
+Proof-development findings: unfold partially applied coordinate definitions
+before rewriting branch conditions. Separate branch simplification from index
+arithmetic and default list-index simplification, so a guard is not rewritten
+into a syntactically different expression before its hypothesis applies.
+The generic derivative gluing proof combines derivatives within the left and
+right half-lines and uses continuity only for the velocity gluing step.
+
+Prepared a local unfinished `drone` case in `proofs/talos/cases.json` for the
+next exact-artifact step (`complete: false`, annotations enabled, source module
+`LeanExe.Examples.Drone`, entry `LeanExe.Examples.Drone.compute`, Lean namespace
+`Project.Drone`). Its future behavior target is `Project.Drone.Spec.compute_correct`;
+that target is not yet proved. The JSON registry edit is deliberately outside
+commits under the user's Lean-code-and-task-only instruction.
