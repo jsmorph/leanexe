@@ -3721,7 +3721,10 @@ def emitStmtAnnotated
           elseEmission.whileLoops.map (prefixWhileLoop "else") }
   | .while cond body =>
       let bodyEmission := emitStmtAnnotated releaseIndex scratch body
-      let condCode := emitCond scratch cond
+      let condCode :=
+        match ScalarDescriptor.Cond.ofIR cond with
+        | some descriptor => descriptor.emit scratch
+        | none => emitCond scratch cond
       let guardLength := condCode.length + 2
       let code :=
         [Instr.block [Instr.loop
