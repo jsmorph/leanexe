@@ -708,24 +708,25 @@ unchanged and have matching bodies across execution fixtures. Evidence is in
 `proofs/compiler/boolean-relation-choice-2026-09-25/`. The complete corpus has 552
 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Current increment: dependent Boolean-result choices. Five inspected examples
-were rejected before this change. ExprProofBinder now supplies checked structural insertion and
-removal of an unused proof binder, preserving names, metadata, type expressions
-and nested scopes. It proves both reconstruction directions and the size bound
-needed by the recursive parser. The focused test matched Lean's native lifting
-and occurrence checks at 4,452 binder positions; 3,987 successful removals matched
-native lowering, and 465 proof references rejected. Boolean-result dependent
-choice source forms, lowering correctness, parser acceptance/reconstruction and
-source scalar/step/range integration now pass focused Lean builds. The parser
-checks exact proof domains and removes only unused proof binders before parsing
-branch bodies; source reconstruction restores their exact scopes. Scalar and loop
-compiler integration now pass. The first focused fixture passed all 304 native/IR
-comparisons and 76 rejection checks. All five original examples compile unchanged;
-preceding relation-choice and dependent-condition fixtures each passed 304
-comparisons and their 44/ten rejection checks. All 20 new declaration bodies match
-across focused/admission fixtures, and the 16 accepted bodies match native
-execution fixtures. The general proof audit, actual WebAssembly execution and
-final documentation remain in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
+Completed next increment: dependent Boolean-result choices over admitted Boolean
+and closed propositional guards. Structural proof-binder insertion/removal has
+checked inverse and size lemmas, preserves nested scopes and rejects proof reads.
+Its independent native test checked 4,452 binder positions, with 3,987 successful
+removals and 465 rejected proof references. Exact proof domains, decision
+evidence and source reconstruction are proved. Candidate `ba0b0f70` passed all
+nine compiler audits and 623 native Lean/V8 comparisons across 34 declarations.
+The first focused fixture passed 304 native/IR comparisons and 76 rejections.
+The preceding ordinary relation-choice and dependent-condition fixtures each
+passed 304 comparisons and their 44/ten rejections unchanged. Five original
+examples compile unchanged with matching bodies across all execution fixtures;
+eighteen selected prior modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-dependent-choice-2026-09-25/`. The complete corpus has
+568 declarations; this was a focused execution run. No emitter/runtime changes.
+
+Next increment: Boolean-local let expressions inside Boolean values. Inspect
+elaborated nested let syntax, preserve typed lexical scope and check bound values
+including unused ones, then prove and test scalar/loop integration before moving
+on. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
 parameters, broader saved-flag propositions and loops inside helpers remain
 later capabilities.
 

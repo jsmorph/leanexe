@@ -124,7 +124,10 @@ nested Boolean choices and decisions in either condition input or result branch.
 The exact standard evidence is checked. A proved literal-true specialization
 preserves the original condition for ordinary Boolean choices. These results
 compose through Id binds, captures, helper calls, loop steps and surrounding
-scalar computations. Dependent Boolean-result choices remain a later extension.
+scalar computations. Dependent Boolean-result choices also compose in these
+contexts. Exact proof-lambda domains and names are preserved; structural binder
+insertion/removal proves reconstruction and preserves captures through nested
+scopes. Branches that use the proof as an executable value are rejected.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -170,7 +173,7 @@ Dependent branches check both proof-lambda domains and preserve captures under
 erased proof binders. All operands and branches must be supported, including
 inactive branches. This composes through helpers, joined Id updates, loop
 break/continue, bounds and surrounding scalar code. Ordinary Boolean-result
-choices also admit these propositions; dependent Boolean results remain separate.
+choices, including dependent Boolean results, also admit these propositions.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
@@ -883,3 +886,13 @@ fixtures passed unchanged with 304 comparisons and 36/twelve rejections. Eightee
 selected prior modules kept identical bytes; a proved literal-true specialization
 preserves ordinary Boolean-choice lowering. Five original examples now compile
 unchanged. The complete corpus contains 552 declarations; this execution was focused.
+
+The [dependent Boolean-result increment](../proofs/compiler/boolean-dependent-choice-2026-09-25/README.md)
+adds Boolean results from proof-binding conditionals. Candidate `ba0b0f70` passed
+all nine audits and 623 native Lean/V8 comparisons across 34 declarations. The
+first focused fixture passed 304 native/IR comparisons and 76 rejection checks.
+Prior ordinary relation-choice and dependent-condition fixtures passed unchanged
+with 304 comparisons and 44/ten rejections. Binder transformations have checked
+inverse/size proofs and independent native comparisons over 4,452 positions.
+Five original examples now compile unchanged; eighteen selected prior modules
+kept identical bytes. The complete corpus has 568 declarations; this run was focused.
