@@ -10,7 +10,8 @@ yet covered by this theorem.
 
 A declaration must be safe, total, have an executable body, take zero or more
 `UInt64` arguments and return `UInt64`. Its body may read arguments, contain
-UInt64 literals, metadata and UInt64 `let` bindings, and nest these operations arbitrarily:
+UInt64 literals, metadata, UInt64 `let` bindings and conditionals, with arbitrary
+nesting of supported expressions:
 
 | Source operation | Meaning |
 | --- | --- |
@@ -18,11 +19,19 @@ UInt64 literals, metadata and UInt64 `let` bindings, and nest these operations a
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
+| `if … then … else …` | Branch on `=`, `<`, `≤`, `==`, or `!=` between UInt64 expressions |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
-instances, conditions, helper calls, recursion, loops, runtime Nat,
-heap values, imports, and floats are excluded from this initial theorem.
+instances, helper calls, recursion, loops, runtime Nat,
+heap values, imports, and floats are excluded from the current theorem.
+Comparisons use the standard UInt64 instances and exact standard decision
+procedures. `>` and `≥` elaborate as reversed `<` and `≤` comparisons. Nested
+conditionals may appear in comparison operands, arithmetic operands, and let
+bindings. Both branches must belong to the supported grammar and satisfy static
+local bounds, even when one branch is never executed. Dependent `if h : …`,
+Boolean parameters/results/bindings and compound Boolean conditions are not yet
+admitted by this source grammar.
 
 The requested export name must avoid all ten runtime exports. Admission checks
 explicit limits below 2^32 on parameter/result counts, UTF-8 export-name bytes,
@@ -38,8 +47,8 @@ computation or omit an unused binding's computation. Source evaluation remains
 strict in the proof, and substitution preserves its result because these
 expressions have no effects or divergence. Repeated bindings can expand emitted
 code; the same numeric output limits apply. Bindings of other types remain excluded.
-A conditional or call to a separate user helper is also excluded even when the
-normal compiler supports it.
+For example, `if x < y then x + 1 else y / x` is now admitted. Calls to a
+separate user helper remain excluded even when the normal compiler supports them.
 
 ## Compile and check
 
@@ -52,16 +61,18 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles twelve fresh declarations with that command,
+and all reserved names, compiles twenty fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 142 results against native Lean evaluation, including overflow, zero
+It compares 254 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
-unused, and zero-argument let bindings.
+unused, and zero-argument let bindings. Eight more cover the comparison forms,
+both branches, nested choices, branch-local bindings, and conditionals inside
+comparison operands.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison

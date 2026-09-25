@@ -209,8 +209,9 @@ bytes, decoding, validation, export lookup and terminating invocation in the
 pinned interpreter. It does not prove CLI IO, all Lean evaluation, or agreement
 of every external engine with that interpreter. The source supports UInt64
 arguments/literals and nested add/sub/mul/unsigned division/remainder/bitwise
-operations/masked shifts, subject to explicit format-size bounds. Lets,
-branches, helpers, loops, custom instances and heap values are excluded.
+operations/masked shifts, UInt64 let bindings and conditionals over canonical
+UInt64 comparisons, subject to explicit format-size bounds. Helpers, loops,
+custom instances and heap values are excluded.
 
 The JSON inventory detects accidental content changes; it is not a signature.
 Check this archive's SHA-256 against the separately published evidence to

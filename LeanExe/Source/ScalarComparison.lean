@@ -42,6 +42,10 @@ def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .bne, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .bne a b))
       (.const ``Bool.true [])
 
+theorem operands_size (op : Comparison) (a b : Lean.Expr) :
+    sizeOf a < sizeOf (op.condition a b) ∧ sizeOf b < sizeOf (op.condition a b) := by
+  cases op <;> simp [condition, boolExpr] <;> omega
+
 /-- Exact ordinary `if` syntax over a supported comparison. Its decision
 procedure is part of the grammar, including the compared operands. -/
 def branch (op : Comparison) (a b onTrue onFalse : Lean.Expr) : Lean.Expr :=

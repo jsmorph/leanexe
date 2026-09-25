@@ -31,6 +31,21 @@ def boundConstant : UInt64 :=
   let x : UInt64 := 18446744073709551615
   x + 2
 
+def compareEq (x y : UInt64) : UInt64 := if x = y then x + 1 else y - 1
+def compareLt (x y : UInt64) : UInt64 := if x < y then x / y else y / x
+def compareLe (x y : UInt64) : UInt64 := if x ≤ y then x * 3 else y + 7
+def compareBEq (x y : UInt64) : UInt64 := if x == y then x ^^^ 17 else y <<< x
+def compareBNe (x y : UInt64) : UInt64 := if x != y then x - y else x + y
+def nestedChoice (x y : UInt64) : UInt64 :=
+  if x > y then (if x = 0 then 11 else x % y)
+  else if x ≥ y then x + 19 else y >>> x
+def choiceBindings (x y : UInt64) : UInt64 :=
+  let a := if x = y then x + 7 else x - y
+  if a != y then (let b := a * y; b + 1) else a / y
+def choiceOperands (x y : UInt64) : UInt64 :=
+  if (if x < y then x + 1 else y - 1) = (if y ≤ x then x - y else y - x)
+  then x + y else x * y
+
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
    (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -41,7 +56,9 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [("wrapping", wrapping), ("quotient", quotient), ("remainder", remainder),
    ("shifts", shifts), ("nested", nested), ("order", order),
    ("bindings", bindings), ("shadowed", shadowed), ("nestedBindings", nestedBindings),
-   ("unusedBinding", unusedBinding)]
+   ("unusedBinding", unusedBinding), ("compareEq", compareEq), ("compareLt", compareLt),
+   ("compareLe", compareLe), ("compareBEq", compareBEq), ("compareBNe", compareBNe),
+   ("nestedChoice", nestedChoice), ("choiceBindings", choiceBindings), ("choiceOperands", choiceOperands)]
 
 end ArithmeticMilestone
 

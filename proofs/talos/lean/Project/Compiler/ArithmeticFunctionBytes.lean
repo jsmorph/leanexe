@@ -28,6 +28,7 @@ theorem scalar_function_bytes_execution (args : List UInt64) (name : Lean.Name)
     (exportName : Option String) (releaseIndex : Nat)
     {ir : LeanExe.IR.Expr} {descriptor : Expr} {value : UInt64}
     (recognized : Expr.ofIR ir = some descriptor) (arithmetic : descriptor.Arithmetic)
+    (reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32)
     (evaluated : ir.ScalarEval (args ++ [0]) value (args ++ [0]))
     (room : args.length + 1 + descriptor.scratchWidth ≤ 2 ^ 32)
     (m : Wasm.Module) (env : Wasm.HostEnv α) (store : Wasm.Store α) :
@@ -40,12 +41,6 @@ theorem scalar_function_bytes_execution (args : List UInt64) (name : Lean.Name)
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
   dsimp only
-  have readSlots := arithmetic.reads_bound (Expr.ofIR_eval evaluated recognized).1
-  have reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32 := by
-    intro index member
-    have h := readSlots index member
-    simp only [List.length_append, List.length_cons, List.length_nil] at h
-    omega
   obtain ⟨raw, encoded⟩ := scalar_function_encodable name exportName args.length
     releaseIndex recognized arithmetic reads room
   obtain ⟨code, next, lowered, executed⟩ := ScalarLowering.scalar_function_execution args
