@@ -90,6 +90,11 @@ Three fixtures cover monadic bindings, nested do computations and unused
 values. Rejection cases include custom Bind evidence and a break after a bind.
 The final audit and focused 289-result, thirteen-declaration execution check
 are pending for this candidate.
+The first engine attempt accepted simple binds but rejected a conditional
+monadic join, which introduces a loop-step-valued continuation. That failure is
+retained in `proofs/compiler/range-do-2026-09-25/first-execution-attempt.log`.
+The current increment stays with straight-line monadic bindings and conditional
+scalar values inside pure; step-valued branch continuations are next.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
