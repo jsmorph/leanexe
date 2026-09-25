@@ -344,14 +344,22 @@ All 240 focused native Lean/IR comparisons and four rejection tests passed.
 All 105 preceding range modules kept identical bytes. General type validation
 passed; unrelated suites were not rebuilt.
 
-Current increment: ordinary UInt64 let bindings whose value is a range
-computation. The source grammar, extraction, acceptance, support, preservation
-and invariant proofs pass Lean checking. The existing final-result expression
-composes the loop value with its pure continuation. Ten public fixtures cover
-nested lets, aliases, captures, unused results, early exits, continue, monadic
-continuations and local helpers. All 240 focused native Lean/IR comparisons and
-three rejection tests pass. The full compiler proof, type validation and range
-execution checks follow this candidate checkpoint.
+Completed next increment: ordinary UInt64 let bindings whose value is a range
+computation. Candidate `e11f409a` passed all nine general compiler audits and
+2,977 matching native Lean/V8 results across 125 range declarations, including
+admission and reserved exports. Evidence is in
+`proofs/compiler/range-let-results-2026-09-25/`. Source/IR acceptance, support,
+preservation and invariants compose the loop result with its pure continuation.
+All 240 focused native Lean/IR comparisons and three rejection tests passed,
+covering nested lets, aliases, shadowing, unused results, stepped exits,
+continue, monadic continuations and captured helpers. All 115 preceding range
+modules kept identical bytes. General type validation passed; unrelated suites
+were not rebuilt.
+
+Next incremental capability: UInt64 bitwise complement, through the direct
+primitive and standard `~~~` operator. Reuse the existing xor instruction and
+prove its all-ones lowering, then complete source/IR and full compiler execution
+checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
