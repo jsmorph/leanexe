@@ -496,3 +496,12 @@ discharges all four fixed payload limits. RuntimeFunctionParsing now proves
 complete decoding of all four actual runtime bodies without length hypotheses.
 All three modules build. This completes that component; complete module
 sections, validation, exported invocation, and final gates remain pending.
+
+### Whole six-section decoder composition (checked)
+
+ModuleSections composes payload parsing into the public complete-input module
+decoder for the exact six-section layout emitted by the production compiler.
+It proves section order and uniqueness checks, exact module header consumption,
+and sufficient section-loop fuel. The module builds. The remaining task at this
+boundary is to supply the actual compiler payloads and their bounds; this general
+composition theorem alone is not the source-to-module correctness result.
