@@ -340,5 +340,9 @@
   "rangeIdLetBounds",
   "rangeIdLetStep",
   "rangeIdLetOuter",
-  "rangeIdLetUnused"
+  "rangeIdLetUnused",
+  "rangeIdArithmeticYield",
+  "rangeIdArithmeticContinue",
+  "rangeIdArithmeticBounds",
+  "rangeIdArithmeticStep"
 ]

@@ -4538,6 +4538,126 @@ def rangeIdLetUnsupported (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun _ a => do
     let _flag : Id Bool := toString a == toString seed
     return .yield (a + 1)
+def idArithmeticLeft (x y : UInt64) : UInt64 :=
+  let a : Id UInt64 := x
+  @HAdd.hAdd (Id UInt64) UInt64 UInt64 (@instHAdd UInt64 instAddUInt64) a y
+
+def idArithmeticRight (x y : UInt64) : UInt64 :=
+  let b : Id (Id UInt64) := y
+  @HSub.hSub UInt64 (Id (Id UInt64)) UInt64 (@instHSub (Id UInt64) instSubUInt64) x b
+
+def idArithmeticBoth (x y : UInt64) : UInt64 :=
+  let a : Id UInt64 := x
+  let b : Id (Id UInt64) := y
+  @HMul.hMul (Id UInt64) (Id (Id UInt64)) (Id UInt64)
+    (@instHMul (Id (Id UInt64)) instMulUInt64) a b
+
+def idArithmeticBitwise (x y : UInt64) : UInt64 :=
+  let a : Id (Id UInt64) := x
+  let b : Id UInt64 := y
+  @HXor.hXor (Id UInt64) (Id (Id UInt64)) UInt64 (@instHXorOfXorOp UInt64 instXorOpUInt64)
+    (@HAnd.hAnd (Id (Id UInt64)) (Id UInt64) (Id UInt64)
+      (@instHAndOfAndOp (Id UInt64) instAndOpUInt64) a b)
+    (@HOr.hOr (Id (Id UInt64)) (Id UInt64) (Id (Id UInt64))
+      (@instHOrOfOrOp (Id (Id UInt64)) instOrOpUInt64) a b)
+
+def idArithmeticDivision (x y : UInt64) : UInt64 :=
+  let a : Id UInt64 := x
+  let b : Id (Id UInt64) := y
+  @HDiv.hDiv (Id UInt64) (Id (Id UInt64)) UInt64
+    (@instHDiv (Id UInt64) instDivUInt64) a b +
+  @HMod.hMod (Id UInt64) (Id (Id UInt64)) UInt64
+    (@instHMod (Id (Id UInt64)) instModUInt64) a b
+
+def idArithmeticShifts (x y : UInt64) : UInt64 :=
+  let a : Id (Id UInt64) := x
+  let b : Id UInt64 := y
+  @HShiftLeft.hShiftLeft (Id (Id UInt64)) (Id UInt64) UInt64
+    (@instHShiftLeftOfShiftLeft (Id UInt64) instShiftLeftUInt64) a b ^^^
+  @HShiftRight.hShiftRight (Id (Id UInt64)) (Id UInt64) UInt64
+    (@instHShiftRightOfShiftRight (Id (Id UInt64)) instShiftRightUInt64) a b
+
+def idArithmeticHelper (x y : UInt64) : UInt64 :=
+  let a : Id (Id UInt64) := x
+  let f := fun z : UInt64 =>
+    (@HAdd.hAdd (Id (Id UInt64)) UInt64 UInt64
+      (@instHAdd (Id UInt64) instAddUInt64) a z != 0).toUInt64
+  if f y != 0 then f (x + y) + y else x
+
+def idArithmeticDo (x y : UInt64) : UInt64 := Id.run do
+  let a : Id UInt64 := x
+  let value ← pure (@HAdd.hAdd (Id UInt64) UInt64 UInt64
+    (@instHAdd (Id (Id UInt64)) instAddUInt64) a y)
+  let b : Id (Id UInt64) := value
+  let next : Id UInt64 := @HMul.hMul (Id (Id UInt64)) (Id UInt64) (Id UInt64)
+    (@instHMul (Id UInt64) instMulUInt64) b a
+  return Id.run next
+
+def rangeIdArithmeticYield (count seed : UInt64) : UInt64 := Id.run do
+  let bias : Id UInt64 := seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    let delta : Id (Id UInt64) := UInt64.ofNat i
+    let current : Id UInt64 := a
+    a := @HAdd.hAdd (Id UInt64) (Id (Id UInt64)) UInt64
+      (@instHAdd (Id UInt64) instAddUInt64) current delta
+    a := @HAdd.hAdd UInt64 (Id UInt64) UInt64 (@instHAdd UInt64 instAddUInt64) a bias
+    if a % 7 == 0 && seed != 0 then break
+  return a
+def rangeIdArithmeticContinue (count seed : UInt64) : UInt64 := Id.run do
+  let bias : Id (Id UInt64) := seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    let index : Id UInt64 := UInt64.ofNat i
+    let value := @HAdd.hAdd (Id UInt64) (Id (Id UInt64)) UInt64
+      (@instHAdd (Id UInt64) instAddUInt64) index bias
+    if value % 3 == 1 then continue
+    let current : Id UInt64 := a
+    a := @HAdd.hAdd (Id UInt64) UInt64 UInt64
+      (@instHAdd (Id (Id UInt64)) instAddUInt64) current value
+    if a % 7 == 0 && seed != 0 then break
+  return a
+
+def rangeIdArithmeticBounds (count seed : UInt64) : UInt64 :=
+  let limit : Id UInt64 := count
+  let stop := @HAdd.hAdd (Id UInt64) UInt64 UInt64
+    (@instHAdd (Id (Id UInt64)) instAddUInt64) limit 1
+  let value : Id (Id UInt64) := Id.run do
+    let mut a := seed
+    for i in [1:stop.toNat:2] do
+      let index : Id UInt64 := UInt64.ofNat i
+      a := @HAdd.hAdd UInt64 (Id UInt64) UInt64
+        (@instHAdd (Id UInt64) instAddUInt64) a index
+      if a % 7 == 0 && seed != 0 then break
+    return a
+  @HAdd.hAdd (Id (Id UInt64)) UInt64 UInt64 (@instHAdd UInt64 instAddUInt64) value seed
+
+def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let current : Id (Id UInt64) := a
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let value := @HAdd.hAdd (Id (Id UInt64)) UInt64 UInt64
+        (@instHAdd (Id UInt64) instAddUInt64) current (UInt64.ofNat i)
+      if _h : flag then return .done value
+      else return .yield (value + 1)
+    f (a % 7 == 0 && seed != 0)
+
+def idArithmeticCustom (x y : UInt64) : UInt64 :=
+  @HAdd.hAdd (Id UInt64) UInt64 UInt64
+    { hAdd := fun a b => Id.run a + b + 1 } x y
+
+def idArithmeticUnsupported (x y : UInt64) : UInt64 :=
+  let a : Id UInt64 := UInt64.ofNat (toString x).length
+  @HAdd.hAdd (Id UInt64) UInt64 UInt64 (@instHAdd UInt64 instAddUInt64) a y
+
+def idArithmeticNat (x y : UInt64) : UInt64 :=
+  let a : Id Nat := x.toNat
+  UInt64.ofNat (@HAdd.hAdd (Id Nat) Nat Nat (@instHAdd Nat instAddNat) a y.toNat)
+
+def rangeIdArithmeticCustom (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    return .yield (@HAdd.hAdd (Id UInt64) UInt64 UInt64
+      { hAdd := fun a b => Id.run a + b + 1 } a (UInt64.ofNat i))
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -5324,6 +5444,18 @@ run_elab do
       `ArithmeticModeTest.rangeIdLetStep,
       `ArithmeticModeTest.rangeIdLetOuter,
       `ArithmeticModeTest.rangeIdLetUnused,
+      `ArithmeticModeTest.idArithmeticLeft,
+      `ArithmeticModeTest.idArithmeticRight,
+      `ArithmeticModeTest.idArithmeticBoth,
+      `ArithmeticModeTest.idArithmeticBitwise,
+      `ArithmeticModeTest.idArithmeticDivision,
+      `ArithmeticModeTest.idArithmeticShifts,
+      `ArithmeticModeTest.idArithmeticHelper,
+      `ArithmeticModeTest.idArithmeticDo,
+      `ArithmeticModeTest.rangeIdArithmeticYield,
+      `ArithmeticModeTest.rangeIdArithmeticContinue,
+      `ArithmeticModeTest.rangeIdArithmeticBounds,
+      `ArithmeticModeTest.rangeIdArithmeticStep,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -5364,6 +5496,7 @@ run_elab do
       `ArithmeticModeTest.annotatedLetUnsupportedBound, `ArithmeticModeTest.annotatedLetUnsupportedBody, `ArithmeticModeTest.annotatedLetUnsupportedType, `ArithmeticModeTest.rangeAnnotatedLetUnsupported,
       `ArithmeticModeTest.nestedIdUnsupportedBound, `ArithmeticModeTest.nestedIdUnsupportedBody, `ArithmeticModeTest.nestedIdUnsupportedType, `ArithmeticModeTest.rangeNestedIdUnsupported,
       `ArithmeticModeTest.idLetUnsupportedBound, `ArithmeticModeTest.idLetUnsupportedBoolean, `ArithmeticModeTest.idLetUnsupportedType, `ArithmeticModeTest.rangeIdLetUnsupported,
+      `ArithmeticModeTest.idArithmeticCustom, `ArithmeticModeTest.idArithmeticUnsupported, `ArithmeticModeTest.idArithmeticNat, `ArithmeticModeTest.rangeIdArithmeticCustom,
       `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,

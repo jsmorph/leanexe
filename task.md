@@ -809,10 +809,17 @@ names/universes remain required. Source/parser reconstruction and acceptance
 proofs, scalar extraction and integration through step/range/function compilation
 now pass. All five original valid examples compile unchanged. The combined
 integration build hit its overall 40-second limit after completing several
-modules; splitting the remaining range and function targets passed. Next: test
-all ten operations and malformed annotations, scalar/step/range compositions
-and unchanged prior cases.
-Finish the general compiler audits and emitted-WASM execution, archive evidence,
+modules; splitting the remaining range and function targets passed. The source
+and integration checkpoint is pushed at `a7dc9dc7`. The first focused fixture
+passed 208 native/IR comparisons and four declaration rejection tests. A primitive
+fixture passed 840 native/IR comparisons across all ten operations and six mixed
+annotation patterns, plus 300 malformed-head rejection tests. All sixteen
+focused/admission bodies and twelve accepted native bodies match, including all
+five original examples unchanged. The preceding Id-let and primitive-result
+fixtures passed unchanged (304 + eighteen / 420 comparisons, 148/100 rejections).
+
+Next: commit this test checkpoint, run the nine general compiler audits and the
+thirty-declaration selected emitted-WASM execution group, archive the evidence,
 update this record and push completion before moving on. This is INCOMPLETE.
 The ordinary Id-let increment is complete and pushed at `b533c879` (candidate
 `cef8b86e`). Broader comparison annotations, Boolean-returning helpers, Boolean
