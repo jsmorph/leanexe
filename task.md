@@ -38,15 +38,18 @@ execution attempt exposed distinct `GT.gt`/`GE.ge` heads, which were then added
 and proved before repeating the checks. Evidence is retained in
 `proofs/compiler/conditionals-2026-09-25/`.
 
-In progress: pure `Id.run do` blocks with return, UInt64 bindings and
-sequential updates. Their source semantics, preservation, acceptance, successful
-admission and reusable backend invariants pass the focused extraction build.
-The implementation checks exact standard `Pure`/`Bind` evidence and handles the
-`Id UInt64` result-type spelling on branches, including early returns. The
-expanded execution suite has 339 comparisons across twenty-seven declarations;
-its first run and final general theorem checks are pending. Branch continuations
-that elaborate to local function bindings need a subsequent increment, followed
-by loops and broader Boolean forms.
+Completed next increment: standard pure `Id.run do` operations, UInt64 monadic
+bindings, straight-line updates, early returns, nested blocks and branch-local
+binds. Candidate `140ce818` passed all nine general compiler axiom audits and
+339 native Lean/Wasm comparisons across twenty-seven declarations. Evidence is
+retained in `proofs/compiler/do-2026-09-25/`. Complete standard Id instance
+expressions are checked; no backend emission changes were needed.
+
+Next increment: local UInt64 functions and the continuation functions Lean
+introduces when a `do` branch joins a following computation. These need lexical
+capture and function-binding semantics before general joined branches can be
+admitted. Complete that capability end-to-end before moving to loops or broader
+Boolean forms.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
