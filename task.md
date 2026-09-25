@@ -19,8 +19,13 @@ all nine audits (3164 Lake jobs). These results use candidate `878cfd1e` and are
 preserved in `proofs/compiler/arithmetic-2026-09-24/`, including the exact archive,
 emitted modules, native expected results, logs and verification metadata.
 
-Next capability: pure UInt64 `let` bindings, including nested bindings and
-shadowing. Complete source support/semantics, production extraction, the general
+In progress: pure UInt64 `let` bindings, including nested bindings, shadowing,
+unused bindings and zero-argument declarations. The source semantics and total
+extraction preservation/acceptance proofs now include these bindings. The
+extractor substitutes only pure arithmetic expressions, preserving source
+results while allowing repeated computation/code expansion. General backend
+admission is proved by a shared closure lemma. End-to-end proof and execution
+checks are pending; this increment is not yet complete. Complete source support/semantics, production extraction, the general
 source-to-byte theorem and fresh native-Lean/Wasm comparisons before conditions.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.

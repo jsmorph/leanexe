@@ -10,7 +10,7 @@ yet covered by this theorem.
 
 A declaration must be safe, total, have an executable body, take zero or more
 `UInt64` arguments and return `UInt64`. Its body may read arguments, contain
-UInt64 literals and metadata, and nest these operations arbitrarily:
+UInt64 literals, metadata and UInt64 `let` bindings, and nest these operations arbitrarily:
 
 | Source operation | Meaning |
 | --- | --- |
@@ -21,7 +21,7 @@ UInt64 literals and metadata, and nest these operations arbitrarily:
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
-instances, lets, conditions, helper calls, recursion, loops, runtime Nat,
+instances, conditions, helper calls, recursion, loops, runtime Nat,
 heap values, imports, and floats are excluded from this initial theorem.
 
 The requested export name must avoid all ten runtime exports. Admission checks
@@ -32,7 +32,12 @@ payloads as the production emitter. The resulting module includes the normal
 allocator, reset, retain, and release bodies and all runtime exports.
 
 For example, `def f (x y : UInt64) : UInt64 := (x + 17) * (y - 3)` is accepted.
-`def f (x : UInt64) : UInt64 := let y := x + 1; y * y` is excluded for now.
+`def f (x : UInt64) : UInt64 := let y := x + 1; y * y` is accepted. Nested bindings, shadowing, and unused UInt64 bindings are supported.
+The extractor substitutes these pure, total expressions; it may duplicate their
+computation or omit an unused binding's computation. Source evaluation remains
+strict in the proof, and substitution preserves its result because these
+expressions have no effects or divergence. Repeated bindings can expand emitted
+code; the same numeric output limits apply. Bindings of other types remain excluded.
 A conditional or call to a separate user helper is also excluded even when the
 normal compiler supports it.
 
@@ -47,15 +52,16 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles seven fresh declarations with that command,
+and all reserved names, compiles twelve fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 85 results against native Lean evaluation, including overflow, zero
-divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments.
+It compares 142 results against native Lean evaluation, including overflow, zero
+divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
+unused, and zero-argument let bindings.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
@@ -91,7 +97,7 @@ source support, safe/total declaration lookup, export availability, and numeric
 format limits. `compileEnvironment_sound` proves correctness from successful
 arithmetic compilation alone. `extracted_correct` connects successful extraction
 to the production `CoreWasm.moduleBytes` emitter. The final theorem is universally
-quantified over admitted source programs, not restricted to the seven examples.
+quantified over admitted source programs, not restricted to the test examples.
 
 The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All nine
 reported declarations must have only the allowed dependencies. The runtime
