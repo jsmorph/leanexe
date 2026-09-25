@@ -45,11 +45,15 @@ binds. Candidate `140ce818` passed all nine general compiler axiom audits and
 retained in `proofs/compiler/do-2026-09-25/`. Complete standard Id instance
 expressions are checked; no backend emission changes were needed.
 
-Next increment: local UInt64 functions and the continuation functions Lean
-introduces when a `do` branch joins a following computation. These need lexical
-capture and function-binding semantics before general joined branches can be
-admitted. Complete that capability end-to-end before moving to loops or broader
-Boolean forms.
+In progress: local unary UInt64 functions and the continuation functions Lean
+introduces when a `do` branch joins a following computation. The source model
+now has internal word/function bindings while preserving the public scalar
+parameter and result convention. Source totality, extraction preservation,
+acceptance, successful-admission soundness and backend invariants pass focused
+builds. Function compilation closes over the environment at definition time;
+all function bodies are checked, including unused functions. The expanded suite
+has 437 comparisons across thirty-four declarations. Finish execution and final
+general proof checks before moving to loops or broader Boolean forms.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

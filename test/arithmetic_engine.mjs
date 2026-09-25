@@ -8,7 +8,9 @@ const entries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nes
   'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant',
   'compareEq', 'compareLt', 'compareLe', 'compareBEq', 'compareBNe',
   'nestedChoice', 'choiceBindings', 'choiceOperands',
-  'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant'];
+  'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant',
+  'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
+  'unusedFunction', 'doJoined', 'doBranchUpdates'];
 const constants = new Set(['constant', 'boundConstant', 'doConstant']);
 const counts = new Map(entries.map(name => [name, new Set()]));
 const uint64 = value => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value) &&

@@ -24,7 +24,7 @@ nesting of supported expressions:
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
-instances, helper calls, recursion, loops, runtime Nat,
+instances, top-level helper calls, recursion, loops, runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
 procedures. `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
@@ -40,10 +40,19 @@ Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
 updates become ordinary shadowing lets. Nested blocks, branch-local bindings,
 and early returns are supported. Conditionals may carry either the elaborated
-`UInt64` or `Id UInt64` result type. Branches that join a following computation
-can elaborate to local continuation functions; those functions are not yet
-admitted. General monads, effects and custom Id instance expressions remain
+`UInt64` or `Id UInt64` result type. Branches that join a following computation can elaborate to local continuation
+functions; unary UInt64 continuations are admitted as local functions. General monads, effects and custom Id instance expressions remain
 outside this increment.
+
+Local functions of one UInt64 argument and UInt64 (or Id UInt64) result are
+supported when their bodies belong to this same grammar. They capture bindings
+where they are defined, so later shadowing does not change the captured values.
+Functions may call previously bound functions or introduce further local
+functions. Every function body is checked even when the function is unused.
+Compilation substitutes the argument into a closure over compiled expressions;
+this may repeat computation and expand output, as scalar let substitution does.
+Multiple-argument functions, function-valued parameters/results and top-level
+helper calls remain separate capabilities.
 
 The requested export name must avoid all ten runtime exports. Admission checks
 explicit limits below 2^32 on parameter/result counts, UTF-8 export-name bytes,
@@ -58,7 +67,8 @@ The extractor substitutes these pure, total expressions; it may duplicate their
 computation or omit an unused binding's computation. Source evaluation remains
 strict in the proof, and substitution preserves its result because these
 expressions have no effects or divergence. Repeated bindings can expand emitted
-code; the same numeric output limits apply. Bindings of other types remain excluded.
+code; the same numeric output limits apply. Bindings of other data types remain excluded; local unary function bindings
+follow the rule above.
 For example, `if x < y then x + 1 else y / x` is now admitted. Calls to a
 separate user helper remain excluded even when the normal compiler supports them.
 
@@ -73,20 +83,22 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles twenty-seven fresh declarations with that command,
+and all reserved names, compiles thirty-four fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 339 results against native Lean evaluation, including overflow, zero
+It compares 437 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
 comparison operands. Seven further declarations cover pure return, monadic
 bindings, sequential updates, early returns, nested blocks, branch-local binds
-and a constant do block.
+and a constant do block. Seven more cover local functions, captured values
+across shadowing, calls to prior functions, nested and unused functions, joined
+branches and updates after a branch.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison

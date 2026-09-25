@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarHead
+import LeanExe.Source.ScalarValues
 import LeanExe.Source.ScalarComparison
 
 namespace LeanExe.Source.Scalar
@@ -7,89 +8,127 @@ namespace LeanExe.Source.Scalar
 are paired explicitly with their native Lean definitions, independently of the
 extractor's dispatch table and the IR operation selected by compilation.
 The fragment covers pure arithmetic, UInt64 let bindings and comparison-based
-conditionals and standard Id operations. Calls and iteration remain separate obligations.
+conditionals and standard Id operations. Local unary functions capture their lexical environment. Iteration remains a separate obligation.
 -/
 
 def literalExpr (n : Nat) : Lean.Expr :=
   .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n)))
     (.app (.const ``UInt64.instOfNat []) (.lit (.natVal n)))
 
-inductive Eval : Lean.Expr → List UInt64 → UInt64 → Prop where
-  | var (h : values[index]? = some value) : Eval (.bvar index) values value
-  | literal : Eval (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
+inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
+  | var (h : values[index]? = some (.word value)) : EvalWith (.bvar index) values value
+  | literal : EvalWith (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
       values (UInt64.ofNat n)
-  | ofNat : Eval (literalExpr n) values (UInt64.ofNat n)
-  | binary (operation : Head head f) (left : Eval a values x) (right : Eval b values y) :
-      Eval (.app (.app head a) b) values (f x y)
-  | choose (op : Comparison) (type : ResultType) (left : Eval a values x) (right : Eval b values y)
-      (branch : Eval (if op.denote x y then onTrue else onFalse) values value) :
-      Eval (op.branch a b onTrue onFalse type) values value
-  | letE (value : Eval a values x) (body : Eval b (x :: values) y) :
-      Eval (.letE name (.const ``UInt64 []) a b nondep) values y
-  | idRun (body : Eval e values value) : Eval (Identity.run e) values value
-  | idPure (body : Eval e values value) : Eval (Identity.pure e) values value
-  | idBind (value : Eval a values x) (body : Eval b (x :: values) y) :
-      Eval (Identity.bind name bi a b) values y
-  | metadata (body : Eval e values value) : Eval (.mdata data e) values value
+  | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
+  | binary (operation : Head head f) (left : EvalWith a values x) (right : EvalWith b values y) :
+      EvalWith (.app (.app head a) b) values (f x y)
+  | choose (op : Comparison) (type : ResultType) (left : EvalWith a values x) (right : EvalWith b values y)
+      (branch : EvalWith (if op.denote x y then onTrue else onFalse) values value) :
+      EvalWith (op.branch a b onTrue onFalse type) values value
+  | letE (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
+      EvalWith (.letE name (.const ``UInt64 []) a b nondep) values y
+  | idRun (body : EvalWith e values value) : EvalWith (Identity.run e) values value
+  | idPure (body : EvalWith e values value) : EvalWith (Identity.pure e) values value
+  | idBind (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
+      EvalWith (Identity.bind name bi a b) values y
+  | apply (function : values[index]? = some (.function f)) (argument : EvalWith a values x) :
+      EvalWith (.app (.bvar index) a) values (f x)
+  | letFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.word x :: values) (f x))
+      (body : EvalWith b (.function f :: values) value) :
+      EvalWith (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values value
+  | metadata (body : EvalWith e values value) : EvalWith (.mdata data e) values value
 
 /-- Syntactic support, defined without inspecting compiler output. -/
-inductive Supported : Nat → Lean.Expr → Prop where
-  | var (h : index < arity) : Supported arity (.bvar index)
-  | literal : Supported arity (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
-  | ofNat : Supported arity (literalExpr n)
-  | binary (operation : Head head f) (left : Supported arity a) (right : Supported arity b) :
-      Supported arity (.app (.app head a) b)
-  | choose (op : Comparison) (type : ResultType) (left : Supported arity a) (right : Supported arity b)
-      (onTrue : Supported arity t) (onFalse : Supported arity e) :
-      Supported arity (op.branch a b t e type)
-  | letE (value : Supported arity a) (body : Supported (arity + 1) b) :
-      Supported arity (.letE name (.const ``UInt64 []) a b nondep)
-  | idRun (body : Supported arity e) : Supported arity (Identity.run e)
-  | idPure (body : Supported arity e) : Supported arity (Identity.pure e)
-  | idBind (value : Supported arity a) (body : Supported (arity + 1) b) :
-      Supported arity (Identity.bind name bi a b)
-  | metadata (body : Supported arity e) : Supported arity (.mdata data e)
+inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
+  | var (h : types[index]? = some .word) : SupportedWith types (.bvar index)
+  | literal : SupportedWith types (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
+  | ofNat : SupportedWith types (literalExpr n)
+  | binary (operation : Head head f) (left : SupportedWith types a) (right : SupportedWith types b) :
+      SupportedWith types (.app (.app head a) b)
+  | choose (op : Comparison) (type : ResultType) (left : SupportedWith types a) (right : SupportedWith types b)
+      (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
+      SupportedWith types (op.branch a b t e type)
+  | letE (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
+      SupportedWith types (.letE name (.const ``UInt64 []) a b nondep)
+  | idRun (body : SupportedWith types e) : SupportedWith types (Identity.run e)
+  | idPure (body : SupportedWith types e) : SupportedWith types (Identity.pure e)
+  | idBind (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
+      SupportedWith types (Identity.bind name bi a b)
+  | apply (function : types[index]? = some .function) (argument : SupportedWith types a) :
+      SupportedWith types (.app (.bvar index) a)
+  | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
+      (body : SupportedWith (.function :: types) b) :
+      SupportedWith types (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | metadata (body : SupportedWith types e) : SupportedWith types (.mdata data e)
+
+theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
+    (h : SupportedWith types expr) (values : List Value) (typed : values.map Value.kind = types) :
+    ∃ value, EvalWith expr values value := by
+  classical
+  induction h generalizing values with
+  | var hi =>
+    obtain ⟨value, hv⟩ := word_lookup typed hi
+    exact ⟨value, .var hv⟩
+  | literal => exact ⟨_, .literal⟩
+  | ofNat => exact ⟨_, .ofNat⟩
+  | binary op _ _ ihl ihr =>
+    obtain ⟨x, hx⟩ := ihl values typed
+    obtain ⟨y, hy⟩ := ihr values typed
+    exact ⟨_, .binary op hx hy⟩
+  | choose op type _ _ _ _ ihl ihr iht ihe =>
+    obtain ⟨x, hx⟩ := ihl values typed
+    obtain ⟨y, hy⟩ := ihr values typed
+    cases flag : op.denote x y with
+    | false =>
+      obtain ⟨value, hv⟩ := ihe values typed
+      exact ⟨value, .choose op type hx hy (by simpa [flag] using hv)⟩
+    | true =>
+      obtain ⟨value, hv⟩ := iht values typed
+      exact ⟨value, .choose op type hx hy (by simpa [flag] using hv)⟩
+  | letE _ _ ihv ihb =>
+    obtain ⟨x, hx⟩ := ihv values typed
+    obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
+    exact ⟨y, .letE hx hy⟩
+  | idRun _ ih =>
+    obtain ⟨value, hv⟩ := ih values typed
+    exact ⟨value, .idRun hv⟩
+  | idPure _ ih =>
+    obtain ⟨value, hv⟩ := ih values typed
+    exact ⟨value, .idPure hv⟩
+  | idBind _ _ ihv ihb =>
+    obtain ⟨x, hx⟩ := ihv values typed
+    obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
+    exact ⟨y, .idBind hx hy⟩
+  | apply present _ ih =>
+    obtain ⟨f, hf⟩ := function_lookup typed present
+    obtain ⟨x, hx⟩ := ih values typed
+    exact ⟨f x, .apply hf hx⟩
+  | letFn type _ _ ihf ihb =>
+    have total := fun x => ihf (.word x :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.function f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
+  | metadata _ ih =>
+    obtain ⟨value, hv⟩ := ih values typed
+    exact ⟨value, .metadata hv⟩
+
+/-- Public scalar entry semantics: parameters contain words; closures are internal. -/
+abbrev Eval (expr : Lean.Expr) (values : List UInt64) (value : UInt64) : Prop :=
+  EvalWith expr (values.map Value.word) value
+
+/-- Public declarations begin with only word parameters. -/
+abbrev Supported (arity : Nat) (expr : Lean.Expr) : Prop :=
+  SupportedWith (List.replicate arity .word) expr
 
 theorem Supported.evaluates {arity : Nat} {expr : Lean.Expr}
     (h : Supported arity expr) (values : List UInt64) (len : values.length = arity) :
     ∃ value, Eval expr values value := by
-  induction h generalizing values with
-  | var hi =>
-    rename_i index arity
-    have hv : index < values.length := by omega
-    exact ⟨values[index], .var (List.getElem?_eq_getElem hv)⟩
-  | literal => exact ⟨_, .literal⟩
-  | ofNat => exact ⟨_, .ofNat⟩
-  | binary op _ _ ihl ihr =>
-    obtain ⟨x, hx⟩ := ihl values len
-    obtain ⟨y, hy⟩ := ihr values len
-    exact ⟨_, .binary op hx hy⟩
-  | choose op type _ _ _ _ ihl ihr iht ihe =>
-    obtain ⟨x, hx⟩ := ihl values len
-    obtain ⟨y, hy⟩ := ihr values len
-    cases flag : op.denote x y with
-    | false =>
-      obtain ⟨value, hv⟩ := ihe values len
-      exact ⟨value, .choose op type hx hy (by simpa [flag] using hv)⟩
-    | true =>
-      obtain ⟨value, hv⟩ := iht values len
-      exact ⟨value, .choose op type hx hy (by simpa [flag] using hv)⟩
-  | letE _ _ ihv ihb =>
-    obtain ⟨x, hx⟩ := ihv values len
-    obtain ⟨y, hy⟩ := ihb (x :: values) (by simp [len])
-    exact ⟨y, .letE hx hy⟩
-  | idRun _ ih =>
-    obtain ⟨value, hv⟩ := ih values len
-    exact ⟨value, .idRun hv⟩
-  | idPure _ ih =>
-    obtain ⟨value, hv⟩ := ih values len
-    exact ⟨value, .idPure hv⟩
-  | idBind _ _ ihv ihb =>
-    obtain ⟨x, hx⟩ := ihv values len
-    obtain ⟨y, hy⟩ := ihb (x :: values) (by simp [len])
-    exact ⟨y, .idBind hx hy⟩
-  | metadata _ ih =>
-    obtain ⟨value, hv⟩ := ih values len
-    exact ⟨value, .metadata hv⟩
+  apply SupportedWith.evaluates h
+  simp [List.map_map, Function.comp_def, Value.kind, List.map_const', len]
 
 end LeanExe.Source.Scalar
