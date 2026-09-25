@@ -82,19 +82,22 @@ unused functions. Captures retain the accumulator value from the binding point
 even across later updates. Unsupported bodies and arities remain rejected.
 The fixed range test group avoids recompiling unchanged arithmetic fixtures.
 
-In progress: standard Id monadic UInt64 bindings (`let x ← …`) inside the
-yielding loop step. The source relation and recognizer preserve the exact
-standard Bind evidence and check the bound value and continuation through the
-existing scalar grammar. Focused syntax acceptance/soundness proofs pass.
-Three fixtures cover monadic bindings, nested do computations and unused
-values. Rejection cases include custom Bind evidence and a break after a bind.
-The final audit and focused 289-result, thirteen-declaration execution check
-are pending for this candidate.
-The first engine attempt accepted simple binds but rejected a conditional
-monadic join, which introduces a loop-step-valued continuation. That failure is
-retained in `proofs/compiler/range-do-2026-09-25/first-execution-attempt.log`.
-The current increment stays with straight-line monadic bindings and conditional
-scalar values inside pure; step-valued branch continuations are next.
+Completed next increment: standard Id monadic UInt64 bindings (`let x ← …`)
+inside yielding loop steps. Candidate `728098c4` passed all nine general compiler
+axiom audits and 289 native Lean/V8 comparisons across thirteen range declarations,
+with source admission and reserved-export checks. Evidence is retained in
+`proofs/compiler/range-do-2026-09-25/`. The source relation preserves the exact
+standard Bind evidence; the scalar grammar checks each bound value and
+continuation. Nested do computations and unused monadic values are included.
+The first execution attempt exposed a distinct branching-continuation form;
+that failure is retained. Conditional scalar values inside pure are supported,
+while custom Bind evidence and breaks after a bind remain rejected.
+
+Next increment: loop-step-valued branch continuations. A conditional monadic
+join introduces a local function returning Id (ForInStep UInt64); convert the
+yielding result type, function body and branch results together, preserve all
+captures and conditions, and retain full scalar support checks. Bring the
+previously failing conditional monadic join back as an explicit new fixture.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
