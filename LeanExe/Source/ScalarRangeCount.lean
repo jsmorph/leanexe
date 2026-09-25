@@ -45,7 +45,8 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
     generalize same : Count.scalar (.literal number fits) = source at evaluated
     cases evaluated <;>
       simp_all [Count.scalar, Scalar.literalExpr, Identity.run, Identity.pure, Identity.bind,
-        Comparison.branch, CompoundGuard.branch, Guard.dependentBranch, Extremum.expr, Extremum.head,
+        Comparison.branch, CompoundGuard.branch, Guard.dependentBranch, BooleanLocalGuard.branch,
+        Extremum.expr, Extremum.head,
         ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp]
     case ofNat =>
       subst number
