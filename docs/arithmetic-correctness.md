@@ -98,9 +98,15 @@ and before a loop. Captures preserve the original flag across later shadowing
 or accumulator updates. Every right-hand side and operand is checked even when
 unused or short-circuited. Boolean values use proved zero/one words internally.
 This covers ordinary lets and Boolean conditions, including dependent
-conditions with exact proof domains and erased binder scope. Monadic Boolean
-binds, Boolean parameters/results, and propositional combinations containing
-saved Boolean locals remain separate capabilities.
+conditions with exact proof domains and erased binder scope. Standard Id
+monadic bindings (`let flag ← pure (...)`) use the same typed Boolean storage in
+scalar do-blocks, helper bodies, loop steps and before/after a loop. Their input
+and lambda-domain types must be exactly Bool. Actions may contain direct Boolean
+values, standard Id.pure/Id.run wrappers with Boolean or nested Id annotations,
+and metadata. Each action preserves its leaf value and all operands are checked,
+including unused binds. Custom Id instances and wrong binder/action types are
+rejected. Public Boolean parameters/results and propositional combinations
+containing saved Boolean locals remain separate capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and

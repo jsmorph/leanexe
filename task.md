@@ -567,7 +567,9 @@ exact Boolean bind input/domain checker is also proved. Source evaluation,
 support and totality cover scalar, step and outer-loop Boolean binds. Scalar
 production extraction and all four scalar proofs now pass. Step and outer-loop
 production extraction, acceptance, successful-support, correctness and invariant
-proofs also pass. Focused tests and final compiler execution gates remain open.
+proofs also pass. The unchanged focused fixture now passes all 304 native/IR
+comparisons, four declaration rejections, six raw bind rejections and two
+metadata checks. Final compiler audits and execution gates remain open.
 Reuse typed Boolean bindings and existing lowering. Broader Boolean result
 expressions, Boolean function parameters and the public Bool ABI remain later
 capabilities unless included and proved as part of this increment.
