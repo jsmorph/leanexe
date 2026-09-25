@@ -609,4 +609,16 @@ coverage. The preceding outer-helper test passes 264 comparisons and three
 rejection tests after moving its equivalent case into positive coverage.
 The seventeen selected prior modules retained identical bytes. The
 full corpus contains 309 declarations; this was a focused execution run. Step-result
-helper arities remain a separate next increment.
+helper arities were completed in the following increment.
+
+
+The [finite-arity step-helper increment](../proofs/compiler/step-finite-arity-2026-09-25/README.md)
+removes the corresponding argument limit for helpers returning complete loop
+results. Shared parsing and argument rules retain separate scalar/step closure
+kinds and prove both the value and stop flag. All nine compiler audits and all
+609 native Lean/V8 comparisons in the fixed 28-declaration group passed. All
+240 new native Lean/IR comparisons, four declaration rejection tests and two
+raw arity rejection tests passed. The preceding step-helper test passed 264
+comparisons and four rejection tests after its three-argument case became
+positive. Eighteen selected prior modules kept identical bytes. The full corpus
+contains 319 declarations; this was a focused execution run.
