@@ -300,17 +300,22 @@ proofs are retained; numeric positivity and representability are checked
 independently. All seventy-three prior range modules kept identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Current increment: ordinary local functions with two UInt64 arguments and
-UInt64/Id UInt64 results. The distinct native/compiled function bindings, typed
-lookups, independent source semantics/support, extraction, both admission
-directions, semantics and scalar invariants pass. All 126 focused native Lean/IR
-comparisons across nine pure declarations and four rejection tests pass. Argument
-order, captures, shadowing, chained/nested functions, Id results and checked
-unused bodies are covered. Definitions inside loop steps now also pass
-acceptance, support, semantics and invariant proofs, with 144 additional native
-Lean/IR comparisons and two rejection tests. The public whole-range/source
-connection builds. Nine pure and six range declarations are registered for
-actual compiler execution. General audits and native Lean/V8 checks are pending.
+Completed next increment: local functions with two UInt64 arguments and scalar
+results. Candidate `7dcd290c` passed all nine general compiler audits and 2,850
+matching native Lean/V8 results across 143 declarations, including admission
+and reserved exports. Evidence is in
+`proofs/compiler/binary-functions-2026-09-25/`. Distinct function bindings retain
+argument order and captured values. Both pure expressions and helpers defined
+inside loop steps have checked acceptance/support, semantics and invariants.
+All 270 focused native Lean/IR comparisons and six rejection tests passed,
+covering captures/shadowing, chained/nested helpers, unused bodies, Id results,
+conditionals and break/continue. All 128 prior modules kept identical bytes.
+General type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: local functions with two UInt64 arguments that
+return ForInStep UInt64, including standard Id result wrappers. Reuse the paired
+value/exit representation and preserve scalar helper behavior. Complete the
+source/IR proof and range compiler execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
