@@ -16,10 +16,10 @@ maneuverability constraints while maintaining a clearance corridor and beginning
 and ending on the terrain. No motor, propeller, battery, attitude, drag, lift,
 or detailed aerodynamic model is wanted.
 
-The first milestone is a kernel-checked whole-flight safety theorem for the
-current point-mass model, followed by a fresh aggregate source check.  The WASM
-execution proof follows that result.  Expansion of the model follows an
-established safety baseline and discussion with the user.  The user declined
+The first milestone is complete: `WholeFlight.compute_safe` is a kernel-checked
+whole-flight safety theorem for the current point-mass model, and a fresh
+aggregate source check passes. The WASM execution proof is the next milestone.
+Expansion of the model follows discussion with the user. The user declined
 reproducible-artifact packaging as a task priority.  Keep the current
 Lean-code-and-task-only commit scope.
 
@@ -35,28 +35,30 @@ those continuous guarantees directly for every segment of the returned output.
 global real-time path and proves its position derivative and continuous velocity,
 including joins.  The cumulative-time intervals cover the entire flight and
 agree with their local primitives.  Clearance and component speed bounds
-transfer to the global coordinate functions.  The next source task is to
-assemble these results into one public whole-flight safety statement.  Agreement
+transfer to the global coordinate functions. `WholeFlight.compute_safe` now
+packages spatial clearance, speed, global velocity derivatives and acceleration
+bounds, continuity, stopped ground endpoints, and the singleton case. Agreement
 between compiled WASM execution and the proved source computation remains open.
 
 ## Safety status and remaining risks
 
 ### Current coverage and evidence
 
-The reviewed source revision is `41a97a6e80ac90e503e981ecd7052c2b489619e9`,
-which matched `origin/drone` on 2026-09-25.  The review inspected source,
-theorem statements, tooling, and the checkpoint record.  Fresh Lean and runtime
-checks in the current checkout remain outstanding.  The preceding checkpoints
-record successful aggregate source builds with standard Lean axioms.
+Resumed from `b5066cd49fd1a26ecb1dc8fbc63ac923b91128ae` on 2026-09-25 in
+`/home/somebody/src/leanexe`. The existing aggregate source baseline passed
+(1,998 jobs). The new whole-flight theorem and expanded aggregate check also
+passed (2,001 jobs), with only `propext`, `Classical.choice`, and `Quot.sound` in
+the axiom audit. A fresh native run reproduced the five-point example below.
+The broader WASM regression results remain historical evidence.
 
 | Property | Current proof coverage |
 |---|---|
-| Clearance | `Safety.compute_segment_clearance` covers every normalized segment time.  `Trajectory.compute_global_clearance` transfers this result to global altitude on each cumulative-time interval.  The corridor has 100-unit interior clearance and the specified takeoff/landing ramps. |
-| Speed | `Trajectory.compute_global_speed` bounds horizontal speed between 0 and 20 and vertical speed magnitude by 20 on every flight interval. |
-| Acceleration | `Safety.compute_segment_maneuverable` bounds horizontal acceleration magnitude by 1 and vertical acceleration magnitude by 4.  `Kinematics` identifies these expressions as physical-time derivatives within each primitive. |
+| Clearance | `WholeFlight.compute_throughout` proves `Corridor.height terrain (globalX terrain t) ≤ globalZ terrain t` for every time in the finite flight. `Corridor.height_on_segment` identifies the spatial interpolation of `floorAt`, retaining 100-unit interior clearance and the specified takeoff/landing ramps. |
+| Speed | `WholeFlight.compute_throughout` bounds horizontal speed between 0 and 20 and vertical speed magnitude by 20 at every time in the finite flight. |
+| Acceleration | `WholeFlight.compute_acceleration_away_from_joins` proves that derivatives of the actual global velocities exist with magnitudes at most 1 horizontally and 4 vertically at every flight time outside the finite set of waypoint times. `Trajectory.compute_global_acceleration_within` supplies bounded one-sided derivatives on each closed segment, including both endpoints. |
 | Continuity | `Trajectory.compute_joins` and `compute_global_smooth` establish matching positions and velocities and continuous global velocity.  Acceleration may jump at joins. |
-| Interval coverage | `compute_global_segment` identifies all four global coordinates with their local primitives.  `compute_global_cover` covers every time in a nontrivial finite flight.  A singleton terrain gives a constant path. |
-| Endpoints | `Output.compute_endpoints` proves that the returned route starts and finishes on the terrain, stopped.  The local primitive endpoint lemmas connect waypoint words to position and velocity. |
+| Interval coverage | `WholeFlight.compute_normalized_cover` transfers the segment results to every physical flight time. `compute_singleton` gives zero duration and a constant stopped ground path for one-point terrain. |
+| Endpoints | `WholeFlight.compute_global_endpoints` proves the global path starts at horizontal position 0 and finishes at `100*(terrain.size-1)`, on the corresponding ground heights with both velocity components zero. |
 | Feasibility and input handling | `Output.compute_correct` returns an encoded feasible route for every accepted nonempty terrain, with exactly two words per point.  Separate theorems cover empty and rejected inputs. |
 
 The recorded runtime tests cover 48 WASM trajectories, 12 native comparisons,
@@ -68,15 +70,11 @@ the stated bounds.
 
 ### Remaining risks
 
-Proof composition: the safety results span several theorems.  The public
-whole-flight statement must express clearance against the corridor evaluated
-at the global horizontal position, connect acceleration bounds to derivatives
-of global velocity inside each segment, and establish the global path's
-departure and arrival conditions.  Interval coverage must transfer the
-segment-indexed bounds to every time in the finite flight.  Existing lemmas
-supply the components.  Construction and a fresh Lean check of the combined
-statement remain outstanding.  Acceleration bounds apply between joins, with
-the existing one-sided primitive bounds at a join.
+Source composition is checked in `WholeFlight.Safe` and
+`WholeFlight.compute_safe`. The theorem assumes precisely `terrainBound terrain`
+and a nonempty terrain. Acceleration bounds apply to ordinary derivatives
+between joins and derivatives within each adjacent closed interval at a join;
+the two one-sided accelerations need not agree.
 
 Executable correctness: compiled WASM agreement remains unproved.  Array
 allocation, copying, ownership, release, and loop execution require semantic
@@ -95,9 +93,13 @@ curve extends the final polynomial after arrival.
 
 ## Repository and execution environment
 
-The machine-specific settings below describe the original proof-development
-workspace.  The review checkout lacked the compiler executable and materialized
-Talos dependency at inspection.
+The current workspace has the pinned Lean release under
+`build/tools/lean-4.34.0-rc2-linux`, and the proof dependencies are materialized
+at the committed revisions. The user authorized local Lean execution in this
+workspace. Set `LEANRUN_LOCAL=1` and `LEANRUN_TOOLCHAIN` to that directory when
+using the commands below. The runner still enforces its shared lock, timeout,
+single Lean thread, nice and ionice settings. The earlier machine-specific
+settings below are preserved as historical context.
 
 - Upstream: https://github.com/jsmorph/leanexe
 - Initial inspection: `main` at `a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`.
@@ -302,6 +304,9 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `Safety.lean` | Direct output-index interior clearance, admitted adjacent pairs, continuous segment clearance, component limits and exact duration/tick correspondence |
 | `Gluing.lean` | Reusable finite-curve construction on cumulative time; matching value/derivative gluing and continuous velocity |
 | `Trajectory.lean` | Returned primitive endpoints and derivatives, moving/rest joins, `compute_global_smooth` for the assembled path |
+| `Acceleration.lean` | Actual global velocity derivatives and component acceleration bounds, including derivatives within closed segment intervals at joins |
+| `Corridor.lean` | Spatial interpolation of the specified floor, horizontal progress bounds, and clearance at actual global horizontal position |
+| `WholeFlight.lean` | `Safe` and `compute_safe`: finite flight time, universal spatial/speed bounds, global acceleration, continuity, ground endpoints and singleton behavior |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
 `Planner.layers` is a reference sequence of the actual executable `initial`
@@ -391,11 +396,11 @@ commits should respect that file scope unless the user changes it.
 
 ## Remaining verification plan, in order
 
-- [ ] Check the existing source baseline in the current environment with the
+- [x] Check the existing source baseline in the current environment with the
   pinned toolchain and required resource limits.  Run
   `Project.Drone.SourceChecks` and review its axiom audit.  Distinguish dependency
   setup from proof failures and preserve diagnostics.
-- [ ] Complete the public whole-flight safety theorem by composing the
+- [x] Complete the public whole-flight safety theorem by composing the
   established results.  State the finite flight interval, terrain and input
   assumptions, spatial clearance, speed bounds, acceleration bounds between
   joins, continuous position and velocity, and stopped ground endpoints.
@@ -591,3 +596,56 @@ Updated the current status, evidence, risks, and work order to put source
 composition and fresh checking first, WASM execution agreement second, and
 model expansion after discussion.  The user declined reproducible-artifact
 packaging as a priority.  This checkpoint changes the task record.
+
+### 2026-09-25 — whole-flight source safety checkpoint
+
+Resumed `drone` from `b5066cd4` in `/home/somebody/src/leanexe`. Installed the
+pinned Lean 4.34.0-rc2 release and verified compiler commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`. Materialized the pinned Talos,
+mathlib, and supporting proof dependencies. The user's permission to execute
+Lean locally authorizes `LEANRUN_LOCAL=1` here; all Lean and Lake commands used
+`tools/leanrun` sequentially with bounded timeouts.
+
+A session interruption left empty cache traces and truncated cached outputs.
+Ordinary cache retrieval removed affected archives without repairing the empty
+destination traces. A separately downloaded archive extracted correctly into
+a fresh directory; forcing retrieval and extraction with `cache get!` repaired
+the selected dependency closure. The initial aggregate run then reached its
+three-minute limit while rebuilding supporting tactic libraries, with progress
+diagnostics and no drone proof error. A separate `Project.Drone.Motion` build
+completed that dependency boundary, followed by a successful original aggregate
+source check (1,998 jobs). Setup failures and the interrupted build were not
+treated as failures of the existing proof statements.
+
+Added three proof modules. `Corridor.lean` uses the existing finite-curve
+construction on 100-unit spatial intervals, proves that it interpolates
+`floorAt`, and identifies normalized primitive progress with global horizontal
+position. `Acceleration.lean` transports primitive velocity derivatives onto
+the actual global velocity functions using agreement on each closed interval.
+This yields bounded derivatives within each segment at both endpoints and
+ordinary derivatives in the interior, without requiring acceleration to agree
+across a join. `WholeFlight.lean` proves the global ground endpoints, normalized
+time coverage, and bounds at every time in the finite flight, then packages
+them in `WholeFlight.Safe` and `WholeFlight.compute_safe`. Its acceleration
+corollary quantifies directly over all flight times outside the finite set of
+waypoint times. Singleton terrain has zero duration and a constant stopped
+ground path.
+
+The focused modules and `Project.Drone.SourceChecks` passed (2,001 aggregate
+jobs). The expanded printed axiom audit, including `WholeFlight.compute_safe`,
+contains only the standard `propext`, `Classical.choice`, and `Quot.sound`.
+There are no added proof holes, axioms, or native evaluation proof shortcuts.
+Initial diagnostics were namespace resolution and endpoint index/coercion
+normalization issues; no specification or input assumption was weakened.
+
+Fresh native execution of `test/DroneNative.lean 0 20 80 40 0` returned
+`[0, 0, 145, 10, 180, 15, 165, 10, 0, 0]`, matching the recorded example.
+The executable planner was unchanged. The broader historical native/WASM
+regression suite and artifact gates were not rerun for this proof-only increment.
+
+Local evidence is retained in `build/logs/`: `cache-repair.log`,
+`source-baseline-complete.log`, the focused proof logs (including failed
+attempts), `source-whole-flight.log`, and `native-example.log`. These logs,
+dependencies and toolchain files remain ignored local state. This checkpoint
+contains only Lean proofs and this handoff. The first safety milestone is now
+complete; exact compiled-WASM execution agreement remains the next proof task.
