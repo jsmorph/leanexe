@@ -1,0 +1,503 @@
+Lean (version 4.34.0-rc2, arm64-apple-darwin24.6.0, commit 6a10ac8c22beadecabdbb0919c2b50214762f91d, Release)
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [1/4] Built LeanExe.TypeSafety.Formation (470ms)
+✔ [2/5] Built LeanExe.TypeSafety.EqualityFlags (384ms)
+✔ [3/6] Built LeanExe.TypeSafety.EqualityTypes (431ms)
+✔ [4/7] Built LeanExe.TypeSafety.NatOperations (466ms)
+✔ [5/8] Built LeanExe.TypeSafety.BitOperations (384ms)
+✔ [6/9] Built LeanExe.TypeSafety.WordOperations (442ms)
+✔ [7/11] Built LeanExe.TypeSafety.Core (831ms)
+✔ [8/12] Built LeanExe.TypeSafety.ArrayValues (416ms)
+✔ [9/14] Built LeanExe.TypeSafety.ValueEquality (532ms)
+✔ [10/15] Built LeanExe.TypeSafety.Machine (693ms)
+✔ [11/16] Built LeanExe.TypeSafety.Safety (1.6s)
+✔ [12/17] Built LeanExe.TypeSafety.Profile (871ms)
+✔ [13/18] Built LeanExe.TypeSafety.Renaming (1.1s)
+✔ [14/19] Built LeanExe.TypeSafety.Typing (1.5s)
+✔ [15/19] Built LeanExe.TypeSafety.RenamingProfile (590ms)
+✔ [16/19] Built LeanExe.TypeSafety.RenamingEnvironments (359ms)
+✔ [17/21] Built LeanExe.TypeSafety.BoolDerived (449ms)
+✔ [18/21] Built LeanExe.TypeSafety.RenamingDynamics (1.1s)
+✔ [20/23] Built LeanExe.TypeSafety.Continuations (972ms)
+✔ [21/23] Built LeanExe.TypeSafety.Execution (367ms)
+✔ [22/23] Built LeanExe.TypeSafety.SumExecution (430ms)
+✔ [23/23] Built LeanExe.TypeSafety (365ms)
+Build completed successfully (23 jobs).
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+LeanExe.TypeSafety.WordWidth.modulus_pos: no axioms
+LeanExe.TypeSafety.WordWidth.modulus_mono: no axioms
+LeanExe.TypeSafety.lookup_lt: no axioms
+LeanExe.TypeSafety.tyWellFormed_iff: propext
+LeanExe.TypeSafety.typesWellFormed_iff: propext
+LeanExe.TypeSafety.constructorsWellFormed_iff: propext
+LeanExe.TypeSafety.declarationTableWellFormed_iff: propext
+LeanExe.TypeSafety.declarationsWellFormed_iff: propext
+LeanExe.TypeSafety.signatureWellFormed_iff: propext
+LeanExe.TypeSafety.signaturesWellFormed_iff: propext
+LeanExe.TypeSafety.TypesWF.append: no axioms
+LeanExe.TypeSafety.TypesWF.lookup: no axioms
+LeanExe.TypeSafety.ConstructorsWF.lookup: no axioms
+LeanExe.TypeSafety.DeclarationTableWF.lookup: no axioms
+LeanExe.TypeSafety.SignaturesWF.lookup: no axioms
+LeanExe.TypeSafety.TyWF.prod_left: no axioms
+LeanExe.TypeSafety.TyWF.prod_right: no axioms
+LeanExe.TypeSafety.TyWF.sum_left: no axioms
+LeanExe.TypeSafety.TyWF.sum_right: no axioms
+LeanExe.TypeSafety.TyWF.array_item: no axioms
+LeanExe.TypeSafety.evalNatBin_value_iff: propext
+LeanExe.TypeSafety.evalNatBin_overflow_iff: propext
+LeanExe.TypeSafety.evalNatBin_no_overflow: propext
+LeanExe.TypeSafety.evalNatBin_bounded: propext
+LeanExe.TypeSafety.evalNatBin_sub_saturates: propext
+LeanExe.TypeSafety.evalNatBin_div_zero: propext
+LeanExe.TypeSafety.evalNatBin_mod_zero: propext
+LeanExe.TypeSafety.NatCmpOp.eq_iff: propext
+LeanExe.TypeSafety.NatCmpOp.lt_iff: propext
+LeanExe.TypeSafety.NatCmpOp.le_iff: propext
+LeanExe.TypeSafety.bitAt_zero: propext
+LeanExe.TypeSafety.bitAt_succ: propext
+LeanExe.TypeSafety.bitCons_div_two: propext
+LeanExe.TypeSafety.bitCons_mod_two: propext
+LeanExe.TypeSafety.bitAt_bitCons_zero: propext
+LeanExe.TypeSafety.bitAt_bitCons_succ: propext
+LeanExe.TypeSafety.bitCons_reconstruct: propext
+LeanExe.TypeSafety.bitwiseBits_bounded: propext
+LeanExe.TypeSafety.bitwiseBits_bitAt: propext
+LeanExe.TypeSafety.eq_of_bitAt_eq: propext
+LeanExe.TypeSafety.bitAt_zero_value: propext
+LeanExe.TypeSafety.bitwiseBits_all_ones: propext
+LeanExe.TypeSafety.bitAt_mask: propext
+LeanExe.TypeSafety.WordWidth.modulus_le_nat64: no axioms
+LeanExe.TypeSafety.normalizeWord_eq: no axioms
+LeanExe.TypeSafety.normalizeWord_bounded: no axioms
+LeanExe.TypeSafety.normalizeWord_eq_self_iff: propext
+LeanExe.TypeSafety.normalizeWord_idempotent: propext
+LeanExe.TypeSafety.normalizeWord_widen: propext
+LeanExe.TypeSafety.normalizeWord_roundtrip: propext
+LeanExe.TypeSafety.wordToNat_bounded: no axioms
+LeanExe.TypeSafety.evalWordBin_bounded: propext
+LeanExe.TypeSafety.evalWordBin_add_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_add_no_wrap: propext
+LeanExe.TypeSafety.evalWordBin_add_wrap: propext
+LeanExe.TypeSafety.evalWordBin_sub_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_sub_no_underflow: propext
+LeanExe.TypeSafety.evalWordBin_sub_underflow: propext
+LeanExe.TypeSafety.evalWordBin_mul_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_mul_no_wrap: propext
+LeanExe.TypeSafety.evalWordBin_div_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_mod_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_div_zero: propext
+LeanExe.TypeSafety.evalWordBin_mod_zero: propext
+LeanExe.TypeSafety.evalWordBin_div_mod: propext
+LeanExe.TypeSafety.evalWordBin_min_left: no axioms
+LeanExe.TypeSafety.evalWordBin_min_right: propext
+LeanExe.TypeSafety.evalWordBin_max_left: propext
+LeanExe.TypeSafety.evalWordBin_max_right: no axioms
+LeanExe.TypeSafety.WordWidth.bits_pos: no axioms
+LeanExe.TypeSafety.wordMask_bounded: no axioms
+LeanExe.TypeSafety.wordMask_bitAt: propext
+LeanExe.TypeSafety.evalWordBin_bitAnd_bitAt: propext
+LeanExe.TypeSafety.evalWordBin_bitOr_bitAt: propext
+LeanExe.TypeSafety.evalWordBin_bitXor_bitAt: propext
+LeanExe.TypeSafety.evalWordBin_bitAnd_zero: propext
+LeanExe.TypeSafety.evalWordBin_bitOr_zero: propext
+LeanExe.TypeSafety.evalWordBin_bitXor_zero: propext
+LeanExe.TypeSafety.evalWordBin_bitAnd_self: propext
+LeanExe.TypeSafety.evalWordBin_bitOr_self: propext
+LeanExe.TypeSafety.evalWordBin_bitXor_self: propext
+LeanExe.TypeSafety.evalWordBin_bitAnd_mask: propext
+LeanExe.TypeSafety.evalWordBin_bitOr_mask: propext
+LeanExe.TypeSafety.evalWordBin_bitXor_cancel: propext
+LeanExe.TypeSafety.evalWordBin_complement_bitAt: propext
+LeanExe.TypeSafety.evalWordBin_complement_involution: propext
+LeanExe.TypeSafety.shiftAmount_lt: no axioms
+LeanExe.TypeSafety.shiftAmount_periodic: propext
+LeanExe.TypeSafety.shiftAmount_zero: no axioms
+LeanExe.TypeSafety.shiftAmount_width: propext
+LeanExe.TypeSafety.evalWordBin_shiftLeft_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_shiftRight_eq: no axioms
+LeanExe.TypeSafety.evalWordBin_shiftLeft_zero: propext
+LeanExe.TypeSafety.evalWordBin_shiftRight_zero: propext
+LeanExe.TypeSafety.evalWordBin_shiftLeft_width: propext
+LeanExe.TypeSafety.evalWordBin_shiftRight_width: propext
+LeanExe.TypeSafety.ExprTyped.add: no axioms
+LeanExe.TypeSafety.ExprTyped.succ: no axioms
+LeanExe.TypeSafety.ExprTyped.pred: no axioms
+LeanExe.TypeSafety.ExprTyped.boolToNat: no axioms
+LeanExe.TypeSafety.ExprTyped.wordNot: no axioms
+LeanExe.TypeSafety.BodiesTyped.lookup: propext
+LeanExe.TypeSafety.EnvTyped.append: no axioms
+LeanExe.TypeSafety.EnvTyped.lookup: no axioms
+LeanExe.TypeSafety.ValueTyped.wellFormed: no axioms
+LeanExe.TypeSafety.ValuesTyped.wellFormed: no axioms
+LeanExe.TypeSafety.EnvTyped.wellFormed: no axioms
+LeanExe.TypeSafety.EnvTyped.length: no axioms
+LeanExe.TypeSafety.ExprTyped.wellFormed: no axioms
+LeanExe.TypeSafety.ArgsTyped.wellFormed: no axioms
+LeanExe.TypeSafety.BranchesTyped.lookup: no axioms
+LeanExe.TypeSafety.BranchesTyped.length: no axioms
+LeanExe.TypeSafety.ValueTyped.bool_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.unit_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.nat_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.word_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.prod_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.sum_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.array_canonical: no axioms
+LeanExe.TypeSafety.ValueTyped.data_canonical: no axioms
+LeanExe.TypeSafety.ArrayValues.lookup_none_iff: propext
+LeanExe.TypeSafety.ArrayValues.lookup_append_left: no axioms
+LeanExe.TypeSafety.ArrayValues.lookup_append_right: propext
+LeanExe.TypeSafety.ArrayValues.replace_none_iff: propext
+LeanExe.TypeSafety.ArrayValues.replace_length: propext
+LeanExe.TypeSafety.ArrayValues.replace_lookup_same: propext
+LeanExe.TypeSafety.ArrayValues.replace_lookup_other: propext
+LeanExe.TypeSafety.ArrayValues.get_failure_iff: propext
+LeanExe.TypeSafety.ArrayValues.set_failure_iff: propext
+LeanExe.TypeSafety.ArrayValues.push_failure_iff: propext
+LeanExe.TypeSafety.ArrayValues.append_failure_iff: propext
+LeanExe.TypeSafety.ArrayValues.set_success_iff: propext
+LeanExe.TypeSafety.ArrayValues.set_success_length: propext
+LeanExe.TypeSafety.ArrayValues.get_after_set_same: propext
+LeanExe.TypeSafety.ArrayValues.get_after_set_other: propext
+LeanExe.TypeSafety.ArrayValues.push_success: propext
+LeanExe.TypeSafety.ArrayValues.append_success: propext
+LeanExe.TypeSafety.ArrayValues.push_success_iff: propext
+LeanExe.TypeSafety.ArrayValues.append_success_iff: propext
+LeanExe.TypeSafety.ArrayValues.push_success_length: propext
+LeanExe.TypeSafety.ArrayValues.append_success_length: propext
+LeanExe.TypeSafety.ArrayValues.get_after_push_last: propext
+LeanExe.TypeSafety.ArrayValues.get_after_append_left: no axioms
+LeanExe.TypeSafety.ArrayValues.get_after_append_right: propext
+LeanExe.TypeSafety.ValuesTyped.append: no axioms
+LeanExe.TypeSafety.ValuesTyped.lookup: propext
+LeanExe.TypeSafety.ValuesTyped.replace: propext
+LeanExe.TypeSafety.ArrayValues.empty_typed: no axioms
+LeanExe.TypeSafety.ArrayValues.get_typed: propext
+LeanExe.TypeSafety.ArrayValues.set_typed: propext
+LeanExe.TypeSafety.ArrayValues.push_typed: propext
+LeanExe.TypeSafety.ArrayValues.append_typed: propext
+LeanExe.TypeSafety.step_add: propext
+LeanExe.TypeSafety.step_succ: propext
+LeanExe.TypeSafety.step_pred: propext
+LeanExe.TypeSafety.step_wordNot: propext
+LeanExe.TypeSafety.step_boolToNat: propext
+LeanExe.TypeSafety.step_natCase: propext
+LeanExe.TypeSafety.step_natCase_zero: propext
+LeanExe.TypeSafety.step_natCase_succ: propext
+LeanExe.TypeSafety.step_structEq: propext
+LeanExe.TypeSafety.step_structEq_right: propext
+LeanExe.TypeSafety.step_structEq_result: propext
+LeanExe.TypeSafety.step_structEq_true_iff: propext
+LeanExe.TypeSafety.step_structEq_false_iff: propext
+LeanExe.TypeSafety.Steps.trans: propext
+LeanExe.TypeSafety.FrameTyped.wellFormed: no axioms
+LeanExe.TypeSafety.KontTyped.wellFormed: no axioms
+LeanExe.TypeSafety.StateTyped.wellFormed: no axioms
+LeanExe.TypeSafety.initial_typed: no axioms
+LeanExe.TypeSafety.step_deterministic: propext
+LeanExe.TypeSafety.enter_call_typed: propext
+LeanExe.TypeSafety.eval_step_typed: propext
+LeanExe.TypeSafety.frame_step_typed: propext
+LeanExe.TypeSafety.safety_step: propext
+LeanExe.TypeSafety.terminal_no_step: propext
+LeanExe.TypeSafety.preservation: propext
+LeanExe.TypeSafety.progress: propext
+LeanExe.TypeSafety.preservation_steps: propext
+LeanExe.TypeSafety.typed_not_stuck: propext
+LeanExe.TypeSafety.type_safety: propext
+LeanExe.TypeSafety.closed_type_safety: propext
+LeanExe.TypeSafety.return_type: propext
+LeanExe.TypeSafety.overflow_is_justified: propext
+LeanExe.TypeSafety.uses_natCase: no axioms
+LeanExe.TypeSafety.uses_natCase_iff: propext
+LeanExe.TypeSafety.uses_structEq: no axioms
+LeanExe.TypeSafety.admissible_structEq_iff: propext
+LeanExe.TypeSafety.uses_wordNot: propext
+LeanExe.TypeSafety.admissible_wordNot: propext
+LeanExe.TypeSafety.usesArgs_iff: propext
+LeanExe.TypeSafety.usesBranches_iff: propext
+LeanExe.TypeSafety.parametersUsed_iff: propext
+LeanExe.TypeSafety.admissible_let_iff: propext
+LeanExe.TypeSafety.admissible_split_iff: propext
+LeanExe.TypeSafety.admissible_sumCase_iff: propext
+LeanExe.TypeSafety.admissible_natCase_iff: propext
+LeanExe.TypeSafety.admissible_unitCase_iff: propext
+LeanExe.TypeSafety.admissibleArgs_iff: propext
+LeanExe.TypeSafety.admissibleBranches_iff: propext
+LeanExe.TypeSafety.admissible_dataCtor_iff: propext
+LeanExe.TypeSafety.admissible_dataCase_iff: propext
+LeanExe.TypeSafety.programAdmissible_cons_iff: propext
+LeanExe.TypeSafety.programAdmissible_length: propext
+LeanExe.TypeSafety.programAdmissible_lookup: propext
+LeanExe.TypeSafety.profile_type_safety: propext
+LeanExe.TypeSafety.profile_return_type: propext
+LeanExe.TypeSafety.profile_overflow_is_justified: propext
+LeanExe.TypeSafety.inferRaw_complete: propext
+LeanExe.TypeSafety.checkArgsRaw_complete: propext
+LeanExe.TypeSafety.checkBranchesRaw_complete: propext
+LeanExe.TypeSafety.inferRaw_sound: propext
+LeanExe.TypeSafety.checkArgsRaw_sound: propext
+LeanExe.TypeSafety.checkBranchesRaw_sound: propext
+LeanExe.TypeSafety.inferRaw_iff: propext
+LeanExe.TypeSafety.checkArgsRaw_iff: propext
+LeanExe.TypeSafety.checkBranchesRaw_iff: propext
+LeanExe.TypeSafety.ExprTyped.unique: propext
+LeanExe.TypeSafety.infer_eq_some_iff: propext
+LeanExe.TypeSafety.inferRaw_add: propext
+LeanExe.TypeSafety.inferRaw_succ: propext
+LeanExe.TypeSafety.inferRaw_pred: propext
+LeanExe.TypeSafety.inferRaw_boolToNat: propext
+LeanExe.TypeSafety.inferRaw_wordNot: propext
+LeanExe.TypeSafety.bodiesWellTyped_iff: propext
+LeanExe.TypeSafety.programWellTyped_iff: propext
+LeanExe.TypeSafety.profileExpressionWellTyped_iff: propext
+LeanExe.TypeSafety.profileProgramWellTyped_iff: propext
+LeanExe.TypeSafety.checked_type_safety: propext
+LeanExe.TypeSafety.profile_checked_type_safety: propext
+LeanExe.TypeSafety.ExprTyped.boolNot: no axioms
+LeanExe.TypeSafety.BoolBinOp.body_typed: no axioms
+LeanExe.TypeSafety.ExprTyped.boolBin: no axioms
+LeanExe.TypeSafety.inferRaw_boolNot: propext
+LeanExe.TypeSafety.BoolBinOp.inferRaw_body: propext
+LeanExe.TypeSafety.inferRaw_boolBin: propext
+LeanExe.TypeSafety.uses_boolNot: propext
+LeanExe.TypeSafety.admissible_boolNot: propext
+LeanExe.TypeSafety.BoolBinOp.body_uses_left: no axioms
+LeanExe.TypeSafety.BoolBinOp.body_uses_right: no axioms
+LeanExe.TypeSafety.BoolBinOp.body_closed: no axioms
+LeanExe.TypeSafety.BoolBinOp.body_admissible: no axioms
+LeanExe.TypeSafety.uses_boolBin: propext
+LeanExe.TypeSafety.admissible_boolBin: propext
+LeanExe.TypeSafety.step_boolNot: propext
+LeanExe.TypeSafety.step_boolBin: propext
+LeanExe.TypeSafety.boolBin_left_stage: propext
+LeanExe.TypeSafety.step_boolBin_right_stage: propext
+LeanExe.TypeSafety.boolNot_result_steps: propext
+LeanExe.TypeSafety.BoolBinOp.body_result_steps: propext
+LeanExe.TypeSafety.boolBin_result_steps: propext
+LeanExe.TypeSafety.boolNot_value_steps: propext
+LeanExe.TypeSafety.boolBin_value_steps: propext
+LeanExe.TypeSafety.valueEq_sound: propext
+LeanExe.TypeSafety.valuesEq_sound: propext
+LeanExe.TypeSafety.valueEq_refl: propext
+LeanExe.TypeSafety.valuesEq_refl: propext
+LeanExe.TypeSafety.valueEq_eq_true_iff: propext
+LeanExe.TypeSafety.valuesEq_eq_true_iff: propext
+LeanExe.TypeSafety.valueEq_eq_false_iff: propext
+LeanExe.TypeSafety.valuesEq_eq_false_iff: propext
+LeanExe.TypeSafety.valueEq_symm: propext
+LeanExe.TypeSafety.valuesEq_symm: propext
+LeanExe.TypeSafety.valueEq_pair: propext
+LeanExe.TypeSafety.valueEq_word: propext
+LeanExe.TypeSafety.valueEq_sum_tags: propext
+LeanExe.TypeSafety.valueEq_array: propext
+LeanExe.TypeSafety.valueEq_data: propext
+LeanExe.TypeSafety.valuesEq_nil_left: propext
+LeanExe.TypeSafety.valuesEq_nil_right: propext
+LeanExe.TypeSafety.valuesEq_cons: propext
+LeanExe.TypeSafety.valuesEq_length: propext
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.refl: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.trans: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.length: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.lookup: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.bottom: no axioms
+LeanExe.TypeSafety.EqualityCheck.trueCount_le_length: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.count_le: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.eq_of_count_eq: no axioms
+LeanExe.TypeSafety.EqualityCheck.FlagsLE.count_lt_of_ne: no axioms
+LeanExe.TypeSafety.EqualityCheck.saturate_length: propext
+LeanExe.TypeSafety.EqualityCheck.saturate_le_next: propext
+LeanExe.TypeSafety.EqualityCheck.saturate_stable_or_count: propext
+LeanExe.TypeSafety.EqualityCheck.saturate_stable: propext
+LeanExe.TypeSafety.EqTy.wellFormed: no axioms
+LeanExe.TypeSafety.EqTypes.wellFormed: no axioms
+LeanExe.TypeSafety.EqConstructors.wellFormed: no axioms
+LeanExe.TypeSafety.EqualityCheck.typeAccepted_mono: propext
+LeanExe.TypeSafety.EqualityCheck.typesAccepted_mono: propext
+LeanExe.TypeSafety.EqualityCheck.constructorsAccepted_mono: propext
+LeanExe.TypeSafety.EqualityCheck.next_length: no axioms
+LeanExe.TypeSafety.EqualityCheck.next_monotone: propext
+LeanExe.TypeSafety.EqualityCheck.next_keepsLength: no axioms
+LeanExe.TypeSafety.EqualityCheck.stage_length: propext
+LeanExe.TypeSafety.EqualityCheck.stage_stable: propext
+LeanExe.TypeSafety.EqualityCheck.lookup_next_iff: no axioms
+LeanExe.TypeSafety.EqualityCheck.typeAccepted_sound: propext
+LeanExe.TypeSafety.EqualityCheck.typesAccepted_sound: propext
+LeanExe.TypeSafety.EqualityCheck.constructorsAccepted_sound: propext
+LeanExe.TypeSafety.EqualityCheck.lookup_bottom_ne_true: no axioms
+LeanExe.TypeSafety.EqualityCheck.next_sound: propext
+LeanExe.TypeSafety.EqualityCheck.stage_sound: propext
+LeanExe.TypeSafety.EqualityCheck.typeAccepted_complete: propext
+LeanExe.TypeSafety.EqualityCheck.typesAccepted_complete: propext
+LeanExe.TypeSafety.EqualityCheck.constructorsAccepted_complete: propext
+LeanExe.TypeSafety.equalitySupported_iff: propext
+LeanExe.TypeSafety.Renaming.lift_congr: no axioms
+LeanExe.TypeSafety.Renaming.liftN_congr: no axioms
+LeanExe.TypeSafety.Renaming.lift_identity: no axioms
+LeanExe.TypeSafety.Renaming.liftN_identity: no axioms
+LeanExe.TypeSafety.Renaming.lift_composes: no axioms
+LeanExe.TypeSafety.Renaming.liftN_composes: no axioms
+LeanExe.TypeSafety.Expr.rename_congr: propext
+LeanExe.TypeSafety.renameArgs_congr: propext
+LeanExe.TypeSafety.renameBranches_congr: propext
+LeanExe.TypeSafety.Expr.rename_identity_of: propext
+LeanExe.TypeSafety.renameArgs_identity_of: propext
+LeanExe.TypeSafety.renameBranches_identity_of: propext
+LeanExe.TypeSafety.Expr.rename_comp_of: propext
+LeanExe.TypeSafety.renameArgs_comp_of: propext
+LeanExe.TypeSafety.renameBranches_comp_of: propext
+LeanExe.TypeSafety.Expr.rename_id: propext
+LeanExe.TypeSafety.renameArgs_id: propext
+LeanExe.TypeSafety.renameBranches_id: propext
+LeanExe.TypeSafety.Expr.rename_comp: propext
+LeanExe.TypeSafety.renameArgs_comp: propext
+LeanExe.TypeSafety.renameBranches_comp: propext
+LeanExe.TypeSafety.RenamingTyped.lookup: no axioms
+LeanExe.TypeSafety.RenamingTyped.refl: no axioms
+LeanExe.TypeSafety.RenamingTyped.comp: no axioms
+LeanExe.TypeSafety.RenamingTyped.lift: no axioms
+LeanExe.TypeSafety.RenamingTyped.liftN: no axioms
+LeanExe.TypeSafety.RenamingTyped.shift: no axioms
+LeanExe.TypeSafety.ExprTyped.rename: no axioms
+LeanExe.TypeSafety.ArgsTyped.rename: no axioms
+LeanExe.TypeSafety.BranchesTyped.rename: no axioms
+LeanExe.TypeSafety.ExprTyped.weaken: no axioms
+LeanExe.TypeSafety.ExprTyped.weakenUnder: no axioms
+LeanExe.TypeSafety.Renaming.liftN_prefix: no axioms
+LeanExe.TypeSafety.Renaming.liftN_suffix: no axioms
+LeanExe.TypeSafety.Renaming.liftN_preimage_prefix: propext
+LeanExe.TypeSafety.Renaming.liftN_preimage_suffix: no axioms
+LeanExe.TypeSafety.Renaming.exists_liftN_suffix: no axioms
+LeanExe.TypeSafety.Renaming.occurrenceImage_or: propext
+LeanExe.TypeSafety.Renaming.occurrenceImage_false: no axioms
+LeanExe.TypeSafety.uses_rename_iff: propext
+LeanExe.TypeSafety.usesArgs_rename_iff: propext
+LeanExe.TypeSafety.usesBranches_rename_iff: propext
+LeanExe.TypeSafety.Renaming.bool_eq_of_true_iff: no axioms
+LeanExe.TypeSafety.uses_rename_liftN_prefix: propext
+LeanExe.TypeSafety.parametersUsed_rename_liftN: propext
+LeanExe.TypeSafety.admissible_rename: propext
+LeanExe.TypeSafety.admissibleArgs_rename: propext
+LeanExe.TypeSafety.admissibleBranches_rename: propext
+LeanExe.TypeSafety.ProfileTyped.rename: propext
+LeanExe.TypeSafety.ProfileTyped.weaken: propext
+LeanExe.TypeSafety.EnvCorresponds.lookup: no axioms
+LeanExe.TypeSafety.EnvCorresponds.refl: no axioms
+LeanExe.TypeSafety.EnvCorresponds.empty: no axioms
+LeanExe.TypeSafety.EnvCorresponds.comp: no axioms
+LeanExe.TypeSafety.EnvCorresponds.lift: no axioms
+LeanExe.TypeSafety.EnvCorresponds.prefix: no axioms
+LeanExe.TypeSafety.EnvCorresponds.shift: no axioms
+LeanExe.TypeSafety.renameBranches_lookup: no axioms
+LeanExe.TypeSafety.StateCorresponds.eval_same: propext
+LeanExe.TypeSafety.OptionStatesCorrespond.none_iff: no axioms
+LeanExe.TypeSafety.enterCall_corresponds: propext
+LeanExe.TypeSafety.eval_step_corresponds: propext
+LeanExe.TypeSafety.ret_step_corresponds: propext
+LeanExe.TypeSafety.StateCorresponds.step: propext
+LeanExe.TypeSafety.StateCorresponds.step_none_iff: propext
+LeanExe.TypeSafety.StateCorresponds.terminal_iff: propext
+LeanExe.TypeSafety.StateCorresponds.stuck_iff: propext
+LeanExe.TypeSafety.OptionStatesCorrespond.some_left: no axioms
+LeanExe.TypeSafety.OptionStatesCorrespond.some_right: no axioms
+LeanExe.TypeSafety.StateCorresponds.step_forward: propext
+LeanExe.TypeSafety.StateCorresponds.step_backward: propext
+LeanExe.TypeSafety.StateCorresponds.steps_forward: propext
+LeanExe.TypeSafety.StateCorresponds.steps_backward: propext
+LeanExe.TypeSafety.rename_returns_iff: propext
+LeanExe.TypeSafety.rename_overflows_iff: propext
+LeanExe.TypeSafety.rename_reaches_stuck_iff: propext
+LeanExe.TypeSafety.returnBoundary_iff: propext
+LeanExe.TypeSafety.returnBoundary_or_not: propext
+LeanExe.TypeSafety.State.appendKont_nil: propext
+LeanExe.TypeSafety.State.appendKont_append: propext
+LeanExe.TypeSafety.enterCall_appendKont: propext
+LeanExe.TypeSafety.eval_step_appendKont: propext
+LeanExe.TypeSafety.ret_step_appendKont: propext
+LeanExe.TypeSafety.step_appendKont_of_not_boundary: propext
+LeanExe.TypeSafety.Step.not_boundary: propext
+LeanExe.TypeSafety.Step.appendKont: propext
+LeanExe.TypeSafety.Steps.appendKont: propext
+LeanExe.TypeSafety.step_unappendKont: propext
+LeanExe.TypeSafety.terminal_appendKont_iff_of_not_boundary: propext
+LeanExe.TypeSafety.stuck_appendKont_iff_of_not_boundary: propext
+LeanExe.TypeSafety.Stuck.not_boundary: propext
+LeanExe.TypeSafety.Stuck.appendKont: propext
+LeanExe.TypeSafety.steps_appendKont_decompose: propext
+LeanExe.TypeSafety.appendKont_returns_iff: propext
+LeanExe.TypeSafety.appendKont_overflows_iff: propext
+LeanExe.TypeSafety.appendKont_reaches_stuck_iff: propext
+LeanExe.TypeSafety.Steps.head_iff: propext
+LeanExe.TypeSafety.Steps.eq_of_no_step: propext
+LeanExe.TypeSafety.steps_from_no_step_iff: propext
+LeanExe.TypeSafety.steps_iff_of_step_to_no_step: propext
+LeanExe.TypeSafety.reaches_stuck_iff_of_step: propext
+LeanExe.TypeSafety.sequence_returns_iff: propext
+LeanExe.TypeSafety.sequence_overflows_iff: propext
+LeanExe.TypeSafety.sequence_reaches_stuck_iff: propext
+LeanExe.TypeSafety.SumExecution.ret_returns_iff: propext
+LeanExe.TypeSafety.SumExecution.ret_not_overflows: propext
+LeanExe.TypeSafety.SumExecution.ret_not_reaches_stuck: propext
+LeanExe.TypeSafety.SumExecution.returns_iff_of_step_to_return: propext
+LeanExe.TypeSafety.SumExecution.not_overflows_of_step_to_return: propext
+LeanExe.TypeSafety.SumExecution.not_reaches_stuck_of_step_to_return: propext
+LeanExe.TypeSafety.SumExecution.frame_not_returns_of_no_step: propext
+LeanExe.TypeSafety.SumExecution.frame_not_overflows_of_no_step: propext
+LeanExe.TypeSafety.SumExecution.frame_reaches_stuck_of_no_step: propext
+LeanExe.TypeSafety.SumExecution.unitBody_returns_iff: propext
+LeanExe.TypeSafety.SumExecution.unitBody_overflows_iff: propext
+LeanExe.TypeSafety.SumExecution.unitBody_reaches_stuck_iff: propext
+LeanExe.TypeSafety.SumExecution.sumBranches_returns_iff: propext
+LeanExe.TypeSafety.SumExecution.sumBranches_overflows_iff: propext
+LeanExe.TypeSafety.SumExecution.sumBranches_reaches_stuck_iff: propext
+LeanExe.TypeSafety.inl_returns_iff: propext
+LeanExe.TypeSafety.inl_overflows_iff: propext
+LeanExe.TypeSafety.inl_reaches_stuck_iff: propext
+LeanExe.TypeSafety.inr_returns_iff: propext
+LeanExe.TypeSafety.inr_overflows_iff: propext
+LeanExe.TypeSafety.inr_reaches_stuck_iff: propext
+LeanExe.TypeSafety.unitCase_returns_iff: propext
+LeanExe.TypeSafety.unitCase_overflows_iff: propext
+LeanExe.TypeSafety.unitCase_reaches_stuck_iff: propext
+LeanExe.TypeSafety.sumCase_returns_iff: propext
+LeanExe.TypeSafety.sumCase_overflows_iff: propext
+LeanExe.TypeSafety.sumCase_reaches_stuck_iff: propext
+Type-safety gate passed: core build, behavior checks, 438 theorem audits.

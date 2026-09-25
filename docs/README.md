@@ -1,6 +1,6 @@
 # Documentation
 
-LeanExe assigns one subject to each maintained document.  The repository [README](../README.md) introduces the system, [Developing LeanExe](../DEVELOPING.md) owns setup and tests, and the root [Development Plan](../plan.md) owns the repository roadmap.  The [type-safety working state](../task.md) owns that branch's current agenda and notes.  The development journal records rationale and test evidence.
+LeanExe assigns one subject to each maintained document.  The repository [README](../README.md) introduces the system, [Developing LeanExe](../DEVELOPING.md) owns setup and tests, and the root [Development Plan](../plan.md) owns the repository roadmap.  The [compiler-correctness working state](../task.md) owns the `correct` branch's current agenda and notes.  The development journal records rationale and test evidence.
 
 ## Language and compiler
 
@@ -11,7 +11,8 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [LeanExe Type Theory](typetheory.md) | Relationship among Lean's source theory, the executable fragment, runtime values, and artifact propositions. |
 | [Type Theory of the LeanExe Fragment](leanexe-type-theory.md) | Mathematical typing, representation, specialization, and ownership judgments, with implementation-defined recognition premises. |
 | [Independent Core Type Safety](type-safety.md) | Mechanized core-language safety work, exact fragment coverage, theorem boundaries, and verification status. |
-| [Type-Safety Working State](../task.md) | Current proof checkpoint, agenda, open decisions, verification evidence, and working notes for `typesafety`. |
+| [Compiler-Correctness Working State](../task.md) | Current proof checkpoint, incremental coverage agenda, verification evidence, and working notes for `correct`. |
+| [Arithmetic Compiler Correctness](arithmetic-correctness.md) | General arithmetic theorem, exact admitted source grammar, compiler execution tests, and standalone proof package. |
 | [Formal Specification of Compilation and Execution](leanexe-formal-specification.md) | Compilation and execution relations, numeric and collection operations, heap representation, ABI, WASI, and open proof obligations. |
 | [Compiler Architecture](compiler.md) | Extraction, specialization, IR, ownership analysis, WASM emission, annotations, and compiler theorem boundaries. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Canonical final-module image, host ABI, precise self-hosting claim, compatibility rules, and bootstrap receipt. |
