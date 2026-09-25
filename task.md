@@ -218,6 +218,7 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `Optimality.lean` | General layered-graph lower-bound certificate and attaining-route optimality theorem |
 | `Planner.lean` | Bellman invariant, feasibility and optimum for repeated executable `advance` transitions |
 | `Feasibility.lean` | All-stop route witness, finite and optimal terminal labels, exact floor decoding and terrain specialization |
+| `Reconstruction.lean` | Following stored parent words yields a bounded concrete state list attaining the optimal label |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
 `Planner.layers` is a reference sequence consisting of the actual executable
@@ -319,7 +320,12 @@ commits should continue respecting that file scope unless the user changes it.
    `terrain_terminal_optimal` establishes an attained optimal terminal label
    for every nonempty bounded terrain. The remaining task is to transport this
    result through the public forward/history loop correspondence.
-4. **Reconstruction and output contract.** Prove all parent reads in range,
+4. **Reconstruction and output contract — reference parent traversal checked.**
+   `Reconstruction.backtrack_correct` follows actual row parent fields and
+   proves the resulting state list is feasible and attains its label.
+   `reconstructed_optimal` proves its length and global lexicographic optimum.
+   Still prove the public flat-history and output loops implement that traversal,
+   all public parent reads are in range,
    predecessor traversal reaches the unique initial state, the output has
    length 2n and correct alternating encoding, endpoints are on the ground
    and stopped, every adjacent output pair is an admitted edge, and the
@@ -390,3 +396,16 @@ interior values. These results specialize to every nonempty terrain with at
 most 64 elevations, each at most 1,000,000. `compute` guard/loop/reconstruction
 correspondence remains unproved. The focused feasibility target passed, and
 the aggregate source check includes its theorems and axiom audit.
+
+
+### 2026-09-25 — stored-parent reconstruction checkpoint
+
+The feasibility checkpoint was published as
+`3eff0614bb5220861db5134c8b7585b345bdac3e`. Added `Reconstruction.lean` and checked
+`parent_step`, `backtrack_correct`, and `reconstructed_optimal`. These follow
+the actual predecessor words in the proved row sequence, producing a concrete
+list of bounded states with exactly n+1 points. The list is feasible and attains
+the globally optimal terminal label. The public function's separate flat parent
+history and reversed altitude/speed output loop are not yet equated to this
+reference reconstruction. That correspondence is the next implementation proof.
+The aggregate source target includes the new theorems and axiom audit.

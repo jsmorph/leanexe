@@ -1,4 +1,4 @@
-import Project.Drone.Feasibility
+import Project.Drone.Reconstruction
 import Project.Drone.Kinematics
 
 /-! Check all current drone source-proof components in one target.
@@ -31,3 +31,6 @@ See task.md for the remaining composition obligations. -/
 
 #print axioms Project.Drone.Feasibility.all_stop_flight
 #print axioms Project.Drone.Feasibility.terrain_terminal_optimal
+
+#print axioms Project.Drone.Reconstruction.backtrack_correct
+#print axioms Project.Drone.Reconstruction.reconstructed_optimal
