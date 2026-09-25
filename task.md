@@ -598,7 +598,7 @@ interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
 Current increment: Boolean-parameter local functions and continuations introduced
 by `let flag ← if … then pure … else pure …`. Scalar and step-result helpers,
 their typed source semantics/totality, production extraction and all compiler
-proofs now pass, including scalar helpers surrounding a loop. All 304 focused
+proofs now pass, including scalar helpers surrounding a loop. All 304 original focused
 native/IR comparisons pass across eight pure and eight range declarations, plus
 four declaration and twelve malformed-helper rejection tests. The three
 original inspected conditional-bind examples remain unchanged in the fixture.
@@ -610,7 +610,12 @@ retained. The scalar dispatch explicitly realizes its ordinary generated
 induction theorem in the defining module with a local 300,000-heartbeat budget;
 its core builds in 12 seconds and the proof consumer in 1.2 seconds.
 
-The candidate still needs the general compiler audit and focused native/V8 run.
+The general compiler proof passed all nine audits. The first execution gate
+found an old admission test expecting a Bool → ForInStep helper to be rejected;
+that helper is now supported. Preserve that declaration unchanged as an accepted
+case and include it in the IR and native/V8 comparisons (17 new declarations,
+35 in the focused execution group). Rerun the execution gate after this test fix.
+The proof implementation is unchanged, so its successful audit remains current.
 No Boolean public ABI, Boolean-returning helper, mixed Bool/word parameter list,
 or loop inside a helper body is claimed. A conditional Boolean bind before a
 loop can elaborate to such a loop-containing helper and remains a later step.
