@@ -84,6 +84,13 @@ abbrev evidence (guard : BooleanLocalGuard) := guard.value.evidence
 def branch (guard : BooleanLocalGuard) (type t e : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
     guard.condition) guard.evidence) t) e
+def dependentBranch (guard : BooleanLocalGuard) (type : Lean.Expr)
+    (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) type)
+    guard.condition) guard.evidence)
+      (.lam tn guard.condition t tb))
+      (.lam fn (.app (.const ``Not []) guard.condition) e fb)
+
 end BooleanLocalGuard
 
 end LeanExe.Source.Scalar
