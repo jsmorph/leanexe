@@ -406,13 +406,14 @@ modules kept identical bytes. General type validation passed; unrelated suites
 were not rebuilt.
 
 Current increment: mix Boolean compound guards with surrounding propositional
-conjunction, disjunction and negation. Shared source definitions have been
-factored to allow Boolean trees inside propositional trees without cyclic
-imports. A separate Boolean guard compiler helper now passes total acceptance,
-operand success, native correctness and invariant-preservation proofs using the
-same existing lowering. The preceding public guard interface still builds.
-Mixed source nodes, parser integration and end-to-end tests remain pending;
-public coverage is still the completed Boolean-compound checkpoint above.
+conjunction, disjunction and negation. Guard trees now retain Boolean compound
+nodes and independent counts for Bool.not and propositional Not. The integrated
+parser checks exact source shape and complete standard decision evidence, and
+the shared Boolean/compiler helpers preserve native results and invariants.
+Public function extraction builds with unchanged scalar/step integration proofs.
+All 208 focused native Lean/IR comparisons and three rejection tests pass across
+twelve new declarations. The general compiler proof/audits and actual native
+Lean/V8 comparisons remain pending at this candidate checkpoint.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

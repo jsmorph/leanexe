@@ -1,5 +1,5 @@
 import LeanExe.Source.ScalarBooleanGuard
-import LeanExe.Extract.ScalarBooleanComparison
+import LeanExe.Extract.ScalarComparison
 
 namespace LeanExe.Extract.Core
 
@@ -65,5 +65,31 @@ theorem booleanJunction_not_comparison (n : Nat) (op : Junction) (a b : Lean.Exp
   induction n with
   | zero => cases op <;> rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
+
+def booleanGuardCondition? : Lean.Expr → Option BooleanGuard
+  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) inner) (.const ``Bool.true []) =>
+      booleanGuardOperands? inner
+  | _ => none
+
+@[simp] theorem booleanGuardCondition_accepts (guard : BooleanGuard) :
+    booleanGuardCondition? guard.condition = some guard := by
+  simp [booleanGuardCondition?, BooleanGuard.condition]
+
+theorem booleanGuardCondition_sound {condition : Lean.Expr} {guard : BooleanGuard}
+    (parsed : booleanGuardCondition? condition = some guard) : condition = guard.condition := by
+  unfold booleanGuardCondition? at parsed
+  split at parsed
+  · rename_i inner
+    rw [booleanGuardOperands_sound parsed]
+    rfl
+  · contradiction
+
+theorem booleanJunction_condition_not_comparison (n : Nat) (op : Junction) (a b : BooleanGuard) :
+    comparisonOperands? (BooleanGuard.junction n op a b).condition = none := by
+  cases n with
+  | zero => cases op <;> rfl
+  | succ n =>
+    simp [BooleanGuard.condition, BooleanGuard.expr, BooleanGuardNegation.expr,
+      comparisonOperands?, booleanJunction_not_comparison]
 
 end LeanExe.Extract.Core

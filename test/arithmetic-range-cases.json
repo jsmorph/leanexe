@@ -141,5 +141,9 @@
   "rangeBoolCompoundBreak",
   "rangeBoolCompoundContinue",
   "rangeBoolCompoundJoined",
-  "rangeBoolCompoundStep"
+  "rangeBoolCompoundStep",
+  "rangeMixedGuardBreak",
+  "rangeMixedGuardContinue",
+  "rangeMixedGuardJoined",
+  "rangeMixedGuardStep"
 ]
