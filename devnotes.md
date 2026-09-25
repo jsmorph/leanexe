@@ -1,3 +1,9 @@
+## 2026-09-24: Reconcile the byte-I/O manual after review
+
+The P3 manual statement that omitted the new proofs is replaced with the maintained byte-I/O verification command and a link to the modeled host contracts, protocol laws, and six exact-binary cases. It explicitly retains the external C, Wasmtime, OS, and clock-progress assumptions. The development guide now documents the shared canonicalizing host configuration and the compiled NaN tests. Its obsolete generated-cache count and the task record's stale pending-proof sentence are also removed. The task record records both repaired P2 regressions and the passing proof gate.
+
+`tools/check-docs.js` passes all 162 maintained Markdown files in work/io-review/docs-final.log, and `git diff --check` passes. The verification command was exercised successfully in this same follow-up; the task and journal edits add no local links or shell examples. No proof statement, generated cache, or release identity changed.
+
 ## 2026-09-24: Canonical NaNs in compiled byte-I/O commands
 
 The second P2 regression uses runtime input to form signaling, quiet, and negative NaNs, then checks exact canonical results through both binary32 and binary64 source intrinsics. Before the host repair, the compiled binary32 case returns 99 instead of zero in work/io-review/nan-before.log. The byte-I/O host now explicitly selects Cranelift and enables the same NaN canonicalization as the ordinary host.
