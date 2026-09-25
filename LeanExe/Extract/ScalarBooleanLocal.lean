@@ -24,6 +24,12 @@ def extractBooleanLocal : (guard : BooleanLocal) →
       let right ← extractBooleanLocal b (fun index member => compileVariables index (List.mem_append_right _ member))
         (fun operand member => compile operand (List.mem_append_right _ member))
       pure (lowerGuardNegations n (lowerJunction op left right))
+  | .equality n unequal a b, compileVariables, compile => do
+      let left ← extractBooleanLocal a (fun index member => compileVariables index (List.mem_append_left _ member))
+        (fun operand member => compile operand (List.mem_append_left _ member))
+      let right ← extractBooleanLocal b (fun index member => compileVariables index (List.mem_append_right _ member))
+        (fun operand member => compile operand (List.mem_append_right _ member))
+      pure (lowerGuardNegations n (lowerBooleanEquality unequal left right))
   | .choice n c t e, compileVariables, compile => do
       let test ← extractBooleanLocal c (fun index member => compileVariables index (List.mem_append_left _ member))
         (fun operand member => compile operand (List.mem_append_left _ member))
@@ -69,6 +75,16 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
       (fun index member => totalVariables index _)
       (fun operand member => total operand _)
     exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractBooleanLocal, hl, hr]⟩
+  | equality n unequal a b iha ihb =>
+    obtain ⟨left, hl⟩ := iha (fun index member => compileVariables index (List.mem_append_left _ member))
+      (fun operand member => compile operand (List.mem_append_left _ member))
+      (fun index member => totalVariables index _)
+      (fun operand member => total operand _)
+    obtain ⟨right, hr⟩ := ihb (fun index member => compileVariables index (List.mem_append_right _ member))
+      (fun operand member => compile operand (List.mem_append_right _ member))
+      (fun index member => totalVariables index _)
+      (fun operand member => total operand _)
+    exact ⟨lowerGuardNegations n (lowerBooleanEquality unequal left right), by simp [extractBooleanLocal, hl, hr]⟩
   | choice n c t e ihc iht ihe =>
     obtain ⟨test, hc⟩ := ihc (fun index member => compileVariables index (List.mem_append_left _ member))
       (fun operand member => compile operand (List.mem_append_left _ member))
@@ -122,6 +138,13 @@ theorem extractBooleanLocal_operands (guard : BooleanLocal)
     rcases List.mem_append.mp member with first | second
     · exact iha _ _ hl operand first
     · exact ihb _ _ hr operand second
+  | equality n unequal a b iha ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro operand member
+    rcases List.mem_append.mp member with first | second
+    · exact iha _ _ hl operand first
+    · exact ihb _ _ hr operand second
   | choice n c t e ihc iht ihe =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨test, hc, yes, ht, no, he, _⟩ := compiled
@@ -162,6 +185,13 @@ theorem extractBooleanLocal_variables (guard : BooleanLocal)
     subst other
     exact ⟨expression, found⟩
   | junction n op a b iha ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro index member
+    rcases List.mem_append.mp member with first | second
+    · exact iha _ _ hl index first
+    · exact ihb _ _ hr index second
+  | equality n unequal a b iha ihb =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro index member
@@ -213,6 +243,14 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerJunction_correct op
+      (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
+        (fun operand member expression found => meanings _ _ _ found))
+      (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
+        (fun operand member expression found => meanings _ _ _ found)))
+  | equality n unequal a b iha ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, rfl⟩ := compiled
+    exact lowerGuardNegations_correct n (lowerBooleanEquality_correct unequal
       (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
       (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
@@ -271,6 +309,15 @@ theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
       (lowerJunction_choice P literal binary choice op left right
+        (iha _ _ hl (fun index member expression found => variables _ _ _ found)
+        (fun operand member expression found => operands _ _ _ found))
+        (ihb _ _ hr (fun index member expression found => variables _ _ _ found)
+        (fun operand member expression found => operands _ _ _ found)))
+  | equality n unequal a b iha ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, rfl⟩ := compiled
+    exact lowerGuardNegations_choice P literal choice n _
+      (lowerBooleanEquality_choice P literal choice unequal left right
         (iha _ _ hl (fun index member expression found => variables _ _ _ found)
         (fun operand member expression found => operands _ _ _ found))
         (ihb _ _ hr (fun index member expression found => variables _ _ _ found)
