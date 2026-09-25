@@ -107,6 +107,14 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
       (fun operand member target found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
     exact ihb ht (bindings.cons (binding := .scalar (.boolean (guardWord c)))
       (value := .scalar (.boolean _)) (guardWord_correct meaning))
+  | @idBindBoolean values b value name bi action type native booleans variables arguments body ihb =>
+    rw [extractScalarStepWith_booleanBind] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨c, hc, ht⟩ := compiled
+    have meaning := extractBooleanLocalWith_correct action.leaf _ native booleans hc bindings.toScalar variables
+      (fun operand member target found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+    exact ihb ht (bindings.cons (binding := .scalar (.boolean (guardWord c)))
+      (value := .scalar (.boolean _)) (guardWord_correct meaning))
   | @chooseBoolean values t e value guard type native booleans variables arguments branch ihb =>
     rw [extractScalarStepWith_booleanBranch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled

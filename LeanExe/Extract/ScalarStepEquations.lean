@@ -262,6 +262,17 @@ theorem extractScalarStepWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
   rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarStepWith,
     scalarStepResultType_accepts, dependentGuard_accepts]
 
+theorem extractScalarStepWith_booleanBind (locals : List ScalarStepBinding)
+    (action : LeanExe.Source.Scalar.BooleanAction) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (name : Lean.Name) (bi : Lean.BinderInfo) (body : Lean.Expr) :
+    extractScalarStepWith locals
+      (LeanExe.Source.Scalar.BooleanIdentity.bind name bi action.expr body (Step.resultType type)) = (do
+      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) action.leaf
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body) := by
+  rw [LeanExe.Source.Scalar.BooleanIdentity.bind, extractScalarStepWith,
+    scalarStepResultType_accepts, booleanAction_accepts]
+
 theorem extractScalarStepWith_letBoolean (locals : List ScalarStepBinding)
     (expression : LeanExe.Source.Scalar.BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name (.const ``Bool []) expression.expr body nondep) = (do
