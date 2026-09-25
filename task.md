@@ -120,6 +120,19 @@ accumulator updates, index advance/exit and complete IR loop execution in
 the accumulator; done moves the index to the stop, and yield increments it.
 The focused target passes, including zero iterations and the returned done
 accumulator in the universally quantified statement.
+The source step grammar and total evaluation theorem now pass in
+`Source/ScalarStep.lean`, with separate scalar/step-valued closures, exact
+done/yield, scalar comparisons, binds and both continuation shapes. Its lexical
+values project step functions to inaccessible Unit placeholders when checking
+scalar subterms, preserving binder positions while preventing a step result
+from being used as a scalar. This is isolated from the completed scalar model.
+Extraction and the public source/function integration remain pending.
+The paired code/binding interface in `Extract/ScalarStepBindings.lean` also
+passes: one compiled continuation carries value and done projections for the
+same native step outcome. Its scalar projection preserves binding positions
+and the existing scalar matching relation. The source totality audit uses only
+the three permitted logical axioms. No public extraction behavior has changed
+in these preparation commits.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
