@@ -120,6 +120,65 @@ def doBranchUpdates (x y : UInt64) : UInt64 := Id.run do
   if a != y then a := a / y
   return a + 7
 
+def rangeIndexed (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeIndexFree (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    a := a + 3
+  return a
+
+def rangeBindings (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    let delta := (index + seed) / (index % 3)
+    a := a + delta
+    a := (a * 7) ^^^ index
+  return a
+
+def rangeChoice (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    a := if a < 7 then a + UInt64.ofNat i else (a * 3) ^^^ UInt64.ofNat i
+  return a
+
+def rangeBeforeAfter (n seed : UInt64) : UInt64 := Id.run do
+  let offset := seed * 3
+  let count ← pure (n % 17)
+  let mut a := offset
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i * offset
+  return a + offset
+
+def rangeCaptured (n seed : UInt64) : UInt64 := Id.run do
+  let oldSeed := seed + n
+  let mut a := seed
+  for i in [:n.toNat] do
+    let seed := UInt64.ofNat i
+    a := (let update := fun x : UInt64 => (x + oldSeed) ^^^ seed; update a)
+  return a - oldSeed
+
+def rangeConstant : UInt64 := Id.run do
+  let count : UInt64 := 7
+  let mut a : UInt64 := 18446744073709551615
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeInputs : List (UInt64 × UInt64) :=
+  [0, 1, 2, 7, 16, 31].flatMap fun count =>
+    [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
+
+def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
+  [("rangeIndexed", rangeIndexed), ("rangeIndexFree", rangeIndexFree),
+   ("rangeBindings", rangeBindings), ("rangeChoice", rangeChoice),
+   ("rangeBeforeAfter", rangeBeforeAfter), ("rangeCaptured", rangeCaptured)]
+
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
    (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -151,8 +210,16 @@ def main : IO Unit := do
   IO.println (Json.compress (Json.mkObj [
     ("name", toJson "doConstant"), ("args", Json.arr #[]),
     ("expected", toJson (toString ArithmeticMilestone.doConstant))]))
+  IO.println (Json.compress (Json.mkObj [
+    ("name", toJson "rangeConstant"), ("args", Json.arr #[]),
+    ("expected", toJson (toString ArithmeticMilestone.rangeConstant))]))
   for (name, source) in ArithmeticMilestone.cases do
     for (x, y) in ArithmeticMilestone.inputs do
+      IO.println (Json.compress (Json.mkObj [
+        ("name", toJson name), ("args", toJson [toString x, toString y]),
+        ("expected", toJson (toString (source x y)))]))
+  for (name, source) in ArithmeticMilestone.rangeCases do
+    for (x, y) in ArithmeticMilestone.rangeInputs do
       IO.println (Json.compress (Json.mkObj [
         ("name", toJson name), ("args", toJson [toString x, toString y]),
         ("expected", toJson (toString (source x y)))]))

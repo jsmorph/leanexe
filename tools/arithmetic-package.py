@@ -212,8 +212,11 @@ arguments/literals and nested add/sub/mul/unsigned division/remainder/bitwise
 operations/masked shifts, UInt64 let bindings and conditionals over canonical
 UInt64 comparisons, standard pure Id operations and local scalar functions,
 subject to explicit format-size bounds. Function shapes include unary UInt64
-functions and Unit-prefixed scalar continuations. Top-level helpers, loops,
-custom instances and heap values are excluded.
+functions and Unit-prefixed scalar continuations. One ascending unit-step
+[:count.toNat] range loop with a UInt64 accumulator and yielding steps is
+supported, including explicit UInt64.ofNat conversion of its Nat index.
+Top-level helpers, breaks, multiple/nested loops, custom instances and heap
+values are excluded.
 
 The JSON inventory detects accidental content changes; it is not a signature.
 Check this archive's SHA-256 against the separately published evidence to

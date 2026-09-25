@@ -21,7 +21,7 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       .error s!"entry export name is reserved by the runtime ABI: {exportName}"
     else
       let some func := extractScalarFunc entry (some exportName) info.type source
-        | .error "unsupported arithmetic source: expected UInt64 arguments and result, UInt64 let bindings, standard Id do operations, literals, arithmetic operators, and conditionals over supported comparisons"
+        | .error "unsupported scalar source: expected UInt64 arguments and result, supported let/local-function bindings, standard Id do operations, arithmetic, comparisons, or one unit-step range loop with a UInt64 accumulator"
       if LeanExe.Wasm.ArithmeticBounds.Fits func exportName then
         Core.compileEnvironment env moduleName entry
       else
