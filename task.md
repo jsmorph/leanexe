@@ -582,19 +582,27 @@ declarations; this was a focused execution run. The source grammar, parser and
 shared Boolean lowering were extended; scalar/step/loop proofs reused their
 interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
 
-Current increment: Boolean-valued choices with propositional guards, including
-UInt64 =, ≠, <, ≤, >, ≥, propositional literals, negation and junctions. Reuse
-the existing closed Guard grammar and exact standard decision evidence while
-preserving the preceding Boolean-choice path. Check operands and both arms,
-then complete focused execution and the general compiler audits before moving
-on. PropositionGuard grammar, parser acceptance/reconstruction and exact
-separation from Boolean conditions now pass. BooleanLocal source syntax,
-operand-size, parser and all shared lowering proofs cover the new constructor.
-All affected scalar and loop proofs build. The focused fixture passed all 304
-native/IR comparisons, four declaration rejections and eight raw choice
-rejections on its first execution run. Final compiler audits and execution gates
-remain open. Conditional Id actions and Boolean public/function signatures
-remain later capabilities.
+Completed next increment: Boolean-valued choices with propositional guards,
+including all six UInt64 comparisons, propositional literals, negation and
+junctions with existing closed Boolean leaves. Candidate `30d47e67` passed all
+nine compiler audits and 623 native Lean/V8 comparisons across the fixed
+34-declaration `proposition-choice` group. All 304 new native/IR comparisons
+and twelve rejection checks passed on the first execution run. The preceding
+Boolean-choice fixture also passes unchanged: 304 comparisons and twelve
+rejections. Eighteen selected preceding modules kept identical bytes. Evidence
+is retained in `proofs/compiler/proposition-choice-2026-09-25/`. The full corpus
+contains 439 declarations; this was a focused execution run. Source/parser and
+shared lowering proofs cover the new form; scalar/step/loop proofs reuse their
+interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
+
+Next increment: conditional Boolean Id actions, such as
+`let flag ← if x < y then pure (x == 0) else pure (y != 0)`. Inspect the exact
+elaborated annotations first, then extend the independent BooleanAction grammar,
+parser and operand-size proofs while reusing the typed bind compiler. Cover both
+Boolean and propositional ordinary guards, nested actions and loop usage, and
+finish focused execution and general compiler audits before moving on.
+Dependent action choices, propositional combinations containing saved Boolean
+locals and Boolean public/function signatures remain separate capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
