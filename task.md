@@ -582,3 +582,14 @@ its local-index and scratch-allocation bounds, for arbitrary nesting and all
 ten operators. Both modules build. FunctionTyping and the source-to-function
 validator composition are still being checked; no complete module-validation
 claim follows yet.
+
+### Actual source-produced user function validates (checked and audited)
+
+FunctionTyping connects typed sequences to the existing complete function
+validator, including actual i64 parameters/locals and result framing.
+SourceFunctionValidation derives the typed sequence from production source
+extraction and uses parser uniqueness to identify the actual decoded body.
+Both modules build. ModuleBytesAudit reports only propext, Classical.choice,
+and Quot.sound for extracted_function_valid. Larger runtime functions and
+whole-module metadata validation remain. During export validation, found
+reservedExportNames omits seven runtime exports; a regression and fix are next.
