@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarPropositionGuard
+import LeanExe.Source.ScalarBooleanProofBranch
 
 namespace LeanExe.Source.Scalar
 
@@ -17,6 +18,11 @@ def booleanEqualityExpr (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
 def booleanRelationCondition (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.const (if unequal then ``Ne else ``Eq) [.succ .zero])
     (.const ``Bool [])) left) right
+
+theorem booleanRelationCondition_sizes (unequal : Bool) (left right : Lean.Expr) :
+    sizeOf left < sizeOf (booleanRelationCondition unequal left right) ∧
+      sizeOf right < sizeOf (booleanRelationCondition unequal left right) := by
+  cases unequal <;> simp [booleanRelationCondition] <;> omega
 
 def booleanRelationEvidence (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
   let equality := .app (.app (.const ``instDecidableEqBool []) left) right
@@ -50,6 +56,10 @@ inductive BooleanLocal where
   | junction (negations : Nat) (op : Junction) (left right : BooleanLocal)
   | choice (negations : Nat) (unequal : Bool) (left right yes no : BooleanLocal)
   | proposition (negations : Nat) (guard : PropositionGuard) (yes no : BooleanLocal)
+  | dependentChoice (negations : Nat) (shape : BooleanProofBranch) (unequal : Bool)
+      (left right yes no : BooleanLocal)
+  | dependentProposition (negations : Nat) (shape : BooleanProofBranch) (guard : PropositionGuard)
+      (yes no : BooleanLocal)
   | decision (negations : Nat) (guard : PropositionGuard)
   | relationDecision (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
   | equality (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
@@ -62,8 +72,8 @@ def operands : BooleanLocal → List Lean.Expr
   | .literal _ _ => []
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
-  | .choice _ _ a b t e => a.operands ++ (b.operands ++ (t.operands ++ e.operands))
-  | .proposition _ g t e => g.operands ++ (t.operands ++ e.operands)
+  | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e => a.operands ++ (b.operands ++ (t.operands ++ e.operands))
+  | .proposition _ g t e | .dependentProposition _ _ g t e => g.operands ++ (t.operands ++ e.operands)
   | .decision _ g => g.operands
   | .equality _ _ a b | .relationDecision _ _ a b => a.operands ++ b.operands
 
@@ -74,6 +84,11 @@ def expr : BooleanLocal → Lean.Expr
   | .junction n op a b => BooleanGuardNegation.expr n (op.booleanExpr a.expr b.expr)
   | .choice n unequal a b t e => BooleanGuardNegation.expr n (booleanChoiceExpr unequal a.expr b.expr t.expr e.expr)
   | .proposition n g t e => BooleanGuardNegation.expr n (g.branch t.expr e.expr)
+  | .dependentChoice n shape unequal a b t e => BooleanGuardNegation.expr n
+      (shape.expr (booleanRelationCondition unequal a.expr b.expr)
+        (booleanRelationEvidence unequal a.expr b.expr) t.expr e.expr)
+  | .dependentProposition n shape g t e => BooleanGuardNegation.expr n
+      (shape.expr g.condition g.evidence t.expr e.expr)
   | .decision n g => BooleanGuardNegation.expr n g.value.decisionExpr
   | .relationDecision n unequal a b => BooleanGuardNegation.expr n (booleanRelationDecisionExpr unequal a.expr b.expr)
   | .equality n unequal a b => BooleanGuardNegation.expr n (booleanEqualityExpr unequal a.expr b.expr)
@@ -83,10 +98,10 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
   | .literal n value => GuardNegation.denote n value
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native booleans) (b.denote native booleans))
-  | .choice n unequal a b t e => GuardNegation.denote n
+  | .choice n unequal a b t e | .dependentChoice n _ unequal a b t e => GuardNegation.denote n
       (if booleanRelationDecision unequal (a.denote native booleans) (b.denote native booleans)
        then t.denote native booleans else e.denote native booleans)
-  | .proposition n g t e => GuardNegation.denote n
+  | .proposition n g t e | .dependentProposition n _ g t e => GuardNegation.denote n
       (if g.denote native then t.denote native booleans else e.denote native booleans)
   | .decision n g => GuardNegation.denote n (g.denote native)
   | .relationDecision n unequal a b => GuardNegation.denote n
@@ -113,6 +128,8 @@ def negate : BooleanLocal → BooleanLocal
   | .junction n op a b => .junction (n + 1) op a b
   | .choice n unequal a b t e => .choice (n + 1) unequal a b t e
   | .proposition n g t e => .proposition (n + 1) g t e
+  | .dependentChoice n shape unequal a b t e => .dependentChoice (n + 1) shape unequal a b t e
+  | .dependentProposition n shape g t e => .dependentProposition (n + 1) shape g t e
   | .decision n g => .decision (n + 1) g
   | .relationDecision n unequal a b => .relationDecision (n + 1) unequal a b
   | .equality n unequal a b => .equality (n + 1) unequal a b
@@ -157,6 +174,23 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     · have h := iht member; simp_all; omega
     · have h := ihe member; simp_all; omega
 
+  | dependentChoice n shape unequal a b t e iha ihb iht ihe =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    simp only [operands, List.mem_append] at member
+    rcases member with member | member | member | member
+    · exact Nat.lt_trans (iha member) (Nat.lt_trans (booleanRelationCondition_sizes unequal a.expr b.expr).1
+        (shape.condition_size _ _ _ _))
+    · exact Nat.lt_trans (ihb member) (Nat.lt_trans (booleanRelationCondition_sizes unequal a.expr b.expr).2
+        (shape.condition_size _ _ _ _))
+    · exact Nat.lt_trans (iht member) (shape.yes_size _ _ _ _)
+    · exact Nat.lt_trans (ihe member) (shape.no_size _ _ _ _)
+  | dependentProposition n shape g t e iht ihe =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    simp only [operands, List.mem_append] at member
+    rcases member with member | member | member
+    · exact Nat.lt_trans (g.value.operands_size member) (shape.condition_size _ _ _ _)
+    · exact Nat.lt_trans (iht member) (shape.yes_size _ _ _ _)
+    · exact Nat.lt_trans (ihe member) (shape.no_size _ _ _ _)
   | decision n g =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     have bound := g.value.operands_size member
@@ -185,13 +219,14 @@ def variables : BooleanLocal → List Nat
   | .var _ index => [index]
   | .literal .. | .compare .. | .decision .. => []
   | .junction _ _ a b => a.variables ++ b.variables
-  | .choice _ _ a b t e => a.variables ++ (b.variables ++ (t.variables ++ e.variables))
-  | .proposition _ _ t e => t.variables ++ e.variables
+  | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e => a.variables ++ (b.variables ++ (t.variables ++ e.variables))
+  | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.variables ++ e.variables
   | .equality _ _ a b | .relationDecision _ _ a b => a.variables ++ b.variables
 
 /-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
 def extended : BooleanLocal → Bool
-  | .var .. | .choice .. | .proposition .. | .decision .. | .equality .. | .relationDecision .. => true
+  | .var .. | .choice .. | .proposition .. | .dependentChoice .. | .dependentProposition ..
+  | .decision .. | .equality .. | .relationDecision .. => true
   | .literal .. | .compare .. => false
   | .junction _ _ a b => a.extended || b.extended
 
