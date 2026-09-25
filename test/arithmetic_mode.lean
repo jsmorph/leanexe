@@ -24,6 +24,13 @@ def customSequence (x : UInt64) : UInt64 :=
 def joinedChoice (x y : UInt64) : UInt64 := Id.run do
   let a ← if x < y then pure (x + 1) else pure (y - 1)
   return a * x
+def binaryLocalFunction (x : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => a + b
+  f x x
+def unsupportedLocalBody (x : UInt64) : UInt64 :=
+  let _f := fun z : UInt64 => expression z x
+  x
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -44,7 +51,8 @@ end ArithmeticModeTest
 run_elab do
   let env ← Lean.getEnv
   for name in [`ArithmeticModeTest.expression, `ArithmeticModeTest.bits, `ArithmeticModeTest.literal,
-      `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential] do
+      `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential,
+      `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -54,8 +62,9 @@ run_elab do
         unless LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_ ==
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
-  for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.customBinding,
-      `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence, `ArithmeticModeTest.joinedChoice,
+  for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.binaryLocalFunction,
+      `ArithmeticModeTest.unsupportedLocalBody,
+      `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
       `ArithmeticModeTest.missing] do

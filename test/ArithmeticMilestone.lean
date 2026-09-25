@@ -85,6 +85,41 @@ def doConstant : UInt64 := Id.run do
   value := value + 2
   return value
 
+def localFunction (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 => (z + x) / y
+  f x + f y
+
+def capturedShadow (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 => z - x
+  let x := y + 17
+  f x + x
+
+def chainedFunctions (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 => z + x
+  let g := fun z : UInt64 => f (z * y)
+  g x + f y
+
+def nestedFunctions (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 =>
+    let g := fun z : UInt64 => z * x + y
+    g z + z
+  f x ^^^ f y
+
+def unusedFunction (x y : UInt64) : UInt64 :=
+  let _f := fun z : UInt64 => (z + x) / (y - y)
+  x - y
+
+def doJoined (x y : UInt64) : UInt64 := Id.run do
+  let a ← if x < y then pure (x + 1) else pure (y - 1)
+  return a * x
+
+def doBranchUpdates (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  if a ≤ y then a := a + y else a := a - y
+  a := a * x
+  if a != y then a := a / y
+  return a + 7
+
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
    (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -99,7 +134,10 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("compareLe", compareLe), ("compareBEq", compareBEq), ("compareBNe", compareBNe),
    ("nestedChoice", nestedChoice), ("choiceBindings", choiceBindings), ("choiceOperands", choiceOperands),
    ("doReturn", doReturn), ("doBind", doBind), ("doUpdates", doUpdates),
-   ("doEarly", doEarly), ("doNested", doNested), ("doBranches", doBranches)]
+   ("doEarly", doEarly), ("doNested", doNested), ("doBranches", doBranches),
+   ("localFunction", localFunction), ("capturedShadow", capturedShadow),
+   ("chainedFunctions", chainedFunctions), ("nestedFunctions", nestedFunctions),
+   ("unusedFunction", unusedFunction), ("doJoined", doJoined), ("doBranchUpdates", doBranchUpdates)]
 
 end ArithmeticMilestone
 
