@@ -25,12 +25,12 @@ def audit(output):
         name, body = match.groups()
         if name not in AUDITS:
             continue
-        if name in found:
-            raise ValueError(f'duplicate axiom audit: {name}')
         axioms = {x.strip() for x in (body or '').split(',') if x.strip()}
         unexpected = axioms - AUDITS[name]
         if unexpected:
             raise ValueError(f'{name}: unapproved axioms {sorted(unexpected)}')
+        if name in found and found[name] != sorted(axioms):
+            raise ValueError(f'inconsistent repeated axiom audit: {name}')
         found[name] = sorted(axioms)
     missing = AUDITS.keys() - found.keys()
     if missing:

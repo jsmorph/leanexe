@@ -146,6 +146,13 @@ Run the smallest relevant test during development, then run every gate required 
 | Talos semantics or conformance configuration | `node test/artifact_conformance.js` and `tools/artifact-conformance.js check`. |
 | Toolchain or artifact-producing tool | Full execution and proof gates, artifact-byte review, version and checksum documentation, and trusted-base review. |
 
+The arithmetic compiler theorem has focused checks: `tools/arithmetic-check.js proof`
+builds its general theorem and audits all nine declarations; `tools/arithmetic-check.js engine`
+compares the real compiler's emitted modules with native Lean. See
+[Arithmetic compiler correctness](docs/arithmetic-correctness.md) for prerequisites,
+scope and standalone package verification. Run affected checks incrementally;
+there is no requirement to repeat unrelated full suites after every update.
+
 `node test/run_all.js` is the full execution gate.  It covers report classification, ownership reports, Wasmtime-only execution, core semantics, reference counting, allocation, ASCII strings, integer maps, JSON, WASI adapters, self-emission, standard Lean comparisons, IR comparisons, and fuzz cases.  `tools/check-wat.sh` checks that parsing compiler-emitted WAT produces the same bytes as direct binary emission.
 
 The experimental self-hosted emitter is deliberately outside the aggregate gate.
