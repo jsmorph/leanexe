@@ -102,7 +102,25 @@ async function main() {
       (call $check (call $write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8)))
       (br $fill))`);
   assert.equal((await run(blockedOutput, Buffer.alloc(0), { drain: false })).status, 6);
-  process.stdout.write("checked 7 WASI I/O host cases: binary bytes, EOF, readiness, timeout, bounds, and blocked output\n");
+  const flagsHarness = path.join(outDir, "flags-harness");
+  runChecked(["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+    path.join(root, "test/fixtures/wasi-io-flags.c"), "-o", flagsHarness], { cwd: root });
+  let flagsCases = 0;
+  for (const [name, descriptors, exit] of [
+    ["read-first", [0, 1], 0], ["write-first", [1, 0], 0],
+    ["read-only", [0], 0], ["write-only", [1], 0],
+    ["repeated", [0, 1, 0, 1], 0], ["error-exit", [0, 1], 7],
+  ]) {
+    const wasm = compile(`flags-${name}`, descriptors.map(fd =>
+      `(call $check (call $flags (i32.const ${fd}) (i32.const 4)))`).join("\n") +
+      `\n(call $exit (i32.const ${exit}))`);
+    for (const nonblocking of [0, 1]) {
+      runChecked([flagsHarness, host, wasm, String(nonblocking), String(exit)],
+        { cwd: root, timeout: 10000 });
+      flagsCases += 1;
+    }
+  }
+  process.stdout.write(`checked 7 WASI I/O host cases and ${flagsCases} shared-descriptor restorations\n`);
 }
 
 module.exports = { run };
