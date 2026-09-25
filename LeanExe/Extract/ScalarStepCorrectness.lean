@@ -21,6 +21,16 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨target, ht, rfl⟩ := compiled
     exact ⟨extractScalarExprWith_correct value ht bindings.toScalar, .const⟩
+  | yieldDirect value =>
+    rw [extractScalarStepWith_yieldDirect] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨target, ht, rfl⟩ := compiled
+    exact ⟨extractScalarExprWith_correct value ht bindings.toScalar, .const⟩
+  | doneDirect value =>
+    rw [extractScalarStepWith_doneDirect] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨target, ht, rfl⟩ := compiled
+    exact ⟨extractScalarExprWith_correct value ht bindings.toScalar, .const⟩
   | @choose a x b y t e values outcome op type left right chosen ih =>
     rw [extractScalarStepWith_branch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled

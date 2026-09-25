@@ -52,6 +52,23 @@ def continueBreak (count seed : UInt64) : UInt64 := Id.run do
     if a % 5 == 0 then break
   return a + 1
 
+def rangeDirectSteps (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    if UInt64.ofNat i == seed % 7 then .done (a + 9)
+    else .yield (a + UInt64.ofNat i + 1)
+
+def rangeDirectFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → ForInStep UInt64 := fun x =>
+      if x % 5 == seed % 5 then .done (x + 7) else .yield (x + UInt64.ofNat i)
+    finish (a + 1)
+
+def rangeDirectUnitFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : Unit → UInt64 → ForInStep UInt64 := fun _ x =>
+      if x % 3 == seed % 3 then .done (x * 3) else .yield (x + UInt64.ofNat i)
+    finish () (a + UInt64.ofNat i + 1)
+
 end RangeExitFunctionTest
 
 run_elab do
@@ -62,7 +79,10 @@ run_elab do
     (`RangeExitFunctionTest.joined, RangeExitFunctionTest.joined),
     (`RangeExitFunctionTest.beforeAfter, RangeExitFunctionTest.beforeAfter),
     (`RangeExitFunctionTest.branchUpdates, RangeExitFunctionTest.branchUpdates),
-    (`RangeExitFunctionTest.continueBreak, RangeExitFunctionTest.continueBreak)]
+    (`RangeExitFunctionTest.continueBreak, RangeExitFunctionTest.continueBreak),
+    (`RangeExitFunctionTest.rangeDirectSteps, RangeExitFunctionTest.rangeDirectSteps),
+    (`RangeExitFunctionTest.rangeDirectFunction, RangeExitFunctionTest.rangeDirectFunction),
+    (`RangeExitFunctionTest.rangeDirectUnitFunction, RangeExitFunctionTest.rangeDirectUnitFunction)]
   for (name, native) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -77,4 +97,4 @@ run_elab do
         let actual := module_.evalFunc 0 [count, seed]
         unless actual == expected do
           throwError "{name}({count}, {seed}): native={expected}, IR={actual}"
-  Lean.logInfo "144 native/whole-function early-exit IR comparisons passed"
+  Lean.logInfo "216 native/whole-function early-exit IR comparisons passed"

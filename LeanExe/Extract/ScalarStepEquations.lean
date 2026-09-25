@@ -13,6 +13,16 @@ theorem extractScalarStepWith_done (locals : List ScalarStepBinding) (a : Lean.E
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
       pure { value, done := .u64 1 }) := by rw [Step.doneValue, extractScalarStepWith]
 
+theorem extractScalarStepWith_yieldDirect (locals : List ScalarStepBinding) (a : Lean.Expr) :
+    extractScalarStepWith locals (Step.yieldDirect a) = (do
+      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
+      pure { value, done := .u64 0 }) := by rw [Step.yieldDirect, extractScalarStepWith]
+
+theorem extractScalarStepWith_doneDirect (locals : List ScalarStepBinding) (a : Lean.Expr) :
+    extractScalarStepWith locals (Step.doneDirect a) = (do
+      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
+      pure { value, done := .u64 1 }) := by rw [Step.doneDirect, extractScalarStepWith]
+
 theorem extractScalarStepWith_letE (locals : List ScalarStepBinding)
     (name : Lean.Name) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name (.const ``UInt64 []) a b nondep) = (do

@@ -32,6 +32,12 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
   | doneValue value =>
     obtain ⟨value, hv⟩ := scalar value typed total
     exact ⟨⟨value, .u64 1⟩, by rw [extractScalarStepWith_done]; simp [hv]⟩
+  | yieldDirect value =>
+    obtain ⟨value, hv⟩ := scalar value typed total
+    exact ⟨⟨value, .u64 0⟩, by rw [extractScalarStepWith_yieldDirect]; simp [hv]⟩
+  | doneDirect value =>
+    obtain ⟨value, hv⟩ := scalar value typed total
+    exact ⟨⟨value, .u64 1⟩, by rw [extractScalarStepWith_doneDirect]; simp [hv]⟩
   | choose op type left right _ _ iht ihe =>
     obtain ⟨a, ha⟩ := scalar left typed total
     obtain ⟨b, hb⟩ := scalar right typed total

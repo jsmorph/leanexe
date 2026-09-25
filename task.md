@@ -207,6 +207,13 @@ callbacks and local continuations. Standard pure-wrapped done/yield now works;
 unwrapped `.done` and `.yield` remain outside the step grammar. Complete that
 source extension through proofs and the focused engine check before proceeding.
 
+Direct step constructors are implemented in the independent step grammar and
+extractor. Acceptance, success support, paired preservation and scalar invariant
+proofs pass. The focused whole-function test passed 216 native Lean/IR comparisons,
+including three new direct constructor/continuation declarations. Public fixtures
+and an unsupported unused direct-function body rejection test are added.
+General proof/audits and the actual compiler/V8 check are pending for this candidate.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.

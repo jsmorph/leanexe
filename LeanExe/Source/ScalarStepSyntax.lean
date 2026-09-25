@@ -15,6 +15,12 @@ def doneValue (value : Lean.Expr) : Lean.Expr :=
     (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
     (.app (.app (.const ``ForInStep.done [.zero]) (.const ``UInt64 [])) value)
 
+def yieldDirect (value : Lean.Expr) : Lean.Expr :=
+  .app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value
+
+def doneDirect (value : Lean.Expr) : Lean.Expr :=
+  .app (.app (.const ``ForInStep.done [.zero]) (.const ``UInt64 [])) value
+
 def branch (op : Comparison) (type : ResultType) (a b onTrue onFalse : Lean.Expr) : Lean.Expr :=
   Range.branch (resultType type) (op.condition a b) (op.evidence a b) onTrue onFalse
 

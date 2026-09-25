@@ -103,9 +103,19 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .apply (scalarStepFunction_kind (Option.bind_eq_some_iff.mpr hf)) (scalar ha)
-  | case16 locals data body ih =>
+  | case16 locals value =>
+    rw [extractScalarStepWith] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨value, hv, _⟩ := compiled
+    exact .yieldDirect (scalar hv)
+  | case17 locals value =>
+    rw [extractScalarStepWith] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨value, hv, _⟩ := compiled
+    exact .doneDirect (scalar hv)
+  | case18 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarStepWith] using compiled))
-  | case17 locals source hy hd hl hb hc hf huf hua ha hm =>
+  | case19 locals source hy hd hl hb hc hf huf hua ha hdy hdd hm =>
     rw [extractScalarStepWith] at compiled <;> first | assumption | contradiction
 
 end LeanExe.Extract.Core
