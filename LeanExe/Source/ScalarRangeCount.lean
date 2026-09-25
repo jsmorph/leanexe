@@ -54,6 +54,11 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
     case ofNatInstance =>
       rcases same with ⟨rfl, _⟩
       simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))
+    case ofNatNatural n numeral evidence numberMeaning instanceMeaning =>
+      rcases same with ⟨rfl, _⟩
+      have numberEq := numberMeaning.raw_value
+      subst n
+      simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))
     case complement operation a x head argument =>
       exact False.elim (head.not_ofNat number same.1.symm)
     case binary head f a x b y operation left right =>

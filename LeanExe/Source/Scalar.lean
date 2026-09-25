@@ -32,6 +32,10 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
   | ofNatInstance (instanceMeaning : LiteralInstance n 0 evidence) :
       EvalWith (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n))) evidence) values (UInt64.ofNat n)
+  | naturalLiteral (numberMeaning : NaturalLiteral n numeral) :
+      EvalWith (.app (.const ``UInt64.ofNat levels) numeral) values (UInt64.ofNat n)
+  | ofNatNatural (numberMeaning : NaturalLiteral n numeral) (instanceMeaning : LiteralInstance n 0 evidence) :
+      EvalWith (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) numeral) evidence) values (UInt64.ofNat n)
   | complement (head : ComplementHead operation) (argument : EvalWith a values x) :
       EvalWith (.app operation a) values (UInt64.complement x)
   | extremum (op : Extremum) (left : EvalWith a values x) (right : EvalWith b values y) :
@@ -128,6 +132,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | ofNat : SupportedWith types (literalExpr n)
   | ofNatInstance (instanceMeaning : LiteralInstance n 0 evidence) :
       SupportedWith types (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n))) evidence)
+  | naturalLiteral (numberMeaning : NaturalLiteral n numeral) :
+      SupportedWith types (.app (.const ``UInt64.ofNat levels) numeral)
+  | ofNatNatural (numberMeaning : NaturalLiteral n numeral) (instanceMeaning : LiteralInstance n 0 evidence) :
+      SupportedWith types (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) numeral) evidence)
   | complement (head : ComplementHead operation) (argument : SupportedWith types a) :
       SupportedWith types (.app operation a)
   | extremum (op : Extremum) (left : SupportedWith types a) (right : SupportedWith types b) :
@@ -218,6 +226,8 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
   | literal => exact ⟨_, .literal⟩
   | ofNat => exact ⟨_, .ofNat⟩
   | ofNatInstance evidence => exact ⟨_, .ofNatInstance evidence⟩
+  | naturalLiteral numeral => exact ⟨_, .naturalLiteral numeral⟩
+  | ofNatNatural numeral evidence => exact ⟨_, .ofNatNatural numeral evidence⟩
   | complement head _ ih =>
     obtain ⟨x, hx⟩ := ih values typed
     exact ⟨UInt64.complement x, .complement head hx⟩
