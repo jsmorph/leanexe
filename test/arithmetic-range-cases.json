@@ -203,5 +203,9 @@
   "rangeBooleanDependentJoined",
   "rangeBooleanDependentOuter",
   "rangeBooleanDependentBounds",
-  "rangeBooleanDependentStep"
+  "rangeBooleanDependentStep",
+  "rangeInstanceStep",
+  "rangeInstanceBreak",
+  "rangeInstanceBounds",
+  "rangeInstanceOuter"
 ]
