@@ -687,8 +687,11 @@ Eq/Ne and standard decision expressions and relates native decide to the shared
 Boolean equality lowering. The prior closed decision form uses PropositionGuard
 so Boolean truth decisions follow the recursive Boolean path. Source/parser,
 scalar/step/range acceptance, native correctness and invariant proofs pass.
-Focused examples/tests, the general audit, actual compiler execution comparisons
-and final documentation are in progress. Boolean-returning helpers, Boolean
+All five original examples and two retained notation failures now compile
+unchanged. The first focused fixture passed 304 native/IR comparisons and 36
+rejection tests. The prior proposition-guard and closed-decide fixtures each
+pass 304 comparisons and their 44/twelve rejection tests unchanged. The general
+audit, actual compiler execution comparisons and final documentation are in progress. Boolean-returning helpers, Boolean
 public ABI, mixed Bool/word helper parameters, Boolean-result choices over
 saved-flag propositions, broader propositional combinations and loops inside
 helpers remain later capabilities.
