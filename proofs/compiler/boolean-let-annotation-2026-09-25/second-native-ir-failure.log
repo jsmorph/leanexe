@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_let_annotation.lean:144:0: error: BooleanLetAnnotationTest.annotatedLetShadow: annotated Boolean-value let extraction failed
