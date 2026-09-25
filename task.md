@@ -708,12 +708,17 @@ unchanged and have matching bodies across execution fixtures. Evidence is in
 `proofs/compiler/boolean-relation-choice-2026-09-25/`. The complete corpus has 552
 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Next increment: dependent Boolean-result choices, retaining exact proof domains
-and lexical captures while rejecting proof reads as executable values. Inspect
-elaborated dite Bool syntax and prove the needed binder handling before adding
-it to ordinary/Id bindings, helpers and scalar/loop contexts. Boolean-returning
-helpers, Boolean public ABI, mixed Bool/word helper parameters, broader saved-flag
-propositions and loops inside helpers remain later capabilities.
+Current increment: dependent Boolean-result choices. Five inspected examples
+currently reject. ExprProofBinder now supplies checked structural insertion and
+removal of an unused proof binder, preserving names, metadata, type expressions
+and nested scopes. It proves both reconstruction directions and the size bound
+needed by the recursive parser. The focused test matched Lean's native lifting
+and occurrence checks at 4,452 binder positions; 3,987 successful removals matched
+native lowering, and 465 proof references rejected. Choice source forms, parser
+integration, compiler proofs, end-to-end execution and documentation remain in
+progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
+parameters, broader saved-flag propositions and loops inside helpers remain
+later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
