@@ -699,9 +699,11 @@ or inequality, including saved flags. The unified choice form preserves exact
 Eq/Ne syntax and standard evidence and recursively checks both condition inputs
 and both result branches. A proved literal-true specialization keeps the prior
 ordinary Boolean-choice lowering. Source/parser, lowering, scalar/step/range
-acceptance, native correctness and invariant proofs pass. Original examples,
-focused tests, general audits, actual compiler execution and documentation are
-in progress. Dependent Boolean-result choices, Boolean-returning helpers,
+acceptance, native correctness and invariant proofs pass. All five original examples now compile unchanged. The first focused fixture
+passed 304 native/IR comparisons and 44 rejection tests. The prior Boolean-local
+decide and original Boolean-choice fixtures each pass all 304 comparisons and
+their 36/twelve rejection tests unchanged. General audits, actual compiler
+execution and documentation are in progress. Dependent Boolean-result choices, Boolean-returning helpers,
 Boolean public ABI, mixed Bool/word helper parameters, broader propositional
 combinations and loops inside helpers remain later capabilities.
 
