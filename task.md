@@ -18,8 +18,13 @@ fixture completeness checks. No standalone package result is claimed yet.
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.
-The old Linux recovery paths below are historical. The larger scalar extensions
-remain deferred until this arithmetic milestone is complete.
+The old Linux recovery paths below are historical. After this arithmetic milestone, the user requests incremental expansion to
+full leanexe dialect coverage: one capability working through compilation,
+proofs, and execution tests before starting the next. Begin with strict `let`,
+then conditionals, `do`, and loops as their dependencies permit. Report, commit,
+and push each useful step frequently. Type definitions and proofs may change
+where needed; preserve their justified guarantees, not their incidental shape.
+Use focused checks and Lake's dependency rebuilds, avoiding repeated full builds.
 
 ---
 
