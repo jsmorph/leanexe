@@ -41,8 +41,6 @@ theorem booleanLocalDependentGuard_size {condition evidence trueDomain falseDoma
     (parsed : booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard)
     {operand : Lean.Expr} (member : operand ∈ guard.value.operands) : sizeOf operand < sizeOf condition := by
   rw [(booleanLocalDependentGuard_sound parsed).1]
-  have bound := guard.value.operands_size member
-  simp only [BooleanLocalGuard.condition, BooleanLocal.condition]
-  simp_all; omega
+  exact guard.operands_size member
 
 end LeanExe.Extract.Core

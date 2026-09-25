@@ -198,7 +198,7 @@ run_elab do
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
       throwError "{name}: unsupported dependent conditional accepted"
-  let guard : LeanExe.Source.Scalar.BooleanLocalGuard := ⟨.var 0 0, by decide⟩
+  let guard : LeanExe.Source.Scalar.BooleanLocalGuard := { value := .var 0 0, expanded := by decide }
   let word := LeanExe.Source.Scalar.literalExpr 1
   let step := LeanExe.Source.Scalar.Step.yieldDirect word
   let make (type body td fd : Lean.Expr) :=
