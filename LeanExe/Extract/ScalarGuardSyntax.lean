@@ -16,7 +16,12 @@ def guardOperands? : Lean.Expr → Option Guard
       let b ← guardOperands? right
       pure (.junction 0 .disjunction a b)
   | .app (.const ``Not []) inner => (guardOperands? inner).map Guard.negate
-  | expression => (comparisonOperands? expression).map fun (op, a, b) => .compare op a b
+  | expression =>
+      match comparisonOperands? expression with
+      | some (op, a, b) => some (.compare op a b)
+      | none => do
+          let .junction n op a b ← booleanGuardCondition? expression | none
+          pure (.boolean 0 n op a b)
 
 @[simp] theorem guardOperands_compare (op : Comparison) (a b : Lean.Expr) :
     guardOperands? (op.condition a b) = some (.compare op a b) := by
@@ -32,6 +37,17 @@ def guardOperands? : Lean.Expr → Option Guard
     induction n with
     | zero => cases op <;> simp [Guard.condition, GuardNegation.condition, Junction.condition, guardOperands?, iha, ihb]
     | succ n ih =>
+      simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
+        congrArg (Option.map Guard.negate) ih
+  | boolean m n op a b =>
+    induction m with
+    | zero =>
+      change guardOperands? (BooleanGuard.junction n op a b).condition = _
+      rw [guardOperands?]
+      · rw [booleanJunction_condition_not_comparison, booleanGuardCondition_accepts]
+        rfl
+      all_goals simp [BooleanGuard.condition]
+    | succ m ih =>
       simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
         congrArg (Option.map Guard.negate) ih
 
@@ -54,8 +70,30 @@ theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
     rw [Guard.negate_condition, ih found]
   | case4 expression excludedAnd excludedOr excludedNot =>
     rw [guardOperands?] at parsed
-    · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-      exact comparisonOperands_sound found
+    · split at parsed
+      · rename_i op a b found
+        cases parsed
+        exact comparisonOperands_sound found
+      · simp only [bind, Option.bind_eq_some_iff] at parsed
+        obtain ⟨tree, found, accepted⟩ := parsed
+        cases tree with
+        | compare => contradiction
+        | junction n op a b =>
+          cases accepted
+          exact booleanGuardCondition_sound found
+    · exact excludedAnd
+    · exact excludedOr
+    · exact excludedNot
+  | case5 expression excludedAnd excludedOr excludedNot absent =>
+    rw [guardOperands?] at parsed
+    · rw [absent] at parsed
+      simp only [bind, Option.bind_eq_some_iff] at parsed
+      obtain ⟨tree, found, accepted⟩ := parsed
+      cases tree with
+      | compare => contradiction
+      | junction n op a b =>
+        cases accepted
+        exact booleanGuardCondition_sound found
     · exact excludedAnd
     · exact excludedOr
     · exact excludedNot
@@ -66,64 +104,25 @@ theorem junction_not_comparison (n : Nat) (op : Junction) (a b : Lean.Expr) :
   | zero => cases op <;> rfl
   | succ n ih => simp [GuardNegation.condition, comparisonOperands?, ih]
 
-theorem booleanJunction_condition_not_comparison (n : Nat) (op : Junction) (a b : BooleanGuard) :
-    comparisonOperands? (BooleanGuard.junction n op a b).condition = none := by
-  cases n with
-  | zero => cases op <;> rfl
-  | succ n =>
-    simp [BooleanGuard.condition, BooleanGuard.expr, BooleanGuardNegation.expr,
-      comparisonOperands?, booleanJunction_not_comparison]
-
-theorem booleanJunction_not_proposition (n : Nat) (op : Junction) (a b : BooleanGuard) :
-    guardOperands? (BooleanGuard.junction n op a b).condition = none := by
-  change (comparisonOperands? (BooleanGuard.junction n op a b).condition).map _ = none
-  rw [booleanJunction_condition_not_comparison]
-  rfl
-
-def booleanCompoundGuardShape? : Lean.Expr → Option CompoundGuard
-  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) inner) (.const ``Bool.true []) => do
-      let .junction n op a b ← booleanGuardOperands? inner | none
-      pure (.boolean op a b n)
-  | _ => none
-
-theorem booleanCompoundGuardShape_sound {condition : Lean.Expr} {guard : CompoundGuard}
-    (parsed : booleanCompoundGuardShape? condition = some guard) : condition = guard.condition := by
-  unfold booleanCompoundGuardShape? at parsed
-  split at parsed
-  · rename_i inner
-    simp only [bind, Option.bind_eq_some_iff] at parsed
-    obtain ⟨tree, found, accepted⟩ := parsed
-    cases tree with
-    | compare => contradiction
-    | junction n op a b =>
-      cases accepted
-      change _ = (BooleanGuard.junction n op a b).condition
-      rw [booleanGuardOperands_sound found]
-      rfl
-  · contradiction
-
-def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard :=
-  match guardOperands? condition with
-  | some (.junction n op a b) => some (.proposition op a b n)
-  | _ => booleanCompoundGuardShape? condition
+def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard := do
+  let tree ← guardOperands? condition
+  match tree with
+  | .junction n op a b => some (.proposition op a b n)
+  | .boolean m n op a b => some (.boolean op a b n m)
+  | .compare .. => none
 
 @[simp] theorem compoundGuardShape_accepts (guard : CompoundGuard) :
     compoundGuardShape? guard.condition = some guard := by
-  cases guard with
-  | proposition op a b n =>
-    simp [compoundGuardShape?, CompoundGuard.condition]
-  | boolean op a b n =>
-    simp only [compoundGuardShape?, CompoundGuard.condition, booleanJunction_not_proposition]
-    simp [booleanCompoundGuardShape?, BooleanGuard.condition, booleanGuardOperands_expr]
+  cases guard <;> simp [compoundGuardShape?, CompoundGuard.condition, CompoundGuard.tree]
 
 theorem compoundGuardShape_sound {condition : Lean.Expr} {guard : CompoundGuard}
     (parsed : compoundGuardShape? condition = some guard) : condition = guard.condition := by
-  unfold compoundGuardShape? at parsed
-  split at parsed
-  · rename_i n op a b found
-    cases parsed
-    exact guardOperands_sound found
-  · exact booleanCompoundGuardShape_sound parsed
+  simp only [compoundGuardShape?, bind, Option.bind_eq_some_iff] at parsed
+  obtain ⟨tree, found, accepted⟩ := parsed
+  cases tree with
+  | compare => contradiction
+  | junction n op a b => cases accepted; exact guardOperands_sound found
+  | boolean m n op a b => cases accepted; exact guardOperands_sound found
 
 /-- Check the entire decision expression for either admitted compound form. -/
 def compoundGuard? (condition evidence : Lean.Expr) : Option CompoundGuard := do
@@ -151,12 +150,20 @@ theorem compoundGuard_size {condition evidence : Lean.Expr} {guard : CompoundGua
   rw [(compoundGuard_sound parsed).1]
   exact guard.operands_size member
 
+theorem negated_not_comparison (n : Nat) (condition : Lean.Expr)
+    (absent : comparisonOperands? condition = none) :
+    comparisonOperands? (GuardNegation.condition n condition) = none := by
+  induction n with
+  | zero => exact absent
+  | succ n ih => simp [GuardNegation.condition, comparisonOperands?, ih]
+
 @[simp] theorem compoundGuard_not_comparison (guard : CompoundGuard) :
     comparison? guard.condition guard.evidence = none := by
   cases guard with
   | proposition op a b n =>
-    simp [comparison?, CompoundGuard.condition, Guard.condition, junction_not_comparison]
-  | boolean op a b n =>
-    simp [comparison?, CompoundGuard.condition, booleanJunction_condition_not_comparison]
+    simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, junction_not_comparison]
+  | boolean op a b n m =>
+    have absent := negated_not_comparison m _ (booleanJunction_condition_not_comparison n op a b)
+    simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
 
 end LeanExe.Extract.Core

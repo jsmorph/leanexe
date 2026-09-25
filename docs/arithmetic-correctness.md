@@ -63,9 +63,11 @@ with repeated `!` at any level. The separate source syntax converts to the
 shared guard representation with proved preservation of operands and native
 Boolean results. The complete standard Bool-equals-true decision evidence is
 checked. These guards work in scalar results and loop steps through the same
-lowering. Combining a compound Boolean guard with surrounding propositional
-`∧`, `∨` or `¬` remains a later increment. Custom BEq and decision instances,
-including in unused helper bodies, remain rejected.
+lowering. Compound Boolean guards can also appear inside propositional `∧`,
+`∨` and `¬`, including nested mixtures and repeated negation. Separate wrapper
+counts retain Bool.not and propositional Not, with their exact decision evidence.
+Every Boolean subtree and compared scalar operand is checked. Custom BEq and
+decision instances, including in unused helper bodies, remain rejected.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
