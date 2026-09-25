@@ -112,9 +112,14 @@ Choices can also appear directly as scalar or step conditions without a saved
 flag. Their complete standard decision evidence is checked, and both branches
 must be supported, including inactive or unused ones. The shared parser and
 lowering proofs cover choices in ordinary/monadic bindings and helper captures.
-Public Boolean parameters/results, propositional combinations containing saved
-Boolean locals, propositional guards inside Boolean-valued choices, and
-conditional Id actions remain separate capabilities.
+Boolean-valued choices also admit propositional guards: UInt64 `=`, `≠`, `<`,
+`≤`, `>`, `≥`, `True`/`False`, and the existing closed `¬`, `∧`, and `∨` trees,
+including their Boolean comparison/literal leaves. Saved Boolean values may
+appear in either result branch. Nested Boolean and propositional choices share
+the same proved lowering. Propositional choices check their entire standard
+decision evidence and preserve the existing Boolean-choice path. Public Boolean
+parameters/results, propositional combinations containing saved Boolean locals,
+and conditional Id actions remain separate capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and

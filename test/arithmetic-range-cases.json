@@ -227,5 +227,13 @@
   "rangeBoolChoiceCapture",
   "rangeBoolChoiceBounds",
   "rangeBoolChoiceStep",
-  "rangeBoolChoiceOuter"
+  "rangeBoolChoiceOuter",
+  "rangePropChoiceYield",
+  "rangePropChoiceBreak",
+  "rangePropChoiceContinue",
+  "rangePropChoiceJoined",
+  "rangePropChoiceCapture",
+  "rangePropChoiceBounds",
+  "rangePropChoiceStep",
+  "rangePropChoiceOuter"
 ]
