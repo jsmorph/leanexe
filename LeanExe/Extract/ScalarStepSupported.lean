@@ -302,10 +302,27 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
   | case46 locals type condition evidence tn td t tb fn fd e fb rejected =>
     rw [extractScalarStepWith, rejected] at compiled
     contradiction
-  | case47 locals type condition evidence tn td t tb fn fd e fb result matched rejected =>
-    rw [extractScalarStepWith, matched, rejected] at compiled
+  | case47 locals type condition evidence tn td t tb fn fd e fb result matched rejected rejectedBoolean =>
+    rw [extractScalarStepWith, matched, rejected, rejectedBoolean] at compiled
     contradiction
-  | case48 locals sourceType condition evidence tn td t tb fn fd e fb type matched guard parsed iht ihe =>
+  | case48 locals sourceType condition evidence tn td t tb fn fd e fb type matched rejected guard parsed iht ihe =>
+    have typeEq := scalarStepResultType_sound matched
+    subst sourceType
+    obtain ⟨hc, hd, htDomain, heDomain⟩ := booleanLocalDependentGuard_sound parsed
+    subst condition evidence td fd
+    change extractScalarStepWith locals (guard.dependentBranch (Step.resultType type) tn fn tb fb t e) = some target at compiled
+    rw [extractScalarStepWith_booleanDependentBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, _⟩ := compiled
+    apply Step.Supported.chooseBooleanDependent guard type tn fn tb fb
+    · rw [← scalarStepBindings_typed rfl]
+      exact extractBooleanLocalWith_variables hc
+    · intro operand member
+      obtain ⟨expression, found⟩ := extractBooleanLocalWith_operands hc operand member
+      exact scalar found
+    · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using iht ht
+    · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihe he
+  | case49 locals sourceType condition evidence tn td t tb fn fd e fb type matched guard parsed iht ihe =>
     have typeEq := scalarStepResultType_sound matched
     subst sourceType
     obtain ⟨hc, hd, htDomain, heDomain⟩ := dependentGuard_sound parsed
@@ -320,7 +337,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
       exact scalar found
     · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using iht ht
     · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihe he
-  | case49 locals head first second noPure noWordBind noChoice noUnit noPUnit noBinary noYield noDone noRun noBind noDependent =>
+  | case50 locals head first second noPure noWordBind noChoice noUnit noPUnit noBinary noYield noDone noRun noBind noDependent =>
     rw [extractScalarStepWith] at compiled
     · simp only [bind, Option.bind_eq_some_iff] at compiled
       obtain ⟨call, matched, f, hf, arguments, ha, _⟩ := compiled
@@ -330,7 +347,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
       obtain ⟨expression, found⟩ := extractScalarArguments_operands call.arguments _ ha operand member
       exact scalar found
     all_goals assumption
-  | case50 locals source hp hl hb hc hf huf hpf hua hpa ha hdy hdd hv hr hrf hlr hbr hm happ =>
+  | case51 locals source hp hl hb hc hf huf hpf hua hpa ha hdy hdd hv hr hrf hlr hbr hm happ =>
     rw [extractScalarStepWith] at compiled <;> first | assumption | contradiction
 
 end LeanExe.Extract.Core
