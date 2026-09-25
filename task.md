@@ -644,7 +644,12 @@ conditional binds and a range loop. Preserve the valid inspected examples
 unchanged. The new source rule, typed support, totality, scalar production
 extraction and all four scalar proofs pass. Shared guardWord correctness proves
 the zero/one conversion directly; step proof modules rebuild unchanged. The
-outer-loop proof integration and sixteen new execution examples are in progress.
+outer-loop proofs also rebuild unchanged. All 304 focused native/IR comparisons
+and seventeen rejection checks pass on the first fixture run. Original-example,
+preceding-fixture, general audit and focused native/V8 checks remain in progress.
+Sixteen new declarations cover conversion syntax, nested converted operands,
+helper captures, ordinary/dependent conditions, Boolean actions, strided bounds,
+break/continue, joined updates and scalar work after a loop.
 Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
 propositions directly referencing saved Boolean locals, and loops inside helpers
 remain later capabilities. A conditional Boolean bind before a loop can
