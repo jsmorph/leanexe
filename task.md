@@ -1,4 +1,547 @@
-# Scalar compiler correctness: restarted, INCOMPLETE
+# Scalar compiler correctness: INCOMPLETE — work stopped by user
+
+## Authoritative handoff — 2026-09-25 UTC / 2026-09-24 America/Chicago
+
+The user's last instruction is to finish this handoff, commit and push, and do
+nothing else. **Do not resume implementation, dependency installation, builds,
+or tests without a new instruction to resume.** Only documentation and its
+commit/push are authorized at this stopping point. This section supersedes
+historical status and next-step statements in the journal below. Preserve the
+journal as history; its earlier statements that particular results are missing
+are not descriptions of the current code.
+
+### What exists and what does not
+
+Repository: `jsmorph/leanexe`. Working branch: `correct`, originally based on
+`typesafety` at `834ba204d84720e00deef9b4ce476d4a04e55ff4`. Do not change `main`
+or `typesafety`. The separate backend/manual-certificate implementation was
+removed earlier (commit `7243e727`); do not restore it as a substitute for this
+task. Every admitted source program must inherit the same general theorem.
+
+**Checked and pushed:** the general arithmetic source-to-exact-Wasm-module
+compiler theorem, source acceptance theorem, successful-admission soundness
+theorem, full module validation, and axiom audit. Their commit is
+`5dfcd8f5d42ab945258970f605c7f22e096fa7df` (tree
+`9e4ceb98a54c79de6244aceab0fb29109c4c6e79`). The proof build finished successfully
+with 3166 jobs before the latest workspace loss. The final general compiler
+theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+**Not complete:** the arithmetic milestone's final executable/reproducibility
+gates and documentation. The larger scalar language agenda is also incomplete.
+Do not say the milestone or the whole compiler is certified/completed on the
+strength of the checked theorem alone. Use the exact scope and pending gates
+below in status reports.
+
+This handoff commit also preserves three gate files already reconstructed and
+locally checkpointed before the stop instruction:
+
+- `tools/arithmetic-check.js`: proof/audit/negative-control and CLI/engine driver.
+- `test/ArithmeticMilestone.lean`: fresh source declarations and native Lean
+  expected results.
+- `test/arithmetic_engine.mjs`: independent Node/V8 WebAssembly comparator.
+
+**These reconstructed gate files have not completed a verification run.** A
+previous, subsequently lost version passed its proof/audit and kernel-negative
+steps. Its native CLI build was still running at the last observed output;
+there is no confirmed CLI/engine result. The standalone package script and draft
+archive were not pushed before maintenance and are lost. Recreate that script
+from the requirements below; do not claim an existing verified package.
+
+### Exact arithmetic contract
+
+The input is the original elaborated `Lean.Expr` body and type of an environment
+declaration, not hand-written IR or a program-specific proof certificate. The
+declaration must have an executable body, be safe and total, and use an export
+name outside the ten reserved runtime names. Independent source support covers:
+
+- Zero or more `UInt64` arguments and one `UInt64` result.
+- Argument reads, metadata, literals (including literals reduced modulo 2^64),
+  and arbitrary finite nesting of addition, subtraction, multiplication,
+  unsigned division/remainder, bitwise and/or/xor, and left/right shifts.
+- Direct UInt64 primitive heads and canonical elaborated overloaded heads with
+  their exact standard instance evidence, including canonical UInt64 `OfNat`.
+- Native UInt64 semantics: modular arithmetic, division by zero returns zero,
+  remainder by zero returns the dividend, and shift counts are masked.
+
+Source lets, branches, helper calls, recursion/loops, custom typeclass instances,
+runtime Nat, heap values, allocation, imports, mutable globals, and floats are
+outside arithmetic admission. Some compile through the general compiler; that
+does not put them under the arithmetic theorem. The production output still
+contains its actual allocator/reset/retain/release functions and ten runtime
+exports; their validation is included. Do not replace the output with a smaller
+module to avoid proving these obligations.
+
+Admission checks explicit numeric WebAssembly format limits. In
+`LeanExe/Wasm/ArithmeticBounds.lean`, `Fits func entry` bounds by 2^32 the parameter
+count, result count, UTF-8 export-name length, locals plus scratch count, actual
+encoded user-body payload length, and actual type/export/code payload lengths.
+These are executable size checks, not assumptions that generated code is
+correct. The body payload includes local declarations, actual emitted user
+instructions, and the final end byte. The shared payload definitions are used
+by both admission and the layout proofs.
+
+### Public theorem and implementation map
+
+Proof paths in this paragraph are relative to `proofs/talos/lean/`.
+`Project/Compiler/SourceCorrectness.lean` defines
+`Project.Compiler.ArithmeticModule.Correct α source entry arity bytes`:
+
+```lean
+∃ raw, Wasm.Binary.decode bytes = .ok raw ∧
+  Validator.validateRaw raw = .ok () ∧
+  (Translation.module raw).findExport entry = some 0 ∧
+  ∀ (args : List UInt64), args.length = arity →
+    ∀ (host : Wasm.HostEnv α) (store : Wasm.Store α),
+      ∃ value : UInt64, LeanExe.Source.Scalar.Apply source [] args value ∧
+        ∃ N, ∀ fuel ≥ N,
+          Wasm.run fuel (Translation.module raw) 0 store
+            (args.map Wasm.Value.i64).reverse host = .Success [.i64 value] store
+```
+
+The module decodes and validates, the requested export resolves to function 0,
+and for every input, host and store the invocation terminates with the original
+source result and unchanged store. The reversed argument stack is the actual
+interpreter calling convention, with source declaration order restored in locals.
+Fuel is an interpreter parameter: the result holds for every sufficiently large
+fuel, not merely for one selected execution bound.
+
+The public theorems in that namespace are:
+
+| Theorem | Premises and conclusion |
+| --- | --- |
+| `extracted_correct` | Successful actual scalar extraction, available export name, and `Fits` imply `Correct` for the exact production `CoreWasm.moduleBytes { funcs := #[func] }`. |
+| `compileEnvironment_correct` | Original environment lookup/body, safe/total declaration, exportable name, independent `DeclarationSupported`, and explicit format limits imply both normal and arithmetic compilation succeed with the same module, and its exact bytes satisfy `Correct`. |
+| `compileEnvironment_sound` | A successful `LeanExe.Extract.Arithmetic.compileEnvironment` result alone yields the original declaration/body and `Correct` for that output's exact bytes. There is no caller-supplied semantic or correspondence certificate. |
+
+The acceptance theorem's limits premise is
+`∀ func, extractScalarFunc ... = some func → Fits func entry`; it only states
+the numeric bounds on the extractor's result. The admission code checks those
+bounds. Source support is defined independently, not as compilation success.
+
+| Repository path | Role |
+| --- | --- |
+| `LeanExe/Source/Scalar.lean`, `ScalarHead.lean`, `ScalarFunction.lean` | Independent expression/declaration syntax and source application semantics tied to native UInt64 operations. `DeclarationSupported` uses `Arrow`, lambda collection, and source `Supported`. |
+| `LeanExe/Extract/ScalarPrimitive.lean`, `ScalarExpr.lean`, `ScalarFunc.lean` | Actual primitive/expression/function extraction; preservation, acceptance, and success-implies-support proofs; real result-slot ABI. |
+| `LeanExe/Extract/Core.lean` | Existing normal `compileEnvironment` uses the proved scalar fast path before the general extractor; all ten reserved export names are checked. |
+| `LeanExe/Extract/ScalarEntryCorrectness.lean` | `compileEnvironment_of_scalar_extraction` connects successful extraction to the actual normal compiler and its exact single-function IR module. |
+| `LeanExe/Extract/Arithmetic.lean` | Strict source admission and size checks, followed by a call to the existing normal compiler. Its IO wrapper uses the existing environment loader. |
+| `LeanExe/Extract/ArithmeticCorrectness.lean` | `compileEnvironment_accepts`, `compileEnvironment_success`, and supporting admission proofs. |
+| `LeanExe/CLI.lean` | `compile-arithmetic --module ... --entry ... --out ...`; calls strict admission and the production module emitter. |
+| `LeanExe/Wasm/Binary.lean`, `LeanExe/Wasm/Image/Emit.lean` | Actual instruction and module byte emitters; no alternate proof-only emitter. |
+| `LeanExe/Wasm/ArithmeticBounds.lean` | Executable format bounds and shared actual payload definitions. |
+| `proofs/talos/lean/Project/Compiler/SourceFunctionBytes.lean`, `SourceModuleBytes.lean`, `ModuleInvocation.lean`, `SourceInvocation.lean` | Generic source/IR/instruction/byte/execution composition and actual argument/local ABI. |
+| `proofs/talos/lean/Project/Compiler/ArithmeticModuleBytes.lean` | Exact full six-section production module bytes and decoder connection; actual runtime bodies and exports included. |
+| `proofs/talos/lean/Project/Compiler/FunctionTyping.lean`, `SourceFunctionValidation.lean`, `MetadataValidation.lean`, `ModuleValidation.lean` | User instruction/function validation, full module metadata/exports/lengths, and composed actual validator result. |
+| `proofs/talos/lean/Project/Compiler/RuntimeValidation.lean`, `RuntimeRetainValidation.lean`, `RuntimeAllocValidation.lean`, `RuntimeReleaseValidation.lean` | Validation of the fixed actual runtime functions for arbitrary admitted user code and export name. |
+| `proofs/talos/lean/Project/Compiler/SourceCorrectness.lean`, `ArithmeticCompilerAudit.lean` | Final compiler theorems and nine dependency audits. |
+
+The axiom audit prints admission acceptance/success, three large runtime
+validation results, full module validation, extracted correctness, and both
+public compiler theorems. The final theorem whitelist is exactly the three
+standard axioms above. Runtime retain/alloc/release proofs use only `propext`.
+The independent `LeanExe.TypeSafety` policy remains **propext only**; never
+broaden that policy to match the compiler theorem's dependencies.
+
+The trusted boundary includes Lean's kernel and these standard axioms, the
+specified source semantics and pinned Wasm interpreter/decoder/validator model.
+The source rules explicitly use native Lean UInt64 operations; this is not a
+proof of the whole Lean evaluator. The theorem does not kernel-prove CLI IO,
+environment-file loading, Node/V8, hardware, or equivalence of the Wasm model to
+every engine/specification implementation. The real CLI/engine gate checks that
+integration independently. State these limits alongside the positive theorem.
+
+### Resume procedure and environment recovery (do not execute until resumed)
+
+The transient workspace has been removed twice during this session, including
+checkout, installed Lean, unpushed gate work, and logs. GitHub commits survived.
+Do not rely on a local path or a prior process still existing. Inspect current
+Git state first; preserve any unpushed work. If a checkout is gone, clone into a
+new directory rather than overwriting a surviving tree:
+
+```bash
+git clone --branch correct --single-branch https://github.com/jsmorph/leanexe.git leanexe-resume
+cd leanexe-resume
+git status --short
+git rev-parse HEAD
+```
+
+At this handoff the restored checkout is
+`/workspace/scratch/d899a1fad5ce/leanexe-recovered`; the older sibling `leanexe`
+is a pruned remnant and must not be used. Lean was restored to
+`/workspace/scratch/d899a1fad5ce/toolchains/lean-4.34.0-rc2-linux`; proof
+dependencies/caches have not been restored after the latest loss. No Lean job
+is running at the stop point. These paths are conveniences, not durable inputs.
+
+Read `AGENTS.md` in the recovered checkout. All Lean/Lake/compiler execution
+must go through `tools/leanrun`, serially under its shared machine lock. The
+user already authorized local execution: `LEANRUN_LOCAL=1` is permitted and
+does not require asking again. It retains pinning/locking/timeouts/thread
+limits; it does not enforce the standard systemd memory/CPU cgroup limits.
+Do not spawn agents without authorization. Provide progress updates at least
+every minute while actively working and announce every successful push with
+its remote SHA. Commit and push useful checkpoints before long operations,
+even when the checkpoint is an explicitly labeled unverified draft.
+
+Pinned Lean: `leanprover/lean4:v4.34.0-rc2`, compiler commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`. If missing, the Linux release archive
+is at:
+
+`https://github.com/leanprover/lean4/releases/download/v4.34.0-rc2/lean-4.34.0-rc2-linux.tar.zst`
+
+It is approximately 553 MiB. Extract with
+`tar --no-same-owner --zstd -xf <archive> -C <toolchain-parent>`; omitting
+`--no-same-owner` previously caused extensive ownership errors. Use absolute
+paths in the following environment variables and keep the same lock path
+across original checkout, clean checkout, and standalone package runs:
+
+```bash
+export LEANRUN_LOCAL=1
+export LEANRUN_TOOLCHAIN=/absolute/path/lean-4.34.0-rc2-linux
+export LEANRUN_LOCKDIR=/absolute/path/shared-leanrun-lock
+tools/leanrun --timeout 30 lean --version
+```
+
+Do not repurpose `HOME` or `CODEX_HOME`. Do not call raw `lean`/`lake` or wrap
+runner-calling drivers in another `tools/leanrun`: nested calls deadlock on the
+same non-reentrant lock and the local runner rejects them.
+
+The proof dependencies are pinned in `proofs/talos/lean/lake-manifest.json`.
+Root LeanExe has no external package dependencies. Key proof dependency pins:
+
+| Package | Revision |
+| --- | --- |
+| CodeLib / talos | `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` (codelib subdirectory; interpreter in the same checkout) |
+| iris | `e7a0a43814c4f1154ca0c8049883ca56c2288b86` |
+| mathlib | `85e3a25e006c35636f0e53b0e9296caca2685bc0` |
+
+Use the manifest for exact Qq/batteries/plausible/LeanSearchClient/importGraph/
+proofwidgets/aesop/Cli pins. Let Lake fetch the pinned dependencies, or, if
+recovery requires manual fetching, read each git entry's URL/revision from the
+manifest, initialize `proofs/talos/lean/.lake/packages/<name>`, fetch that exact
+revision with depth 1 and check out `FETCH_HEAD`. Respect each entry's subDir.
+Independent Git downloads may overlap; Lean processes may not. Do not update
+the manifest to newer versions to fix recovery problems.
+
+The focused third-party cache command is:
+
+```bash
+tools/leanrun --timeout 900 lake -d proofs/talos/lean exe cache get Mathlib.Tactic Mathlib.Data.Nat.Bitwise Mathlib.Data.List.Sort
+```
+
+Earlier cache requests needed roughly 3000 files and several minutes; short
+180/300-second attempts timed out after partial downloads. Split remaining
+imports/cache work rather than repeatedly rerunning an unchanged timeout.
+Third-party caches are allowed for release gates, but the repository's own
+LeanExe/Project/Interpreter proof artifacts must be rebuilt from source in the
+clean and standalone gates. Never count a download timeout as a failed proof
+or a partially completed build as a successful proof.
+
+### Remaining gate 1: actual CLI and independent engine
+
+After a resume instruction, start with the reconstructed driver and fix any
+real errors it exposes. It is currently a draft, not accepted evidence:
+
+```bash
+tools/arithmetic-check.js engine
+```
+
+The driver directly invokes `tools/leanrun` for these stages: native
+`lake build lean-wasm` (600-second bound), strict admission regression,
+fixture compilation, native Lean evaluation, and the real `compile-arithmetic`
+CLI for every fixture entry. Then Node/V8 validates, instantiates, and invokes
+the requested exports from those exact `.wasm` files and compares results to
+native Lean. The driver itself must not be wrapped in `tools/leanrun`.
+
+Expected fixture set: `constant`, `wrapping`, `quotient`, `remainder`, `shifts`,
+`nested`, and `order` in `ArithmeticMilestone`. Fourteen argument pairs for
+each two-argument function and one constant result yield **85 comparisons over
+seven fresh, unregistered declarations**. Inputs include zero, maximal UInt64,
+high-bit values, overflow, zero divisors, shifts by 63/64/65/max, and asymmetric
+arguments to detect reversed ABI order. The nested fixture uses all ten
+operations. Read the committed fixture for the exact pairs and expressions.
+Expected results come from native Lean, not the extractor/IR evaluator.
+
+Logs and artifacts are written under `.lake/arithmetic-check/`:
+`<stage>.log`, `<stage>.stderr.log`, `expected.jsonl`, each entry's `.wasm`, and
+`engine.log`. The driver captures subprocess output to files and reports stage
+completion; it does not continuously print Lean output. While a long stage is
+running, read its log and communicate status without launching another Lean
+process. Native `Extract.Core:c.o` alone previously took roughly 56 seconds;
+a cold native build is materially slower than proof elaboration.
+
+Pass means every stage exits successfully, every module is accepted by V8,
+the requested exports exist, and all 85 source/engine results match. Do not
+claim a pass from only successful source evaluation or an executable build.
+The admission regression in `test/arithmetic_mode.lean` previously passed:
+arithmetic/bits/overflow literals match the normal compiler's exact bytes;
+lets/branches/helpers/custom instances/wrong types/reserved/missing entries
+are rejected; a 2^32 parameter-count check rejects before allocating a huge
+type vector. Preserve this behavior and rerun it through the driver.
+`test/arithmetic_reserved_exports.lean` separately checks all ten runtime
+names, internal functions and ordinary entries; it also previously passed.
+
+For a focused manual CLI diagnostic after fixture compilation, use:
+
+```bash
+tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic --module test.ArithmeticMilestone --entry ArithmeticMilestone.nested --out /absolute/path/nested.wasm
+```
+
+### Remaining gate 2: final proof/audit and clean checkout
+
+The focused checked target and the draft automated gate are:
+
+```bash
+tools/leanrun --timeout 900 lake -d proofs/talos/lean build Project.Compiler.ArithmeticCompilerAudit
+tools/arithmetic-check.js proof
+```
+
+Use the driver for the gate, the direct command for a focused diagnostic; do
+not run both unnecessarily. The driver audits both final compiler theorem
+names against the three-axiom whitelist and runs
+`test/negative/arithmetic_kernel.lean`. This intentionally false equality must
+fail with `(kernel) declaration type mismatch`; failure caused by a missing
+import, timeout, syntax error, or unrelated issue is not a valid negative
+control. Audit parsing must handle whitespace/newlines inside the printed
+axiom list. Review all nine printed declarations, even though the draft driver
+automatically checks only the two final public theorems.
+
+Create a new checkout of the final candidate commit. Record its SHA and clean
+Git state. Use only pinned third-party caches; do not copy this repository's
+`.lake/build` products. Build the proof/audit from that checkout and run the
+CLI/engine gate against its own executable/source. This gate is not satisfied
+merely by restoring a previously built checkout. Cold proof builds previously
+took several minutes; warm final SourceCorrectness/audit builds took about
+3.4/2 seconds. A timeout during many progressing dependency jobs is not proof
+completion. After a timeout inspect and reduce the work boundary before retry.
+
+### Remaining gate 3: standalone independently checkable proof package
+
+No verified standalone arithmetic package exists yet. A draft packaging script
+was lost before push; recreate it as a repository tool (suggested path
+`tools/arithmetic-package.py`) and push its draft before running a long build.
+The package must contain the general compiler theorem and actual definitions,
+not a generated theorem for selected example programs. Verification must not
+execute the compiler CLI or a proof/artifact generator.
+
+The previously computed source import closure of
+`Project.Compiler.ArithmeticCompilerAudit` contained 133 Lean source modules:
+73 Project, 43 LeanExe and 17 Interpreter. Recompute, do not hardcode these
+counts. Resolve imports from these three source roots:
+
+1. Repository root for LeanExe modules.
+2. `proofs/talos/lean` for Project modules.
+3. `proofs/talos/lean/.lake/packages/CodeLib/interpreter` for Interpreter modules.
+
+Copy sources by module path into a new standalone directory. Parse imports
+properly, including `public import` and multiple modules if present; fail on
+unresolved nonstandard dependencies. The previous closure's external roots
+were `Init.Data.ByteArray.Extra`, `Init.Data.ByteArray.Lemmas`,
+`Init.Data.Nat.Lemmas`, `Init.Data.String.Basic`, `Init.Omega`, `Lean`,
+`Lean.Data.Json.Printer`, `Mathlib.Tactic`, and `Mathlib.Tactic.Ring`. It required
+neither the CodeLib library nor iris code. Check this again against final
+sources rather than silently dropping an unfamiliar import. Include dependency
+license/attribution material when redistributing the Interpreter sources.
+
+Copy the exact `lean-toolchain` and `tools/leanrun`. A minimal standalone
+`lakefile.toml` can use:
+
+```toml
+name = "ArithmeticCompilerProof"
+version = "0.1.0"
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "85e3a25e006c35636f0e53b0e9296caca2685bc0"
+[[lean_lib]]
+name = "LeanExe"
+[[lean_lib]]
+name = "Interpreter"
+[[lean_lib]]
+name = "Project"
+```
+
+Derive its `lake-manifest.json` from the pinned proof manifest: set the package
+name; retain pinned git dependencies except CodeLib/iris; remove path
+dependencies; set mathlib `inherited` false and its `inputRev` to the exact
+revision; keep other dependencies inherited and retain their exact revisions.
+Verify the resulting closure rather than accepting extraneous path references.
+
+Add `proof-package.json` with a versioned schema, exact audit target, pinned
+toolchain/dependency identities, and SHA-256 hashes of all bundled source,
+configuration, runner, verifier and README files. Verify paths stay within the
+package, reject missing/changed/extra executable or source inputs, and reject
+unknown schemas/targets/pins. The manifest is an integrity inventory, not an
+authenticated signature; record the final archive hash outside the archive.
+
+The verifier must first validate the manifest, then require the package's own
+`.lake/build` to be absent, and run:
+
+```bash
+tools/leanrun --timeout 900 lake build Project.Compiler.ArithmeticCompilerAudit
+```
+
+Capture full output in `verification.log` and perform the same final theorem
+axiom audit. Ordinary kernel reduction of compiler definitions inside proofs
+is expected; invoking the CLI or a generator to produce missing proof sources
+is prohibited in this gate. A package may use pinned third-party caches in an
+external dependency directory; it must not load original-checkout LeanExe,
+Project or Interpreter source/olean files. Prefer verification in an isolated
+directory where the original checkout is not a source-search dependency.
+
+Produce a source-only `.tar.gz` with no build/cache/log files. Extract that
+archive into a second new directory and verify it there. Record archive SHA-256,
+originating commit, exact verification command/environment, successful output,
+and axiom audit. The earlier approximately 326 KiB draft archive is lost and
+was never verified; no hash or result from it counts for this gate.
+
+### Remaining gate 4: meaningful deliberate mutations
+
+Implement a repeatable mutation driver in isolated checkouts/copies. Never
+mutate the live baseline branch in place. Require each replacement to match
+the intended production occurrence exactly once, verify a passing baseline,
+invalidate/rebuild affected modules and dependents, and restore the baseline
+between cases. A mutation is detected only when the intended semantic,
+correspondence, validation or manifest check rejects it. Missing dependencies,
+timeouts and incidental syntax errors are inconclusive. Save every log and
+the exact mutation diff.
+
+Candidate concrete mutations to implement and verify against current source:
+
+| Boundary | Deliberate change | Expected rejecting check |
+| --- | --- | --- |
+| Source admission | Change a fresh accepted source declaration to contain a let, branch, helper call, or custom arithmetic instance. | Real arithmetic CLI rejects unsupported source; no output is reported certified. Existing admission regressions provide the source patterns. |
+| Extractor operator | In `LeanExe/Extract/ScalarPrimitive.lean`, change production `toIR` case `\| .add => .add` to subtraction. | General `denote_toIR`/`lower_correct` proof fails when building that module. |
+| IR literal | In `LeanExe/Extract/ScalarExpr.lean`, change the direct `UInt64.ofNat` literal branch from `some (.u64 n)` to `some (.u64 (n + 1))`. | General extraction preservation/literal proof fails. |
+| Opcode | In `LeanExe/Wasm/Image/Emit.lean`, change `.addI64` byte 124 to 125. | Actual byte/instruction correspondence (`Project.Compiler.ArithmeticEncoding` or full audit dependency) fails. |
+| Runtime call | In `LeanExe/Wasm/Binary.lean`, change `let callReleaseChild := localGet childLocal ++ call releaseIndex` to call `releaseIndex + 1`. | Runtime release validation or an earlier actual-byte correspondence proof fails; index 5 is invalid in the five-function arithmetic module. |
+| Export | In production `exportSection`, change `exportEntry exportName 0 item.fst` to use `item.fst + 1`. | Actual export-section/full-module correctness proof fails. |
+| Argument ABI | In `extractScalarFunc`, remove `.reverse` from `extractScalarExpr (List.range arity).reverse body` without changing its specification. | General source-application/function correctness proof fails; asymmetric real-engine fixture can also expose it. |
+| Package manifest | Change audit target or pinned dependency, or alter a bundled source without updating its recorded checksum. | Standalone verifier rejects before Lean runs, for the intended target/pin/hash error. |
+
+Also corrupt one expected native result or engine input to confirm the
+comparison harness rejects a mismatch; label this a harness check, not a
+compiler proof. Manifest mutations must distinguish content corruption from
+authentication: an attacker replacing both sources and inventory requires the
+externally recorded archive hash to detect substitution.
+
+### Remaining gates 5 and 6: policy, documentation, final evidence
+
+Run the existing independent policy gate serially:
+
+```bash
+tools/type-safety.js check
+```
+
+It builds `LeanExe.TypeSafety`, runs its existing behavioral regressions and
+audits its theorem dependencies under the original **propext-only** whitelist.
+It has not been run in this continuation. Do not weaken its policy to pass a
+changed implementation. Its success does not replace the arithmetic theorem
+or the arithmetic gates.
+
+Update user-facing documentation with the exact source grammar, numeric limits,
+CLI examples, actual theorem statements and locations, admitted/rejected
+examples, independent engine/package procedures, trust boundary, and excluded
+features. Make all drivers fail clearly on errors and document prerequisites
+(Git, pinned Lean/Lake, Node supporting i64 BigInt WebAssembly, Python 3 for the
+planned package tool, and tar/zstd for toolchain recovery).
+
+For each final gate record the tested commit/tree, toolchain/compiler and Node
+versions where relevant, exact command, exit status, meaningful result counts,
+audit output, and durable log/artifact location. Preserve evidence in Git or
+another explicitly selected durable destination before relying on it; local
+scratch logs have already been lost twice. Do not check in dependency caches
+or large build trees. Any fix after a passing gate requires rerunning the
+affected gate on the final candidate; prior results may be retained as history.
+
+Arithmetic completion requires all of: general acceptance/soundness and full
+byte/export invocation theorem; strict usable admission; successful actual CLI
+and 85 independent-engine comparisons; clean-checkout proof and executable
+gates; isolated package verification with recorded archive hash; meaningful
+mutation rejections; unchanged TypeSafety policy passing; accurate docs and
+durable evidence; all final changes committed and pushed to `correct`.
+Do not ask the user to supply semantic or correspondence proofs for their
+programs. The theorem is already general; examples test integration, not its
+mathematical quantification.
+
+### Known proof/performance issues already resolved
+
+`Project/Compiler/KernelReduction.lean` defines `kernel_rfl`. It constructs an
+ordinary `Eq.refl` proof for the equality target's left side and assigns it;
+the declaration kernel must check definitional equality with the claimed
+right side. It does not use `native_decide`, a new axiom, or unchecked declaration
+insertion. `test/negative/arithmetic_kernel.lean` attempts `0 = 1` and was
+rejected by the kernel with a declaration type mismatch. Keep this negative
+control as an expected failure, not in a positive-only regression list.
+
+The three large actual runtime validators use `by kernel_rfl`; the reset
+validator uses `rfl`. They checked in approximately 3.5–3.7 seconds each with
+only `propext`. Earlier elaborator `rfl` hit 200000 heartbeats, and broad `simp`
+timed out at 90 seconds. Do not repeat those unchanged experiments or raise
+limits to hide the elaboration boundary. Runtime/metadata imports were narrowed
+to actual module bytes plus the binary validator, avoiding an unnecessary
+SourceInvocation dependency. Root `ArithmeticBounds` payload definitions are
+shared by proof layout abbreviations; some simplification needs the explicit
+root definitions. These fixes are already in checked commits.
+
+The actual runtime indices are user 0, allocator 1, reset 2, retain 3,
+release 4; the free export aliases release. All ten reserved runtime exports
+must be excluded for the user entry; an earlier duplicate-export bug was fixed
+and checked. Do not regress to checking only a subset of reserved names.
+
+Useful checked commit anchors:
+
+- `cb26c4948c17ce10c0c5807badba6cd4c821e0ba`: reserved runtime export fix/regression.
+- `62cb863e3d105f98d11604925c1aed8682492929`: module metadata validation.
+- `1464f53b1ae83843f4172df1eadba2dda6c7c0bb`: strict admission/format limits.
+- `c9e71b6c955e246ccb7d27f97e5f98f6ddccdc50`: admission proofs and arithmetic CLI.
+- `a465dbf9c6f2c8ba25840de50a6d26d31aa56a3b`: shared format payloads/import reduction.
+- `9caa5a6c723bb064f326640589e85cb7bfc6698b`: all runtime validation and kernel negative control.
+- `5dfcd8f5d42ab945258970f605c7f22e096fa7df`: final generic arithmetic compiler theorem and audit.
+
+The reconstructed gate files were locally checkpointed as `5d55b78d` before
+this handoff; the remote handoff commit includes them. Treat their verification
+status as draft regardless of their presence in Git.
+
+### Deferred full scalar agenda after arithmetic completion
+
+The original agreed scope remains concrete Wasm scalar values: UInt64 inputs
+and results, internal Bool, modular arithmetic, unsigned comparisons, bit
+operations/masked shifts, strict bindings, branches, acyclic scalar helper
+calls, and explicitly supported terminating structured iteration. Runtime Nat,
+heap objects, imports, mutable globals and allocation remain excluded.
+Proof-level Nat and explicit source termination arguments are permitted.
+The user's priority is to finish arithmetic completely before extending it.
+
+For each extension, first define independent source syntax, typing, semantics
+and termination/ABI conditions; update executable admission with explicit
+unsupported-form errors; prove extraction acceptance and preservation; prove
+the actual IR/lowering/encoding/validation/invocation steps used; then extend
+the one general compiler theorem. Maintain source-meaning independence and
+the actual normal production compiler/emitter path throughout.
+
+1. Strict scalar bindings: correct evaluation order, scope/local indices and
+   result-slot preservation through extraction and stack/local lowering.
+2. Bool, unsigned comparisons and branches: source condition semantics,
+   branch-local typing, result joins and actual structured Wasm control flow.
+3. Acyclic scalar helpers: independent declaration graph/support, successful
+   extraction of all reachable helpers, call indices/signatures, argument and
+   return ABI, module layout/exports, and terminating call semantics.
+4. Supported structured loops: choose and state the exact source constructs
+   and termination contract before admitting them; prove loop-state semantics,
+   lowering, block/branch depths, validation and total execution from that
+   contract. Do not replace this with arbitrary recursion or a per-program
+   Wasm behavior proof. Existing type work may be modified where appropriate.
+5. Reapply clean-checkout, independent-package, real CLI/engine, mutation,
+   axiom, TypeSafety and documentation gates to the expanded scope. Keep
+   arithmetic as a regression. Finish only when every admitted construct is
+   covered and every required gate passes on the final committed version.
+
+The broader completion checklist below remains open wherever its full-scalar
+scope is unfinished, even when the arithmetic instance of that item is proved.
+Do not report broader scalar compiler correctness from the arithmetic result.
+
+---
 
 ## Correction and authorization
 
@@ -50,21 +593,22 @@ The larger agenda below remains deferred, not reported complete.
 
 The arithmetic milestone is complete only when all of these hold:
 
-- [ ] Production instruction bytes decode correctly, including div/rem guards.
-- [ ] The complete production module decodes and validates, including runtime
+- [x] Production instruction bytes decode correctly, including div/rem guards.
+- [x] The complete production module decodes and validates, including runtime
       bodies, function types, locals, exports, and all section lengths.
-- [ ] Export lookup and invocation initialize the ABI correctly, terminate,
+- [x] Export lookup and invocation initialize the ABI correctly, terminate,
       and return the original source's UInt64 result for every input.
-- [ ] One general theorem composes original source, actual compiler entry,
+- [x] One general theorem composes original source, actual compiler entry,
       exact emitted bytes, decoded module, and exported execution. Admission
       follows source syntax and explicit format limits, with no per-program
       correspondence certificates or assumed correctness of generated code.
-- [ ] An explicit usable compiler mode rejects unsupported and oversized source
+- [x] An explicit compiler mode rejects unsupported and oversized source
       rather than presenting compilation outside the proved subset as covered.
+      Admission and wiring are checked; the native CLI/engine gate is pending.
 - [ ] Clean-checkout proof build, axiom audit, independent package verification,
       and fresh real-CLI/Wasm-engine examples and edge cases all pass.
 
-## Completion gates
+## Completion gates for the full scalar agenda (arithmetic is the first milestone)
 
 - [x] Read and identify the actual existing extraction, IR, lowering, and emission paths.
 - [ ] Define independent scalar semantics and precise source/ABI/termination contracts.
@@ -710,3 +1254,17 @@ Classical.choice, and Quot.sound; no holes, new axioms, or native-evaluation
 certificates. This is the complete arithmetic compiler theorem. The milestone
 remains INCOMPLETE until the actual CLI/independent-engine, standalone-package,
 clean-checkout, mutation, and policy gates pass and documentation is finished.
+
+### Second maintenance recovery; unfinished gates checkpointed
+
+A later maintenance event again removed the restored checkout, installed Lean,
+and local run logs. The complete general theorem and its audit remain pushed
+at 5dfcd8f5. The previous automated proof gate and kernel-negative check passed,
+but the CLI executable build was still in progress at the last observed log;
+its eventual result is unavailable and is not counted as a passed gate.
+
+Restored the gate driver, independent-engine comparator, and fresh Lean source
+fixtures from the session. They are checkpointed before rerunning to avoid
+another loss of unpushed gate work. Their reconstructed versions have not yet
+passed the full run. Package verification, clean-checkout proof build, mutation
+tests, and the independent type-safety policy gate also remain pending.
