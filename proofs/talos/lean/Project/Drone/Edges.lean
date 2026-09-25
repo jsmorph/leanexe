@@ -163,8 +163,8 @@ theorem accepted_forward_clearance (r0 r1 z0 z1 u v : UInt64)
 
 /-- Every accepted edge between the planner's bounded states clears the entire
 interpolated floor, including the rest-to-rest case. This is a theorem about
-`edgeTicks` itself; the full reconstruction proof must show output pairs are
-connected by such edges. -/
+`edgeTicks` itself; `Safety.compute_segment_clearance` transports it to every
+segment of the public returned array. -/
 theorem state_edge_clearance (r0 r1 : UInt64) (source target : Nat)
     (hr0 : r0.toNat ≤ 1000100) (hr1 : r1.toNat ≤ 1000100)
     (hsource : source < stateCount) (htarget : target < stateCount)

@@ -26,8 +26,8 @@ theorem terminal_finite (r : Nat → UInt64) (stop : Nat → Bool) (n : Nat)
   exact ((layers_correct r stop n hn hr).2.2 0 c hc).1
 
 /-- For every bounded input floor sequence, the final DP row has an attained
-minimum-cost flight ending on the floor at rest. This does not yet prove the
-public reconstruction loop returns that flight. -/
+minimum-cost flight ending on the floor at rest. The public reconstruction
+correspondence is established separately in `Output.lean`. -/
 theorem terminal_optimal (r : Nat → UInt64) (stop : Nat → Bool) (n : Nat)
     (hn : n ≤ 64) (hr : ∀ i, i ≤ n → (r i).toNat ≤ 1000100) :
     Flight r stop n 0 (rowCost (layers r stop n) 0) ∧
@@ -71,7 +71,8 @@ theorem interior_clearance (terrain : Array UInt64) (h : terrainBound terrain)
   simp [show i ≠ 0 by omega, show i+1 ≠ terrain.size by omega]
 
 /-- Feasibility and optimality specialize to the actual terrain-floor function.
-The public loop and reconstruction correspondence remain separate obligations. -/
+The public loop and reconstruction correspondence are proved in `History.lean`
+and `Output.lean`. -/
 theorem terrain_terminal_optimal (terrain : Array UInt64) (h : terrainBound terrain)
     (hn : 0 < terrain.size) :
     let r := floorAt terrain
