@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarDo
 import LeanExe.Source.ScalarRange
+import LeanExe.Source.ScalarYieldType
 
 namespace LeanExe.Source.Scalar.Range
 
@@ -47,14 +48,31 @@ def bindYield (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr)
       (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
     (.lam name (.const ``UInt64 []) body bi)
 
+def branch (type condition evidence onTrue onFalse : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type) condition) evidence) onTrue) onFalse
+
 /-- Yield-only step syntax and its scalar result expression. Local bindings
 retain their type and order; the scalar grammar separately checks each binding
 and body. Only the final standard yield is removed. -/
 inductive YieldScalar : Lean.Expr → Lean.Expr → Prop where
   | yieldValue : YieldScalar (yieldValue value) value
-  | letE (tail : YieldScalar body scalar) :
+  | letE (plain : ¬ ∃ scalarType, YieldType type scalarType) (tail : YieldScalar body scalar) :
       YieldScalar (.letE name type value body nondep)
         (.letE name type value scalar nondep)
+  | letYield (type : YieldType sourceType scalarType)
+      (value : YieldScalar sourceValue scalarValue) (body : YieldScalar sourceBody scalarBody) :
+      YieldScalar (.letE name sourceType sourceValue sourceBody nondep)
+        (.letE name scalarType scalarValue scalarBody nondep)
+  | lambda (body : YieldScalar source scalar) :
+      YieldScalar (.lam name domain source bi) (.lam name domain scalar bi)
+  | call : YieldScalar (.app (.bvar index) argument) (.app (.bvar index) argument)
+  | unitCall : YieldScalar
+      (.app (.app (.bvar index) (.const ``Unit.unit [])) argument)
+      (.app (.app (.bvar index) (.const ``Unit.unit [])) argument)
+  | branch (type : YieldType sourceType scalarType)
+      (onTrue : YieldScalar sourceTrue scalarTrue) (onFalse : YieldScalar sourceFalse scalarFalse) :
+      YieldScalar (branch sourceType condition evidence sourceTrue sourceFalse)
+        (branch scalarType condition evidence scalarTrue scalarFalse)
   | idBind (tail : YieldScalar body scalar) :
       YieldScalar (bindYield name bi value body) (Identity.bind name bi value scalar)
   | metadata (body : YieldScalar source scalar) :

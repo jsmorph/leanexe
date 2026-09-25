@@ -221,6 +221,45 @@ def rangeUnusedBind (n seed : UInt64) : UInt64 := Id.run do
     a := a + delta
   return a
 
+def rangeMonadicJoined (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index ← pure (UInt64.ofNat i)
+    let delta ← if a < 7 then pure (a + index) else pure (seed / index)
+    a := (a + delta) ^^^ index
+  return a
+
+def rangeBranchUpdates (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    if a ≤ seed then a := a + index else a := a - index
+    a := a * 3
+    if index != 0 then a := a / index
+  return a
+
+def rangeContinue (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    if index % 3 == 0 then continue
+    let delta ← pure (a + index)
+    a := (a ^^^ delta) + seed
+  return a
+
+def rangeNestedBranches (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    if a < 7 then
+      if index == 0 then a := a + seed else a := a + index
+    else
+      let f := fun x : UInt64 => (x * 7) ^^^ index
+      a := f a
+    let delta ← if index < 3 then pure (a + 1) else pure (a % index)
+    a := a + delta
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -231,7 +270,9 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBeforeAfter", rangeBeforeAfter), ("rangeCaptured", rangeCaptured),
    ("rangeLocalFunction", rangeLocalFunction), ("rangeChainedFunctions", rangeChainedFunctions),
    ("rangeUnusedFunction", rangeUnusedFunction), ("rangeMonadic", rangeMonadic),
-   ("rangeNestedDo", rangeNestedDo), ("rangeUnusedBind", rangeUnusedBind)]
+   ("rangeNestedDo", rangeNestedDo), ("rangeUnusedBind", rangeUnusedBind),
+   ("rangeMonadicJoined", rangeMonadicJoined), ("rangeBranchUpdates", rangeBranchUpdates),
+   ("rangeContinue", rangeContinue), ("rangeNestedBranches", rangeNestedBranches)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
