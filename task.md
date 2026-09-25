@@ -382,16 +382,21 @@ monadic joins, break, continue and step-result continuations. All 197 prior
 modules kept identical bytes. The general proof includes type validation;
 unrelated suites were not rebuilt.
 
-Current increment: negation of whole compound propositional guards, including
-repeated Not wrappers and arbitrary nesting inside conjunction/disjunction.
-The shared guard syntax retains wrapper counts and exact standard decision
-evidence. Checked lowering compares the preceding Boolean word with zero;
-zero wrappers preserve the existing junction output. Recognition, source/IR
-correctness, scalar invariants and public function extraction pass, as do all
-208 focused native Lean/IR comparisons and three rejection tests. The general
-compiler proof/audits and actual native Lean/V8 checks are pending at this
-candidate checkpoint. Boolean &&/|| and general Boolean values remain later
-increments.
+Completed next increment: negation around compound propositional guards,
+including repeated Not wrappers and arbitrary nesting. Candidate `1c6a528b`
+passed all nine compiler audits and 4,450 native Lean/V8 comparisons across
+223 declarations, including admission and reserved exports. Evidence is in
+`proofs/compiler/compound-negation-2026-09-25/`. The shared guard syntax retains
+wrapper counts and exact decision evidence; proved lowering tests each previous
+Boolean word against zero. All 208 focused native Lean/IR comparisons and three
+rejection tests passed, covering negated truth tables, nested groups, functions,
+monadic joins, break, continue and step-result continuations. All 211 prior
+modules kept identical bytes. General type validation passed; unrelated suites
+were not rebuilt.
+
+Next incremental capability: Boolean &&/|| compound guards with repeated !,
+reusing shared Boolean-word lowering. Complete proofs and actual compiler
+execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
