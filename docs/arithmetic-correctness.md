@@ -117,9 +117,21 @@ Boolean-valued choices also admit propositional guards: UInt64 `=`, `≠`, `<`,
 including their Boolean comparison/literal leaves. Saved Boolean values may
 appear in either result branch. Nested Boolean and propositional choices share
 the same proved lowering. Propositional choices check their entire standard
-decision evidence and preserve the existing Boolean-choice path. Public Boolean
-parameters/results, propositional combinations containing saved Boolean locals,
-and conditional Id actions remain separate capabilities.
+decision evidence and preserve the existing Boolean-choice path.
+
+Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
+including nested Id result annotations. This admits the shared continuations
+Lean generates for `let flag ← if … then pure … else pure …`, in scalar code,
+loop steps and scalar computations after a loop. Native Bool arguments have a
+separate binding kind and a proved zero/one compiled representation. Helpers
+preserve captures and shadowing, and all unused bodies and call arguments are
+checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
+initial value and final computation. A conditional Boolean bind before a loop
+can generate a loop-containing helper; that case remains outside this grammar.
+Public Boolean parameters/results, Boolean-returning helpers, mixed Bool/word
+parameter lists, loops inside helper bodies, explicit/implicit decide conversions,
+and propositional combinations containing saved Boolean locals remain separate
+capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and
@@ -753,3 +765,14 @@ comparisons and twelve rejection tests passed on the first execution run. The
 preceding Boolean-choice fixture also passed unchanged: 304 comparisons and
 twelve rejections. Eighteen selected preceding modules kept identical bytes.
 The full corpus contains 439 declarations; this was a focused execution run.
+
+The [Boolean-function increment](../proofs/compiler/boolean-function-2026-09-25/README.md)
+adds unary Bool-parameter scalar and step-result helpers, conditional Boolean
+binds and pure scalar helpers surrounding loops. All nine audits and 647 native
+Lean/V8 comparisons passed over 35 declarations. The 328 new native/IR comparisons
+and sixteen rejection checks pass; the preceding propositional-choice fixture
+passes unchanged (304 comparisons and twelve rejection checks). Eighteen selected
+preceding modules kept identical bytes. Three original conditional-bind examples
+now compile unchanged. Initial fixture annotation and unsupported-decide failures
+are retained with the final results. The full corpus contains 456 declarations;
+this was a focused execution run.
