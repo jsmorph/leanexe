@@ -427,6 +427,14 @@ rejection tests passed, including high-bit ordering and short near-limit
 intervals. All 247 preceding modules kept identical bytes. General type
 validation passed; unrelated suites were not rebuilt.
 
+Execution checks now support fixed named groups in
+`test/arithmetic-engine-groups.json`. The initial `guard-core` group passed all
+295 native Lean/V8 comparisons across seventeen existing declarations. This
+reduces repeated compiler invocations for narrow increments. Each increment
+still checks the general compiler and type proofs and records its exact
+execution scope. The full 259-declaration comparator also passed against the
+already generated min/max artifacts after the driver change.
+
 Next incremental capability: Boolean and propositional literal guards, both as
 whole guards and inside nested compound guards. Retain exact source/evidence
 checks and check both branches even for a constant condition. Complete proofs
