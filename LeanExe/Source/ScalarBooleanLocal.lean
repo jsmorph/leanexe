@@ -2,12 +2,19 @@ import LeanExe.Source.ScalarBooleanGuard
 
 namespace LeanExe.Source.Scalar
 
+/-- Standard Boolean-valued choice over a Boolean condition. -/
+def booleanChoiceExpr (condition yes no : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool []))
+    (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) condition) (.const ``Bool.true [])))
+    (.app (.app (.const ``instDecidableEqBool []) condition) (.const ``Bool.true []))) yes) no
+
 /-- Boolean expressions with explicit lexical references, distinct from scalar operands. -/
 inductive BooleanLocal where
   | var (negations index : Nat)
   | literal (negations : Nat) (value : Bool)
   | compare (op : BooleanComparison) (left right : Lean.Expr)
   | junction (negations : Nat) (op : Junction) (left right : BooleanLocal)
+  | choice (negations : Nat) (condition yes no : BooleanLocal)
   deriving Repr
 
 namespace BooleanLocal
@@ -17,24 +24,29 @@ def operands : BooleanLocal → List Lean.Expr
   | .literal _ _ => []
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
+  | .choice _ c t e => c.operands ++ (t.operands ++ e.operands)
 
 def expr : BooleanLocal → Lean.Expr
   | .var n index => BooleanGuardNegation.expr n (.bvar index)
   | .literal n value => BooleanGuardNegation.expr n (booleanLiteralExpr value)
   | .compare op a b => op.expr a b
   | .junction n op a b => BooleanGuardNegation.expr n (op.booleanExpr a.expr b.expr)
+  | .choice n c t e => BooleanGuardNegation.expr n (booleanChoiceExpr c.expr t.expr e.expr)
 
 def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLocal → Bool
   | .var n index => GuardNegation.denote n (booleans index)
   | .literal n value => GuardNegation.denote n value
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native booleans) (b.denote native booleans))
+  | .choice n c t e => GuardNegation.denote n
+      (if c.denote native booleans then t.denote native booleans else e.denote native booleans)
 
 def negate : BooleanLocal → BooleanLocal
   | .var n index => .var (n + 1) index
   | .literal n value => .literal (n + 1) value
   | .compare op a b => .compare (.negate op) a b
   | .junction n op a b => .junction (n + 1) op a b
+  | .choice n c t e => .choice (n + 1) c t e
 
 theorem negate_expr (guard : BooleanLocal) :
     guard.negate.expr = .app (.const ``Bool.not []) guard.expr := by
@@ -58,11 +70,26 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     all_goals first
       | (have h := iha member; simp_all; omega)
       | (have h := ihb member; simp_all; omega)
+  | choice n c t e ihc iht ihe =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    simp only [operands, List.mem_append] at member
+    simp only [booleanChoiceExpr]
+    rcases member with member | member | member
+    · have h := ihc member; simp_all; omega
+    · have h := iht member; simp_all; omega
+    · have h := ihe member; simp_all; omega
 
 def variables : BooleanLocal → List Nat
   | .var _ index => [index]
   | .literal .. | .compare .. => []
   | .junction _ _ a b => a.variables ++ b.variables
+  | .choice _ c t e => c.variables ++ (t.variables ++ e.variables)
+
+/-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
+def extended : BooleanLocal → Bool
+  | .var .. | .choice .. => true
+  | .literal .. | .compare .. => false
+  | .junction _ _ a b => a.extended || b.extended
 
 def condition (value : BooleanLocal) : Lean.Expr :=
   .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value.expr) (.const ``Bool.true [])
@@ -71,11 +98,11 @@ def evidence (value : BooleanLocal) : Lean.Expr :=
   .app (.app (.const ``instDecidableEqBool []) value.expr) (.const ``Bool.true [])
 
 end BooleanLocal
-/-- A condition using at least one Boolean binding. Closed guards retain their
-existing source and compiler paths. -/
+/-- A condition using Boolean bindings or Boolean-valued choices. The preceding
+closed guard forms retain their existing source and compiler paths. -/
 structure BooleanLocalGuard where
   value : BooleanLocal
-  nonempty : value.variables ≠ []
+  expanded : value.extended = true
 
 namespace BooleanLocalGuard
 abbrev condition (guard : BooleanLocalGuard) := guard.value.condition
