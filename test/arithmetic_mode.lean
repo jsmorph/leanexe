@@ -54,6 +54,24 @@ def rangeTwice (n seed : UInt64) : UInt64 := Id.run do
   for _ in [:n.toNat] do
     a := a * 3
   return a
+def rangeLocal (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let f := fun x : UInt64 => x + UInt64.ofNat i
+    a := f a
+  return a
+def rangeUnsupportedFunction (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    let _f := fun x : UInt64 => expression x a
+    a := a + 1
+  return a
+def rangeBinaryFunction (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    let f := fun x y : UInt64 => x + y
+    a := f a a
+  return a
 
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
@@ -77,7 +95,7 @@ run_elab do
   for name in [`ArithmeticModeTest.expression, `ArithmeticModeTest.bits, `ArithmeticModeTest.literal,
       `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential,
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
-      `ArithmeticModeTest.range] do
+      `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -90,6 +108,7 @@ run_elab do
   for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.binaryLocalFunction,
       `ArithmeticModeTest.unsupportedLocalBody, `ArithmeticModeTest.rangeNonUnitStep,
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeTwice,
+      `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
