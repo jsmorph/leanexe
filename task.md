@@ -202,17 +202,20 @@ acceptance, support, preservation and IR proofs pass. The failed execution log
 is retained. The Unit-prefixed fixture now exercises yielding before done as
 well as wrapping. Final general proof and engine reruns follow this correction.
 
-Next incremental capability: direct ForInStep constructor expressions in range
-callbacks and local continuations. Standard pure-wrapped done/yield now works;
-unwrapped `.done` and `.yield` remain outside the step grammar. Complete that
-source extension through proofs and the focused engine check before proceeding.
+Completed next increment: direct ForInStep constructor expressions. Candidate
+`37cef9bf` passed all nine general compiler audits and 673 native Lean/V8
+comparisons across twenty-nine range declarations, with admission and reserved
+exports. Evidence is in `proofs/compiler/range-direct-2026-09-25/`. Callbacks and
+both local continuation shapes can return unwrapped done/yield values. The
+source grammar and proofs cover these directly; the existing early-exit Wasm
+layout is reused. The focused native/IR test passed 216 comparisons. All
+twenty-six prior range modules retained byte-for-byte identical output.
 
-Direct step constructors are implemented in the independent step grammar and
-extractor. Acceptance, success support, paired preservation and scalar invariant
-proofs pass. The focused whole-function test passed 216 native Lean/IR comparisons,
-including three new direct constructor/continuation declarations. Public fixtures
-and an unsupported unused direct-function body rejection test are added.
-General proof/audits and the actual compiler/V8 check are pending for this candidate.
+Next incremental capability: ordinary Nat literal range bounds such as `[:8]`,
+instead of requiring a UInt64 literal followed by `.toNat`. Keep the existing
+zero start, unit step and one-accumulator scope; check representability before
+lowering the bound to a word. Complete source recognition, native agreement,
+proofs and actual compiler execution before the following capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
