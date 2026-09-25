@@ -21,6 +21,18 @@ theorem Atom.parses {a : LeanExe.Wasm.Instr} {b : Wasm.Binary.Instr} (h : Atom a
     unfold Wasm.Binary.instruction
     apply bind_parses (read_byte 33)
     exact map_parses (Parsing.u32 index bound) Wasm.Binary.Instr.localSet
+  | br depth bound =>
+    simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+      append_list, byte_list, LeanExe.Wasm.Image.encodeNat, LeanExe.Wasm.Image.encodeU64]
+    unfold Wasm.Binary.instruction
+    apply bind_parses (read_byte 12)
+    exact map_parses (Parsing.u32 depth bound) Wasm.Binary.Instr.br
+  | brIf depth bound =>
+    simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+      append_list, byte_list, LeanExe.Wasm.Image.encodeNat, LeanExe.Wasm.Image.encodeU64]
+    unfold Wasm.Binary.instruction
+    apply bind_parses (read_byte 13)
+    exact map_parses (Parsing.u32 depth bound) Wasm.Binary.Instr.brIf
   | const n =>
     simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
       append_list, byte_list]

@@ -10,6 +10,8 @@ Index bounds are format bounds, independent of semantic correctness. -/
 inductive Atom : Instr → Wasm.Binary.Instr → Prop where
   | get (index : Nat) (bound : index < 2 ^ 32) : Atom (.localGet index) (.localGet (UInt32.ofNat index))
   | set (index : Nat) (bound : index < 2 ^ 32) : Atom (.localSet index) (.localSet (UInt32.ofNat index))
+  | br (depth : Nat) (bound : depth < 2 ^ 32) : Atom (.br depth) (.br (UInt32.ofNat depth))
+  | brIf (depth : Nat) (bound : depth < 2 ^ 32) : Atom (.brIf depth) (.brIf (UInt32.ofNat depth))
   | const (n : Nat) : Atom (.constI64 n) (.i64Const (UInt64.ofNat n).toBitVec.toInt)
   | add : Atom .addI64 .i64Add
   | sub : Atom .subI64 .i64Sub
@@ -31,6 +33,13 @@ mutual
     | atom (h : Atom a b) : InstructionEncoding a b
     | if64 (left : ProgramEncoding a ra) (right : ProgramEncoding b rb) :
         InstructionEncoding (.iff true a (some b)) (.iff (.value .i64) ra (some rb))
+
+    | if0 (left : ProgramEncoding a ra) (right : ProgramEncoding b rb) :
+        InstructionEncoding (.iff false a (some b)) (.iff .empty ra (some rb))
+    | block0 (body : ProgramEncoding a ra) :
+        InstructionEncoding (.block a) (.block .empty ra)
+    | loop0 (body : ProgramEncoding a ra) :
+        InstructionEncoding (.loop a) (.loop .empty ra)
 
   inductive ProgramEncoding : List Instr → List Wasm.Binary.Instr → Prop where
     | nil : ProgramEncoding [] []
@@ -71,6 +80,18 @@ theorem Atom.grammar {a : Instr} {b : Wasm.Binary.Instr} (h : Atom a b) :
       LeanExe.Wasm.Image.encodeNat, LeanExe.Wasm.Image.encodeU64, LeanExe.Wasm.Binary.u32leb, Wasm.Binary.Grammar.byte, hi] using
       (Wasm.Binary.Grammar.Instr.localSet (LeanExe.Wasm.Binary.u32leb index) (UInt32.ofNat index)
         (by simpa [hi] using UnsignedLeb.production_u32 index bound))
+  | br depth bound =>
+    have hi : (UInt32.ofNat depth).toNat = depth := UInt32.toNat_ofNat_of_lt' bound
+    simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+      LeanExe.Wasm.Image.encodeNat, LeanExe.Wasm.Image.encodeU64, LeanExe.Wasm.Binary.u32leb, Wasm.Binary.Grammar.byte, hi] using
+      (Wasm.Binary.Grammar.Instr.br (LeanExe.Wasm.Binary.u32leb depth) (UInt32.ofNat depth)
+        (by simpa [hi] using UnsignedLeb.production_u32 depth bound))
+  | brIf depth bound =>
+    have hi : (UInt32.ofNat depth).toNat = depth := UInt32.toNat_ofNat_of_lt' bound
+    simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+      LeanExe.Wasm.Image.encodeNat, LeanExe.Wasm.Image.encodeU64, LeanExe.Wasm.Binary.u32leb, Wasm.Binary.Grammar.byte, hi] using
+      (Wasm.Binary.Grammar.Instr.brIf (LeanExe.Wasm.Binary.u32leb depth) (UInt32.ofNat depth)
+        (by simpa [hi] using UnsignedLeb.production_u32 depth bound))
   | const n =>
     simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using
       (Wasm.Binary.Grammar.Instr.i64Const _ _ (SignedLeb.s64 (UInt64.ofNat n)))
@@ -99,6 +120,21 @@ mutual
         image_sequence, Wasm.Binary.Grammar.byte, List.append_assoc] using
         (Wasm.Binary.Grammar.Instr.iffElse [Wasm.Binary.Grammar.byte 126] _ _ (.value .i64) _ _
           Wasm.Binary.Grammar.BlockType.i64 left.grammar right.grammar)
+    | if0 left right =>
+      simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+        image_sequence, Wasm.Binary.Grammar.byte, List.append_assoc] using
+        (Wasm.Binary.Grammar.Instr.iffElse [Wasm.Binary.Grammar.byte 64] _ _ .empty _ _
+          Wasm.Binary.Grammar.BlockType.empty left.grammar right.grammar)
+    | block0 body =>
+      simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+        image_sequence, Wasm.Binary.Grammar.byte, List.append_assoc] using
+        (Wasm.Binary.Grammar.Instr.block [Wasm.Binary.Grammar.byte 64] _ .empty _
+          Wasm.Binary.Grammar.BlockType.empty body.grammar)
+    | loop0 body =>
+      simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+        image_sequence, Wasm.Binary.Grammar.byte, List.append_assoc] using
+        (Wasm.Binary.Grammar.Instr.loop [Wasm.Binary.Grammar.byte 64] _ .empty _
+          Wasm.Binary.Grammar.BlockType.empty body.grammar)
   termination_by sizeOf a
 
   theorem ProgramEncoding.grammar {a : List Instr} {b : List Wasm.Binary.Instr}

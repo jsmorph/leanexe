@@ -23,6 +23,8 @@ theorem arithmetic_length {a : LeanExe.Wasm.Instr} {b : Wasm.Binary.Instr}
       List.length_append, List.length_cons, List.length_nil]
   case get index _ => have h := LebLengths.unsigned (UInt64.ofNat index); omega
   case set index _ => have h := LebLengths.unsigned (UInt64.ofNat index); omega
+  case br index _ => have h := LebLengths.unsigned (UInt64.ofNat index); omega
+  case brIf index _ => have h := LebLengths.unsigned (UInt64.ofNat index); omega
   case const n => have h := LebLengths.signed (UInt64.ofNat n); omega
   all_goals decide
 
