@@ -1,5 +1,5 @@
 import Project.Compiler.RangeLoopExecution
-import Project.Compiler.ScalarFunction
+import Project.Compiler.FunctionState
 import LeanExe.Extract.ScalarRangeCorrectness
 
 namespace Project.Compiler.ScalarLowering

@@ -117,6 +117,11 @@ ABI. The two focused backend axiom audits use only `propext`, `Classical.choice`
 and `Quot.sound`. Integration into successful source-function dispatch, full
 module bytes/validation, the final nine audits and native/V8 comparisons remain
 pending before enabling or claiming this loop increment complete.
+`RangeFunctionBytes.lean` now proves parsing and execution of the exact complete
+function-body bytes, including declared locals and its size prefix. The shared
+`functionState` definition moved into `FunctionState.lean` to let pure and range
+function proofs compose without a circular import. Both focused targets pass.
+The next edit is the public source-function dispatch and its shared module proofs.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
