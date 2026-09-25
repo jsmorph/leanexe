@@ -537,8 +537,10 @@ Current increment: standard UInt64 numeral instances behind inert
 let/lambda/application/metadata wrappers. The independently specified constant
 instance grammar, exact checker and scalar extraction proofs pass. The original
 helper that failed in the preceding condition increment is included unchanged
-in the new test corpus. Loop integration, focused tests and compiler gates are
-being checked; this increment is not yet complete. The checker tracks unapplied
+in the new test corpus and now passes. Loop integration and 208 native/IR
+comparisons pass, along with four declaration rejections, five raw instance
+rejections and one metadata check. Compiler audits and focused WebAssembly
+execution are next; this increment is not yet complete. The checker tracks unapplied
 arguments and requires the exact standard instance for the same numeral.
 The separately observed UInt64.ofNat/Nat-OfNat metadata form remains next.
 
