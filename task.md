@@ -826,3 +826,22 @@ Evidence: `build/logs/const-if-1.log`, the passing `CheckedNatAdd` target in
 `drone-edges-compact-1.log`. Those latter aggregates contain other failed targets
 and are not recorded as wholly passing runs. Subsequent tail attempts and
 moving-case timeouts remain in their numbered local logs.
+
+The emitted moving branch and complete `ExecutionEdges.edgeTicks_exact` now
+check. `ExecutionEdgeTailModel` describes the arithmetic suffix using the shared
+scalar-expression language; the `change` step in the execution theorem checks
+its identity with the actual emitted suffix. `ExecutionEdgeTail` evaluates that
+descriptor using the established `U64State` bridge. Explicit Option-bind and
+constructor simplification, together with the seven semantic guard cases, avoids
+the earlier unproductive generic simplification. The evaluation proof checks in
+13 seconds and the moving execution proof in 5.3 seconds. The experimental WP
+congruence rule was removed from imports and kept only as an ignored diagnostic;
+the final proof does not require it.
+
+`ExecutionPredecessor.predecessor_exact` also passes, covering both checked
+packed-row reads, all altitude/speed/edge calls, the reachability guard, and the
+exact three-word Choice result, with unchanged memory. Its assumptions are the
+array representation, both row accesses in range, and a representable target.
+The check takes 7.6 seconds. The aggregate
+`build/logs/drone-predecessor-1.log` passes all 3,379 jobs, with standard-only axiom
+audits. Predecessor scanning and the allocating array loops remain open.
