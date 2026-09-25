@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_dependent.lean:161:0: error: BooleanDependentTest.booleanDependentMany: dependent conditional extraction failed

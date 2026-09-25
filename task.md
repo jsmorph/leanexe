@@ -523,15 +523,24 @@ rejection tests passed. Eighteen selected preceding modules kept identical
 bytes. The full corpus contains 351 declarations; this execution run checked 34.
 General type validation used cached dependencies.
 
-Current increment: dependent conditions (`if h : flag then ... else ...`)
-using saved Boolean locals. The exact decision/proof-domain parser, independent
-source totality and all scalar/loop extraction proofs pass. The focused test
-passes 304 native/IR comparisons, four declaration rejections and six proof-binder
-rejections. Full compiler audits and focused WebAssembly execution are next.
-The first test exposed a separate literal-instance wrapper produced by Lean
-inside a helper/proof scope; that original failure is retained. The positive
-helper binds its multiplier before the proof scope. Literal-instance wrappers
-are the next increment after this condition capability passes its final gates.
+Completed next increment: dependent conditions over saved Boolean flags.
+Candidate `fec27059` passed all nine audits and 623 native Lean/V8 comparisons
+across the fixed 34-declaration `boolean-dependent` group. All 304 native/IR
+comparisons, four declaration rejections and six proof-binder rejections passed.
+The 18 selected preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-dependent-2026-09-25/`. Exact proof-domain checks and
+erased binder positions preserve captures throughout helper and loop scopes.
+The full corpus contains 367 declarations; this run checked 34. Type validation
+used cached dependencies; the fixed archive and runtime suite were not rebuilt.
+
+Next increment: accept the standard UInt64 literal instance when Lean places it
+behind inert let/lambda/application wrappers. The condition tests exposed this
+in a helper with a proof binder. The original failure and source are preserved
+with the completed evidence; the positive condition fixture binds its multiplier
+before the proof scope. Prove the exact constant-instance grammar and checker,
+then run the original source unchanged through the real compiler and engine.
+A second observed form, UInt64.ofNat applied to a standard Nat OfNat expression
+with borrowed-type metadata, remains a separate following capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
