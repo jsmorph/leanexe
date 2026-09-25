@@ -49,7 +49,10 @@ Resumed from `b5066cd49fd1a26ecb1dc8fbc63ac923b91128ae` on 2026-09-25 in
 (1,998 jobs). The new whole-flight theorem and expanded aggregate check also
 passed (2,001 jobs), with only `propext`, `Classical.choice`, and `Quot.sound` in
 the axiom audit. A fresh native run reproduced the five-point example below.
-The broader WASM regression results remain historical evidence.
+Artifact preparation now reproduces the recorded 14,198-byte WASM, and fresh
+runtime checks pass for 48 accepted flights, four empty/rejected inputs, and
+12 native/WASM comparisons. Scalar helpers, the square-root loop, checked
+terrain reads, and height validation also have checked execution lemmas.
 
 | Property | Current proof coverage |
 |---|---|
@@ -61,12 +64,13 @@ The broader WASM regression results remain historical evidence.
 | Endpoints | `WholeFlight.compute_global_endpoints` proves the global path starts at horizontal position 0 and finishes at `100*(terrain.size-1)`, on the corresponding ground heights with both velocity components zero. |
 | Feasibility and input handling | `Output.compute_correct` returns an encoded feasible route for every accepted nonempty terrain, with exactly two words per point.  Separate theorems cover empty and rejected inputs. |
 
-The recorded runtime tests cover 48 WASM trajectories, 12 native comparisons,
-and six exhaustive short-route optima, together with clearance, kinematic,
-input-boundary, and translation checks.  Their driver and logs were excluded
-from the branch under the existing commit scope.  These results are historical
-test evidence.  The source proofs quantify over all accepted inputs within
-the stated bounds.
+Fresh runtime tests cover 48 accepted WASM trajectories and four empty/rejected
+inputs against an independent finite-graph planner, plus 12 native comparisons.
+The earlier six exhaustive short-route optima and separate translation checks
+remain historical evidence. Drivers and logs are excluded from commits under
+the existing scope. The source proofs quantify over all accepted inputs within
+the stated bounds; helper execution lemmas do not yet establish the full
+compiled entry theorem.
 
 ### Remaining risks
 
@@ -765,3 +769,32 @@ index, checked-load semantics, the stored length, and overflow-free index
 increment to establish the exact source `floorAt` result with unchanged memory.
 Both modules' axiom audits contain only the three standard Lean axioms.
 Their earlier failed attempts are retained in the numbered local logs.
+
+Published the square-root/read checkpoint as `843f3e6f`. Checked
+`ExecutionValidation.validHeights_exact` against the actual input-validation
+loop, including zero fuel, normal fuel decrease, early rejection, and the
+borrowed-array ownership bookkeeping. Its store is unchanged. Checked
+`ExecutionRest.restSeconds_exact`, preserving intermediate operand-stack values
+across the repeated square-root calls with `TerminatesWith.append_args`.
+The four duration comparisons use the source UInt64 maximum definition;
+simplifying comparison hypotheses into different order relations too early
+prevented their later use, so the final proof preserves those hypotheses.
+
+Also checked `ExecutionPredecessorRead.predecessor_readTime`: the emitted
+checked multiplication, checked array access, and precise resulting frame for
+the first packed-row load. It is a prefix theorem, not the full predecessor
+specification. `ExecutionEdgePrefix.edgeTicks_entry` checks the shared entry
+setup and initial distance call. All four modules have standard-only axiom
+audits. Their local logs include `drone-rest-validation-4.log`,
+`drone-rest-edges-4.log`, `drone-read-edge-rest.log`, and
+`drone-edge-prefix-rest-4.log`; aggregates that include a later failed or
+timed-out target are not recorded as fully passing runs.
+
+The full segment-cost tactic search reached its time budget without a
+diagnostic. Split the duration theorem, rest/moving cases, and common entry
+prefix instead of rerunning the same target unchanged. The rest case still
+timed out after the prefix split, so a separate body theorem now uses explicit
+call boundaries rather than searching through alternative callee rules.
+Its check and the moving-case proof remain pending. The existing external
+annotation examples remain pending behind the allocator dependency as recorded
+above. No executable instructions or source input assumptions changed.
