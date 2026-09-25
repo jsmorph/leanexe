@@ -1077,6 +1077,84 @@ def compoundNotUnusedCustom (x y : UInt64) : UInt64 :=
     (if h : ¬ (z = y ∨ z = 0) then isTrue h else isFalse h) (z + 1) (y + 2)
   x + y
 
+def boolAndTruth (x y : UInt64) : UInt64 :=
+  if (x % 2 == 1 && y % 2 == 1) then 11 else 29
+
+def boolOrTruth (x y : UInt64) : UInt64 :=
+  if (x % 2 == 1 || y % 2 == 1) then 31 else 47
+
+def boolCompoundNot (x y : UInt64) : UInt64 :=
+  if !((x + y == 0) && (x != y)) then ~~~x else ~~~y
+
+def boolCompoundTwice (x y : UInt64) : UInt64 :=
+  if !!((x == 0) || !(y == x * 3)) then x + 13 else y - 17
+
+def boolCompoundNested (x y : UInt64) : UInt64 :=
+  if !((!(x == 0 || y == 0)) && (x / y == 3 || !(y % x == 0 && x != y)))
+  then x / y + 1 else y % x + 7
+
+def boolCompoundFunction (x y : UInt64) : UInt64 :=
+  let captured := x + 7
+  let f := fun a b : UInt64 =>
+    if (!(a == b || a == captured)) || (!(b != 0 && a == 0)) then a + b else a - b
+  f x y + f y x
+
+def boolCompoundDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  let z ← if !(x == 0 || y == 0) then pure (x + y) else pure (x * y)
+  if !!(z == a && y != 1) then a := a + z else a := a - z
+  return a ^^^ y
+
+def boolCompoundOperand (x y : UInt64) : UInt64 :=
+  if ((if !(x == y && x != 0) then ~~~x else y) == (x + y)) && !(x == y || x == 0)
+  then (if !(x == 0 && y == 0) then 19 else x + y) else ~~~(x + y)
+
+def rangeBoolCompoundBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if !(UInt64.ofNat i % 5 != seed % 5 || a % 3 != 0) then break
+  return a
+
+def rangeBoolCompoundContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if !!(UInt64.ofNat i % 3 == 0 || !(UInt64.ofNat i != seed % 7 && a != 0)) then continue
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeBoolCompoundJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let z ← if !(a == seed && UInt64.ofNat i % 3 == 0) then pure (a + 5) else pure (a - 2)
+    if (!(z == a && a != 0)) || (!(UInt64.ofNat i % 3 == 0 || seed == 0)) then
+      a := z
+    else
+      a := z + UInt64.ofNat i
+    if !(a != 7 && !(a % 5 == 0 && UInt64.ofNat i != 2)) then break
+  return a
+
+def rangeBoolCompoundStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => Id.run do
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if !!!((UInt64.ofNat i % 5 == seed % 5 && x % 3 == 0) || y == 7)
+      then .done (x + 11) else .yield (y + UInt64.ofNat i + 1)
+    let r : ForInStep UInt64 ← pure (finish (a + seed) a)
+    let keep : ForInStep UInt64 → ForInStep UInt64 := fun result => result
+    return keep r
+
+def boolCompoundCustom (x y : UInt64) : UInt64 :=
+  if x == 0 && @BEq.beq UInt64 ⟨fun _ _ => true⟩ x y then x else y
+
+def boolCompoundDecision (x y : UInt64) : UInt64 :=
+  @ite UInt64 ((x == 0 && y == 0) = true)
+    (if h : (x == 0 && y == 0) = true then isTrue h else isFalse h) x y
+
+def boolCompoundUnusedCustom (x y : UInt64) : UInt64 :=
+  let _f := fun z : UInt64 =>
+    if z == 0 || @BEq.beq UInt64 ⟨fun _ _ => true⟩ z y then z else y
+  x + y
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -1436,7 +1514,19 @@ run_elab do
       `ArithmeticModeTest.rangeCompoundNotBreak,
       `ArithmeticModeTest.rangeCompoundNotContinue,
       `ArithmeticModeTest.rangeCompoundNotJoined,
-      `ArithmeticModeTest.rangeCompoundNotStep] do
+      `ArithmeticModeTest.rangeCompoundNotStep,
+      `ArithmeticModeTest.boolAndTruth,
+      `ArithmeticModeTest.boolOrTruth,
+      `ArithmeticModeTest.boolCompoundNot,
+      `ArithmeticModeTest.boolCompoundTwice,
+      `ArithmeticModeTest.boolCompoundNested,
+      `ArithmeticModeTest.boolCompoundFunction,
+      `ArithmeticModeTest.boolCompoundDo,
+      `ArithmeticModeTest.boolCompoundOperand,
+      `ArithmeticModeTest.rangeBoolCompoundBreak,
+      `ArithmeticModeTest.rangeBoolCompoundContinue,
+      `ArithmeticModeTest.rangeBoolCompoundJoined,
+      `ArithmeticModeTest.rangeBoolCompoundStep] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -1454,6 +1544,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.boolCompoundCustom, `ArithmeticModeTest.boolCompoundDecision, `ArithmeticModeTest.boolCompoundUnusedCustom,
       `ArithmeticModeTest.compoundNotCustom, `ArithmeticModeTest.compoundNotInnerCustom, `ArithmeticModeTest.compoundNotUnusedCustom,
       `ArithmeticModeTest.compoundCustom, `ArithmeticModeTest.compoundUnsupported, `ArithmeticModeTest.compoundUnusedCustom,
       `ArithmeticModeTest.complementCustom, `ArithmeticModeTest.complementHelper, `ArithmeticModeTest.complementUnusedCustom,

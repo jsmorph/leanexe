@@ -137,5 +137,9 @@
   "rangeCompoundNotBreak",
   "rangeCompoundNotContinue",
   "rangeCompoundNotJoined",
-  "rangeCompoundNotStep"
+  "rangeCompoundNotStep",
+  "rangeBoolCompoundBreak",
+  "rangeBoolCompoundContinue",
+  "rangeBoolCompoundJoined",
+  "rangeBoolCompoundStep"
 ]
