@@ -246,3 +246,7 @@ matching results across thirty-four declarations.
 The [range-loop increment](../proofs/compiler/range-2026-09-25/README.md) adds one
 bounded yielding range loop, with all nine audits and 582 matching results
 across forty-one declarations.
+
+The [local functions in loop steps increment](../proofs/compiler/range-local-functions-2026-09-25/README.md)
+adds direct function bindings in the yielding body, with all nine audits and
+217 matching results across the focused ten-declaration range group.
