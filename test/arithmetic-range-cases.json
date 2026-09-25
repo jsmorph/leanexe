@@ -260,5 +260,13 @@
   "rangeBoolWordCapture",
   "rangeBoolWordBounds",
   "rangeBoolWordStep",
-  "rangeBoolWordOuter"
+  "rangeBoolWordOuter",
+  "rangeBoolEqYield",
+  "rangeBoolEqBreak",
+  "rangeBoolEqContinue",
+  "rangeBoolEqJoined",
+  "rangeBoolEqCapture",
+  "rangeBoolEqBounds",
+  "rangeBoolEqStep",
+  "rangeBoolEqOuter"
 ]
