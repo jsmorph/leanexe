@@ -1,18 +1,20 @@
 import LeanExe.Source.ScalarStep
 import LeanExe.Source.ScalarRangeExitSyntax
-import LeanExe.Source.ScalarRangeInterval
+import LeanExe.Source.ScalarRangeStride
 
 namespace LeanExe.Source.Scalar.Range.Exit
 
 /-- Native source evaluation of one range with yielding or done steps, with
 pure scalar computations before and after it. -/
 inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
-  | range (indexType : IndexType) (first : Count.Eval firstExpr values begin) (count : Count.Eval countExpr values stop) (initial : EvalWith initialExpr values start)
+  | range (indexType : IndexType) (stride : Stride) {stepFn : Nat → UInt64 → ForInStep UInt64}
+      (first : Count.Eval firstExpr values begin) (count : Count.Eval countExpr values stop) (initial : EvalWith initialExpr values start)
       (step : ∀ index accumulator, Step.Eval body
         (.scalar (.word accumulator) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (stepFn index accumulator)) :
-      Eval (call indexType firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
-        values (iterate stepFn (stop - begin) begin start)
+      Eval (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
+        values (iterate (fun i accumulator => stepFn (begin + stride.number * i) accumulator)
+          (trips (stop - begin) stride.number) 0 start)
   | letE (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | idRun (body : Eval e values result) : Eval (Identity.run e) values result
@@ -25,11 +27,11 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
 
 /-- Independent source support for a single bounded early-exit range. -/
 inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
-  | range (indexType : IndexType) (first : Count.Supported types firstExpr) (count : Count.Supported types countExpr) (initial : SupportedWith types initialExpr)
+  | range (indexType : IndexType) (stride : Stride) (first : Count.Supported types firstExpr) (count : Count.Supported types countExpr) (initial : SupportedWith types initialExpr)
       (step : Step.Supported
         (.scalar .word :: .scalar .natural :: types.map Step.BindingKind.scalar) body) :
       Supported types
-        (call indexType firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
+        (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
   | letE (value : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
   | idRun (body : Supported types e) : Supported types (Identity.run e)
@@ -45,7 +47,7 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     (typed : values.map Scalar.Value.kind = types) : ∃ value, Eval expr values value := by
   classical
   induction supported generalizing values with
-  | range indexType first count initial step =>
+  | range indexType stride first count initial step =>
     obtain ⟨begin, hbegin⟩ := first.evaluates values typed
     obtain ⟨stop, hstop⟩ := count.evaluates values typed
     obtain ⟨start, hstart⟩ := initial.evaluates values typed
@@ -53,7 +55,8 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
       step.evaluates (.scalar (.word value) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (by simp [Step.Value.kind, Scalar.Value.kind, List.map_map, Function.comp_def, ← typed])
     let f := fun index value => (total index value).choose
-    exact ⟨iterate f (stop - begin) begin start, .range indexType hbegin hstop hstart
+    exact ⟨iterate (fun i accumulator => f (begin + stride.number * i) accumulator)
+      (trips (stop - begin) stride.number) 0 start, .range indexType stride hbegin hstop hstart
       (fun index value => (total index value).choose_spec)⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates values typed
