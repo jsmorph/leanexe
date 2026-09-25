@@ -29,7 +29,12 @@ arithmetic expressions; this preserves source results but can expand emitted
 code/repeat computations. No type-safety implementation changed, so its prior
 438-theorem audit was not repeated.
 
-Next capability: conditionals over unsigned scalar comparisons. Extend source
+In progress: conditionals over unsigned scalar comparisons. The new
+`Source/ExprEquality`, `Source/ScalarComparison`, and `Extract/ScalarComparison`
+modules pass their focused Lean build. They define canonical `=`, `<`, `≤`,
+`==`, and `!=` syntax, check its complete decision evidence with a proved
+structural Expr comparison (including metadata), and prove recognition and
+comparison lowering. Ordinary branch extraction is not yet enabled. Extend source
 semantics/admission, both-branch static local bounds, byte encoding/validation,
 and the general source-to-byte theorem, then test both branches in the actual
 compiler and engine before moving to `do` or loops.
