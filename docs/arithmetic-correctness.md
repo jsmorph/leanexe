@@ -84,7 +84,10 @@ and local functions returning them, with the same unary and Unit-prefixed
 shapes. Scalar and step-valued functions have distinct binding kinds; both
 compiled projections describe the same native step result. Additional
 accumulators, multiple/nested loops and other range starts/steps remain
-separate capabilities. Constant bounds must currently be written as a UInt64 value followed by `.toNat`.
+separate capabilities. Standard Nat literal bounds such as `[:8]` are also
+admitted when the literal is smaller than 2^64. The count retains its exact
+natural value; larger literals and custom Nat literal instances are rejected.
+Dynamic bounds still use a supported UInt64 expression followed by `.toNat`.
 
 Compilation reserves locals for the accumulator, index and stop and emits an
 ordinary Wasm block/loop with a conditional exit and back edge. The early-exit
@@ -128,14 +131,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles sixty-three fresh declarations with that command,
+and all reserved names, compiles sixty-eight fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 1,110 results against native Lean evaluation, including overflow, zero
+It compares 1,230 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -158,13 +161,15 @@ captured local functions, branch updates, continue mixed with break, both
 step-valued function shapes and unused done-returning functions.
 Three further declarations use direct step constructors in a callback and both
 local continuation shapes, mixing yielding steps with updated done values.
+Five more cover standard Nat literal bounds: zero, one, a small loop with break,
+a direct callback, and the maximum representable bound with an immediate exit.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
 is a separate check of the arithmetic theorem's integration with the actual CLI.
 
 For changes confined to range loops, `tools/arithmetic-check.js range-engine`
-checks the fixed range fixture group: 673 results across twenty-nine declarations,
+checks the fixed range fixture group: 793 results across thirty-four declarations,
 including local functions, monadic bindings, branch continuations and breaks. It retains admission and reserved-export
 checks and saves its output under `.lake/arithmetic-check/range`. The full engine
 check remains available when a change affects the broader scalar grammar.

@@ -217,6 +217,16 @@ zero start, unit step and one-accumulator scope; check representability before
 lowering the bound to a word. Complete source recognition, native agreement,
 proofs and actual compiler execution before the following capability.
 
+Literal range counts now have a separate source count model with exact Nat
+evaluation. Its checked lowering to scalar syntax proves UInt64 conversion
+cannot wrap. Range extraction retains either the original `.toNat` source or
+the standard bounded Nat literal, including exact OfNat evidence. Source
+acceptance, support, preservation and IR proofs pass. The focused count test
+passed 120 native Lean/IR comparisons over five declarations, covering empty,
+one-step, ordinary literal and maximum-word bounds; the maximum bound exits
+immediately. Overflowing bounds and custom Nat literal instances are rejected.
+Public fixtures are added; general proof/audits and V8 checks are next.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.
