@@ -576,8 +576,9 @@ existing Boolean lowering in scalar lets, actions, helper captures and loop
 code. Admit nested choice expressions as conditions even without a saved flag.
 The source grammar, parser acceptance/reconstruction, operand-size and all
 shared Boolean lowering proofs now pass. Closed choice expressions also enter
-the existing Boolean condition path. Integration builds, focused tests and
-compiler execution gates remain open. Propositional comparison guards inside
+the existing Boolean condition path. All affected scalar and loop proofs build. The focused fixture passes all
+304 native/IR comparisons, four declaration rejections and eight raw choice
+rejections. Final compiler audits and execution gates remain open. Propositional comparison guards inside
 Boolean-valued choices and conditional Id actions remain separate subsequent
 increments.
 

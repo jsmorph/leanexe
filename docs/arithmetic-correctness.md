@@ -105,8 +105,16 @@ and lambda-domain types must be exactly Bool. Actions may contain direct Boolean
 values, standard Id.pure/Id.run wrappers with Boolean or nested Id annotations,
 and metadata. Each action preserves its leaf value and all operands are checked,
 including unused binds. Custom Id instances and wrong binder/action types are
-rejected. Public Boolean parameters/results and propositional combinations
-containing saved Boolean locals remain separate capabilities.
+rejected. Boolean-valued conditionals over Boolean guards also use this representation:
+`let flag := if x == y then x != 0 else y == 0`. Conditions and both branches
+may contain saved flags, comparisons, literals, junctions and nested choices.
+Choices can also appear directly as scalar or step conditions without a saved
+flag. Their complete standard decision evidence is checked, and both branches
+must be supported, including inactive or unused ones. The shared parser and
+lowering proofs cover choices in ordinary/monadic bindings and helper captures.
+Public Boolean parameters/results, propositional combinations containing saved
+Boolean locals, propositional guards inside Boolean-valued choices, and
+conditional Id actions remain separate capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and
