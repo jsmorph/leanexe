@@ -691,3 +691,22 @@ elaborator normalization. It adds no axiom or native-evaluation oracle. A
 negative control asserting Nat 0 = 1 was rejected by the kernel with a declaration
 type mismatch. Full module-validation composition and the complete normal-entry
 source-to-file theorem are being checked next; final gates remain open.
+
+### Complete general compiler theorem (checked and audited; gates still open)
+
+ModuleValidation composes source-function validation, all runtime functions, and
+metadata into validateRaw for the exact decoded production module.
+SourceCorrectness.extracted_correct combines this with exact byte decoding,
+requested export lookup, argument/local ABI, and total source-equal execution
+for every input, host, and store.
+
+SourceCorrectness.compileEnvironment_correct proves independent source support
+and explicit numeric format limits imply both normal and arithmetic-mode
+compilation succeed with the same module and this full correctness property.
+compileEnvironment_sound proves every successful arithmetic-mode compilation
+has the property, with no caller-supplied semantic/correspondence premise.
+All modules build (3166 jobs). The final compiler theorems report only propext,
+Classical.choice, and Quot.sound; no holes, new axioms, or native-evaluation
+certificates. This is the complete arithmetic compiler theorem. The milestone
+remains INCOMPLETE until the actual CLI/independent-engine, standalone-package,
+clean-checkout, mutation, and policy gates pass and documentation is finished.
