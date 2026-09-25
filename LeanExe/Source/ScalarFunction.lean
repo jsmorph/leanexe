@@ -1,4 +1,4 @@
-import LeanExe.Source.Scalar
+import LeanExe.Source.ScalarRangeSupported
 import LeanExe.Extract.Syntax
 
 namespace LeanExe.Source.Scalar
@@ -13,7 +13,8 @@ inductive Arrow : Lean.Expr → Nat → Prop where
 an independently supported body. No compiler output occurs in this predicate. -/
 def DeclarationSupported (type value : Lean.Expr) : Prop :=
   ∃ arity body, Arrow type arity ∧
-    LeanExe.Extract.Core.collectLambdas value arity = some body ∧ Supported arity body
+    LeanExe.Extract.Core.collectLambdas value arity = some body ∧
+      (Supported arity body ∨ RangeSupportedWith (List.replicate arity .word) body)
 
 /-- Application of scalar arguments to the original elaborated lambda term.
 The local environment is in de Bruijn order. -/

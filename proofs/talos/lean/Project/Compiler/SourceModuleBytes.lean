@@ -19,9 +19,7 @@ open Project.Compiler.Parsing
 theorem extracted_export {name : Lean.Name} {entry : String} {type source : Lean.Expr}
     {func : LeanExe.IR.Func} (compiled : extractScalarFunc name (some entry) type source = some func) :
     func.exportName = some entry := by
-  simp only [extractScalarFunc, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-  obtain ⟨arity, _, body, _, ir, _, rfl⟩ := compiled
-  rfl
+  exact (extractScalarFunc_properties compiled).1
 
 /-- Original source to exact whole production module bytes, with execution of
 its decoded user body for every input and every surrounding module/store.

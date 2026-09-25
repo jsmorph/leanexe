@@ -24,7 +24,7 @@ nesting of supported expressions:
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
-instances, top-level helper calls, recursion, loops, runtime Nat,
+instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
 procedures. `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
@@ -57,6 +57,26 @@ a branch. These have a distinct binding kind from ordinary unary functions.
 Other multiple-argument functions, function-valued parameters/results and
 top-level helper calls remain separate capabilities.
 
+A function may also contain one ascending `for i in [:count.toNat]` loop with
+one UInt64 accumulator. The stop is a supported UInt64 expression; iteration
+starts at zero, has unit step, and always yields. The source index retains its
+Nat type and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
+bindings and arithmetic may precede and follow the loop. The step supports
+UInt64 bindings and updates, with supported scalar expressions on their right
+hand sides, including conditionals and local functions. A conditional inside
+an update expression is currently supported; general branching of the loop
+body, `break`, `continue`, additional accumulators, multiple/nested loops and
+other range starts/steps remain separate capabilities. Constant bounds must
+currently be written as a UInt64 value followed by `.toNat`.
+
+Compilation reserves locals for the accumulator, index and stop and emits an
+ordinary Wasm block/loop with a conditional exit and back edge. The proof ties
+native ascending range iteration to the emitted loop using the remaining
+iteration count, and covers setup, final result, exact byte parsing and module
+validation. Zero iterations preserve the initial accumulator. All bounds up to
+the maximum UInt64 stop are covered by the theorem, regardless of practical
+execution time; the execution tests use small counts.
+
 The requested export name must avoid all ten runtime exports. Admission checks
 explicit limits below 2^32 on parameter/result counts, UTF-8 export-name bytes,
 locals plus scratch space, and actual body/type/export/code payload sizes.
@@ -86,14 +106,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles thirty-four fresh declarations with that command,
+and all reserved names, compiles forty-one fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 437 results against native Lean evaluation, including overflow, zero
+It compares 582 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -102,6 +122,9 @@ bindings, sequential updates, early returns, nested blocks, branch-local binds
 and a constant do block. Seven more cover local functions, captured values
 across shadowing, calls to prior functions, nested and unused functions, joined
 branches and updates after a branch.
+Seven range declarations add zero/nonzero counts, indexed and index-free steps,
+wrapping accumulators, in-loop bindings, conditional updates, captured values,
+computations before/after the loop, and a zero-argument loop function.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison

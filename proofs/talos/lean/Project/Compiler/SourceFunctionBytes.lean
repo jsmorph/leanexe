@@ -1,4 +1,5 @@
 import Project.Compiler.ArithmeticFunctionBytes
+import Project.Compiler.RangeFunctionBytes
 import Project.Compiler.FunctionParsing
 
 namespace Project.Compiler.ArithmeticEncoding
@@ -27,37 +28,51 @@ theorem extracted_function_body_bytes
       Wasm.wp m (Wasm.Binary.Instr.listToTalos raw)
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
-  simp only [extractScalarFunc, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-  obtain ⟨arity, ha, body, hb, ir, hi, rfl⟩ := compiled
-  have hlen : args.length = arity := len
-  subst arity
-  have supported := extractScalarExpr_supported hi
-  obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp)
-  have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
-  have irEval := extractScalarExpr_correct semantics hi (scalarArgumentLocals args [0])
-  obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic hi
-  have scratch := scalarFunc_scratch args.length name exportName recognized
-  have room : args.length + 1 + descriptor.scratchWidth ≤ 2 ^ 32 := by
-    rw [scratch] at localBound
-    change args.length + 1 + descriptor.scratchWidth < 2 ^ 32 at localBound
-    omega
-  have reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32 := by
-    intro index member
-    have h := extractScalarExpr_reads hi recognized (count := args.length)
-      (by intro slot present; simpa using present) index member
-    omega
-  obtain ⟨raw, encoded⟩ := scalar_function_encodable name exportName args.length
-    releaseIndex recognized arithmetic reads room
-  obtain ⟨code, next, lowered, executed⟩ := ScalarLowering.scalar_function_execution args
-    name exportName releaseIndex recognized irEval m env store
-  obtain ⟨translated, ht, related⟩ := encoded.translation
-  have same : translated = code := Option.some.inj (ht.symm.trans lowered)
-  subst translated
-  refine ⟨value, raw, next, applied, ?_, (related.wp_iff m store _ env _).mpr executed⟩
-  apply Parsing.function_body releaseIndex encoded
-  · simp [scalarFunc]
-  · dsimp only [scalarFunc] at localBound ⊢
-    omega
-  · exact bodyBound
+  obtain ⟨arity, body, _, hb, branches⟩ := extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩
+  · have hlen : args.length = arity := len
+    subst arity
+    have supported := extractScalarExpr_supported hi
+    obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp)
+    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
+    have irEval := extractScalarExpr_correct semantics hi (scalarArgumentLocals args [0])
+    obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic hi
+    have scratch := scalarFunc_scratch args.length name exportName recognized
+    have room : args.length + 1 + descriptor.scratchWidth ≤ 2 ^ 32 := by
+      rw [scratch] at localBound
+      change args.length + 1 + descriptor.scratchWidth < 2 ^ 32 at localBound
+      omega
+    have reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32 := by
+      intro index member
+      have h := extractScalarExpr_reads hi recognized (count := args.length)
+        (by intro slot present; simpa using present) index member
+      omega
+    obtain ⟨raw, encoded⟩ := scalar_function_encodable name exportName args.length
+      releaseIndex recognized arithmetic reads room
+    obtain ⟨code, next, lowered, executed⟩ := ScalarLowering.scalar_function_execution args
+      name exportName releaseIndex recognized irEval m env store
+    obtain ⟨translated, ht, related⟩ := encoded.translation
+    have same : translated = code := Option.some.inj (ht.symm.trans lowered)
+    subst translated
+    refine ⟨value, raw, next, applied, ?_, (related.wp_iff m store _ env _).mpr executed⟩
+    apply Parsing.function_body releaseIndex encoded
+    · simp [scalarFunc]
+    · dsimp only [scalarFunc] at localBound ⊢
+      omega
+    · exact bodyBound
+  · have hlen : args.length = arity := len
+    subst arity
+    obtain ⟨value, semantics, meaning⟩ := rangeFunc_meaning hp rfl
+    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRange_admitted hp
+      (by intro index present; simpa using present)
+    obtain ⟨raw, next, parsed, executed⟩ := range_function_body_bytes args name exportName releaseIndex
+      matched arithmetic reads meaning localBound bodyBound m env store
+    refine ⟨value, raw, next, applied, ?_, executed⟩
+    have countEq : (plan.func name exportName args.length).locals - (plan.func name exportName args.length).params +
+        LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) = 3 + descriptor.scratchWidth := by
+      rw [Range.func_scratch matched]
+      simp [ScalarRangePlan.func]
+    simpa only [countEq] using parsed
 
 end Project.Compiler.ArithmeticEncoding
