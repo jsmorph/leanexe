@@ -8,6 +8,10 @@ def booleanChoiceExpr (condition yes no : Lean.Expr) : Lean.Expr :=
     (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) condition) (.const ``Bool.true [])))
     (.app (.app (.const ``instDecidableEqBool []) condition) (.const ``Bool.true []))) yes) no
 
+/-- Bool-valued decision with exact standard proposition and decision evidence. -/
+def Guard.decisionExpr (guard : Guard) : Lean.Expr :=
+  .app (.app (.const ``Decidable.decide []) guard.condition) guard.evidence
+
 /-- Boolean expressions with explicit lexical references, distinct from scalar operands. -/
 inductive BooleanLocal where
   | var (negations index : Nat)
@@ -16,6 +20,7 @@ inductive BooleanLocal where
   | junction (negations : Nat) (op : Junction) (left right : BooleanLocal)
   | choice (negations : Nat) (condition yes no : BooleanLocal)
   | proposition (negations : Nat) (guard : PropositionGuard) (yes no : BooleanLocal)
+  | decision (negations : Nat) (guard : Guard)
   deriving Repr
 
 namespace BooleanLocal
@@ -27,6 +32,7 @@ def operands : BooleanLocal → List Lean.Expr
   | .junction _ _ a b => a.operands ++ b.operands
   | .choice _ c t e => c.operands ++ (t.operands ++ e.operands)
   | .proposition _ g t e => g.operands ++ (t.operands ++ e.operands)
+  | .decision _ g => g.operands
 
 def expr : BooleanLocal → Lean.Expr
   | .var n index => BooleanGuardNegation.expr n (.bvar index)
@@ -35,6 +41,7 @@ def expr : BooleanLocal → Lean.Expr
   | .junction n op a b => BooleanGuardNegation.expr n (op.booleanExpr a.expr b.expr)
   | .choice n c t e => BooleanGuardNegation.expr n (booleanChoiceExpr c.expr t.expr e.expr)
   | .proposition n g t e => BooleanGuardNegation.expr n (g.branch t.expr e.expr)
+  | .decision n g => BooleanGuardNegation.expr n g.decisionExpr
 
 def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLocal → Bool
   | .var n index => GuardNegation.denote n (booleans index)
@@ -45,6 +52,7 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
       (if c.denote native booleans then t.denote native booleans else e.denote native booleans)
   | .proposition n g t e => GuardNegation.denote n
       (if g.denote native then t.denote native booleans else e.denote native booleans)
+  | .decision n g => GuardNegation.denote n (g.denote native)
 
 def negate : BooleanLocal → BooleanLocal
   | .var n index => .var (n + 1) index
@@ -53,6 +61,7 @@ def negate : BooleanLocal → BooleanLocal
   | .junction n op a b => .junction (n + 1) op a b
   | .choice n c t e => .choice (n + 1) c t e
   | .proposition n g t e => .proposition (n + 1) g t e
+  | .decision n g => .decision (n + 1) g
 
 theorem negate_expr (guard : BooleanLocal) :
     guard.negate.expr = .app (.const ``Bool.not []) guard.expr := by
@@ -93,16 +102,23 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     · have h := iht member; simp_all; omega
     · have h := ihe member; simp_all; omega
 
+  | decision n g =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    have bound := g.operands_size member
+    simp only [Guard.decisionExpr]
+    simp_all
+    omega
+
 def variables : BooleanLocal → List Nat
   | .var _ index => [index]
-  | .literal .. | .compare .. => []
+  | .literal .. | .compare .. | .decision .. => []
   | .junction _ _ a b => a.variables ++ b.variables
   | .choice _ c t e => c.variables ++ (t.variables ++ e.variables)
   | .proposition _ _ t e => t.variables ++ e.variables
 
 /-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
 def extended : BooleanLocal → Bool
-  | .var .. | .choice .. | .proposition .. => true
+  | .var .. | .choice .. | .proposition .. | .decision .. => true
   | .literal .. | .compare .. => false
   | .junction _ _ a b => a.extended || b.extended
 

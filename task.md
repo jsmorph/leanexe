@@ -619,11 +619,17 @@ The first failed admission log is also retained. The scalar dispatch realizes it
 theorem in the defining module with a local 300,000-heartbeat budget; its core
 builds in 12 seconds and its proof consumer in 1.2 seconds.
 
-Next increment: explicit and implicit Bool-valued `decide` conversions over
-the existing closed guard grammar, including the loop-stop expression exposed
-by this fixture. Inspect the exact elaborated source, prove its parser/native
-meaning and shared lowering, then check it through bindings, helper arguments,
-loop steps and surrounding scalar computations before expanding further.
+Current increment: explicit and implicit Bool-valued `decide` conversions over
+the existing closed guard grammar. All five initial syntax examples reject,
+including the original loop-stop form exposed by the preceding fixture. Both
+explicit and implicit conversions elaborate to Decidable.decide with the same
+proposition and standard decision evidence. Preserve these examples unchanged.
+The new BooleanLocal decision form, exact-evidence parser, size/reconstruction
+proofs and shared lowering proofs pass. Scalar, step and outer-loop source
+semantics and totality also rebuild unchanged. Scalar and loop compiler proof
+integration and focused execution tests remain in progress. Sixteen candidate
+programs cover comparisons, compound decisions, implicit conversions, helpers,
+conditional binds, captures, unused operands, loop steps and surrounding code.
 Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
 and loops inside helpers remain later capabilities. A conditional Boolean bind
 before a loop can elaborate to such a loop-containing helper.
