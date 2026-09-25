@@ -38,6 +38,15 @@ def yieldValue (value : Lean.Expr) : Lean.Expr :=
     (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
     (.app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value)
 
+/-- The standard Id binding used by a UInt64 computation whose continuation
+returns a loop step. Its instance evidence is part of the source contract. -/
+def bindYield (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+    (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+      (.const ``Id.instMonad [.zero]))) (.const ``UInt64 []))
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
+    (.lam name (.const ``UInt64 []) body bi)
+
 /-- Yield-only step syntax and its scalar result expression. Local bindings
 retain their type and order; the scalar grammar separately checks each binding
 and body. Only the final standard yield is removed. -/
@@ -46,6 +55,8 @@ inductive YieldScalar : Lean.Expr → Lean.Expr → Prop where
   | letE (tail : YieldScalar body scalar) :
       YieldScalar (.letE name type value body nondep)
         (.letE name type value scalar nondep)
+  | idBind (tail : YieldScalar body scalar) :
+      YieldScalar (bindYield name bi value body) (Identity.bind name bi value scalar)
   | metadata (body : YieldScalar source scalar) :
       YieldScalar (.mdata data source) (.mdata data scalar)
 

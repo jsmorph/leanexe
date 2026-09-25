@@ -214,7 +214,8 @@ UInt64 comparisons, standard pure Id operations and local scalar functions,
 subject to explicit format-size bounds. Function shapes include unary UInt64
 functions and Unit-prefixed scalar continuations. One ascending unit-step
 [:count.toNat] range loop with a UInt64 accumulator and yielding steps is
-supported, including explicit UInt64.ofNat conversion of its Nat index.
+supported, including explicit UInt64.ofNat conversion of its Nat index, local
+function bindings and standard Id monadic UInt64 bindings in the step.
 Top-level helpers, breaks, multiple/nested loops, custom instances and heap
 values are excluded.
 

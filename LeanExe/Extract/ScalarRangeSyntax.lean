@@ -15,6 +15,12 @@ def scalarYield? : Lean.Expr → Option Lean.Expr
       (.app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value) => some value
   | .letE name type value body nondep =>
       (scalarYield? body).map fun scalar => .letE name type value scalar nondep
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) (.const ``UInt64 []))
+        (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
+      (.lam name (.const ``UInt64 []) body bi) =>
+      (scalarYield? body).map fun scalar => Identity.bind name bi value scalar
   | .mdata data body => (scalarYield? body).map (.mdata data)
   | _ => none
 
@@ -23,6 +29,7 @@ theorem scalarYield_accepts {source scalar : Lean.Expr} (h : Range.YieldScalar s
   induction h with
   | yieldValue => rfl
   | letE _ ih => simp [scalarYield?, ih]
+  | idBind _ ih => simp [Range.bindYield, scalarYield?, ih]
   | metadata _ ih => simp [scalarYield?, ih]
 
 theorem scalarYield_sound {source scalar : Lean.Expr} (h : scalarYield? source = some scalar) :
@@ -33,11 +40,15 @@ theorem scalarYield_sound {source scalar : Lean.Expr} (h : scalarYield? source =
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .letE (ih ht)
-  | case3 data body ih =>
+  | case3 value name body bi ih =>
+    simp only [scalarYield?, Option.map_eq_some_iff] at h
+    obtain ⟨tail, ht, rfl⟩ := h
+    exact .idBind (ih ht)
+  | case4 data body ih =>
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .metadata (ih ht)
-  | case4 => simp_all [scalarYield?]
+  | case5 => simp_all [scalarYield?]
 
 structure ScalarRangeView where
   count : Lean.Expr
