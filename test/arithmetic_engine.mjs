@@ -5,7 +5,9 @@ const directory = process.argv[2];
 if (!directory || process.argv.length !== 3) throw new Error('usage: node test/arithmetic_engine.mjs <artifact-directory>');
 const cases = readFileSync(resolve(directory, 'expected.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
 const entries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
-  'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant'];
+  'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant',
+  'compareEq', 'compareLt', 'compareLe', 'compareBEq', 'compareBNe',
+  'nestedChoice', 'choiceBindings', 'choiceOperands'];
 const constants = new Set(['constant', 'boundConstant']);
 const counts = new Map(entries.map(name => [name, new Set()]));
 const uint64 = value => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value) &&

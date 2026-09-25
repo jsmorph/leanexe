@@ -1,4 +1,5 @@
 import LeanExe.Extract.ScalarHead
+import LeanExe.Extract.ScalarComparison
 import LeanExe.Source.Scalar
 
 namespace LeanExe.Extract.Core
@@ -13,6 +14,16 @@ def extractScalarExprWith (locals : List LeanExe.IR.Expr) : Lean.Expr → Option
   | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n)))
       (.app (.const ``UInt64.instOfNat []) (.lit (.natVal m))) =>
       if n == m then some (.u64 n) else none
+  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``UInt64 []))
+      condition) evidence) onTrue) onFalse =>
+      match _h : comparison? condition evidence with
+      | none => none
+      | some (op, left, right) => do
+          let a ← extractScalarExprWith locals left
+          let b ← extractScalarExprWith locals right
+          let t ← extractScalarExprWith locals onTrue
+          let e ← extractScalarExprWith locals onFalse
+          pure (.ite (lowerComparison op a b) t e)
   | .app (.app head left) right => do
       let op ← ScalarPrimitive.ofHead? head
       let a ← extractScalarExprWith locals left
@@ -23,6 +34,12 @@ def extractScalarExprWith (locals : List LeanExe.IR.Expr) : Lean.Expr → Option
       extractScalarExprWith (bound :: locals) body
   | .mdata _ body => extractScalarExprWith locals body
   | _ => none
+termination_by source => sizeOf source
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have bounds := comparison_size _h; omega)
 
 /-- Source argument indices map to the production IR's materialized slots. -/
 def extractScalarExpr (locals : List Nat) (source : Lean.Expr) : Option LeanExe.IR.Expr :=
@@ -36,8 +53,19 @@ theorem extractScalarExprWith_binary {head : Lean.Expr} {f : UInt64 → UInt64 �
       let right ← extractScalarExprWith locals b
       pure (p.lower left right)) := by
   cases h with
-  | direct op => cases op <;> rfl
-  | canonical op => cases op <;> rfl
+  | direct op => cases op <;> rw [extractScalarExprWith] <;> simp
+  | canonical op => cases op <;> dsimp only [LeanExe.Source.Scalar.classHead] <;> rw [extractScalarExprWith] <;> simp
+
+theorem extractScalarExprWith_branch (op : LeanExe.Source.Scalar.Comparison)
+    (locals : List LeanExe.IR.Expr) (a b t e : Lean.Expr) :
+    extractScalarExprWith locals (op.branch a b t e) = (do
+      let left ← extractScalarExprWith locals a
+      let right ← extractScalarExprWith locals b
+      let onTrue ← extractScalarExprWith locals t
+      let onFalse ← extractScalarExprWith locals e
+      pure (.ite (lowerComparison op left right) onTrue onFalse)) := by
+  rw [LeanExe.Source.Scalar.Comparison.branch, extractScalarExprWith]
+  rw [comparison_accepts]
 
 @[simp] theorem extractScalarExprWith_literalExpr (locals : List LeanExe.IR.Expr) (n : Nat) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) := by
@@ -74,8 +102,11 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List UInt64
     (bindings : ScalarBindingsMatch locals values store) :
     target.ScalarEval store value store := by
   induction semantics generalizing locals target with
-  | var h => exact bindings _ _ _ compiled h
-  | literal => cases compiled; exact .const
+  | var h => exact bindings _ _ _ (by simpa only [extractScalarExprWith] using compiled) h
+  | literal =>
+    simp only [extractScalarExprWith, Option.some.injEq] at compiled
+    subst target
+    exact .const
   | ofNat =>
     simp only [extractScalarExprWith_literalExpr, Option.some.injEq] at compiled
     subst target
@@ -93,6 +124,18 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List UInt64
         subst target
         rw [← hf]
         exact p.lower_correct (ihl ha bindings) (ihr hb bindings)
+  | @choose a values x b y t e value op left right branch ihl ihr ihb =>
+    rw [extractScalarExprWith_branch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, rfl⟩ := compiled
+    have condition := lowerComparison_correct op (ihl ha bindings) (ihr hb bindings)
+    cases flag : op.denote x y with
+    | false =>
+      exact .iteFalse (by simpa [flag] using condition)
+        (ihb (by simpa [flag] using he) bindings)
+    | true =>
+      exact .iteTrue (by simpa [flag] using condition)
+        (ihb (by simpa [flag] using ht) bindings)
   | letE value body ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
@@ -105,7 +148,7 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List UInt64
       subst result
       exact ihv hb bindings
     | succ index => exact bindings index expression result he hv
-  | metadata _ ih => exact ih compiled bindings
+  | metadata _ ih => exact ih (by simpa only [extractScalarExprWith] using compiled) bindings
 
 /-- General preservation for the production expression traversal. -/
 theorem extractScalarExpr_correct {source : Lean.Expr} {values : List UInt64} {value : UInt64}
@@ -129,18 +172,25 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {arity : Nat}
     rename_i index arity
     have hv : index < locals.length := by omega
     exact ⟨locals[index], by simp [extractScalarExprWith, List.getElem?_eq_getElem hv]⟩
-  | literal => exact ⟨.u64 _, rfl⟩
+  | literal => exact ⟨.u64 _, by rw [extractScalarExprWith]⟩
   | ofNat => exact ⟨.u64 _, extractScalarExprWith_literalExpr _ _⟩
   | binary op _ _ ihl ihr =>
     obtain ⟨p, hp, _⟩ := sourceHead_recognized op
     obtain ⟨a, ha⟩ := ihl locals len
     obtain ⟨b, hb⟩ := ihr locals len
     exact ⟨p.lower a b, by rw [extractScalarExprWith_binary op]; simp [hp, ha, hb]⟩
+  | choose op _ _ _ _ ihl ihr iht ihe =>
+    obtain ⟨a, ha⟩ := ihl locals len
+    obtain ⟨b, hb⟩ := ihr locals len
+    obtain ⟨t, ht⟩ := iht locals len
+    obtain ⟨e, he⟩ := ihe locals len
+    exact ⟨.ite (lowerComparison op a b) t e, by
+      rw [extractScalarExprWith_branch]; simp [ha, hb, ht, he]⟩
   | letE _ _ ihv ihb =>
     obtain ⟨bound, hb⟩ := ihv locals len
     obtain ⟨target, ht⟩ := ihb (bound :: locals) (by simp [len])
     exact ⟨target, by simp [extractScalarExprWith, hb, ht]⟩
-  | metadata _ ih => exact ih locals len
+  | metadata _ ih => simpa only [extractScalarExprWith] using ih locals len
 
 theorem extractScalarExpr_accepts {source : Lean.Expr} {arity : Nat}
     (supported : LeanExe.Source.Scalar.Supported arity source)
@@ -153,14 +203,28 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Lean
     {target : LeanExe.IR.Expr} (compiled : extractScalarExprWith locals source = some target) :
     LeanExe.Source.Scalar.Supported locals.length source := by
   induction locals, source using extractScalarExprWith.induct generalizing target with
-  | case1 locals index => exact .var (List.getElem?_eq_some_iff.mp compiled).1
+  | case1 locals index =>
+    exact .var (List.getElem?_eq_some_iff.mp (by simpa only [extractScalarExprWith] using compiled)).1
   | case2 => exact .literal
   | case3 locals n m heq =>
     have h : n = m := by simpa using heq
     subst m
     exact .ofNat
   | case4 locals n m hne => simp [extractScalarExprWith, hne] at compiled
-  | case5 locals head left right excluded ihl ihr =>
+  | case5 locals condition evidence t e rejected =>
+    rw [extractScalarExprWith] at compiled
+    rw [rejected] at compiled
+    contradiction
+  | case6 locals condition evidence t e op a b matched ihl ihr iht ihe =>
+    obtain ⟨hc, he⟩ := comparison_sound matched
+    subst condition evidence
+    change LeanExe.Source.Scalar.Supported locals.length (op.branch a b t e)
+    change extractScalarExprWith locals (op.branch a b t e) = some target at compiled
+    rw [extractScalarExprWith_branch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, _⟩ := compiled
+    exact .choose op (ihl ha) (ihr hb) (iht ht) (ihe he)
+  | case7 locals head left right excluded excludedIf ihl ihr =>
     cases hp : ScalarPrimitive.ofHead? head with
     | none =>
       simp only [extractScalarExprWith] at compiled
@@ -174,20 +238,14 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Lean
         cases hb : extractScalarExprWith locals right with
         | none => simp [hp, ha, hb] at compiled
         | some b => exact .binary meaning (ihl ha) (ihr hb)
-  | case6 locals name value body nondep ihv ihb =>
+  | case8 locals name value body nondep ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letE (ihv hb) (by simpa using ihb bound ht)
-  | case7 locals data body ih => exact .metadata (ih compiled)
-  | case8 locals expr hvar hliteral hofNat hbin hlet hmetadata =>
-    unfold extractScalarExprWith at compiled
-    split at compiled <;> simp_all
-    all_goals first
-      | exact (hbin _ _ _ rfl rfl rfl).elim
-      | exact (hofNat _ _ rfl rfl).elim
-      | (have ht := (hlet _ _ _).1 rfl rfl rfl
-         have hf := (hlet _ _ _).2 rfl rfl rfl
-         simp_all)
+  | case9 locals data body ih =>
+    exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
+  | case10 locals expr hvar hliteral hofNat hchoice hbin hlet hmetadata =>
+    rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
     {target : LeanExe.IR.Expr} (compiled : extractScalarExpr locals source = some target) :
@@ -198,14 +256,18 @@ theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
 theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
     (binary : ∀ p a b, P a → P b → P (ScalarPrimitive.lower p a b))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
     {source : Lean.Expr} {locals : List LeanExe.IR.Expr} {target : LeanExe.IR.Expr}
     (compiled : extractScalarExprWith locals source = some target)
     (bindings : ∀ expression ∈ locals, P expression) : P target := by
   have supported := extractScalarExprWith_supported compiled
   generalize hlen : locals.length = arity at supported
   induction supported generalizing locals target with
-  | var hi => exact bindings target (List.mem_of_getElem? compiled)
-  | literal => cases compiled; exact literal _
+  | var hi => exact bindings target (List.mem_of_getElem? (by simpa only [extractScalarExprWith] using compiled))
+  | literal =>
+    simp only [extractScalarExprWith, Option.some.injEq] at compiled
+    subst target
+    exact literal _
   | ofNat =>
     simp only [extractScalarExprWith_literalExpr, Option.some.injEq] at compiled
     subst target
@@ -215,6 +277,12 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨p, hp, a, ha, b, hb, rfl⟩ := compiled
     exact binary p a b (ihl ha bindings hlen) (ihr hb bindings hlen)
+  | choose op _ _ _ _ ihl ihr iht ihe =>
+    rw [extractScalarExprWith_branch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨a, ha, b, hb, t, ht, e, he, rfl⟩ := compiled
+    exact choice op a b t e (ihl ha bindings hlen) (ihr hb bindings hlen)
+      (iht ht bindings hlen) (ihe he bindings hlen)
   | letE _ _ ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
@@ -223,7 +291,7 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact ihv hb bindings hlen
     · exact bindings expression member
-  | metadata _ ih => exact ih compiled bindings hlen
+  | metadata _ ih => exact ih (by simpa only [extractScalarExprWith] using compiled) bindings hlen
 
 /-- Source support guarantees both admission and source/IR agreement. -/
 theorem extractScalarExpr_total_correct {source : Lean.Expr} {locals : List Nat}

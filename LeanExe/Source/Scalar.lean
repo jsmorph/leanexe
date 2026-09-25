@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarHead
+import LeanExe.Source.ScalarComparison
 
 namespace LeanExe.Source.Scalar
 
@@ -20,6 +21,9 @@ inductive Eval : Lean.Expr → List UInt64 → UInt64 → Prop where
   | ofNat : Eval (literalExpr n) values (UInt64.ofNat n)
   | binary (operation : Head head f) (left : Eval a values x) (right : Eval b values y) :
       Eval (.app (.app head a) b) values (f x y)
+  | choose (op : Comparison) (left : Eval a values x) (right : Eval b values y)
+      (branch : Eval (if op.denote x y then onTrue else onFalse) values value) :
+      Eval (op.branch a b onTrue onFalse) values value
   | letE (value : Eval a values x) (body : Eval b (x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | metadata (body : Eval e values value) : Eval (.mdata data e) values value
@@ -31,6 +35,9 @@ inductive Supported : Nat → Lean.Expr → Prop where
   | ofNat : Supported arity (literalExpr n)
   | binary (operation : Head head f) (left : Supported arity a) (right : Supported arity b) :
       Supported arity (.app (.app head a) b)
+  | choose (op : Comparison) (left : Supported arity a) (right : Supported arity b)
+      (onTrue : Supported arity t) (onFalse : Supported arity e) :
+      Supported arity (op.branch a b t e)
   | letE (value : Supported arity a) (body : Supported (arity + 1) b) :
       Supported arity (.letE name (.const ``UInt64 []) a b nondep)
   | metadata (body : Supported arity e) : Supported arity (.mdata data e)
@@ -49,6 +56,16 @@ theorem Supported.evaluates {arity : Nat} {expr : Lean.Expr}
     obtain ⟨x, hx⟩ := ihl values len
     obtain ⟨y, hy⟩ := ihr values len
     exact ⟨_, .binary op hx hy⟩
+  | choose op _ _ _ _ ihl ihr iht ihe =>
+    obtain ⟨x, hx⟩ := ihl values len
+    obtain ⟨y, hy⟩ := ihr values len
+    cases flag : op.denote x y with
+    | false =>
+      obtain ⟨value, hv⟩ := ihe values len
+      exact ⟨value, .choose op hx hy (by simpa [flag] using hv)⟩
+    | true =>
+      obtain ⟨value, hv⟩ := iht values len
+      exact ⟨value, .choose op hx hy (by simpa [flag] using hv)⟩
   | letE _ _ ihv ihb =>
     obtain ⟨x, hx⟩ := ihv values len
     obtain ⟨y, hy⟩ := ihb (x :: values) (by simp [len])

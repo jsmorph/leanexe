@@ -79,6 +79,21 @@ theorem Sequence.eq (count : Nat) : Sequence count [.i64, .i64] [.i32] [.eqI64] 
   intro context locals path base rest room
   exact binary_typed context path base .i64 .i32 rest room
 
+theorem Sequence.lt (count : Nat) : Sequence count [.i64, .i64] [.i32] [.ltUI64] := by
+  apply Sequence.atom .lt
+  intro context locals path base rest room
+  exact binary_typed context path base .i64 .i32 rest room
+
+theorem Sequence.le (count : Nat) : Sequence count [.i64, .i64] [.i32] [.leUI64] := by
+  apply Sequence.atom .le
+  intro context locals path base rest room
+  exact binary_typed context path base .i64 .i32 rest room
+
+theorem Sequence.eqz32 (count : Nat) : Sequence count [.i32] [.i32] [.eqzI32] := by
+  apply Sequence.atom .eqz32
+  intro context locals path base rest room
+  exact unary_typed context path base .i32 .i32 rest room
+
 theorem Sequence.operation (count : Nat) (op : LeanExe.Wasm.ScalarDescriptor.U64Op) :
     Sequence count [.i64, .i64] [.i64] [op.instruction] := by
   cases op

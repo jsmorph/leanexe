@@ -4,6 +4,18 @@ namespace Project.Compiler.ArithmeticValidation
 
 open LeanExe.Wasm.ScalarDescriptor
 
+theorem comparison_typed (op : LeanExe.Source.Scalar.Comparison) (a b : Expr)
+    (count scratch : Nat) (left : Sequence count [] [.i64] (a.emit scratch))
+    (right : Sequence count [] [.i64] (b.emit scratch)) :
+    Sequence count [] [.i32] ((comparison op a b).emit scratch) := by
+  cases op with
+  | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.eq count))
+  | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.lt count))
+  | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.le count))
+  | bne =>
+    simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.eq count))).append
+      (Sequence.eqz32 count)
+
 theorem checked_tail (count scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroTyped : Sequence count [] [.i64] zero)
     (slot : scratch + 1 < count) (format : count ≤ 2 ^ 32) :
@@ -56,5 +68,18 @@ theorem arithmetic_typed {e : Expr} (arithmetic : e.Arithmetic) (count scratch :
       have r := ihr scratch rightReads (by omega)
       simpa only [Expr.emit, checked, Bool.false_eq_true, ite_false, List.append_assoc] using
         l.append ((r.frame [.i64]).append (Sequence.operation count op))
+  | @choose a b t e op aa ab aTrue ae iha ihb iht ihe =>
+    have ra : ∀ index ∈ a.reads, index < count := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have rb : ∀ index ∈ b.reads, index < count := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have rt : ∀ index ∈ t.reads, index < count := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have re : ∀ index ∈ e.reads, index < count := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    simp only [Expr.scratchWidth, comparison_scratch] at room
+    exact (comparison_typed op a b count scratch
+      (iha scratch ra (by omega)) (ihb scratch rb (by omega))).append
+      ((iht scratch rt (by omega)).if64 (ihe scratch re (by omega)))
 
 end Project.Compiler.ArithmeticValidation
