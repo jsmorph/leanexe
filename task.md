@@ -250,10 +250,16 @@ passed; unsupported unused bodies and other argument/result domains reject.
 All forty-two prior modules retained identical bytes. General type validation
 passed; the fixed arithmetic archive and unrelated runtime suite were not rebuilt.
 
-Next incremental capability: UInt64 inequality and negated comparison
-conditions. Preserve exact standard decision evidence and reuse the existing
-IR/Wasm condition negation. Complete source/extraction proofs, general compiler
-audits and actual compiler/V8 checks before moving to the following capability.
+Current increment: UInt64 inequality and negated comparison conditions.
+The source comparison model now includes canonical Ne and recursive Not with
+exact standard decision evidence. Source recognition, semantic lowering and
+Wasm descriptor admission pass; all 198 focused native Lean/IR comparisons
+pass across twelve new declarations. These cover every comparison family,
+repeated negation, local functions and monadic bindings, plus break, continue
+and step-result branch joins. General compiler proof checks are next, followed
+by the full 1,764-result/94-declaration compiler/V8 group because shared scalar
+comparison behavior changed. The fixed arithmetic archive and unrelated
+runtime suite remain unchanged.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

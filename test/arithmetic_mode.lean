@@ -288,6 +288,54 @@ def rangeResultFunctionBool (n seed : UInt64) : UInt64 :=
     let _bad : Bool → ForInStep UInt64 := fun _ => .done a
     .yield (a + 1)
 
+def compareNe (x y : UInt64) : UInt64 := if x ≠ y then x - y else x + y
+
+def negatedEq (x y : UInt64) : UInt64 := if ¬ (x = y) then x + 7 else y / x
+
+def negatedLt (x y : UInt64) : UInt64 := if ¬ (x < y) then x * 3 else y - 1
+
+def negatedLe (x y : UInt64) : UInt64 := if ¬ (x ≤ y) then x / y else y % x
+
+def negatedGt (x y : UInt64) : UInt64 := if ¬ (x > y) then x ^^^ y else x + 9
+
+def negatedGe (x y : UInt64) : UInt64 := if ¬ (x ≥ y) then x <<< y else y >>> x
+
+def negatedBool (x y : UInt64) : UInt64 :=
+  if ¬ (x == y) then (if ¬ (x != y) then x + 1 else y - x) else x * 7
+
+def doubleNegation (x y : UInt64) : UInt64 :=
+  if ¬ ¬ (x ≤ y) then (if ¬ (x ≠ y) then x + 1 else y + 3) else x - y
+
+def negatedBindings (x y : UInt64) : UInt64 := Id.run do
+  let f := fun z : UInt64 => if ¬ (z < y) then z + 1 else z * 3
+  let result ← if f x ≠ f y then pure (x + y) else pure (x / y)
+  return if ¬ (result == x) then result * 7 else result + 9
+
+def rangeNegatedBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if ¬ (a % 5 ≠ seed % 5) then break
+    a := a + 7
+  return a
+
+def rangeNegatedContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ (UInt64.ofNat i < seed % 7) then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeNegatedJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if ¬ (UInt64.ofNat i < seed % 7) then pure (.done (a + 11)) else pure (.yield (a + 1))
+    return result
+
+def customNegatedDecision (x y : UInt64) : Decidable (¬ x < y) := inferInstance
+def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegatedDecision x y) x y
+def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
+def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
+
 end ArithmeticModeTest
 
 run_elab do
@@ -299,7 +347,8 @@ run_elab do
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral,
       `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused, `ArithmeticModeTest.rangeStepWrappedBind,
-      `ArithmeticModeTest.rangeStepJoined, `ArithmeticModeTest.rangeResultFunction, `ArithmeticModeTest.rangeResultChained, `ArithmeticModeTest.rangeResultCapture, `ArithmeticModeTest.rangeResultUnused, `ArithmeticModeTest.rangeResultWrapped] do
+      `ArithmeticModeTest.rangeStepJoined, `ArithmeticModeTest.rangeResultFunction, `ArithmeticModeTest.rangeResultChained, `ArithmeticModeTest.rangeResultCapture, `ArithmeticModeTest.rangeResultUnused, `ArithmeticModeTest.rangeResultWrapped,
+      `ArithmeticModeTest.compareNe, `ArithmeticModeTest.negatedEq, `ArithmeticModeTest.negatedLt, `ArithmeticModeTest.negatedLe, `ArithmeticModeTest.negatedGt, `ArithmeticModeTest.negatedGe, `ArithmeticModeTest.negatedBool, `ArithmeticModeTest.doubleNegation, `ArithmeticModeTest.negatedBindings, `ArithmeticModeTest.rangeNegatedBreak, `ArithmeticModeTest.rangeNegatedContinue, `ArithmeticModeTest.rangeNegatedJoin] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -319,6 +368,7 @@ run_elab do
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
+      `ArithmeticModeTest.customNegated, `ArithmeticModeTest.customNe,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
       `ArithmeticModeTest.missing] do

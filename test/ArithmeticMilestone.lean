@@ -46,6 +46,29 @@ def choiceOperands (x y : UInt64) : UInt64 :=
   if (if x < y then x + 1 else y - 1) = (if y ≤ x then x - y else y - x)
   then x + y else x * y
 
+def compareNe (x y : UInt64) : UInt64 := if x ≠ y then x - y else x + y
+
+def negatedEq (x y : UInt64) : UInt64 := if ¬ (x = y) then x + 7 else y / x
+
+def negatedLt (x y : UInt64) : UInt64 := if ¬ (x < y) then x * 3 else y - 1
+
+def negatedLe (x y : UInt64) : UInt64 := if ¬ (x ≤ y) then x / y else y % x
+
+def negatedGt (x y : UInt64) : UInt64 := if ¬ (x > y) then x ^^^ y else x + 9
+
+def negatedGe (x y : UInt64) : UInt64 := if ¬ (x ≥ y) then x <<< y else y >>> x
+
+def negatedBool (x y : UInt64) : UInt64 :=
+  if ¬ (x == y) then (if ¬ (x != y) then x + 1 else y - x) else x * 7
+
+def doubleNegation (x y : UInt64) : UInt64 :=
+  if ¬ ¬ (x ≤ y) then (if ¬ (x ≠ y) then x + 1 else y + 3) else x - y
+
+def negatedBindings (x y : UInt64) : UInt64 := Id.run do
+  let f := fun z : UInt64 => if ¬ (z < y) then z + 1 else z * 3
+  let result ← if f x ≠ f y then pure (x + y) else pure (x / y)
+  return if ¬ (result == x) then result * 7 else result + 9
+
 def doReturn (x y : UInt64) : UInt64 := Id.run do
   return x + y
 
@@ -470,6 +493,26 @@ def rangeResultWrapped (count seed : UInt64) : UInt64 :=
         return result
     finish (pure (.yield (a + 3)))
 
+def rangeNegatedBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if ¬ (a % 5 ≠ seed % 5) then break
+    a := a + 7
+  return a
+
+def rangeNegatedContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ (UInt64.ofNat i < seed % 7) then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeNegatedJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if ¬ (UInt64.ofNat i < seed % 7) then pure (.done (a + 11)) else pure (.yield (a + 1))
+    return result
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -513,7 +556,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeResultChained", rangeResultChained),
    ("rangeResultCapture", rangeResultCapture),
    ("rangeResultUnused", rangeResultUnused),
-   ("rangeResultWrapped", rangeResultWrapped)]
+   ("rangeResultWrapped", rangeResultWrapped),
+   ("rangeNegatedBreak", rangeNegatedBreak),
+   ("rangeNegatedContinue", rangeNegatedContinue),
+   ("rangeNegatedJoin", rangeNegatedJoin)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -532,7 +578,16 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("doEarly", doEarly), ("doNested", doNested), ("doBranches", doBranches),
    ("localFunction", localFunction), ("capturedShadow", capturedShadow),
    ("chainedFunctions", chainedFunctions), ("nestedFunctions", nestedFunctions),
-   ("unusedFunction", unusedFunction), ("doJoined", doJoined), ("doBranchUpdates", doBranchUpdates)]
+   ("unusedFunction", unusedFunction), ("doJoined", doJoined), ("doBranchUpdates", doBranchUpdates),
+   ("compareNe", compareNe),
+   ("negatedEq", negatedEq),
+   ("negatedLt", negatedLt),
+   ("negatedLe", negatedLe),
+   ("negatedGt", negatedGt),
+   ("negatedGe", negatedGe),
+   ("negatedBool", negatedBool),
+   ("doubleNegation", doubleNegation),
+   ("negatedBindings", negatedBindings)]
 
 end ArithmeticMilestone
 
