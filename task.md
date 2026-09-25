@@ -312,13 +312,19 @@ covering captures/shadowing, chained/nested helpers, unused bodies, Id results,
 conditionals and break/continue. All 128 prior modules kept identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Current increment: local functions with two UInt64 arguments returning
-ForInStep UInt64, including standard Id result wrappers. The new typed bindings,
-source semantics, extraction and source/IR acceptance, preservation and invariant
-proofs pass Lean checking. Ten public fixtures cover argument order, captures,
-nested/chained helpers, unused bodies, scalar/step helper mixing, monadic
-computations, result aliases and nested Id results. The full compiler proof,
-type validation and range execution checks follow this candidate checkpoint.
+Completed next increment: local functions with two UInt64 arguments returning
+ForInStep UInt64, including standard Id result wrappers. Candidate `1579917a`
+passed all nine general compiler audits and 2,401 matching native Lean/V8
+results across 101 range declarations, including admission and reserved exports.
+Evidence is in `proofs/compiler/binary-step-functions-2026-09-25/`. Both arguments,
+lexical captures and the paired value/exit result have checked source semantics,
+acceptance, preservation and invariants. All 240 focused native Lean/IR comparisons
+and five rejection tests passed. All 91 preceding range modules retained identical
+bytes. General type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: Boolean negation in conditional guards, preserving
+canonical evidence and the existing propositional-negation behavior. Complete
+its source-to-module proof and compiler execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
