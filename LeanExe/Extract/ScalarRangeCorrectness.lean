@@ -82,29 +82,29 @@ theorem scalarRange_correct_of_supported {types : List BindingKind} {source : Le
     obtain ⟨y, hy, result⟩ := ih hp (by simp [ScalarBinding.kind, localsTyped])
       (by simp [Value.kind, valuesTyped]) (bindings.bind hx hb) (total_word_cons totalBindings bound)
     exact ⟨y, .letE hx hy, result⟩
-  | idRun _ ih =>
+  | idRun type _ ih =>
     rw [extractScalarRangeWith_idRun] at compiled
     obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
-    exact ⟨value, .idRun hv, result⟩
-  | idPure _ ih =>
+    exact ⟨value, .idRun type hv, result⟩
+  | idPure type _ ih =>
     rw [extractScalarRangeWith_idPure] at compiled
     obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
-    exact ⟨value, .idPure hv, result⟩
-  | bindRight sourceValue _ ih =>
+    exact ⟨value, .idPure type hv, result⟩
+  | bindRight input output sourceValue _ ih =>
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts sourceValue locals localsTyped totalBindings
     rw [extractScalarRangeWith_idBind, hb] at compiled
     obtain ⟨x, hx⟩ := sourceValue.evaluates values valuesTyped
     obtain ⟨y, hy, result⟩ := ih compiled (by simp [ScalarBinding.kind, localsTyped])
       (by simp [Value.kind, valuesTyped]) (bindings.bind hx hb) (total_word_cons totalBindings bound)
-    exact ⟨y, .idBind hx hy, result⟩
-  | bindLeft sourceValue sourceBody ih =>
+    exact ⟨y, .idBind input output hx hy, result⟩
+  | bindLeft input output sourceValue sourceBody ih =>
     rw [extractScalarRangeWith_idBind, rangeSupported_excludes_pure sourceValue] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hb, resultIR, hr, rfl⟩ := compiled
     obtain ⟨x, hx, stop, start, step, countEval, initialEval, stepEval, resultEval⟩ :=
       ih hb localsTyped valuesTyped bindings totalBindings
     obtain ⟨y, hy⟩ := sourceBody.evaluates (.word x :: values) (by simp [Value.kind, valuesTyped])
-    refine ⟨y, .idBind hx hy, stop, start, step, countEval, initialEval, stepEval, ?_⟩
+    refine ⟨y, .idBind input output hx hy, stop, start, step, countEval, initialEval, stepEval, ?_⟩
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.iterate step stop.toNat 0 start) stop.toNat stop).cons resultEval)
   | metadata _ ih =>
