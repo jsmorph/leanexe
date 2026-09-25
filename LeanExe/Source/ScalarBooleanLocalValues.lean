@@ -4,7 +4,7 @@ import LeanExe.Source.ScalarValues
 namespace LeanExe.Source.Scalar.BooleanLocal
 
 def VariablesTyped (value : BooleanLocal) (types : List BindingKind) : Prop :=
-  ∀ index ∈ value.variables, types[index]? = some .boolean
+  value.WellScoped ∧ ∀ index ∈ value.variables, types[index]? = some .boolean
 
 def VariablesMean (value : BooleanLocal) (values : List Value) (native : Nat → Bool) : Prop :=
   ∀ index ∈ value.variables, values[index]? = some (.boolean (native index))
@@ -13,7 +13,7 @@ theorem VariablesTyped.evaluates {value : BooleanLocal} {types : List BindingKin
     (supported : value.VariablesTyped types) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ native, value.VariablesMean values native := by
   classical
-  have present := fun index member => boolean_lookup typed (supported index member)
+  have present := fun index member => boolean_lookup typed (supported.2 index member)
   let native := fun index => if member : index ∈ value.variables then (present index member).choose else false
   refine ⟨native, ?_⟩
   intro index member

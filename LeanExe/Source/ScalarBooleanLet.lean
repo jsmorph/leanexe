@@ -6,6 +6,10 @@ namespace LeanExe.Source.Scalar
 def booleanLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) : Lean.Expr :=
   .letE name (.const ``Bool []) value body nondep
 
+/-- Preserve a word binding around a scalar operand of a Boolean result. -/
+def booleanWordLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) : Lean.Expr :=
+  .letE name (.const ``UInt64 []) value body nondep
+
 /-- External Boolean references after removing the innermost Boolean binding. -/
 def booleanLetVariables (indices : List Nat) : List Nat :=
   indices.filterMap fun | 0 => none | index + 1 => some index
