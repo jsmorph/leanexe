@@ -1,5 +1,6 @@
 import Project.Compiler.FunctionTyping
 import Project.Compiler.RangeTyping
+import Project.Compiler.RangeExitTyping
 
 namespace Project.Compiler.ArithmeticValidation
 
@@ -22,7 +23,7 @@ theorem extracted_function_valid
     Validator.validateFunction (rawModule func entry user) (typeValues func) 0
       (typeValues func).head! user = .ok () := by
   obtain ⟨arity, body, _, _, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩
+  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩
   · obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic extracted
     have scratch := scalarFunc_scratch arity name (some entry) recognized
     have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by
@@ -69,6 +70,27 @@ theorem extracted_function_valid
       have localTypes : Locals64 context (arity + 3 + descriptor.scratchWidth) := by
         rw [scratch] at locals
         simpa [ScalarRangePlan.func, Nat.add_assoc] using locals
+      exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
+  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExit_admitted extracted
+      (by intro index present; simpa using present)
+    have scratch := RangeExit.func_scratch matched arity name (some entry)
+    have format : arity + 4 + descriptor.scratchWidth < 2 ^ 32 := by
+      rw [scratch] at localBound
+      exact localBound
+    obtain ⟨raw, encoded, typed⟩ := range_exit_function_sequence matched arithmetic arity 4 name (some entry) reads format
+    have parsedTyped := function_body 4 encoded
+      (by simp [ScalarRangeExitPlan.func])
+      (by rw [scratch]; simp only [ScalarRangeExitPlan.func]; omega) bodyBound
+    have same := parsed.unique parsedTyped
+    subst user
+    apply user_valid (func := plan.func name (some entry) arity) rfl rfl
+    · rw [scratch]
+      simp only [ScalarRangeExitPlan.func]
+      omega
+    · intro context locals
+      have localTypes : Locals64 context (arity + 4 + descriptor.scratchWidth) := by
+        rw [scratch] at locals
+        simpa [ScalarRangeExitPlan.func, Nat.add_assoc] using locals
       exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
 
 end Project.Compiler.ArithmeticValidation

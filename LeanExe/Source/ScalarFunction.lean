@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarRangeSupported
+import LeanExe.Source.ScalarRangeExitSupported
 import LeanExe.Extract.Syntax
 
 namespace LeanExe.Source.Scalar
@@ -14,12 +15,14 @@ an independently supported body. No compiler output occurs in this predicate. -/
 def DeclarationSupported (type value : Lean.Expr) : Prop :=
   ∃ arity body, Arrow type arity ∧
     LeanExe.Extract.Core.collectLambdas value arity = some body ∧
-      (Supported arity body ∨ RangeSupportedWith (List.replicate arity .word) body)
+      (Supported arity body ∨ RangeSupportedWith (List.replicate arity .word) body ∨
+        Range.Exit.Supported (List.replicate arity .word) body)
 
 /-- Application of scalar arguments to the original elaborated lambda term.
 The local environment is in de Bruijn order. -/
 inductive Apply : Lean.Expr → List UInt64 → List UInt64 → UInt64 → Prop where
   | done (body : Eval expr locals value) : Apply expr locals [] value
+  | exit (body : Range.Exit.Eval expr (locals.map Value.word) value) : Apply expr locals [] value
   | lam (body : Apply expr (arg :: locals) args value) :
       Apply (.lam name type expr bi) locals (arg :: args) value
   | metadata (body : Apply expr locals args value) :
@@ -43,6 +46,27 @@ theorem apply_of_collectLambdas {expr body : Lean.Expr} (args locals : List UInt
       Option.some.injEq] at collected
     subst body
     exact .done semantics
+  | cons arg args ih =>
+    apply Apply.of_consumeMData
+    simp only [List.length_cons, LeanExe.Extract.Core.collectLambdas] at collected
+    split at collected
+    · rename_i sourceHead name type inner bi heq
+      rw [heq]
+      apply Apply.lam
+      apply ih _ collected
+      simpa [List.reverse_cons, List.append_assoc] using semantics
+    · contradiction
+
+theorem apply_exit_of_collectLambdas {expr body : Lean.Expr} (args locals : List UInt64)
+    (collected : LeanExe.Extract.Core.collectLambdas expr args.length = some body)
+    {value : UInt64} (semantics : Range.Exit.Eval body ((args.reverse ++ locals).map Value.word) value) :
+    Apply expr locals args value := by
+  induction args generalizing expr locals with
+  | nil =>
+    simp only [List.length_nil, LeanExe.Extract.Core.collectLambdas_zero,
+      Option.some.injEq] at collected
+    subst body
+    exact .exit semantics
   | cons arg args ih =>
     apply Apply.of_consumeMData
     simp only [List.length_cons, LeanExe.Extract.Core.collectLambdas] at collected

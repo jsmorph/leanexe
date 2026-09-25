@@ -11,7 +11,7 @@ is bounded statically; both branches of every scalar expression are included. -/
 theorem range_exit_function_sequence {descriptor : RangeExit} {plan : LeanExe.Extract.Core.ScalarRangeExitPlan}
     (matched : descriptor.Matches plan) (arithmetic : descriptor.All Expr.Arithmetic)
     (arity releaseIndex : Nat) (name : Lean.Name) (exportName : Option String)
-    (reads : descriptor.All (fun e => ∀ index ∈ e.reads, index < arity + 4))
+    (reads : descriptor.All (fun e => ∀ index ∈ e.reads, index < arity + 3))
     (format : arity + 4 + descriptor.scratchWidth < 2 ^ 32) :
     Sequence (arity + 4 + descriptor.scratchWidth) [] [.i64]
       (LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs releaseIndex (plan.func name exportName arity)) := by
@@ -19,7 +19,7 @@ theorem range_exit_function_sequence {descriptor : RangeExit} {plan : LeanExe.Ex
   obtain ⟨bc, bi, bs, bd, br⟩ := reads
   let count := arity + 4 + descriptor.scratchWidth
   have format' : count ≤ 2 ^ 32 := by dsimp [count]; omega
-  have emitExpression {e : Expr} (a : e.Arithmetic) (b : ∀ index ∈ e.reads, index < arity + 4)
+  have emitExpression {e : Expr} (a : e.Arithmetic) (b : ∀ index ∈ e.reads, index < arity + 3)
       (width : e.scratchWidth ≤ descriptor.scratchWidth) :
       Sequence count [] [.i64] (e.emit (arity + 4)) :=
     arithmetic_typed a count (arity + 4) (fun index member => Nat.lt_of_lt_of_le (b index member) (by dsimp [count]; omega))
