@@ -474,14 +474,15 @@ strict argument evaluation, body checking and existing Unit/PUnit continuations.
 Complete it through focused source/IR tests, general audits and native/V8 checks
 before expanding step-result helpers or moving to another capability.
 
-Checked preparation: the shared UInt64 parameter-suffix and larger-function
-syntax modules and their parsers pass Lean checking. Round-trip, exact source
-reconstruction and recursive body-size proofs are complete. Production
-extraction integration is in progress. The checked local-call parser preserves
-all operands and their order. The argument-list compiler proves acceptance,
-operand success, exact length, elementwise meaning and output invariants.
-These shared modules pass focused builds; the full compiler extension and
-its execution checks are not yet complete.
+Checked implementation checkpoint: arbitrary finite UInt64 helper parameter
+lists are connected to scalar extraction, loop-step helper definitions and
+helpers surrounding loops. Exact arity, original argument order, captured
+values and unused body checking share list-based binding rules. The affected
+source totality, extraction acceptance/support/correctness and invariant proofs
+pass, including the function extractor. Definitions and expression equations
+now live in ScalarExprCore so their checks can run separately from the proofs.
+Focused native/IR and V8 tests and the full nine compiler audits follow; this
+increment is not yet complete. Step-valued helper arities remain separate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

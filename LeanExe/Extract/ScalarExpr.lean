@@ -1,303 +1,6 @@
-import LeanExe.Extract.ScalarHead
-import LeanExe.Extract.ScalarComplement
-import LeanExe.Extract.ScalarExtremum
-import LeanExe.Extract.ScalarDo
-import LeanExe.Extract.ScalarBindings
-import LeanExe.Extract.ScalarGuard
-import LeanExe.Source.Scalar
+import LeanExe.Extract.ScalarExprCore
 
 namespace LeanExe.Extract.Core
-
-/-- Compile pure, total scalar expressions with an environment of already
-compiled bindings. Substitution removes source lets without introducing effects.
-Bindings may be duplicated or unused in the output; this is valid only for this
-pure arithmetic fragment. The source semantics still evaluates each binding. -/
-def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option LeanExe.IR.Expr
-  | .bvar index => locals[index]?.bind ScalarBinding.word?
-  | .app (.const ``UInt64.ofNat _) (.lit (.natVal n)) => some (.u64 n)
-  | .app (.const ``UInt64.ofNat _) (.bvar index) => locals[index]?.bind ScalarBinding.natural?
-  | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n)))
-      (.app (.const ``UInt64.instOfNat []) (.lit (.natVal m))) =>
-      if n == m then some (.u64 n) else none
-  | .app (.app (.const ``Id.run [.zero]) sourceType) body =>
-      match scalarResultType? sourceType with
-      | none => none
-      | some _ => extractScalarExprWith locals body
-  | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
-      (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
-        (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
-          (.const ``Id.instMonad [.zero])))) sourceType) body =>
-      match scalarResultType? sourceType with
-      | none => none
-      | some _ => extractScalarExprWith locals body
-  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
-      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
-        (.const ``Id.instMonad [.zero]))) input) output) value)
-      (.lam _ domain body _) =>
-      match scalarBindTypes? input domain output with
-      | none => none
-      | some _ => do
-          let bound ← extractScalarExprWith locals value
-          extractScalarExprWith (.word bound :: locals) body
-  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
-      condition) evidence) onTrue) onFalse =>
-      match scalarResultType? type with
-      | none => none
-      | some _ =>
-        match _h : comparison? condition evidence with
-        | none =>
-          match _g : compoundGuard? condition evidence with
-          | none => none
-          | some guard => do
-              let c ← extractGuard guard.tree (fun operand _member => extractScalarExprWith locals operand)
-              let t ← extractScalarExprWith locals onTrue
-              let e ← extractScalarExprWith locals onFalse
-              pure (.ite c t e)
-        | some (op, left, right) => do
-            let a ← extractScalarExprWith locals left
-            let b ← extractScalarExprWith locals right
-            let t ← extractScalarExprWith locals onTrue
-            let e ← extractScalarExprWith locals onFalse
-            pure (.ite (lowerComparison op a b) t e)
-  | .app (.app (.bvar index) (.const ``Unit.unit [])) argument
-  | .app (.app (.bvar index) (.const ``PUnit.unit [.succ .zero])) argument => do
-      let function ← locals[index]?.bind (ScalarBinding.function? true)
-      let value ← extractScalarExprWith locals argument
-      function value
-  | .app (.app (.bvar index) first) second => do
-      let function ← locals[index]?.bind ScalarBinding.binaryFunction?
-      let a ← extractScalarExprWith locals first
-      let b ← extractScalarExprWith locals second
-      function a b
-  | .app (.const ``UInt64.complement []) argument => do
-      let value ← extractScalarExprWith locals argument
-      pure (lowerComplement value)
-  | .app (.app (.app (.const ``Complement.complement [.zero]) (.const ``UInt64 []))
-      (.const ``instComplementUInt64 [])) argument => do
-      let value ← extractScalarExprWith locals argument
-      pure (lowerComplement value)
-  | .app (.app (.app (.app (.const ``Min.min [.zero]) (.const ``UInt64 []))
-      (.const ``instMinUInt64 [])) left) right => do
-      let a ← extractScalarExprWith locals left
-      let b ← extractScalarExprWith locals right
-      pure (lowerExtremum .minimum a b)
-  | .app (.app (.app (.app (.const ``Max.max [.zero]) (.const ``UInt64 []))
-      (.const ``instMaxUInt64 [])) left) right => do
-      let a ← extractScalarExprWith locals left
-      let b ← extractScalarExprWith locals right
-      pure (lowerExtremum .maximum a b)
-  | .app (.app head left) right => do
-      let op ← ScalarPrimitive.ofHead? head
-      let a ← extractScalarExprWith locals left
-      let b ← extractScalarExprWith locals right
-      pure (op.lower a b)
-  | .letE _ (.const ``UInt64 []) value body _ => do
-      let bound ← extractScalarExprWith locals value
-      extractScalarExprWith (.word bound :: locals) body
-  | .letE _ (.forallE _ (.const ``UInt64 [])
-      (.forallE _ (.const ``UInt64 []) resultType _) _)
-      (.lam _ (.const ``UInt64 []) (.lam _ (.const ``UInt64 []) value _) _) body _ =>
-      match scalarResultType? resultType with
-      | none => none
-      | some _ => do
-          let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals) value
-          let function := ScalarBinding.binaryFunction fun first second =>
-            extractScalarExprWith (.word second :: .word first :: locals) value
-          extractScalarExprWith (function :: locals) body
-  | .letE _ (.forallE _ (.const ``UInt64 []) resultType _)
-      (.lam _ (.const ``UInt64 []) value _) body _ =>
-      match scalarResultType? resultType with
-      | none => none
-      | some _ => do
-          let _ ← extractScalarExprWith (.word (.u64 0) :: locals) value
-          let function := ScalarBinding.function false fun argument =>
-            extractScalarExprWith (.word argument :: locals) value
-          extractScalarExprWith (function :: locals) body
-  | .letE _ (.forallE _ (.const ``Unit [])
-      (.forallE _ (.const ``UInt64 []) resultType _) _)
-      (.lam _ (.const ``Unit []) (.lam _ (.const ``UInt64 []) value _) _) body _
-  | .letE _ (.forallE _ (.const ``PUnit [.succ .zero])
-      (.forallE _ (.const ``UInt64 []) resultType _) _)
-      (.lam _ (.const ``PUnit [.succ .zero]) (.lam _ (.const ``UInt64 []) value _) _) body _ =>
-      match scalarResultType? resultType with
-      | none => none
-      | some _ => do
-          let _ ← extractScalarExprWith (.word (.u64 0) :: .unit :: locals) value
-          let function := ScalarBinding.function true fun argument =>
-            extractScalarExprWith (.word argument :: .unit :: locals) value
-          extractScalarExprWith (function :: locals) body
-  | .app (.bvar index) argument => do
-      let function ← locals[index]?.bind (ScalarBinding.function? false)
-      let value ← extractScalarExprWith locals argument
-      function value
-  | .mdata _ body => extractScalarExprWith locals body
-  | _ => none
-termination_by source => sizeOf source
-decreasing_by
-  all_goals simp_wf
-  all_goals first
-    | omega
-    | (have bounds := comparison_size _h; omega)
-    | (have bounds := compoundGuard_size _g _member; omega)
-
-/-- Source argument indices map to the production IR's materialized slots. -/
-def extractScalarExpr (locals : List Nat) (source : Lean.Expr) : Option LeanExe.IR.Expr :=
-  extractScalarExprWith (locals.map fun slot => .word (.local slot)) source
-
-theorem extractScalarExprWith_binary {head : Lean.Expr} {f : UInt64 → UInt64 → UInt64}
-    (h : LeanExe.Source.Scalar.Head head f) (locals : List ScalarBinding) (a b : Lean.Expr) :
-    extractScalarExprWith locals (.app (.app head a) b) = (do
-      let p ← ScalarPrimitive.ofHead? head
-      let left ← extractScalarExprWith locals a
-      let right ← extractScalarExprWith locals b
-      pure (p.lower left right)) := by
-  cases h with
-  | direct op => cases op <;> rw [extractScalarExprWith] <;> simp
-  | canonical op => cases op <;> dsimp only [LeanExe.Source.Scalar.classHead] <;> rw [extractScalarExprWith] <;> simp
-
-theorem extractScalarExprWith_extremum (op : LeanExe.Source.Scalar.Extremum)
-    (locals : List ScalarBinding) (a b : Lean.Expr) :
-    extractScalarExprWith locals (op.expr a b) = (do
-      let left ← extractScalarExprWith locals a
-      let right ← extractScalarExprWith locals b
-      pure (lowerExtremum op left right)) := by
-  cases op <;> rw [LeanExe.Source.Scalar.Extremum.expr, LeanExe.Source.Scalar.Extremum.head,
-    extractScalarExprWith]
-
-theorem extractScalarExprWith_complement {operation : Lean.Expr}
-    (head : LeanExe.Source.Scalar.ComplementHead operation) (locals : List ScalarBinding) (a : Lean.Expr) :
-    extractScalarExprWith locals (.app operation a) = (do
-      let argument ← extractScalarExprWith locals a
-      pure (lowerComplement argument)) := by
-  cases head <;> rw [extractScalarExprWith]
-
-theorem extractScalarExprWith_branch (op : LeanExe.Source.Scalar.Comparison)
-    (locals : List ScalarBinding) (a b t e : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
-    extractScalarExprWith locals (op.branch a b t e type) = (do
-      let left ← extractScalarExprWith locals a
-      let right ← extractScalarExprWith locals b
-      let onTrue ← extractScalarExprWith locals t
-      let onFalse ← extractScalarExprWith locals e
-      pure (.ite (lowerComparison op left right) onTrue onFalse)) := by
-  rw [LeanExe.Source.Scalar.Comparison.branch, extractScalarExprWith]
-  rw [scalarResultType_accepts, comparison_accepts]
-
-theorem extractScalarExprWith_compoundBranch (guard : LeanExe.Source.Scalar.CompoundGuard)
-    (locals : List ScalarBinding) (type : LeanExe.Source.Scalar.ResultType) (t e : Lean.Expr) :
-    extractScalarExprWith locals (guard.branch type.expr t e) = (do
-      let c ← extractGuard guard.tree (fun operand _ => extractScalarExprWith locals operand)
-      let onTrue ← extractScalarExprWith locals t
-      let onFalse ← extractScalarExprWith locals e
-      pure (.ite c onTrue onFalse)) := by
-  rw [LeanExe.Source.Scalar.CompoundGuard.branch, extractScalarExprWith]
-  rw [scalarResultType_accepts, compoundGuard_not_comparison, compoundGuard_accepts]
-
-@[simp] theorem extractScalarExprWith_idRun (locals : List ScalarBinding) (body : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
-    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.run body type) =
-      extractScalarExprWith locals body := by
-  rw [LeanExe.Source.Scalar.Identity.run, extractScalarExprWith, scalarResultType_accepts]
-
-@[simp] theorem extractScalarExprWith_idPure (locals : List ScalarBinding) (body : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
-    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.pure body type) =
-      extractScalarExprWith locals body := by
-  rw [LeanExe.Source.Scalar.Identity.pure, extractScalarExprWith, scalarResultType_accepts]
-
-@[simp] theorem extractScalarExprWith_idBind (locals : List ScalarBinding)
-    (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) (input output : LeanExe.Source.Scalar.ResultType) :
-    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.bind name bi value body input output) = (do
-      let bound ← extractScalarExprWith locals value
-      extractScalarExprWith (.word bound :: locals) body) := by
-  rw [LeanExe.Source.Scalar.Identity.bind, extractScalarExprWith, scalarBindTypes_accepts]
-
-theorem extractScalarExprWith_letFn (locals : List ScalarBinding)
-    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.ResultType) (a b : Lean.Expr) (nondep : Bool) :
-    extractScalarExprWith locals (.letE name
-      (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-      (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) = (do
-        let _ ← extractScalarExprWith (.word (.u64 0) :: locals) a
-        extractScalarExprWith (.function false (fun argument =>
-          extractScalarExprWith (.word argument :: locals) a) :: locals) b) := by
-  rw [extractScalarExprWith, scalarResultType_accepts]
-  cases type <;> simp [LeanExe.Source.Scalar.ResultType.expr]
-
-theorem extractScalarExprWith_letUnitFn (locals : List ScalarBinding)
-    (name unitTypeName typeName unitName paramName : Lean.Name)
-    (unitTypeBi typeBi unitBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.ResultType) (unitForm : LeanExe.Source.Scalar.UnitSyntax) (a b : Lean.Expr) (nondep : Bool) :
-    extractScalarExprWith locals (.letE name
-      (.forallE unitTypeName unitForm.type
-        (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-      (.lam unitName unitForm.type
-        (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) = (do
-        let _ ← extractScalarExprWith (.word (.u64 0) :: .unit :: locals) a
-        extractScalarExprWith (.function true (fun argument =>
-          extractScalarExprWith (.word argument :: .unit :: locals) a) :: locals) b) := by
-  cases unitForm <;> rw [LeanExe.Source.Scalar.UnitSyntax.type, extractScalarExprWith, scalarResultType_accepts]
-
-theorem extractScalarExprWith_unitApply (locals : List ScalarBinding)
-    (unitForm : LeanExe.Source.Scalar.UnitSyntax) (index : Nat) (argument : Lean.Expr) :
-    extractScalarExprWith locals (.app (.app (.bvar index) unitForm.value) argument) = (do
-      let function ← locals[index]?.bind (ScalarBinding.function? true)
-      let value ← extractScalarExprWith locals argument
-      function value) := by
-  cases unitForm <;> rw [LeanExe.Source.Scalar.UnitSyntax.value, extractScalarExprWith]
-
-theorem extractScalarExprWith_binaryApply (locals : List ScalarBinding) (index : Nat) (a b : Lean.Expr)
-    (notUnit : ∀ unitForm : LeanExe.Source.Scalar.UnitSyntax, a ≠ unitForm.value) :
-    extractScalarExprWith locals (.app (.app (.bvar index) a) b) = (do
-      let function ← locals[index]?.bind ScalarBinding.binaryFunction?
-      let first ← extractScalarExprWith locals a
-      let second ← extractScalarExprWith locals b
-      function first second) := by
-  rw [extractScalarExprWith]
-  · exact notUnit .unit
-  · exact notUnit .punit
-
-theorem extractScalarExprWith_letBinaryFn (locals : List ScalarBinding)
-    (name firstTypeName secondTypeName firstName secondName : Lean.Name)
-    (firstTypeBi secondTypeBi firstBi secondBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.ResultType) (a b : Lean.Expr) (nondep : Bool) :
-    extractScalarExprWith locals (.letE name
-      (.forallE firstTypeName (.const ``UInt64 [])
-        (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
-      (.lam firstName (.const ``UInt64 [])
-        (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) = (do
-        let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals) a
-        extractScalarExprWith (.binaryFunction (fun first second =>
-          extractScalarExprWith (.word second :: .word first :: locals) a) :: locals) b) := by
-  rw [extractScalarExprWith, scalarResultType_accepts]
-
-@[simp] theorem extractScalarExprWith_literalExpr (locals : List ScalarBinding) (n : Nat) :
-    extractScalarExprWith locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) := by
-  simp [extractScalarExprWith, LeanExe.Source.Scalar.literalExpr]
-
-theorem extractScalarExpr_binary {head : Lean.Expr} {f : UInt64 → UInt64 → UInt64}
-    (h : LeanExe.Source.Scalar.Head head f) (locals : List Nat) (a b : Lean.Expr) :
-    extractScalarExpr locals (.app (.app head a) b) = (do
-      let p ← ScalarPrimitive.ofHead? head
-      let left ← extractScalarExpr locals a
-      let right ← extractScalarExpr locals b
-      pure (p.lower left right)) :=
-  extractScalarExprWith_binary h _ a b
-
-@[simp] theorem extractScalarExpr_literalExpr (locals : List Nat) (n : Nat) :
-    extractScalarExpr locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) :=
-  extractScalarExprWith_literalExpr _ n
-
-/-- Existing slots contain the values of the corresponding source binders. -/
-def ScalarLocalsMatch (locals : List Nat) (values : List UInt64)
-    (store : LeanExe.IR.ScalarStore) : Prop :=
-  ∀ (index slot : Nat), locals[index]? = some slot → store[slot]? = values[index]?
-
-/-- Range calls are statement computations and cannot enter the pure expression path. -/
-theorem extractScalarExprWith_range (locals : List ScalarBinding) (count initial : Lean.Expr)
-    (indexName accumulatorName : Lean.Name) (indexBi accumulatorBi : Lean.BinderInfo)
-    (body : Lean.Expr) :
-    extractScalarExprWith locals (LeanExe.Source.Scalar.Range.call count initial
-      indexName accumulatorName indexBi accumulatorBi body) = none := by
-  simp [LeanExe.Source.Scalar.Range.call, LeanExe.Source.Scalar.Range.head,
-    Lean.mkAppN, Lean.mkApp, extractScalarExprWith, ScalarPrimitive.ofHead?]
 
 theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanExe.Source.Scalar.Value} {value : UInt64}
     (semantics : LeanExe.Source.Scalar.EvalWith source values value)
@@ -415,6 +118,22 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
     intro first x second y target hx hy compiled
     exact ihf x y compiled ((bindings.cons (binding := .word first) (value := .word x) hx).cons
       (binding := .word second) (value := .word y) hy)
+  | manyApply call function _ ihArgs =>
+    rw [extractScalarExprWith_manyApply] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, arguments, ha, ht⟩ := compiled
+    apply bindings.manyFunction (Option.bind_eq_some_iff.mpr hf) function arguments _ target
+      (extractScalarArguments_length _ _ ha) ?_ ht
+    exact extractScalarArguments_relation call.arguments _ _ _ ha
+      (fun operand member expression found => ihArgs operand member found bindings)
+  | letManyFn shape function body ihf ihb =>
+    rw [extractScalarExprWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht
+    apply bindings.cons
+    intro arguments native target len meanings compiled
+    exact ihf native (meanings.length.symm.trans len) compiled (bindings.words meanings.reverse)
   | range => rw [extractScalarExprWith_range] at compiled; contradiction
   | metadata _ ih => exact ih (by simpa only [extractScalarExprWith] using compiled) bindings
 
@@ -554,6 +273,33 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · exact accepts
         · exact total binding member)
     exact ⟨target, by rw [extractScalarExprWith_letBinaryFn]; simp [hc, ht, f]⟩
+  | manyApply call present _ ihArgs =>
+    obtain ⟨f, hf⟩ := scalarManyFunction_lookup (typed ▸ present)
+    obtain ⟨arguments, ha⟩ := extractScalarArguments_accepts call.arguments
+      (fun operand _ => extractScalarExprWith locals operand)
+      (fun operand member => ihArgs operand member locals typed total)
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) arguments
+      (extractScalarArguments_length _ _ ha)
+    exact ⟨target, by
+      rw [extractScalarExprWith_manyApply]
+      simp only [bind, hf, Option.bind_some, ScalarBinding.manyFunction?, beq_self_eq_true,
+        ↓reduceIte, ha, ht]⟩
+  | letManyFn shape _ _ ihf ihb =>
+    have accepts (arguments : List LeanExe.IR.Expr) (len : arguments.length = shape.arity) :=
+      ihf (arguments.reverse.map ScalarBinding.word ++ locals)
+        (by simp [List.map_map, Function.comp_def, ScalarBinding.kind, List.map_const', len, typed])
+        (scalarWords_total _ total)
+    obtain ⟨checked, hc⟩ := accepts (List.replicate shape.arity (.u64 0)) (by simp)
+    simp only [List.reverse_replicate, List.map_replicate] at hc
+    let f := fun (arguments : List LeanExe.IR.Expr) => extractScalarExprWith
+      (arguments.reverse.map ScalarBinding.word ++ locals) shape.body
+    obtain ⟨target, ht⟩ := ihb (.manyFunction shape.arity f :: locals)
+      (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · exact accepts
+        · exact total binding member)
+    exact ⟨target, by rw [extractScalarExprWith_letManyFn]; simp only [bind, hc, Option.bind_some, ht, f]⟩
   | metadata _ ih => simpa only [extractScalarExprWith] using ih locals typed total
 
 theorem extractScalarExpr_accepts {source : Lean.Expr} {arity : Nat}
@@ -681,29 +427,46 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨a, ha, b, hb, _⟩ := compiled
     exact .extremum .maximum (ihl ha) (ihr hb)
-  | case23 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedBinary excludedPUnit excludedComplement excludedMin excludedMax ihl ihr =>
-    cases hp : ScalarPrimitive.ofHead? head with
-    | none =>
-      simp only [extractScalarExprWith] at compiled
-      simp [hp] at compiled
-    | some p =>
-      have meaning := ScalarPrimitive.ofHead_sound hp
-      rw [extractScalarExprWith_binary meaning] at compiled
-      cases ha : extractScalarExprWith locals left with
-      | none => simp [hp, ha] at compiled
-      | some a =>
-        cases hb : extractScalarExprWith locals right with
-        | none => simp [hp, ha, hb] at compiled
-        | some b => exact .binary meaning (ihl ha) (ihr hb)
-  | case24 locals name value body nondep ihv ihb =>
+  | case23 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax p hp ihl ihr =>
+    have meaning := ScalarPrimitive.ofHead_sound hp
+    rw [extractScalarExprWith_binary meaning] at compiled
+    simp only [bind, pure, hp, Option.bind_some, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨a, ha, b, hb, _⟩ := compiled
+    exact .binary meaning (ihl ha) (ihr hb)
+  | case24 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax rejectedPrimitive rejectedCall =>
+    rw [extractScalarExprWith] at compiled
+    · rw [rejectedPrimitive, rejectedCall] at compiled
+      contradiction
+    all_goals assumption
+  | case25 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax rejectedPrimitive call matched ihArgs =>
+    rw [scalarManyCall_sound matched] at compiled ⊢
+    rw [extractScalarExprWith_manyApply] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, arguments, ha, _⟩ := compiled
+    apply LeanExe.Source.Scalar.SupportedWith.manyApply call
+      (scalarManyFunction_kind (Option.bind_eq_some_iff.mpr hf))
+    intro operand member
+    obtain ⟨expression, found⟩ := extractScalarArguments_operands call.arguments _ ha operand member
+    exact ihArgs operand member found
+  | case26 locals name value body nondep ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letE (ihv hb) (by simpa [ScalarBinding.kind] using ihb bound ht)
-  | case25 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected =>
+  | case27 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected rejectedMany =>
     rw [extractScalarExprWith] at compiled
-    rw [rejected] at compiled
+    rw [rejected, rejectedMany] at compiled
     contradiction
-  | case26 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched ih0 ihf ihb =>
+  | case28 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected shape matched ih0 ihf ihb =>
+    obtain ⟨sameType, sameValue⟩ := scalarManyFunction_sound matched
+    rw [sameType, sameValue] at compiled ⊢
+    change extractScalarExprWith locals (shape.bind name body nondep) = some target at compiled
+    change LeanExe.Source.Scalar.SupportedWith (locals.map ScalarBinding.kind) (shape.bind name body nondep)
+    rw [extractScalarExprWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, hc, ht⟩ := compiled
+    exact .letManyFn shape (by simpa [ScalarBinding.kind] using ih0 hc)
+      (by simpa [ScalarBinding.kind] using ihb ht)
+  | case29 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarExprWith_letBinaryFn] at compiled
@@ -711,12 +474,12 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBinaryFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case27 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected =>
+  | case30 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected =>
     rw [extractScalarExprWith] at compiled
     · rw [rejected] at compiled
       contradiction
     · exact excludedBinary
-  | case28 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched ih0 ihf ihb =>
+  | case31 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarExprWith_letFn] at compiled
@@ -724,11 +487,11 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case29 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
+  | case32 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case30 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
+  | case33 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     change extractScalarExprWith locals (.letE name
@@ -741,11 +504,11 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .unit (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case31 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
+  | case34 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case32 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
+  | case35 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     change extractScalarExprWith locals (.letE name
@@ -758,14 +521,14 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .punit (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case33 locals index argument ih =>
+  | case36 locals index argument ih =>
     rw [extractScalarExprWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .apply (scalarFunction_kind (Option.bind_eq_some_iff.mpr hf)) (ih ha)
-  | case34 locals data body ih =>
+  | case37 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case35 locals expr hvar hliteral hnatural hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hlet hletFn hletUnitFn hletPUnitFn happ hmetadata =>
+  | case38 locals expr hvar hliteral hnatural hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hlet hletFn hletUnitFn hletPUnitFn happ hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -790,7 +553,7 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨binding, hb, matched⟩ := Option.bind_eq_some_iff.mp found
     cases binding with
     | word expression => cases matched; exact bindings _ (List.mem_of_getElem? hb)
-    | natural _ | unit | function _ _ | binaryFunction _ => contradiction
+    | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => contradiction
   | @natural types index levels hi =>
     have found : (locals[index]?.bind ScalarBinding.natural?) = some target := by
       simpa only [extractScalarExprWith] using compiled
@@ -859,7 +622,7 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨binding, hb, matched⟩ := hf
     cases binding with
     | word _ | natural _ => contradiction
-    | unit | binaryFunction _ => contradiction
+    | unit | binaryFunction _ | manyFunction _ _ => contradiction
     | function shape g =>
       have same := ScalarBinding.function?_some.mp matched
       cases same
@@ -926,6 +689,29 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
       rcases List.mem_cons.mp member with rfl | member
       · exact hx
       · exact bindings binding member
+    · exact bindings binding member
+  | manyApply call present _ ihArgs =>
+    rw [extractScalarExprWith_manyApply] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, arguments, ha, ht⟩ := compiled
+    obtain ⟨binding, found, matched⟩ := hf
+    have same := ScalarBinding.manyFunction?_some.mp matched
+    subst binding
+    exact bindings _ (List.mem_of_getElem? found) arguments target
+      (extractScalarArguments_length _ _ ha)
+      (extractScalarArguments_holds call.arguments _ P ha
+        (fun operand member expression found => ihArgs operand member found bindings htypes)) ht
+  | letManyFn shape _ _ ihf ihb =>
+    rw [extractScalarExprWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht _ (by simp [ScalarBinding.kind, htypes])
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro arguments target len holds compiled
+      apply ihf compiled _
+        (by simp [List.map_map, Function.comp_def, ScalarBinding.kind, List.map_const', len, htypes])
+      exact scalarWords_holds (fun argument member => holds argument (by simpa using member)) bindings
     · exact bindings binding member
   | metadata _ ih => exact ih (by simpa only [extractScalarExprWith] using compiled) bindings htypes
 

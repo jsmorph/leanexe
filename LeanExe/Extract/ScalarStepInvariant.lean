@@ -121,6 +121,15 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact hx
     · exact scalarStepBindings_holds bindings binding member
+  | letManyFn shape function _ ih =>
+    rw [extractScalarStepWith_letManyFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    intro arguments result len holds compiled
+    apply expression compiled
+    exact scalarWords_holds (fun argument member => holds argument (by simpa using member))
+      (scalarStepBindings_holds bindings)
   | letFn type function _ ih =>
     rw [extractScalarStepWith_letFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

@@ -108,6 +108,20 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.binaryFunction f) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letBinaryFn]; simp [hc, ht, f]⟩
+  | letManyFn shape function _ ih =>
+    have accepts (arguments : List LeanExe.IR.Expr) (len : arguments.length = shape.arity) :=
+      extractScalarExprWith_accepts function
+        (arguments.reverse.map ScalarBinding.word ++ locals.map ScalarStepBinding.toScalar)
+        (by simp [List.map_map, Function.comp_def, ScalarBinding.kind, List.map_const', len,
+          scalarStepBindings_typed typed])
+        (scalarWords_total _ (scalarStepBindings_total total))
+    obtain ⟨checked, hc⟩ := accepts (List.replicate shape.arity (.u64 0)) (by simp)
+    simp only [List.reverse_replicate, List.map_replicate] at hc
+    let f := fun (arguments : List LeanExe.IR.Expr) => extractScalarExprWith
+      (arguments.reverse.map ScalarBinding.word ++ locals.map ScalarStepBinding.toScalar) shape.body
+    obtain ⟨target, ht⟩ := ih (.scalar (.manyFunction shape.arity f) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letManyFn]; simp only [bind, hc, Option.bind_some, ht, f]⟩
   | @letFn a types b name typeName typeBi paramName paramBi nondep type function _ ih =>
     have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
       (.word argument :: locals.map ScalarStepBinding.toScalar)

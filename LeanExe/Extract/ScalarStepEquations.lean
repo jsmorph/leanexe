@@ -198,4 +198,25 @@ theorem extractScalarStepWith_letResultFn (locals : List ScalarStepBinding)
   cases input <;> rw [Step.resultType, extractScalarStepWith] <;>
     simp [scalarStepResultType?, scalarStepResultType_accepts]
 
+theorem scalarFunctionSuffix_not_step (suffix : FunctionSuffix) (positive : 0 < suffix.arity) :
+    scalarStepResultType? suffix.type = none := by
+  cases suffix with
+  | result => simp [FunctionSuffix.arity] at positive
+  | argument => rfl
+
+theorem extractScalarStepWith_letManyFn (locals : List ScalarStepBinding)
+    (shape : ManyFunction) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (shape.bind name body nondep) = (do
+      let _ ← extractScalarExprWith
+        (List.replicate shape.arity (.word (.u64 0)) ++ locals.map ScalarStepBinding.toScalar) shape.body
+      extractScalarStepWith (.scalar (.manyFunction shape.arity (fun arguments =>
+        extractScalarExprWith (arguments.reverse.map ScalarBinding.word ++ locals.map ScalarStepBinding.toScalar) shape.body)) :: locals) body) := by
+  rw [ManyFunction.bind, ManyFunction.type, ManyFunction.value, Parameter.arrow,
+    Parameter.arrow, Parameter.lambda, Parameter.lambda, extractScalarStepWith,
+    scalarFunctionSuffix_not_result shape.suffix shape.positive,
+    scalarFunctionSuffix_not_step shape.suffix shape.positive]
+  have accepted := scalarManyFunction_accepts shape
+  simp only [ManyFunction.type, ManyFunction.value, Parameter.arrow, Parameter.lambda] at accepted
+  rw [accepted]
+
 end LeanExe.Extract.Core
