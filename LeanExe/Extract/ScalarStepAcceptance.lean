@@ -108,6 +108,21 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.function true f :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letUnitStepFn]; simp [hc, ht, f]⟩
+  | resultVar present =>
+    obtain ⟨code, found⟩ := scalarStepResult_lookup (typed ▸ present)
+    exact ⟨code, by rw [extractScalarStepWith]; simp [found, ScalarStepBinding.result?]⟩
+  | idRun _ ih => simpa only [extractScalarStepWith_idRun] using ih locals typed total
+  | idPure _ ih => simpa only [extractScalarStepWith_idPure] using ih locals typed total
+  | letResult type _ _ ihv ihb =>
+    obtain ⟨bound, hb⟩ := ihv locals typed total
+    obtain ⟨target, ht⟩ := ihb (.result bound :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
+    exact ⟨target, by rw [extractScalarStepWith_letResult]; simp [hb, ht]⟩
+  | bindResult _ _ ihv ihb =>
+    obtain ⟨bound, hb⟩ := ihv locals typed total
+    obtain ⟨target, ht⟩ := ihb (.result bound :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
+    exact ⟨target, by rw [extractScalarStepWith_bindResult]; simp [hb, ht]⟩
   | metadata _ ih => simpa only [extractScalarStepWith] using ih locals typed total
 
 end LeanExe.Extract.Core

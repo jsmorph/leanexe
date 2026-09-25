@@ -32,5 +32,12 @@
   "rangeNatOne",
   "rangeNatLiteral",
   "rangeNatDirect",
-  "rangeNatMax"
+  "rangeNatMax",
+  "rangeStepRun",
+  "rangeStepPure",
+  "rangeStepLet",
+  "rangeStepCapture",
+  "rangeStepBind",
+  "rangeStepIdLet",
+  "rangeStepUnused"
 ]
