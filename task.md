@@ -595,30 +595,38 @@ contains 439 declarations; this was a focused execution run. Source/parser and
 shared lowering proofs cover the new form; scalar/step/loop proofs reuse their
 interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
 
-Current increment: Boolean-parameter local functions and continuations introduced
-by `let flag ← if … then pure … else pure …`. Scalar and step-result helpers,
-their typed source semantics/totality, production extraction and all compiler
-proofs now pass, including scalar helpers surrounding a loop. All 304 original focused
-native/IR comparisons pass across eight pure and eight range declarations, plus
-four declaration and twelve malformed-helper rejection tests. The three
-original inspected conditional-bind examples remain unchanged in the fixture.
-The initial fixture needed an explicit UInt64 annotation after a nested Id
-result. A loop stop test also used an implicit Prop-to-Bool `decide` conversion,
-which is a separate unsupported form; its final Boolean equality tests this
-increment's existing Boolean argument grammar. Both failed fixture logs are
-retained. The scalar dispatch explicitly realizes its ordinary generated
-induction theorem in the defining module with a local 300,000-heartbeat budget;
-its core builds in 12 seconds and the proof consumer in 1.2 seconds.
+Completed next increment: unary Boolean-parameter helpers returning UInt64 or
+ForInStep UInt64, with nested Id result annotations and the continuations Lean
+introduces for conditional Boolean binds. Scalar/step semantics, typed support,
+totality, extraction proofs and scalar helpers surrounding loops are integrated.
+The implementation passed all nine general compiler audits at `8255840f`.
+Candidate `548ffaec`, with the same implementation, passed 647 native
+Lean/V8 comparisons over 35 declarations. All 328 focused native/IR comparisons
+and sixteen rejection checks pass; the preceding propositional-choice fixture
+also passes unchanged (304 comparisons and twelve rejection checks). Eighteen
+selected preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-function-2026-09-25/`. The full corpus contains 456
+declarations; this was a focused execution run.
 
-The general compiler proof passed all nine audits. The first execution gate
-found an old admission test expecting a Bool → ForInStep helper to be rejected;
-that helper is now supported. Preserve that declaration unchanged as an accepted
-case and include it in the IR and native/V8 comparisons (17 new declarations,
-35 in the focused execution group). Rerun the execution gate after this test fix.
-The proof implementation is unchanged, so its successful audit remains current.
-No Boolean public ABI, Boolean-returning helper, mixed Bool/word parameter list,
-or loop inside a helper body is claimed. A conditional Boolean bind before a
-loop can elaborate to such a loop-containing helper and remains a later step.
+The three originally inspected conditional-bind examples now compile unchanged.
+The fixture's first attempt needed an explicit UInt64 annotation after a nested
+Id result. A separate loop test introduced an implicit Prop-to-Bool decide
+conversion; that remains unsupported and was replaced by Boolean equality for
+this increment. Both failed fixture logs and both original syntax inspections
+are retained. An old rejection expectation for an unused Bool → ForInStep
+helper was moved unchanged into accepted IR/admission/execution fixtures.
+The first failed admission log is also retained. The scalar dispatch realizes its ordinary generated induction
+theorem in the defining module with a local 300,000-heartbeat budget; its core
+builds in 12 seconds and its proof consumer in 1.2 seconds.
+
+Next increment: explicit and implicit Bool-valued `decide` conversions over
+the existing closed guard grammar, including the loop-stop expression exposed
+by this fixture. Inspect the exact elaborated source, prove its parser/native
+meaning and shared lowering, then check it through bindings, helper arguments,
+loop steps and surrounding scalar computations before expanding further.
+Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
+and loops inside helpers remain later capabilities. A conditional Boolean bind
+before a loop can elaborate to such a loop-containing helper.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
