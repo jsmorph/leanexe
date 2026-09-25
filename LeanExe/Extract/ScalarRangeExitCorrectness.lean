@@ -37,6 +37,14 @@ theorem ScalarBindingsMatch.step {locals : List ScalarBinding} {values : List Va
   obtain ⟨originalValue, foundValue, rfl⟩ := hv
   exact bindings index originalBinding originalValue foundBinding foundValue
 
+private theorem total_boolean_cons {locals : List ScalarBinding}
+    (total : ∀ binding ∈ locals, binding.Total) (expression : LeanExe.IR.Expr) :
+    ∀ binding ∈ ScalarBinding.boolean expression :: locals, binding.Total := by
+  intro binding member
+  rcases List.mem_cons.mp member with rfl | member
+  · trivial
+  · exact total binding member
+
 /-- Internal computation facts derived from whole-range extraction. Step code
 is valid for any flag, and the final scalar result cannot depend on that flag. -/
 def ScalarRangeExitPlan.Meaning (plan : ScalarRangeExitPlan) (saved : List UInt64) (value : UInt64) : Prop :=
@@ -208,6 +216,27 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
             (by simp [ScalarBinding.kind, localsTyped]) (total_word_cons totalBindings argument)
         · exact totalBindings binding member)
     exact ⟨result, .letFn type (fun x => (total x).choose_spec) hs, hm⟩
+  | letBooleanFn type function _ ih =>
+    rw [extractScalarRangeExitWith_letBooleanFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, hp⟩ := compiled
+    have total (x : Bool) := function.evaluates (.boolean x :: values)
+      (by simp [Value.kind, valuesTyped])
+    let f := fun x => (total x).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .booleanFunction f :: values) hp
+      (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
+        intro accumulator index stop flag
+        apply (bindings accumulator index stop flag).cons
+        intro argument x target hx hc
+        exact extractScalarExprWith_correct ((total x).choose_spec) hc
+          ((bindings accumulator index stop flag).cons hx)) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · intro argument
+          exact extractScalarExprWith_accepts function (.boolean argument :: locals)
+            (by simp [ScalarBinding.kind, localsTyped]) (total_boolean_cons totalBindings argument)
+        · exact totalBindings binding member)
+    exact ⟨result, .letBooleanFn type (fun x => (total x).choose_spec) hs, hm⟩
   | letBinaryFn type function _ ih =>
     rw [extractScalarRangeExitWith_letBinaryFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
