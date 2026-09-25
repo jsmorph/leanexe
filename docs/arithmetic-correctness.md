@@ -119,6 +119,12 @@ including their Boolean comparison/literal leaves. Saved Boolean values may
 appear in either result branch. Nested Boolean and propositional choices share
 the same proved lowering. Propositional choices check their entire standard
 decision evidence and preserve the existing Boolean-choice path.
+Boolean-result choices also admit Boolean Eq/Ne directly, including saved flags,
+nested Boolean choices and decisions in either condition input or result branch.
+The exact standard evidence is checked. A proved literal-true specialization
+preserves the original condition for ordinary Boolean choices. These results
+compose through Id binds, captures, helper calls, loop steps and surrounding
+scalar computations. Dependent Boolean-result choices remain a later extension.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -163,8 +169,8 @@ equality meaning; the literal-true right side keeps its existing truth path.
 Dependent branches check both proof-lambda domains and preserve captures under
 erased proof binders. All operands and branches must be supported, including
 inactive branches. This composes through helpers, joined Id updates, loop
-break/continue, bounds and surrounding scalar code. Boolean-result choices
-directly guarded by these new propositions remain a separate extension.
+break/continue, bounds and surrounding scalar code. Ordinary Boolean-result
+choices also admit these propositions; dependent Boolean results remain separate.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
@@ -867,3 +873,13 @@ with 304 comparisons and 44/twelve rejections respectively. Eighteen selected
 prior modules kept identical bytes. Five original examples and two retained
 notation failures now compile unchanged and pass execution checks. The complete
 corpus contains 536 declarations; this was a focused execution run.
+
+The [Boolean-relation-choice increment](../proofs/compiler/boolean-relation-choice-2026-09-25/README.md)
+adds Boolean results selected directly by Boolean Eq/Ne, including saved flags.
+Candidate `2b75649b` passed all nine audits and 623 native Lean/V8 comparisons
+across 34 declarations. The first focused fixture passed 304 native/IR comparisons
+and 44 rejection checks. Prior Boolean-local-decide and original Boolean-choice
+fixtures passed unchanged with 304 comparisons and 36/twelve rejections. Eighteen
+selected prior modules kept identical bytes; a proved literal-true specialization
+preserves ordinary Boolean-choice lowering. Five original examples now compile
+unchanged. The complete corpus contains 552 declarations; this execution was focused.
