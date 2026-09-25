@@ -12,18 +12,8 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
         (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
           (.const ``Id.instMonad [.zero]))))
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
-      (.app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value) => do
-      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
-      pure { value, done := .u64 0 }
-  | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
-      (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
-        (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
-          (.const ``Id.instMonad [.zero]))))
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
-      (.app (.app (.const ``ForInStep.done [.zero]) (.const ``UInt64 [])) value) => do
-      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
-      pure { value, done := .u64 1 }
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) body =>
+      extractScalarStepWith locals body
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       extractScalarStepWith (.scalar (.word bound) :: locals) body
@@ -95,6 +85,25 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
   | .app (.app (.const ``ForInStep.done [.zero]) (.const ``UInt64 [])) value => do
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       pure { value, done := .u64 1 }
+  | .bvar index => locals[index]?.bind ScalarStepBinding.result?
+  | .app (.app (.const ``Id.run [.zero])
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) body =>
+      extractScalarStepWith locals body
+  | .letE _ (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])) value body _ => do
+      let bound ← extractScalarStepWith locals value
+      extractScalarStepWith (.result bound :: locals) body
+  | .letE _ (.app (.const ``Id [.zero])
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value body _ => do
+      let bound ← extractScalarStepWith locals value
+      extractScalarStepWith (.result bound :: locals) body
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero])))
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
+      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
+      (.lam _ (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])) body _) => do
+      let bound ← extractScalarStepWith locals value
+      extractScalarStepWith (.result bound :: locals) body
   | .mdata _ body => extractScalarStepWith locals body
   | _ => none
 termination_by source => sizeOf source

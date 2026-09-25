@@ -123,6 +123,26 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro argument result ha compiled
     exact ihf compiled (extend (extend bindings trivial) ha)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | resultVar present =>
+    rw [extractScalarStepWith] at compiled
+    obtain ⟨binding, found, matched⟩ := Option.bind_eq_some_iff.mp compiled
+    have same := ScalarStepBinding.result?_some.mp matched
+    subst binding
+    exact bindings _ (List.mem_of_getElem? found)
+  | idRun _ ih => exact ih (by simpa only [extractScalarStepWith_idRun] using compiled) bindings htypes
+  | idPure _ ih => exact ih (by simpa only [extractScalarStepWith_idPure] using compiled) bindings htypes
+  | letResult type _ _ ihv ihb =>
+    rw [extractScalarStepWith_letResult] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, hb, ht⟩ := compiled
+    exact ihb ht (extend bindings (ihv hb bindings htypes))
+      (by simp [ScalarStepBinding.kind, htypes])
+  | bindResult _ _ ihv ihb =>
+    rw [extractScalarStepWith_bindResult] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, hb, ht⟩ := compiled
+    exact ihb ht (extend bindings (ihv hb bindings htypes))
+      (by simp [ScalarStepBinding.kind, htypes])
   | metadata _ ih => exact ih (by simpa only [extractScalarStepWith] using compiled) bindings htypes
 
 end LeanExe.Extract.Core

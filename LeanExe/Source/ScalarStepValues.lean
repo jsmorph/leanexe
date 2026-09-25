@@ -4,15 +4,18 @@ namespace LeanExe.Source.Scalar.Step
 
 /-- A step-valued continuation is distinct from a scalar-valued function. -/
 inductive BindingKind where
+  | result
   | scalar (kind : LeanExe.Source.Scalar.BindingKind)
   | function (withUnit : Bool)
   deriving DecidableEq, Repr
 
 inductive Value where
+  | result (outcome : ForInStep UInt64)
   | scalar (value : LeanExe.Source.Scalar.Value)
   | function (withUnit : Bool) (apply : UInt64 → ForInStep UInt64)
 
 def Value.kind : Value → BindingKind
+  | .result _ => .result
   | .scalar value => .scalar value.kind
   | .function withUnit _ => .function withUnit
 
@@ -20,10 +23,12 @@ def Value.kind : Value → BindingKind
 placeholder preserves de Bruijn positions without making such calls available
 to the scalar grammar. Actual step calls use the separate lookup below. -/
 def Value.toScalar : Value → LeanExe.Source.Scalar.Value
+  | .result _ => .unit
   | .scalar value => value
   | .function _ _ => .unit
 
 def BindingKind.toScalar : BindingKind → LeanExe.Source.Scalar.BindingKind
+  | .result => .unit
   | .scalar kind => kind
   | .function _ => .unit
 
@@ -42,7 +47,18 @@ theorem function_lookup {values : List Value} {types : List BindingKind} {index 
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
+  | result _ => cases kind
   | scalar _ => cases kind
   | function shape f => cases kind; exact ⟨f, found⟩
+
+theorem result_lookup {values : List Value} {types : List BindingKind} {index : Nat}
+    (typed : values.map Value.kind = types) (present : types[index]? = some .result) :
+    ∃ outcome, values[index]? = some (.result outcome) := by
+  rw [← typed, List.getElem?_map] at present
+  obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases value with
+  | result outcome => exact ⟨outcome, found⟩
+  | scalar _ => cases kind
+  | function _ _ => cases kind
 
 end LeanExe.Source.Scalar.Step
