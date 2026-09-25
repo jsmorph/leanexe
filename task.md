@@ -534,3 +534,15 @@ functions and metadata. Its user-body parsing premise is the one established
 by SourceFunctionBytes; its remaining format hypotheses are only parameter,
 result, name, and variable section sizes. The module builds. Source composition
 is next. This is not validation or export-invocation correctness.
+
+### Original source to whole module bytes (checked and audited)
+
+SourceModuleBytes composes successful production source extraction with exact
+whole-module decoding and decoded user-body execution for every input. Parser
+determinism fixes one decoded body; the universal execution proof is applied
+to every argument list and every surrounding module/store. The theorem also
+records the exact local declarations. ModuleBytesAudit reports only propext,
+Classical.choice, and Quot.sound for the composed theorem, module decoder, and
+runtime body proofs. Both modules build. Export lookup/calling convention,
+module validation, normal-entry success composition, usable admission mode,
+and final gates remain unfinished.
