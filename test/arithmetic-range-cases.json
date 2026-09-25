@@ -127,5 +127,11 @@
   "rangeComplement",
   "rangeComplementContinue",
   "rangeComplementHelper",
-  "rangeComplementStep"
+  "rangeComplementStep",
+  "rangeCompoundBreak",
+  "rangeCompoundContinue",
+  "rangeCompoundJoined",
+  "rangeCompoundHelper",
+  "rangeCompoundStep",
+  "rangeCompoundResult"
 ]

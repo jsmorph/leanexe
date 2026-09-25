@@ -35,7 +35,15 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       | none => none
       | some _ =>
           match comparison? condition evidence with
-          | none => none
+          | none =>
+              match compoundGuard? condition evidence with
+              | none => none
+              | some guard => do
+                  let c ← extractGuard guard.tree (fun operand _ =>
+                    extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+                  let t ← extractScalarStepWith locals onTrue
+                  let e ← extractScalarStepWith locals onFalse
+                  pure { value := .ite c t.value e.value, done := .ite c t.done e.done }
           | some (op, left, right) => do
               let a ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) left
               let b ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) right

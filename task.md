@@ -370,13 +370,16 @@ kept identical bytes. General type validation passed; unrelated suites were not
 rebuilt.
 
 Current increment: nested propositional conjunction and disjunction in
-conditional guards. The independent recursive guard syntax, exact standard
-instance recognition, operand-size bounds, total compilation, native Boolean
-semantics and preservation of existing scalar invariants pass Lean checking.
-Lowering materializes Boolean words and uses the existing bitwise AND/OR and
-equality operations. Public scalar and step source rules, extraction, and
-end-to-end execution remain to be connected. Existing comparison extraction
-will retain its output. Boolean &&/|| and general Boolean values remain later
+conditional guards. Shared syntax recognition, exact standard decision evidence,
+source totality, extraction acceptance/correctness and scalar invariants now
+pass for both ordinary expressions and paired loop-step results. Public
+function extraction builds, and all 256 focused native Lean/IR comparisons
+plus three rejection tests pass across fourteen new declarations. Lowering
+materializes Boolean words and uses existing bitwise AND/OR and equality;
+operands are pure and total, so eager guard evaluation preserves results.
+The general compiler proof/audits and actual native Lean/V8 comparisons are
+pending at this candidate checkpoint. Existing comparison output is retained.
+Boolean &&/||, whole-compound negation and general Boolean values remain later
 increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.

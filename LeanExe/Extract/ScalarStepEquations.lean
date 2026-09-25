@@ -52,6 +52,17 @@ theorem extractScalarStepWith_branch (locals : List ScalarStepBinding)
              done := .ite (lowerComparison op ai bi) ti.done ei.done }) := by
   rw [Step.branch, Range.branch, extractScalarStepWith, scalarStepResultType_accepts, comparison_accepts]
 
+theorem extractScalarStepWith_compoundBranch (locals : List ScalarStepBinding)
+    (guard : CompoundGuard) (type : Step.ResultAnnotation) (t e : Lean.Expr) :
+    extractScalarStepWith locals (guard.branch (Step.resultType type) t e) = (do
+      let c ← extractGuard guard.tree (fun operand _ =>
+        extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let ti ← extractScalarStepWith locals t
+      let ei ← extractScalarStepWith locals e
+      pure { value := .ite c ti.value ei.value, done := .ite c ti.done ei.done }) := by
+  rw [CompoundGuard.branch, extractScalarStepWith, scalarStepResultType_accepts,
+    compoundGuard_not_comparison, compoundGuard_accepts]
+
 theorem extractScalarStepWith_letBinaryFn (locals : List ScalarStepBinding)
     (name firstTypeName secondTypeName firstName secondName : Lean.Name)
     (firstTypeBi secondTypeBi firstBi secondBi : Lean.BinderInfo)

@@ -1,7 +1,7 @@
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarComplement
 import LeanExe.Source.ScalarValues
-import LeanExe.Source.ScalarComparison
+import LeanExe.Source.ScalarGuard
 import LeanExe.Source.ScalarRangeSyntax
 
 namespace LeanExe.Source.Scalar
@@ -31,6 +31,10 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | choose (op : Comparison) (type : ResultType) (left : EvalWith a values x) (right : EvalWith b values y)
       (branch : EvalWith (if op.denote x y then onTrue else onFalse) values value) :
       EvalWith (op.branch a b onTrue onFalse type) values value
+  | chooseCompound (guard : CompoundGuard) (type : ResultType) {native : Lean.Expr → UInt64}
+      (arguments : ∀ expression, expression ∈ guard.operands → EvalWith expression values (native expression))
+      (branch : EvalWith (if guard.denote native then onTrue else onFalse) values value) :
+      EvalWith (guard.branch type.expr onTrue onFalse) values value
   | letE (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
       EvalWith (.letE name (.const ``UInt64 []) a b nondep) values y
   | idRun (body : EvalWith e values value) : EvalWith (Identity.run e) values value
@@ -87,6 +91,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | choose (op : Comparison) (type : ResultType) (left : SupportedWith types a) (right : SupportedWith types b)
       (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
       SupportedWith types (op.branch a b t e type)
+  | chooseCompound (guard : CompoundGuard) (type : ResultType)
+      (arguments : ∀ expression, expression ∈ guard.operands → SupportedWith types expression)
+      (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
+      SupportedWith types (guard.branch type.expr t e)
   | letE (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
       SupportedWith types (.letE name (.const ``UInt64 []) a b nondep)
   | idRun (body : SupportedWith types e) : SupportedWith types (Identity.run e)
@@ -151,6 +159,19 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     | true =>
       obtain ⟨value, hv⟩ := iht values typed
       exact ⟨value, .choose op type hx hy (by simpa [flag] using hv)⟩
+  | chooseCompound guard type _ _ _ ihArgs iht ihe =>
+    let native : Lean.Expr → UInt64 := fun expression =>
+      if member : expression ∈ guard.operands then (ihArgs expression member values typed).choose else 0
+    have meanings : ∀ expression, expression ∈ guard.operands → EvalWith expression values (native expression) := by
+      intro expression member
+      simpa [native, member] using (ihArgs expression member values typed).choose_spec
+    cases flag : guard.denote native with
+    | false =>
+      obtain ⟨value, hv⟩ := ihe values typed
+      exact ⟨value, .chooseCompound guard type meanings (by simpa [flag] using hv)⟩
+    | true =>
+      obtain ⟨value, hv⟩ := iht values typed
+      exact ⟨value, .chooseCompound guard type meanings (by simpa [flag] using hv)⟩
   | letE _ _ ihv ihb =>
     obtain ⟨x, hx⟩ := ihv values typed
     obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])

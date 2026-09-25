@@ -34,6 +34,27 @@ theorem extractGuard_accepts (guard : Guard)
       (fun operand member => total operand _)
     exact ⟨lowerJunction op left right, by simp [extractGuard, hl, hr]⟩
 
+theorem extractGuard_operands (guard : Guard)
+    (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
+    {target : LeanExe.IR.Cond} (compiled : extractGuard guard compile = some target) :
+    ∀ operand member, ∃ expression, compile operand member = some expression := by
+  induction guard generalizing target with
+  | compare op a b =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro operand member
+    simp only [Guard.operands, List.mem_cons, List.not_mem_nil, or_false] at member
+    rcases member with rfl | rfl
+    · exact ⟨left, hl⟩
+    · exact ⟨right, hr⟩
+  | junction op a b iha ihb =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro operand member
+    rcases List.mem_append.mp member with first | second
+    · exact iha _ hl operand first
+    · exact ihb _ hr operand second
+
 theorem extractGuard_correct (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
     (native : Lean.Expr → UInt64) {target : LeanExe.IR.Cond} {store : LeanExe.IR.ScalarStore}

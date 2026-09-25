@@ -21,7 +21,7 @@ nesting of supported expressions:
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `~~~` | Bitwise complement of all 64 bits |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards also admit repeated `!` |
+| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards also admit repeated `!`; propositional `∧` and `∨` combine admitted guards |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Both `UInt64.complement x` and standard
@@ -47,6 +47,15 @@ syntax and exact standard equality-decision evidence. Lowering computes their
 polarity and emits the corresponding equality or its negation; it does not
 evaluate or omit either UInt64 operand. Propositional `¬` can wrap these guards
 as well. Custom BEq and decision evidence remain rejected.
+
+Propositional `∧` and `∨` may nest around admitted comparison leaves. The
+extractor checks the whole tree's exact standard decision evidence and every
+scalar operand. Guards lower to Boolean words combined by the existing AND/OR
+operations, then tested against one. Both sides can be evaluated because all
+admitted operands are pure and total, including division by zero. Source/IR
+proofs cover scalar results and paired loop-step results without changing the
+backend. Negation around a whole compound and Boolean `&&`/`||` remain outside
+this increment.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
