@@ -152,6 +152,16 @@ source model also has checked total evaluation, preserving early-exit outcomes
 and scalar computations before/after the loop. These focused targets pass;
 whole-function extraction and WebAssembly integration remain in progress.
 
+Whole early-exit range extraction now passes acceptance, success-support,
+scalar-invariant preservation, source semantics, and complete IR function
+execution proofs. The four-local layout evaluates the exit flag before the
+accumulator and normalizes the index to the bound on done. Result computations
+are proved valid for every final flag. A separate focused test passed 144 native
+Lean/whole-function IR comparisons across six actual do/for declarations:
+break, update-before-break, joined binds, captured helper calls, branch updates,
+and continue mixed with break. The public compiler and WebAssembly proof
+connection remain pending; these isolated tests do not claim that integration.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.
