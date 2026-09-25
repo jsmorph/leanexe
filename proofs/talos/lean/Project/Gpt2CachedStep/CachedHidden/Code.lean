@@ -12,7 +12,7 @@ set_option maxRecDepth 32768 in
 theorem emitted_layerLoop : (func36.drop 77).take 1 = [.block 0 0 [.loop 0 0 layerBody]] := rfl
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerCopy : (layerBody.drop 127).take 6 =
+theorem emitted_layerCopy : (layerBody.drop 121).take 6 =
     PackedCopy.program 106 110 107 112 none ++ PackedCopy.program 108 110 109 112 (some 107) := rfl
 
 set_option maxRecDepth 32768 in
@@ -20,7 +20,7 @@ theorem emitted_cacheCopy : (func36.drop 155).take 6 =
     PackedCopy.program 103 107 104 109 none ++ PackedCopy.program 105 107 106 109 (some 104) := rfl
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerAppend : (layerBody.drop 94).take 40 = PackedAppend.program 106 := rfl
+theorem emitted_layerAppend : (layerBody.drop 88).take 40 = PackedAppend.program 106 := rfl
 
 set_option maxRecDepth 32768 in
 theorem emitted_cacheAppend : (func36.drop 122).take 40 = PackedAppend.program 103 := rfl

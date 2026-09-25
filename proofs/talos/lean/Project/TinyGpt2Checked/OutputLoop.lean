@@ -16,12 +16,12 @@ structure OutputProgress (initial : Store Unit) (owner pointer empty : UInt64)
   store : store = { initial with mem := store.mem, globals := store.globals }
 
 def outputRemaining (_ : Store Unit) (frame : Locals) : Nat :=
-  match frame.get 51 with
+  match frame.get 49 with
   | some (.i64 count) => 256 - count.toNat
   | _ => 0
 
 theorem outputRemaining_eq (store : Store Unit) (frame : Locals) (count : Nat)
-    (hCount : count ≤ 256) (hCounter : frame.get 51 = some (.i64 (UInt64.ofNat count))) :
+    (hCount : count ≤ 256) (hCounter : frame.get 49 = some (.i64 (UInt64.ofNat count))) :
     outputRemaining store frame = 256 - count := by
   simp only [outputRemaining, hCounter]
   rw [UInt64.toNat_ofNat_of_lt' (by change count < 18446744073709551616; omega)]

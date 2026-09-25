@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "status": "native-lean-attention-ranges-passed",
+  "records": 5496,
+  "prefixes": 229,
+  "capture_seconds": 113.3252473459579,
+  "native_check_seconds": 521.123,
+  "source_revision": "034585ee",
+  "capture": {
+    "schema": 1,
+    "status": "captured-awaiting-lean-check",
+    "gelu_values": 16883712,
+    "gelu_unique_values": 13205150,
+    "attention_records": 5496,
+    "attention_record_words": 2304,
+    "order": "Per prefix: quantized 12 layers, then FP32 12 layers, in source order",
+    "prefixes": 229,
+    "files": {
+      "gelu.bin": {
+        "bytes": 67534848,
+        "sha256": "c57cb0b6dad68fc161cf47252956b1e738f96ee21fa4832b3b3a972725d4798d"
+      },
+      "gelu-unique.bin": {
+        "bytes": 52820600,
+        "sha256": "c5eebd0d1b84cc6b9762bad0d18d2fe4fe4b9953eb689f0028870005213b73bc"
+      },
+      "attention.bin": {
+        "bytes": 50651136,
+        "sha256": "62001cd9d87af5eb07bfa66db00b179f171c20c6caa5f33f692e61ee8f3a3d4b"
+      }
+    },
+    "coverage_sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0",
+    "source_sha256": "fa87b9c46e30ba1a6e134fbb716f2ad7da7acfdb4900a52e96677415fe1a525f",
+    "reference_sources": {
+      "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+      "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+    },
+    "seconds": 113.3252473459579
+  },
+  "command": "tools/leanrun --timeout 900 proofs/talos/lean/.lake/build/bin/gpt2-attention-check build/gpt2-124m/quantized-group64/nonlinear/attention.bin data/gpt2-quantized-v1/certificates/coverage.json build/gpt2-124m/quantized-group64/nonlinear/attention-ranges.txt",
+  "columns": [
+    "index",
+    "sequence",
+    "position",
+    "model",
+    "layer",
+    "score_mul",
+    "score_add",
+    "score_scale",
+    "softmax_sub",
+    "softmax_sum",
+    "softmax_div",
+    "value_mul",
+    "value_add",
+    "value_magnitude_scaled_2_pow_149"
+  ],
+  "arithmetic_bounds": {
+    "score_mul": {
+      "min": 299,
+      "max": 306
+    },
+    "score_add": {
+      "min": 152,
+      "max": 159
+    },
+    "score_scale": {
+      "min": 298,
+      "max": 305
+    },
+    "softmax_sub": {
+      "min": 1,
+      "max": 157
+    },
+    "softmax_sum": {
+      "min": 150,
+      "max": 155
+    },
+    "softmax_div": {
+      "min": 149,
+      "max": 151
+    },
+    "value_mul": {
+      "min": 297,
+      "max": 302
+    },
+    "value_add": {
+      "min": 149,
+      "max": 153
+    }
+  },
+  "maximum_value_magnitude_scaled": "9696752342558245116914234708049508716683198464",
+  "profile_sha256": "f1cd8a1ebfcbfb49cc279644ccaeb7d74a9d3b89d3ef36610a044690746dab00",
+  "profile_bytes": 508832,
+  "compressed_profile_sha256": "8e7be61192ea78f441c6b85eccc74915bbbf7d035a10841254d18dca890f02ee",
+  "exponential_parameters": {
+    "multiplication": 299,
+    "addition": 151,
+    "squaring": 299
+  },
+  "denominator_lower_bound": 1,
+  "checker_sources": {
+    "Project/Gpt2CachedStep/CachedAttention/RangeCheck.lean": "6857fc7c0699108a487f81ce5c095cfca507343a285f44da6c8a6fa74f37881b",
+    "Project/Gpt2CachedStep/CachedAttention/RangeCertificate.lean": "3a3404b014be197bd82b087c08881ad3737150f7f37407c96a6bb354acb88e70",
+    "Project/Gpt2CachedStep/CachedAttention/SoftmaxRangeCheck.lean": "31ac748494b4336817d34be15a3d6a878ec8c7946e1f117006f7034113274c41",
+    "Project/Gpt2CachedStep/CachedAttention/SoftmaxRangeCertificate.lean": "cf94b6c3f99c443841b936d6d5e4c65d1b19a37059642b989ad8daabe0dd90cd",
+    "Project/ProofKit/F32DotRangeCheck.lean": "9d20f774fa632e0dc84a1ca1f3945474a4bcf3473e4602287a1721c21c636594",
+    "Project/ProofKit/F32DotRangeCertificate.lean": "292fdd24b5362bbf75d49bae3487084b2df3fc69f81f07a9224b55b098715100",
+    "Project/Gpt2QuantizedCached/Numerical/AttentionRange.lean": "24afedc617f238b811a7128b59770e0d0c6dba93e9ee859cb7a5baae7f35c95a",
+    "Project/Gpt2QuantizedCached/CheckAttention.lean": "66fb1569d0b9c2618cf643a847979c68ebd490a4f90d6120dd2312637b8398db"
+  },
+  "checker_sha256": "f5de0e1a955bd098b1e6a6ec1c22e4c64a0cea6b9a456bb3265e22453c1eeb93",
+  "earlier_run": {
+    "status": "timeout",
+    "exit_code": 124,
+    "timeout_seconds": 600,
+    "completed_sequence_prefixes": [
+      [
+        0,
+        128
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "completed_records_at_last_progress": 3288,
+    "last_progress_milliseconds": 599582,
+    "partial_profiles": "../attention-ranges.initial-timeout.txt",
+    "reason_for_revision": "Retain the dot value from profiling and reuse score arrays instead of recomputing them.",
+    "hashes": {
+      "proofs/talos/lean/Project/ProofKit/F32DotRangeCheck.lean": "9edb329a2b6b4212cd0a162e95cc8e8e8e9b68569eedd0f457a0fb06836a0408",
+      "proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/RangeCheck.lean": "5022dbc899df9915d5654ddd34f7061c1857645ba0a48d10b2c50eafa9a19225",
+      "proofs/talos/lean/Project/Gpt2QuantizedCached/CheckAttention.lean": "66fb1569d0b9c2618cf643a847979c68ebd490a4f90d6120dd2312637b8398db",
+      "executable": "5cb26dfc1b8513f985e9ce7a9cf9388c9780c1294f9d7ce90eb7b29523c4dc82"
+    },
+    "partial_profiles_sha256": "2e8fa96908dd39fe2bf27cd3b0798b9ede904fbb29cba650e3ced6559af7d798"
+  },
+  "trust_boundary": "Kernel-checked checker soundness and paired-range conversion. Native Lean compiler and runtime trusted for data evaluation. Capture reproduces every retained FP32 and quantized logit hash.",
+  "scope": "All score, softmax, probability-value, and cached-value magnitude premises for the captured attention inputs. Projection ranges and propagated-bound evaluation remain separate."
+}

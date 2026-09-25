@@ -10,8 +10,7 @@ def QkvState (params : List Value) (base : Nat) (normalizedPtr qkvPtr : UInt64) 
   NormalizedState params base normalizedPtr frame ∧
   frame.locals[27]? = some (.i64 qkvPtr) ∧ frame.locals[28]? = some (.i64 qkvPtr) ∧
   frame.locals[29]? = some (.i64 9216) ∧ frame.locals[30]? = some (.i64 qkvPtr) ∧
-  frame.locals[31]? = some (.i64 qkvPtr) ∧ frame.locals[32]? = some (.i64 9216) ∧
-  frame.locals[19]? = some (.i64 normalizedPtr)
+  frame.locals[31]? = some (.i64 qkvPtr) ∧ frame.locals[32]? = some (.i64 9216)
 
 def qkvCode : Wasm.Program :=
   [.localGet 0, .localSet 27, .localGet 1, .localSet 28, .localGet 2, .localSet 29,

@@ -1,0 +1,47 @@
+{
+  "accessed": "2026-09-24",
+  "source_policy": "Primary papers, official WebAssembly specification, and prior local archive reports.",
+  "sources": [
+    {
+      "key": "gpt2",
+      "url": "https://cdn.openai.com/better-language-models/language-models.pdf",
+      "claim": "GPT-2 pretrained transformer model and prior model description."
+    },
+    {
+      "key": "jacob",
+      "url": "https://arxiv.org/abs/1712.05877",
+      "claim": "Integer-only quantization and co-designed training for accuracy."
+    },
+    {
+      "key": "llmint8",
+      "url": "https://arxiv.org/abs/2208.07339",
+      "claim": "Vector-wise quantization plus higher-precision outlier-dimension decomposition."
+    },
+    {
+      "key": "smoothquant",
+      "url": "https://arxiv.org/abs/2211.10438",
+      "claim": "Post-training W8A8 quantization with an equivalent transformation that transfers activation difficulty to weights."
+    },
+    {
+      "key": "qebverif",
+      "url": "https://arxiv.org/abs/2212.02781",
+      "claim": "Differential reachability analysis and mixed-integer linear programming for quantization error bounds.",
+      "publication_metadata": "https://link.springer.com/chapter/10.1007/978-3-031-37703-7_20"
+    },
+    {
+      "key": "wasm",
+      "url": "https://webassembly.github.io/spec/core/exec/numerics.html",
+      "claim": "WebAssembly numerical instruction semantics."
+    },
+    {
+      "key": "fp32report",
+      "url": "http://127.0.0.1:8405/abs/2609.00011",
+      "claim": "Prior LeanExe binary32 cached GPT-2 proof."
+    },
+    {
+      "key": "comprehensivereport",
+      "url": "http://127.0.0.1:8405/abs/2609.00014",
+      "claim": "Prior LeanExe CPU/GPU verification architecture and evidence."
+    }
+  ]
+}

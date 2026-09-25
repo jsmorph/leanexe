@@ -1,0 +1,29 @@
+{
+  "source_revision": "c655d35b5011c1703dfd22bcceaec4e5bee17088",
+  "binary_sha256": "9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075",
+  "observed_certificate_sets": [
+    {
+      "positions": 229,
+      "greedy_agreement": 205,
+      "raw_certificates": 119,
+      "shifted_certificates": 183
+    },
+    {
+      "positions": 73,
+      "greedy_agreement": 58,
+      "raw_certificates": 26,
+      "shifted_certificates": 49
+    }
+  ],
+  "observed_certificate_totals": {
+    "positions": 302,
+    "greedy_agreement": 263,
+    "raw_certificates": 145,
+    "shifted_certificates": 232
+  },
+  "forward_certificates": 0,
+  "weight_storage_reduction_percent": 74.3458355384155,
+  "median_runtime_ratio": 3.5891402288931213,
+  "warm_linear_memory_reduction_percent": 34.74154216039842,
+  "measurement_scope": "Resident cached calls, logit transfer, and temporary release. Excludes loading, validation, reference comparisons, and hashing. Alternating model order at each position and repetition."
+}

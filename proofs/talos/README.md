@@ -202,6 +202,31 @@ model.  The theorem depends only on `propext`, `Classical.choice`, and
 `Quot.sound`.  Its input conditions remain the weight shape, vocabulary token
 IDs, and 128-token limit.
 
+The [quantized projection proof](lean/Project/Gpt2QuantizedLinearRows/README.md)
+covers signed eight-bit weights and row activations, exact signed 32-bit
+accumulation, FP32 rescaling and bias, three allocations, two temporary
+releases, and preservation of protected input buffers.  Every reduction
+prefix of length at most 3,072 has magnitude at most 49,548,288.  The complete
+entry and decoded-binary theorems pass with the standard logical axioms.
+The refreshed artifact contains 4,741 bytes, with
+SHA-256 `44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3`.
+The [grouped projection](lean/Project/Gpt2QuantizedGroupedRows/README.md)
+now proves generated execution with 64-coordinate activation groups and
+ordered FP32 accumulation of rescaled partial sums.  Each integer prefix has
+magnitude at most 1,032,256.  The [cached quantized candidate](lean/Project/Gpt2QuantizedCached/README.md)
+has complete public token-step and session execution proofs.  The session
+composes reset, checkpoint allocation and byte loading, validation, up to 128
+token calls, status-dependent termination, and buffer release.  Its
+allocation bound permits 16 MiB per token from a 128 MiB initial allowance.
+The exact 28,017-byte package has proofs of decoding, validation,
+execution-model equality, and session transfer.  The independent declaration
+audit checks their allowed axioms.  The
+combined `artifact_gpt2_128_exact` theorem includes grammar membership and
+`CoreValid`.  Conditional numerical propagation and the outward-rounded
+session evaluator pass.  The evaluated forward bounds certify no greedy
+choices.  Separate certificates from measured logits establish 232 choices
+across 302 prefixes.
+
 The [sequence softmax theorem](lean/Project/SequenceSoftmax/Spec.lean)
 proves that the generated entry computes its Lean source, terminates,
 and preserves every previously owned array.  It covers empty and
@@ -844,9 +869,11 @@ and releases its temporary arrays.  The exact-byte package remains open.
 
 ## Workflow Tools
 
+A case may specify an `entries` array for a module with several public exports.  The array must contain distinct declaration names and include the primary `entry`.  Generation passes the ordered array to the compiler, so the tracked model covers the shared functions, heap, and public wrappers in one binary.
+
 [`talos-artifact.js`](../../tools/talos-artifact.js) builds the registered source module and compiler, emits WASM, renders WAT, and asks Talos to generate `Program.lean`.  It creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, stages the complete result there, and replaces local generated outputs only after every stage succeeds.  It generates the minimal Cargo metadata required by Talos in that new directory and removes only that task-owned staging directory before returning; pre-existing `tmp/` entries are not cleanup targets.
 
-[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all sixty-nine registered models, verifies the registry against runtime and specification imports, and builds all sixty-eight completed specifications through `Project`.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
+[`talos-proof.js`](../../tools/talos-proof.js) always performs artifact generation before building a selected handwritten proof.  Its aggregate mode generates all registered models, verifies the registry against runtime and specification imports, builds each completed specification under its per-case limit, and then checks their combined `Project` library.  Both tools call the machine-serialized runner for every Lean-based child, enforcing the required memory, CPU, scheduling, I/O, and timeout limits.  In explicitly authorized local mode, invoke either Node driver directly with the pinned environment; wrapping the driver itself in `tools/leanrun` causes the nested-runner guard to reject it.
 
 ```sh
 tools/talos-artifact.js prepare gcd
@@ -854,7 +881,7 @@ tools/talos-proof.js check gcd
 tools/talos-proof.js check --all
 ```
 
-[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete forty-three-artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
+[`artifact-proof.js`](../../tools/artifact-proof.js) checks one frozen binary package or the complete artifact registry without reading source or invoking LeanExe.  [`artifact-conformance.js`](../../tools/artifact-conformance.js) verifies the pinned official-corpus configuration, builds the Talos testsuite executable, and runs each selected file through Talos and Wasmtime.  The artifact proof command reports its first failed formal boundary, while the conformance command reports every selected file before returning a nonzero status for any failure.
 
 ```sh
 tools/artifact-proof.js check-all
@@ -866,8 +893,8 @@ tools/artifact-conformance.js check
 The compiler root and this proof workspace pin exact Lean 4.34.0-rc2.  The
 source-driven proof Lake files pin floating-point Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
-All forty-three exact-artifact manifests identify this same current Talos
-revision and verifier-source identity.  The source artifact tool fetches its
+The exact-artifact manifests identify this Talos revision.  The quantized
+projection uses the extended scalar instruction profile.  The source artifact tool fetches its
 pinned dependency and builds the verifier under the resource limits when a
 local verifier is absent.
 
@@ -884,32 +911,15 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 ## Proof Boundary
 
-The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains sixty-nine cases, sixty-eight complete.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), the [grid scan](lean/Project/EulerGridScan/README.md), both complete Riemann solvers, and pretrained GPT-2.  The 2026-09-24 `tools/talos-proof.js check --all` run compared all sixty-nine generated caches successfully and passed the complete library, including all sixty-eight registered complete specifications. The sequence-inference registration remains incomplete; its existing internal softmax proof is checked separately. Release identity remains deferred.
+The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  Completed cases include the [grid step](lean/Project/EulerGridStep/README.md), the [grid scan](lean/Project/EulerGridScan/README.md), both complete Riemann solvers, and pretrained GPT-2.  The merged branch passes its aggregate source check, including regeneration, per-case proofs, and the combined library.
 
-The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-19 `tools/artifact-proof.js check-all` run passed all forty-three frozen packages, their behavioral specifications, and registered declaration audits.  Lean proves equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The check does not invoke LeanExe or `wasm-tools`.  Source-agreement specifications import their Lean definitions.  The receipt records input digest `d79ae9051a27d9124dc080e170080b777fd26b6c3a762238c112f419e3b5ea37`.
+The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  The 2026-09-25 `tools/artifact-proof.js check-all` run on the merged branch passed the registered frozen packages, their behavioral specifications, and declaration audits.  Lean proves equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The check does not invoke LeanExe or `wasm-tools`.  Source-agreement specifications import their Lean definitions.
 
 `tools/artifact-proof.js check` checks one external binary against a registered package and proof target.  `check-all` also rebuilds every behavioral specification and checks every theorem name recorded by the manifests.  Both forms route Lean through `tools/leanrun` and forward driver termination signals to the active process group, so they share the same-user `leanexe`/`vq` lock and the standard cgroup limits, or the retained lock, thread, priority, and timeout controls in explicitly authorized local mode, with the source-driven tools.
 
-The official execution slice covers twenty-five exact files and produced 3,853 Talos passes, six known assertion failures, 627 skips, and no cascades, decoder errors, interpreter errors, or fuel exhaustion in the recorded 2026-08-26 run.  Wasmtime 44.0.0 passed all twenty-five files with `function-references=y`, while Talos's six failures all came from imported-memory limit handling in `memory_grow.wast`.  The accepted artifact profile has no imports, so the gate reports those exact rows as an upstream warning and keeps the then-current formal twenty-artifact result separate from this semantic comparison.
+The 2026-09-25 conformance run passed twenty-six official execution files in Wasmtime and 6,996 assertions in Talos, with four configured skips and no failures.  The same gate checked fifteen pinned invalid or malformed modules against their exact artifact decoder or validator errors.  Text-origin invalid modules have encoder-added custom sections removed before classification, while raw malformed binary modules remain unchanged.
 
-The same gate extracts fifteen pinned official `assert_invalid` and `assert_malformed` modules and checks their exact artifact decoder or validator errors.  Text-origin invalid modules have encoder-added custom sections removed before classification, while raw malformed binary modules remain unchanged.  All fifteen cases matched in the recorded 2026-08-26 run, covering malformed headers and sections, integer overflow, alignment, stack effects, and memory limits.
-
-The historical draft at `proofs/artifacts/release.json` binds its twenty-one artifact
-packages, theorem names, tool pins, release-input digest, and recorded results.  It
-now identifies exact Lean 4.34.0-rc2, Talos
-`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release-input
-identity.  The release inspector reports the current warm-receipt state, and
-`sourceRevision` is null.  The historical 2026-08-26 evidence bound
-both workspaces to Lean 4.31.0 at commit
-`68218e876d2a38b1985b8590fff244a83c321783`; the archived kernel reproduction
-succeeds there, and the owner accepted that defect after a narrow lexical audit
-of the project sources for the exploit's declaration-construction identifiers.
-That historical evidence carried input digest
-`5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
-revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both warm-gate receipts.
-A matching aggregate artifact receipt, conformance receipt, immutable source
-revision, and the deferred cold-checkout gate must all be present before the
-current record can become ready.
+The saved release record preserves historical evidence.  Release-record maintenance and separate-checkout reproduction are outside this merge.  The source, artifact, byte-I/O, running-sum, and conformance checks use the existing checkout.
 
 A future general compiler-correctness theorem would connect accepted Lean source, extracted IR, lowered WASM, and modeled WASM execution in one source-to-WASM result.  [Compiler and Generated Evidence](../../docs/compiler.md) distinguishes the checked compiler theorems available now from that longer-term result.  The runtime lemma library already reduces per-program work by replacing repeated instruction proofs with applications of shared theorems.
 

@@ -42,7 +42,7 @@ theorem normalized_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       wp «module» rest Q final result env) :
     wp «module» ((validBody.drop 45).take 49 ++ rest) Q initial frame env := by
-  rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped⟩, hHidden14, hHidden20, hHidden21, hHidden22, hCache23, hCache24, hCache25, hCache17, hEmpty6, hEmpty9⟩
+  rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped⟩, hHidden14, hHidden20, hHidden21, hHidden22, hCache23, hCache24, hCache25⟩
   have hScaleSize : (finalNormOffset + 768) * 4 ≤ weights.size := by
     exact (Nat.mul_le_mul_right 4 (Nat.add_le_add_left (by decide : 768 ≤ 1536) finalNormOffset)).trans hWeightsSize
   have hBiasSize : (finalNormOffset + 768 + 768) * 4 ≤ weights.size := by
@@ -72,7 +72,7 @@ theorem normalized_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
   apply hNext
   · simp (config := { maxDischargeDepth := 64 }) only [NormalizedState, HiddenState, State, parameters, hLocals,
       List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
-      I64Values.set, hTyped, hHidden14, hHidden20, hHidden21, hHidden22, hCache23, hCache24, hCache25, hCache17, hEmpty6, hEmpty9,
+      I64Values.set, hTyped, hHidden14, hHidden20, hHidden21, hHidden22, hCache23, hCache24, hCache25,
       show UInt64.ofNat (4 * (1 * 768)) = 3072 from rfl, and_self]
   · exact hFinalHeap
   · exact hOutput

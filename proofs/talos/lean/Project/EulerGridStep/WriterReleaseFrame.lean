@@ -40,24 +40,7 @@ theorem writerReleaseFrame_output (roots : Nat → UInt64) (unused : UInt64) (in
     (writerReleaseFrame roots unused index cell).get 66 = some (.i64 (roots 6)) := by
   simp [writerReleaseFrame, writerSavedFrame, Locals.get, writerParameters]
 
-/-- Heap separation discharges every generated alias comparison. -/
-theorem writerReleaseFrame_distinct (roots : Nat → UInt64) (unused : UInt64) (index count : Nat)
-    (cell : Project.EulerCellStep.Model.CheckedCell) (hLo : 1 ≤ count) (hHi : count ≤ 5)
-    (hNonzero : roots count ≠ 0)
-    (hDistinct : ∀ a ≤ 6, ∀ b ≤ 6, a ≠ b → roots a ≠ roots b) :
-    ∀ slot ∈ writerProtected count, ∃ other : UInt64,
-      (writerReleaseFrame roots unused index cell).get slot = some (.i64 other) ∧
-      roots count ≠ other := by
-  interval_cases count <;> intro slot hs <;>
-    simp only [writerProtected, List.mem_cons, List.not_mem_nil, or_false] at hs
-  all_goals rcases hs with (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
-  all_goals simp (discharger := decide) [writerReleaseFrame, writerSavedFrame, writerStageFrame, writerNextFrame,
-    writerFirstFrame, writerEntryFrame, writerParameters, Locals.get,
-    List.getElem?_cons_zero, List.getElem?_cons_succ, hNonzero,
-    hDistinct]
-
 #print axioms writer_release_setup_spec
 #print axioms writerReleaseFrame_pointer
-#print axioms writerReleaseFrame_distinct
 #print axioms writerReleaseFrame_output
 end Project.EulerGridStep.Execution

@@ -69,6 +69,10 @@ mutual
     | f32Mul : PortableInstruction domain .f32Mul
     | f32Div : PortableInstruction domain .f32Div
     | f32Sqrt : PortableInstruction domain .f32Sqrt
+    | f32Nearest : PortableInstruction domain .f32Nearest
+    | i32TruncSatF32S : PortableInstruction domain .i32TruncSatF32S
+    | f32ConvertI32S : PortableInstruction domain .f32ConvertI32S
+    | extend8S : PortableInstruction domain .extend8S
     | f64ReinterpretI64 : PortableInstruction domain .f64ReinterpretI64
     | i64ReinterpretF64 : PortableInstruction domain .i64ReinterpretF64
     | f64Add : PortableInstruction domain .f64Add
@@ -85,6 +89,8 @@ mutual
     | wrapI64 : PortableInstruction domain .wrapI64
     | extendUI32 : PortableInstruction domain .extendUI32
     | load32 (offset : UInt32) : PortableInstruction domain (.load32 offset)
+    | load8U (offset : UInt32) : PortableInstruction domain (.load8U offset)
+    | store8 (offset : UInt32) : PortableInstruction domain (.store8 offset)
     | store32 (offset : UInt32) : PortableInstruction domain (.store32 offset)
     | load64 (offset : UInt32) : PortableInstruction domain (.load64 offset)
     | store64 (offset : UInt32) : PortableInstruction domain (.store64 offset)
@@ -146,6 +152,10 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.f32Mul
     | apply PortableInstruction.f32Div
     | apply PortableInstruction.f32Sqrt
+    | apply PortableInstruction.f32Nearest
+    | apply PortableInstruction.i32TruncSatF32S
+    | apply PortableInstruction.f32ConvertI32S
+    | apply PortableInstruction.extend8S
     | apply PortableInstruction.f64ReinterpretI64
     | apply PortableInstruction.i64ReinterpretF64
     | apply PortableInstruction.f64Add
@@ -162,6 +172,8 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableInstruction.wrapI64
     | apply PortableInstruction.extendUI32
     | apply PortableInstruction.load32
+    | apply PortableInstruction.load8U
+    | apply PortableInstruction.store8
     | apply PortableInstruction.store32
     | apply PortableInstruction.load64
     | apply PortableInstruction.store64

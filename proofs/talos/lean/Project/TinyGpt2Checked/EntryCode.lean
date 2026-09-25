@@ -82,7 +82,10 @@ def tokenAccept : Wasm.Program :=
     .localGet 22,
     .localSet 25,
     .localGet 23,
-    .localSet 26
+    .localSet 26,
+    .localGet 11, .constI64 0, .eqI64, .eqz,
+    .iff 0 1 [.localGet 11, .localGet 25, .eqI64, .eqz] [.const 0] [] [.i32],
+    .iff 0 0 [.localGet 11, .call 89] []
    ] [
     .localGet 13,
     .localSet 25,
@@ -109,7 +112,8 @@ theorem token_reject_shape : tokenReject =
     FixedArrayCapacity.constantProgram 0 1 31 ++
     FixedArrayAllocateNone.program 31 (FixedArrayReuse.program 31 1) 1 ++
     [.localGet 36, .localSet 27] ++ FixedArrayResult.lengthStoreProgram 27 0 ++
-    [.localGet 27, .localSet 24, .localGet 24, .localSet 25, .localGet 24, .localSet 26] := rfl
+    [.localGet 27, .localSet 24, .localGet 24, .localSet 25,
+     .localGet 24, .localSet 26] := rfl
 
 theorem token_guard_spec (env : HostEnv Unit) (initial : Store Unit)
     (pointer bound t0 t1 t2 t3 : UInt64) (Q : Assertion Unit)

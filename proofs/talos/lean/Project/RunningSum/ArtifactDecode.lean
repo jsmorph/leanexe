@@ -11,10 +11,10 @@ set_option maxRecDepth 131072
 set_option cbv.maxSteps 1000000
 
 theorem codes_parsed :
-    Binary.parseSection 10 code { bytes, pos := 470, limit := 16469 } =
-      .ok (raw.core.codes, { bytes, pos := 16469, limit := 16469 }) := by
+    Binary.parseSection 10 code { bytes, pos := 470, limit := 16553 } =
+      .ok (raw.core.codes, { bytes, pos := 16553, limit := 16553 }) := by
   refine Binary.parseSection_eq_of_parts
-    (payload := { bytes, pos := 471, limit := 16469 }) ?_ codes_section_decoded
+    (payload := { bytes, pos := 471, limit := 16553 }) ?_ codes_section_decoded
   cbv
 
 attribute [local cbv_eval] types_parsed imports_parsed functions_parsed

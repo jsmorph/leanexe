@@ -11,24 +11,24 @@ structure OutputLoopLocals (pointer emptyRoot : UInt64) (x : Row) (root : UInt64
     (count : Nat) (frame : Locals) : Prop extends OutputSaved pointer emptyRoot x frame where
   current : frame.get 23 = some (.i64 root)
   output : frame.get 24 = some (.i64 root)
-  counter : frame.get 50 = some (.i64 (UInt64.ofNat count))
-  owned : frame.get 71 = some (.i64 emptyRoot)
+  counter : frame.get 48 = some (.i64 (UInt64.ofNat count))
+  owned : frame.get 69 = some (.i64 emptyRoot)
 
 theorem output_iteration_shape : outputBody.drop 4 =
-    (outputBody.drop 4).take 31 ++ (outputBody.drop 35).take 34 ++
-      (outputBody.drop 69).take 78 ++ outputBody.drop 147 := by
+    (outputBody.drop 4).take 29 ++ (outputBody.drop 33).take 34 ++
+      (outputBody.drop 67).take 70 ++ outputBody.drop 137 := by
   have hSplit (start count : Nat) : outputBody.drop start =
       (outputBody.drop start).take count ++ outputBody.drop (start + count) := by
     simpa only [List.drop_drop] using (List.take_append_drop count (outputBody.drop start)).symm
   calc
-    outputBody.drop 4 = (outputBody.drop 4).take 31 ++ outputBody.drop 35 := hSplit 4 31
-    _ = (outputBody.drop 4).take 31 ++
-        ((outputBody.drop 35).take 34 ++ outputBody.drop 69) :=
-      congrArg ((outputBody.drop 4).take 31 ++ ·) (hSplit 35 34)
-    _ = (outputBody.drop 4).take 31 ++ ((outputBody.drop 35).take 34 ++
-        ((outputBody.drop 69).take 78 ++ outputBody.drop 147)) :=
-      congrArg (fun rest => (outputBody.drop 4).take 31 ++ ((outputBody.drop 35).take 34 ++ rest))
-        (hSplit 69 78)
+    outputBody.drop 4 = (outputBody.drop 4).take 29 ++ outputBody.drop 33 := hSplit 4 29
+    _ = (outputBody.drop 4).take 29 ++
+        ((outputBody.drop 33).take 34 ++ outputBody.drop 67) :=
+      congrArg ((outputBody.drop 4).take 29 ++ ·) (hSplit 33 34)
+    _ = (outputBody.drop 4).take 29 ++ ((outputBody.drop 33).take 34 ++
+        ((outputBody.drop 67).take 70 ++ outputBody.drop 137)) :=
+      congrArg (fun rest => (outputBody.drop 4).take 29 ++ ((outputBody.drop 33).take 34 ++ rest))
+        (hSplit 67 70)
     _ = _ := by simp only [List.append_assoc]
 
 theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
@@ -81,7 +81,7 @@ theorem output_iteration_spec (env : HostEnv Unit) (initial : Store Unit) (frame
     (hCur.trans (hCurrent.trans hLocals.current))
     (hOwn.trans (hOwned.trans hLocals.owned)) hEmpty hFit hMemory hPages hCap
   intro final released hFinal hArray hReleased hCur' hOut' hCtr' hOwn' hPages' hBytes hStore
-  have hCounter' : released.get 50 = some (.i64 (UInt64.ofNat count)) :=
+  have hCounter' : released.get 48 = some (.i64 (UInt64.ofNat count)) :=
     hCtr'.trans (hCtr.trans (hCounter.trans hLocals.counter))
   apply output_advance_spec env final released count hCount hReleased.params hReleased.locals
     hReleased.values hCounter' hReleased.step

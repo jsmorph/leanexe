@@ -1,5 +1,5 @@
 import Project.EulerGridScan.ArtifactValidation
-import Project.EulerGridScan.Program
+import Project.EulerGridScan.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,86 +12,86 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.EulerGridScan.func0Def := by
+      Project.EulerGridScan.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.EulerGridScan.func1Def := by
+      Project.EulerGridScan.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.EulerGridScan.func2Def := by
+      Project.EulerGridScan.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.EulerGridScan.func3Def := by
+      Project.EulerGridScan.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.EulerGridScan.func4Def := by
+      Project.EulerGridScan.Frozen.func4Def := by
   rfl
 
 theorem function5_eq :
     Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!) =
-      Project.EulerGridScan.func5Def := by
+      Project.EulerGridScan.Frozen.func5Def := by
   rfl
 
 theorem function6_eq :
     Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!) =
-      Project.EulerGridScan.func6Def := by
+      Project.EulerGridScan.Frozen.func6Def := by
   rfl
 
 theorem function7_eq :
     Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!) =
-      Project.EulerGridScan.func7Def := by
+      Project.EulerGridScan.Frozen.func7Def := by
   rfl
 
 theorem function8_eq :
     Translation.functionToTalos Cache.raw 8 (Cache.raw.codes[8]!) =
-      Project.EulerGridScan.func8Def := by
+      Project.EulerGridScan.Frozen.func8Def := by
   rfl
 
 theorem function9_eq :
     Translation.functionToTalos Cache.raw 9 (Cache.raw.codes[9]!) =
-      Project.EulerGridScan.func9Def := by
+      Project.EulerGridScan.Frozen.func9Def := by
   rfl
 
 theorem function10_eq :
     Translation.functionToTalos Cache.raw 10 (Cache.raw.codes[10]!) =
-      Project.EulerGridScan.func10Def := by
+      Project.EulerGridScan.Frozen.func10Def := by
   rfl
 
 theorem function11_eq :
     Translation.functionToTalos Cache.raw 11 (Cache.raw.codes[11]!) =
-      Project.EulerGridScan.func11Def := by
+      Project.EulerGridScan.Frozen.func11Def := by
   rfl
 
 theorem function12_eq :
     Translation.functionToTalos Cache.raw 12 (Cache.raw.codes[12]!) =
-      Project.EulerGridScan.func12Def := by
+      Project.EulerGridScan.Frozen.func12Def := by
   rfl
 
 theorem function13_eq :
     Translation.functionToTalos Cache.raw 13 (Cache.raw.codes[13]!) =
-      Project.EulerGridScan.func13Def := by
+      Project.EulerGridScan.Frozen.func13Def := by
   rfl
 
 theorem function14_eq :
     Translation.functionToTalos Cache.raw 14 (Cache.raw.codes[14]!) =
-      Project.EulerGridScan.func14Def := by
+      Project.EulerGridScan.Frozen.func14Def := by
   rfl
 
 theorem function15_eq :
     Translation.functionToTalos Cache.raw 15 (Cache.raw.codes[15]!) =
-      Project.EulerGridScan.func15Def := by
+      Project.EulerGridScan.Frozen.func15Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.EulerGridScan.«module».funcs := by
+    Project.EulerGridScan.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -111,11 +111,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 14 (Cache.raw.codes[14]!),
      Translation.functionToTalos Cache.raw 15 (Cache.raw.codes[15]!)
     ] =
-    [Project.EulerGridScan.func0Def, Project.EulerGridScan.func1Def, Project.EulerGridScan.func2Def, Project.EulerGridScan.func3Def, Project.EulerGridScan.func4Def, Project.EulerGridScan.func5Def, Project.EulerGridScan.func6Def, Project.EulerGridScan.func7Def, Project.EulerGridScan.func8Def, Project.EulerGridScan.func9Def, Project.EulerGridScan.func10Def, Project.EulerGridScan.func11Def, Project.EulerGridScan.func12Def, Project.EulerGridScan.func13Def, Project.EulerGridScan.func14Def, Project.EulerGridScan.func15Def]
+    [Project.EulerGridScan.Frozen.func0Def, Project.EulerGridScan.Frozen.func1Def, Project.EulerGridScan.Frozen.func2Def, Project.EulerGridScan.Frozen.func3Def, Project.EulerGridScan.Frozen.func4Def, Project.EulerGridScan.Frozen.func5Def, Project.EulerGridScan.Frozen.func6Def, Project.EulerGridScan.Frozen.func7Def, Project.EulerGridScan.Frozen.func8Def, Project.EulerGridScan.Frozen.func9Def, Project.EulerGridScan.Frozen.func10Def, Project.EulerGridScan.Frozen.func11Def, Project.EulerGridScan.Frozen.func12Def, Project.EulerGridScan.Frozen.func13Def, Project.EulerGridScan.Frozen.func14Def, Project.EulerGridScan.Frozen.func15Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq, function12_eq, function13_eq, function14_eq, function15_eq]
 
 def executionCache : Wasm.Module :=
-  Project.EulerGridScan.«module»
+  Project.EulerGridScan.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

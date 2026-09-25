@@ -136,6 +136,10 @@ inductive Op where
   | f64Div
   | f32Sqrt
   | f64Sqrt
+  | f32Nearest
+  | i32TruncSatF32S
+  | f32ConvertI32S
+  | i32Extend8S
   | i32ReinterpretF32
   | i64ReinterpretF64
   | f32ReinterpretI32
@@ -196,6 +200,10 @@ def Op.opcode : Op → UInt8
   | .f64Div => 163
   | .f32Sqrt => 145
   | .f64Sqrt => 159
+  | .f32Nearest => 144
+  | .i32TruncSatF32S => 252
+  | .f32ConvertI32S => 178
+  | .i32Extend8S => 192
   | .i32WrapI64 => 167
   | .i64ExtendI32U => 173
   | .i32ReinterpretF32 => 188
@@ -212,7 +220,7 @@ def Op.all : List Op :=
     .i64Mul, .i64DivU, .i64RemU, .i64And, .i64Or, .i64Xor, .i64Shl,
     .i64ShrU, .f32Add, .f32Mul, .f32Sub, .f32Div, .f32Sqrt,
     .i32ReinterpretF32, .f32ReinterpretI32, .f64Add, .f64Mul, .f64Sub, .f64Div, .f64Sqrt,
-    .i32WrapI64, .i64ExtendI32U,
+    .i32WrapI64, .i64ExtendI32U, .f32Nearest, .i32TruncSatF32S, .f32ConvertI32S, .i32Extend8S,
     .i64ReinterpretF64, .f64ReinterpretI64]
 
 def classifyLoop (byte : UInt8) : List Op → Option Op
@@ -308,6 +316,13 @@ mutual
           | .f64Div => pure .f64Div
           | .f32Sqrt => pure .f32Sqrt
           | .f64Sqrt => pure .f64Sqrt
+          | .f32Nearest => pure .f32Nearest
+          | .f32ConvertI32S => pure .f32ConvertI32S
+          | .i32Extend8S => pure .i32Extend8S
+          | .i32TruncSatF32S =>
+              let subopcode ← Leb.u32
+              if subopcode = 0 then pure .i32TruncSatF32S
+              else fail (.malformed "unsupported 0xfc subopcode")
           | .i32WrapI64 => pure .i32WrapI64
           | .i64ExtendI32U => pure .i64ExtendI32U
           | .i32ReinterpretF32 => pure .i32ReinterpretF32

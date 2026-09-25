@@ -4,24 +4,23 @@ namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.Clob Project.Runtime Project.ProofKit ArrayPushLayout FixedArrayFold
 
 def outputExitProgram : Wasm.Program :=
-  [.localGet 23, .localSet 44, .localGet 24, .localSet 45,
+  [.localGet 23, .localSet 42, .localGet 24, .localSet 43,
+   .localGet 42, .localSet 44, .localGet 43, .localSet 45,
    .localGet 44, .localSet 46, .localGet 45, .localSet 47,
-   .localGet 46, .localSet 48, .localGet 47, .localSet 49,
    .localGet 21, .constI64 0, .eqI64, .eqz,
-   .iff 0 1 [.localGet 21, .localGet 48, .eqI64, .eqz] [.const 0] [] [.i32],
-   .iff 0 1 [.localGet 21, .localGet 5, .eqI64, .eqz] [.const 0] [] [.i32],
-   .iff 0 0 [.localGet 21, .call 82] [], .localGet 49]
+   .iff 0 1 [.localGet 21, .localGet 46, .eqI64, .eqz] [.const 0] [] [.i32],
+   .iff 0 0 [.localGet 21, .call 82] [], .localGet 47]
 
 theorem output_exit_shape : func78.drop 90 = outputExitProgram := rfl
 
 def outputExitFrame (frame : Locals) (output : UInt64) : Locals :=
   { params := frame.params,
-    locals := (((((frame.locals.set 39 (.i64 output)).set 40 (.i64 output)).set 41 (.i64 output)).set 42 (.i64 output)).set 43 (.i64 output)).set 44 (.i64 output),
+    locals := (((((frame.locals.set 37 (.i64 output)).set 38 (.i64 output)).set 39 (.i64 output)).set 40 (.i64 output)).set 41 (.i64 output)).set 42 (.i64 output),
     values := [.i64 output] }
 
 theorem output_exit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (empty capacity head releases frees output : UInt64)
-    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 68)
+    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 66)
     (hValues : frame.values = [])
     (hCurrent : frame.get 23 = some (.i64 output)) (hOutput : frame.get 24 = some (.i64 output))
     (hEmpty : frame.get 21 = some (.i64 empty))
@@ -41,8 +40,6 @@ theorem output_exit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Lo
     hParams (by rw [hLocals]; decide) hOutput
   have hEmp := Frame.internal_getElem?_of_get frame 5 16 (.i64 empty)
     hParams (by rw [hLocals]; decide) hEmpty
-  have hOwner' := Frame.internal_getElem?_of_get frame 5 0 (.i64 0)
-    hParams (by rw [hLocals]; decide) hOwner
   have hNonzero : empty ≠ 0 := by
     intro hZero
     rw [hZero] at hRoot
@@ -57,10 +54,6 @@ theorem output_exit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Lo
     hParams, hLocals, hEmp, hSeparate]
   refine wp_iff_cons rfl ?_
   rw [ite_eq_left (by simp [hSeparate])]
-  wp_fixed_frame [List.length_set, List.getElem?_set, Nat.reduceEqDiff,
-    hParams, hLocals, hEmp, hOwner', hNonzero]
-  refine wp_iff_cons rfl ?_
-  rw [ite_eq_left (by simp [hNonzero])]
   wp_fixed_frame [List.length_set, List.getElem?_set, Nat.reduceEqDiff, hParams, hLocals, hEmp]
   refine wp_call_tw (output_release_exact env initial empty capacity head releases frees #[]
     hRoot hHeader hArray hHead hReleases hFrees) ?_

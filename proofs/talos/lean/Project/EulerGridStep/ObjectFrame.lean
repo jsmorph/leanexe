@@ -13,9 +13,9 @@ theorem objectsSeparate_symm {left right : UInt64} {leftCount rightCount : Nat}
     (h : ObjectsSeparate left leftCount right rightCount) :
     ObjectsSeparate right rightCount left leftCount := h.symm
 
-theorem objectsSeparate_ne {left right : UInt64} {leftCount rightCount : Nat}
+theorem ObjectsSeparate.ne {left right : UInt64} {leftCount rightCount : Nat}
     (h : ObjectsSeparate left leftCount right rightCount) : left ≠ right := by
-  intro heq
+  intro hEq
   subst right
   unfold ObjectsSeparate at h
   omega

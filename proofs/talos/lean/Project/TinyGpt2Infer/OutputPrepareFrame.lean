@@ -14,22 +14,22 @@ theorem output_prepare_frame_spec (env : HostEnv Unit) (initial : Store Unit) (f
     (hMemory : top start (count + 1) ≤ initial.mem.pages * 65536)
     (hPages : initial.mem.pages ≤ 65536)
     (hCap : initial.mem.pages ≤ initial.memoryCap module 0)
-    (hLength : frame.get 56 = some (.i64 (UInt64.ofNat (count + 1))))
-    (hNeed : frame.get 62 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
+    (hLength : frame.get 54 = some (.i64 (UInt64.ofNat (count + 1))))
+    (hNeed : frame.get 60 = some (.i64 (UInt64.ofNat (capacity (count + 1)))))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ finalFrame : Locals, OutputSaved pointer empty x finalFrame →
-      finalFrame.get 57 = some (.i64 (node start (count + 1)).root) →
-      (∀ index : Nat, index ≠ 57 → (index < 62 ∨ 68 ≤ index) →
+      finalFrame.get 55 = some (.i64 (node start (count + 1)).root) →
+      (∀ index : Nat, index ≠ 55 → (index < 60 ∨ 66 ≤ index) →
         finalFrame.get index = frame.get index) →
       wp module rest Q (OutputMemory.prepare initial start (count + 1) allocations) finalFrame env) :
-    wp module ((outputBody.drop 69).take 21 ++ rest) Q initial frame env := by
+    wp module ((outputBody.drop 67).take 21 ++ rest) Q initial frame env := by
   let params := frame.params
-  let saved := frame.locals.take 57
-  let tail := frame.locals.drop 63
-  have hStart : params.length + saved.length = 62 := by
+  let saved := frame.locals.take 55
+  let tail := frame.locals.drop 61
+  have hStart : params.length + saved.length = 60 := by
     simp [params, saved, hSaved.params, hSaved.locals]
   obtain ⟨need, previous, current, capacity', next, result, hFrame⟩ :=
-    hSaved.scratch.window 57 (by rw [hSaved.params])
+    hSaved.scratch.window 55 (by rw [hSaved.params])
       (by rw [hSaved.params]) (by rw [hSaved.locals]; decide) hSaved.values
   change frame = FixedArraySearch.frame params saved tail need previous current capacity' next result at hFrame
   have hRead := FixedArraySearch.frame_get params saved tail need previous current capacity' next result
@@ -51,12 +51,12 @@ theorem output_prepare_frame_spec (env : HostEnv Unit) (initial : Store Unit) (f
   let allocated := outputAllocationFrame params saved tail start count previous'
   have hAllocated : OutputSaved pointer empty x allocated :=
     hCanonical.search params saved tail _ _ _ _ _ _ hStart _ _ _ _ _ _
-  apply hNext (resultFrame allocated 57 (node start (count + 1)).root)
-    (hAllocated.result 57 _ (by decide) (by decide) (by decide))
-    (resultFrame_get_result allocated 57 _ (by rw [hAllocated.params]; decide)
-      (hAllocated.valid 57 (by decide)))
+  apply hNext (resultFrame allocated 55 (node start (count + 1)).root)
+    (hAllocated.result 55 _ (by decide) (by decide) (by decide))
+    (resultFrame_get_result allocated 55 _ (by rw [hAllocated.params]; decide)
+      (hAllocated.valid 55 (by decide)))
   intro index hIndex hOutside
-  rw [resultFrame_get_ne allocated 57 index _ (by rw [hAllocated.params]; decide) hIndex]
+  rw [resultFrame_get_ne allocated 55 index _ (by rw [hAllocated.params]; decide) hIndex]
   change (FixedArraySearch.frame params saved tail _ _ _ _ _ _).get index = _
   rw [FixedArraySearch.frame_get_outside params saved tail
     (UInt64.ofNat (capacity (count + 1))) previous current capacity' next result

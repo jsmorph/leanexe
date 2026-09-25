@@ -30,7 +30,6 @@ def LayerCallState (params : List Value) (embeddingPtr inputPtr updatesPtr hidde
 
 def layerCallCode : Wasm.Program :=
   [.localGet 103, .localSet 31,
-   .constI64 0, .localSet 52, .constI64 0, .localSet 49, .constI64 0, .localSet 69,
    .localGet 25, .localSet 32, .localGet 26, .localSet 33, .localGet 27, .localSet 34,
    .localGet 29, .localSet 36, .localGet 30, .localSet 37,
    .localGet 0, .localSet 38, .localGet 1, .localSet 39, .localGet 2, .localSet 40,
@@ -47,7 +46,7 @@ def layerCallCode : Wasm.Program :=
    .localGet 64, .localSet 106, .localGet 65, .localSet 107, .localGet 66, .localSet 108, .localGet 67, .localSet 109]
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerCall : (layerBody.drop 4).take 90 = layerCallCode := rfl
+theorem emitted_layerCall : (layerBody.drop 4).take 84 = layerCallCode := rfl
 
 theorem layerCall_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (weightsOwner weightsPtr cacheOwner cachePtr embeddingPtr inputPtr updatesPtr : UInt64)
@@ -81,7 +80,7 @@ theorem layerCall_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       regionsDisjoint (CachedBlock.hiddenNode heap position).region (CachedBlock.cacheNode heap position).region →
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 90 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 4).take 84 ++ rest) Q initial frame env := by
   rcases hState with ⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
     hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes,
     hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize⟩

@@ -1,5 +1,5 @@
 import Project.LebU32.ArtifactValidation
-import Project.LebU32.Program
+import Project.LebU32.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,36 +12,36 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.LebU32.func0Def := by
+      Project.LebU32.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.LebU32.func1Def := by
+      Project.LebU32.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.LebU32.func2Def := by
+      Project.LebU32.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.LebU32.func3Def := by
+      Project.LebU32.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.LebU32.func4Def := by
+      Project.LebU32.Frozen.func4Def := by
   rfl
 
 theorem function5_eq :
     Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!) =
-      Project.LebU32.func5Def := by
+      Project.LebU32.Frozen.func5Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.LebU32.«module».funcs := by
+    Project.LebU32.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -51,11 +51,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!),
      Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!)
     ] =
-    [Project.LebU32.func0Def, Project.LebU32.func1Def, Project.LebU32.func2Def, Project.LebU32.func3Def, Project.LebU32.func4Def, Project.LebU32.func5Def]
+    [Project.LebU32.Frozen.func0Def, Project.LebU32.Frozen.func1Def, Project.LebU32.Frozen.func2Def, Project.LebU32.Frozen.func3Def, Project.LebU32.Frozen.func4Def, Project.LebU32.Frozen.func5Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq]
 
 def executionCache : Wasm.Module :=
-  Project.LebU32.«module»
+  Project.LebU32.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by
