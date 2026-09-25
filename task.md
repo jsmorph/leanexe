@@ -753,3 +753,15 @@ its three-minute budget while building `FixedArrayAllocator`, before checking
 those examples. Those regression checks remain pending; the successful drone
 and shared scalar targets are not evidence that the entire aggregate passed.
 Next checks are the bounded square-root loop and the checked terrain read.
+
+Published the model/scalar checkpoint as `eec06de5`. The next focused aggregate
+passes both `ExecutionSqrt.lean` and `ExecutionRead.lean`
+(`build/logs/drone-sqrt-read-4.log`, 3,363 jobs). The square-root invariant ties
+the current fuel and interval to the original source result; fuel decreases
+on search steps and the completion flag decreases the measure on early exit.
+It proves arbitrary UInt64 inputs and any representable fuel, not just the
+17-step wrapper. The terrain-read theorem uses `UInt64Array.At`, an in-range
+index, checked-load semantics, the stored length, and overflow-free index
+increment to establish the exact source `floorAt` result with unchanged memory.
+Both modules' axiom audits contain only the three standard Lean axioms.
+Their earlier failed attempts are retained in the numbered local logs.
