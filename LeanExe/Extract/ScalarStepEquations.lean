@@ -122,6 +122,17 @@ theorem extractScalarStepWith_letFn (locals : List ScalarStepBinding)
   rw [extractScalarStepWith, scalarResultType_accepts]
   cases type <;> simp [ResultType.expr]
 
+theorem extractScalarStepWith_letBooleanFn (locals : List ScalarStepBinding)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (.letE name
+      (.forallE typeName (.const ``Bool []) type.expr typeBi)
+      (.lam paramName (.const ``Bool []) a paramBi) b nondep) = (do
+        let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) a
+        extractScalarStepWith (.scalar (.booleanFunction (fun argument =>
+          extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) a)) :: locals) b) := by
+  rw [extractScalarStepWith, scalarResultType_accepts]
+
 theorem extractScalarStepWith_letUnitFn (locals : List ScalarStepBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)
     (unitTypeBi typeBi unitBi paramBi : Lean.BinderInfo)
@@ -147,6 +158,17 @@ theorem extractScalarStepWith_letStepFn (locals : List ScalarStepBinding)
           extractScalarStepWith (.scalar (.word argument) :: locals) a) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
   cases type <;> simp [Step.resultType]
+
+theorem extractScalarStepWith_letBooleanStepFn (locals : List ScalarStepBinding)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (.letE name
+      (.forallE typeName (.const ``Bool []) (Step.resultType type) typeBi)
+      (.lam paramName (.const ``Bool []) a paramBi) b nondep) = (do
+        let _ ← extractScalarStepWith (.scalar (.boolean (.u64 0)) :: locals) a
+        extractScalarStepWith (.booleanFunction (fun argument =>
+          extractScalarStepWith (.scalar (.boolean argument) :: locals) a) :: locals) b) := by
+  rw [extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
 
 theorem extractScalarStepWith_letUnitStepFn (locals : List ScalarStepBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)

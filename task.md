@@ -607,8 +607,9 @@ extraction and all four scalar proofs pass. The larger dispatch uses a local
 300,000-heartbeat elaboration limit and explicitly realizes its ordinary
 Lean-generated induction theorem in the defining module. This avoids generating
 it again with import-time default limits; the scalar core builds in 12 seconds
-and its proof consumer in 1.2 seconds. Step/outer-loop integration and execution
-gates remain open. Include step-valued Boolean continuations and
+and its proof consumer in 1.2 seconds. Step source semantics, totality, compiler,
+and all four step proofs now pass. Outer-loop integration and execution gates
+remain open. Include step-valued Boolean continuations and
 helpers surrounding loops as the dependent integration permits; no capability
 is complete until its focused native/V8 comparisons and general audits pass.
 No Boolean public ABI or Boolean-returning helper is claimed by this increment.

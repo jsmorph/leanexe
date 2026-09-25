@@ -23,6 +23,7 @@ inductive ScalarStepBinding where
   | result (code : ScalarStepCode)
   | scalar (binding : ScalarBinding)
   | function (withUnit : Bool) (apply : LeanExe.IR.Expr → Option ScalarStepCode)
+  | booleanFunction (apply : LeanExe.IR.Expr → Option ScalarStepCode)
   | binaryFunction (apply : LeanExe.IR.Expr → LeanExe.IR.Expr → Option ScalarStepCode)
   | manyFunction (arity : Nat) (apply : List LeanExe.IR.Expr → Option ScalarStepCode)
 
@@ -31,6 +32,7 @@ def ScalarStepBinding.kind : ScalarStepBinding → LeanExe.Source.Scalar.Step.Bi
   | .result _ => .result
   | .scalar binding => .scalar binding.kind
   | .function withUnit _ => .function withUnit
+  | .booleanFunction _ => .booleanFunction
   | .binaryFunction _ => .binaryFunction
   | .manyFunction arity _ => .manyFunction arity
 
@@ -39,19 +41,20 @@ def ScalarStepBinding.toScalar : ScalarStepBinding → ScalarBinding
   | .result _ => .unit
   | .scalar binding => binding
   | .function _ _ => .unit
-  | .binaryFunction _ | .manyFunction _ _ => .unit
+  | .booleanFunction _ | .binaryFunction _ | .manyFunction _ _ => .unit
 
 def ScalarStepBinding.function? (withUnit : Bool) :
     ScalarStepBinding → Option (LeanExe.IR.Expr → Option ScalarStepCode)
   | .resultFunction _ => none
   | .result _ => none
-  | .scalar _ | .binaryFunction _ | .manyFunction _ _ => none
+  | .booleanFunction _ | .scalar _ | .binaryFunction _ | .manyFunction _ _ => none
   | .function shape f => if shape == withUnit then some f else none
 
 @[simp] theorem ScalarStepBinding.function?_some {binding : ScalarStepBinding} {withUnit : Bool}
     {f : LeanExe.IR.Expr → Option ScalarStepCode} :
     binding.function? withUnit = some f ↔ binding = .function withUnit f := by
   cases binding with
+  | booleanFunction _ => simp [function?]
   | resultFunction _ => simp [function?]
   | result _ => simp [function?]
   | scalar _ | binaryFunction _ | manyFunction _ _ => simp [function?]
@@ -65,6 +68,7 @@ def ScalarStepBinding.Total : ScalarStepBinding → Prop
   | .result _ => True
   | .scalar binding => binding.Total
   | .function _ f => ∀ argument, ∃ code, f argument = some code
+  | .booleanFunction f => ∀ argument, ∃ code, f argument = some code
   | .binaryFunction f => ∀ first second, ∃ code, f first second = some code
   | .manyFunction arity f => ∀ arguments, arguments.length = arity → ∃ code, f arguments = some code
 
@@ -73,6 +77,7 @@ def ScalarStepBinding.Holds (P : LeanExe.IR.Expr → Prop) : ScalarStepBinding �
   | .result code => code.Holds P
   | .scalar binding => binding.Holds P
   | .function _ f => ∀ argument code, P argument → f argument = some code → code.Holds P
+  | .booleanFunction f => ∀ argument code, P argument → f argument = some code → code.Holds P
   | .binaryFunction f => ∀ first second code, P first → P second → f first second = some code → code.Holds P
   | .manyFunction arity f => ∀ arguments code, arguments.length = arity →
       (∀ argument ∈ arguments, P argument) → f arguments = some code → code.Holds P
@@ -80,6 +85,7 @@ def ScalarStepBinding.Holds (P : LeanExe.IR.Expr → Prop) : ScalarStepBinding �
 theorem ScalarStepBinding.total_toScalar {binding : ScalarStepBinding} (total : binding.Total) :
     binding.toScalar.Total := by
   cases binding with
+  | booleanFunction _ => trivial
   | resultFunction _ => trivial
   | result _ => trivial
   | scalar _ => exact total
@@ -88,6 +94,7 @@ theorem ScalarStepBinding.total_toScalar {binding : ScalarStepBinding} (total : 
 theorem ScalarStepBinding.holds_toScalar {binding : ScalarStepBinding} {P : LeanExe.IR.Expr → Prop}
     (holds : binding.Holds P) : binding.toScalar.Holds P := by
   cases binding with
+  | booleanFunction _ => trivial
   | resultFunction _ => trivial
   | result _ => trivial
   | scalar _ => exact holds
@@ -102,6 +109,9 @@ def ScalarStepBinding.Matches (store : LeanExe.IR.ScalarStore) :
   | .scalar binding, .scalar value => binding.Matches store value
   | .function _ compile, .function _ apply =>
       ∀ argument value code, argument.ScalarEval store value store → compile argument = some code →
+        code.Meaning store (apply value)
+  | .booleanFunction compile, .booleanFunction apply =>
+      ∀ argument value code, argument.ScalarEval store (Bool.toUInt64 value) store → compile argument = some code →
         code.Meaning store (apply value)
   | .binaryFunction compile, .binaryFunction apply =>
       ∀ first x second y code, first.ScalarEval store x store → second.ScalarEval store y store →
@@ -178,6 +188,7 @@ theorem scalarStepFunction_lookup {locals : List ScalarStepBinding} {index : Nat
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
+  | booleanFunction _ => cases kind
   | resultFunction _ => cases kind
   | result _ => cases kind
   | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
@@ -206,6 +217,7 @@ theorem scalarStepResult_lookup {locals : List ScalarStepBinding} {index : Nat}
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
+  | booleanFunction _ => cases kind
   | resultFunction _ => cases kind
   | result code => exact ⟨code, found⟩
   | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
@@ -245,6 +257,7 @@ theorem scalarStepResultFunction_lookup {locals : List ScalarStepBinding} {index
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
+  | booleanFunction _ => cases kind
   | resultFunction f => exact ⟨f, found⟩
   | result _ => cases kind
   | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
@@ -296,6 +309,83 @@ theorem ScalarStepBindingsMatch.noResultFunction {locals : List ScalarStepBindin
     have matched := bindings index binding _ found source
     cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.resultFunction?]
 
+def ScalarStepBinding.booleanFunction? :
+    ScalarStepBinding → Option (LeanExe.IR.Expr → Option ScalarStepCode)
+  | .booleanFunction f => some f
+  | _ => none
+
+@[simp] theorem ScalarStepBinding.booleanFunction?_some {binding : ScalarStepBinding}
+    {f : LeanExe.IR.Expr → Option ScalarStepCode} :
+    binding.booleanFunction? = some f ↔ binding = .booleanFunction f := by
+  cases binding <;> simp [booleanFunction?]
+
+theorem scalarStepBooleanFunction_lookup {locals : List ScalarStepBinding} {index : Nat}
+    (present : (locals.map ScalarStepBinding.kind)[index]? = some .booleanFunction) :
+    ∃ f, locals[index]? = some (.booleanFunction f) := by
+  rw [List.getElem?_map] at present
+  obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases binding with
+  | booleanFunction f => exact ⟨f, found⟩
+  | resultFunction _ | result _ | scalar _ | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+
+theorem scalarStepBooleanFunction_kind {locals : List ScalarStepBinding} {index : Nat}
+    {f : LeanExe.IR.Expr → Option ScalarStepCode}
+    (found : (locals[index]?.bind ScalarStepBinding.booleanFunction?) = some f) :
+    (locals.map ScalarStepBinding.kind)[index]? = some .booleanFunction := by
+  obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+  have same := ScalarStepBinding.booleanFunction?_some.mp matched
+  subst binding
+  simp [List.getElem?_map, present, ScalarStepBinding.kind]
+
+theorem ScalarStepBindingsMatch.booleanFunction {locals : List ScalarStepBinding}
+    {values : List LeanExe.Source.Scalar.Step.Value} {store : LeanExe.IR.ScalarStore} {index : Nat}
+    {compile : LeanExe.IR.Expr → Option ScalarStepCode}
+    {apply : Bool → ForInStep UInt64}
+    (bindings : ScalarStepBindingsMatch locals values store)
+    (compiled : (locals[index]?.bind ScalarStepBinding.booleanFunction?) = some compile)
+    (source : values[index]? = some (.booleanFunction apply)) :
+    (ScalarStepBinding.booleanFunction compile).Matches store (.booleanFunction apply) := by
+  obtain ⟨binding, found, matched⟩ := Option.bind_eq_some_iff.mp compiled
+  have same := ScalarStepBinding.booleanFunction?_some.mp matched
+  subst binding
+  exact bindings index _ _ found source
+
+theorem ScalarStepBindingsMatch.noBooleanFunctionOfWord {locals : List ScalarStepBinding}
+    {values : List LeanExe.Source.Scalar.Step.Value} {store : LeanExe.IR.ScalarStore}
+    {index : Nat} {apply : UInt64 → ForInStep UInt64}
+    (bindings : ScalarStepBindingsMatch locals values store)
+    (source : values[index]? = some (.function false apply)) :
+    locals[index]?.bind ScalarStepBinding.booleanFunction? = none := by
+  cases found : locals[index]? with
+  | none => simp
+  | some binding =>
+    have matched := bindings index binding _ found source
+    cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.booleanFunction?]
+
+theorem ScalarStepBindingsMatch.noBooleanFunctionOfResult {locals : List ScalarStepBinding}
+    {values : List LeanExe.Source.Scalar.Step.Value} {store : LeanExe.IR.ScalarStore}
+    {index : Nat} {apply : ForInStep UInt64 → ForInStep UInt64}
+    (bindings : ScalarStepBindingsMatch locals values store)
+    (source : values[index]? = some (.resultFunction apply)) :
+    locals[index]?.bind ScalarStepBinding.booleanFunction? = none := by
+  cases found : locals[index]? with
+  | none => simp
+  | some binding =>
+    have matched := bindings index binding _ found source
+    cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.booleanFunction?]
+
+theorem ScalarStepBindingsMatch.noWordFunctionOfBoolean {locals : List ScalarStepBinding}
+    {values : List LeanExe.Source.Scalar.Step.Value} {store : LeanExe.IR.ScalarStore}
+    {index : Nat} {apply : Bool → ForInStep UInt64}
+    (bindings : ScalarStepBindingsMatch locals values store)
+    (source : values[index]? = some (.booleanFunction apply)) :
+    locals[index]?.bind (ScalarStepBinding.function? false) = none := by
+  cases found : locals[index]? with
+  | none => simp
+  | some binding =>
+    have matched := bindings index binding _ found source
+    cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.function?]
+
 def ScalarStepBinding.binaryFunction? :
     ScalarStepBinding → Option (LeanExe.IR.Expr → LeanExe.IR.Expr → Option ScalarStepCode)
   | .binaryFunction f => some f
@@ -312,6 +402,7 @@ theorem scalarStepBinaryFunction_lookup {locals : List ScalarStepBinding} {index
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
+  | booleanFunction _ => cases kind
   | binaryFunction f => exact ⟨f, found⟩
   | resultFunction _ | result _ | scalar _ | function _ _ | manyFunction _ _ => cases kind
 
@@ -346,6 +437,7 @@ def ScalarStepBinding.manyFunction? (arity : Nat) :
     {f : List LeanExe.IR.Expr → Option ScalarStepCode} :
     binding.manyFunction? arity = some f ↔ binding = .manyFunction arity f := by
   cases binding with
+  | booleanFunction _ => simp [manyFunction?]
   | manyFunction count g => by_cases same : count = arity <;> simp [manyFunction?, same]
   | resultFunction _ | result _ | scalar _ | function _ _ | binaryFunction _ => simp [manyFunction?]
 
@@ -355,6 +447,7 @@ theorem scalarStepManyFunction_lookup {locals : List ScalarStepBinding} {index a
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
+  | booleanFunction _ => cases kind
   | manyFunction count f => cases kind; exact ⟨f, found⟩
   | resultFunction _ | result _ | scalar _ | function _ _ | binaryFunction _ => cases kind
 
