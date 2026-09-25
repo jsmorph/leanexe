@@ -49,6 +49,37 @@ theorem While.ofIR_emit
   unfold Binary.CoreWasm.emitStmt
   rw [hReify]
 
+/-- Whole scalar sequences, including loop setup and continuation, use the
+same production emitter as ordinary statements. -/
+theorem Program.ofIR_emit
+    (releaseIndex scratch : Nat) (statement : LeanExe.IR.Stmt)
+    (descriptor : Program) (recognized : Program.ofIR statement = some descriptor) :
+    Binary.CoreWasm.emitStmt releaseIndex scratch statement = descriptor.emit scratch := by
+  cases hw : While.ofIR statement with
+  | some loop =>
+    have same : Program.loop loop = descriptor := by
+      rw [Program.ofIR.eq_def, hw] at recognized
+      exact Option.some.inj recognized
+    subst descriptor
+    exact While.ofIR_emit releaseIndex scratch statement loop hw
+  | none =>
+    cases hs : Stmt.ofIR statement with
+    | some scalar =>
+      have same : Program.scalar scalar = descriptor := by
+        rw [Program.ofIR.eq_def, hw, hs] at recognized
+        exact Option.some.inj recognized
+      subst descriptor
+      exact Stmt.ofIR_emit releaseIndex scratch statement scalar hs
+    | none =>
+      have original := recognized
+      cases statement <;> try (simp [Program.ofIR, hw, hs] at recognized)
+      case seq first second =>
+        unfold Binary.CoreWasm.emitStmt
+        rw [hw, hs]
+        simp only [EncodedIndex.ofIR]
+        rw [original]
+
+
 theorem EncodedIndex.ofIR_emit
     (releaseIndex scratch : Nat) (statement : LeanExe.IR.Stmt)
     (descriptor : EncodedIndex)

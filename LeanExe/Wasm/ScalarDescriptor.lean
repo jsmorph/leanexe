@@ -79,6 +79,14 @@ structure While where
   body : Stmt
   deriving Repr, BEq
 
+/-- Scalar statement sequences containing loop-free statements and while loops.
+This joins loop initialization and final results without using opaque emission. -/
+inductive Program where
+  | scalar (statement : Stmt)
+  | loop (descriptor : While)
+  | seq (first second : Program)
+  deriving Repr, BEq
+
 structure PostTest where
   condition : Cond
   body : Stmt
@@ -210,6 +218,18 @@ def While.ofIR : LeanExe.IR.Stmt → Option While
   | .while condition body => return ⟨← Cond.ofIR condition, ← Stmt.ofIR body⟩
   | _ => none
 
+def Program.ofIR (statement : LeanExe.IR.Stmt) : Option Program :=
+  match While.ofIR statement with
+  | some descriptor => some (.loop descriptor)
+  | none =>
+      match Stmt.ofIR statement with
+      | some descriptor => some (.scalar descriptor)
+      | none =>
+          match statement with
+          | .seq first second => return .seq (← Program.ofIR first) (← Program.ofIR second)
+          | _ => none
+termination_by sizeOf statement
+
 def EncodedIndex.ofExpr
     (decodedLocal : Nat) : LeanExe.IR.Expr → Option EncodedIndex
   | .ite
@@ -314,6 +334,11 @@ def While.emit (descriptor : While) (scratch : Nat) : List Instr :=
   [.block [.loop
     (descriptor.condition.emit scratch ++ [.eqzI32, .brIf 1] ++
       descriptor.body.emit scratch ++ [.br 0])]]
+
+def Program.emit : Program → Nat → List Instr
+  | .scalar statement, scratch => statement.emit scratch
+  | .loop descriptor, scratch => descriptor.emit scratch
+  | .seq first second, scratch => first.emit scratch ++ second.emit scratch
 
 def EncodedIndex.emitValue (encodedLocal scratch : Nat) : List Instr :=
   [.localGet encodedLocal,
