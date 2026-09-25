@@ -619,22 +619,32 @@ The first failed admission log is also retained. The scalar dispatch realizes it
 theorem in the defining module with a local 300,000-heartbeat budget; its core
 builds in 12 seconds and its proof consumer in 1.2 seconds.
 
-Current increment: explicit and implicit Bool-valued `decide` conversions over
-the existing closed guard grammar. All five initial syntax examples reject,
-including the original loop-stop form exposed by the preceding fixture. Both
-explicit and implicit conversions elaborate to Decidable.decide with the same
-proposition and standard decision evidence. Preserve these examples unchanged.
-The new BooleanLocal decision form, exact-evidence parser, size/reconstruction
-proofs and shared lowering proofs pass. Scalar, step and outer-loop source
-semantics and totality also rebuild unchanged. Scalar and loop compiler proof
-integration now passes. All 304 focused native/IR comparisons and twelve rejection
-checks pass on the first fixture run. The original-example, preceding-fixture,
-general audit and focused native/V8 gates remain in progress. Sixteen candidate
-programs cover comparisons, compound decisions, implicit conversions, helpers,
-conditional binds, captures, unused operands, loop steps and surrounding code.
-Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
-and loops inside helpers remain later capabilities. A conditional Boolean bind
-before a loop can elaborate to such a loop-containing helper.
+Completed next increment: explicit `decide` and implicit Prop-to-Bool conversions
+over the existing closed guard grammar. The parser checks Decidable.decide with
+its full standard decision evidence; source syntax/operands/native meaning and
+shared lowering extend through unchanged scalar and loop interfaces. Candidate
+`c06588b6` passed all nine general compiler audits and 623 native Lean/V8
+comparisons across 34 declarations. All 304 focused native/IR comparisons and
+twelve rejection tests passed on the first execution run. The preceding
+Boolean-function fixture also passed unchanged: 328 comparisons and sixteen
+rejections. Eighteen selected preceding modules kept identical bytes. Evidence
+is retained in `proofs/compiler/decide-2026-09-25/`. The full corpus contains 472
+declarations; this was a focused execution run.
+
+All five inspected declarations rejected before the change and now compile
+unchanged, including the implicit conversion in the loop-stop form exposed by
+the previous increment. Both syntax logs and source are retained. No emitter,
+runtime, scalar dispatch or loop dispatch changes were needed. The cached
+proof build includes complete module type validation and the usual nine axiom
+audits; unrelated runtime suites and the fixed arithmetic archive were reused.
+
+Next increment: Bool.toUInt64 conversion of admitted Boolean values. Inspect
+its actual syntax, add source semantics and a checked scalar lowering using the
+existing zero/one representation, and verify it through helper/loop contexts
+before proceeding. Boolean public ABI, Boolean-returning helpers, mixed
+Bool/word parameter lists, propositions directly referencing saved Boolean
+locals, and loops inside helpers remain later capabilities. A conditional
+Boolean bind before a loop can elaborate to such a loop-containing helper.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
