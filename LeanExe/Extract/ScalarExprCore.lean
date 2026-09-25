@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarLiteralInstance
 import LeanExe.Extract.ScalarCall
 import LeanExe.Extract.ScalarArguments
 import LeanExe.Extract.ScalarManyFunction
@@ -23,8 +24,8 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
   | .app (.const ``UInt64.ofNat _) (.lit (.natVal n)) => some (.u64 n)
   | .app (.const ``UInt64.ofNat _) (.bvar index) => locals[index]?.bind ScalarBinding.natural?
   | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n)))
-      (.app (.const ``UInt64.instOfNat []) (.lit (.natVal m))) =>
-      if n == m then some (.u64 n) else none
+      evidence =>
+      if literalInstance? n evidence 0 then some (.u64 n) else none
   | .app (.app (.const ``Id.run [.zero]) sourceType) body =>
       match scalarResultType? sourceType with
       | none => none
@@ -381,9 +382,15 @@ theorem extractScalarExprWith_letBinaryFn (locals : List ScalarBinding)
           extractScalarExprWith (.word second :: .word first :: locals) a) :: locals) b) := by
   rw [extractScalarExprWith, scalarResultType_accepts]
 
+theorem extractScalarExprWith_ofNatInstance (locals : List ScalarBinding)
+    {n : Nat} {evidence : Lean.Expr} (meaning : LeanExe.Source.Scalar.LiteralInstance n 0 evidence) :
+    extractScalarExprWith locals (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n))) evidence) = some (.u64 n) := by
+  rw [extractScalarExprWith, literalInstance_accepts meaning]
+  rfl
+
 @[simp] theorem extractScalarExprWith_literalExpr (locals : List ScalarBinding) (n : Nat) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) := by
-  simp [extractScalarExprWith, LeanExe.Source.Scalar.literalExpr]
+  simp [extractScalarExprWith, LeanExe.Source.Scalar.literalExpr, literalInstance?]
 
 theorem extractScalarExpr_binary {head : Lean.Expr} {f : UInt64 → UInt64 → UInt64}
     (h : LeanExe.Source.Scalar.Head head f) (locals : List Nat) (a b : Lean.Expr) :
