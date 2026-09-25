@@ -142,6 +142,15 @@ ordinary/Id bindings, loop steps and surrounding scalar code. Unsupported
 operands are rejected even when unused or under an inactive decision. Decisions
 whose propositions directly reference saved Boolean locals are a later extension.
 
+Bool-valued equality and inequality (`a == b`, `a != b`, and explicit BEq.beq/bne
+calls) admit the exact standard Bool equality instance. Both inputs may contain
+saved flags, literals, comparisons, decisions, negation, junctions, choices and
+nested equality. These results work in bindings, conditions, helper captures,
+Id actions and loop computations. Both sides are checked, including unused
+expressions; custom instances, wrong operand types and unsupported Boolean
+inputs remain rejected. This does not yet add propositional equality between
+saved Boolean values (`a = b`) to the condition grammar.
+
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
 junctions or nested choices, including those in helpers and loop contexts.
@@ -813,3 +822,12 @@ first fixture run. The preceding decide fixture passed unchanged (304 comparison
 and twelve rejections), and eighteen selected preceding modules kept identical
 bytes. Four original examples now compile unchanged. The full corpus contains
 488 declarations; this was a focused execution run.
+
+The [Boolean-equality increment](../proofs/compiler/boolean-equality-2026-09-25/README.md)
+adds `==` and `!=` between admitted Boolean values. All nine audits and 623 native
+Lean/V8 comparisons passed across 34 declarations. The 304 new native/IR comparisons
+and twenty rejection checks passed on their first fixture run. The preceding
+Boolean-conversion fixture passed unchanged (304 comparisons and seventeen
+rejections), and eighteen selected preceding modules kept identical bytes.
+Five original examples now compile unchanged. The complete corpus contains
+504 declarations; this was a focused execution run.
