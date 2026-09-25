@@ -19,6 +19,10 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
     simp only [extractScalarExprWith_literalExpr, Option.some.injEq] at compiled
     subst target
     exact .const
+  | ofNatInstance meaning =>
+    simp only [extractScalarExprWith_ofNatInstance _ meaning, Option.some.injEq] at compiled
+    subst target
+    exact .const
   | complement head _ ih =>
     rw [extractScalarExprWith_complement head] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
@@ -207,6 +211,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     exact ⟨target, by simpa only [extractScalarExprWith] using found⟩
   | literal => exact ⟨.u64 _, by rw [extractScalarExprWith]⟩
   | ofNat => exact ⟨.u64 _, extractScalarExprWith_literalExpr _ _⟩
+  | ofNatInstance meaning => exact ⟨.u64 _, extractScalarExprWith_ofNatInstance _ meaning⟩
   | complement head _ ih =>
     obtain ⟨argument, ha⟩ := ih locals typed total
     exact ⟨lowerComplement argument, by rw [extractScalarExprWith_complement head]; simp [ha]⟩
@@ -405,11 +410,8 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
   | case2 => exact .literal
   | case3 locals levels index =>
     exact .natural (scalarNatural_kind (by simpa only [extractScalarExprWith] using compiled))
-  | case4 locals n m heq =>
-    have h : n = m := by simpa using heq
-    subst m
-    exact .ofNat
-  | case5 locals n m hne => simp [extractScalarExprWith, hne] at compiled
+  | case4 locals n evidence accepted => exact .ofNatInstance (literalInstance_sound accepted)
+  | case5 locals n evidence rejected => simp [extractScalarExprWith, rejected] at compiled
   | case6 locals sourceType body rejected =>
     rw [extractScalarExprWith, rejected] at compiled
     contradiction
@@ -717,6 +719,10 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     exact literal _
   | ofNat =>
     simp only [extractScalarExprWith_literalExpr, Option.some.injEq] at compiled
+    subst target
+    exact literal _
+  | ofNatInstance meaning =>
+    simp only [extractScalarExprWith_ofNatInstance _ meaning, Option.some.injEq] at compiled
     subst target
     exact literal _
   | complement head _ ih =>
