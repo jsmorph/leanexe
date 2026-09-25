@@ -356,15 +356,24 @@ continue, monadic continuations and captured helpers. All 115 preceding range
 modules kept identical bytes. General type validation passed; unrelated suites
 were not rebuilt.
 
-Current increment: UInt64 bitwise complement through the direct primitive and
-standard `~~~` operator. Exact source heads, native semantics, XOR-with-all-ones
-lowering, extraction, acceptance and scalar invariants pass Lean checking. The
-public range/source proof connection passes too, including the literal-bound
-syntax distinction introduced by the new source rule. Eight pure and four range
-fixtures cover nested uses, arithmetic, guards, functions, monadic computations,
-continue/break and complemented interval bounds near the UInt64 limit. The full
-compiler proof, type validation and execution group follow this candidate
-checkpoint because shared scalar extraction changed.
+Completed next increment: UInt64 bitwise complement through the direct primitive
+and standard `~~~` operator. Candidate `efaa5c37` passed all nine general compiler
+audits and 3,986 matching native Lean/V8 results across the full 197-declaration
+group, including admission and reserved exports. Evidence is in
+`proofs/compiler/complement-2026-09-25/`. Exact source heads and native semantics
+are connected to XOR-with-all-ones lowering, extraction and scalar invariants.
+The public range/source proof includes the new literal-bound syntax distinction.
+All 208 focused native Lean/IR comparisons and three rejection tests passed,
+covering arithmetic, guards, functions, monadic code, break/continue and
+complemented interval bounds near the UInt64 limit. All 185 preceding modules
+kept identical bytes. General type validation passed; unrelated suites were not
+rebuilt.
+
+Next incremental capability: nested propositional conjunction and disjunction
+in conditional guards. Reuse the existing comparison and conditional
+instructions; preserve canonical decision evidence and prior comparison output.
+Complete source/IR proofs and full compiler execution checks before another
+capability. Boolean &&/|| and general Boolean values remain later increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
