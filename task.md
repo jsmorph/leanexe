@@ -483,25 +483,24 @@ admission expectation was updated. The seventeen selected
 preceding modules kept identical bytes. The full corpus contains 309 declarations;
 this execution run checked 31. General type validation used cached dependencies.
 
-Current increment: remove the corresponding argument-count limit on local helpers
-returning complete ForInStep results. Reuse the checked argument-list and lexical
-binding rules, preserve scalar/step result distinctions, and complete focused
-execution and the general audits before moving to the next capability.
+Completed next increment: arbitrary finite UInt64 parameter lists for local
+helpers returning complete ForInStep results. Candidate `87a042ad` passed
+all nine compiler audits and all 609 native Lean/V8 comparisons in the fixed
+28-declaration `step-finite-arity` group. Evidence is in
+`proofs/compiler/step-finite-arity-2026-09-25/`. Shared argument-list and closure
+rules preserve exact arity, source order, captures and strict checking, with
+distinct scalar/step-result bindings and proved value/stop projections. All 240
+new native Lean/IR comparisons, four declaration rejection tests and two raw
+arity rejection tests passed. The preceding step-helper test passed 264
+comparisons and four rejection tests, with its three-argument case now positive.
+The eighteen selected preceding modules kept identical bytes. The full corpus
+contains 319 declarations; this execution run checked 28. General type validation
+used cached dependencies.
 
-Checked preparation: scalar and step result annotations now share the same Id
-wrapper description while retaining separate UInt64 and ForInStep renderers.
-Parameter parsing, exact reconstruction and body-size proofs are shared across
-both result kinds. The new larger-step-helper parser checks and remains disjoint
-from scalar helper parsing. All existing affected extraction proofs, including
-function correctness and range invariants, pass. The preceding step-helper test
-passes 240 native Lean/IR comparisons and five rejection tests. The new binding
-and application rules are now enabled. Source totality, acceptance, successful
-extraction support, correctness and both output invariants pass through the
-function extractor. All 240 new native Lean/IR comparisons, four declaration
-rejection tests and two raw arity rejection tests pass. The preceding step-helper
-test passes 264 comparisons and four rejection tests, with its three-argument
-case now accepted. The complete compiler audits and focused V8 execution remain
-to be checked before this increment is complete.
+Next increment: dependent conditionals (`if h : condition then ... else ...`)
+over the admitted guards, with explicit proof-binder scope and both branches
+checked. Complete the independent source rules, extraction proofs and focused
+execution before proceeding to another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
