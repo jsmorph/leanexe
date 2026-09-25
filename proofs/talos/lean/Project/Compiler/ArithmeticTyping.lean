@@ -12,6 +12,12 @@ theorem comparison_typed (op : LeanExe.Source.Scalar.Comparison) (a b : Expr)
   | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.eq count))
   | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.lt count))
   | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.le count))
+  | gt =>
+    simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.le count))).append
+      (Sequence.eqz32 count)
+  | ge =>
+    simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.lt count))).append
+      (Sequence.eqz32 count)
   | bne =>
     simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.eq count))).append
       (Sequence.eqz32 count)
