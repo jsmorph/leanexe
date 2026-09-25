@@ -744,3 +744,12 @@ first execution run. Earlier Boolean-local/dependent tests also passed unchanged
 608 comparisons and eighteen rejections. Eighteen selected preceding modules
 kept identical bytes. The full corpus contains 423 declarations. Propositional
 guards inside Boolean-valued choices remain a separate following increment.
+
+The [propositional-choice increment](../proofs/compiler/proposition-choice-2026-09-25/README.md)
+adds Boolean results selected by all six UInt64 comparisons and existing closed
+propositional literal, negation and junction guards. All nine audits and 623
+native Lean/V8 comparisons passed across 34 declarations. The 304 new native/IR
+comparisons and twelve rejection tests passed on the first execution run. The
+preceding Boolean-choice fixture also passed unchanged: 304 comparisons and
+twelve rejections. Eighteen selected preceding modules kept identical bytes.
+The full corpus contains 439 declarations; this was a focused execution run.
