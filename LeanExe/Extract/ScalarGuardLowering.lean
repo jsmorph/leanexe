@@ -12,6 +12,10 @@ def guardWord (condition : LeanExe.IR.Cond) : LeanExe.IR.Expr :=
 
 def wordGuard (value : LeanExe.IR.Expr) : LeanExe.IR.Cond := .eqU64 value (.u64 1)
 
+/-- Choose a Boolean branch using the existing word conditional. -/
+def lowerBooleanChoice (condition yes no : LeanExe.IR.Cond) : LeanExe.IR.Cond :=
+  wordGuard (.ite condition (guardWord yes) (guardWord no))
+
 def junctionPrimitive : Junction → ScalarPrimitive
   | .conjunction => .land
   | .disjunction => .lor
@@ -32,6 +36,29 @@ theorem wordGuard_correct {expression : LeanExe.IR.Expr} {store : LeanExe.IR.Sca
   cases value
   · exact .eq evaluated .const
   · exact .eq evaluated .const
+
+theorem lowerBooleanChoice_correct {condition yes no : LeanExe.IR.Cond}
+    {store : LeanExe.IR.ScalarStore} {c t e : Bool}
+    (test : condition.ScalarEval store c store)
+    (first : yes.ScalarEval store t store) (second : no.ScalarEval store e store) :
+    (lowerBooleanChoice condition yes no).ScalarEval store (if c then t else e) store := by
+  apply wordGuard_correct
+  cases c
+  · exact .iteFalse test (guardWord_correct second)
+  · exact .iteTrue test (guardWord_correct first)
+
+theorem lowerBooleanChoice_choice (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
+    (condition yes no : LeanExe.IR.Cond)
+    (test : ∀ t e, P t → P e → P (.ite condition t e))
+    (first : ∀ t e, P t → P e → P (.ite yes t e))
+    (second : ∀ t e, P t → P e → P (.ite no t e)) :
+    ∀ t e, P t → P e → P (.ite (lowerBooleanChoice condition yes no) t e) := by
+  intro t e ht he
+  exact choice .eq _ _ _ _
+    (test _ _ (first _ _ (literal 1) (literal 0)) (second _ _ (literal 1) (literal 0)))
+    (literal 1) ht he
 
 theorem junctionPrimitive_denote (op : Junction) (left right : Bool) :
     (junctionPrimitive op).denote (Bool.toUInt64 left) (Bool.toUInt64 right) =
