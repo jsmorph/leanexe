@@ -728,8 +728,14 @@ inspected examples currently reject. The new source form preserves exact let
 syntax and wraps scalar operands in their original Boolean scope. External flag
 indices are proved to shift correctly; bound values remain checked even when
 unused. Source size, lowering totality, operand/variable completeness, semantic
-correctness and invariants pass focused Lean builds. Parser reconstruction,
-scalar/loop integration, execution and documentation remain in progress.
+correctness and invariants pass focused Lean builds. Parser reconstruction and
+scalar/loop integration also pass. The first focused run passed 304 native/IR
+comparisons and 44 rejection checks; all five original examples compile unchanged.
+Prior dependent-choice and Boolean-local fixtures each passed 304 comparisons and
+their 76/eight rejection checks. All 20 new declaration bodies match across
+focused/admission fixtures, and the 16 accepted bodies match native execution
+fixtures. General compiler audits, WebAssembly execution and final documentation
+remain in progress.
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 
