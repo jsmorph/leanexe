@@ -416,14 +416,21 @@ scalar/step integration. All 208 focused native Lean/IR comparisons and three
 rejection tests passed. All 235 preceding modules kept identical bytes. General
 type validation passed; unrelated suites were not rebuilt.
 
-Current increment: standard UInt64 min/max. Exact canonical Min/Max heads and
-native meanings now have checked comparison/selection lowering. Independent
-source rules, total evaluation, scalar admission/correctness and invariants pass,
-as does public function extraction through helpers, do blocks, loop steps and
-range bounds. All 208 focused native Lean/IR comparisons and three rejection
-tests pass across twelve new declarations, including high-bit ordering and
-short intervals near the UInt64 limit. The general compiler proof/audits and
-actual native Lean/V8 comparisons remain pending at this candidate checkpoint.
+Completed next increment: standard UInt64 min/max with exact instance checks.
+Candidate `93471a4b` passed all nine compiler audits and 5,074 native Lean/V8
+comparisons across 259 declarations, including admission and reserved exports.
+Evidence is in `proofs/compiler/extrema-2026-09-25/`. Native min/max are connected
+to unsigned comparison/selection lowering and independent source rules, with
+scalar and whole-function proofs carrying them through helpers, do blocks,
+loop steps and bounds. All 208 focused native Lean/IR comparisons and three
+rejection tests passed, including high-bit ordering and short near-limit
+intervals. All 247 preceding modules kept identical bytes. General type
+validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: Boolean and propositional literal guards, both as
+whole guards and inside nested compound guards. Retain exact source/evidence
+checks and check both branches even for a constant condition. Complete proofs
+and actual compiler execution checks before the next capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
