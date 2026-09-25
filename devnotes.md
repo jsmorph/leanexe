@@ -1,3 +1,9 @@
+## 2026-09-24: Canonical NaNs in compiled byte-I/O commands
+
+The second P2 regression uses runtime input to form signaling, quiet, and negative NaNs, then checks exact canonical results through both binary32 and binary64 source intrinsics. Before the host repair, the compiled binary32 case returns 99 instead of zero in work/io-review/nan-before.log. The byte-I/O host now explicitly selects Cranelift and enables the same NaN canonicalization as the ordinary host.
+
+`node test/byte_io.js` passes 53 executions and four pure-mode rejections in work/io-review/nan-after.log; six new runs cover both widths with three distinct nonzero payloads. The host suite still passes its seven I/O cases and twelve shared-descriptor restorations in work/io-review/host-final.log. `tools/byte-io-proof.js check` passes in work/io-review/proof-final.log: fresh echo bytes remain identical, all six exact-binary execution cases check, and all 46 public theorem audits use only standard logical axioms. The native host remains outside the formal proof boundary. The compiler implementation and registered proof subjects are unchanged, so the earlier complete source gate remains applicable. `git diff --check` passes.
+
 ## 2026-09-24: Restore shared stdin/stdout flags after byte I/O
 
 The P2 review regression now runs a native socketpair harness which keeps the same open file description in the parent and both child streams. Before the repair, the first case fails with flags changing from 2 to 6 in work/io-review/flags-before.log. The host now captures both streams' original flags before any mutation and restores only descriptors whose nonblocking request succeeded. This avoids recording an already modified flag through the second alias.
