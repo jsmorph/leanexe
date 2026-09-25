@@ -48,5 +48,31 @@
     "rangeLiteralContinue",
     "rangeLiteralJoined",
     "rangeLiteralStep"
+  ],
+  "punit-continuations": [
+    "constant",
+    "doJoined",
+    "doBranchUpdates",
+    "binaryOrder",
+    "mixedGuardDo",
+    "rangeDoneUnitFunction",
+    "rangeDirectUnitFunction",
+    "rangeOuterUnit",
+    "rangeBoolCompoundStep",
+    "rangeLiteralJoined",
+    "rangeLetHelper",
+    "rangeBreakJoined",
+    "punitExplicit",
+    "punitCapture",
+    "punitChain",
+    "punitUnused",
+    "punitDo",
+    "punitNested",
+    "rangePUnitJoined",
+    "rangePUnitStep",
+    "rangePUnitScalar",
+    "rangePUnitYield",
+    "rangePUnitOuter",
+    "rangePUnitStride"
   ]
 }

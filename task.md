@@ -446,11 +446,15 @@ seventeen selected preceding modules kept identical bytes. The full corpus now
 has 271 declarations; this execution run checked 29. General type validation
 passed, using cached dependencies; unrelated suites were not rebuilt.
 
-Next increment: admit the PUnit.{1}/PUnit.unit.{1} form of do-block
-continuations alongside Unit. A literal-guard diagnostic exposed this separate
-existing restriction; the failing shape is retained in the local work directory.
-Generalize the shared unit syntax description and finish proofs and execution
-before moving to another capability.
+Current increment: admit PUnit.{1}/PUnit.unit.{1} do-block continuations alongside
+Unit. The shared UnitSyntax descriptor now carries the exact type/value spelling
+through scalar source, yielding-step conversion, step-result source, extraction,
+and outer range helpers. Source totality, acceptance, correctness and invariants
+build successfully. All 228 focused native Lean/IR comparisons and three
+rejection tests passed, including the exact generated mutable-branch join that
+exposed the restriction. General audits and actual execution checks
+follow before this increment is marked complete. The fixed `punit-continuations`
+group contains twelve existing cases and twelve new declarations (453 results).
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -153,5 +153,11 @@
   "rangeLiteralBreak",
   "rangeLiteralContinue",
   "rangeLiteralJoined",
-  "rangeLiteralStep"
+  "rangeLiteralStep",
+  "rangePUnitJoined",
+  "rangePUnitStep",
+  "rangePUnitScalar",
+  "rangePUnitYield",
+  "rangePUnitOuter",
+  "rangePUnitStride"
 ]

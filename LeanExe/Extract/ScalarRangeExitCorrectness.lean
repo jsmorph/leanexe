@@ -179,7 +179,7 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
             (total_word_cons (total_word_cons totalBindings first) second)
         · exact totalBindings binding member)
     exact ⟨result, .letBinaryFn type (fun x y => (total x y).choose_spec) hs, hm⟩
-  | letUnitFn type function _ ih =>
+  | letUnitFn type unitForm function _ ih =>
     rw [extractScalarRangeExitWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, hp⟩ := compiled
@@ -205,7 +205,7 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
           · trivial
           · exact totalBindings binding member
         · exact totalBindings binding member)
-    exact ⟨result, .letUnitFn type (fun x => (total x).choose_spec) hs, hm⟩
+    exact ⟨result, .letUnitFn type unitForm (fun x => (total x).choose_spec) hs, hm⟩
   | letLeft sourceValue sourceBody ih =>
     rw [extractScalarRangeExitWith_letE, rangeExitSupported_excludes_pure sourceValue] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
