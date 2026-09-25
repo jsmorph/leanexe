@@ -430,3 +430,10 @@ adds helpers returning done/yield with standard Id wrappers. All nine audits,
 2,401 native Lean/V8 comparisons across 101 range declarations, 240 focused
 native Lean/IR comparisons and five rejection tests passed. All 91 preceding
 range modules retained identical bytes.
+
+
+The [Boolean negation increment](../proofs/compiler/boolean-not-2026-09-25/README.md)
+adds repeated `!` guards with checked recognition, semantics, lowering, encoding
+and type validation. All nine audits, 3,298 native Lean/V8 comparisons across
+165 declarations, 208 focused native Lean/IR comparisons and three rejection
+tests passed. All 153 preceding modules retained identical bytes.
