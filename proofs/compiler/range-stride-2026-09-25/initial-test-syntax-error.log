@@ -1,0 +1,4 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_range_stride.lean:66:67: error: unexpected identifier; expected '}'
+288 native/stride IR comparisons and four rejection tests passed
