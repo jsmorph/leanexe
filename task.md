@@ -694,10 +694,14 @@ unchanged; all seven bodies are included in the execution fixtures. Evidence is
 in `proofs/compiler/boolean-local-decide-2026-09-25/`. The complete corpus contains
 536 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Next increment: Boolean-result choices directly guarded by saved-flag
-propositions, beginning with Boolean equality/inequality. Preserve exact source
-and standard decisions, reuse shared lowering and check ordinary/Id bindings,
-helper captures and scalar/loop contexts end to end. Boolean-returning helpers,
+Current increment: Boolean-result choices directly guarded by Boolean equality
+or inequality, including saved flags. The unified choice form preserves exact
+Eq/Ne syntax and standard evidence and recursively checks both condition inputs
+and both result branches. A proved literal-true specialization keeps the prior
+ordinary Boolean-choice lowering. Source/parser, lowering, scalar/step/range
+acceptance, native correctness and invariant proofs pass. Original examples,
+focused tests, general audits, actual compiler execution and documentation are
+in progress. Dependent Boolean-result choices, Boolean-returning helpers,
 Boolean public ABI, mixed Bool/word helper parameters, broader propositional
 combinations and loops inside helpers remain later capabilities.
 
