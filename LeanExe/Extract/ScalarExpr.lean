@@ -177,6 +177,15 @@ def ScalarLocalsMatch (locals : List Nat) (values : List UInt64)
     (store : LeanExe.IR.ScalarStore) : Prop :=
   ∀ (index slot : Nat), locals[index]? = some slot → store[slot]? = values[index]?
 
+/-- Range calls are statement computations and cannot enter the pure expression path. -/
+theorem extractScalarExprWith_range (locals : List ScalarBinding) (count initial : Lean.Expr)
+    (indexName accumulatorName : Lean.Name) (indexBi accumulatorBi : Lean.BinderInfo)
+    (body : Lean.Expr) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.Range.call count initial
+      indexName accumulatorName indexBi accumulatorBi body) = none := by
+  simp [LeanExe.Source.Scalar.Range.call, LeanExe.Source.Scalar.Range.head,
+    Lean.mkAppN, Lean.mkApp, extractScalarExprWith, ScalarPrimitive.ofHead?]
+
 theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanExe.Source.Scalar.Value} {value : UInt64}
     (semantics : LeanExe.Source.Scalar.EvalWith source values value)
     {locals : List ScalarBinding} {target : LeanExe.IR.Expr} {store : LeanExe.IR.ScalarStore}
@@ -255,6 +264,7 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
     apply bindings.cons
     intro argument value target ha compiled
     exact ihf value compiled ((bindings.cons (binding := .unit) (value := .unit) trivial).cons ha)
+  | range => rw [extractScalarExprWith_range] at compiled; contradiction
   | metadata _ ih => exact ih (by simpa only [extractScalarExprWith] using compiled) bindings
 
 /-- General preservation for the production expression traversal. -/
