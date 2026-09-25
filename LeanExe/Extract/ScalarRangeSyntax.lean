@@ -13,8 +13,8 @@ def scalarYield? : Lean.Expr → Option Lean.Expr
           (.const ``Id.instMonad [.zero]))))
       (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
       (.app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value) => some value
-  | .letE name (.const ``UInt64 []) value body nondep =>
-      (scalarYield? body).map fun scalar => .letE name (.const ``UInt64 []) value scalar nondep
+  | .letE name type value body nondep =>
+      (scalarYield? body).map fun scalar => .letE name type value scalar nondep
   | .mdata data body => (scalarYield? body).map (.mdata data)
   | _ => none
 
@@ -29,7 +29,7 @@ theorem scalarYield_sound {source scalar : Lean.Expr} (h : scalarYield? source =
     Range.YieldScalar source scalar := by
   induction source using scalarYield?.induct generalizing scalar with
   | case1 value => cases h; exact .yieldValue
-  | case2 name value body nondep ih =>
+  | case2 name type value body nondep ih =>
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .letE (ih ht)

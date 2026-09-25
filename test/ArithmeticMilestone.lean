@@ -170,6 +170,30 @@ def rangeConstant : UInt64 := Id.run do
     a := a + UInt64.ofNat i
   return a
 
+def rangeLocalFunction (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    let f := fun x : UInt64 => (x + index) ^^^ seed
+    a := f a
+  return a
+
+def rangeChainedFunctions (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let f := fun x : UInt64 => x + a
+    let g := fun x : UInt64 => if x < 7 then f (x + UInt64.ofNat i) else f (x / seed)
+    a := g a
+    a := f a
+  return a
+
+def rangeUnusedFunction (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let _f := fun x : UInt64 => x / (a - a)
+    a := a + UInt64.ofNat i
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -177,7 +201,9 @@ def rangeInputs : List (UInt64 × UInt64) :=
 def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [("rangeIndexed", rangeIndexed), ("rangeIndexFree", rangeIndexFree),
    ("rangeBindings", rangeBindings), ("rangeChoice", rangeChoice),
-   ("rangeBeforeAfter", rangeBeforeAfter), ("rangeCaptured", rangeCaptured)]
+   ("rangeBeforeAfter", rangeBeforeAfter), ("rangeCaptured", rangeCaptured),
+   ("rangeLocalFunction", rangeLocalFunction), ("rangeChainedFunctions", rangeChainedFunctions),
+   ("rangeUnusedFunction", rangeUnusedFunction)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

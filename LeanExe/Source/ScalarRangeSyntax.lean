@@ -39,12 +39,13 @@ def yieldValue (value : Lean.Expr) : Lean.Expr :=
     (.app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value)
 
 /-- Yield-only step syntax and its scalar result expression. Local bindings
-remain strict and in the same order; only the final standard yield is removed. -/
+retain their type and order; the scalar grammar separately checks each binding
+and body. Only the final standard yield is removed. -/
 inductive YieldScalar : Lean.Expr → Lean.Expr → Prop where
   | yieldValue : YieldScalar (yieldValue value) value
   | letE (tail : YieldScalar body scalar) :
-      YieldScalar (.letE name (.const ``UInt64 []) value body nondep)
-        (.letE name (.const ``UInt64 []) value scalar nondep)
+      YieldScalar (.letE name type value body nondep)
+        (.letE name type value scalar nondep)
   | metadata (body : YieldScalar source scalar) :
       YieldScalar (.mdata data source) (.mdata data scalar)
 

@@ -62,8 +62,11 @@ one UInt64 accumulator. The stop is a supported UInt64 expression; iteration
 starts at zero, has unit step, and always yields. The source index retains its
 Nat type and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
 bindings and arithmetic may precede and follow the loop. The step supports
-UInt64 bindings and updates, with supported scalar expressions on their right
-hand sides, including conditionals and local functions. A conditional inside
+UInt64 bindings and updates, direct supported local-function bindings, and
+supported scalar expressions on their right hand sides. Functions can capture
+the current index and accumulator; updating the accumulator later in the step
+does not change an earlier capture. Unused function bodies are still checked.
+A conditional inside
 an update expression is currently supported; general branching of the loop
 body, `break`, `continue`, additional accumulators, multiple/nested loops and
 other range starts/steps remain separate capabilities. Constant bounds must
@@ -106,14 +109,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles forty-one fresh declarations with that command,
+and all reserved names, compiles forty-four fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 582 results against native Lean evaluation, including overflow, zero
+It compares 654 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -125,10 +128,18 @@ branches and updates after a branch.
 Seven range declarations add zero/nonzero counts, indexed and index-free steps,
 wrapping accumulators, in-loop bindings, conditional updates, captured values,
 computations before/after the loop, and a zero-argument loop function.
+Three more range declarations cover direct local-function bindings, chained
+calls, accumulator capture across later updates, and unused local functions.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
 is a separate check of the arithmetic theorem's integration with the actual CLI.
+
+For changes confined to range loops, `tools/arithmetic-check.js range-engine`
+checks the fixed range fixture group: 217 results across ten declarations,
+including the new local-function cases. It retains admission and reserved-export
+checks and saves its output under `.lake/arithmetic-check/range`. The full engine
+check remains available when a change affects the broader scalar grammar.
 
 Check the general proofs and all nine printed axiom dependencies with:
 
