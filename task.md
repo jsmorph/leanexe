@@ -723,12 +723,15 @@ eighteen selected prior modules kept identical bytes. Evidence is retained in
 `proofs/compiler/boolean-dependent-choice-2026-09-25/`. The complete corpus has
 568 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Next increment: Boolean-local let expressions inside Boolean values. Inspect
-elaborated nested let syntax, preserve typed lexical scope and check bound values
-including unused ones, then prove and test scalar/loop integration before moving
-on. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
-parameters, broader saved-flag propositions and loops inside helpers remain
-later capabilities.
+Current increment: Boolean-local let expressions inside Boolean values. Five
+inspected examples currently reject. The new source form preserves exact let
+syntax and wraps scalar operands in their original Boolean scope. External flag
+indices are proved to shift correctly; bound values remain checked even when
+unused. Source size, lowering totality, operand/variable completeness, semantic
+correctness and invariants pass focused Lean builds. Parser reconstruction,
+scalar/loop integration, execution and documentation remain in progress.
+Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
+broader saved-flag propositions and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
