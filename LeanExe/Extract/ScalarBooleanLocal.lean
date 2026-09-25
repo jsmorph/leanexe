@@ -1,10 +1,11 @@
 import LeanExe.Extract.ScalarGuard
 import LeanExe.Extract.ScalarBooleanChoiceLowering
+import LeanExe.Extract.ScalarBooleanLetVariables
 import LeanExe.Source.ScalarBooleanLocal
 
 namespace LeanExe.Extract.Core
 
-open LeanExe.Source.Scalar (BooleanLocal)
+open LeanExe.Source.Scalar (BooleanLocal booleanLetExpr booleanLetBooleans)
 
 /-- The callback only receives operands of this exact parsed guard. Membership
 allows the surrounding source compiler to prove its recursive calls decrease. -/
@@ -51,6 +52,10 @@ def extractBooleanLocal : (guard : BooleanLocal) →
       let no ← extractBooleanLocal e (fun index member => compileVariables index (List.mem_append_right _ member))
         (fun operand member => compile operand (List.mem_append_right _ (List.mem_append_right _ member)))
       pure (lowerGuardNegations n (lowerBooleanChoice test yes no))
+  | .binding n name nondep value body, compileVariables, compile => do
+      let left ← extractBooleanLocal value (fun index member => compileVariables index (List.mem_append_left _ member)) (fun operand member => compile operand (List.mem_append_left _ member))
+      let right ← extractBooleanLocal body (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
+      pure (lowerGuardNegations n right)
   | .decision n g, _, compile => do
       let condition ← extractGuard g.value compile
       pure (lowerGuardNegations n condition)
@@ -119,6 +124,13 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
       (fun operand member => compile operand (List.mem_append_right _ (List.mem_append_right _ member)))
       (fun index member => totalVariables index _) (fun operand member => total operand _)
     exact ⟨lowerGuardNegations n (lowerBooleanChoice test yes no), by simp [extractBooleanLocal, hc, ht, he]⟩
+  | binding n name nondep value body ihv ihb =>
+    obtain ⟨left, hl⟩ := ihv (fun index member => compileVariables index (List.mem_append_left _ member)) (fun operand member => compile operand (List.mem_append_left _ member))
+      (fun index member => totalVariables index _) (fun operand member => total operand _)
+    obtain ⟨right, hr⟩ := ihb (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
+      (booleanLetLookup_accepts _ _ _ (fun index member => totalVariables index _))
+      (fun operand member => total _ _)
+    exact ⟨lowerGuardNegations n right, by simp [extractBooleanLocal, hl, hr]⟩
   | decision n g =>
     obtain ⟨condition, hc⟩ := extractGuard_accepts g.value compile total
     exact ⟨lowerGuardNegations n condition, by simp [extractBooleanLocal, hc]⟩
@@ -176,6 +188,15 @@ theorem extractBooleanLocal_operands (guard : BooleanLocal)
     · rcases List.mem_append.mp rest with second | third
       · exact iht _ _ ht operand second
       · exact ihe _ _ he operand third
+  | binding n name nondep value body ihv ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro operand member
+    simp only [BooleanLocal.operands, List.mem_append, List.mem_map] at member
+    rcases member with first | ⟨inner, innerMember, equality⟩
+    · exact ihv _ _ hl operand first
+    · subst operand
+      exact ihb _ _ hr inner innerMember
   | decision n g =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, _⟩ := compiled
@@ -231,6 +252,13 @@ theorem extractBooleanLocal_variables (guard : BooleanLocal)
     rcases List.mem_append.mp member with first | second
     · exact iht _ _ ht index first
     · exact ihe _ _ he index second
+  | binding n name nondep value body ihv ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, _⟩ := compiled
+    intro index member
+    rcases List.mem_append.mp member with first | second
+    · exact ihv _ _ hl index first
+    · exact booleanLetLookup_external _ _ _ (ihb _ _ hr) index second
 
 theorem extractBooleanLocal_correct (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -242,7 +270,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     (meanings : ∀ operand member expression, compile operand member = some expression →
       expression.ScalarEval store (native operand) store) :
     target.ScalarEval store (guard.denote native booleans) store := by
-  induction guard generalizing target with
+  induction guard generalizing target native booleans with
   | var n index =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, hv, rfl⟩ := compiled
@@ -260,9 +288,9 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerJunction_correct op
-      (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
+      (iha _ _ native booleans hl (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
-      (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
+      (ihb _ _ native booleans hr (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found)))
   | equality n unequal a b iha ihb
   | relationDecision n unequal a b iha ihb =>
@@ -270,9 +298,9 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     simp only [BooleanLocal.denote, LeanExe.Source.Scalar.booleanRelationDecision_correct]
     exact lowerGuardNegations_correct n (lowerBooleanEquality_correct unequal
-      (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
+      (iha _ _ native booleans hl (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
-      (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
+      (ihb _ _ native booleans hr (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found)))
   | choice n unequal a b t e iha ihb iht ihe
   | dependentChoice n shape unequal a b t e iha ihb iht ihe =>
@@ -281,14 +309,14 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     simp only [BooleanLocal.denote, LeanExe.Source.Scalar.booleanRelationDecision_correct]
     exact lowerGuardNegations_correct n (lowerBooleanChoice_correct
       (lowerBooleanChoiceCondition_correct unequal b.isTrueLiteral
-        (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
+        (iha _ _ native booleans hl (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
-        (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
+        (ihb _ _ native booleans hr (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
         (fun literal => BooleanLocal.isTrueLiteral_denote native booleans literal))
-      (iht _ _ ht (fun index member expression found => booleanMeanings _ _ _ found)
+      (iht _ _ native booleans ht (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
-      (ihe _ _ he (fun index member expression found => booleanMeanings _ _ _ found)
+      (ihe _ _ native booleans he (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found)))
   | proposition n g t e iht ihe
   | dependentProposition n shape g t e iht ihe =>
@@ -296,14 +324,27 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
     obtain ⟨test, hc, yes, ht, no, he, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerBooleanChoice_correct
       (extractGuard_correct g.value _ native hc (fun operand member expression found => meanings _ _ _ found))
-      (iht _ _ ht (fun index member expression found => booleanMeanings _ _ _ found)
+      (iht _ _ native booleans ht (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
-      (ihe _ _ he (fun index member expression found => booleanMeanings _ _ _ found)
+      (ihe _ _ native booleans he (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found)))
   | decision n g =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (extractGuard_correct g.value compile native hc meanings)
+
+  | binding n name nondep value body ihv ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, rfl⟩ := compiled
+    have first := ihv _ _ native booleans hl
+      (fun index member expression found => booleanMeanings _ _ _ found)
+      (fun operand member expression found => meanings _ _ _ found)
+    apply lowerGuardNegations_correct n
+    exact ihb _ _ (fun operand => native (booleanLetExpr name nondep value.expr operand))
+      (booleanLetBooleans (value.denote native booleans) booleans) hr
+      (booleanLetLookup_correct _ _ _ _ _ _ (guardWord_correct first)
+        (fun index member expression found => booleanMeanings _ _ _ found))
+      (fun operand member expression found => meanings _ _ _ found)
 
 theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -381,5 +422,16 @@ theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     obtain ⟨condition, hc, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
       (extractGuard_choice P literal binary choice g.value compile hc operands)
+  | binding n name nondep value body ihv ihb =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨left, hl, right, hr, rfl⟩ := compiled
+    have first := ihv _ _ hl
+      (fun index member expression found => variables _ _ _ found)
+      (fun operand member expression found => operands _ _ _ found)
+    exact lowerGuardNegations_choice P literal choice n _
+      (ihb _ _ hr
+        (booleanLetLookup_holds P _ _ _ (first _ _ (literal 1) (literal 0))
+          (fun index member expression found => variables _ _ _ found))
+        (fun operand member expression found => operands _ _ _ found))
 
 end LeanExe.Extract.Core
