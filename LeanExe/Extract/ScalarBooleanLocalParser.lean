@@ -2,10 +2,12 @@ import LeanExe.Source.ScalarBooleanLocal
 import LeanExe.Extract.ScalarPropositionGuard
 import LeanExe.Extract.ScalarBooleanProofBodies
 import LeanExe.Extract.ScalarBooleanLetTypes
+import Lean.Meta.Tactic.FunInd
 
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
+set_option maxHeartbeats 300000 in
 def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
   | .app (.app (.const ``Bool.and []) left) right => do
       let a ← booleanLocalOperands? left
@@ -115,6 +117,16 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
           let v ← booleanLocalOperands? value
           let b ← booleanLocalOperands? body
           pure (.binding 0 name nondep v b annotation)
+  | .app (.app (.const ``Id.run [.zero]) type) body => do
+      let annotation ← booleanType? type
+      (booleanLocalOperands? body).map (fun value => .wrapped 0 (.run annotation) value)
+  | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
+        (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
+          (.const ``Id.instMonad [.zero])))) type) body => do
+      let annotation ← booleanType? type
+      (booleanLocalOperands? body).map (fun value => .wrapped 0 (.pure annotation) value)
+  | .mdata data body => (booleanLocalOperands? body).map (fun value => .wrapped 0 (.metadata data) value)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
 decreasing_by
@@ -122,5 +134,13 @@ decreasing_by
   all_goals first
     | omega
     | (have bounds := booleanProofBodies_sizes _bodies; omega)
+
+-- Realize the induction theorem with the parser's bounded elaboration budget.
+run_elab Lean.executeReservedNameAction `LeanExe.Extract.Core.booleanLocalOperands?.induct
+
+set_option maxHeartbeats 400000 in
+run_elab do
+  let _ ← Lean.Meta.getEqnsFor? `LeanExe.Extract.Core.booleanLocalOperands?
+  pure ()
 
 end LeanExe.Extract.Core
