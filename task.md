@@ -651,23 +651,28 @@ selected preceding modules kept identical bytes. Evidence is retained in
 declarations; this was a focused execution run. Four original inspected
 examples now compile unchanged. No emitter/runtime changes were needed.
 
-Current increment: Boolean equality and inequality of admitted Boolean values.
-All five initial examples reject, covering saved flags, explicit BEq.beq/bne
-calls, conditions, captures and a loop. Preserve them unchanged. Lean uses the
-exact standard Bool equality instance for both operators and explicit calls.
-The new recursive BooleanLocal equality form, parser/reconstruction/size proofs,
-shared equality lowering and all Boolean lowering proofs pass. Scalar, step and
-outer-loop source semantics and totality rebuild unchanged. Compiler proof
-integration also passes unchanged. All 304 focused native/IR comparisons and
-twenty rejection checks pass on the first fixture run. Original-example,
-preceding-fixture, general audit and focused native/V8 gates remain in progress.
-The sixteen new examples cover literal truth cases, nested equalities/choices,
-repeated negation, dependent conditions, helper captures, conditional Id binds,
-break/continue, joined updates, strided bounds and post-loop code. Both sides
-must be admitted Boolean values; custom instances and unsupported operands are
-rejected, including unused expressions. Boolean public ABI, Boolean-returning
-helpers, mixed Bool/word parameter lists, propositions directly referencing
-saved Boolean locals and loops inside helpers remain later capabilities.
+Completed next increment: Bool-valued equality and inequality (`==`, `!=`,
+BEq.beq and bne) with the exact standard Bool equality instance. Recursive
+Boolean inputs preserve typed flags, scalar operands and native equality;
+shared lowering compares their checked zero/one words. All scalar/step/loop
+semantics and compiler proofs reuse existing interfaces. Candidate `67876321`
+passed all nine general compiler audits and 623 native Lean/V8 comparisons
+over 34 declarations. All 304 focused native/IR comparisons and twenty rejection
+checks passed on the first fixture run. The preceding Boolean-conversion fixture
+passed unchanged: 304 comparisons and seventeen rejections. Eighteen selected
+preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-equality-2026-09-25/`. The complete corpus contains 504
+declarations; this was a focused execution run. Five original inspected
+examples now compile unchanged. No emitter/runtime or dispatch changes were needed.
+
+Next increment: propositional Boolean equality and inequality conditions
+involving saved flags, such as `if flag = other then … else …`. Inspect exact
+condition/decision/proof-lambda syntax, preserve the existing Bool-to-Prop
+truth condition path, and connect each added form to the already proved
+Boolean equality value before checking it through scalar/loop contexts.
+Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
+general propositions containing saved Boolean locals and loops inside helpers
+remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
