@@ -21,7 +21,7 @@ nesting of supported expressions:
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `~~~` | Bitwise complement of all 64 bits |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards also admit repeated `!`; propositional `∧` and `∨` combine admitted guards |
+| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards admit `&&`, `||` and repeated `!`; propositional `∧` and `∨` combine admitted comparison guards |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Both `UInt64.complement x` and standard
@@ -40,7 +40,7 @@ condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
 local bounds, even when one branch is never executed. Dependent `if h : …`,
-Boolean parameters/results/bindings and compound Boolean conditions are not yet
+Boolean parameters/results/bindings are not yet
 admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
 `!=` expressions, including repeated `!`. These guards retain their Boolean
 syntax and exact standard equality-decision evidence. Lowering computes their
@@ -56,8 +56,16 @@ admitted operands are pure and total, including division by zero. Source/IR
 proofs cover scalar results and paired loop-step results without changing the
 backend. Propositional `¬` can also wrap whole compounds, repeat, and appear at
 any nesting level. The syntax retains each standard Not decision wrapper, and
-proved lowering tests each preceding Boolean word against zero. Boolean
-`&&`/`||` remain outside this increment.
+proved lowering tests each preceding Boolean word against zero.
+
+Boolean `&&` and `||` guards may nest over standard UInt64 `==`/`!=` leaves,
+with repeated `!` at any level. The separate source syntax converts to the
+shared guard representation with proved preservation of operands and native
+Boolean results. The complete standard Bool-equals-true decision evidence is
+checked. These guards work in scalar results and loop steps through the same
+lowering. Combining a compound Boolean guard with surrounding propositional
+`∧`, `∨` or `¬` remains a later increment. Custom BEq and decision instances,
+including in unused helper bodies, remain rejected.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`

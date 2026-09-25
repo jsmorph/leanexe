@@ -1,7 +1,7 @@
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarComplement
 import LeanExe.Source.ScalarValues
-import LeanExe.Source.ScalarGuard
+import LeanExe.Source.ScalarCompoundGuard
 import LeanExe.Source.ScalarRangeSyntax
 
 namespace LeanExe.Source.Scalar

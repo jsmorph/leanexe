@@ -98,25 +98,4 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
 
 end Guard
 
-/-- A non-atomic root keeps the existing comparison extraction path unchanged. -/
-structure CompoundGuard where
-  junction : Junction
-  left : Guard
-  right : Guard
-  negations : Nat := 0
-  deriving Repr
-
-namespace CompoundGuard
-
-def tree (guard : CompoundGuard) : Guard := .junction guard.negations guard.junction guard.left guard.right
-abbrev operands (guard : CompoundGuard) : List Lean.Expr := guard.tree.operands
-abbrev condition (guard : CompoundGuard) : Lean.Expr := guard.tree.condition
-abbrev evidence (guard : CompoundGuard) : Lean.Expr := guard.tree.evidence
-abbrev denote (guard : CompoundGuard) (native : Lean.Expr → UInt64) : Bool := guard.tree.denote native
-
-def branch (guard : CompoundGuard) (type onTrue onFalse : Lean.Expr) : Lean.Expr :=
-  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
-    guard.condition) guard.evidence) onTrue) onFalse
-
-end CompoundGuard
 end LeanExe.Source.Scalar
