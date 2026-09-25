@@ -1,5 +1,4 @@
-import Project.Drone.Output
-import Project.Drone.Kinematics
+import Project.Drone.Safety
 
 /-! Check all current drone source-proof components in one target.
 The source `compute` theorem is checked. This is not an exact-WASM behavior theorem.
@@ -39,3 +38,8 @@ See task.md for the remaining composition obligations. -/
 #print axioms Project.Drone.Output.compute_correct
 #print axioms Project.Drone.Output.compute_invalid
 #print axioms Project.Drone.Output.compute_endpoints
+
+#print axioms Project.Drone.Safety.compute_interior
+#print axioms Project.Drone.Safety.compute_segment_clearance
+#print axioms Project.Drone.Safety.compute_segment_maneuverable
+#print axioms Project.Drone.Safety.compute_segment_timing

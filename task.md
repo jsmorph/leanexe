@@ -23,9 +23,10 @@ the finite graph. Separate corollaries prove on-ground stopped endpoints and
 empty/rejected-input behavior. The forward/history and reconstruction helpers
 are connected to the actual public entry. Checked segment theorems establish
 continuous clearance, component kinematic bounds, physical-time derivatives,
-exact tick timing and bounded word arithmetic. Remaining work is to expose
-those continuous guarantees directly for every segment of the returned output,
-assemble global position/velocity joins, and prove the emitted WASM semantics.
+exact tick timing and bounded word arithmetic. `Safety.lean` now exposes
+those continuous guarantees directly for every segment of the returned output.
+Remaining work is to assemble a global real-time path with position/velocity
+joins, and to prove the emitted WASM semantics.
 **There is no exact-artifact execution theorem yet.**
 
 ## Repository and execution environment
@@ -230,6 +231,7 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `Reconstruction.lean` | Following stored parent words yields a bounded concrete state list attaining the optimal label |
 | `History.lean` | Actual input guard, flat parent-history size/indexing, correspondence with the row recurrence |
 | `Output.lean` | Actual unwind loop, encoded route, `compute_correct`, invalid/empty cases and exact endpoint pairs |
+| `Safety.lean` | Direct output-index interior clearance, admitted adjacent pairs, continuous segment clearance, component limits and exact duration/tick correspondence |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
 `Planner.layers` is a reference sequence of the actual executable `initial`
@@ -331,12 +333,17 @@ commits should continue respecting that file scope unless the user changes it.
    array has length 2n, encodes admitted edges, reaches the unique initial
    state, begins/ends at the terrain with speed zero, and attains the global
    lexicographic optimum in exact ticks and total excess altitude.
-5. **Compose continuous guarantees for the returned output — next.** Expose
-   interior clearance and each segment's continuous safety/dynamics directly
-   from the public output theorem. Formalize global position/velocity joins;
-   acceleration may jump at waypoints. Existing segment results and exact
-   tick timing are checked, but a single global real-time path is not yet
-   assembled as a Lean object.
+5. **Continuous guarantees for returned segments — checked.**
+   `Safety.compute_interior` proves the actual output's interior height is at
+   least terrain+100 and its waypoint speed at most 20. `compute_segment_clearance`
+   proves the continuous spatial-floor condition for every segment and every
+   real normalized time in [0,1]. `compute_segment_maneuverable` proves positive
+   duration and all horizontal/vertical speed/acceleration bounds on that same
+   interval. `compute_segment_timing` identifies edge ticks/840 with the actual
+   real primitive duration. These use the public output-to-state/edge bridge.
+   **Remaining:** package the segments as one global real-time path and prove
+   its position/velocity joins. Existing physical-time derivative and endpoint
+   lemmas are checked; acceleration may jump at waypoints.
 6. **Exact WASM semantics.** Freeze the compiled artifact and digest. Prepare
    Talos's decoded program and annotations, prove ABI/array/allocator/loop
    behavior and an actual `Wasm.TerminatesWith` theorem for that artifact.
@@ -431,3 +438,20 @@ Logs: `build/drone/source-proof-check.log` and
 The graph contract is now proved for the actual source `compute`, while the
 continuous whole-flight composition and exact emitted-WASM proof remain
 explicit further tasks. Keep future commits restricted to Lean and this file.
+
+
+### 2026-09-25 — public output continuous-safety checkpoint
+
+The public source theorem checkpoint was published as
+`263b45f1611a049f78849b8f61fa83e77b54dacc`. Added `Safety.lean`, connecting
+individual output word indices to bounded states and every adjacent pair to
+an admitted edge. The four public corollaries establish interior 100-unit
+clearance, universal continuous segment clearance, all component maneuverability
+bounds, and exact tick/duration correspondence. These are kernel proofs over
+all accepted inputs and all real normalized segment times, not sampled checks.
+The focused target and aggregate source target pass with standard axioms only.
+
+No executable behavior changed in this proof increment, so the previously
+passed runtime suite and the rechecked four graph outputs remain applicable.
+Graphs/HTML remain outside commits. The exact-WASM theorem and a packaged
+global real-time path remain future work; neither is claimed by this checkpoint.
