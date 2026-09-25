@@ -631,3 +631,13 @@ raw arity rejection tests passed. The preceding step-helper test passed 264
 comparisons and four rejection tests after its three-argument case became
 positive. Eighteen selected prior modules kept identical bytes. The full corpus
 contains 319 declarations; this was a focused execution run.
+
+
+The [dependent-conditional increment](../proofs/compiler/dependent-if-2026-09-25/README.md)
+adds `if h : condition then … else …` with exact decisions and proof-lambda
+domains, retaining the erased binder in each branch. All nine compiler audits
+and all 623 native Lean/V8 comparisons in the fixed 34-declaration group passed.
+All 304 focused native Lean/IR comparisons, four declaration rejection tests
+and four proof-domain rejection tests passed. The eighteen selected preceding
+modules kept identical bytes. The full corpus contains 335 declarations; this
+was a focused execution run.
