@@ -14,8 +14,11 @@ open LeanExe.Source.Scalar
       let e ← booleanLocalOperands? no
       pure (.dependentChoice 0 shape unequal a b t e)) := by
   cases shape
-  cases unequal <;> simp only [BooleanProofBranch.expr, booleanRelationCondition]
-  all_goals rw [booleanLocalOperands?.eq_def]
+  cases unequal <;> simp only [BooleanProofBranch.expr, booleanRelationCondition,
+    Bool.false_eq_true, ite_false, ite_true]
+  all_goals first
+    | rw [booleanLocalOperands?.eq_10]
+    | rw [booleanLocalOperands?.eq_11]
   all_goals simp [booleanRelationCondition]
   all_goals rw [booleanProofBodies_accepts]
 
@@ -48,5 +51,11 @@ open LeanExe.Source.Scalar
       let b ← booleanLocalOperands? body
       pure (.wordBinding 0 name nondep value b type)) := by
   rw [booleanWordLetExpr, booleanLocalOperands?, scalarResultType_accepts]
+
+@[simp] theorem booleanLocalOperands_wrapped (wrapper : BooleanWrapper) (body : Lean.Expr) :
+    booleanLocalOperands? (wrapper.expr body) =
+      (booleanLocalOperands? body).map (fun value => .wrapped 0 wrapper value) := by
+  cases wrapper <;> simp [BooleanWrapper.expr, BooleanIdentity.run, BooleanIdentity.pure,
+    booleanLocalOperands?]
 
 end LeanExe.Extract.Core
