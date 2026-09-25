@@ -9,7 +9,7 @@ namespace LeanExe.Source.Scalar
 are paired explicitly with their native Lean definitions, independently of the
 extractor's dispatch table and the IR operation selected by compilation.
 The fragment covers pure arithmetic, UInt64 let bindings and comparison-based
-conditionals and standard Id operations. Local unary functions capture their lexical environment. Iteration remains a separate obligation.
+conditionals and standard Id operations. Local functions with one or two UInt64 arguments capture their lexical environment. Iteration remains a separate obligation.
 -/
 
 def literalExpr (n : Nat) : Lean.Expr :=

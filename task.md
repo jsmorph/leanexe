@@ -306,8 +306,11 @@ lookups, independent source semantics/support, extraction, both admission
 directions, semantics and scalar invariants pass. All 126 focused native Lean/IR
 comparisons across nine pure declarations and four rejection tests pass. Argument
 order, captures, shadowing, chained/nested functions, Id results and checked
-unused bodies are covered. Definitions inside loop steps, general compiler
-audits and actual compiler/V8 comparisons are still pending.
+unused bodies are covered. Definitions inside loop steps now also pass
+acceptance, support, semantics and invariant proofs, with 144 additional native
+Lean/IR comparisons and two rejection tests. The public whole-range/source
+connection builds. Nine pure and six range declarations are registered for
+actual compiler execution. General audits and native Lean/V8 checks are pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
