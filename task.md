@@ -93,7 +93,15 @@ grammar has a total evaluation theorem. The same source test passed 45 native
 Lean/IR comparisons, including zero iterations, wrapping accumulators, indexed
 steps, conditional updates and computations before/after the loop. This extractor
 is not yet enabled in the public entry; the general preservation proof and final
-Wasm execution/validation connection remain pending.
+Wasm execution/validation connection remain pending. The source-to-IR range
+preservation proof now passes: `extractScalarRangeWith_correct` derives the
+iteration and result facts for every successful extraction and matching captured
+environment, and `ScalarRangePlan.Meaning.func_correct` proves the complete
+setup/while/result function executes with that value. `IR/ScalarRangeSlots.lean`
+connects the actual three-local loop layout to native ascending iteration. Their
+three focused axiom audits report only `propext`, `Classical.choice` and
+`Quot.sound`. The public entry remains unchanged until the full emitted-function
+proof, byte/validation connection and native/V8 checks are completed.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
