@@ -52,7 +52,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
     exact ih hc (bindings.cons (extractScalarExprWith_correct value hb bindings.toScalar))
-  | idBind value body ih =>
+  | idBind type value body ih =>
     rw [extractScalarStepWith_bind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
@@ -105,14 +105,14 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
       ((bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial).cons ha)
   | resultVar present =>
     exact bindings.result (by simpa only [extractScalarStepWith] using compiled) present
-  | idRun _ ih => exact ih (by simpa only [extractScalarStepWith_idRun] using compiled) bindings
-  | idPure _ ih => exact ih (by simpa only [extractScalarStepWith_idPure] using compiled) bindings
+  | idRun type _ ih => exact ih (by simpa only [extractScalarStepWith_idRun] using compiled) bindings
+  | idPure type _ ih => exact ih (by simpa only [extractScalarStepWith_idPure] using compiled) bindings
   | letResult type value body ihv ihb =>
     rw [extractScalarStepWith_letResult] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
     exact ihb hc (bindings.cons (ihv hb bindings))
-  | bindResult value body ihv ihb =>
+  | bindResult input output value body ihv ihb =>
     rw [extractScalarStepWith_bindResult] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled

@@ -399,7 +399,7 @@ def rangeStepCapture (count seed : UInt64) : UInt64 :=
 
 def rangeStepBind (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun i a => do
-    let result ← if UInt64.ofNat i == seed % 7 then pure (.done (a + 9)) else pure (.yield (a + 1))
+    let result ← pure (if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a + 1))
     let alias ← pure result
     return alias
 
@@ -416,6 +416,15 @@ def rangeStepUnused (count seed : UInt64) : UInt64 :=
     let _ignored ← pure (ForInStep.done (a + 99))
     let result : ForInStep UInt64 := .yield (a + UInt64.ofNat i + 1)
     return result
+
+def rangeStepWrappedBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let computation : Id (Id (ForInStep UInt64)) := Id.run do
+      let x ← pure (a + UInt64.ofNat i)
+      if x % 3 == seed % 3 then return .done (x + 11)
+      return .yield (x + 1)
+    @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id (Id (ForInStep UInt64))) (Id (Id (ForInStep UInt64)))
+      computation (fun result => pure result)
 
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
@@ -453,7 +462,8 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeStepCapture", rangeStepCapture),
    ("rangeStepBind", rangeStepBind),
    ("rangeStepIdLet", rangeStepIdLet),
-   ("rangeStepUnused", rangeStepUnused)]
+   ("rangeStepUnused", rangeStepUnused),
+   ("rangeStepWrappedBind", rangeStepWrappedBind)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

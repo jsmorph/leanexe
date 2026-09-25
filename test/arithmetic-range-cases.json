@@ -39,5 +39,6 @@
   "rangeStepCapture",
   "rangeStepBind",
   "rangeStepIdLet",
-  "rangeStepUnused"
+  "rangeStepUnused",
+  "rangeStepWrappedBind"
 ]

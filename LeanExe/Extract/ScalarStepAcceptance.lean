@@ -51,7 +51,7 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_letE]; simp [hb, ht]⟩
-  | idBind value _ ih =>
+  | idBind type value _ ih =>
     obtain ⟨bound, hb⟩ := scalar value typed total
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
@@ -111,14 +111,14 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
   | resultVar present =>
     obtain ⟨code, found⟩ := scalarStepResult_lookup (typed ▸ present)
     exact ⟨code, by rw [extractScalarStepWith]; simp [found, ScalarStepBinding.result?]⟩
-  | idRun _ ih => simpa only [extractScalarStepWith_idRun] using ih locals typed total
-  | idPure _ ih => simpa only [extractScalarStepWith_idPure] using ih locals typed total
+  | idRun type _ ih => simpa only [extractScalarStepWith_idRun] using ih locals typed total
+  | idPure type _ ih => simpa only [extractScalarStepWith_idPure] using ih locals typed total
   | letResult type _ _ ihv ihb =>
     obtain ⟨bound, hb⟩ := ihv locals typed total
     obtain ⟨target, ht⟩ := ihb (.result bound :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_letResult]; simp [hb, ht]⟩
-  | bindResult _ _ ihv ihb =>
+  | bindResult input output _ _ ihv ihb =>
     obtain ⟨bound, hb⟩ := ihv locals typed total
     obtain ⟨target, ht⟩ := ihb (.result bound :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
