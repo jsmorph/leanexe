@@ -292,3 +292,10 @@ The [early-exit range increment](../proofs/compiler/range-break-2026-09-25/READM
 adds break and done-returning continuations, with all nine audits and 601
 matching results across twenty-six range declarations. It preserves the initial
 borrowed-Nat metadata failure and the checked correction. This increment ran the focused range group; the larger full suite was not rerun.
+
+
+The [direct step-constructor increment](../proofs/compiler/range-direct-2026-09-25/README.md)
+adds unwrapped done/yield expressions and continuations returning them, with
+all nine audits and 673 matching results across twenty-nine range declarations.
+All twenty-six prior range modules retained identical bytes. The 1,110-result
+full suite is configured but was not rerun for this focused increment.
