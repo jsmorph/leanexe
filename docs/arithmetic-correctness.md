@@ -554,3 +554,11 @@ adds standard minimum and maximum with proved unsigned comparison/selection.
 All nine audits, 5,074 native Lean/V8 comparisons across 259 declarations,
 208 focused native Lean/IR comparisons and three rejection tests passed.
 All 247 preceding modules retained identical bytes.
+
+
+The [literal-guard increment](../proofs/compiler/literal-guards-2026-09-25/README.md)
+adds Boolean and propositional literals throughout mixed guards. All nine audits,
+503 native Lean/V8 comparisons in the fixed 29-declaration group, 208 focused
+native Lean/IR comparisons and three rejection tests passed. The seventeen
+selected preceding modules retained identical bytes. The full corpus contains
+271 declarations; the preceding full execution checkpoint covers 259.

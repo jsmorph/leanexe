@@ -435,15 +435,22 @@ still checks the general compiler and type proofs and records its exact
 execution scope. The full 259-declaration comparator also passed against the
 already generated min/max artifacts after the driver change.
 
-Current increment: Boolean and propositional literal guards, both as whole
-conditions and inside nested mixed guards. Exact source and decision expressions
-are retained; known literal results lower through existing word equality. Both
-branches remain checked even when a condition is constant. Shared parser and
-lowering proofs are complete. All 208 focused native Lean/IR comparisons and
-three rejection tests passed. The general proof/execution gates follow before
-this increment is marked complete.
-The fixed `guard-literals` execution group contains the seventeen `guard-core`
-cases plus twelve new declarations; it checks 503 results across 29 declarations.
+Completed next increment: Boolean and propositional literal guards.
+Candidate `73760621` passed all nine compiler audits and all 503 native
+Lean/V8 comparisons in the fixed 29-declaration `guard-literals` group. Evidence
+is in `proofs/compiler/literal-guards-2026-09-25/`. Shared guard source, parser and
+lowering proofs carry literals and repeated negation through scalar expressions,
+helpers, do blocks and loop control. Both branches remain checked. All 208
+focused native Lean/IR comparisons and three rejection tests passed. The
+seventeen selected preceding modules kept identical bytes. The full corpus now
+has 271 declarations; this execution run checked 29. General type validation
+passed, using cached dependencies; unrelated suites were not rebuilt.
+
+Next increment: admit the PUnit.{1}/PUnit.unit.{1} form of do-block
+continuations alongside Unit. A literal-guard diagnostic exposed this separate
+existing restriction; the failing shape is retained in the local work directory.
+Generalize the shared unit syntax description and finish proofs and execution
+before moving to another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
