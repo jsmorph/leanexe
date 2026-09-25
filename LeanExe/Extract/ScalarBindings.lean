@@ -277,6 +277,34 @@ theorem scalarBooleanFunction_not_word {locals : List ScalarBinding} {index : Na
   subst binding
   simp [present, ScalarBinding.function?]
 
+theorem ScalarBindingsMatch.no_booleanFunction_of_function
+    {locals : List ScalarBinding} {values : List LeanExe.Source.Scalar.Value}
+    {store : LeanExe.IR.ScalarStore} {index : Nat} {withUnit : Bool}
+    {f : UInt64 → UInt64} (bindings : ScalarBindingsMatch locals values store)
+    (source : values[index]? = some (.function withUnit f)) :
+    (locals[index]?.bind ScalarBinding.booleanFunction?) = none := by
+  cases found : locals[index]?.bind ScalarBinding.booleanFunction? with
+  | none => rfl
+  | some compile =>
+    obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+    have same := ScalarBinding.booleanFunction?_some.mp matched
+    subst binding
+    exact False.elim (bindings index _ _ present source)
+
+theorem ScalarBindingsMatch.no_wordFunction_of_boolean
+    {locals : List ScalarBinding} {values : List LeanExe.Source.Scalar.Value}
+    {store : LeanExe.IR.ScalarStore} {index : Nat}
+    {f : Bool → UInt64} (bindings : ScalarBindingsMatch locals values store)
+    (source : values[index]? = some (.booleanFunction f)) :
+    (locals[index]?.bind (ScalarBinding.function? false)) = none := by
+  cases found : locals[index]?.bind (ScalarBinding.function? false) with
+  | none => rfl
+  | some compile =>
+    obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+    have same := ScalarBinding.function?_some.mp matched
+    subst binding
+    exact False.elim (bindings index _ _ present source)
+
 def ScalarBinding.binaryFunction? : ScalarBinding → Option (LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | .binaryFunction f => some f
   | _ => none
