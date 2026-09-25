@@ -3859,6 +3859,113 @@ def rangeBoolLetUnused (count seed : UInt64) : UInt64 := Id.run do
     if flag then break
   return a
 
+def boolWordLetOriginal (x y : UInt64) : UInt64 :=
+  (let word := x + y; word == 0).toUInt64
+
+def boolWordLetMixed (x y : UInt64) : UInt64 :=
+  let outer := x == 0
+  (let word := if outer then x + y else x - y
+   let flag := word == 0
+   let more := word + y
+   flag || more == x).toUInt64 + y
+
+def boolWordLetShadow (x y : UInt64) : UInt64 :=
+  (let x := x + y; let x := x * 3; x != y).toUInt64 + x
+
+def boolWordLetHelper (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  (let word := (let f := fun flag : Bool => if flag then x + y else x - y; f outer)
+   if _h : word ≤ x then word == y else word != x).toUInt64
+
+def boolWordLetDependent (x y : UInt64) : UInt64 :=
+  (let word := x + y
+   let flag := if _h : word < x then word == y else word != 0
+   let other := if flag then word + x else word + y
+   if _h : flag then other == x else other != y).toUInt64
+
+def boolWordLetUnused (x y : UInt64) : UInt64 :=
+  (let _word := x / y; y != 0).toUInt64 + x
+
+def boolWordLetDo (x y : UInt64) : UInt64 := Id.run do
+  let flag ← pure (let word := x + y; word != 0)
+  let other ← if flag then pure (let word := x - y; word == 0) else pure (let word := x * y; word != 0)
+  let mut z := x
+  if (let word := if flag then x else y; word == z) then z := z + y else z := z - y
+  return z + (let word := if other then z else y; word != 0).toUInt64
+
+def boolWordLetNegated (x y : UInt64) : UInt64 :=
+  (!(let word := x + y; word == 0)).toUInt64 +
+    (!!(let word := x - y; decide (word < y))).toUInt64
+
+def rangeBoolWordLetYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag ← pure (let word := a + UInt64.ofNat i; word % 7 == 0)
+    a := a + flag.toUInt64 + UInt64.ofNat i
+    if flag then break
+  return a
+
+def rangeBoolWordLetJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let even ← pure (let word := a + UInt64.ofNat i; word % 2 == 0)
+    let next ← if even then pure (let word := a + seed; word != 0) else pure (let word := a - seed; word == 0)
+    if next then a := a + 2 else a := a + 5
+    if (let word := if next then a + 1 else a + 2; word % 7 == 0) then break
+  return a
+
+def rangeBoolWordLetContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let word := UInt64.ofNat i + a; word % 3 == 1) then continue
+    a := a + UInt64.ofNat i
+    if (let word := a - seed; if _h : word < a then word == 0 else word % 7 == 0) then break
+  return a
+
+def rangeBoolWordLetCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer := seed != 0
+  let f := fun flag : Bool => (let word := if flag then seed else count; word == 0).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun flag : Bool => f (let word := if flag then a else seed; word != 0) + a
+    a := g (let word := UInt64.ofNat i; word % 2 == 0)
+    if (let word := a + seed; word % 11 == 0 && outer) then break
+  return a + f (let word := a - seed; word == 0)
+
+def rangeBoolWordLetBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first := (let word := seed + 1; word == 0).toUInt64
+  let stop := count + (let word := seed - 1; word != 0).toUInt64
+  let mut a := seed
+  for i in [first.toNat:stop.toNat:2] do
+    a := a + (let word := UInt64.ofNat i + a; word % 2 == 0).toUInt64
+    if (let word := a - seed; word % 7 == 0) then break
+  return a
+
+def rangeBoolWordLetStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let next ← pure (let word := if flag then a else seed; word == 0)
+      if _h : next then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (let word := a - seed; word != 0).toUInt64)
+    f (let word := UInt64.ofNat i; word % 2 == 0)
+
+def rangeBoolWordLetOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag ← pure (let word := count + seed; word != 0)
+  let mut a := seed + (let word := if flag then seed else count; word == 0).toUInt64
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if (let word := a - seed; word % 7 == 0) then break
+  let changed ← pure (let word := a + seed; word == 0)
+  return a + (let word := if changed then a else seed; word != 0).toUInt64
+
+def rangeBoolWordLetUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _unused := (let word := a + UInt64.ofNat i; word != seed)
+    a := a + UInt64.ofNat i + 1
+    if (let word := a - seed; word % 7 == 0) then break
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -4164,7 +4271,15 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolLetBounds", rangeBoolLetBounds),
    ("rangeBoolLetStep", rangeBoolLetStep),
    ("rangeBoolLetOuter", rangeBoolLetOuter),
-   ("rangeBoolLetUnused", rangeBoolLetUnused)]
+   ("rangeBoolLetUnused", rangeBoolLetUnused),
+   ("rangeBoolWordLetYield", rangeBoolWordLetYield),
+   ("rangeBoolWordLetJoined", rangeBoolWordLetJoined),
+   ("rangeBoolWordLetContinue", rangeBoolWordLetContinue),
+   ("rangeBoolWordLetCapture", rangeBoolWordLetCapture),
+   ("rangeBoolWordLetBounds", rangeBoolWordLetBounds),
+   ("rangeBoolWordLetStep", rangeBoolWordLetStep),
+   ("rangeBoolWordLetOuter", rangeBoolWordLetOuter),
+   ("rangeBoolWordLetUnused", rangeBoolWordLetUnused)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -4423,7 +4538,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("boolLetDependent", boolLetDependent),
    ("boolLetHelper", boolLetHelper),
    ("boolLetDo", boolLetDo),
-   ("boolLetNegated", boolLetNegated)]
+   ("boolLetNegated", boolLetNegated),
+   ("boolWordLetOriginal", boolWordLetOriginal),
+   ("boolWordLetMixed", boolWordLetMixed),
+   ("boolWordLetShadow", boolWordLetShadow),
+   ("boolWordLetHelper", boolWordLetHelper),
+   ("boolWordLetDependent", boolWordLetDependent),
+   ("boolWordLetUnused", boolWordLetUnused),
+   ("boolWordLetDo", boolWordLetDo),
+   ("boolWordLetNegated", boolWordLetNegated)]
 
 end ArithmeticMilestone
 

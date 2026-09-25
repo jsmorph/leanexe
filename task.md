@@ -738,14 +738,19 @@ The complete corpus has 584 declarations; this execution run was focused. No
 emitter/runtime changes; pure bound computations may repeat in compiled code.
 
 Current increment: UInt64 let bindings inside Boolean expressions. Five original
-examples currently reject, including the preceding word-binding exclusion. The
+examples rejected before this change, including the preceding word-binding exclusion. The
 source form preserves word let syntax and wraps body scalar operands in their
 original scope. Source type checks now also require that word-bound slots are
 not used as Boolean references, recursively through nested values. Word-slot
 lookup, source size, lowering totality/completeness, semantic correctness,
 invariants and successful-compilation scope proofs pass focused Lean builds.
-Parser reconstruction, scalar/loop integration, execution and final docs remain
-in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word
+Parser reconstruction and scalar/loop integration also pass. The first focused
+fixture passed 304 native/IR comparisons and 68 rejection checks. All five original
+examples compile unchanged. The preceding Boolean-let fixture now passes 318
+comparisons and 39 rejections after promoting its word-binding body unchanged
+and four raw word-let shapes; its before/after source is retained. The prior
+dependent-choice fixture passed 304 comparisons and 76 rejections unchanged.
+General audits, WebAssembly execution and final docs remain in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word
 helper parameters, broader saved-flag propositions and loops inside helpers
 remain later capabilities.
 

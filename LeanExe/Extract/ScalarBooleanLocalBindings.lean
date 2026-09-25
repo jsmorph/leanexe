@@ -17,13 +17,14 @@ theorem extractBooleanLocalWith_accepts (locals : List ScalarBinding) (value : B
     (variables : value.VariablesTyped (locals.map ScalarBinding.kind))
     (operands : ∀ operand member, ∃ target, compile operand member = some target) :
     ∃ target, extractBooleanLocalWith locals value compile = some target := by
-  exact extractBooleanLocal_accepts value _ compile
-    (fun index member => scalarBoolean_lookup (variables index member)) operands
+  exact extractBooleanLocal_accepts value _ compile variables.1
+    (fun index member => scalarBoolean_lookup (variables.2 index member)) operands
 
 theorem extractBooleanLocalWith_variables {locals : List ScalarBinding} {value : BooleanLocal}
     {compile : (operand : Lean.Expr) → operand ∈ value.operands → Option LeanExe.IR.Expr}
     {target : LeanExe.IR.Cond} (compiled : extractBooleanLocalWith locals value compile = some target) :
     value.VariablesTyped (locals.map ScalarBinding.kind) := by
+  refine ⟨extractBooleanLocal_scoped value _ _ compiled, ?_⟩
   intro index member
   obtain ⟨expression, found⟩ := extractBooleanLocal_variables value _ compile compiled index member
   exact scalarBoolean_kind found
