@@ -106,7 +106,21 @@ branches and continue now work end-to-end. The previously rejected monadic join
 is an explicit passing fixture. Breaks, unused done-returning functions, and
 custom comparison evidence remain rejected.
 
-In progress: break in range loops. `Source/ScalarRangeExit.lean` proves bounded
+Completed next increment: early-exit range loops. Candidate `f22803ce` passed
+all nine general compiler axiom audits and 601 native Lean/V8 comparisons across
+twenty-six range declarations, plus admission and reserved-export checks.
+Evidence is retained in `proofs/compiler/range-break-2026-09-25/`, including the
+initial borrowed-Nat metadata failure and correction, all exact emitted range
+modules, native expected results, hashes and final logs. Break, updated done
+values, step-valued continuations, both function shapes and continue mixed with
+break now work through the actual public compiler and full module theorem.
+The new four-local layout stages the decision before the value; the termination
+proof uses the result of remaining native iterations. The unchanged arithmetic
+archive and independent runtime suite were not rebuilt. The general proof
+includes type validation of every admitted program.
+
+Early-exit preparation journal (superseded by the completed result above).
+At the initial checkpoint, `Source/ScalarRangeExit.lean` proves bounded
 early-exit iteration agrees with native List/range ForIn behavior, including
 the accumulator produced by done. The existing yielding iteration is proved
 to be a special case. `IR/ScalarIterationExit.lean` proves finite while
@@ -187,6 +201,11 @@ checked. The independent source grammar carries this checked type, and focused
 acceptance, support, preservation and IR proofs pass. The failed execution log
 is retained. The Unit-prefixed fixture now exercises yielding before done as
 well as wrapping. Final general proof and engine reruns follow this correction.
+
+Next incremental capability: direct ForInStep constructor expressions in range
+callbacks and local continuations. Standard pure-wrapped done/yield now works;
+unwrapped `.done` and `.yield` remain outside the step grammar. Complete that
+source extension through proofs and the focused engine check before proceeding.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

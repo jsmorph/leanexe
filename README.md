@@ -8,7 +8,8 @@ The restricted `compile-arithmetic` command additionally has a [general compiler
 correctness theorem](docs/arithmetic-correctness.md): every successfully admitted
 UInt64 scalar declaration produces bytes that decode, validate and execute
 to its source result in the pinned Wasm model. This includes supported lets,
-conditionals, pure Id blocks, local functions and one bounded range loop.
+conditionals, pure Id blocks, local functions and one bounded range loop,
+including supported `continue` and `break` forms.
 The guide describes the exact
 source grammar, proof boundary, execution tests and independent source package.
 
