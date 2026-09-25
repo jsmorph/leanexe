@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarBooleanLocal
 import LeanExe.Extract.ScalarPropositionGuard
+import LeanExe.Extract.ScalarDecisionGuard
 
 namespace LeanExe.Extract.Core
 
@@ -32,6 +33,8 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
       let t ← booleanLocalOperands? yes
       let e ← booleanLocalOperands? no
       pure (.proposition 0 guard t e)
+  | .app (.app (.const ``Decidable.decide []) condition) evidence =>
+      (decisionGuard? condition evidence).map (.decision 0)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 
 @[simp] theorem booleanLocalOperands_compare (op : BooleanComparison) (a b : Lean.Expr) :
@@ -86,6 +89,13 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
+  | decision n g =>
+    induction n with
+    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, Guard.decisionExpr, booleanLocalOperands?]
+    | succ n ih =>
+      simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
+        Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
+
 
 theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLocal}
     (parsed : booleanLocalOperands? expression = some guard) : expression = guard.expr := by
@@ -123,7 +133,12 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
       simp only [BooleanLocal.expr, BooleanGuardNegation.expr, PropositionGuard.branch]
       rw [guard.1, guard.2, iht ht, ihe he]
     · exact excludedBoolean
-  | case10 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoice excludedProposition =>
+  | case10 condition evidence =>
+    rw [booleanLocalOperands?] at parsed
+    obtain ⟨g, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
+    obtain ⟨hc, he⟩ := decisionGuard_sound found
+    simp only [BooleanLocal.expr, BooleanGuardNegation.expr, Guard.decisionExpr, hc, he]
+  | case11 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoice excludedProposition excludedDecision =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
@@ -135,6 +150,7 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     · exact excludedVar
     · exact excludedChoice
     · exact excludedProposition
+    · exact excludedDecision
 
 theorem booleanLocalOperands_size {expression : Lean.Expr} {value : BooleanLocal}
     (parsed : booleanLocalOperands? expression = some value) {operand : Lean.Expr}
@@ -172,6 +188,18 @@ theorem propositionChoice_not_comparison (n : Nat) (guard : PropositionGuard) (t
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
 
+theorem decision_not_guard (n : Nat) (guard : Guard) :
+    booleanGuardOperands? (BooleanGuardNegation.expr n guard.decisionExpr) = none := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
+
+theorem decision_not_comparison (n : Nat) (guard : Guard) :
+    booleanComparisonOperands? (BooleanGuardNegation.expr n guard.decisionExpr) = none := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
+
 theorem booleanGuardOperands_local_closed (value : BooleanLocal) {guard : BooleanGuard}
     (parsed : booleanGuardOperands? value.expr = some guard) : value.extended = false := by
   induction value generalizing guard with
@@ -179,6 +207,7 @@ theorem booleanGuardOperands_local_closed (value : BooleanLocal) {guard : Boolea
   | literal | compare => rfl
   | choice n c t e => simp [BooleanLocal.expr, booleanChoice_not_guard] at parsed
   | proposition n g t e => simp [BooleanLocal.expr, propositionChoice_not_guard] at parsed
+  | decision n g => simp [BooleanLocal.expr, decision_not_guard] at parsed
   | junction n op a b iha ihb =>
     induction n generalizing guard with
     | zero =>
@@ -231,6 +260,12 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (expanded : value.ext
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, propositionChoice_not_comparison]
+  | decision n g =>
+    cases n with
+    | zero => rfl
+    | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
+        comparisonOperands?, decision_not_comparison]
+
 
 theorem booleanLocal_not_guard (guard : BooleanLocalGuard) :
     guardOperands? guard.condition = none := by
