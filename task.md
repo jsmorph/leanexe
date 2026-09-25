@@ -60,9 +60,14 @@ and yielding steps. `Source/ScalarRange.lean` passes its focused build: the
 ascending iteration model equals Lean's actual Id range iterator, iteration
 composition is proved, and every index up to the UInt64 stop is represented
 exactly. Actual elaborated `ForIn` syntax and production IR for indexed and
-index-free examples were inspected. Compiler admission, production loop
-emission correspondence, full byte/validation proofs and execution checks are
-still pending; loops are not yet in the completed certified source grammar.
+index-free examples were inspected. `IR/ScalarIteration.lean` now proves finite
+while execution agrees with this iteration under a local-state invariant.
+`ScalarDescriptor.Program` recognizes sequences of scalar statements and
+standalone scalar while loops; the production emitter uses it after existing
+recognizers and its exact emission theorem passes. This permits a complete
+setup/loop/result function to use the kernel-checkable emitter instead of its
+opaque fallback. Source admission, full byte/validation proofs and execution
+checks are still pending; loops are not yet in the completed certified grammar.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
