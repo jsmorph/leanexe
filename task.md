@@ -572,3 +572,13 @@ and split the checked reset theorem from the unfinished larger proofs. The
 next arithmetic validation step is the compiler-generated division/remainder
 conditional, followed by the general expression theorem. No full-module
 validation claim is made.
+
+### General arithmetic validation induction (checked)
+
+TypedConditionals proves the validator accepts the i64-result conditionals
+used by division/remainder guards. ArithmeticTyping proves every admitted
+arithmetic descriptor emits a sequence with the required stack type, under
+its local-index and scratch-allocation bounds, for arbitrary nesting and all
+ten operators. Both modules build. FunctionTyping and the source-to-function
+validator composition are still being checked; no complete module-validation
+claim follows yet.
