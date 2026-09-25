@@ -29,6 +29,20 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       extractScalarStepWith (.scalar (.word bound) :: locals) body
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) (.const ``Bool []))
+        type) value)
+      (.lam _ (.const ``Bool []) body _) =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ =>
+          match booleanAction? value with
+          | none => none
+          | some action => do
+              let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) action.leaf
+                (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+              extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
         (.const ``Id.instMonad [.zero]))) (.const ``UInt64 []))
         type) value)
       (.lam _ (.const ``UInt64 []) body _) =>
