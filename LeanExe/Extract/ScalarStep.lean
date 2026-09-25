@@ -12,18 +12,23 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
         (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
           (.const ``Id.instMonad [.zero]))))
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) body =>
-      extractScalarStepWith locals body
+      type) body =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ => extractScalarStepWith locals body
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       extractScalarStepWith (.scalar (.word bound) :: locals) body
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
         (.const ``Id.instMonad [.zero]))) (.const ``UInt64 []))
-        (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
-      (.lam _ (.const ``UInt64 []) body _) => do
-      let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
-      extractScalarStepWith (.scalar (.word bound) :: locals) body
+        type) value)
+      (.lam _ (.const ``UInt64 []) body _) =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ => do
+          let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
+          extractScalarStepWith (.scalar (.word bound) :: locals) body
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
       condition) evidence) onTrue) onFalse =>
       match scalarStepResultType? type with
@@ -86,24 +91,27 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       pure { value, done := .u64 1 }
   | .bvar index => locals[index]?.bind ScalarStepBinding.result?
-  | .app (.app (.const ``Id.run [.zero])
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) body =>
-      extractScalarStepWith locals body
-  | .letE _ (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])) value body _ => do
-      let bound ← extractScalarStepWith locals value
-      extractScalarStepWith (.result bound :: locals) body
-  | .letE _ (.app (.const ``Id [.zero])
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value body _ => do
-      let bound ← extractScalarStepWith locals value
-      extractScalarStepWith (.result bound :: locals) body
+  | .app (.app (.const ``Id.run [.zero]) type) body =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ => extractScalarStepWith locals body
+  | .letE _ type value body _ =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ => do
+          let bound ← extractScalarStepWith locals value
+          extractScalarStepWith (.result bound :: locals) body
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
-        (.const ``Id.instMonad [.zero])))
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])))
-      (.app (.const ``ForInStep [.zero]) (.const ``UInt64 []))) value)
-      (.lam _ (.app (.const ``ForInStep [.zero]) (.const ``UInt64 [])) body _) => do
-      let bound ← extractScalarStepWith locals value
-      extractScalarStepWith (.result bound :: locals) body
+        (.const ``Id.instMonad [.zero]))) input) output) value)
+      (.lam _ domain body _) =>
+      if input = domain then
+        match scalarStepResultType? input, scalarStepResultType? output with
+        | some _, some _ => do
+            let bound ← extractScalarStepWith locals value
+            extractScalarStepWith (.result bound :: locals) body
+        | _, _ => none
+      else none
   | .mdata _ body => extractScalarStepWith locals body
   | _ => none
 termination_by source => sizeOf source

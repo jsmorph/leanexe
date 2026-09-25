@@ -15,16 +15,16 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (yieldDirect a) values (.yield x)
   | doneDirect (value : EvalWith a (values.map Value.toScalar) x) :
       Eval (doneDirect a) values (.done x)
-  | choose (op : Comparison) (type : ResultType)
+  | choose (op : Comparison) (type : ResultAnnotation)
       (left : EvalWith a (values.map Value.toScalar) x) (right : EvalWith b (values.map Value.toScalar) y)
       (chosen : Eval (if op.denote x y then onTrue else onFalse) values outcome) :
       Eval (branch op type a b onTrue onFalse) values outcome
   | letE (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values outcome
-  | idBind (value : EvalWith a (values.map Value.toScalar) x)
+  | idBind (type : ResultAnnotation) (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
-      Eval (Range.bindYield name bi a b) values outcome
+      Eval (bindWord name bi type a b) values outcome
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.function false f) :: values) outcome) :
@@ -45,13 +45,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | unitApply (function : values[index]? = some (.function true f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
       Eval (.app (.app (.bvar index) (.const ``Unit.unit [])) a) values (f x)
-  | letStepFn (type : ResultType)
+  | letStepFn (type : ResultAnnotation)
       (function : ∀ x, Eval a (.scalar (.word x) :: values) (f x))
       (body : Eval b (.function false f :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
-  | letUnitStepFn (type : ResultType)
+  | letUnitStepFn (type : ResultAnnotation)
       (function : ∀ x, Eval a (.scalar (.word x) :: .scalar .unit :: values) (f x))
       (body : Eval b (.function true f :: values) outcome) :
       Eval (.letE name
@@ -61,14 +61,14 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | resultVar (present : values[index]? = some (.result outcome)) :
       Eval (.bvar index) values outcome
-  | idRun (body : Eval a values outcome) : Eval (idRun a) values outcome
-  | idPure (body : Eval a values outcome) : Eval (idPure a) values outcome
-  | letResult (type : ResultType) (value : Eval a values bound)
+  | idRun (type : ResultAnnotation) (body : Eval a values outcome) : Eval (idRun type a) values outcome
+  | idPure (type : ResultAnnotation) (body : Eval a values outcome) : Eval (idPure type a) values outcome
+  | letResult (type : ResultAnnotation) (value : Eval a values bound)
       (body : Eval b (.result bound :: values) outcome) :
       Eval (.letE name (resultType type) a b nondep) values outcome
-  | bindResult (value : Eval a values bound)
+  | bindResult (input output : ResultAnnotation) (value : Eval a values bound)
       (body : Eval b (.result bound :: values) outcome) :
-      Eval (bindResult name bi a b) values outcome
+      Eval (bindResult name bi input output a b) values outcome
   | metadata (body : Eval a values outcome) : Eval (.mdata data a) values outcome
 
 /-- Independent source support for a body returning ForInStep UInt64.
@@ -83,7 +83,7 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (yieldDirect a)
   | doneDirect (value : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (doneDirect a)
-  | choose (op : Comparison) (type : ResultType)
+  | choose (op : Comparison) (type : ResultAnnotation)
       (left : SupportedWith (types.map BindingKind.toScalar) a)
       (right : SupportedWith (types.map BindingKind.toScalar) b)
       (onTrue : Supported types t) (onFalse : Supported types e) :
@@ -91,9 +91,9 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | letE (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
-  | idBind (value : SupportedWith (types.map BindingKind.toScalar) a)
+  | idBind (type : ResultAnnotation) (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
-      Supported types (Range.bindYield name bi a b)
+      Supported types (bindWord name bi type a b)
   | letFn (type : ResultType)
       (function : SupportedWith (.word :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.function false) :: types) b) :
@@ -114,12 +114,12 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | unitApply (function : types[index]? = some (.function true))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (.app (.app (.bvar index) (.const ``Unit.unit [])) a)
-  | letStepFn (type : ResultType) (function : Supported (.scalar .word :: types) a)
+  | letStepFn (type : ResultAnnotation) (function : Supported (.scalar .word :: types) a)
       (body : Supported (.function false :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | letUnitStepFn (type : ResultType)
+  | letUnitStepFn (type : ResultAnnotation)
       (function : Supported (.scalar .word :: .scalar .unit :: types) a)
       (body : Supported (.function true :: types) b) :
       Supported types (.letE name
@@ -128,13 +128,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | resultVar (present : types[index]? = some .result) : Supported types (.bvar index)
-  | idRun (body : Supported types a) : Supported types (idRun a)
-  | idPure (body : Supported types a) : Supported types (idPure a)
-  | letResult (type : ResultType) (value : Supported types a)
+  | idRun (type : ResultAnnotation) (body : Supported types a) : Supported types (idRun type a)
+  | idPure (type : ResultAnnotation) (body : Supported types a) : Supported types (idPure type a)
+  | letResult (type : ResultAnnotation) (value : Supported types a)
       (body : Supported (.result :: types) b) :
       Supported types (.letE name (resultType type) a b nondep)
-  | bindResult (value : Supported types a) (body : Supported (.result :: types) b) :
-      Supported types (bindResult name bi a b)
+  | bindResult (input output : ResultAnnotation) (value : Supported types a) (body : Supported (.result :: types) b) :
+      Supported types (bindResult name bi input output a b)
   | metadata (body : Supported types e) : Supported types (.mdata data e)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
@@ -168,10 +168,10 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letE hx evaluated⟩
-  | idBind value _ ih =>
+  | idBind type value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
-    exact ⟨outcome, .idBind hx evaluated⟩
+    exact ⟨outcome, .idBind type hx evaluated⟩
   | letFn type function _ ih =>
     have total := fun x => function.evaluates (.word x :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)
@@ -205,20 +205,20 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
   | resultVar present =>
     obtain ⟨outcome, found⟩ := result_lookup typed present
     exact ⟨outcome, .resultVar found⟩
-  | idRun _ ih =>
+  | idRun type _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
-    exact ⟨outcome, .idRun evaluated⟩
-  | idPure _ ih =>
+    exact ⟨outcome, .idRun type evaluated⟩
+  | idPure type _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
-    exact ⟨outcome, .idPure evaluated⟩
+    exact ⟨outcome, .idPure type evaluated⟩
   | letResult type _ _ ihv ihb =>
     obtain ⟨bound, hv⟩ := ihv values typed
     obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letResult type hv hb⟩
-  | bindResult _ _ ihv ihb =>
+  | bindResult input output _ _ ihv ihb =>
     obtain ⟨bound, hv⟩ := ihv values typed
     obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
-    exact ⟨outcome, .bindResult hv hb⟩
+    exact ⟨outcome, .bindResult input output hv hb⟩
   | metadata _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .metadata evaluated⟩
