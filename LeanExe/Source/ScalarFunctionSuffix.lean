@@ -26,9 +26,11 @@ inductive FunctionSuffix where
 
 namespace FunctionSuffix
 
-def type : FunctionSuffix → Lean.Expr
-  | .result annotation _ => annotation.expr
-  | .argument parameter rest => parameter.arrow rest.type
+/-- The parameter sequence is independent of its terminal result spelling. -/
+def type (suffix : FunctionSuffix) (render : ResultType → Lean.Expr := ResultType.expr) : Lean.Expr :=
+  match suffix with
+  | .result annotation _ => render annotation
+  | .argument parameter rest => parameter.arrow (rest.type render)
 
 def value : FunctionSuffix → Lean.Expr
   | .result _ body => body
