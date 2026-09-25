@@ -3906,6 +3906,131 @@ def rangeDependentChoiceUnsupported (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun _ a => do
     let _unused := if _h : (a == seed) ≠ false then true else toString a == toString seed
     return .yield (a + 1)
+def boolLetNested (x y : UInt64) : UInt64 :=
+  (let flag := x == 0; flag && y != 0).toUInt64 + x
+
+def boolLetCapture (x y : UInt64) : UInt64 :=
+  let outer := x == 0
+  let flag := (let localFlag := y == 0; ((if localFlag then x else y) == x) || outer)
+  flag.toUInt64 + y
+
+def boolLetShadow (x y : UInt64) : UInt64 :=
+  let a := x != 0
+  (let a := a; let a := !a; a != false).toUInt64 + y
+
+def boolLetUnused (x y : UInt64) : UInt64 :=
+  (let _unused := x == y; y != 0).toUInt64
+
+def boolLetDependent (x y : UInt64) : UInt64 :=
+  (let flag := if _h : x < y then x == 0 else y != 0
+   let other := x != y
+   if _h : flag = other then !flag else decide (flag ≠ other)).toUInt64 + x
+
+def boolLetHelper (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let f := fun flag : Bool =>
+    (let a := flag
+     let b := outer
+     (let g := fun z : UInt64 => if a then z + x else z + y; g y) == x || b).toUInt64
+  f (y != 0) + x
+
+def boolLetDo (x y : UInt64) : UInt64 := Id.run do
+  let flag ← pure (let inside := x == 0; inside || y == 0)
+  let other ← if flag then pure (let inside := y != 0; !inside) else pure (let inside := x != 0; inside)
+  let mut z := x
+  if (let same := flag == other; same) then z := z + y else z := z - y
+  return z + (let answer := decide (flag ≠ other); answer).toUInt64
+
+def boolLetNegated (x y : UInt64) : UInt64 :=
+  let outside := y == 0
+  (!(let inside := x == 0; inside == outside)).toUInt64 +
+    (!!(let inside := outside; inside || x != 0)).toUInt64
+
+def rangeBoolLetYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag ← pure (let even := a % 2 == 0; (if even then a else UInt64.ofNat i) != seed)
+    a := a + flag.toUInt64 + UInt64.ofNat i
+    if flag then break
+  return a
+
+def rangeBoolLetJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let even ← pure (let flag := a % 2 == 0; flag)
+    let next ← if even then pure (let flag := UInt64.ofNat i == 0; !flag) else pure (let flag := a == seed; flag)
+    if next then a := a + 2 else a := a + 5
+    if (let flag := a % 7 == 0; flag != next) then break
+  return a
+
+def rangeBoolLetContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let skip := UInt64.ofNat i % 3 == 1; skip && a != 0) then continue
+    a := a + UInt64.ofNat i
+    if (let stop := a % 7 == 0; if _h : stop then a != seed else false) then break
+  return a
+
+def rangeBoolLetCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer := seed != 0
+  let f := fun flag : Bool => (let saved := outer; saved != flag).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun flag : Bool => f (let saved := flag; saved || outer) + a
+    a := g (let even := UInt64.ofNat i % 2 == 0; even)
+    if (let saved := a % 11 == 0; saved != outer) then break
+  return a + f (let saved := a == 0; saved)
+
+def rangeBoolLetBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first := (let flag := seed == 0; !flag).toUInt64
+  let stop := count + (let flag := seed != 0; flag).toUInt64
+  let mut a := seed
+  for i in [first.toNat:stop.toNat:2] do
+    a := a + (let flag := UInt64.ofNat i % 2 == 0; if flag then a == seed else !flag).toUInt64
+    if (let flag := a % 7 == 0; flag) then break
+  return a
+
+def rangeBoolLetStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let outer := a == seed
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let next ← pure (let localFlag := flag; localFlag != outer)
+      if _h : next then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (let localFlag := next; !localFlag).toUInt64)
+    f (let even := UInt64.ofNat i % 2 == 0; even)
+
+def rangeBoolLetOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag ← pure (let positive := count != 0; positive)
+  let mut a := seed + (let localFlag := flag; !localFlag).toUInt64
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if (let stop := a % 7 == 0; stop != flag) then break
+  let changed ← pure (let same := a == seed; same != flag)
+  return a + (let answer := changed; answer || flag).toUInt64
+
+def rangeBoolLetUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := a == seed
+    let _unused := (let inner := UInt64.ofNat i == 0; !inner || flag)
+    a := a + UInt64.ofNat i + 1
+    if flag then break
+  return a
+
+def boolLetUnsupportedBound (x y : UInt64) : UInt64 :=
+  (let _unused := toString x == toString y; true).toUInt64
+
+def boolLetUnsupportedBody (x y : UInt64) : UInt64 :=
+  let _unused := (let flag := x == 0; if flag then true else toString x == toString y)
+  x + y
+
+def boolLetUnsupportedType (x y : UInt64) : UInt64 :=
+  (let word := x + y; word == 0).toUInt64
+
+def rangeBoolLetUnsupported (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a => do
+    let _unused := (let _flag := toString a == toString seed; false)
+    return .yield (a + 1)
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -4612,6 +4737,22 @@ run_elab do
       `ArithmeticModeTest.rangeDependentChoiceStep,
       `ArithmeticModeTest.rangeDependentChoiceOuter,
       `ArithmeticModeTest.rangeDependentChoiceUnused,
+      `ArithmeticModeTest.boolLetNested,
+      `ArithmeticModeTest.boolLetCapture,
+      `ArithmeticModeTest.boolLetShadow,
+      `ArithmeticModeTest.boolLetUnused,
+      `ArithmeticModeTest.boolLetDependent,
+      `ArithmeticModeTest.boolLetHelper,
+      `ArithmeticModeTest.boolLetDo,
+      `ArithmeticModeTest.boolLetNegated,
+      `ArithmeticModeTest.rangeBoolLetYield,
+      `ArithmeticModeTest.rangeBoolLetJoined,
+      `ArithmeticModeTest.rangeBoolLetContinue,
+      `ArithmeticModeTest.rangeBoolLetCapture,
+      `ArithmeticModeTest.rangeBoolLetBounds,
+      `ArithmeticModeTest.rangeBoolLetStep,
+      `ArithmeticModeTest.rangeBoolLetOuter,
+      `ArithmeticModeTest.rangeBoolLetUnused,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -4647,6 +4788,7 @@ run_elab do
       `ArithmeticModeTest.localDecideUnsupported, `ArithmeticModeTest.localDecideInactiveUnsupported, `ArithmeticModeTest.localDecideCustomDecision, `ArithmeticModeTest.rangeLocalDecideUnsupported,
       `ArithmeticModeTest.relationChoiceUnsupported, `ArithmeticModeTest.relationChoiceInactiveUnsupported, `ArithmeticModeTest.relationChoiceCustomDecision, `ArithmeticModeTest.rangeRelationChoiceUnsupported,
       `ArithmeticModeTest.dependentChoiceUnsupported, `ArithmeticModeTest.dependentChoiceInactiveUnsupported, `ArithmeticModeTest.dependentChoiceCustomDecision, `ArithmeticModeTest.rangeDependentChoiceUnsupported,
+      `ArithmeticModeTest.boolLetUnsupportedBound, `ArithmeticModeTest.boolLetUnsupportedBody, `ArithmeticModeTest.boolLetUnsupportedType, `ArithmeticModeTest.rangeBoolLetUnsupported,
       `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,
