@@ -12,8 +12,8 @@ structure ManyFunction where
 
 namespace ManyFunction
 
-def type (function : ManyFunction) : Lean.Expr :=
-  function.first.arrow (function.second.arrow function.suffix.type)
+def type (function : ManyFunction) (render : ResultType → Lean.Expr := ResultType.expr) : Lean.Expr :=
+  function.first.arrow (function.second.arrow (function.suffix.type render))
 
 def value (function : ManyFunction) : Lean.Expr :=
   function.first.lambda (function.second.lambda function.suffix.value)
@@ -31,8 +31,9 @@ theorem body_size (function : ManyFunction) : sizeOf function.body < sizeOf func
   simp only [body, value, Parameter.lambda]
   simp_all; omega
 
-def bind (function : ManyFunction) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) : Lean.Expr :=
-  .letE name function.type function.value body nondep
+def bind (function : ManyFunction) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool)
+    (render : ResultType → Lean.Expr := ResultType.expr) : Lean.Expr :=
+  .letE name (function.type render) function.value body nondep
 
 theorem body_bind_size (function : ManyFunction) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
     sizeOf function.body < sizeOf (function.bind name body nondep) := by

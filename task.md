@@ -483,10 +483,19 @@ admission expectation was updated. The seventeen selected
 preceding modules kept identical bytes. The full corpus contains 309 declarations;
 this execution run checked 31. General type validation used cached dependencies.
 
-Next increment: remove the corresponding argument-count limit on local helpers
+Current increment: remove the corresponding argument-count limit on local helpers
 returning complete ForInStep results. Reuse the checked argument-list and lexical
 binding rules, preserve scalar/step result distinctions, and complete focused
 execution and the general audits before moving to the next capability.
+
+Checked preparation: scalar and step result annotations now share the same Id
+wrapper description while retaining separate UInt64 and ForInStep renderers.
+Parameter parsing, exact reconstruction and body-size proofs are shared across
+both result kinds. The new larger-step-helper parser checks and remains disjoint
+from scalar helper parsing. All existing affected extraction proofs, including
+function correctness and range invariants, pass. The preceding step-helper test
+passes 240 native Lean/IR comparisons and five rejection tests. The new binding
+and application rules are not yet enabled; this increment is not complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
