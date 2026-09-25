@@ -62,6 +62,7 @@ inductive BooleanLocal where
   | dependentProposition (negations : Nat) (shape : BooleanProofBranch) (guard : PropositionGuard)
       (yes no : BooleanLocal)
   | binding (negations : Nat) (name : Lean.Name) (nondep : Bool) (value body : BooleanLocal)
+  | wordBinding (negations : Nat) (name : Lean.Name) (nondep : Bool) (value : Lean.Expr) (body : BooleanLocal)
   | decision (negations : Nat) (guard : PropositionGuard)
   | relationDecision (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
   | equality (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
@@ -83,6 +84,8 @@ def expr : BooleanLocal → Lean.Expr
       (shape.expr g.condition g.evidence t.expr e.expr)
   | .binding n name nondep value body => BooleanGuardNegation.expr n
       (booleanLetExpr name nondep value.expr body.expr)
+  | .wordBinding n name nondep value body => BooleanGuardNegation.expr n
+      (booleanWordLetExpr name nondep value body.expr)
   | .decision n g => BooleanGuardNegation.expr n g.value.decisionExpr
   | .relationDecision n unequal a b => BooleanGuardNegation.expr n (booleanRelationDecisionExpr unequal a.expr b.expr)
   | .equality n unequal a b => BooleanGuardNegation.expr n (booleanEqualityExpr unequal a.expr b.expr)
@@ -95,6 +98,7 @@ def operands : BooleanLocal → List Lean.Expr
   | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e => a.operands ++ (b.operands ++ (t.operands ++ e.operands))
   | .proposition _ g t e | .dependentProposition _ _ g t e => g.operands ++ (t.operands ++ e.operands)
   | .binding _ name nondep value body => value.operands ++ body.operands.map (booleanLetExpr name nondep value.expr)
+  | .wordBinding _ name nondep value body => value :: body.operands.map (booleanWordLetExpr name nondep value)
   | .decision _ g => g.operands
   | .equality _ _ a b | .relationDecision _ _ a b => a.operands ++ b.operands
 
@@ -111,6 +115,9 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
   | .binding n name nondep value body => GuardNegation.denote n
       (body.denote (fun operand => native (booleanLetExpr name nondep value.expr operand))
         (booleanLetBooleans (value.denote native booleans) booleans))
+  | .wordBinding n name nondep value body => GuardNegation.denote n
+      (body.denote (fun operand => native (booleanWordLetExpr name nondep value operand))
+        (booleanLetBooleans false booleans))
   | .decision n g => GuardNegation.denote n (g.denote native)
   | .relationDecision n unequal a b => GuardNegation.denote n
       (booleanRelationDecision unequal (a.denote native booleans) (b.denote native booleans))
@@ -139,6 +146,7 @@ def negate : BooleanLocal → BooleanLocal
   | .dependentChoice n shape unequal a b t e => .dependentChoice (n + 1) shape unequal a b t e
   | .dependentProposition n shape g t e => .dependentProposition (n + 1) shape g t e
   | .binding n name nondep value body => .binding (n + 1) name nondep value body
+  | .wordBinding n name nondep value body => .wordBinding (n + 1) name nondep value body
   | .decision n g => .decision (n + 1) g
   | .relationDecision n unequal a b => .relationDecision (n + 1) unequal a b
   | .equality n unequal a b => .equality (n + 1) unequal a b
@@ -212,6 +220,16 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
       simp only [booleanLetExpr]
       clear ihv ihb
       simp_all <;> omega
+  | wordBinding n name nondep value body ihb =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    simp only [operands, List.mem_cons, List.mem_map] at member
+    rcases member with rfl | ⟨inner, innerMember, rfl⟩
+    · simp [booleanWordLetExpr]
+      omega
+    · have bound := ihb innerMember
+      clear ihb
+      simp only [booleanWordLetExpr]
+      simp_all <;> omega
   | decision n g =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     have bound := g.value.operands_size member
@@ -244,11 +262,22 @@ def variables : BooleanLocal → List Nat
   | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.variables ++ e.variables
   | .equality _ _ a b | .relationDecision _ _ a b => a.variables ++ b.variables
   | .binding _ _ _ value body => value.variables ++ booleanLetVariables body.variables
+  | .wordBinding _ _ _ _ body => booleanLetVariables body.variables
+
+/-- Word-bound slots cannot be used as Boolean references, including in nested values. -/
+def WellScoped : BooleanLocal → Prop
+  | .var .. | .literal .. | .compare .. | .decision .. => True
+  | .junction _ _ a b | .equality _ _ a b | .relationDecision _ _ a b
+  | .binding _ _ _ a b => a.WellScoped ∧ b.WellScoped
+  | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e =>
+      a.WellScoped ∧ b.WellScoped ∧ t.WellScoped ∧ e.WellScoped
+  | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.WellScoped ∧ e.WellScoped
+  | .wordBinding _ _ _ _ body => 0 ∉ body.variables ∧ body.WellScoped
 
 /-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
 def extended : BooleanLocal → Bool
   | .var .. | .choice .. | .proposition .. | .dependentChoice .. | .dependentProposition ..
-  | .decision .. | .equality .. | .relationDecision .. | .binding .. => true
+  | .decision .. | .equality .. | .relationDecision .. | .binding .. | .wordBinding .. => true
   | .literal .. | .compare .. => false
   | .junction _ _ a b => a.extended || b.extended
 

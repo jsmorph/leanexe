@@ -737,12 +737,17 @@ kept identical bytes. Evidence is in `proofs/compiler/boolean-let-2026-09-25/`.
 The complete corpus has 584 declarations; this execution run was focused. No
 emitter/runtime changes; pure bound computations may repeat in compiled code.
 
-Next increment: UInt64 let bindings inside Boolean expressions. Promote the
-currently rejected word-binding example unchanged, preserve typed scope and
-check unused bound values, then complete proofs and scalar/loop execution before
-moving on. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
-parameters, broader saved-flag propositions and loops inside helpers remain
-later capabilities.
+Current increment: UInt64 let bindings inside Boolean expressions. Five original
+examples currently reject, including the preceding word-binding exclusion. The
+source form preserves word let syntax and wraps body scalar operands in their
+original scope. Source type checks now also require that word-bound slots are
+not used as Boolean references, recursively through nested values. Word-slot
+lookup, source size, lowering totality/completeness, semantic correctness,
+invariants and successful-compilation scope proofs pass focused Lean builds.
+Parser reconstruction, scalar/loop integration, execution and final docs remain
+in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word
+helper parameters, broader saved-flag propositions and loops inside helpers
+remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
