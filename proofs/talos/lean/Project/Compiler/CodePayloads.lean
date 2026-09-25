@@ -1,3 +1,4 @@
+import LeanExe.Wasm.ArithmeticBounds
 import Project.Compiler.PayloadVectors
 import Project.Compiler.RuntimeFunctionParsing
 
@@ -6,11 +7,12 @@ namespace Project.Compiler.ArithmeticModule
 open Project.Compiler.Parsing
 open Wasm.Binary
 
-def codeItems (func : LeanExe.IR.Func) : List (List UInt8) :=
-  [LeanExe.Wasm.Binary.CoreWasm.emitFuncBody 4 func,
-   LeanExe.Wasm.Binary.CoreWasm.coreAllocBody, LeanExe.Wasm.Binary.CoreWasm.coreResetBody,
-   LeanExe.Wasm.Binary.CoreWasm.coreRetainBody, LeanExe.Wasm.Binary.CoreWasm.coreReleaseBody 4]
-def codePayload (func : LeanExe.IR.Func) : List UInt8 := LeanExe.Wasm.Binary.vec (codeItems func)
+abbrev codeItems (func : LeanExe.IR.Func) : List (List UInt8) :=
+  LeanExe.Wasm.ArithmeticBounds.codeItems func
+
+abbrev codePayload (func : LeanExe.IR.Func) : List UInt8 :=
+  LeanExe.Wasm.ArithmeticBounds.codePayload func
+
 def codeValues (user : Code) : List Code :=
   [user, RuntimeEncoding.allocCode, RuntimeEncoding.resetCode,
    RuntimeEncoding.retainCode, RuntimeEncoding.releaseCode]
@@ -29,7 +31,7 @@ theorem codes_parsed (func : LeanExe.IR.Func) (raw : Code)
     (.cons RuntimeEncoding.reset_body (.cons RuntimeEncoding.retain_body
       (.cons RuntimeEncoding.release_body .nil)))))
   · intro bs member
-    simp only [codeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+    simp only [codeItems, LeanExe.Wasm.ArithmeticBounds.codeItems, List.mem_cons, List.not_mem_nil, or_false] at member
     rcases member with rfl | rfl | rfl | rfl | rfl <;> exact body_nonempty _ _
   · change 5 < 2 ^ 32
     decide

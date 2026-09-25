@@ -1,4 +1,5 @@
-import Project.Compiler.ValidationRules
+import Project.Compiler.ArithmeticModuleBytes
+import Project.Artifact.Binary.Validate
 
 namespace Project.Compiler.ArithmeticModule
 
