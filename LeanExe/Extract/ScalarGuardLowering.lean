@@ -60,6 +60,21 @@ theorem lowerJunction_choice (P : LeanExe.IR.Expr → Prop)
     (binary _ _ _ (first _ _ (literal 1) (literal 0)) (second _ _ (literal 1) (literal 0)))
     (literal 1) ht he
 
+/-- A literal guard is known at compilation and uses existing word equality. -/
+def lowerGuardLiteral (value : Bool) : LeanExe.IR.Cond :=
+  .eqU64 (.u64 (if value then 1 else 0)) (.u64 1)
+
+theorem lowerGuardLiteral_correct (value : Bool) (store : LeanExe.IR.ScalarStore) :
+    (lowerGuardLiteral value).ScalarEval store value store := by
+  cases value <;> exact .eq .const .const
+
+theorem lowerGuardLiteral_choice (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
+    (value : Bool) : ∀ t e, P t → P e → P (.ite (lowerGuardLiteral value) t e) := by
+  intro t e ht he
+  exact choice .eq _ _ _ _ (literal _) (literal 1) ht he
+
 /-- Each source Not wrapper tests the previous Boolean word against zero. -/
 def lowerGuardNegations : Nat → LeanExe.IR.Cond → LeanExe.IR.Cond
   | 0, condition => condition

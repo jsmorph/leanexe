@@ -19,8 +19,12 @@ end BooleanGuardNegation
 def Junction.booleanExpr (op : Junction) (a b : Lean.Expr) : Lean.Expr :=
   .app (.app (.const (match op with | .conjunction => ``Bool.and | .disjunction => ``Bool.or) []) a) b
 
-/-- Concrete Bool expressions over standard UInt64 Boolean comparisons. -/
+def booleanLiteralExpr (value : Bool) : Lean.Expr :=
+  .const (if value then ``Bool.true else ``Bool.false) []
+
+/-- Concrete Bool expressions over literals and standard UInt64 comparisons. -/
 inductive BooleanGuard where
+  | literal (negations : Nat) (value : Bool)
   | compare (op : BooleanComparison) (left right : Lean.Expr)
   | junction (negations : Nat) (op : Junction) (left right : BooleanGuard)
   deriving Repr
@@ -28,18 +32,22 @@ inductive BooleanGuard where
 namespace BooleanGuard
 
 def operands : BooleanGuard → List Lean.Expr
+  | .literal _ _ => []
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
 
 def expr : BooleanGuard → Lean.Expr
+  | .literal n value => BooleanGuardNegation.expr n (booleanLiteralExpr value)
   | .compare op a b => op.expr a b
   | .junction n op a b => BooleanGuardNegation.expr n (op.booleanExpr a.expr b.expr)
 
 def denote (native : Lean.Expr → UInt64) : BooleanGuard → Bool
+  | .literal n value => GuardNegation.denote n value
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
 
 def negate : BooleanGuard → BooleanGuard
+  | .literal n value => .literal (n + 1) value
   | .compare op a b => .compare (.negate op) a b
   | .junction n op a b => .junction (n + 1) op a b
 
@@ -50,6 +58,7 @@ theorem negate_expr (guard : BooleanGuard) :
 theorem operands_size (guard : BooleanGuard) {operand : Lean.Expr}
     (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.expr := by
   induction guard with
+  | literal => simp [operands] at member
   | compare op a b =>
     simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
     have bounds := op.operands_size a b

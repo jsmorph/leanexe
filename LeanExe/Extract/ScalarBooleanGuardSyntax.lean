@@ -15,6 +15,8 @@ def booleanGuardOperands? : Lean.Expr → Option BooleanGuard
       let b ← booleanGuardOperands? right
       pure (.junction 0 .disjunction a b)
   | .app (.const ``Bool.not []) inner => (booleanGuardOperands? inner).map BooleanGuard.negate
+  | .const ``Bool.true [] => some (.literal 0 true)
+  | .const ``Bool.false [] => some (.literal 0 false)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 
 @[simp] theorem booleanGuardOperands_compare (op : BooleanComparison) (a b : Lean.Expr) :
@@ -26,6 +28,12 @@ def booleanGuardOperands? : Lean.Expr → Option BooleanGuard
 @[simp] theorem booleanGuardOperands_expr (guard : BooleanGuard) :
     booleanGuardOperands? guard.expr = some guard := by
   induction guard with
+  | literal n value =>
+    induction n with
+    | zero => cases value <;> rfl
+    | succ n ih =>
+      simpa only [BooleanGuard.expr, BooleanGuardNegation.expr, booleanGuardOperands?,
+        Option.map_some, BooleanGuard.negate] using congrArg (Option.map BooleanGuard.negate) ih
   | compare op a b => exact booleanGuardOperands_compare op a b
   | junction n op a b iha ihb =>
     induction n with
@@ -52,19 +60,28 @@ theorem booleanGuardOperands_sound {expression : Lean.Expr} {guard : BooleanGuar
     rw [booleanGuardOperands?] at parsed
     obtain ⟨guard, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
     rw [BooleanGuard.negate_expr, ih found]
-  | case4 expression excludedAnd excludedOr excludedNot =>
+  | case4 | case5 => cases parsed; rfl
+  | case6 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse =>
     rw [booleanGuardOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
     · exact excludedAnd
     · exact excludedOr
     · exact excludedNot
+    · exact excludedTrue
+    · exact excludedFalse
 
 theorem booleanJunction_not_comparison (n : Nat) (op : Junction) (a b : Lean.Expr) :
     booleanComparisonOperands? (BooleanGuardNegation.expr n (op.booleanExpr a b)) = none := by
   induction n with
   | zero => cases op <;> rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
+
+theorem booleanLiteral_not_comparison (n : Nat) (value : Bool) :
+    booleanComparisonOperands? (BooleanGuard.literal n value).expr = none := by
+  induction n with
+  | zero => cases value <;> rfl
+  | succ n ih => simpa [BooleanGuard.expr, BooleanGuardNegation.expr, booleanComparisonOperands?] using ih
 
 def booleanGuardCondition? : Lean.Expr → Option BooleanGuard
   | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) inner) (.const ``Bool.true []) =>
@@ -91,5 +108,15 @@ theorem booleanJunction_condition_not_comparison (n : Nat) (op : Junction) (a b 
   | succ n =>
     simp [BooleanGuard.condition, BooleanGuard.expr, BooleanGuardNegation.expr,
       comparisonOperands?, booleanJunction_not_comparison]
+
+theorem booleanLiteral_condition_not_comparison (n : Nat) (value : Bool) :
+    comparisonOperands? (BooleanGuard.literal n value).condition = none := by
+  cases n with
+  | zero => cases value <;> rfl
+  | succ n =>
+    simp only [BooleanGuard.condition, BooleanGuard.expr, BooleanGuardNegation.expr, comparisonOperands?]
+    change (booleanComparisonOperands? (BooleanGuard.literal n value).expr).map _ = none
+    rw [booleanLiteral_not_comparison]
+    rfl
 
 end LeanExe.Extract.Core

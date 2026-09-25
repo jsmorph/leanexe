@@ -8,6 +8,7 @@ open LeanExe.Source.Scalar (BooleanGuard)
 allows the surrounding source compiler to prove its recursive calls decrease. -/
 def extractBooleanGuard : (guard : BooleanGuard) →
     ((operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr) → Option LeanExe.IR.Cond
+  | .literal n value, _ => some (lowerGuardLiteral (LeanExe.Source.Scalar.GuardNegation.denote n value))
   | .compare op a b, compile => do
       let left ← compile a (by simp [BooleanGuard.operands])
       let right ← compile b (by simp [BooleanGuard.operands])
@@ -22,6 +23,7 @@ theorem extractBooleanGuard_accepts (guard : BooleanGuard)
     (total : ∀ operand member, ∃ target, compile operand member = some target) :
     ∃ target, extractBooleanGuard guard compile = some target := by
   induction guard with
+  | literal n value => exact ⟨_, rfl⟩
   | compare op a b =>
     obtain ⟨left, hl⟩ := total a (by simp [BooleanGuard.operands])
     obtain ⟨right, hr⟩ := total b (by simp [BooleanGuard.operands])
@@ -38,6 +40,9 @@ theorem extractBooleanGuard_operands (guard : BooleanGuard)
     {target : LeanExe.IR.Cond} (compiled : extractBooleanGuard guard compile = some target) :
     ∀ operand member, ∃ expression, compile operand member = some expression := by
   induction guard generalizing target with
+  | literal n value =>
+    intro operand member
+    simp [BooleanGuard.operands] at member
   | compare op a b =>
     simp only [extractBooleanGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
@@ -62,6 +67,10 @@ theorem extractBooleanGuard_correct (guard : BooleanGuard)
       expression.ScalarEval store (native operand) store) :
     target.ScalarEval store (guard.denote native) store := by
   induction guard generalizing target with
+  | literal n value =>
+    simp only [extractBooleanGuard, Option.some.injEq] at compiled
+    subst target
+    exact lowerGuardLiteral_correct _ _
   | compare op a b =>
     simp only [extractBooleanGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
@@ -84,6 +93,10 @@ theorem extractBooleanGuard_choice (P : LeanExe.IR.Expr → Prop)
     (operands : ∀ operand member expression, compile operand member = some expression → P expression) :
     ∀ t e, P t → P e → P (.ite target t e) := by
   induction guard generalizing target with
+  | literal n value =>
+    simp only [extractBooleanGuard, Option.some.injEq] at compiled
+    subst target
+    exact lowerGuardLiteral_choice P literal choice _
   | compare op a b =>
     simp only [extractBooleanGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled

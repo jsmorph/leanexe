@@ -9,6 +9,7 @@ open LeanExe.Source.Scalar (Guard CompoundGuard BooleanGuard)
 allows the surrounding source compiler to prove its recursive calls decrease. -/
 def extractGuard : (guard : Guard) →
     ((operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr) → Option LeanExe.IR.Cond
+  | .literal value, _ => some (lowerGuardLiteral (value.denote))
   | .compare op a b, compile => do
       let left ← compile a (by simp [Guard.operands])
       let right ← compile b (by simp [Guard.operands])
@@ -26,6 +27,7 @@ theorem extractGuard_accepts (guard : Guard)
     (total : ∀ operand member, ∃ target, compile operand member = some target) :
     ∃ target, extractGuard guard compile = some target := by
   induction guard with
+  | literal value => exact ⟨_, rfl⟩
   | compare op a b =>
     obtain ⟨left, hl⟩ := total a (by simp [Guard.operands])
     obtain ⟨right, hr⟩ := total b (by simp [Guard.operands])
@@ -45,6 +47,9 @@ theorem extractGuard_operands (guard : Guard)
     {target : LeanExe.IR.Cond} (compiled : extractGuard guard compile = some target) :
     ∀ operand member, ∃ expression, compile operand member = some expression := by
   induction guard generalizing target with
+  | literal value =>
+    intro operand member
+    simp [Guard.operands] at member
   | compare op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
@@ -73,6 +78,10 @@ theorem extractGuard_correct (guard : Guard)
       expression.ScalarEval store (native operand) store) :
     target.ScalarEval store (guard.denote native) store := by
   induction guard generalizing target with
+  | literal value =>
+    simp only [extractGuard, Option.some.injEq] at compiled
+    subst target
+    exact lowerGuardLiteral_correct _ _
   | compare op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
@@ -99,6 +108,10 @@ theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     (operands : ∀ operand member expression, compile operand member = some expression → P expression) :
     ∀ t e, P t → P e → P (.ite target t e) := by
   induction guard generalizing target with
+  | literal value =>
+    simp only [extractGuard, Option.some.injEq] at compiled
+    subst target
+    exact lowerGuardLiteral_choice P literal choice _
   | compare op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled

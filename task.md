@@ -435,10 +435,15 @@ still checks the general compiler and type proofs and records its exact
 execution scope. The full 259-declaration comparator also passed against the
 already generated min/max artifacts after the driver change.
 
-Next incremental capability: Boolean and propositional literal guards, both as
-whole guards and inside nested compound guards. Retain exact source/evidence
-checks and check both branches even for a constant condition. Complete proofs
-and actual compiler execution checks before the next capability.
+Current increment: Boolean and propositional literal guards, both as whole
+conditions and inside nested mixed guards. Exact source and decision expressions
+are retained; known literal results lower through existing word equality. Both
+branches remain checked even when a condition is constant. Shared parser and
+lowering proofs are complete. All 208 focused native Lean/IR comparisons and
+three rejection tests passed. The general proof/execution gates follow before
+this increment is marked complete.
+The fixed `guard-literals` execution group contains the seventeen `guard-core`
+cases plus twelve new declarations; it checks 503 results across 29 declarations.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
