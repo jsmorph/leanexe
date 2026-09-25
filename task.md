@@ -525,3 +525,12 @@ FixedPayloadBounds discharges fixed function-index, memory, and global section
 length bounds using general vector and constant-encoding length proofs. All
 affected modules build. The exact moduleBytes composition theorem is now being
 checked; validation and export invocation remain unfinished.
+
+### Exact production module bytes decode (checked)
+
+ArithmeticModuleBytes proves that the public decoder consumes the exact
+CoreWasm.moduleBytes output for a single source function, including all runtime
+functions and metadata. Its user-body parsing premise is the one established
+by SourceFunctionBytes; its remaining format hypotheses are only parameter,
+result, name, and variable section sizes. The module builds. Source composition
+is next. This is not validation or export-invocation correctness.
