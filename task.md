@@ -143,6 +143,15 @@ returned done values, wrapping, joined branches and both continuation shapes.
 Source acceptance/success support, static bounds, whole-function extraction,
 Wasm proofs and public execution checks are still pending.
 
+The step admission proofs now pass in both directions: every independently
+supported step compiles under total typed bindings, and every successful
+extraction belongs to that grammar, including unused function bodies.
+`ScalarStepInvariant.lean` proves both projections preserve scalar expression
+invariants for later arithmetic/local-read bounds. The separate whole-range
+source model also has checked total evaluation, preserving early-exit outcomes
+and scalar computations before/after the loop. These focused targets pass;
+whole-function extraction and WebAssembly integration remain in progress.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.
