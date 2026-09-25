@@ -170,6 +170,13 @@ result of remaining iterations, with the same decreasing index rank for yields
 and immediate termination for done. The new proof modules built from cached
 dependencies; public source dispatch and whole-module tests are next.
 
+Public scalar extraction now tries the proved early-exit range after the pure
+and yielding-range cases. Source declaration support/application and all general
+function/module/validation/invocation proofs include the new case. The full
+affected compiler proof target and nine axiom audits pass. Nine public execution
+fixtures and updated admission tests are ready for the focused native/V8 check;
+that check is still pending at this candidate checkpoint.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.

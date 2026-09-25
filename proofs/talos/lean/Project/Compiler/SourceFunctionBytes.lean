@@ -1,5 +1,6 @@
 import Project.Compiler.ArithmeticFunctionBytes
 import Project.Compiler.RangeFunctionBytes
+import Project.Compiler.RangeExitFunctionBytes
 import Project.Compiler.FunctionParsing
 
 namespace Project.Compiler.ArithmeticEncoding
@@ -29,7 +30,7 @@ theorem extracted_function_body_bytes
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
   obtain ⟨arity, body, _, hb, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩ | ⟨plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     have supported := extractScalarExpr_supported hi
@@ -73,6 +74,20 @@ theorem extracted_function_body_bytes
         LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) = 3 + descriptor.scratchWidth := by
       rw [Range.func_scratch matched]
       simp [ScalarRangePlan.func]
+    simpa only [countEq] using parsed
+  · have hlen : args.length = arity := len
+    subst arity
+    obtain ⟨value, semantics, meaning⟩ := rangeExitFunc_meaning hp rfl
+    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args [] hb (by simpa using semantics)
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExit_admitted hp
+      (by intro index present; simpa using present)
+    obtain ⟨raw, next, parsed, executed⟩ := range_exit_function_body_bytes args name exportName releaseIndex
+      matched arithmetic reads meaning localBound bodyBound m env store
+    refine ⟨value, raw, next, applied, ?_, executed⟩
+    have countEq : (plan.func name exportName args.length).locals - (plan.func name exportName args.length).params +
+        LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) = 4 + descriptor.scratchWidth := by
+      rw [RangeExit.func_scratch matched]
+      simp [ScalarRangeExitPlan.func]
     simpa only [countEq] using parsed
 
 end Project.Compiler.ArithmeticEncoding

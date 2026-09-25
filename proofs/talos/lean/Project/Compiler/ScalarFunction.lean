@@ -1,6 +1,8 @@
 import Project.Compiler.FunctionState
 import Project.Compiler.RangeFunctionExecution
+import Project.Compiler.RangeExitFunctionExecution
 import LeanExe.Wasm.ScalarRangeAdmission
+import LeanExe.Wasm.ScalarRangeExitAdmission
 import LeanExe.Wasm.ScalarScratch
 import LeanExe.Wasm.ScalarAdmission
 
@@ -57,7 +59,7 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
       Wasm.wp m code (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((functionState func args).toLocals []) env := by
   obtain ⟨arity, body, _, hb, branches⟩ := LeanExe.Extract.Core.extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩ | ⟨plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     have supported := LeanExe.Extract.Core.extractScalarExpr_supported hi
@@ -76,6 +78,15 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
     obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRange_admitted hp
       (by intro index present; simpa using present)
     obtain ⟨code, next, emitted, executed⟩ := range_function_execution args name exportName
+      releaseIndex matched meaning m env store
+    exact ⟨value, code, next, applied, emitted, executed⟩
+  · have hlen : args.length = arity := len
+    subst arity
+    obtain ⟨value, semantics, meaning⟩ := LeanExe.Extract.Core.rangeExitFunc_meaning hp rfl
+    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args [] hb (by simpa using semantics)
+    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRangeExit_admitted hp
+      (by intro index present; simpa using present)
+    obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
       releaseIndex matched meaning m env store
     exact ⟨value, code, next, applied, emitted, executed⟩
 
