@@ -162,6 +162,8 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | bindResult (input output : ResultAnnotation) (value : Eval a values bound)
       (body : Eval b (.result bound :: values) outcome) :
       Eval (bindResult name bi input output a b) values outcome
+  | idLet (body : Eval (.letE name type a b nondep) values outcome) :
+      Eval (idLetExpr name type a b nondep) values outcome
   | metadata (body : Eval a values outcome) : Eval (.mdata data a) values outcome
 
 /-- Independent source support for a body returning ForInStep UInt64.
@@ -316,6 +318,8 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name (resultType type) a b nondep)
   | bindResult (input output : ResultAnnotation) (value : Supported types a) (body : Supported (.result :: types) b) :
       Supported types (bindResult name bi input output a b)
+  | idLet (body : Supported types (.letE name type a b nondep)) :
+      Supported types (idLetExpr name type a b nondep)
   | metadata (body : Supported types e) : Supported types (.mdata data e)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
@@ -557,6 +561,9 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨bound, hv⟩ := ihv values typed
     obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .bindResult input output hv hb⟩
+  | idLet _ ih =>
+    obtain ⟨outcome, evaluated⟩ := ih values typed
+    exact ⟨outcome, .idLet evaluated⟩
   | metadata _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .metadata evaluated⟩
