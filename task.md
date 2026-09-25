@@ -549,9 +549,12 @@ numeric-instance positions, including borrowed-type metadata. Independent
 NaturalType/NaturalLiteral syntax and exact parser acceptance/soundness pass.
 The constant UInt64-instance grammar now admits those numeric arguments. Source
 totality, all scalar extraction proofs and exact literal-count inversion pass.
-Loop integration and focused execution are next; this increment is not complete.
-Test the recorded explicit-instance and UInt64.ofNat failures unchanged, while
-continuing to reject custom Nat and UInt64 instances and general Nat arithmetic.
+Loop integration and 208 focused native/IR comparisons pass, including the
+recorded explicit-instance and UInt64.ofNat failure forms unchanged. Four
+declaration rejections, five raw numeral rejections and two metadata checks
+pass. Compiler audits and focused WebAssembly execution are next; this
+increment is not yet complete. Custom instances and general Nat arithmetic
+remain rejected.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
