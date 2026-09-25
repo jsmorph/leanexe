@@ -156,8 +156,9 @@ Endpoint floor margins imply clearance because both coordinates share progress.
 The duration obeys the component speed and acceleration limits. Its square root
 uses 17 steps of binary search with bounds 0 and 65536. Such edges allow steep
 terrain to be traversed slowly; zero waypoint speeds do not mean zero motion
-between waypoints. Local acceptance is proved. The all-stop whole-route witness
-still needs to be connected to the public computation.
+between waypoints. Local acceptance and the all-stop whole-route witness are
+proved for the reference row sequence. Its connection to the public computation
+still needs to be established.
 
 ## Optimization and representation
 
@@ -216,6 +217,7 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `Initial.lean` | Initial array fields, size, unique reachable state and zero-layer bounds |
 | `Optimality.lean` | General layered-graph lower-bound certificate and attaining-route optimality theorem |
 | `Planner.lean` | Bellman invariant, feasibility and optimum for repeated executable `advance` transitions |
+| `Feasibility.lean` | All-stop route witness, finite and optimal terminal labels, exact floor decoding and terrain specialization |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
 `Planner.layers` is a reference sequence consisting of the actual executable
@@ -312,9 +314,11 @@ commits should continue respecting that file scope unless the user changes it.
    indexing. Use the checked `advance_word`, `best_parent`, `advance_bound`
    and Bellman invariant. Introduce named helpers if they make the boundary
    smaller, then check that LeanExe still accepts them and rerun behavior tests.
-3. **Whole-route feasibility.** Lift `rest_admitted` to an all-stop route for
-   every accepted terrain. Conclude the terminal label is finite and safely
-   separated from the unreachable sentinel.
+3. **Whole-route feasibility — checked for the row sequence.**
+   `Feasibility.all_stop_flight` lifts `rest_admitted` to an all-stop route.
+   `terrain_terminal_optimal` establishes an attained optimal terminal label
+   for every nonempty bounded terrain. The remaining task is to transport this
+   result through the public forward/history loop correspondence.
 4. **Reconstruction and output contract.** Prove all parent reads in range,
    predecessor traversal reaches the unique initial state, the output has
    length 2n and correct alternating encoding, endpoints are on the ground
@@ -367,3 +371,22 @@ above, plus this task record. Targeted executable/WASM regression passed before
 this proof-only increment. The aggregate `Project.Drone.SourceChecks` target passed (1,991 build jobs,
 mostly cached); the printed axiom audit contains only standard Lean axioms. The outstanding `compute` and artifact boundaries are
 explicitly retained in this record. Graphs and HTML are excluded.
+
+
+### 2026-09-25 — terrain feasibility checkpoint
+
+The first checkpoint was published as `b79e90347218c0c36ad1fb66a2a37fa2f3c760dc`
+on `origin/drone`. HTTPS Git write credentials were unavailable, so the checked
+Git tree was published through the authenticated GitHub connector, fetched, and
+matched byte-for-byte before synchronizing the local branch. Subsequent remote
+updates use non-forced branch updates; preserve the previous local commit when
+synchronizing equivalent GitHub-created commits.
+
+Added `Feasibility.lean`. Lean now proves an all-stop path for any bounded floor
+sequence, reachability of the terminal stopped state, and an attained optimum
+at that state in the actual row recurrence. The floor decoding theorem proves
+that its UInt64 addition does not wrap and gives the intended endpoint and
+interior values. These results specialize to every nonempty terrain with at
+most 64 elevations, each at most 1,000,000. `compute` guard/loop/reconstruction
+correspondence remains unproved. The focused feasibility target passed, and
+the aggregate source check includes its theorems and axiom audit.
