@@ -4,6 +4,12 @@ LeanExe compiles a checked declaration from a restricted Lean 4 program to a sta
 
 LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  A source-agreement theorem uses Lean definitions as its specification.  The proof establishes the connection to the binary without assuming compiler correctness.
 
+The restricted `compile-arithmetic` command additionally has a [general compiler
+correctness theorem](docs/arithmetic-correctness.md): every successfully admitted
+UInt64 arithmetic declaration produces bytes that decode, validate and execute
+to its source result in the pinned Wasm model. The guide describes the exact
+source grammar, proof boundary, execution tests and independent source package.
+
 Ordinary library-mode binary serialization can also run through LeanExe's experimental [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler remains the production path; the LeanExe-compiled emitter is a non-blocking deterministic regression experiment.
 
 ![LeanExe architecture](docs/leanexe.png)

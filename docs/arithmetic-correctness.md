@@ -1,0 +1,142 @@
+# Arithmetic compiler correctness
+
+The `compile-arithmetic` command admits a restricted source language covered by
+a general compiler theorem. Every successful admission inherits that theorem;
+users do not supply a separate proof for each program. The normal `compile`
+command accepts more of the leanexe dialect, but that broader language is not
+yet covered by this theorem.
+
+## Accepted source
+
+A declaration must be safe, total, have an executable body, take zero or more
+`UInt64` arguments and return `UInt64`. Its body may read arguments, contain
+UInt64 literals and metadata, and nest these operations arbitrarily:
+
+| Source operation | Meaning |
+| --- | --- |
+| `+`, `-`, `*` | Arithmetic modulo 2^64 |
+| `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
+| `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
+| `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
+
+Both direct UInt64 primitives and canonical overloaded operators with the
+standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
+instances, lets, conditions, helper calls, recursion, loops, runtime Nat,
+heap values, imports, and floats are excluded from this initial theorem.
+
+The requested export name must avoid all ten runtime exports. Admission checks
+explicit limits below 2^32 on parameter/result counts, UTF-8 export-name bytes,
+locals plus scratch space, and actual body/type/export/code payload sizes.
+`LeanExe/Wasm/ArithmeticBounds.lean` defines these limits using the same encoded
+payloads as the production emitter. The resulting module includes the normal
+allocator, reset, retain, and release bodies and all runtime exports.
+
+For example, `def f (x y : UInt64) : UInt64 := (x + 17) * (y - 3)` is accepted.
+`def f (x : UInt64) : UInt64 := let y := x + 1; y * y` is excluded for now.
+A conditional or call to a separate user helper is also excluded even when the
+normal compiler supports it.
+
+## Compile and check
+
+Use the pinned Lean toolchain and the runner setup in [DEVELOPING](../DEVELOPING.md).
+For an already compiled source module:
+
+```sh
+tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic \
+  --module MyModule --entry MyModule.f --out build/f.wasm
+```
+
+The repeatable execution check builds the real compiler, checks source admission
+and all reserved names, compiles seven fresh declarations with that command,
+and runs their exact output modules with Node/V8:
+
+```sh
+tools/arithmetic-check.js engine
+```
+
+It compares 85 results against native Lean evaluation, including overflow, zero
+divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments.
+Expected values come from `test/ArithmeticMilestone.lean`, independently of the
+extractor and IR evaluator. This check requires the repository's pinned Node
+24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
+is a separate check of the arithmetic theorem's integration with the actual CLI.
+
+Check the general proofs and all nine printed axiom dependencies with:
+
+```sh
+tools/arithmetic-check.js proof
+tools/type-safety.js check
+```
+
+The proof check needs Python 3, Git and the pinned dependencies in
+`proofs/talos/lean/lake-manifest.json`. Use `tools/arithmetic-check.js all` when
+both proof and execution checks are affected. Commands run Lean serially through
+`tools/leanrun`; do not wrap these drivers in a second runner. Lake reuses
+unchanged dependencies. Logs and emitted modules are in `.lake/arithmetic-check`.
+The independent type-safety check retains its `propext`-only axiom rule.
+
+## The theorem
+
+`Project.Compiler.ArithmeticModule.Correct` in
+`proofs/talos/lean/Project/Compiler/SourceCorrectness.lean` states that the exact
+emitted bytes decode, the entire decoded module validates, the requested export
+resolves to the user function, and every correctly sized UInt64 input list
+executes to the source result in the pinned interpreter. This holds for every
+host and initial store, leaves the store unchanged, and succeeds for all
+sufficiently large interpreter fuel values. The proof accounts for the actual
+argument-stack order and local-variable ABI.
+
+`compileEnvironment_correct` proves admission and correctness from independent
+source support, safe/total declaration lookup, export availability, and numeric
+format limits. `compileEnvironment_sound` proves correctness from successful
+arithmetic compilation alone. `extracted_correct` connects successful extraction
+to the production `CoreWasm.moduleBytes` emitter. The final theorem is universally
+quantified over admitted source programs, not restricted to the seven examples.
+
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All nine
+reported declarations must have only the allowed dependencies. The runtime
+retain/alloc/release proofs use only `propext`; the other audited compiler
+results allow `propext`, `Classical.choice`, and `Quot.sound`.
+
+The trusted boundary includes Lean's kernel, those standard axioms, the source
+semantics tied to native UInt64 operations, and the pinned Wasm decoder,
+validator and interpreter definitions. It does not prove all Lean evaluation,
+CLI IO/environment loading, hardware, or equivalence of every Wasm engine to
+that model. The execution comparisons check those integration paths empirically.
+
+## Independent source package
+
+Create the general proof's source import closure and a source-only archive:
+
+```sh
+python3 tools/arithmetic-package.py create build/arithmetic-proof build/arithmetic-proof.tar.gz
+```
+
+The package contains the actual LeanExe/Project/Interpreter sources, pinned
+configuration, runner (including its Mac helper), verifier, and attribution.
+The manifest records source hashes, the originating commit/tree, exact target
+and dependencies. It is an integrity inventory, not a signature. Record the
+archive hash separately when distributing it.
+
+Extract the archive into another directory and run its bundled verifier there:
+
+```sh
+mkdir build/arithmetic-proof-check
+tar -xzf build/arithmetic-proof.tar.gz -C build/arithmetic-proof-check
+cd build/arithmetic-proof-check/arithmetic-proof
+python3 tools/arithmetic-package.py verify .
+```
+
+Verification checks the inventory and pins before building the bundled general
+proof and auditing all nine results. It runs no compiler CLI or generator and
+requires its own `.lake/build` to be absent. It may fetch pinned third-party
+packages, or reuse them with `--dependencies /absolute/path/to/dependencies`.
+Only those third-party libraries may reuse build products; all bundled proof
+sources are rebuilt inside this package. `verification.log` and
+`verification-result.json` record the result. A C compiler is needed by the
+runner on macOS. Local execution uses the same explicit authorization and
+runner environment as normal development.
+
+Subsequent language extensions will be completed individually through source
+support, production compilation, proofs and execution tests. Checks should
+follow the affected dependencies, without repeating unrelated full suites.
