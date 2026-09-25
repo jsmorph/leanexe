@@ -369,11 +369,15 @@ complemented interval bounds near the UInt64 limit. All 185 preceding modules
 kept identical bytes. General type validation passed; unrelated suites were not
 rebuilt.
 
-Next incremental capability: nested propositional conjunction and disjunction
-in conditional guards. Reuse the existing comparison and conditional
-instructions; preserve canonical decision evidence and prior comparison output.
-Complete source/IR proofs and full compiler execution checks before another
-capability. Boolean &&/|| and general Boolean values remain later increments.
+Current increment: nested propositional conjunction and disjunction in
+conditional guards. The independent recursive guard syntax, exact standard
+instance recognition, operand-size bounds, total compilation, native Boolean
+semantics and preservation of existing scalar invariants pass Lean checking.
+Lowering materializes Boolean words and uses the existing bitwise AND/OR and
+equality operations. Public scalar and step source rules, extraction, and
+end-to-end execution remain to be connected. Existing comparison extraction
+will retain its output. Boolean &&/|| and general Boolean values remain later
+increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
