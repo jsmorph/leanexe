@@ -19,14 +19,20 @@ all nine audits (3164 Lake jobs). These results use candidate `878cfd1e` and are
 preserved in `proofs/compiler/arithmetic-2026-09-24/`, including the exact archive,
 emitted modules, native expected results, logs and verification metadata.
 
-In progress: pure UInt64 `let` bindings, including nested bindings, shadowing,
-unused bindings and zero-argument declarations. The source semantics and total
-extraction preservation/acceptance proofs now include these bindings. The
-extractor substitutes only pure arithmetic expressions, preserving source
-results while allowing repeated computation/code expansion. General backend
-admission is proved by a shared closure lemma. End-to-end proof and execution
-checks are pending; this increment is not yet complete. Complete source support/semantics, production extraction, the general
-source-to-byte theorem and fresh native-Lean/Wasm comparisons before conditions.
+Completed next increment: pure UInt64 `let` bindings, including nested bindings,
+shadowing, unused bindings and zero-argument declarations. Candidate `d777caf2`
+passed the full general source-to-byte compiler theorem and all nine axiom
+audits, plus all 142 native Lean/Wasm comparisons over twelve declarations.
+Source admission and all reserved exports also passed. The increment's evidence
+is in `proofs/compiler/let-2026-09-24/`. The extractor substitutes only pure total
+arithmetic expressions; this preserves source results but can expand emitted
+code/repeat computations. No type-safety implementation changed, so its prior
+438-theorem audit was not repeated.
+
+Next capability: conditionals over unsigned scalar comparisons. Extend source
+semantics/admission, both-branch static local bounds, byte encoding/validation,
+and the general source-to-byte theorem, then test both branches in the actual
+compiler and engine before moving to `do` or loops.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
