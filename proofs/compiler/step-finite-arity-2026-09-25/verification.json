@@ -1,0 +1,136 @@
+{
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 9,
+  "candidate": "87a042ad14cf72d13da4934610c8f50dfa1e6a36",
+  "engineCommand": "tools/arithmetic-check.js subset-engine step-finite-arity",
+  "executionGroup": "step-finite-arity",
+  "nativeV8Comparisons": 609,
+  "declarations": 28,
+  "rangeDeclarations": 23,
+  "rangeComparisons": 552,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 240,
+  "focusedRejections": 6,
+  "focusedDeclarationRejections": 4,
+  "focusedArityRejections": 2,
+  "existingHelperComparisons": 264,
+  "existingHelperRejections": 4,
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "manyOrder": {
+      "sha256": "01e1c7a603be32a2d05d1e7ada80f028eba11d61c0227050ef3de478b19145dc",
+      "bytes": 1101
+    },
+    "manySix": {
+      "sha256": "58511458e90a20f516d71d1f48c9291e3fdb3f19eb4966ce8a2ff4ed0bbfb55e",
+      "bytes": 1082
+    },
+    "manyDo": {
+      "sha256": "f6b658170b769da3be82696cf414f3d07062aba8b4b52cdeb6ece75a2b9bdde8",
+      "bytes": 1136
+    },
+    "manyId": {
+      "sha256": "c389b57e56cb8b9c71d00d5ede82f6808a80ca636e4377d37bbee38c42cdf2c0",
+      "bytes": 1119
+    },
+    "rangeDirectUnitFunction": {
+      "sha256": "118c14d997378048cf39581ec52634abc952c05a86e7e18e109ba4c0b191a5d8",
+      "bytes": 1259
+    },
+    "rangeStepBind": {
+      "sha256": "1d166071aefd735d83e1beda4e73a64baac5f581530ad90ece35fd0fa206cbc6",
+      "bytes": 1180
+    },
+    "rangeBinaryStepOrder": {
+      "sha256": "afc12300a2075647e5cde277ba0dd87dd3bc05d0b5d9a4818dbdaeba6693661f",
+      "bytes": 1155
+    },
+    "rangeBinaryStepCapture": {
+      "sha256": "62996297732d670796e5f97467f678c24dbf0c6851fd175b44b216d803c7413a",
+      "bytes": 1322
+    },
+    "rangeBinaryStepChained": {
+      "sha256": "9a46460a952508232bc3881678622c5a0bdc9ade412d1fdc93680eac706656b5",
+      "bytes": 1249
+    },
+    "rangeBinaryStepDo": {
+      "sha256": "452d97143d90d3e09e524ece9df4d6590edb08f6eed26dff8caaf5c4514a5451",
+      "bytes": 1308
+    },
+    "rangeBinaryStepScalar": {
+      "sha256": "7a8c2001b34aaaa88fab63b11e0064e0d9d38c725def1fc4194b93662377bbd2",
+      "bytes": 1222
+    },
+    "rangeBinaryStepResult": {
+      "sha256": "01e4809a990b323339a6a81f10910ae6a4f373daec85376fa6ade9d61185fa55",
+      "bytes": 1192
+    },
+    "rangeBinaryStepWrapped": {
+      "sha256": "b6f5af65bc7d292d774b566a645d0854fe136f08df23c0c23b04adef01973639",
+      "bytes": 1258
+    },
+    "rangeManyStep": {
+      "sha256": "8edda9334ee538e0b26d72efd41292ba972a3729744ebe2a372a43dfd709277d",
+      "bytes": 1324
+    },
+    "rangeManyOuter": {
+      "sha256": "1a7cfe1d85d27d18b48037a70d6b6a93e5d2c14168f366f3de3a070b9ba36aab",
+      "bytes": 1243
+    },
+    "rangeManyStride": {
+      "sha256": "cd634fe9ec3c859138c06d0e72a2bd064f7ae5d22b3a646e76533f10c9c2da4e",
+      "bytes": 1330
+    },
+    "rangeManyResult": {
+      "sha256": "efce2204f968ba5ca2d9a7e972fe4e7d3dfb7b6ca3f427d1111706ecbda0f300",
+      "bytes": 1209
+    },
+    "stepManyOrder": {
+      "sha256": "47fb2a049e4f54661dc67719c6686a975b6f9ee32a466c378b6c72512ab24b5d",
+      "bytes": 1242
+    },
+    "stepManyFour": {
+      "sha256": "73a56318c9b27344a02f80b415f6be227e406dee65ebd9a1e1ce4aca4a92f7a6",
+      "bytes": 1206
+    },
+    "stepManySix": {
+      "sha256": "da96af4da39f60d7da85d29300739ce811abdde27cf70d466f7bed9d9a8b5064",
+      "bytes": 1295
+    },
+    "stepManyCapture": {
+      "sha256": "1313af1f41b1890f92468c6d3b8e877bb606ed45d707e2371b38690f46050b80",
+      "bytes": 1247
+    },
+    "stepManyChained": {
+      "sha256": "7e0f45d1e4352db01af7d4f3c2b9849bb3beaee420ddea1a2af497a159da198b",
+      "bytes": 1206
+    },
+    "stepManyNested": {
+      "sha256": "219cc5d5de64a5423f57e889f2b60c5ce9b04efb698ed7c97a4464f22fe13189",
+      "bytes": 1160
+    },
+    "stepManyBind": {
+      "sha256": "47636180bd14ce8b68b35707b8972a3ea8aac79b8cb359837e87c85530196ba5",
+      "bytes": 1226
+    },
+    "stepManyScalarMix": {
+      "sha256": "d4eb44d8e2a6f45e1bf5b0d87bccba29b0be1b567be263751e9be7f6fa6da5a1",
+      "bytes": 1217
+    },
+    "stepManyUnused": {
+      "sha256": "b834f4f2f5d9bc3c2faf6f9bb894ba9038411ea47d0482f23cb507fced3f7c75",
+      "bytes": 1114
+    },
+    "stepManyWrapped": {
+      "sha256": "aa202814ad3cd21d017b8bcbee1a4e844928543151a42c00fd1f8f43d92643e7",
+      "bytes": 1191
+    }
+  }
+}
