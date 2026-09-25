@@ -55,80 +55,27 @@ All function bodies are checked, including unused ones. Plain unary functions
 and the `Unit → UInt64 → result` update-continuation form have distinct binding
 kinds. Other arities and top-level helpers remain outside this increment.
 
-In progress: bounded `[:count.toNat]` range loops with one UInt64 accumulator
-and yielding steps. `Source/ScalarRange.lean` passes its focused build: the
-ascending iteration model equals Lean's actual Id range iterator, iteration
-composition is proved, and every index up to the UInt64 stop is represented
-exactly. Actual elaborated `ForIn` syntax and production IR for indexed and
-index-free examples were inspected. `IR/ScalarIteration.lean` now proves finite
-while execution agrees with this iteration under a local-state invariant.
-`ScalarDescriptor.Program` recognizes sequences of scalar statements and
-standalone scalar while loops; the production emitter uses it after existing
-recognizers and its exact emission theorem passes. This permits a complete
-setup/loop/result function to use the kernel-checkable emitter instead of its
-opaque fallback. The exact encoding, parsing and Talos translation now cover
-empty-result blocks, loops and conditionals, plus bounded branch depths. Their
-focused builds and the affected runtime encoding/length proofs pass. The first
-combined build timed out after completing the structured parsing and translation
-targets; smaller targets completed with cached dependencies. Source admission,
-whole-function validation/execution proofs and execution checks are still pending.
-The emitted while layout now has a checked validator proof for its two empty
-labels, conditional exit, back edge and preserved outer stack. Loop-free
-statement evaluation and its Talos lowering also pass, preserving the source
-locals across scratch use and matching source writes exactly. The unnecessary
-source-invocation import was moved from elementary validator rules to the
-function-level typing proof; both focused targets pass. Source range admission
-and whole-function integration remain pending; loops are not yet in the completed
-certified grammar. The source binding model now distinguishes Nat indices from
-UInt64 values and admits only explicit `UInt64.ofNat` conversion of those
-indices. Its acceptance, preservation and backend invariant proofs pass. The
-range recognizer checks complete standard ForIn evidence and exact unit-step
-syntax; its acceptance and soundness proofs pass. The elaborated source test
-`test/scalar_range_admission.lean` accepts indexed/index-free yielding steps
-and rejects non-unit steps and break bodies at their respective boundaries.
-`Extract/ScalarRange.lean` now extracts one dynamic loop plus pure prefix/suffix
-computations into ordinary scalar IR with three fresh locals. Its source-only
-acceptance and success-implies-supported theorems pass, and the source range
-grammar has a total evaluation theorem. The same source test passed 45 native
-Lean/IR comparisons, including zero iterations, wrapping accumulators, indexed
-steps, conditional updates and computations before/after the loop. This extractor
-is not yet enabled in the public entry; the general preservation proof and final
-Wasm execution/validation connection remain pending. The source-to-IR range
-preservation proof now passes: `extractScalarRangeWith_correct` derives the
-iteration and result facts for every successful extraction and matching captured
-environment, and `ScalarRangePlan.Meaning.func_correct` proves the complete
-setup/while/result function executes with that value. `IR/ScalarRangeSlots.lean`
-connects the actual three-local loop layout to native ascending iteration. Their
-three focused axiom audits report only `propext`, `Classical.choice` and
-`Quot.sound`. The public entry remains unchanged until the full emitted-function
-proof, byte/validation connection and native/V8 checks are completed.
-`ScalarRangeCertificate.lean` now proves the actual annotated function emitter's
-exact setup/loop/result instruction list and scratch allocation. The annotated
-while path now uses the checked scalar condition emitter when recognized,
-retaining its existing fallback for other conditions. Assignment, sequence and
-while annotation code projections are proved separately. The range extractor's
-generic invariant and `extractScalarRange_admitted` derive arithmetic descriptors
-and static read bounds for all four expressions; their focused builds pass.
-Whole-function typed encoding (`RangeTyping.lean`) and Talos execution
-(`RangeLoopExecution.lean`, `RangeFunctionExecution.lean`) now pass. The loop
-proof uses the remaining natural index count as its decreasing rank; the full
-function proof includes setup, final result assignment and the unchanged scalar
-ABI. The two focused backend axiom audits use only `propext`, `Classical.choice`
-and `Quot.sound`. Integration into successful source-function dispatch, full
-module bytes/validation, the final nine audits and native/V8 comparisons remain
-pending before enabling or claiming this loop increment complete.
-`RangeFunctionBytes.lean` now proves parsing and execution of the exact complete
-function-body bytes, including declared locals and its size prefix. The shared
-`functionState` definition moved into `FunctionState.lean` to let pure and range
-function proofs compose without a circular import. Both focused targets pass.
-The public source-function dispatch now selects the pure or range extractor.
-Its general acceptance and source-to-IR correctness proofs pass, as do the
-shared function execution, exact function bytes, module parsing, invocation and
-function validation targets. The combined dependency build reached its time
-limit after completing the function byte target; the remaining validation target
-completed separately with cached dependencies. Seven new public execution
-fixtures and rejection checks are ready. The final general nine audits and
-582 native/V8 comparisons are pending for this candidate.
+Completed next increment: one bounded `[:count.toNat]` range loop with a UInt64
+accumulator and yielding steps. Candidate `f4ffe0e0` (proof sources from
+`d1fbcaf7`) passed all nine general compiler axiom audits and 582 native Lean/V8
+comparisons across forty-one declarations. Source admission and reserved-export
+checks passed. Evidence is retained in `proofs/compiler/range-2026-09-25/`.
+The proof connects native ascending range iteration to source extraction,
+ordinary scalar IR, the actual annotated emitter, exact complete module bytes,
+validation and exported execution. It covers zero iterations, explicit
+UInt64.ofNat index conversion, wrapping accumulators, step bindings and scalar
+conditional updates, captures and pure computations before/after the loop.
+The loop uses three fresh locals and the remaining iteration count as a
+termination measure. Constant bounds currently use a UInt64 value followed by
+.toNat. Breaks, continue, other range starts/steps, multiple accumulators and
+multiple/nested loops remain outside this increment. Focused dependency builds
+and cached general checks were used; the fixed arithmetic archive and unrelated
+438-theorem type-safety suite were not rebuilt.
+
+Next increment: direct local-function bindings in the yielding loop body.
+The pure scalar extractor already checks these functions; the yield wrapper
+currently permits only UInt64 lets. Extend that wrapper while retaining the
+existing full body support checks, then prove and execute this form end-to-end.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

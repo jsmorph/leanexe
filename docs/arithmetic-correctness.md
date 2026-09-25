@@ -231,3 +231,7 @@ Id operations, sequential updates and early returns, with all nine audits and
 The [local-function increment](../proofs/compiler/local-functions-2026-09-25/README.md)
 adds lexical captures and branch continuations, with all nine audits and 437
 matching results across thirty-four declarations.
+
+The [range-loop increment](../proofs/compiler/range-2026-09-25/README.md) adds one
+bounded yielding range loop, with all nine audits and 582 matching results
+across forty-one declarations.
