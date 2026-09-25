@@ -333,10 +333,14 @@ checked. All 208 focused native Lean/IR comparisons and three rejection tests
 passed, covering pure/monadic branches, local functions, computed operands,
 break, continue and result joins. All 153 preceding modules kept identical bytes.
 
-Next incremental capability: local scalar helpers defined before a range loop,
-with lexical captures available to its bounds, initial value, body and final
-result. Reuse the checked unary, binary and Unit-prefixed binding forms. Complete
-the source/IR proof and range compiler execution checks before another capability.
+Current increment: local scalar helpers defined before a range loop, with
+lexical captures available to its bounds, initial value, body and final result.
+The source grammar and extraction reuse the checked unary, binary and
+Unit-prefixed function bindings. Acceptance, support, preservation and invariant
+proofs pass Lean checking. Ten public fixtures cover all three argument forms,
+shadowing, computed bounds, nested/chained helpers, Id bodies, unused functions
+and calls from step-result helpers. The full compiler proof, type validation
+and range execution checks follow this candidate checkpoint.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
