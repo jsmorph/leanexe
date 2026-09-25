@@ -19,6 +19,7 @@ enum { AGAIN = 6, BADF = 8, FAULT = 21, INTR = 27, INVAL = 28, IOERR = 29,
        NOTSUP = 58, PIPE = 64 };
 enum Operation { READ, WRITE, FLAGS, CLOCK, POLL };
 static int original_flags[2] = {-1, -1};
+static bool changed_flags[2] = {false, false};
 
 static uint64_t load_le(const uint8_t *p, unsigned n) {
   uint64_t value = 0;
@@ -127,13 +128,13 @@ static wasm_trap_t *hostcall(void *data, wasmtime_caller_t *caller,
   uint32_t a = (uint32_t)args[0].of.i32;
   uint32_t b = op == CLOCK ? 0 : (uint32_t)args[1].of.i32;
   if (op == FLAGS) {
-    if (a > 1) error = BADF;
+    if (a > 1 || original_flags[a] < 0) error = BADF;
     else if (b != 4) error = NOTSUP;
     else {
       int flags = fcntl((int)a, F_GETFL);
       if (flags < 0) error = io_error();
       else if (fcntl((int)a, F_SETFL, flags | O_NONBLOCK) < 0) error = io_error();
-      else if (original_flags[a] == -1) original_flags[a] = flags;
+      else changed_flags[a] = true;
     }
   } else if (op == CLOCK) {
     uint32_t out = (uint32_t)args[2].of.i32;
@@ -178,7 +179,7 @@ static void check(wasmtime_error_t *error) {
 
 static void restore_flags(void) {
   for (int fd = 0; fd < 2; ++fd)
-    if (original_flags[fd] != -1 && fcntl(fd, F_SETFL, original_flags[fd]) < 0) {
+    if (changed_flags[fd] && fcntl(fd, F_SETFL, original_flags[fd]) < 0) {
       perror("restore descriptor flags");
       _Exit(1);
     }
@@ -200,6 +201,9 @@ static void define(wasmtime_linker_t *linker, const char *name, enum Operation o
 
 int main(int argc, char **argv) {
   if (argc != 2) { fprintf(stderr, "usage: leanexe-wasi-io-host program.wasm\n"); return 2; }
+  /* Snapshot both streams before changing either: dup'd descriptors share
+     status flags, so a later per-descriptor snapshot can already be altered. */
+  for (int fd = 0; fd < 2; ++fd) original_flags[fd] = fcntl(fd, F_GETFL);
   signal(SIGPIPE, SIG_IGN);
   atexit(restore_flags);
   FILE *file = fopen(argv[1], "rb");
