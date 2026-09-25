@@ -163,5 +163,11 @@
   "rangeIdWrapped",
   "rangeIdBindLeft",
   "rangeIdBindRight",
-  "rangeIdStepHelper"
+  "rangeIdStepHelper",
+  "rangeManyStep",
+  "rangeManyOuter",
+  "rangeManyYield",
+  "rangeManyStride",
+  "rangeManyGuard",
+  "rangeManyResult"
 ]
