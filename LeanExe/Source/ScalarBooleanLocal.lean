@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarPropositionGuard
 import LeanExe.Source.ScalarBooleanProofBranch
+import LeanExe.Source.ScalarBooleanWrapper
 import LeanExe.Source.ScalarBooleanLet
 
 namespace LeanExe.Source.Scalar
@@ -65,6 +66,7 @@ inductive BooleanLocal where
       (type : BooleanType := .boolean)
   | wordBinding (negations : Nat) (name : Lean.Name) (nondep : Bool) (value : Lean.Expr) (body : BooleanLocal)
       (type : ResultType := .word)
+  | wrapped (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
   | decision (negations : Nat) (guard : PropositionGuard)
   | relationDecision (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
   | equality (negations : Nat) (unequal : Bool) (left right : BooleanLocal)
@@ -88,6 +90,7 @@ def expr : BooleanLocal → Lean.Expr
       (booleanLetExpr name nondep value.expr body.expr type)
   | .wordBinding n name nondep value body type => BooleanGuardNegation.expr n
       (booleanWordLetExpr name nondep value body.expr type)
+  | .wrapped n wrapper body => BooleanGuardNegation.expr n (wrapper.expr body.expr)
   | .decision n g => BooleanGuardNegation.expr n g.value.decisionExpr
   | .relationDecision n unequal a b => BooleanGuardNegation.expr n (booleanRelationDecisionExpr unequal a.expr b.expr)
   | .equality n unequal a b => BooleanGuardNegation.expr n (booleanEqualityExpr unequal a.expr b.expr)
@@ -101,6 +104,7 @@ def operands : BooleanLocal → List Lean.Expr
   | .proposition _ g t e | .dependentProposition _ _ g t e => g.operands ++ (t.operands ++ e.operands)
   | .binding _ name nondep value body _ => value.operands ++ body.operands.map (fun operand => booleanLetExpr name nondep value.expr operand)
   | .wordBinding _ name nondep value body _ => value :: body.operands.map (fun operand => booleanWordLetExpr name nondep value operand)
+  | .wrapped _ _ body => body.operands
   | .decision _ g => g.operands
   | .equality _ _ a b | .relationDecision _ _ a b => a.operands ++ b.operands
 
@@ -120,6 +124,7 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
   | .wordBinding n name nondep value body _ => GuardNegation.denote n
       (body.denote (fun operand => native (booleanWordLetExpr name nondep value operand))
         (booleanLetBooleans false booleans))
+  | .wrapped n wrapper body => GuardNegation.denote n (wrapper.denote (body.denote native booleans))
   | .decision n g => GuardNegation.denote n (g.denote native)
   | .relationDecision n unequal a b => GuardNegation.denote n
       (booleanRelationDecision unequal (a.denote native booleans) (b.denote native booleans))
@@ -161,6 +166,7 @@ def negate : BooleanLocal → BooleanLocal
   | .dependentProposition n shape g t e => .dependentProposition (n + 1) shape g t e
   | .binding n name nondep value body type => .binding (n + 1) name nondep value body type
   | .wordBinding n name nondep value body type => .wordBinding (n + 1) name nondep value body type
+  | .wrapped n wrapper body => .wrapped (n + 1) wrapper body
   | .decision n g => .decision (n + 1) g
   | .relationDecision n unequal a b => .relationDecision (n + 1) unequal a b
   | .equality n unequal a b => .equality (n + 1) unequal a b
@@ -248,6 +254,9 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
       clear ihb
       simp only [booleanWordLetExpr, ResultType.expr]
       simp_all <;> omega
+  | wrapped n wrapper body ih =>
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    exact Nat.lt_trans (ih member) (wrapper.body_size body.expr)
   | decision n g =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     have bound := g.value.operands_size member
@@ -281,6 +290,7 @@ def variables : BooleanLocal → List Nat
   | .equality _ _ a b | .relationDecision _ _ a b => a.variables ++ b.variables
   | .binding _ _ _ value body _ => value.variables ++ booleanLetVariables body.variables
   | .wordBinding _ _ _ _ body _ => booleanLetVariables body.variables
+  | .wrapped _ _ body => body.variables
 
 /-- Word-bound slots cannot be used as Boolean references, including in nested values. -/
 def WellScoped : BooleanLocal → Prop
@@ -291,11 +301,12 @@ def WellScoped : BooleanLocal → Prop
       a.WellScoped ∧ b.WellScoped ∧ t.WellScoped ∧ e.WellScoped
   | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.WellScoped ∧ e.WellScoped
   | .wordBinding _ _ _ _ body _ => 0 ∉ body.variables ∧ body.WellScoped
+  | .wrapped _ _ body => body.WellScoped
 
 /-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
 def extended : BooleanLocal → Bool
   | .var .. | .choice .. | .proposition .. | .dependentChoice .. | .dependentProposition ..
-  | .decision .. | .equality .. | .relationDecision .. | .binding .. | .wordBinding .. => true
+  | .decision .. | .equality .. | .relationDecision .. | .binding .. | .wordBinding .. | .wrapped .. => true
   | .literal .. | .compare .. => false
   | .junction _ _ a b => a.extended || b.extended
 
