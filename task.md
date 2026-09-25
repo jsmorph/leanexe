@@ -632,3 +632,26 @@ retain/allocator/release validation, compose full validation and the normal
 compiler-entry theorem, implement the arithmetic admission mode, then run every
 remaining clean-build, axiom, package, runtime, and mutation gate. The arithmetic
 milestone remains INCOMPLETE.
+
+### Workspace restored; arithmetic admission implementation being checked
+
+After the execution outage, automated workspace maintenance removed the local
+checkout files and toolchain. Restored `correct` from GitHub into a fresh local
+checkout, restored pinned dependency revisions, and installed the exact pinned
+Lean release. The production extractor and source-to-IR proofs rebuilt. The
+first cache recovery reached its process limit after restoring part of the
+cache; dependencies are being recovered in smaller steps.
+
+Added reusable numeric arithmetic module size bounds and a strict arithmetic
+entry that rejects excluded source forms, unsafe/partial entries, reserved
+exports, and format overflows before invoking the existing normal compiler.
+The two new production modules build. Admission regression checks, the CLI
+wiring, and the proof connection are still being checked. No new end-to-end
+correctness claim is made.
+
+The arithmetic admission regression now passes. Supported expressions, bit
+operations, and an overflowing literal produce byte-for-byte normal-compiler
+output. Bindings, branches, helper calls, custom instances, non-UInt64 types,
+reserved exports, and missing entries are rejected. An oversized parameter
+count is rejected without constructing its type vector. These are executable
+regression checks; the complete correctness theorem and CLI gate remain open.
