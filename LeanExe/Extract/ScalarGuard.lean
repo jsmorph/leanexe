@@ -1,9 +1,9 @@
 import LeanExe.Extract.ScalarGuardSyntax
-import LeanExe.Extract.ScalarGuardLowering
+import LeanExe.Extract.ScalarBooleanGuard
 
 namespace LeanExe.Extract.Core
 
-open LeanExe.Source.Scalar (Guard CompoundGuard)
+open LeanExe.Source.Scalar (Guard CompoundGuard BooleanGuard)
 
 /-- The callback only receives operands of this exact parsed guard. Membership
 allows the surrounding source compiler to prove its recursive calls decrease. -/
@@ -17,6 +17,9 @@ def extractGuard : (guard : Guard) →
       let left ← extractGuard a (fun operand member => compile operand (List.mem_append_left _ member))
       let right ← extractGuard b (fun operand member => compile operand (List.mem_append_right _ member))
       pure (lowerGuardNegations n (lowerJunction op left right))
+  | .boolean m n op a b, compile => do
+      let condition ← extractBooleanGuard (.junction n op a b) compile
+      pure (lowerGuardNegations m condition)
 
 theorem extractGuard_accepts (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -33,6 +36,9 @@ theorem extractGuard_accepts (guard : Guard)
     obtain ⟨right, hr⟩ := ihb (fun operand member => compile operand (List.mem_append_right _ member))
       (fun operand member => total operand _)
     exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractGuard, hl, hr]⟩
+  | boolean m n op a b =>
+    obtain ⟨condition, hc⟩ := extractBooleanGuard_accepts (.junction n op a b) compile total
+    exact ⟨lowerGuardNegations m condition, by simp [extractGuard, hc]⟩
 
 theorem extractGuard_operands (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -54,6 +60,10 @@ theorem extractGuard_operands (guard : Guard)
     rcases List.mem_append.mp member with first | second
     · exact iha _ hl operand first
     · exact ihb _ hr operand second
+  | boolean m n op a b =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, _⟩ := compiled
+    exact extractBooleanGuard_operands (.junction n op a b) compile hc
 
 theorem extractGuard_correct (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -73,6 +83,11 @@ theorem extractGuard_correct (guard : Guard)
     exact lowerGuardNegations_correct n (lowerJunction_correct op
       (iha _ hl (fun operand member expression found => meanings _ _ _ found))
       (ihb _ hr (fun operand member expression found => meanings _ _ _ found)))
+  | boolean m n op a b =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact lowerGuardNegations_correct m
+      (extractBooleanGuard_correct (.junction n op a b) compile native hc meanings)
 
 theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -95,5 +110,10 @@ theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
       (lowerJunction_choice P literal binary choice op left right
         (iha _ hl (fun operand member expression found => operands _ _ _ found))
         (ihb _ hr (fun operand member expression found => operands _ _ _ found)))
+  | boolean m n op a b =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact lowerGuardNegations_choice P literal choice m _
+      (extractBooleanGuard_choice P literal binary choice (.junction n op a b) compile hc operands)
 
 end LeanExe.Extract.Core

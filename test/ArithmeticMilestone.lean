@@ -1353,6 +1353,72 @@ def rangeBoolCompoundStep (count seed : UInt64) : UInt64 :=
     let keep : ForInStep UInt64 → ForInStep UInt64 := fun result => result
     return keep r
 
+def mixedGuardAnd (x y : UInt64) : UInt64 :=
+  if (x % 2 == 1 || y % 2 == 1) ∧ x ≠ y then 11 else 29
+
+def mixedGuardOr (x y : UInt64) : UInt64 :=
+  if (x % 2 == 1 && y % 2 == 1) ∨ x = y then 31 else 47
+
+def mixedGuardNot (x y : UInt64) : UInt64 :=
+  if ¬ (x + y == 0 || x != y) then ~~~x else ~~~y
+
+def mixedGuardNegations (x y : UInt64) : UInt64 :=
+  if ¬ ¬ !(x == 0 || !(y == x * 3 && x != y)) then x + 13 else y - 17
+
+def mixedGuardNested (x y : UInt64) : UInt64 :=
+  if ¬ ((x < y ∨ !(x == 0 && y == 0)) ∧ ((x + y == 0 || y / x == 3) ∨ ¬ x ≠ y))
+  then x / y + 1 else y % x + 7
+
+def mixedGuardFunction (x y : UInt64) : UInt64 :=
+  let captured := x + 7
+  let f := fun a b : UInt64 =>
+    if (¬ (a == b || a == captured)) ∨ (b ≤ captured ∧ !(b != 0 && a == 0)) then a + b else a - b
+  f x y + f y x
+
+def mixedGuardDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  let z ← if ¬ (x == 0 || y == 0) then pure (x + y) else pure (x * y)
+  if ¬ ((z == a && y != 1) ∨ z < a) then a := a + z else a := a - z
+  return a ^^^ y
+
+def mixedGuardOperand (x y : UInt64) : UInt64 :=
+  if ((if ¬ (x == y && x != 0) then ~~~x else y) == (x + y) || x != y) ∧ ¬ x < y
+  then (if (x != 0 && y != 0) ∨ x ≥ y then 19 else x + y) else ~~~(x + y)
+
+def rangeMixedGuardBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if (UInt64.ofNat i % 5 == seed % 5 || a % 3 == 0) ∧ UInt64.ofNat i ≥ seed % 3 then break
+  return a
+
+def rangeMixedGuardContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (¬ (UInt64.ofNat i % 3 != 0 && a != 0)) ∨ UInt64.ofNat i = seed % 7 then continue
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeMixedGuardJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let z ← if ¬ (a == seed && UInt64.ofNat i % 3 == 0) then pure (a + 5) else pure (a - 2)
+    if (!(z == a && a != 0)) ∧ (UInt64.ofNat i < 3 ∨ ¬ (seed == 0 || a == seed)) then
+      a := z
+    else
+      a := z + UInt64.ofNat i
+    if ¬ ((a != 7 && a % 5 != 0) ∨ UInt64.ofNat i ≤ 2) then break
+  return a
+
+def rangeMixedGuardStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => Id.run do
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if ¬ ¬ ((UInt64.ofNat i % 5 == seed % 5 && x % 3 == 0) ∨ ¬ (y == 7 || x == seed))
+      then .done (x + 11) else .yield (y + UInt64.ofNat i + 1)
+    let r : ForInStep UInt64 ← pure (finish (a + seed) a)
+    let keep : ForInStep UInt64 → ForInStep UInt64 := fun result => result
+    return keep r
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1491,7 +1557,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolCompoundBreak", rangeBoolCompoundBreak),
    ("rangeBoolCompoundContinue", rangeBoolCompoundContinue),
    ("rangeBoolCompoundJoined", rangeBoolCompoundJoined),
-   ("rangeBoolCompoundStep", rangeBoolCompoundStep)]
+   ("rangeBoolCompoundStep", rangeBoolCompoundStep),
+   ("rangeMixedGuardBreak", rangeMixedGuardBreak),
+   ("rangeMixedGuardContinue", rangeMixedGuardContinue),
+   ("rangeMixedGuardJoined", rangeMixedGuardJoined),
+   ("rangeMixedGuardStep", rangeMixedGuardStep)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -1568,7 +1638,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("boolCompoundNested", boolCompoundNested),
    ("boolCompoundFunction", boolCompoundFunction),
    ("boolCompoundDo", boolCompoundDo),
-   ("boolCompoundOperand", boolCompoundOperand)]
+   ("boolCompoundOperand", boolCompoundOperand),
+   ("mixedGuardAnd", mixedGuardAnd),
+   ("mixedGuardOr", mixedGuardOr),
+   ("mixedGuardNot", mixedGuardNot),
+   ("mixedGuardNegations", mixedGuardNegations),
+   ("mixedGuardNested", mixedGuardNested),
+   ("mixedGuardFunction", mixedGuardFunction),
+   ("mixedGuardDo", mixedGuardDo),
+   ("mixedGuardOperand", mixedGuardOperand)]
 
 end ArithmeticMilestone
 

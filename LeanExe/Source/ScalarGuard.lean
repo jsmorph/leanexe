@@ -6,6 +6,7 @@ namespace LeanExe.Source.Scalar
 inductive Guard where
   | compare (op : Comparison) (left right : Lean.Expr)
   | junction (negations : Nat) (op : Junction) (left right : Guard)
+  | boolean (propNegations boolNegations : Nat) (op : Junction) (left right : BooleanGuard)
   deriving Repr
 
 namespace Guard
@@ -13,23 +14,29 @@ namespace Guard
 def operands : Guard → List Lean.Expr
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
+  | .boolean _ n op a b => (BooleanGuard.junction n op a b).operands
 
 def condition : Guard → Lean.Expr
   | .compare op a b => op.condition a b
   | .junction n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
+  | .boolean m n op a b => GuardNegation.condition m (BooleanGuard.junction n op a b).condition
 
 def evidence : Guard → Lean.Expr
   | .compare op a b => op.evidence a b
   | .junction n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
       (op.evidence a.condition b.condition a.evidence b.evidence)
+  | .boolean m n op a b => GuardNegation.evidence m (BooleanGuard.junction n op a b).condition
+      (BooleanGuard.junction n op a b).evidence
 
 def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
+  | .boolean m n op a b => GuardNegation.denote m ((BooleanGuard.junction n op a b).denote native)
 
 def negate : Guard → Guard
   | .compare op a b => .compare (.negate op) a b
   | .junction n op a b => .junction (n + 1) op a b
+  | .boolean m n op a b => .boolean (m + 1) n op a b
 
 theorem negate_condition (guard : Guard) :
     guard.negate.condition = .app (.const ``Not []) guard.condition := by
@@ -52,6 +59,11 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
     all_goals first
       | (have h := iha member; simp_all; omega)
       | (have h := ihb member; simp_all; omega)
+  | boolean m n op a b =>
+    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size m _)
+    have bound := (BooleanGuard.junction n op a b).operands_size (operand := operand) member
+    simp only [BooleanGuard.condition]
+    simp_all; omega
 
 end Guard
 
