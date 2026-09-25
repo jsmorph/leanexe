@@ -324,5 +324,13 @@
   "rangeAnnotatedLetBounds",
   "rangeAnnotatedLetStep",
   "rangeAnnotatedLetOuter",
-  "rangeAnnotatedLetUnused"
+  "rangeAnnotatedLetUnused",
+  "rangeNestedIdYield",
+  "rangeNestedIdJoined",
+  "rangeNestedIdContinue",
+  "rangeNestedIdCapture",
+  "rangeNestedIdBounds",
+  "rangeNestedIdStep",
+  "rangeNestedIdOuter",
+  "rangeNestedIdUnused"
 ]
