@@ -264,13 +264,20 @@ All eighty-two previous modules retained identical bytes. The fixed arithmetic
 archive and unrelated runtime suite were not rebuilt; general type validation
 passed. Boolean ! and compound conditions remain separate capabilities.
 
-Current increment: nonzero standard literal range starts with unit step.
-Native interval iteration, truncated distance and shifted index lemmas pass,
-along with recognition, independent source support, scalar invariants and the
-whole-function source/IR proof. All 264 focused native Lean/IR comparisons passed
-across eleven new declarations, plus overflow/custom/dynamic-start rejection
-tests. The existing zero-start output is preserved by construction. General
-compiler proof/audits and actual compiler/V8 range checks are pending.
+Completed next increment: nonzero standard literal range starts with unit step.
+Candidate `6aa364fd` passed all nine general compiler audits and 1,465 matching
+native Lean/V8 results across sixty-two range declarations, including admission
+and reserved exports. Evidence is in `proofs/compiler/range-interval-2026-09-25/`.
+The native interval, truncated distance and shifted index proofs connect the
+new source syntax to the existing early-exit backend. All 264 focused native
+Lean/IR comparisons and three rejection tests passed. Equal/reversed bounds,
+break/continue, captured helpers, result joins, high indices and huge intervals
+with immediate exits are included. All fifty-one previous range modules kept
+identical bytes. General type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: dynamic range starts expressed as a supported
+UInt64 expression followed by .toNat. Preserve native truncated distance,
+captured first-index values and existing literal-start output.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
