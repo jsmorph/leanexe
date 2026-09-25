@@ -100,7 +100,7 @@ Development validation preserved the exact Demo 12 and ClobDepth binaries while 
 | Selected scalar descriptors and encoded-index decoders agree with compiler emission | `LeanExe.Wasm.ScalarCertificate` proves successful reification equalities. |
 | A distributed binary satisfies a behavioral theorem | The exact-artifact path independently embeds, decodes, validates, translates, and proves the registered bytes. |
 | Every successfully admitted arithmetic declaration compiles correctly | The [general arithmetic theorem](arithmetic-correctness.md) connects original source through the production compiler to exact bytes, full validation, export lookup and terminating invocation. |
-| All accepted Lean programs compile correctly | The general theorem does not yet cover the full dialect, including branches, helpers, loops and heap ownership. |
+| All accepted Lean programs compile correctly | The general theorem covers the scalar grammar in the linked guide, including supported branches, local functions and one yielding range loop. Top-level helpers, general loop forms and heap ownership remain outside it. |
 
 Differential execution and source-driven artifact proofs provide program evidence for the tested cases.  Exact-artifact proofs provide stronger evidence about named binaries without establishing a universal compiler theorem.  The [Source-Theorem Transport Plan](../plans/theorem-transport.md) describes a future refinement path whose assumptions would include explicit source, IR, lowering, and byte-identity connections.
 

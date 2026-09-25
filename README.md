@@ -6,8 +6,10 @@ LeanExe also supports direct verification of an exact WASM artifact.  Its artifa
 
 The restricted `compile-arithmetic` command additionally has a [general compiler
 correctness theorem](docs/arithmetic-correctness.md): every successfully admitted
-UInt64 arithmetic declaration produces bytes that decode, validate and execute
-to its source result in the pinned Wasm model. The guide describes the exact
+UInt64 scalar declaration produces bytes that decode, validate and execute
+to its source result in the pinned Wasm model. This includes supported lets,
+conditionals, pure Id blocks, local functions and one bounded range loop.
+The guide describes the exact
 source grammar, proof boundary, execution tests and independent source package.
 
 Ordinary library-mode binary serialization can also run through LeanExe's experimental [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler remains the production path; the LeanExe-compiled emitter is a non-blocking deterministic regression experiment.
