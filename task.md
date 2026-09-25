@@ -287,9 +287,11 @@ accumulators, high indices, empty/equal bounds, break/continue and result joins
 are included. All sixty-two preceding range modules retained identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: positive literal range strides. Prove native
-strided iteration and the bounded internal iteration count before integrating
-extraction and actual compiler checks. Preserve existing unit-step output.
+Current increment: positive literal range strides. Native strided iteration,
+its ceiling-divided iteration count and the count bound pass. Checked IR helpers
+compute the count without overflowing and scale the native index. Unit stride
+retains the existing expressions. Source recognition, whole-range integration
+and public compiler checks are still pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
