@@ -207,7 +207,15 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       | none => none
       | some _ =>
           match _guard : dependentGuard? condition evidence trueDomain falseDomain with
-          | none => none
+          | none =>
+              match _booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain with
+              | none => none
+              | some guard => do
+                  let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+                    (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+                  let t ← extractScalarStepWith (.scalar .unit :: locals) onTrue
+                  let e ← extractScalarStepWith (.scalar .unit :: locals) onFalse
+                  pure { value := .ite c t.value e.value, done := .ite c t.done e.done }
           | some guard => do
               let c ← extractGuard guard (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
               let t ← extractScalarStepWith (.scalar .unit :: locals) onTrue

@@ -525,9 +525,13 @@ General type validation used cached dependencies.
 
 Current increment: dependent conditions (`if h : flag then ... else ...`)
 using saved Boolean locals. The exact decision/proof-domain parser, independent
-source totality and all four scalar extraction proofs pass. Loop-step proof
-integration and focused execution are being checked; this increment is not
-yet complete. Preserve erased proof-binder positions in both branches.
+source totality and all scalar/loop extraction proofs pass. The focused test
+passes 304 native/IR comparisons, four declaration rejections and six proof-binder
+rejections. Full compiler audits and focused WebAssembly execution are next.
+The first test exposed a separate literal-instance wrapper produced by Lean
+inside a helper/proof scope; that original failure is retained. The positive
+helper binds its multiplier before the proof scope. Literal-instance wrappers
+are the next increment after this condition capability passes its final gates.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

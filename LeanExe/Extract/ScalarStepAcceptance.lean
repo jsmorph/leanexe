@@ -64,6 +64,17 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
       rw [extractScalarStepWith_dependentBranch]; simp [hc, ht, he]⟩
+  | chooseBooleanDependent guard type tn fn tb fb variables arguments _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) guard.value
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (by rw [scalarStepBindings_typed typed]; exact variables)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨t, ht⟩ := iht (.scalar .unit :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨e, he⟩ := ihe (.scalar .unit :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
+      rw [extractScalarStepWith_booleanDependentBranch]; simp [hc, ht, he]⟩
   | letBoolean expression variables arguments _ ihb =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) expression
       (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
