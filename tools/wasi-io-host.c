@@ -214,7 +214,12 @@ int main(int argc, char **argv) {
   uint8_t *bytes = malloc(length == 0 ? 1 : (size_t)length);
   if (!bytes || fread(bytes, 1, (size_t)length, file) != (size_t)length) return 1;
   fclose(file);
-  wasm_engine_t *engine = wasm_engine_new();
+  wasm_config_t *config = wasm_config_new();
+  if (!config) { fprintf(stderr, "failed to create Wasmtime configuration\n"); return 1; }
+  wasmtime_config_strategy_set(config, WASMTIME_STRATEGY_CRANELIFT);
+  wasmtime_config_cranelift_nan_canonicalization_set(config, true);
+  wasm_engine_t *engine = wasm_engine_new_with_config(config);
+  if (!engine) { fprintf(stderr, "failed to create Wasmtime engine\n"); return 1; }
   wasmtime_store_t *store = wasmtime_store_new(engine, NULL, NULL);
   wasmtime_context_t *context = wasmtime_store_context(store);
   wasi_config_t *wasi = wasi_config_new();

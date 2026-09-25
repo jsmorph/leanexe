@@ -1,4 +1,6 @@
 import LeanExe.ByteIO
+import LeanExe.Float32
+import LeanExe.Float64
 import LeanExe.Runtime
 
 namespace LeanExe.Examples.ByteIO
@@ -207,5 +209,27 @@ def chosen : LeanExe.ByteIO UInt32 := do
       if bytes.size == 0 then mark "A".toUTF8 else mark "B".toUTF8
       mark "C".toUTF8
       pure 0
+
+/-- Dynamic NaN payloads must use the same canonical arithmetic result as the
+ordinary Wasmtime host, including signaling and negative inputs. -/
+def float32NaNs : LeanExe.ByteIO UInt32 := do
+  match ← read 1 1000000000 with
+  | .error code => pure code
+  | .ok bytes =>
+      let bits := (0x7f800000 : UInt32) + bytes[0]!.toUInt32
+      pure (if LeanExe.Float32.addBits bits 0x3f800000 == 0x7fc00000 &&
+        LeanExe.Float32.addBits (bits ||| 0x00400000) 0x3f800000 == 0x7fc00000 &&
+        LeanExe.Float32.addBits (bits ||| 0x80000000) 0x3f800000 == 0x7fc00000
+        then 0 else 99)
+
+def float64NaNs : LeanExe.ByteIO UInt32 := do
+  match ← read 1 1000000000 with
+  | .error code => pure code
+  | .ok bytes =>
+      let bits := (0x7ff0000000000000 : UInt64) + bytes[0]!.toUInt64
+      pure (if LeanExe.Float64.addBits bits 0x3ff0000000000000 == 0x7ff8000000000000 &&
+        LeanExe.Float64.addBits (bits ||| 0x0008000000000000) 0x3ff0000000000000 == 0x7ff8000000000000 &&
+        LeanExe.Float64.addBits (bits ||| 0x8000000000000000) 0x3ff0000000000000 == 0x7ff8000000000000
+        then 0 else 99)
 
 end LeanExe.Examples.ByteIO

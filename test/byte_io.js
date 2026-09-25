@@ -27,7 +27,7 @@ async function main() {
   const entries = ["echo", "ordered", "timeout", "handled", "reused", "unused",
     "invalid", "immediate", "blocked", "ignored", "emptyWrite", "maxTimeout", "called", "repeated",
     "discardRead", "ignoreReadError", "released", "streaming", "alternatingReads", "streamingTimeout",
-    "carried", "chosen", "literalReleased", "nestedReleased", "nestedSkipped"];
+    "carried", "chosen", "literalReleased", "nestedReleased", "nestedSkipped", "float32NaNs", "float64NaNs"];
   const programs = Object.fromEntries(entries.map(name => [name, compile(name)]));
   let count = 0;
   async function expect(name, input, status, output, options) {
@@ -39,6 +39,10 @@ async function main() {
     count += 1;
   }
   const binary = Buffer.from([0, 255, 13, 10]);
+  for (const payload of [1, 0x42, 0xff]) {
+    await expect("float32NaNs", Buffer.from([payload]), 0, "");
+    await expect("float64NaNs", Buffer.from([payload]), 0, "");
+  }
   await expect("echo", binary, 0, binary);
   await expect("echo", Buffer.alloc(0), 0, "");
   await expect("echo", Buffer.from("abcdef"), 0, "abcd");
