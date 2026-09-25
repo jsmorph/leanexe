@@ -133,7 +133,7 @@ Runtime-intrinsic entries require a separate comparison boundary.  Ordinary Lean
 
 The release checker accepts direct fresh allocations, roots returned fresh by an existing helper summary, and statically owner-zero arrays at final use.  It rejects aliases, later use, repeated release, branch-dependent or conditional ownership, fields, parameters, and heap-bearing escapes.  Treat such a rejection as an ownership-analysis requirement; `JsonMergeTreeCommand.makeMergedTree` and `JsonGcTreeRewrite.transform` remain reduced examples of two deferred shapes.
 
-Run the smallest relevant test during development, then run every gate required by the changed boundary before considering the work complete.  The repository has no remote CI configuration, so local gate results are the available evidence.  Do not replace Wasmtime execution with JavaScript WASM execution; `test/no_js_wasm_execution.js` enforces that rule.
+Run the smallest relevant test during development, then run every gate required by the changed boundary before considering the work complete.  The repository has no remote CI configuration, so local gate results are the available evidence.  Wasmtime remains the execution engine for the existing runtime suite. The arithmetic compiler theorem also has an independent Node/V8 comparison in `test/arithmetic_engine.mjs`; this is the sole additional engine exception allowed by `test/no_js_wasm_execution.js`.
 
 | Change | Required checks |
 |--------|-----------------|
