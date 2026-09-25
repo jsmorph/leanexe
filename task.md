@@ -162,6 +162,14 @@ break, update-before-break, joined binds, captured helper calls, branch updates,
 and continue mixed with break. The public compiler and WebAssembly proof
 connection remain pending; these isolated tests do not claim that integration.
 
+The early-exit backend connection now passes as well: recognition of the actual
+IR, exact annotated instruction emission, scratch accounting, typed instruction
+sequences, terminating WebAssembly loop execution, whole-function execution,
+and complete function-body byte parsing. The loop invariant tracks the native
+result of remaining iterations, with the same decreasing index rank for yields
+and immediate termination for done. The new proof modules built from cached
+dependencies; public source dispatch and whole-module tests are next.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.
