@@ -102,6 +102,32 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
       change (LeanExe.IR.Expr.local saved.length).ScalarEval _ _ _
       rw [boundNat]
       exact .local (LeanExe.IR.rangeExitStore_value _ _ _ _ _)
+  | letBoolean expression variables arguments _ ih =>
+    rw [extractScalarRangeExitWith_letBoolean] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨c, hc, ht⟩ := compiled
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values valuesTyped
+    have total := fun operand member => (arguments operand member).evaluates values valuesTyped
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ expression.operands then (total operand member).choose else 0
+    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (total operand member).choose_spec
+    have extended : RangeExitBindingsMatch (.boolean (guardWord c) :: locals)
+        (.boolean (expression.denote native booleans) :: values) saved := by
+      intro accumulator index stop flag
+      apply (bindings accumulator index stop flag).cons
+      exact guardWord_correct (extractBooleanLocalWith_correct expression _ native booleans hc
+        (bindings accumulator index stop flag) hbooleans
+        (fun operand member target found => extractScalarExprWith_correct (meanings operand member)
+          found (bindings accumulator index stop flag)))
+    obtain ⟨result, source, meaning⟩ := ih ht (by simp [ScalarBinding.kind, localsTyped])
+      (by simp [Value.kind, valuesTyped]) extended (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact totalBindings binding member)
+    exact ⟨result, .letBoolean expression hbooleans meanings source, meaning⟩
   | letE sourceValue _ ih =>
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts sourceValue locals localsTyped totalBindings
     rw [extractScalarRangeExitWith_letE, hb] at compiled
