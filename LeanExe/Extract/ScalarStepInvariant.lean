@@ -162,6 +162,16 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro first second result hx hy compiled
     exact ihf compiled (extend (extend bindings hx) hy)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | applyBoolean expression present variables arguments =>
+    obtain ⟨f, hf⟩ := scalarStepBooleanFunction_lookup (htypes ▸ present)
+    rw [extractScalarStepWith] at compiled
+    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, booleanLocalOperands_expr] at compiled
+    simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
+    obtain ⟨condition, hc, ht⟩ := compiled
+    have holds := extractBooleanLocalWith_choice P literal binary choice expression _ hc
+      (scalarStepBindings_holds bindings) (fun operand member expression found => scalar found bindings)
+    exact bindings _ (List.mem_of_getElem? hf) (guardWord condition) target
+      (holds _ _ (literal 1) (literal 0)) ht
   | @apply types index a present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (htypes ▸ present)
     have found : locals[index]?.bind (ScalarStepBinding.function? false) = some f := by
@@ -210,6 +220,17 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact ha
     · exact scalarStepBindings_holds bindings binding member
+  | letBooleanFn type function _ ih =>
+    rw [extractScalarStepWith_letBooleanFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    intro argument result ha compiled
+    apply expression compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact ha
+    · exact scalarStepBindings_holds bindings binding member
   | letUnitFn type unitForm function _ ih =>
     rw [extractScalarStepWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -231,6 +252,14 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro argument result ha compiled
     exact ihf compiled (extend bindings ha)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | letBooleanStepFn type _ _ ihf ihb =>
+    rw [extractScalarStepWith_letBooleanStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, htypes])
+    intro argument result ha compiled
+    exact ihf compiled (extend bindings ha)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
   | letUnitStepFn type unitForm _ _ ihf ihb =>
     rw [extractScalarStepWith_letUnitStepFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -242,7 +271,7 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
   | applyResult present _ ih =>
     obtain ⟨f, hf⟩ := scalarStepResultFunction_lookup (htypes ▸ present)
     rw [extractScalarStepWith] at compiled
-    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.resultFunction?] at compiled
+    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, ScalarStepBinding.resultFunction?] at compiled
     simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
     obtain ⟨arg, ha, ht⟩ := compiled
     exact bindings _ (List.mem_of_getElem? hf) arg target (ih ha bindings htypes) ht

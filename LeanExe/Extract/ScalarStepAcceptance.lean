@@ -151,6 +151,14 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.binaryFunction f :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letBinaryStepFn]; simp [hc, ht, f]⟩
+  | applyBoolean expression present variables arguments =>
+    obtain ⟨f, hf⟩ := scalarStepBooleanFunction_lookup (typed ▸ present)
+    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) expression _
+      (by simpa only [scalarStepBindings_typed typed] using variables)
+      (fun operand member => extractScalarExprWith_accepts (arguments operand member) _
+        (scalarStepBindings_typed typed) (scalarStepBindings_total total))
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) (guardWord condition)
+    exact ⟨target, by rw [extractScalarStepWith]; simp [hf, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, booleanLocalOperands_expr, hc, ht]⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (typed ▸ present)
     obtain ⟨arg, ha⟩ := scalar argument typed total
@@ -203,6 +211,18 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.function false f) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letFn]; simp [hc, ht, f]⟩
+  | @letBooleanFn a types b name typeName typeBi paramName paramBi nondep type function _ ih =>
+    have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
+      (.boolean argument :: locals.map ScalarStepBinding.toScalar)
+      (by simpa [ScalarBinding.kind] using scalarStepBindings_typed typed) (by
+        intro binding member; rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact scalarStepBindings_total total binding member)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0)
+    let f := fun argument => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) a
+    obtain ⟨target, ht⟩ := ih (.scalar (.booleanFunction f) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letBooleanFn]; simp [hc, ht, f]⟩
   | @letUnitFn a types b name unitTypeName typeName typeBi unitTypeBi unitName paramName paramBi unitBi nondep type unitForm function _ ih =>
     have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
       (.word argument :: .unit :: locals.map ScalarStepBinding.toScalar)
@@ -225,6 +245,14 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.function false f :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letStepFn]; simp [hc, ht, f]⟩
+  | @letBooleanStepFn types a b name typeName typeBi paramName paramBi nondep type _ _ ihf ihb =>
+    have accepts (argument : LeanExe.IR.Expr) := ihf (.scalar (.boolean argument) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0)
+    let f := fun argument => extractScalarStepWith (.scalar (.boolean argument) :: locals) a
+    obtain ⟨target, ht⟩ := ihb (.booleanFunction f :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letBooleanStepFn]; simp [hc, ht, f]⟩
   | @letUnitStepFn types a b name unitTypeName typeName typeBi unitTypeBi unitName paramName paramBi unitBi nondep type unitForm _ _ ihf ihb =>
     have accepts (argument : LeanExe.IR.Expr) := ihf (.scalar (.word argument) :: .scalar .unit :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend (extend total trivial) trivial)
@@ -239,7 +267,7 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) arg
     exact ⟨target, by
       rw [extractScalarStepWith]
-      simp [hf, ScalarStepBinding.function?, ScalarStepBinding.resultFunction?, ha, ht]⟩
+      simp [hf, ScalarStepBinding.function?, ScalarStepBinding.resultFunction?, ScalarStepBinding.booleanFunction?, ha, ht]⟩
   | @letResultFn types a b name typeName typeBi paramName paramBi nondep input output _ _ ihf ihb =>
     have accepts (argument : ScalarStepCode) := ihf (.result argument :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)

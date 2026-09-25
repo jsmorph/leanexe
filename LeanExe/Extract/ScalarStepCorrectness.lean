@@ -165,6 +165,14 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     apply bindings.cons
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc (bindings.toScalar.cons ha)
+  | letBooleanFn type function body ih =>
+    rw [extractScalarStepWith_letBooleanFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht
+    apply bindings.cons
+    intro argument value target ha hc
+    exact extractScalarExprWith_correct (function value) hc (bindings.toScalar.cons ha)
   | letUnitFn type unitForm function body ih =>
     rw [extractScalarStepWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -208,13 +216,32 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact ihf x y hc
       ((bindings.cons (binding := .scalar (.word first)) (value := .scalar (.word x)) hx).cons
         (binding := .scalar (.word second)) (value := .scalar (.word y)) hy)
+  | @applyBoolean values index f expression native booleans function variables arguments =>
+    rw [extractScalarStepWith, bindings.noWordFunctionOfBoolean function] at compiled
+    cases found : locals[index]?.bind ScalarStepBinding.booleanFunction? with
+    | none =>
+      rw [found] at compiled
+      have absent : locals[index]?.bind ScalarStepBinding.resultFunction? = none := by
+        cases lookup : locals[index]? with
+        | none => simp
+        | some binding =>
+          have matched := bindings _ binding _ lookup function
+          cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.resultFunction?]
+      simp [absent] at compiled
+    | some f =>
+      rw [found, booleanLocalOperands_expr] at compiled
+      simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
+      obtain ⟨condition, hc, ht⟩ := compiled
+      have meaning := extractBooleanLocalWith_correct expression _ _ _ hc bindings.toScalar variables
+        (fun operand member expression found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+      exact bindings.booleanFunction found function _ _ code (guardWord_correct meaning) ht
   | @apply values index f a x function argument =>
     rw [extractScalarStepWith] at compiled
     cases found : locals[index]?.bind (ScalarStepBinding.function? false) with
     | none =>
       rw [found] at compiled
       have absent := bindings.noResultFunction function
-      simp [absent] at compiled
+      simp [absent, bindings.noBooleanFunctionOfWord function] at compiled
     | some f =>
       rw [found] at compiled
       simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -235,6 +262,14 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     apply bindings.cons
     intro argument value target ha hc
     exact ihf value hc (bindings.cons ha)
+  | letBooleanStepFn type function body ihf ihb =>
+    rw [extractScalarStepWith_letBooleanStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht
+    apply bindings.cons
+    intro argument value target ha hc
+    exact ihf value hc (bindings.cons ha)
   | letUnitStepFn type unitForm function body ihf ihb =>
     rw [extractScalarStepWith_letUnitStepFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -245,7 +280,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact ihf value hc
       ((bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial).cons ha)
   | applyResult function argument ih =>
-    rw [extractScalarStepWith, bindings.noWordFunction function] at compiled
+    rw [extractScalarStepWith, bindings.noWordFunction function, bindings.noBooleanFunctionOfResult function] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, hc⟩ := compiled
     exact bindings.resultFunction (Option.bind_eq_some_iff.mpr hf) function arg _ code (ih ha bindings) hc
