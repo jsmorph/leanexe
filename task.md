@@ -93,15 +93,23 @@ The first execution attempt exposed a distinct branching-continuation form;
 that failure is retained. Conditional scalar values inside pure are supported,
 while custom Bind evidence and breaks after a bind remain rejected.
 
-In progress: loop-step-valued branch continuations. The independent YieldType
-relation preserves function domains and binder information while removing the
-yielding result wrapper. The yield recognizer converts such types, function
-bodies and branches together, preserving captures and conditions; the scalar
-extractor checks the complete result. Type and syntax acceptance/soundness
-proofs pass. Four fixtures cover the previously rejected conditional monadic
-join, branch updates, continue and nested branch continuations. Rejection cases
-include unused done-returning functions and custom comparison evidence. The
-final general audit and focused 385-result execution check remain pending.
+Completed next increment: yielding branch continuations in range steps.
+Candidate `1cfb4228` passed all nine general compiler axiom audits and 385
+native Lean/V8 comparisons across seventeen range declarations, including
+source admission and reserved-export checks. Evidence is retained in
+`proofs/compiler/range-branches-2026-09-25/`. The independent YieldType relation
+preserves function domains and binder information while removing the yielding
+result wrapper. Syntax conversion handles continuation types/bodies and both
+branches together, while the scalar extractor checks the full result. Joined
+monadic branches, mutable branch updates followed by computation, nested
+branches and continue now work end-to-end. The previously rejected monadic join
+is an explicit passing fixture. Breaks, unused done-returning functions, and
+custom comparison evidence remain rejected.
+
+Next increment: break in range loops. Introduce a bounded early-exit iteration
+model tied to native ForInStep.done/yield behavior, then connect extraction,
+actual emitted control flow, general proofs and execution tests. Keep the
+completed yielding range path working while developing the new behavior.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

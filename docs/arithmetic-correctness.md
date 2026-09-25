@@ -266,3 +266,7 @@ adds direct function bindings in the yielding body, with all nine audits and
 The [monadic loop-step increment](../proofs/compiler/range-do-2026-09-25/README.md)
 adds straight-line Id monadic bindings in the yielding body, with all nine
 audits and 289 matching results across thirteen range declarations.
+
+The [branching loop-step increment](../proofs/compiler/range-branches-2026-09-25/README.md)
+adds yielding branch continuations and continue, with all nine audits and 385
+matching results across seventeen range declarations.
