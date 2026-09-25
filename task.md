@@ -704,3 +704,52 @@ passes all 12 native/WASM comparisons. This verified compiler-annotation
 checkpoint includes `Binary.lean`, that focused regression, and this handoff.
 The generated model and in-progress scalar proof files await their own Lean
 verification before being committed. No instruction bytes changed.
+
+### 2026-09-25 — interpreter dependency isolation
+
+After restoring the full cache, a fresh `Project.Drone.SourceChecks` build
+passed all 2,001 jobs again, including the whole-flight theorem and its
+standard-axiom audit (`build/logs/source-after-cache-repair.log`). The restored
+interpreter semantics module also builds successfully. The first scalar/model
+aggregate then exhausted its eight-minute limit in `Interpreter.Wasm.SmallStep`,
+before reaching the new drone proofs.
+
+Divided that dependency into diagnostic boundaries instead of repeating the
+unchanged target: executable definitions checked in seconds, and the full
+inductive step relation checked separately with profiling. A simplification
+trial for the scalar-float bridge lemmas passed but offered little improvement
+and was not retained. A focused full dependency build uses sequential
+elaboration and progress instrumentation only; its semantic definitions and
+theorem statements/bodies are unchanged. The pending drone proof modules cover
+scalar helpers, the square-root loop, and checked terrain reads. They remain
+unverified development files until the dependency build allows their checks.
+
+The instrumented `SmallStep` dependency build completed successfully in 760
+seconds, with all five checkpoints reached. No proof rewrite or semantic
+change was needed. Its profile records most time in simplification, tactic
+execution, and processing recursive proof declarations. The prepared further
+split was therefore not applied. The scalar/model aggregate is now rebuilding
+the remaining interpreter proof modules against that checked dependency.
+
+The generated drone `Program.lean` and all ten scalar execution lemmas now
+check. The lemmas cover the three Choice projections, lexicographic choice,
+distance, altitude, speed, both constants, and the unreachable sentinel, with
+unchanged stores and only standard Lean axioms. Initial failures in these
+drafts were proof scripting, typed-control normalization, and Nat/UInt64
+conversion obligations; their final statements have no added assumptions.
+
+The first annotation check exposed missing result-type metadata in the shared
+`ScalarTransition.Expr.program` description. Its generated `and`/`or` branches
+must carry an i32 result, while division/remainder guards and value branches
+carry i64. Updated the shared description and its semantic proof using the
+existing typed-control compatibility theorem. The generated drone annotation
+identities now check by reflexivity, including the complete square-root loop;
+no generated drone file or WASM instruction was hand-edited. All generic scalar
+transition proofs also pass. Logs are `drone-model-scalar-5.log` (failed shared
+proof attempt) and `drone-model-scalar-6.log` (passing drone and generic targets).
+
+The same aggregate attempted two existing annotation examples but exhausted
+its three-minute budget while building `FixedArrayAllocator`, before checking
+those examples. Those regression checks remain pending; the successful drone
+and shared scalar targets are not evidence that the entire aggregate passed.
+Next checks are the bounded square-root loop and the checked terrain read.
