@@ -1,3 +1,9 @@
+## 2026-09-24: Restore shared stdin/stdout flags after byte I/O
+
+The P2 review regression now runs a native socketpair harness which keeps the same open file description in the parent and both child streams. Before the repair, the first case fails with flags changing from 2 to 6 in work/io-review/flags-before.log. The host now captures both streams' original flags before any mutation and restores only descriptors whose nonblocking request succeeded. This avoids recording an already modified flag through the second alias.
+
+`node test/wasi_io_host.js` passes the seven existing host cases and twelve shared-descriptor checks in work/io-review/flags-after.log. The new cases cover both call orders, a single read or write descriptor, repeated calls, nonzero command exit, and initially blocking or nonblocking streams. The C harness bounds the child with an alarm. `git diff --check` passes. Compiler output and proof subjects are unchanged.
+
 ## 2026-09-24: Byte-I/O continuation complete; full source-proof gate passes
 
 `tools/talos-proof.js check --all` passes in work/talos-all-final-2.log: all 69 regenerated Program and annotation caches match, registry/import checks pass, and the complete library builds in 5,487 jobs for all 68 registered complete specifications. The aggregate also checks the four named-field initial heap constructions. The log contains no proof errors or sorryAx. Earlier focused results include the complete certificate, both Riemann solvers, cached GPT-2, the recycled LEB encoder, all three tiny-model cases, and the retained partial sequence-softmax proof. The sequence registration remains incomplete; no new full sequence claim was added.
