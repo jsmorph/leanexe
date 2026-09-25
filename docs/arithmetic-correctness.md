@@ -418,3 +418,10 @@ adds local scalar helpers in pure expressions and range steps, with all nine
 audits and 2,850 matching results across the full 143-declaration group.
 All 128 prior modules retained identical bytes. The focused tests passed 270
 native Lean/IR comparisons and six rejection tests.
+
+
+The [two-argument step function increment](../proofs/compiler/binary-step-functions-2026-09-25/README.md)
+adds helpers returning done/yield with standard Id wrappers. All nine audits,
+2,401 native Lean/V8 comparisons across 101 range declarations, 240 focused
+native Lean/IR comparisons and five rejection tests passed. All 91 preceding
+range modules retained identical bytes.
