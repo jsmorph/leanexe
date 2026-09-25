@@ -13,7 +13,7 @@ theorem range_exit_function_body_bytes (args : List UInt64) (name : Lean.Name)
     (exportName : Option String) (releaseIndex : Nat)
     {plan : LeanExe.Extract.Core.ScalarRangeExitPlan} {descriptor : RangeExit} {value : UInt64}
     (matched : descriptor.Matches plan) (arithmetic : descriptor.All Expr.Arithmetic)
-    (reads : descriptor.All (fun e => ∀ index ∈ e.reads, index < args.length + 4))
+    (reads : descriptor.All (fun e => ∀ index ∈ e.reads, index < args.length + 3))
     (meaning : plan.Meaning args value)
     (localBound : (plan.func name exportName args.length).locals +
       LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) < 2 ^ 32)

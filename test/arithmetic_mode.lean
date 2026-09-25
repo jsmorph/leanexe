@@ -103,6 +103,13 @@ def rangeUnusedDone (n seed : UInt64) : UInt64 := Id.run do
     a := a + 1
   return a
 
+def rangeUnusedUnsupportedDone (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    let _bad : UInt64 → Id (ForInStep UInt64) := fun x => pure (.done (expression x a))
+    a := a + 1
+  return a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -131,7 +138,8 @@ run_elab do
       `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential,
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
-      `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined] do
+      `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
+      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -143,10 +151,10 @@ run_elab do
           throwError "arithmetic mode changed production bytes for {name}"
   for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.binaryLocalFunction,
       `ArithmeticModeTest.unsupportedLocalBody, `ArithmeticModeTest.rangeNonUnitStep,
-      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeTwice,
+      `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
-      `ArithmeticModeTest.rangeCustomBind, `ArithmeticModeTest.rangeBindBreak,
-      `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeCustomOrder,
+      `ArithmeticModeTest.rangeCustomBind,
+      `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
