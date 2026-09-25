@@ -24,5 +24,8 @@
   "rangeContinueBreak",
   "rangeDoneFunction",
   "rangeDoneUnitFunction",
-  "rangeUnusedDone"
+  "rangeUnusedDone",
+  "rangeDirectSteps",
+  "rangeDirectFunction",
+  "rangeDirectUnitFunction"
 ]

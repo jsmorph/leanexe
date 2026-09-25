@@ -89,6 +89,12 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       let function ← locals[index]?.bind (ScalarStepBinding.function? false)
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) argument
       function value
+  | .app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value => do
+      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
+      pure { value, done := .u64 0 }
+  | .app (.app (.const ``ForInStep.done [.zero]) (.const ``UInt64 [])) value => do
+      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
+      pure { value, done := .u64 1 }
   | .mdata _ body => extractScalarStepWith locals body
   | _ => none
 termination_by source => sizeOf source

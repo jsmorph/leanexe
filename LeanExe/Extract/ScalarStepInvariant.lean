@@ -39,6 +39,16 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, hv, rfl⟩ := compiled
     exact ⟨scalar hv bindings, literal 1⟩
+  | yieldDirect value =>
+    rw [extractScalarStepWith_yieldDirect] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨value, hv, rfl⟩ := compiled
+    exact ⟨scalar hv bindings, literal 0⟩
+  | doneDirect value =>
+    rw [extractScalarStepWith_doneDirect] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨value, hv, rfl⟩ := compiled
+    exact ⟨scalar hv bindings, literal 1⟩
   | choose op type left right _ _ iht ihe =>
     rw [extractScalarStepWith_branch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled

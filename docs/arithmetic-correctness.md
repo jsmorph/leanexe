@@ -79,7 +79,8 @@ and every continuation body are checked, including unused continuations.
 `continue` yields the current accumulator and advances the range index.
 `break` returns the current accumulator, including updates made before it.
 The early-exit path also accepts explicit standard `pure (ForInStep.done …)`
-and `pure (ForInStep.yield …)` results and local functions returning them, with the same unary and Unit-prefixed
+and `pure (ForInStep.yield …)` results, direct `.done`/`.yield` constructors,
+and local functions returning them, with the same unary and Unit-prefixed
 shapes. Scalar and step-valued functions have distinct binding kinds; both
 compiled projections describe the same native step result. Additional
 accumulators, multiple/nested loops and other range starts/steps remain
@@ -127,14 +128,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles sixty fresh declarations with that command,
+and all reserved names, compiles sixty-three fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 1,038 results against native Lean evaluation, including overflow, zero
+It compares 1,110 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -155,13 +156,15 @@ updates followed by computation, continue, and nested branch continuations.
 Nine more declarations cover breaks, updates before breaks, joined binds,
 captured local functions, branch updates, continue mixed with break, both
 step-valued function shapes and unused done-returning functions.
+Three further declarations use direct step constructors in a callback and both
+local continuation shapes, mixing yielding steps with updated done values.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
 is a separate check of the arithmetic theorem's integration with the actual CLI.
 
 For changes confined to range loops, `tools/arithmetic-check.js range-engine`
-checks the fixed range fixture group: 601 results across twenty-six declarations,
+checks the fixed range fixture group: 673 results across twenty-nine declarations,
 including local functions, monadic bindings, branch continuations and breaks. It retains admission and reserved-export
 checks and saves its output under `.lake/arithmetic-check/range`. The full engine
 check remains available when a change affects the broader scalar grammar.
@@ -288,6 +291,4 @@ matching results across seventeen range declarations.
 The [early-exit range increment](../proofs/compiler/range-break-2026-09-25/README.md)
 adds break and done-returning continuations, with all nine audits and 601
 matching results across twenty-six range declarations. It preserves the initial
-borrowed-Nat metadata failure and the checked correction. The full suite's
-1,038-case count above describes its current configuration; this increment ran
-the focused range group.
+borrowed-Nat metadata failure and the checked correction. This increment ran the focused range group; the larger full suite was not rerun.
