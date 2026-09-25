@@ -22,6 +22,12 @@ theorem comparison_typed (op : LeanExe.Source.Scalar.Comparison) (a b : Expr)
     simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.eq count))).append
       (Sequence.eqz32 count)
   | negate op ih => simpa [comparison, Cond.emit] using ih.append (Sequence.eqz32 count)
+  | boolNot op =>
+    cases h : op.positive
+    · simpa [comparison, h, Cond.emit, List.append_assoc] using
+        left.append ((right.frame [.i64]).append (Sequence.eq count))
+    · simpa [comparison, h, Cond.emit, List.append_assoc] using
+        (left.append ((right.frame [.i64]).append (Sequence.eq count))).append (Sequence.eqz32 count)
 
 theorem checked_tail (count scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroTyped : Sequence count [] [.i64] zero)

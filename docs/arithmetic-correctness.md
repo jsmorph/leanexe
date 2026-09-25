@@ -20,7 +20,7 @@ nesting of supported expressions:
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬` |
+| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards also admit repeated `!` |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
@@ -35,8 +35,13 @@ condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
 local bounds, even when one branch is never executed. Dependent `if h : …`,
-Boolean parameters/results/bindings, Boolean `!`, and compound Boolean conditions are not yet
-admitted by this source grammar.
+Boolean parameters/results/bindings and compound Boolean conditions are not yet
+admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
+`!=` expressions, including repeated `!`. These guards retain their Boolean
+syntax and exact standard equality-decision evidence. Lowering computes their
+polarity and emits the corresponding equality or its negation; it does not
+evaluate or omit either UInt64 operand. Propositional `¬` can wrap these guards
+as well. Custom BEq and decision evidence remain rejected.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`

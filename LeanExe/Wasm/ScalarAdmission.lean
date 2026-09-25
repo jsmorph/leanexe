@@ -13,17 +13,20 @@ def comparison : LeanExe.Source.Scalar.Comparison → Expr → Expr → Cond
   | .beq, a, b => .eq a b
   | .bne, a, b => .not (.eq a b)
   | .negate op, a, b => .not (comparison op a b)
+  | .boolNot op, a, b => if op.positive then .not (.eq a b) else .eq a b
 
 @[simp] theorem comparison_reads (op : LeanExe.Source.Scalar.Comparison) (a b : Expr) :
     (comparison op a b).reads = a.reads ++ b.reads := by
   induction op with
   | negate op ih => exact ih
+  | boolNot op => cases h : op.positive <;> simp [comparison, h, Cond.reads]
   | _ => rfl
 
 @[simp] theorem comparison_scratch (op : LeanExe.Source.Scalar.Comparison) (a b : Expr) :
     (comparison op a b).scratchWidth = max a.scratchWidth b.scratchWidth := by
   induction op with
   | negate op ih => exact ih
+  | boolNot op => cases h : op.positive <;> simp [comparison, h, Cond.scratchWidth]
   | _ => rfl
 
 end LeanExe.Wasm.ScalarDescriptor
@@ -42,6 +45,7 @@ theorem lowerComparison_descriptor (op : LeanExe.Source.Scalar.Comparison)
     Cond.ofIR (lowerComparison op a b) = some (comparison op da db) := by
   induction op with
   | negate op ih => simp [lowerComparison, comparison, Cond.ofIR, ih]
+  | boolNot op => cases h : op.positive <;> simp [lowerComparison, comparison, Cond.ofIR, ha, hb, h]
   | _ => simp [lowerComparison, comparison, Cond.ofIR, ha, hb]
 
 /-- The proved production source traversal produces IR accepted by the scalar
