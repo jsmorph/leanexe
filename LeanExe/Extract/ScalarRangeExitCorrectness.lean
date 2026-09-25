@@ -66,14 +66,14 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨countIR, ec, initialIR, ei, code, es, rfl⟩ := compiled
-    obtain ⟨stop, sc⟩ := hc.evaluates values valuesTyped
+    obtain ⟨stop, sc⟩ := hc.scalar.evaluates values valuesTyped
     obtain ⟨start, si⟩ := hi.evaluates values valuesTyped
     have total (index : Nat) (accumulator : UInt64) :=
       hs.evaluates (.scalar (.word accumulator) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (by simp [Step.Value.kind, Value.kind, List.map_map, Function.comp_def, ← valuesTyped])
     let f := fun index accumulator => (total index accumulator).choose
     refine ⟨Range.Exit.iterate f stop.toNat 0 start,
-      .range indexType sc si (fun index accumulator => (total index accumulator).choose_spec),
+      .range indexType (.of_scalar sc) si (fun index accumulator => (total index accumulator).choose_spec),
       stop, start, f, ?_, ?_, ?_, ?_⟩
     · exact extractScalarExprWith_correct sc ec (bindings 0 0 0 0)
     · exact extractScalarExprWith_correct si ei (bindings 0 0 stop 0)

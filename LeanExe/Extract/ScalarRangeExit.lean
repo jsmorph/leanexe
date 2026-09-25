@@ -36,7 +36,7 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
     (source : Lean.Expr) : Option ScalarRangeExitPlan :=
   match scalarRangeExit? source with
   | some view => do
-      let count ← extractScalarExprWith locals view.count
+      let count ← extractScalarExprWith locals view.count.scalar
       let initial ← extractScalarExprWith locals view.initial
       let code ← extractScalarStepWith
         (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
@@ -90,7 +90,7 @@ theorem rangeExitSupported_excludes_pure {types : List BindingKind} {source : Le
 
 theorem extractScalarRangeExitWith_call (locals : List ScalarBinding) (slot : Nat)
     (view : ScalarRangeExitView) : extractScalarRangeExitWith locals slot view.source = (do
-      let count ← extractScalarExprWith locals view.count
+      let count ← extractScalarExprWith locals view.count.scalar
       let initial ← extractScalarExprWith locals view.initial
       let code ← extractScalarStepWith
         (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
@@ -147,7 +147,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
     · exact total binding member
   induction supported generalizing locals with
   | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType hc hi hs =>
-    obtain ⟨c, ec⟩ := extractScalarExprWith_accepts hc locals typed total
+    obtain ⟨c, ec⟩ := extractScalarExprWith_accepts hc.scalar locals typed total
     obtain ⟨i, ei⟩ := extractScalarExprWith_accepts hi locals typed total
     obtain ⟨code, es⟩ := extractScalarStepWith_accepts hs
       (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
@@ -194,7 +194,7 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨count, hc, initial, hi, code, hs, _⟩ := compiled
-    exact .range view.indexType (extractScalarExprWith_supported hc) (extractScalarExprWith_supported hi)
+    exact .range view.indexType (Range.Exit.Count.Supported.of_scalar _ (extractScalarExprWith_supported hc)) (extractScalarExprWith_supported hi)
       (by simpa [ScalarStepBinding.kind, ScalarBinding.kind, List.map_map, Function.comp_def]
         using extractScalarStepWith_supported hs)
   | case2 locals body rejected ih =>
