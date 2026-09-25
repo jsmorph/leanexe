@@ -308,5 +308,13 @@
   "rangeBoolLetBounds",
   "rangeBoolLetStep",
   "rangeBoolLetOuter",
-  "rangeBoolLetUnused"
+  "rangeBoolLetUnused",
+  "rangeBoolWordLetYield",
+  "rangeBoolWordLetJoined",
+  "rangeBoolWordLetContinue",
+  "rangeBoolWordLetCapture",
+  "rangeBoolWordLetBounds",
+  "rangeBoolWordLetStep",
+  "rangeBoolWordLetOuter",
+  "rangeBoolWordLetUnused"
 ]
