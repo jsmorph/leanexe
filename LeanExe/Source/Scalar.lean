@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarHead
+import LeanExe.Source.ScalarComplement
 import LeanExe.Source.ScalarValues
 import LeanExe.Source.ScalarComparison
 import LeanExe.Source.ScalarRangeSyntax
@@ -23,6 +24,8 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | literal : EvalWith (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
       values (UInt64.ofNat n)
   | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
+  | complement (head : ComplementHead operation) (argument : EvalWith a values x) :
+      EvalWith (.app operation a) values (UInt64.complement x)
   | binary (operation : Head head f) (left : EvalWith a values x) (right : EvalWith b values y) :
       EvalWith (.app (.app head a) b) values (f x y)
   | choose (op : Comparison) (type : ResultType) (left : EvalWith a values x) (right : EvalWith b values y)
@@ -77,6 +80,8 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.app (.const ``UInt64.ofNat levels) (.bvar index))
   | literal : SupportedWith types (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
   | ofNat : SupportedWith types (literalExpr n)
+  | complement (head : ComplementHead operation) (argument : SupportedWith types a) :
+      SupportedWith types (.app operation a)
   | binary (operation : Head head f) (left : SupportedWith types a) (right : SupportedWith types b) :
       SupportedWith types (.app (.app head a) b)
   | choose (op : Comparison) (type : ResultType) (left : SupportedWith types a) (right : SupportedWith types b)
@@ -129,6 +134,9 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     exact ⟨UInt64.ofNat value, .natural hv⟩
   | literal => exact ⟨_, .literal⟩
   | ofNat => exact ⟨_, .ofNat⟩
+  | complement head _ ih =>
+    obtain ⟨x, hx⟩ := ih values typed
+    exact ⟨UInt64.complement x, .complement head hx⟩
   | binary op _ _ ihl ihr =>
     obtain ⟨x, hx⟩ := ihl values typed
     obtain ⟨y, hy⟩ := ihr values typed
