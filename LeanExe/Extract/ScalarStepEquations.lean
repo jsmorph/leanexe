@@ -77,15 +77,24 @@ theorem extractScalarStepWith_letBinaryFn (locals : List ScalarStepBinding)
           extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar) a)) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_accepts]
 
+theorem extractScalarStepWith_unitApply (locals : List ScalarStepBinding)
+    (unitForm : UnitSyntax) (index : Nat) (argument : Lean.Expr) :
+    extractScalarStepWith locals (.app (.app (.bvar index) unitForm.value) argument) = (do
+      let function ← locals[index]?.bind (ScalarStepBinding.function? true)
+      let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) argument
+      function value) := by
+  cases unitForm <;> rw [UnitSyntax.value, extractScalarStepWith]
+
 theorem extractScalarStepWith_binaryApply (locals : List ScalarStepBinding) (index : Nat) (a b : Lean.Expr)
-    (notUnit : a ≠ .const ``Unit.unit []) :
+    (notUnit : ∀ unitForm : UnitSyntax, a ≠ unitForm.value) :
     extractScalarStepWith locals (.app (.app (.bvar index) a) b) = (do
       let function ← locals[index]?.bind ScalarStepBinding.binaryFunction?
       let first ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
       let second ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) b
       function first second) := by
   rw [extractScalarStepWith]
-  exact notUnit
+  · exact notUnit .unit
+  · exact notUnit .punit
 
 theorem extractScalarStepWith_letBinaryStepFn (locals : List ScalarStepBinding)
     (name firstTypeName secondTypeName firstName secondName : Lean.Name)
@@ -116,16 +125,16 @@ theorem extractScalarStepWith_letFn (locals : List ScalarStepBinding)
 theorem extractScalarStepWith_letUnitFn (locals : List ScalarStepBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)
     (unitTypeBi typeBi unitBi paramBi : Lean.BinderInfo)
-    (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    (type : ResultType) (unitForm : UnitSyntax) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
-      (.forallE unitTypeName (.const ``Unit [])
+      (.forallE unitTypeName unitForm.type
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-      (.lam unitName (.const ``Unit [])
+      (.lam unitName unitForm.type
         (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) = (do
         let _ ← extractScalarExprWith (.word (.u64 0) :: .unit :: locals.map ScalarStepBinding.toScalar) a
         extractScalarStepWith (.scalar (.function true (fun argument =>
           extractScalarExprWith (.word argument :: .unit :: locals.map ScalarStepBinding.toScalar) a)) :: locals) b) := by
-  rw [extractScalarStepWith, scalarResultType_accepts]
+  cases unitForm <;> rw [UnitSyntax.type, extractScalarStepWith, scalarResultType_accepts]
 
 theorem extractScalarStepWith_letStepFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
@@ -142,16 +151,16 @@ theorem extractScalarStepWith_letStepFn (locals : List ScalarStepBinding)
 theorem extractScalarStepWith_letUnitStepFn (locals : List ScalarStepBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)
     (unitTypeBi typeBi unitBi paramBi : Lean.BinderInfo)
-    (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
+    (type : Step.ResultAnnotation) (unitForm : UnitSyntax) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
-      (.forallE unitTypeName (.const ``Unit [])
+      (.forallE unitTypeName unitForm.type
         (.forallE typeName (.const ``UInt64 []) (Step.resultType type) typeBi) unitTypeBi)
-      (.lam unitName (.const ``Unit [])
+      (.lam unitName unitForm.type
         (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) = (do
         let _ ← extractScalarStepWith (.scalar (.word (.u64 0)) :: .scalar .unit :: locals) a
         extractScalarStepWith (.function true (fun argument =>
           extractScalarStepWith (.scalar (.word argument) :: .scalar .unit :: locals) a) :: locals) b) := by
-  rw [extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
+  cases unitForm <;> rw [UnitSyntax.type, extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
 
 theorem extractScalarStepWith_idRun (locals : List ScalarStepBinding) (type : Step.ResultAnnotation) (a : Lean.Expr) :
     extractScalarStepWith locals (Step.idRun type a) = extractScalarStepWith locals a := by

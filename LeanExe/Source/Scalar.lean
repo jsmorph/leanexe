@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarUnit
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarComplement
 import LeanExe.Source.ScalarExtremum
@@ -52,15 +53,15 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values value
-  | unitApply (function : values[index]? = some (.function true f)) (argument : EvalWith a values x) :
-      EvalWith (.app (.app (.bvar index) (.const ``Unit.unit [])) a) values (f x)
-  | letUnitFn (type : ResultType)
+  | unitApply (unitForm : UnitSyntax) (function : values[index]? = some (.function true f)) (argument : EvalWith a values x) :
+      EvalWith (.app (.app (.bvar index) unitForm.value) a) values (f x)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : ∀ x, EvalWith a (.word x :: .unit :: values) (f x))
       (body : EvalWith b (.function true f :: values) value) :
       EvalWith (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values value
   | binaryApply (function : values[index]? = some (.binaryFunction f))
       (first : EvalWith a values x) (second : EvalWith b values y) :
@@ -113,14 +114,14 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | unitApply (function : types[index]? = some (.function true)) (argument : SupportedWith types a) :
-      SupportedWith types (.app (.app (.bvar index) (.const ``Unit.unit [])) a)
-  | letUnitFn (type : ResultType) (function : SupportedWith (.word :: .unit :: types) a)
+  | unitApply (unitForm : UnitSyntax) (function : types[index]? = some (.function true)) (argument : SupportedWith types a) :
+      SupportedWith types (.app (.app (.bvar index) unitForm.value) a)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax) (function : SupportedWith (.word :: .unit :: types) a)
       (body : SupportedWith (.function true :: types) b) :
       SupportedWith types (.letE name
-        (.forallE unitTypeName (.const ``Unit [])
+        (.forallE unitTypeName unitForm.type
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
-        (.lam unitName (.const ``Unit [])
+        (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | binaryApply (function : types[index]? = some .binaryFunction)
       (first : SupportedWith types a) (second : SupportedWith types b) :
@@ -204,15 +205,15 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
-  | unitApply present _ ih =>
+  | unitApply unitForm present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed
-    exact ⟨f x, .unitApply hf hx⟩
-  | letUnitFn type _ _ ihf ihb =>
+    exact ⟨f x, .unitApply unitForm hf hx⟩
+  | letUnitFn type unitForm _ _ ihf ihb =>
     have total := fun x => ihf (.word x :: .unit :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
-    exact ⟨value, .letUnitFn type (fun x => (total x).choose_spec) hv⟩
+    exact ⟨value, .letUnitFn type unitForm (fun x => (total x).choose_spec) hv⟩
   | binaryApply present _ _ ihFirst ihSecond =>
     obtain ⟨f, hf⟩ := binaryFunction_lookup typed present
     obtain ⟨x, hx⟩ := ihFirst values typed
@@ -227,17 +228,17 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩
 
-theorem EvalWith.not_unit {expression values value} (evaluated : EvalWith expression values value) :
-    expression ≠ .const ``Unit.unit [] := by
+theorem EvalWith.not_unit {expression values value} (evaluated : EvalWith expression values value) (unitForm : UnitSyntax) :
+    expression ≠ unitForm.value := by
   intro same
   subst expression
-  cases evaluated
+  cases unitForm <;> cases evaluated
 
-theorem SupportedWith.not_unit {types expression} (supported : SupportedWith types expression) :
-    expression ≠ .const ``Unit.unit [] := by
+theorem SupportedWith.not_unit {types expression} (supported : SupportedWith types expression) (unitForm : UnitSyntax) :
+    expression ≠ unitForm.value := by
   intro same
   subst expression
-  cases supported
+  cases unitForm <;> cases supported
 
 /-- Public scalar entry semantics: parameters contain words; closures are internal. -/
 abbrev Eval (expr : Lean.Expr) (values : List UInt64) (value : UInt64) : Prop :=

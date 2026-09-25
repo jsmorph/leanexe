@@ -91,7 +91,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     apply bindings.cons
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc (bindings.toScalar.cons ha)
-  | letUnitFn type function body ih =>
+  | letUnitFn type unitForm function body ih =>
     rw [extractScalarStepWith_letUnitFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, ht⟩ := compiled
@@ -130,8 +130,8 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
       obtain ⟨arg, ha, hc⟩ := compiled
       exact bindings.function found function arg _ code
         (extractScalarExprWith_correct argument ha bindings.toScalar) hc
-  | unitApply function argument =>
-    rw [extractScalarStepWith] at compiled
+  | unitApply unitForm function argument =>
+    rw [extractScalarStepWith_unitApply] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, hc⟩ := compiled
     exact bindings.function (Option.bind_eq_some_iff.mpr hf) function arg _ code
@@ -144,7 +144,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     apply bindings.cons
     intro argument value target ha hc
     exact ihf value hc (bindings.cons ha)
-  | letUnitStepFn type function body ihf ihb =>
+  | letUnitStepFn type unitForm function body ihf ihb =>
     rw [extractScalarStepWith_letUnitStepFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, ht⟩ := compiled

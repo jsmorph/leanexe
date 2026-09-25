@@ -25,6 +25,8 @@ def scalarYield? : Lean.Expr → Option Lean.Expr
   | .lam name domain body bi => (scalarYield? body).map fun scalar => .lam name domain scalar bi
   | .app (.app (.bvar index) (.const ``Unit.unit [])) argument =>
       some (.app (.app (.bvar index) (.const ``Unit.unit [])) argument)
+  | .app (.app (.bvar index) (.const ``PUnit.unit [.succ .zero])) argument =>
+      some (.app (.app (.bvar index) (.const ``PUnit.unit [.succ .zero])) argument)
   | .app (.bvar index) argument => some (.app (.bvar index) argument)
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
       condition) evidence) onTrue) onFalse =>
@@ -54,7 +56,8 @@ theorem scalarYield_accepts {source scalar : Lean.Expr} (h : Range.YieldScalar s
     rw [scalarYield?, scalarYieldType_accepts type]
     simp [iv, ib]
   | lambda _ ih => simp [scalarYield?, ih]
-  | call | unitCall => rfl
+  | call => rfl
+  | unitCall unitForm => cases unitForm <;> rfl
   | branch type _ _ it ie =>
     rw [Range.branch, scalarYield?, scalarYieldType_accepts type]
     simp [it, ie]
@@ -79,25 +82,26 @@ theorem scalarYield_sound {source scalar : Lean.Expr} (h : scalarYield? source =
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .lambda (ih ht)
-  | case5 index argument => cases h; exact .unitCall
-  | case6 index argument => cases h; exact .call
-  | case7 type condition evidence onTrue onFalse absent =>
+  | case5 index argument => cases h; exact .unitCall .unit
+  | case6 index argument => cases h; exact .unitCall .punit
+  | case7 index argument => cases h; exact .call
+  | case8 type condition evidence onTrue onFalse absent =>
     rw [scalarYield?, absent] at h
     contradiction
-  | case8 type condition evidence onTrue onFalse scalarType mapped it ie =>
+  | case9 type condition evidence onTrue onFalse scalarType mapped it ie =>
     rw [scalarYield?, mapped] at h
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at h
     obtain ⟨scalarTrue, ht, scalarFalse, he, rfl⟩ := h
     exact .branch (scalarYieldType_sound mapped) (it ht) (ie he)
-  | case9 value name body bi ih =>
+  | case10 value name body bi ih =>
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .idBind (ih ht)
-  | case10 data body ih =>
+  | case11 data body ih =>
     simp only [scalarYield?, Option.map_eq_some_iff] at h
     obtain ⟨tail, ht, rfl⟩ := h
     exact .metadata (ih ht)
-  | case11 => simp_all [scalarYield?]
+  | case12 => simp_all [scalarYield?]
 
 structure ScalarRangeView where
   count : Lean.Expr
