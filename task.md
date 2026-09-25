@@ -752,9 +752,14 @@ Eighteen selected prior modules kept identical bytes. Evidence is retained in
 `proofs/compiler/boolean-word-let-2026-09-25/`. The corpus has 600 declarations;
 this was a focused run. No emitter/runtime changes; pure computations may repeat.
 
-Next increment: standard Id type annotations on Boolean and UInt64 let bindings
-inside Boolean expressions. Inspect the exact annotations, retain typed scopes,
-and complete parser/source proofs and scalar/loop execution before moving on.
+Current increment: standard Id type annotations on Boolean and UInt64 let
+bindings inside Boolean expressions. Two initial probe drafts were invalid Lean;
+their sources/logs are retained. The corrected five probes are valid Lean and
+currently reject. Word uses explicitly unwrap Id; Boolean operations have fixed
+Bool argument types. Exact nested Id annotations now live in the source binding
+forms and scoped scalar operands. Type-family disjointness, source size and all
+lowering/type-scope proofs pass focused builds. Parser reconstruction, scalar/loop
+integration, execution and docs remain in progress. Nested Boolean Id operations,
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 
