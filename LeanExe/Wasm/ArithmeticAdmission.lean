@@ -32,29 +32,18 @@ namespace LeanExe.Extract.Core
 theorem extractScalarExpr_arithmetic {source : Lean.Expr} {locals : List Nat}
     {target : LeanExe.IR.Expr} (compiled : extractScalarExpr locals source = some target) :
     ∃ descriptor, LeanExe.Wasm.ScalarDescriptor.Expr.ofIR target = some descriptor ∧ descriptor.Arithmetic := by
-  have supported := extractScalarExpr_supported compiled
-  generalize hlen : locals.length = arity at supported
-  induction supported generalizing target with
-  | var hi =>
-    simp only [extractScalarExpr, Option.map_eq_some_iff] at compiled
-    obtain ⟨slot, hs, rfl⟩ := compiled
-    exact ⟨_, rfl, .get⟩
-  | literal =>
-    cases compiled
-    exact ⟨_, rfl, .const⟩
-  | ofNat =>
-    simp only [extractScalarExpr_literalExpr, Option.some.injEq] at compiled
-    subst target
-    exact ⟨_, rfl, .const⟩
-  | binary op _ _ ihl ihr =>
-    rw [extractScalarExpr_binary op] at compiled
-    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨p, hp, a, ha, b, hb, rfl⟩ := compiled
-    obtain ⟨da, hda, aa⟩ := ihl ha hlen
-    obtain ⟨db, hdb, ab⟩ := ihr hb hlen
+  refine extractScalarExprWith_invariant
+    (fun expression => ∃ descriptor,
+      LeanExe.Wasm.ScalarDescriptor.Expr.ofIR expression = some descriptor ∧ descriptor.Arithmetic)
+    (fun _ => ⟨_, rfl, .const⟩) ?_ compiled ?_
+  · intro p a b ha hb
+    obtain ⟨da, hda, aa⟩ := ha
+    obtain ⟨db, hdb, ab⟩ := hb
     obtain ⟨dop, hop⟩ := p.descriptor
     exact ⟨.bin dop da db, by simp [ScalarPrimitive.lower,
       LeanExe.Wasm.ScalarDescriptor.Expr.ofIR, hop, hda, hdb], .bin aa ab⟩
-  | metadata _ ih => exact ih compiled hlen
+  · intro expression member
+    obtain ⟨slot, _, rfl⟩ := List.mem_map.mp member
+    exact ⟨_, rfl, .get⟩
 
 end LeanExe.Extract.Core
