@@ -638,22 +638,27 @@ runtime, scalar dispatch or loop dispatch changes were needed. The cached
 proof build includes complete module type validation and the usual nine axiom
 audits; unrelated runtime suites and the fixed arithmetic archive were reused.
 
-Current increment: Bool.toUInt64 conversion of admitted Boolean values. Four
-initial examples reject, covering direct comparison/decision values, captures,
-conditional binds and a range loop. Preserve the valid inspected examples
-unchanged. The new source rule, typed support, totality, scalar production
-extraction and all four scalar proofs pass. Shared guardWord correctness proves
-the zero/one conversion directly; step proof modules rebuild unchanged. The
-outer-loop proofs also rebuild unchanged. All 304 focused native/IR comparisons
-and seventeen rejection checks pass on the first fixture run. Original-example,
-preceding-fixture, general audit and focused native/V8 checks remain in progress.
-Sixteen new declarations cover conversion syntax, nested converted operands,
-helper captures, ordinary/dependent conditions, Boolean actions, strided bounds,
-break/continue, joined updates and scalar work after a loop.
-Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
-propositions directly referencing saved Boolean locals, and loops inside helpers
-remain later capabilities. A conditional Boolean bind before a loop can
-elaborate to such a loop-containing helper.
+Completed next increment: Bool.toUInt64 applied to admitted Boolean expressions,
+flags, choices and decisions. Native source semantics, typed support, totality
+and the scalar compiler/proofs use the existing checked zero/one representation.
+Step and surrounding-loop proof modules reuse the scalar interface unchanged.
+Candidate `cdfe21b4` passed all nine general compiler audits and 623 native
+Lean/V8 comparisons across 34 declarations. All 304 focused native/IR comparisons
+and seventeen rejection checks passed on their first fixture run. The preceding
+decide fixture passed unchanged: 304 comparisons and twelve rejections. Eighteen
+selected preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-word-2026-09-25/`. The full corpus contains 488
+declarations; this was a focused execution run. Four original inspected
+examples now compile unchanged. No emitter/runtime changes were needed.
+
+Next increment: Boolean equality and inequality of admitted Boolean values.
+Inspect the actual standard operator/direct-call syntax, extend the shared
+Boolean grammar and checked lowering, then test conditions, choices, captures,
+helper calls and loops end-to-end before proceeding. Boolean public ABI,
+Boolean-returning helpers, mixed Bool/word parameter lists, propositions directly
+referencing saved Boolean locals, and loops inside helpers remain later
+capabilities. A conditional Boolean bind before a loop can elaborate to such
+a loop-containing helper.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
