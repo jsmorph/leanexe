@@ -20,7 +20,7 @@ nesting of supported expressions:
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions |
+| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬` |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
@@ -28,12 +28,14 @@ instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
 procedures. `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
-decision procedures with reversed operands. Their lowering preserves unsigned
-comparison semantics. Nested
+decision procedures with reversed operands. `≠` preserves standard inequality
+evidence. `¬` can wrap any admitted comparison, including another negation,
+and its exact standard decision evidence is checked recursively. The emitted
+condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
 local bounds, even when one branch is never executed. Dependent `if h : …`,
-Boolean parameters/results/bindings and compound Boolean conditions are not yet
+Boolean parameters/results/bindings, Boolean `!`, and compound Boolean conditions are not yet
 admitted by this source grammar.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
@@ -139,14 +141,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles eighty-two fresh declarations with that command,
+and all reserved names, compiles ninety-four fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 1,566 results against native Lean evaluation, including overflow, zero
+It compares 1,764 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -177,13 +179,17 @@ lets, unused done values and multiply wrapped Id annotations.
 Six more exercise a joined monadic step-result branch, functions receiving step
 results, chained calls, captured values across shadowing, ignored arguments,
 unused function bodies and nested Id annotations on these function types.
+Nine additional scalar declarations cover inequality, negation of every
+comparison family, repeated negation and negated comparisons in functions and
+monadic bindings. Three more range declarations exercise break, continue and
+step-result branch joins with negated conditions.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
 is a separate check of the arithmetic theorem's integration with the actual CLI.
 
 For changes confined to range loops, `tools/arithmetic-check.js range-engine`
-checks the fixed range fixture group: 1,129 results across forty-eight declarations,
+checks the fixed range fixture group: 1,201 results across fifty-one declarations,
 including local functions, monadic bindings, branch continuations and breaks. It retains admission and reserved-export
 checks and saves its output under `.lake/arithmetic-check/range`. The full engine
 check remains available when a change affects the broader scalar grammar.
@@ -341,3 +347,11 @@ monadic continuations, with all nine audits and 1,129 matching results across
 forty-eight range declarations. All forty-two prior modules retained identical
 bytes. The focused source/IR test also passed 144 comparisons. The full
 1,566-result suite remains configured; this increment ran the focused range group.
+
+
+The [negative-condition increment](../proofs/compiler/negative-conditions-2026-09-25/README.md)
+adds UInt64 inequality and repeated propositional negation, with all nine audits
+and 1,764 matching results across the full ninety-four-declaration engine group.
+All eighty-two prior modules retained identical bytes. The focused source/IR
+test passed 198 comparisons. This increment used the full execution group because
+the shared comparison model affects scalar expressions and range loops.
