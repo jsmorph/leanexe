@@ -780,40 +780,29 @@ modules kept identical bytes. Evidence is retained in
 `proofs/compiler/boolean-nested-id-2026-09-25/`. The corpus has 632 declarations;
 this was a focused run. No emitter/runtime changes.
 
-Current increment: general standard Id annotations on let bindings. Five valid
-pre-implementation probes (word, Boolean, numeral, helper and range) all reject;
-their unchanged sources/logs are in `../work/id-let-inspect.lean` and `.log`.
-The source rule retains the exact annotated let and relates it to the same let
-with one Id layer removed. The underlying name, value, body and letE flag stay
-unchanged, and a checked size lemma supports terminating extraction. Lean also
-elaborates an annotated numeral with matching nested Id.instOfNat evidence.
-Typed numeral recognition now checks each Id type layer, numeral and standard
-instance, with acceptance and source-reconstruction proofs passing.
+Completed next increment: standard nested Id annotations on ordinary lets,
+including matching numeral instance layers. Exact let syntax and annotations
+remain in the source relation; extraction removes one checked Id layer at a time
+and preserves the underlying binding rules. All scalar, step and range source,
+extraction and correctness proofs pass. Candidate `cef8b86e` passed all nine
+compiler audits and 623 native Lean/V8 comparisons across 34 declarations.
+The first focused fixture passed 304 native/IR comparisons, eighteen typed-numeral
+comparisons and 148 rejection tests (four declarations, 64 malformed lets and
+eighty malformed numeral forms). All five original examples compile unchanged.
+The twenty focused/admission bodies and sixteen accepted native bodies match.
+Prior nested-Id and annotated-Boolean-let fixtures passed unchanged with 304
+comparisons each and 164/100 rejection tests. Eighteen prior modules kept identical
+bytes. Evidence is retained in `proofs/compiler/id-let-2026-09-25/`. The corpus
+has 648 declarations; this was a focused run. No emitter/runtime changes.
 
-Scalar, step and range source totality now pass, including the literal range-count
-conversion proof. Scalar extraction now removes one standard Id layer from let
-annotations and recognizes the matching typed numeral instances. Its acceptance,
-source-support, semantic-preservation and invariant proofs pass. Foundation
-commit `c6b97048` and scalar proof commit `77632167` are pushed. Step extraction
-and its acceptance, support, correctness and invariant proofs pass and are pushed
-at `fa014c91`. Range extraction and its corresponding proofs now pass too.
-Range integration is pushed at `46db06e3`. Function integration and all five
-unchanged original examples now pass. The first focused execution fixture passed
-304 native/IR comparisons, 18 typed-numeral comparisons and 148 rejection tests
-(four declarations, 64 malformed lets and 80 malformed numeral forms). All twenty
-focused/admission bodies match; the sixteen accepted native bodies match too.
-The preceding nested-Id and annotated-Boolean-let fixtures pass unchanged with
-304 comparisons each and 164/100 rejection tests.
-
-Next steps: commit this execution checkpoint, run all nine compiler audits and
-the selected production compiler/native-V8 checks, then archive evidence and
-update the completion record. Only start another capability after those checks
-pass and completion is pushed. This increment is INCOMPLETE until then.
-The completed nested Boolean Id increment is pushed at `2699d1b4` (candidate
-`44637199`); the annotated Boolean-let increment is pushed at `22983e16`
-(candidate `1feb91fb`).
-Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
-broader saved-flag propositions and loops inside helpers remain later capabilities.
+Next increment: investigate standard Id annotations on arithmetic inputs and
+instance type arguments. First retain actual elaborated examples and current
+admission results; then extend only the necessary source/parser rules, prove
+acceptance and correctness, and check focused execution through emitted WASM.
+Complete and push that increment before the next capability. Broader comparison
+annotations, Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
+parameters, saved-flag propositions and loops inside helpers remain later work.
+Keep this file current at every verified checkpoint and commit/push frequently.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

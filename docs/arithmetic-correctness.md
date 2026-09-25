@@ -949,3 +949,13 @@ focused fixture passed 304 native/IR comparisons and 164 rejections; five origin
 examples compile unchanged. Prior annotated-let/word-let fixtures passed 304
 comparisons each and 100/68 rejections unchanged; eighteen prior modules kept
 identical bytes. The full corpus has 632 declarations; this execution was focused.
+
+The [ordinary Id-let increment](../proofs/compiler/id-let-2026-09-25/README.md)
+adds nested standard Id annotations on ordinary lets and matching typed numeral
+instances across scalar, step and range code. Candidate `cef8b86e` passed all
+nine audits and 623 native Lean/V8 comparisons across 34 declarations. The first
+focused fixture passed 304 native/IR comparisons, eighteen typed-numeral comparisons
+and 148 rejection tests. Five original examples compile unchanged. Prior nested-Id
+and annotated-Boolean-let fixtures passed 304 comparisons each and 164/100 rejection
+tests unchanged; eighteen prior modules kept identical bytes. The full corpus has
+648 declarations; this execution was focused.
