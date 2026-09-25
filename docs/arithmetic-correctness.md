@@ -465,3 +465,10 @@ adds pure continuations after a loop-valued UInt64 binding. All nine audits,
 2,977 native Lean/V8 comparisons across 125 range declarations, 240 focused
 native Lean/IR comparisons and three rejection tests passed. All 115 preceding
 range modules retained identical bytes.
+
+
+The [UInt64 complement increment](../proofs/compiler/complement-2026-09-25/README.md)
+adds direct and standard overloaded bitwise complement with proved XOR lowering.
+All nine audits, 3,986 native Lean/V8 comparisons across 197 declarations,
+208 focused native Lean/IR comparisons and three rejection tests passed.
+All 185 preceding modules retained identical bytes.
