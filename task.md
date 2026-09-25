@@ -121,7 +121,14 @@ pending before enabling or claiming this loop increment complete.
 function-body bytes, including declared locals and its size prefix. The shared
 `functionState` definition moved into `FunctionState.lean` to let pure and range
 function proofs compose without a circular import. Both focused targets pass.
-The next edit is the public source-function dispatch and its shared module proofs.
+The public source-function dispatch now selects the pure or range extractor.
+Its general acceptance and source-to-IR correctness proofs pass, as do the
+shared function execution, exact function bytes, module parsing, invocation and
+function validation targets. The combined dependency build reached its time
+limit after completing the function byte target; the remaining validation target
+completed separately with cached dependencies. Seven new public execution
+fixtures and rejection checks are ready. The final general nine audits and
+582 native/V8 comparisons are pending for this candidate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -29,8 +29,7 @@ theorem extracted_module_invocation
   obtain ⟨user, declared, _, decoded, correct⟩ :=
     extracted_module_bytes (α := α) compiled bounds localBound bodyBound
   have results : func.results.length = 1 := by
-    simp only [extractScalarFunc, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨arity, _, body, _, ir, _, rfl⟩ := compiled
+    rw [(extractScalarFunc_properties compiled).2.2]
     rfl
   have localCount : func.locals - func.params + LeanExe.Wasm.Binary.CoreWasm.funcScratch func < 2 ^ 32 := by
     omega

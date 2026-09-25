@@ -1,4 +1,4 @@
-import LeanExe.Extract.ScalarExpr
+import LeanExe.Extract.ScalarRangeCorrectness
 import LeanExe.Source.ScalarFunction
 
 namespace LeanExe.Extract.Core
@@ -32,8 +32,45 @@ def extractScalarFunc (name : Lean.Name) (exportName : Option String)
     (type value : Lean.Expr) : Option LeanExe.IR.Func := do
   let arity ← scalarArity? type
   let body ← collectLambdas value arity
-  let expression ← extractScalarExpr (List.range arity).reverse body
-  pure (scalarFunc name exportName arity expression)
+  match extractScalarExpr (List.range arity).reverse body with
+  | some expression => pure (scalarFunc name exportName arity expression)
+  | none => do
+      let plan ← extractScalarRangeWith
+        ((List.range arity).reverse.map fun slot => .word (.local slot)) arity body
+      pure (plan.func name exportName arity)
+
+/-- Successful extraction selects either the pure expression case or one range
+loop; both retain the same concrete signature and source lambda binders. -/
+theorem extractScalarFunc_cases {name : Lean.Name} {exportName : Option String}
+    {type source : Lean.Expr} {func : LeanExe.IR.Func}
+    (compiled : extractScalarFunc name exportName type source = some func) :
+    ∃ arity body, scalarArity? type = some arity ∧ collectLambdas source arity = some body ∧
+      ((∃ expression, extractScalarExpr (List.range arity).reverse body = some expression ∧
+          func = scalarFunc name exportName arity expression) ∨
+        (∃ plan, extractScalarRangeWith
+          ((List.range arity).reverse.map fun slot => .word (.local slot)) arity body = some plan ∧
+          func = plan.func name exportName arity)) := by
+  unfold extractScalarFunc at compiled
+  simp only [bind, Option.bind_eq_some_iff] at compiled
+  obtain ⟨arity, ha, body, hb, compiled⟩ := compiled
+  refine ⟨arity, body, ha, hb, ?_⟩
+  cases pureCase : extractScalarExpr (List.range arity).reverse body with
+  | some expression =>
+    simp only [pureCase, pure, Option.some.injEq] at compiled
+    exact .inl ⟨expression, rfl, compiled.symm⟩
+  | none =>
+    simp only [pureCase, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨plan, hp, same⟩ := compiled
+    exact .inr ⟨plan, hp, same.symm⟩
+
+theorem extractScalarFunc_properties {name : Lean.Name} {exportName : Option String}
+    {type source : Lean.Expr} {func : LeanExe.IR.Func}
+    (compiled : extractScalarFunc name exportName type source = some func) :
+    func.exportName = exportName ∧ func.params ≤ func.locals ∧ func.results = [.local func.params] := by
+  obtain ⟨arity, body, _, _, cases⟩ := extractScalarFunc_cases compiled
+  rcases cases with ⟨expression, _, rfl⟩ | ⟨plan, _, rfl⟩
+  · simp [scalarFunc]
+  · simp [ScalarRangePlan.func]
 
 theorem scalarArgumentLocals (args scratch : List UInt64) :
     ScalarLocalsMatch (List.range args.length).reverse args.reverse (args ++ scratch) := by
@@ -69,10 +106,48 @@ theorem extractScalarFunc_accepts {type value : Lean.Expr}
     (name : Lean.Name) (exportName : Option String) :
     ∃ func, extractScalarFunc name exportName type value = some func := by
   obtain ⟨arity, body, signature, lambdas, supportedBody⟩ := supported
-  obtain ⟨expression, compiled⟩ := extractScalarExpr_accepts supportedBody
-    (List.range arity).reverse (by simp)
-  exact ⟨scalarFunc name exportName arity expression,
-    by simp [extractScalarFunc, scalarArity_accepts signature, lambdas, compiled]⟩
+  cases supportedBody with
+  | inl supportedBody =>
+    obtain ⟨expression, compiled⟩ := extractScalarExpr_accepts supportedBody
+      (List.range arity).reverse (by simp)
+    exact ⟨scalarFunc name exportName arity expression,
+      by simp [extractScalarFunc, scalarArity_accepts signature, lambdas, compiled]⟩
+  | inr supportedBody =>
+    let locals := (List.range arity).reverse.map fun slot => ScalarBinding.word (.local slot)
+    obtain ⟨plan, compiled⟩ := extractScalarRangeWith_accepts supportedBody locals arity
+      (by simp [locals, List.map_map, Function.comp_def, ScalarBinding.kind, List.map_const'])
+      (by intro binding member; obtain ⟨slot, _, rfl⟩ := List.mem_map.mp member; trivial)
+    have excluded := rangeSupported_excludes_pure supportedBody locals
+    exact ⟨plan.func name exportName arity, by
+      simp only [extractScalarFunc, scalarArity_accepts signature, lambdas, bind, Option.bind, extractScalarExpr]
+      rw [excluded]
+      rw [compiled]
+      rfl⟩
+
+/-- Actual argument locals match the source environment for any trailing locals. -/
+theorem scalarArgumentBindings (args extra : List UInt64) :
+    ScalarBindingsMatch ((List.range args.length).reverse.map fun slot => .word (.local slot))
+      (args.reverse.map LeanExe.Source.Scalar.Value.word) (args ++ extra) := by
+  intro index binding value he hv
+  simp only [List.getElem?_map, Option.map_eq_some_iff] at he hv
+  obtain ⟨slot, hs, rfl⟩ := he
+  obtain ⟨word, hw, rfl⟩ := hv
+  exact LeanExe.IR.Expr.ScalarEval.local ((scalarArgumentLocals args extra _ _ hs).trans hw)
+
+/-- Source value and loop facts for a successfully extracted range function. -/
+theorem rangeFunc_meaning {body : Lean.Expr} {arity : Nat} {plan : ScalarRangePlan}
+    (compiled : extractScalarRangeWith
+      ((List.range arity).reverse.map fun slot => .word (.local slot)) arity body = some plan)
+    {args : List UInt64} (len : args.length = arity) :
+    ∃ value, LeanExe.Source.Scalar.Eval body args.reverse value ∧ plan.Meaning args value := by
+  subst arity
+  apply extractScalarRangeWith_correct args (args.reverse.map LeanExe.Source.Scalar.Value.word) compiled
+  · simp [List.map_map, Function.comp_def, LeanExe.Source.Scalar.Value.kind, ScalarBinding.kind, List.map_const']
+  · intro accumulator index stop
+    exact scalarArgumentBindings args [accumulator, UInt64.ofNat index, stop]
+  · intro binding member
+    obtain ⟨slot, _, rfl⟩ := List.mem_map.mp member
+    trivial
 
 /-- Every successful scalar declaration extraction preserves application of
 the original source term on every argument list of the declared arity. -/
@@ -81,23 +156,19 @@ theorem extractScalarFunc_correct {name : Lean.Name} {exportName : Option String
     (compiled : extractScalarFunc name exportName type source = some func)
     (args : List UInt64) (len : args.length = func.params) :
     ∃ value, LeanExe.Source.Scalar.Apply source [] args value ∧ func.ScalarEval args value := by
-  cases hn : scalarArity? type with
-  | none => simp [extractScalarFunc, hn] at compiled
-  | some arity =>
-    cases hb : collectLambdas source arity with
-    | none => simp [extractScalarFunc, hn, hb] at compiled
-    | some body =>
-      cases he : extractScalarExpr (List.range arity).reverse body with
-      | none => simp [extractScalarFunc, hn, hb, he] at compiled
-      | some expression =>
-        have hf : scalarFunc name exportName arity expression = func := by
-          simpa [extractScalarFunc, hn, hb, he] using compiled
-        subst func
-        have hlen : args.length = arity := len
-        have supported := extractScalarExpr_supported he
-        obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp [hlen])
-        refine ⟨value, ?_, scalarFunc_correct he hlen semantics name exportName⟩
-        exact LeanExe.Source.Scalar.apply_of_collectLambdas args []
-          (by simpa [hlen] using hb) (by simpa using semantics)
+  obtain ⟨arity, body, _, hb, cases⟩ := extractScalarFunc_cases compiled
+  rcases cases with ⟨expression, he, rfl⟩ | ⟨plan, hp, rfl⟩
+  · have hlen : args.length = arity := len
+    have supported := extractScalarExpr_supported he
+    obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp [hlen])
+    refine ⟨value, ?_, scalarFunc_correct he hlen semantics name exportName⟩
+    exact LeanExe.Source.Scalar.apply_of_collectLambdas args []
+      (by simpa [hlen] using hb) (by simpa using semantics)
+  · have hlen : args.length = arity := len
+    obtain ⟨value, semantics, meaning⟩ := rangeFunc_meaning hp hlen
+    refine ⟨value, ?_, ?_⟩
+    · exact LeanExe.Source.Scalar.apply_of_collectLambdas args []
+        (by simpa [hlen] using hb) (by simpa using semantics)
+    · simpa [hlen] using meaning.func_correct name exportName
 
 end LeanExe.Extract.Core
