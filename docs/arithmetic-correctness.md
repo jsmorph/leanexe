@@ -151,3 +151,8 @@ The [2026-09-24 arithmetic checkpoint](../proofs/compiler/arithmetic-2026-09-24/
 retains the completed proof, execution and type-safety checks plus the independently
 verified source archive and its hash. It is a fixed arithmetic milestone; later
 language extensions are tracked separately in `task.md`.
+
+The [let-binding increment](../proofs/compiler/let-2026-09-24/README.md) extends the
+general theorem and execution check to pure UInt64 bindings, with 142 matching
+results over twelve declarations. It retains focused evidence without rebuilding
+the fixed arithmetic distribution package.
