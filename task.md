@@ -544,17 +544,25 @@ Evidence is retained in `proofs/compiler/literal-instances-2026-09-25/`. The cor
 contains 379 declarations; this execution run checked 30. No backend or runtime
 change, full archive rebuild or unrelated runtime-suite rebuild was needed.
 
-Current increment: standard Nat numeral expressions at UInt64 conversion and
-numeric-instance positions, including borrowed-type metadata. Independent
-NaturalType/NaturalLiteral syntax and exact parser acceptance/soundness pass.
-The constant UInt64-instance grammar now admits those numeric arguments. Source
-totality, all scalar extraction proofs and exact literal-count inversion pass.
-Loop integration and 208 focused native/IR comparisons pass, including the
-recorded explicit-instance and UInt64.ofNat failure forms unchanged. Four
-declaration rejections, five raw numeral rejections and two metadata checks
-pass. Compiler audits and focused WebAssembly execution are next; this
-increment is not yet complete. Custom instances and general Nat arithmetic
-remain rejected.
+Completed next increment: standard Nat numeral expressions at UInt64 conversion
+and numeric-instance positions, with type/value metadata. Candidate `f6151291`
+passed all nine compiler audits and 537 native Lean/V8 comparisons in the fixed
+30-declaration `natural-numerals` group. Both preceding saved failure forms now
+pass unchanged. All 208 focused native/IR comparisons, four declaration
+rejections, five raw numeral rejections and two metadata checks passed. The 18
+selected preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/natural-numerals-2026-09-25/`. The corpus contains 391 declarations;
+this run checked 30. No emitter/runtime changes or unrelated archive/runtime
+suite rebuilds were needed. Custom instances and general Nat arithmetic remain
+outside the admitted source grammar.
+
+Next increment: Boolean monadic bindings, such as `let flag ← pure (x == y)`,
+in Id do-blocks, helper bodies, loop steps and computations surrounding a loop.
+Reuse typed Boolean bindings and the existing pure Boolean lowering. Prove exact
+standard Id action/bind syntax, source totality and extraction correctness before
+running focused native/compiler/WebAssembly comparisons. Broader Boolean result
+expressions, Boolean function parameters and the public Bool ABI remain later
+capabilities unless included and proved as part of this increment.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -696,3 +696,12 @@ All nine audits and 537 native Lean/V8 comparisons passed across a fixed
 tests and one metadata check. Eighteen selected preceding modules kept identical
 bytes. The full corpus contains 379 declarations. Standard Nat numeral
 expressions in explicit instance arguments remain a separate next capability.
+
+The [natural-numeral increment](../proofs/compiler/natural-numerals-2026-09-25/README.md)
+accepts standard Nat numeral expressions in UInt64 conversions and numeric
+instance positions, including borrowed-type and value metadata. Both recorded
+failure forms from the preceding increments now pass unchanged. All nine audits
+and 537 native Lean/V8 comparisons passed across a fixed 30-declaration group.
+The focused source test passed 208 native/IR comparisons, nine rejection checks
+and two metadata checks. Eighteen selected preceding modules kept identical
+bytes. The full corpus contains 391 declarations; this was a focused run.
