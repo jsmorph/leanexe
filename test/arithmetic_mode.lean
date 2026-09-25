@@ -89,6 +89,19 @@ def rangeBindBreak (n seed : UInt64) : UInt64 := Id.run do
     if delta == 2 then break
     a := a + delta
   return a
+def rangeJoined (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index := UInt64.ofNat i
+    let delta ← if a < 7 then pure (a + index) else pure (seed / index)
+    a := a + delta
+  return a
+def rangeUnusedDone (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    let _bad : UInt64 → Id (ForInStep UInt64) := fun x => pure (.done x)
+    a := a + 1
+  return a
 
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
@@ -104,6 +117,11 @@ def customEquality (x y : UInt64) : UInt64 :=
   if @BEq.beq UInt64 neverEqual x y then x else y
 def customDecision (x y : UInt64) : Decidable (x = y) := inferInstance
 def customDecisionBranch (x y : UInt64) : UInt64 := @ite UInt64 (x = y) (customDecision x y) x y
+def rangeCustomOrder (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    if @LT.lt UInt64 reversedLT a (UInt64.ofNat i) then a := a + 1
+  return a
 
 end ArithmeticModeTest
 
@@ -113,7 +131,7 @@ run_elab do
       `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential,
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
-      `ArithmeticModeTest.rangeBind] do
+      `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -128,6 +146,7 @@ run_elab do
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind, `ArithmeticModeTest.rangeBindBreak,
+      `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,

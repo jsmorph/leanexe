@@ -2,5 +2,6 @@
   "rangeIndexed", "rangeIndexFree", "rangeBindings", "rangeChoice",
   "rangeBeforeAfter", "rangeCaptured", "rangeConstant",
   "rangeLocalFunction", "rangeChainedFunctions", "rangeUnusedFunction",
-  "rangeMonadic", "rangeNestedDo", "rangeUnusedBind"
+  "rangeMonadic", "rangeNestedDo", "rangeUnusedBind",
+  "rangeMonadicJoined", "rangeBranchUpdates", "rangeContinue", "rangeNestedBranches"
 ]

@@ -93,11 +93,15 @@ The first execution attempt exposed a distinct branching-continuation form;
 that failure is retained. Conditional scalar values inside pure are supported,
 while custom Bind evidence and breaks after a bind remain rejected.
 
-Next increment: loop-step-valued branch continuations. A conditional monadic
-join introduces a local function returning Id (ForInStep UInt64); convert the
-yielding result type, function body and branch results together, preserve all
-captures and conditions, and retain full scalar support checks. Bring the
-previously failing conditional monadic join back as an explicit new fixture.
+In progress: loop-step-valued branch continuations. The independent YieldType
+relation preserves function domains and binder information while removing the
+yielding result wrapper. The yield recognizer converts such types, function
+bodies and branches together, preserving captures and conditions; the scalar
+extractor checks the complete result. Type and syntax acceptance/soundness
+proofs pass. Four fixtures cover the previously rejected conditional monadic
+join, branch updates, continue and nested branch continuations. Rejection cases
+include unused done-returning functions and custom comparison evidence. The
+final general audit and focused 385-result execution check remain pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
