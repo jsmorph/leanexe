@@ -490,3 +490,10 @@ adds nested propositional conjunction and disjunction over admitted comparisons.
 All nine audits, 4,242 native Lean/V8 comparisons across 211 declarations,
 256 focused native Lean/IR comparisons and three rejection tests passed.
 All 197 preceding modules retained identical bytes.
+
+
+The [compound negation increment](../proofs/compiler/compound-negation-2026-09-25/README.md)
+adds repeated propositional Not at any level of a compound guard.
+All nine audits, 4,450 native Lean/V8 comparisons across 223 declarations,
+208 focused native Lean/IR comparisons and three rejection tests passed.
+All 211 preceding modules retained identical bytes.
