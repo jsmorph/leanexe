@@ -39,6 +39,12 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
+  | letBooleanFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
+      (body : Eval b (.booleanFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep) values outcome
   | letBinaryFn (type : ResultType)
       (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
       (body : Eval b (.binaryFunction f :: values) outcome) :
@@ -94,6 +100,11 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
+      (body : Supported (.booleanFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep)
   | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
       (body : Supported (.binaryFunction :: types) b) :
       Supported types (.letE name
@@ -175,6 +186,11 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
+  | letBooleanFn type function _ ihb =>
+    have total := fun x => function.evaluates (.boolean x :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.booleanFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBooleanFn type (fun x => (total x).choose_spec) hv⟩
   | letBinaryFn type function _ ihb =>
     have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
     let f := fun x y => (total x y).choose
