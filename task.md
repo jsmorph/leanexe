@@ -791,9 +791,11 @@ Typed numeral recognition now checks each Id type layer, numeral and standard
 instance, with acceptance and source-reconstruction proofs passing.
 
 Scalar, step and range source totality now pass, including the literal range-count
-conversion proof. Next steps for this increment: connect let normalization and
-typed numeral recognition to extraction; prove acceptance,
-soundness, native-meaning preservation and invariants; run the unchanged original
+conversion proof. Scalar extraction now removes one standard Id layer from let
+annotations and recognizes the matching typed numeral instances. Its acceptance,
+source-support, semantic-preservation and invariant proofs pass. Foundation
+commit `c6b97048` is pushed. Next steps: finish step and range extraction and
+their acceptance, soundness, semantic-preservation and invariant proofs; run the unchanged original
 probes, focused native/IR and malformed-input tests, then all nine compiler audits
 and the selected CLI/native-V8 checks. Archive evidence, update these docs and
 push completion before starting another capability. This increment is INCOMPLETE.
