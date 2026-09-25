@@ -665,14 +665,18 @@ preceding modules kept identical bytes. Evidence is retained in
 declarations; this was a focused execution run. Five original inspected
 examples now compile unchanged. No emitter/runtime or dispatch changes were needed.
 
-Next increment: propositional Boolean equality and inequality conditions
-involving saved flags, such as `if flag = other then … else …`. Inspect exact
-condition/decision/proof-lambda syntax, preserve the existing Bool-to-Prop
-truth condition path, and connect each added form to the already proved
-Boolean equality value before checking it through scalar/loop contexts.
-Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
-general propositions containing saved Boolean locals and loops inside helpers
-remain later capabilities.
+Current increment: propositional Boolean equality and inequality conditions
+involving saved flags (`if flag = other ...`, `if flag ≠ other ...`), including
+dependent scalar and step branches. The guard retains its exact Eq/Ne condition
+and decision expression, indexed by the already proved Boolean equality value.
+The literal-true RHS preserves the existing truth-condition path. Parser
+acceptance, reconstruction, size bounds and separation proofs pass, together
+with scalar/step/range source, acceptance, correctness and invariant builds.
+All five original inspected examples now compile unchanged. Focused tests,
+the general compiler audit, actual emitted-Wasm comparisons and documentation
+are still in progress. Boolean-returning helpers, Boolean public ABI, mixed
+Bool/word helper parameters, Boolean-valued choices/decide over saved-flag
+propositions and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

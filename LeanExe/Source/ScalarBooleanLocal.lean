@@ -153,15 +153,85 @@ def evidence (value : BooleanLocal) : Lean.Expr :=
   .app (.app (.const ``instDecidableEqBool []) value.expr) (.const ``Bool.true [])
 
 end BooleanLocal
+/-- Propositional Boolean relation with its actual Eq/Ne head. -/
+def booleanRelationCondition (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.const (if unequal then ``Ne else ``Eq) [.succ .zero])
+    (.const ``Bool [])) left) right
+
+def booleanRelationEvidence (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
+  let equality := .app (.app (.const ``instDecidableEqBool []) left) right
+  if unequal then
+    .app (.app (.const ``instDecidableNot []) (booleanRelationCondition false left right)) equality
+  else equality
+
+/-- Surface proposition paired with the Boolean value that it decides.
+Eq with a literal true right side retains the existing truth-condition path. -/
+inductive BooleanConditionForm : BooleanLocal → Type where
+  | truth (value : BooleanLocal) : BooleanConditionForm value
+  | equal (left right : BooleanLocal) (nontrue : right.expr ≠ .const ``Bool.true []) :
+      BooleanConditionForm (.equality 0 false left right)
+  | unequal (left right : BooleanLocal) : BooleanConditionForm (.equality 0 true left right)
+
+namespace BooleanConditionForm
+
+def condition : {value : BooleanLocal} → BooleanConditionForm value → Lean.Expr
+  | _, .truth value => value.condition
+  | _, .equal left right _ => booleanRelationCondition false left.expr right.expr
+  | _, .unequal left right => booleanRelationCondition true left.expr right.expr
+
+def evidence : {value : BooleanLocal} → BooleanConditionForm value → Lean.Expr
+  | _, .truth value => value.evidence
+  | _, .equal left right _ => booleanRelationEvidence false left.expr right.expr
+  | _, .unequal left right => booleanRelationEvidence true left.expr right.expr
+
+theorem operands_size {value : BooleanLocal} (form : BooleanConditionForm value)
+    {operand : Lean.Expr} (member : operand ∈ value.operands) :
+    sizeOf operand < sizeOf form.condition := by
+  cases form with
+  | truth value =>
+    have bound := value.operands_size member
+    simp only [condition, BooleanLocal.condition]
+    simp_all
+    omega
+  | equal left right nontrue =>
+    change operand ∈ left.operands ++ right.operands at member
+    rcases List.mem_append.mp member with member | member
+    · have bound := left.operands_size member
+      simp only [condition, booleanRelationCondition]
+      simp_all
+      omega
+    · have bound := right.operands_size member
+      simp only [condition, booleanRelationCondition]
+      simp_all
+      omega
+  | unequal left right =>
+    change operand ∈ left.operands ++ right.operands at member
+    rcases List.mem_append.mp member with member | member
+    · have bound := left.operands_size member
+      simp only [condition, booleanRelationCondition]
+      simp_all
+      omega
+    · have bound := right.operands_size member
+      simp only [condition, booleanRelationCondition]
+      simp_all
+      omega
+
+end BooleanConditionForm
+
 /-- A condition using Boolean bindings or Boolean-valued choices. The preceding
 closed guard forms retain their existing source and compiler paths. -/
 structure BooleanLocalGuard where
   value : BooleanLocal
   expanded : value.extended = true
+  form : BooleanConditionForm value := .truth value
 
 namespace BooleanLocalGuard
-abbrev condition (guard : BooleanLocalGuard) := guard.value.condition
-abbrev evidence (guard : BooleanLocalGuard) := guard.value.evidence
+abbrev condition (guard : BooleanLocalGuard) := guard.form.condition
+abbrev evidence (guard : BooleanLocalGuard) := guard.form.evidence
+
+theorem operands_size (guard : BooleanLocalGuard) {operand : Lean.Expr}
+    (member : operand ∈ guard.value.operands) : sizeOf operand < sizeOf guard.condition :=
+  guard.form.operands_size member
 
 def branch (guard : BooleanLocalGuard) (type t e : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
