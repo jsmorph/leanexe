@@ -83,5 +83,11 @@
   "rangeStrideHugeBreak",
   "rangeStrideContinue",
   "rangeStrideJoin",
-  "rangeStrideOne"
+  "rangeStrideOne",
+  "rangeBinaryLocal",
+  "rangeBinaryCapture",
+  "rangeBinaryNested",
+  "rangeBinaryDo",
+  "rangeBinaryContinue",
+  "rangeBinaryUnused"
 ]

@@ -55,7 +55,20 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, _⟩ := compiled
     exact .choose op type (scalar ha) (scalar hb) (iht ht) (ihe he)
-  | case9 locals name typeName resultType typeBi paramName value paramBi body nondep type matched ihb =>
+  | case9 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected =>
+    rw [extractScalarStepWith, rejected] at compiled
+    contradiction
+  | case10 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched ihb =>
+    have typeEq := scalarResultType_sound matched
+    subst resultType
+    rw [extractScalarStepWith_letBinaryFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, hc, ht⟩ := compiled
+    simp only [List.attach_map_val] at ihb
+    exact .letBinaryFn type
+      (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported hc)
+      (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb ht)
+  | case11 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarStepWith_letFn] at compiled
@@ -65,10 +78,11 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     exact .letFn type
       (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported hc)
       (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb ht)
-  | case10 locals name typeName resultType typeBi paramName value paramBi body nondep noScalar noStep =>
+  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary noScalar noStep =>
     rw [extractScalarStepWith, noScalar, noStep] at compiled
-    contradiction
-  | case11 locals name typeName resultType typeBi paramName value paramBi body nondep noScalar type matched ih0 ihf ihb =>
+    · contradiction
+    · exact excludedBinary
+  | case13 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary noScalar type matched ih0 ihf ihb =>
     have typeEq := scalarStepResultType_sound matched
     subst resultType
     rw [extractScalarStepWith_letStepFn] at compiled
@@ -76,7 +90,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letStepFn type (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarStepBinding.kind] using ihb ht)
-  | case12 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ihb =>
+  | case14 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarStepWith_letUnitFn] at compiled
@@ -86,10 +100,10 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     exact .letUnitFn type
       (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported hc)
       (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb ht)
-  | case13 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep noScalar noStep =>
+  | case15 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep noScalar noStep =>
     rw [extractScalarStepWith, noScalar, noStep] at compiled
     contradiction
-  | case14 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep noScalar type matched ih0 ihf ihb =>
+  | case16 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep noScalar type matched ih0 ihf ihb =>
     have typeEq := scalarStepResultType_sound matched
     subst resultType
     rw [extractScalarStepWith_letUnitStepFn] at compiled
@@ -97,42 +111,42 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitStepFn type (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarStepBinding.kind] using ihb ht)
-  | case15 locals index argument =>
+  | case17 locals index argument =>
     rw [extractScalarStepWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .unitApply (scalarStepFunction_kind (Option.bind_eq_some_iff.mpr hf)) (scalar ha)
-  | case16 locals index argument f found =>
+  | case18 locals index argument f found =>
     rw [extractScalarStepWith, found] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨arg, ha, _⟩ := compiled
     exact .apply (scalarStepFunction_kind found) (scalar ha)
-  | case17 locals index argument absent ih =>
+  | case19 locals index argument absent ih =>
     rw [extractScalarStepWith, absent] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .applyResult (scalarStepResultFunction_kind (Option.bind_eq_some_iff.mpr hf)) (ih ha)
-  | case18 locals value =>
+  | case20 locals value =>
     rw [extractScalarStepWith] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, hv, _⟩ := compiled
     exact .yieldDirect (scalar hv)
-  | case19 locals value =>
+  | case21 locals value =>
     rw [extractScalarStepWith] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, hv, _⟩ := compiled
     exact .doneDirect (scalar hv)
-  | case20 locals index =>
+  | case22 locals index =>
     exact .resultVar (scalarStepResult_kind (by simpa only [extractScalarStepWith] using compiled))
-  | case21 locals type body rejected =>
+  | case23 locals type body rejected =>
     rw [extractScalarStepWith, rejected] at compiled
     contradiction
-  | case22 locals sourceType body type matched ih =>
+  | case24 locals sourceType body type matched ih =>
     have typeEq := scalarStepResultType_sound matched
     subst sourceType
     change extractScalarStepWith locals (Step.idRun type body) = some target at compiled
     exact .idRun type (ih (by simpa only [extractScalarStepWith_idRun] using compiled))
-  | case23 locals name typeName sourceOutput typeBi paramName sourceInput value paramBi body nondep input output outputMatched noWord noUnit inputMatched ih0 ihf ihb =>
+  | case25 locals name typeName sourceOutput typeBi paramName sourceInput value paramBi body nondep input output outputMatched noBinary noWord noUnit inputMatched ih0 ihf ihb =>
     have hi := scalarStepResultType_sound inputMatched
     have ho := scalarStepResultType_sound outputMatched
     subst sourceInput sourceOutput
@@ -141,23 +155,23 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letResultFn input output (by simpa [ScalarStepBinding.kind] using ih0 hc)
       (by simpa [ScalarStepBinding.kind] using ihb ht)
-  | case24 locals name typeName output typeBi paramName input value paramBi body nondep noWord noUnit rejected =>
+  | case26 locals name typeName output typeBi paramName input value paramBi body nondep noBinary noWord noUnit rejected =>
     rw [extractScalarStepWith] at compiled <;> try assumption
     simp only [↓reduceIte] at compiled
     contradiction
-  | case25 locals name typeName input output typeBi paramName domain value paramBi body nondep noWord noUnit different =>
+  | case27 locals name typeName input output typeBi paramName domain value paramBi body nondep noBinary noWord noUnit different =>
     rw [extractScalarStepWith] at compiled <;> try assumption
     simp [different] at compiled
-  | case26 locals name sourceType value body nondep h1 h2 h3 h4 rejected =>
+  | case28 locals name sourceType value body nondep h1 h2 h3 h4 h5 rejected =>
     rw [extractScalarStepWith] at compiled <;> first | assumption | (rw [rejected] at compiled; contradiction)
-  | case27 locals name sourceType value body nondep h1 h2 h3 h4 type matched ihv ihb =>
+  | case29 locals name sourceType value body nondep h1 h2 h3 h4 h5 type matched ihv ihb =>
     have typeEq := scalarStepResultType_sound matched
     subst sourceType
     rw [extractScalarStepWith_letResult] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letResult type (ihv hb) (by simpa [ScalarStepBinding.kind] using ihb bound ht)
-  | case28 locals sourceOutput value name sourceInput body bi input output outputMatched excluded inputMatched ihv ihb =>
+  | case30 locals sourceOutput value name sourceInput body bi input output outputMatched excluded inputMatched ihv ihb =>
     have hi := scalarStepResultType_sound inputMatched
     have ho := scalarStepResultType_sound outputMatched
     subst sourceInput sourceOutput
@@ -166,16 +180,16 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .bindResult input output (ihv hb) (by simpa [ScalarStepBinding.kind] using ihb bound ht)
-  | case29 locals output value name input body bi excluded rejected =>
+  | case31 locals output value name input body bi excluded rejected =>
     rw [extractScalarStepWith] at compiled <;> try assumption
     simp only [↓reduceIte] at compiled
     contradiction
-  | case30 locals input output value name domain body bi excluded different =>
+  | case32 locals input output value name domain body bi excluded different =>
     rw [extractScalarStepWith] at compiled <;> try assumption
     simp [different] at compiled
-  | case31 locals data body ih =>
+  | case33 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarStepWith] using compiled))
-  | case32 locals source hp hl hb hc hf huf hua ha hdy hdd hv hr hrf hlr hbr hm =>
+  | case34 locals source hp hl hb hc hf huf hua ha hdy hdd hv hr hrf hlr hbr hm =>
     rw [extractScalarStepWith] at compiled <;> first | assumption | contradiction
 
 end LeanExe.Extract.Core

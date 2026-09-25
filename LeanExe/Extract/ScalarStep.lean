@@ -43,6 +43,16 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               let e ← extractScalarStepWith locals onFalse
               pure { value := .ite (lowerComparison op a b) t.value e.value
                      done := .ite (lowerComparison op a b) t.done e.done }
+  | .letE _ (.forallE _ (.const ``UInt64 [])
+      (.forallE _ (.const ``UInt64 []) resultType _) _)
+      (.lam _ (.const ``UInt64 []) (.lam _ (.const ``UInt64 []) value _) _) body _ =>
+      match scalarResultType? resultType with
+      | none => none
+      | some _ => do
+          let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals.map ScalarStepBinding.toScalar) value
+          let function := ScalarBinding.binaryFunction fun first second =>
+            extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar) value
+          extractScalarStepWith (.scalar function :: locals) body
   | .letE _ (.forallE _ (.const ``UInt64 []) resultType _)
       (.lam _ (.const ``UInt64 []) value _) body _ =>
       match scalarResultType? resultType with
