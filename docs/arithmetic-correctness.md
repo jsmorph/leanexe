@@ -54,8 +54,10 @@ scalar operand. Guards lower to Boolean words combined by the existing AND/OR
 operations, then tested against one. Both sides can be evaluated because all
 admitted operands are pure and total, including division by zero. Source/IR
 proofs cover scalar results and paired loop-step results without changing the
-backend. Negation around a whole compound and Boolean `&&`/`||` remain outside
-this increment.
+backend. Propositional `¬` can also wrap whole compounds, repeat, and appear at
+any nesting level. The syntax retains each standard Not decision wrapper, and
+proved lowering tests each preceding Boolean word against zero. Boolean
+`&&`/`||` remain outside this increment.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
