@@ -138,15 +138,18 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (nonempty : value.var
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, booleanJunction_not_comparison]
 
-theorem booleanLocal_not_compound (guard : BooleanLocalGuard) :
-    compoundGuard? guard.condition guard.evidence = none := by
+theorem booleanLocal_not_guard (guard : BooleanLocalGuard) :
+    guardOperands? guard.condition = none := by
   have noComparison := booleanLocal_not_comparison guard.value guard.nonempty
   have noClosed := booleanGuardOperands_local_none guard.value guard.nonempty
   simp only [BooleanLocal.condition] at noComparison
-  simp only [compoundGuard?, compoundGuardShape?]
   rw [guardOperands?]
   · simp [noComparison, booleanGuardCondition?, BooleanLocal.condition, noClosed]
   all_goals simp [BooleanLocalGuard.condition, BooleanLocal.condition]
+
+theorem booleanLocal_not_compound (guard : BooleanLocalGuard) :
+    compoundGuard? guard.condition guard.evidence = none := by
+  simp [compoundGuard?, compoundGuardShape?, booleanLocal_not_guard]
 
 def booleanLocalCondition? : Lean.Expr → Option BooleanLocal
   | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) expression) (.const ``Bool.true []) =>
