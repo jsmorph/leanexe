@@ -29,7 +29,12 @@ standard UInt64 instances are admitted. Both `UInt64.complement x` and standard
 `~~~x` are admitted, including in helper bodies, comparison operands and range
 bounds. Complement lowers to XOR with the full 64-bit mask, with a checked
 identity to Lean's native operation. Custom Complement instances are rejected,
-including in unused bodies. Literals reduce modulo 2^64. Custom
+including in unused bodies. Literals reduce modulo 2^64. Standard UInt64 numeral
+instances also admit inert let, lambda/application and metadata wrappers. The
+checker tracks unapplied arguments and requires the same numeral at the exact
+standard instance leaf. Unknown instance variables, custom instance values,
+unapplied lambdas and extra applications are rejected. This handles elaborator
+wrappers introduced inside captured-helper and dependent-proof scopes. Custom
 instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
