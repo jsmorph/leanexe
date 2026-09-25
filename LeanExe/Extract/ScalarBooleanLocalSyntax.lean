@@ -20,13 +20,22 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
   | .const ``Bool.false [] => some (.literal 0 false)
   | .bvar index => some (.var 0 index)
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool []))
-      (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) condition) (.const ``Bool.true []))) evidence) yes) no =>
-      if LeanExe.Source.ExprEquality.same evidence
-          (.app (.app (.const ``instDecidableEqBool []) condition) (.const ``Bool.true [])) then do
-        let c ← booleanLocalOperands? condition
+      (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) left) right)) evidence) yes) no =>
+      if LeanExe.Source.ExprEquality.same evidence (booleanRelationEvidence false left right) then do
+        let a ← booleanLocalOperands? left
+        let b ← booleanLocalOperands? right
         let t ← booleanLocalOperands? yes
         let e ← booleanLocalOperands? no
-        pure (.choice 0 c t e)
+        pure (.choice 0 false a b t e)
+      else none
+  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool []))
+      (.app (.app (.app (.const ``Ne [.succ .zero]) (.const ``Bool [])) left) right)) evidence) yes) no =>
+      if LeanExe.Source.ExprEquality.same evidence (booleanRelationEvidence true left right) then do
+        let a ← booleanLocalOperands? left
+        let b ← booleanLocalOperands? right
+        let t ← booleanLocalOperands? yes
+        let e ← booleanLocalOperands? no
+        pure (.choice 0 true a b t e)
       else none
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool [])) condition) evidence) yes) no => do
       let guard ← propositionGuard? condition evidence
@@ -77,7 +86,10 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
   rw [PropositionGuard.branch, booleanLocalOperands?]
   · rw [propositionGuard_accepts]
     rfl
-  · exact guard.not_boolean_condition
+  · intro left right equality
+    exact propositionGuard_not_boolean_equal guard left right equality
+  · intro left right equality
+    exact propositionGuard_not_boolean_unequal guard left right equality
 
 @[simp] theorem booleanLocalOperands_decision (guard : PropositionGuard) :
     booleanLocalOperands? guard.value.decisionExpr = some (.decision 0 guard) := by
@@ -111,10 +123,10 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
-  | choice n c t e ihc iht ihe =>
+  | choice n unequal a b t e iha ihb iht ihe =>
     induction n with
-    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanChoiceExpr,
-        booleanLocalOperands?, ihc, iht, ihe]
+    | zero => cases unequal <;> simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanChoiceExpr,
+        booleanRelationCondition, booleanRelationEvidence, booleanLocalOperands?, iha, ihb, iht, ihe]
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
@@ -166,32 +178,33 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     rw [BooleanLocal.negate_expr, ih found]
   | case4 | case5 => cases parsed; rfl
   | case6 index => cases parsed; rfl
-  | case7 condition evidence yes no same ihc iht ihe =>
+  | case7 left right evidence yes no same iha ihb iht ihe =>
     rw [booleanLocalOperands?] at parsed
     simp only [same, ite_true, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
-    obtain ⟨c, hc, t, ht, e, he, rfl⟩ := parsed
+    obtain ⟨a, ha, b, hb, t, ht, e, he, rfl⟩ := parsed
     have decision := LeanExe.Source.ExprEquality.same_eq_true.mp same
     simp only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanChoiceExpr]
-    rw [decision, ihc hc, iht ht, ihe he]
-  | case8 condition evidence yes no different =>
-    simp [booleanLocalOperands?, different] at parsed
-  | case9 condition evidence yes no excludedBoolean iht ihe =>
+    rw [decision, iha ha, ihb hb, iht ht, ihe he]
+    rfl
+  | case8 left right evidence yes no different => simp [booleanLocalOperands?, different] at parsed
+  | case9 left right evidence yes no same iha ihb iht ihe =>
+    rw [booleanLocalOperands?] at parsed
+    simp only [same, ite_true, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨a, ha, b, hb, t, ht, e, he, rfl⟩ := parsed
+    have decision := LeanExe.Source.ExprEquality.same_eq_true.mp same
+    simp only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanChoiceExpr]
+    rw [decision, iha ha, ihb hb, iht ht, ihe he]
+    rfl
+  | case10 left right evidence yes no different => simp [booleanLocalOperands?, different] at parsed
+  | case11 condition evidence yes no excludedEqual excludedUnequal iht ihe =>
     rw [booleanLocalOperands?] at parsed
     · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
       obtain ⟨g, hg, t, ht, e, he, rfl⟩ := parsed
       have guard := propositionGuard_sound hg
       simp only [BooleanLocal.expr, BooleanGuardNegation.expr, PropositionGuard.branch]
       rw [guard.1, guard.2, iht ht, ihe he]
-    · exact excludedBoolean
-  | case10 left right evidence same ihl ihr =>
-    rw [booleanLocalOperands?] at parsed
-    simp only [same, ite_true, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
-    obtain ⟨a, ha, b, hb, rfl⟩ := parsed
-    have decision := LeanExe.Source.ExprEquality.same_eq_true.mp same
-    simp only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanRelationDecisionExpr]
-    rw [decision, ihl ha, ihr hb]
-    rfl
-  | case11 left right evidence different => simp [booleanLocalOperands?, different] at parsed
+    · exact excludedEqual
+    · exact excludedUnequal
   | case12 left right evidence same ihl ihr =>
     rw [booleanLocalOperands?] at parsed
     simp only [same, ite_true, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
@@ -201,24 +214,33 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     rw [decision, ihl ha, ihr hb]
     rfl
   | case13 left right evidence different => simp [booleanLocalOperands?, different] at parsed
-  | case14 condition evidence excludedEqual excludedUnequal =>
+  | case14 left right evidence same ihl ihr =>
+    rw [booleanLocalOperands?] at parsed
+    simp only [same, ite_true, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨a, ha, b, hb, rfl⟩ := parsed
+    have decision := LeanExe.Source.ExprEquality.same_eq_true.mp same
+    simp only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanRelationDecisionExpr]
+    rw [decision, ihl ha, ihr hb]
+    rfl
+  | case15 left right evidence different => simp [booleanLocalOperands?, different] at parsed
+  | case16 condition evidence excludedEqual excludedUnequal =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨g, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       obtain ⟨hc, he⟩ := propositionGuard_sound found
       simp only [BooleanLocal.expr, BooleanGuardNegation.expr, Guard.decisionExpr, hc, he]
     · exact excludedEqual
     · exact excludedUnequal
-  | case15 left right ihl ihr =>
+  | case17 left right ihl ihr =>
     rw [booleanLocalOperands?] at parsed
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨a, ha, b, hb, rfl⟩ := parsed
     simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanEqualityExpr, ihl ha, ihr hb]
-  | case16 left right ihl ihr =>
+  | case18 left right ihl ihr =>
     rw [booleanLocalOperands?] at parsed
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨a, ha, b, hb, rfl⟩ := parsed
     simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanEqualityExpr, ihl ha, ihr hb]
-  | case17 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoice excludedProposition excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe =>
+  | case19 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
@@ -228,7 +250,8 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     · exact excludedTrue
     · exact excludedFalse
     · exact excludedVar
-    · exact excludedChoice
+    · exact excludedChoiceEq
+    · exact excludedChoiceNe
     · exact excludedProposition
     · exact excludedDecisionEq
     · exact excludedDecisionNe
@@ -248,14 +271,14 @@ theorem booleanGuardOperands_variable (n index : Nat) :
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
 
-theorem booleanChoice_not_guard (n : Nat) (c t e : Lean.Expr) :
-    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanChoiceExpr c t e)) = none := by
+theorem booleanChoice_not_guard (n : Nat) (unequal : Bool) (a b t e : Lean.Expr) :
+    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanChoiceExpr unequal a b t e)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
 
-theorem booleanChoice_not_comparison (n : Nat) (c t e : Lean.Expr) :
-    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanChoiceExpr c t e)) = none := by
+theorem booleanChoice_not_comparison (n : Nat) (unequal : Bool) (a b t e : Lean.Expr) :
+    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanChoiceExpr unequal a b t e)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
@@ -313,7 +336,7 @@ theorem booleanGuardOperands_local_closed (value : BooleanLocal) {guard : Boolea
   induction value generalizing guard with
   | var n index => simp [BooleanLocal.expr, booleanGuardOperands_variable] at parsed
   | literal | compare => rfl
-  | choice n c t e => simp [BooleanLocal.expr, booleanChoice_not_guard] at parsed
+  | choice n unequal a b t e => simp [BooleanLocal.expr, booleanChoice_not_guard] at parsed
   | proposition n g t e => simp [BooleanLocal.expr, propositionChoice_not_guard] at parsed
   | decision n g => simp [BooleanLocal.expr, decision_not_guard] at parsed
   | equality n unequal a b => simp [BooleanLocal.expr, booleanEquality_not_guard] at parsed
@@ -360,7 +383,7 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (expanded : value.ext
     | zero => cases op <;> rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, booleanJunction_not_comparison]
-  | choice n c t e =>
+  | choice n unequal a b t e =>
     cases n with
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
