@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarCall
 import LeanExe.Source.ScalarUnit
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarComplement
@@ -8,11 +9,11 @@ import LeanExe.Source.ScalarRangeSyntax
 
 namespace LeanExe.Source.Scalar
 
-/-! Semantics of concrete, elaborated Lean UInt64 syntax. The constants below
+/-! Semantics of concrete, elaborated Lean UInt64 shape. The constants below
 are paired explicitly with their native Lean definitions, independently of the
 extractor's dispatch table and the IR operation selected by compilation.
 The fragment covers pure arithmetic, UInt64 let bindings and comparison-based
-conditionals and standard Id operations. Local functions with one or two UInt64 arguments capture their lexical environment. Iteration remains a separate obligation.
+conditionals and standard Id operations. Local scalar functions capture their lexical environment and accept finite UInt64 parameter lists. Iteration remains a separate obligation.
 -/
 
 def literalExpr (n : Nat) : Lean.Expr :=
@@ -74,6 +75,15 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values value
+  | manyApply (call : ManyCall) {native : Lean.Expr → UInt64}
+      (function : values[call.index]? = some (.manyFunction call.arity f))
+      (arguments : ∀ operand, operand ∈ call.arguments → EvalWith operand values (native operand)) :
+      EvalWith call.expr values (f (call.arguments.map native))
+  | letManyFn (shape : ManyFunction)
+      (function : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        EvalWith shape.body (arguments.reverse.map Value.word ++ values) (f arguments))
+      (body : EvalWith b (.manyFunction shape.arity f :: values) value) :
+      EvalWith (shape.bind name b nondep) values value
   | range (countValue : EvalWith count values stop) (initialValue : EvalWith initial values start)
       (yielding : Range.YieldScalar stepBody scalarBody)
       (steps : ∀ index value, EvalWith scalarBody (.word value :: .natural index :: values) (step index value)) :
@@ -133,6 +143,14 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | manyApply (call : ManyCall)
+      (function : types[call.index]? = some (.manyFunction call.arity))
+      (arguments : ∀ operand, operand ∈ call.arguments → SupportedWith types operand) :
+      SupportedWith types call.expr
+  | letManyFn (shape : ManyFunction)
+      (function : SupportedWith (List.replicate shape.arity .word ++ types) shape.body)
+      (body : SupportedWith (.manyFunction shape.arity :: types) b) :
+      SupportedWith types (shape.bind name b nondep)
   | metadata (body : SupportedWith types e) : SupportedWith types (.mdata data e)
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
@@ -224,6 +242,26 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x y => (total x y).choose
     obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
+  | manyApply call present _ ihArgs =>
+    obtain ⟨f, hf⟩ := manyFunction_lookup typed present
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ call.arguments then (ihArgs operand member values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ call.arguments → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
+    exact ⟨f (call.arguments.map native), .manyApply call hf meanings⟩
+  | letManyFn shape _ _ ihf ihb =>
+    have total := fun (arguments : List UInt64) (len : arguments.length = shape.arity) =>
+      ihf (arguments.reverse.map Value.word ++ values)
+        (by simp [List.map_map, Function.comp_def, Value.kind, List.map_const', len, typed])
+    let f : List UInt64 → UInt64 := fun arguments =>
+      if len : arguments.length = shape.arity then (total arguments len).choose else 0
+    have meanings : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        EvalWith shape.body (arguments.reverse.map Value.word ++ values) (f arguments) := by
+      intro arguments len
+      simpa [f, len] using (total arguments len).choose_spec
+    obtain ⟨value, hv⟩ := ihb (.manyFunction shape.arity f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letManyFn shape meanings hv⟩
   | metadata _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩

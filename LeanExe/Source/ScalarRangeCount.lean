@@ -42,12 +42,22 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
   cases count with
   | word source => exact .word evaluated
   | literal number fits =>
-    cases evaluated with
-    | ofNat =>
-      simpa only [UInt64.toNat_ofNat_of_lt' fits] using
-        (Count.Eval.literal (values := values) (number := number) (fits := fits))
-    | binary operation => cases operation
-    | complement head => exact False.elim (head.not_ofNat number rfl)
+    generalize same : Count.scalar (.literal number fits) = source at evaluated
+    cases evaluated <;>
+      simp_all [Count.scalar, Scalar.literalExpr, Identity.run, Identity.pure, Identity.bind,
+        Comparison.branch, CompoundGuard.branch, Extremum.expr, Extremum.head,
+        ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp]
+    case ofNat =>
+      subst number
+      simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))
+    case complement operation a x head argument =>
+      exact False.elim (head.not_ofNat number same.1.symm)
+    case binary head f a x b y operation left right =>
+      rw [← same.1.1] at operation
+      cases operation
+    case manyApply f call native function arguments =>
+      have impossible := congrArg Lean.Expr.getAppFn same.1.1
+      simp [LocalCall.head, Lean.Expr.getAppFn] at impossible
 
 theorem Count.Supported.evaluates {types : List BindingKind} {count : Count}
     (supported : Supported types count) (values : List Value)

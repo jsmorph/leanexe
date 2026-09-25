@@ -38,6 +38,12 @@ theorem argument_size (call : LocalCall) {operand : Lean.Expr} (member : operand
       simp only [expr]; simp_all; omega
     · simp [expr]; omega
 
+theorem not_bvar (call : LocalCall) (positive : 0 < call.arguments.length) (index : Nat) :
+    call.expr ≠ .bvar index := by
+  cases call with
+  | var => simp [arguments] at positive
+  | argument => simp [expr]
+
 end LocalCall
 
 /-- A local application of at least three arguments, split at its final two

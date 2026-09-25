@@ -1,4 +1,4 @@
-import LeanExe.Source.Scalar
+import LeanExe.Source.ScalarManyFunctionSemantics
 import LeanExe.Source.ScalarStepValues
 import LeanExe.Source.ScalarStepSyntax
 
@@ -38,6 +38,11 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
+  | letManyFn (shape : ManyFunction)
+      (function : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        EvalWith shape.body (arguments.reverse.map Scalar.Value.word ++ values.map Value.toScalar) (f arguments))
+      (body : Eval b (.scalar (.manyFunction shape.arity f) :: values) outcome) :
+      Eval (shape.bind name b nondep) values outcome
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.function false f) :: values) outcome) :
@@ -139,6 +144,10 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | letManyFn (shape : ManyFunction)
+      (function : SupportedWith (List.replicate shape.arity .word ++ types.map BindingKind.toScalar) shape.body)
+      (body : Supported (.scalar (.manyFunction shape.arity) :: types) b) :
+      Supported types (shape.bind name b nondep)
   | letFn (type : ResultType)
       (function : SupportedWith (.word :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.function false) :: types) b) :
@@ -259,6 +268,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.binaryFunction f) :: values)
       (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letBinaryFn type (fun x y => (total x y).choose_spec) evaluated⟩
+  | letManyFn shape function _ ih =>
+    obtain ⟨f, meanings⟩ := function.manyFunction_evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.manyFunction shape.arity f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letManyFn shape meanings evaluated⟩
   | letFn type function _ ih =>
     have total := fun x => function.evaluates (.word x :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)

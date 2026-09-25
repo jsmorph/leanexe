@@ -37,6 +37,11 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
+  | letManyFn (shape : ManyFunction)
+      (function : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        EvalWith shape.body (arguments.reverse.map Scalar.Value.word ++ values) (f arguments))
+      (body : Eval b (.manyFunction shape.arity f :: values) outcome) :
+      Eval (shape.bind name b nondep) values outcome
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : ∀ x, EvalWith a (.word x :: .unit :: values) (f x))
       (body : Eval b (.function true f :: values) outcome) :
@@ -76,6 +81,10 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | letManyFn (shape : ManyFunction)
+      (function : SupportedWith (List.replicate shape.arity .word ++ types) shape.body)
+      (body : Supported (.manyFunction shape.arity :: types) b) :
+      Supported types (shape.bind name b nondep)
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax) (function : SupportedWith (.word :: .unit :: types) a)
       (body : Supported (.function true :: types) b) :
       Supported types (.letE name
@@ -131,6 +140,11 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     let f := fun x y => (total x y).choose
     obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
+  | letManyFn shape function _ ihb =>
+    obtain ⟨f, meanings⟩ := function.manyFunction_evaluates values typed
+    obtain ⟨value, evaluated⟩ := ihb (.manyFunction shape.arity f :: values)
+      (by simp [Scalar.Value.kind, typed])
+    exact ⟨value, .letManyFn shape meanings evaluated⟩
   | letUnitFn type unitForm function _ ihb =>
     have total := fun x => function.evaluates (.word x :: .unit :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
