@@ -76,6 +76,7 @@ function main() {
   run([process.execPath, path.join("test", "wasi_program.js")]);
   run([process.execPath, path.join("test", "wasi_io_host.js")]);
   run([process.execPath, path.join("test", "byte_io.js")]);
+  run([process.execPath, path.join("test", "running_sum.js")]);
   run([process.execPath, path.join("test", "self_emit.js")]);
   run([process.execPath, path.join("tools", "compare-standard.js"), "--self-test"]);
   run([

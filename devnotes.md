@@ -1,3 +1,97 @@
+## 2026-09-25: Running-sum correctness proof
+
+The requested theorem covers the existing signed-decimal program and its
+compiled WASM: every valid input line produces its integer prefix sum before
+processing the next line, and EOF ends execution after any final line.
+Host progress, successful I/O, and sufficient memory will be explicit
+premises of the successful-execution theorem.  Error behavior needs separate
+statements.  The source and compiler remain unchanged during proof work.
+
+- [x] Prove word-level decimal carry and borrow without wraparound.
+- [x] Prove the source digit loop, normalization, comparison, parsing, and rendering for valid lines.
+- [x] Prove line buffering and output order across short reads and EOF for the Lean source.
+- [ ] Prove execution of the decoded WASM and connect it to integer prefix sums.
+- [ ] Check the completed theorem and its axioms through a maintained gate.
+
+`Project.RunningSum.Render` checks `add_correct`, `parse_valid`,
+`render_correct`, and `line_add_correct` for the unchanged source.  The proof
+covers every decimal input digit and carry or borrow, the complete magnitude
+loop, zero removal, comparison, sign selection, and valid-line parsing.
+The statement interprets digits as natural numbers and signed values as
+Lean integers.  Its theorem audits use only `propext`, `Classical.choice`,
+and `Quot.sound`.  Connecting the elaborated parser required normalizing
+the identity-monad operations in both loop bodies before splitting the
+early-return match.  Two elaboration limits in earlier magnitude proof
+attempts were resolved by separating normalization and the carry branch.
+
+The existing byte-I/O gate supplies host semantics and concrete echo
+proofs.  A general execution proof for this program remains open.  Binary
+preparation reuses its checked decoder-certificate generator with a named
+project parameter.  The echo defaults remain unchanged, and the existing
+Node gate tests pass.
+
+The stream model now checks arbitrary read boundaries and EOF with or without
+a final newline.  Its line relation identifies the completed input lines,
+and `stream_correct` relates every output to the corresponding integer
+prefix sum.  `Source.main_eq` connects a named loop decomposition to the
+unchanged Lean entry.  `Source.bytes_runs` checks its per-byte loop under
+explicit successful-read and successful-write assumptions.
+`Source.main_correct` now checks for every finite valid input stream: the
+unchanged entry returns zero at EOF and produces decimal representations of
+the integer prefix sums.  `Source.newline_correct` proves that processing
+a newline calls `write` before yielding the updated total and empty input
+buffer.  A write error returns its code instead.  Both audits report only
+the standard logical axioms.
+
+The source I/O proofs use the pinned toolchain's `ST` state-token semantics.
+Lean 4.34 hides the implementation of the `BaseIO` monad instance across
+module boundaries.  Two exported equations for `pure` and `bind` use
+`import all Init.System.IO` in a small module.  The toolchain's
+`Lean/DefEqAttrib.lean` documents why their proofs use `(rfl)`: the equalities
+are kernel-checkable but depend on definitions that callers cannot unfold.
+No I/O primitive implementation is assumed through those equations.
+
+The embedded bytes and decoded cache needed larger recursion limits because
+this module exceeds the echo example's size.  Exact-byte decoding, module
+validation, imports, and `_start` export now check.  The aggregate decoding
+build reached its four-minute limit after checking code bodies zero through
+five.  Separate targets checked the remaining bodies before the final
+aggregate passed.  Universal WASM execution and memory reasoning remain open.
+The reusable heap execution lemmas currently use `Store Unit`, while the
+WASI model carries its input and output in `Store World`.  Reusing those
+lemmas requires a proved host-state transport or type generalization in
+addition to the program's instruction and loop proofs.
+
+The source and binary audits report only the standard logical axioms.  The
+Node gate tests pass, including checks that the shared generator's default
+echo output remains unchanged.  Documentation validation and
+`git diff --check` pass.  The source and compiler are unchanged, so the
+previous running-sum execution tests still describe this binary.
+
+## 2026-09-25: Running-sum byte-I/O demo
+
+The [running-sum example](LeanExe/Examples/RunningSum.lean) uses the existing
+`io` compiler and [byte-I/O API](docs/manual.md#byte-input-and-output).  Signed
+decimal arithmetic uses byte arrays because the accepted source language has
+bounded scalar integers.  The program writes after each input newline,
+retains partial lines across reads, processes a final unterminated line, and
+exits on EOF.  Malformed input returns status 28.  I/O errors propagate.
+
+The targeted Lake build and `test/running_sum.js` pass.  The test validates
+the WASM module, compares its results and native Lean results with JavaScript
+BigInt, and covers negative numbers, zero, cancellation, carry, borrow,
+values beyond 64 bits, 5,000-digit inputs spanning reads, and 1,000 successive
+additions.  The interactive test sends each subsequent line only after
+receiving the previous sum.  Empty input, CRLF, final input without a
+newline, malformed lines, and a broken output pipe pass.  The test joins
+the execution suite.  [Usage](docs/manual.md#running-sum) is documented.
+
+The first extraction rejected `Nat.toUInt8`.  Digit arithmetic now uses
+supported `UInt64` conversions, with intermediate digit values at most 19.
+The local test selects the installed validator with
+`WASM_TOOLS=/home/somebody/.cargo/bin/wasm-tools`.  The compiler and host
+required no changes.
+
 ## 2026-09-24: Reconcile the byte-I/O manual after review
 
 The P3 manual statement that omitted the new proofs is replaced with the maintained byte-I/O verification command and a link to the modeled host contracts, protocol laws, and six exact-binary cases. It explicitly retains the external C, Wasmtime, OS, and clock-progress assumptions. The development guide now documents the shared canonicalizing host configuration and the compiled NaN tests. Its obsolete generated-cache count and the task record's stale pending-proof sentence are also removed. The task record records both repaired P2 regressions and the passing proof gate.

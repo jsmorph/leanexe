@@ -48,11 +48,11 @@ function sectionMetadata(bytes) {
   return result;
 }
 
-function certificates(bytes, nestedText) {
+function certificates(bytes, nestedText, project = "ByteIO") {
   const sections = sectionMetadata(bytes), code = sections.at(-1), outputs = new Map();
   const rows = [`section,10,${code.start},${code.payload},${code.items},${code.count},${code.end}`,
     ...code.entries.map(e => `item,10,${e.index},${e.start},${e.end}`)];
-  for (const [name, source] of decoderCertificates("ByteIO", bytes.length, nestedText, rows.join("\n"))) {
+  for (const [name, source] of decoderCertificates(project, bytes.length, nestedText, rows.join("\n"))) {
     if (!/^ArtifactCode\d+$/.test(name) && name !== "ArtifactSection10") continue;
     outputs.set(name, source
       .replaceAll("artifactBytes_data", "ByteLookup.bytes_data")
@@ -69,12 +69,14 @@ function certificates(bytes, nestedText) {
     [6, ["globals", "global", "raw.core.globals"]],
     [7, ["exports", "exportEntry", "raw.core.exports"]],
   ]);
-  let header = `import Project.ByteIO.ArtifactCache
-import Project.ByteIO.ArtifactByteLookup
+  const openBinary = project === "ByteIO" ? "" : "open Project.ByteIO\n";
+  let header = `import Project.${project}.ArtifactCache
+import Project.${project}.ArtifactByteLookup
 import Project.ByteIO.BinaryParts
 
-namespace Project.ByteIO.Artifact
+namespace Project.${project}.Artifact
 open Wasm.Binary
+${openBinary}\
 attribute [local cbv_opaque] bytes
 set_option maxRecDepth 131072
 set_option cbv.maxSteps 1000000
@@ -136,13 +138,14 @@ theorem imports_parsed :
 
 `;
   }
-  outputs.set("ArtifactSections", header + "end Project.ByteIO.Artifact\n");
-  outputs.set("ArtifactDecode", `import Project.ByteIO.ArtifactSections
-import Project.ByteIO.ArtifactSection10
+  outputs.set("ArtifactSections", header + `end Project.${project}.Artifact\n`);
+  outputs.set("ArtifactDecode", `import Project.${project}.ArtifactSections
+import Project.${project}.ArtifactSection10
 import Project.ByteIO.BinaryParts
 
-namespace Project.ByteIO.Artifact
+namespace Project.${project}.Artifact
 open Wasm.Binary
+${openBinary}\
 
 attribute [local cbv_opaque] bytes
 set_option maxRecDepth 131072
@@ -167,7 +170,7 @@ theorem encoded : Binary.Grammar.ModuleBytes bytes.data.toList raw :=
 #print axioms decoded
 #print axioms encoded
 
-end Project.ByteIO.Artifact
+end Project.${project}.Artifact
 `);
   return outputs;
 }

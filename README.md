@@ -68,6 +68,9 @@ build/tools/wasmtime/current/wasmtime run \
 
 Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  Pure WASI adapters provide bounded stdin, argv, stdout, stderr, and explicit error results.  `compile-wasi-io` instead runs a `LeanExe.ByteIO UInt32` entry with sequenced stdin reads and stdout writes, explicit error codes, and operation timeouts; its return value becomes the exit status.  See the [byte I/O guide](docs/manual.md#byte-input-and-output) for the required nonblocking host.
 
+The [running-sum demo](docs/manual.md#running-sum) reads signed decimal integers
+from stdin and prints the cumulative sum after each line, terminating on EOF.
+
 The [pseudorandom generator](docs/prng.md) runs with
 `tools/prng.js 42 5 100`: seed 42, five results, modulus 100.  It compiles
 the Lean SplitMix64 example and prints the WASM results as decimal integers.
