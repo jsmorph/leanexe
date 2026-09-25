@@ -1303,6 +1303,82 @@ def extremaUnusedCustom (x y : UInt64) : UInt64 :=
   let _f := fun z : UInt64 => @Min.min UInt64 ⟨fun a b => a ^^^ b⟩ z y
   max x y
 
+def literalBoolTrue (x y : UInt64) : UInt64 := if true then x + 3 else y - 1
+
+def literalBoolFalse (x y : UInt64) : UInt64 := if false then x / y else y % x
+
+def literalPropTrue (x y : UInt64) : UInt64 := if True then x ^^^ y else x * y
+
+def literalPropFalse (x y : UInt64) : UInt64 := if False then min x y else max x y
+
+def literalNegations (x y : UInt64) : UInt64 :=
+  if !(!(!false)) then
+    if ¬¬True then x + y else ~~~x
+  else if ¬(!(!true) : Bool) then y else x - y
+
+def literalCompound (x y : UInt64) : UInt64 :=
+  if ((true && (x == y || false)) ∧ (False ∨ x ≤ y)) ∨
+      ((¬True) ∧ (!false || y == 0))
+  then x + 7 else y - 3
+
+def literalFunction (x y : UInt64) : UInt64 :=
+  let bias := x + 7
+  let f := fun a b : UInt64 =>
+    if true && (a == b || !false) then a + bias else if False then b else b - bias
+  f x y + f y x
+
+def literalDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  if True then a := a + y else a := a - y
+  let z ← if false then pure (a * y) else pure (a ^^^ y)
+  if ¬False ∧ (true || x == y) then a := a + z
+  return a
+
+def rangeLiteralBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if true then break
+    a := a + 99
+  return a
+
+def rangeLiteralContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if false then continue
+    if True ∧ UInt64.ofNat i % 3 = 1 then continue
+    a := a + UInt64.ofNat i
+    if False then break
+  return a
+
+def rangeLiteralJoined (count seed : UInt64) : UInt64 :=
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      let z ← if !(false || UInt64.ofNat i % 2 == 0) then pure (a + 1) else pure (a + 3)
+      a := z
+      if ¬False ∧ (true && a % 7 == 0) then break
+    return a
+  if true then result + seed else result - count
+
+def rangeLiteralStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if (False ∨ x = seed) ∨ (¬¬True ∧ (!(!true) && y % 5 == 0))
+      then .done (max x y) else .yield (min (x + UInt64.ofNat i) (y + 3))
+    finish (a + 1) (a + seed)
+
+def literalInactiveUnsupported (x y : UInt64) : UInt64 :=
+  if true then x else @Min.min UInt64 ⟨fun a b => a + b⟩ x y
+
+def literalCustomDecision (x y : UInt64) : UInt64 :=
+  @ite UInt64 True (.isTrue True.intro) x y
+
+def literalUnusedUnsupported (x y : UInt64) : UInt64 :=
+  let _f := fun z : UInt64 =>
+    if False then @Min.min UInt64 ⟨fun a b => a ^^^ b⟩ z y else z
+  if true then x else y
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -1698,7 +1774,19 @@ run_elab do
       `ArithmeticModeTest.rangeExtremaCount,
       `ArithmeticModeTest.rangeExtremaExit,
       `ArithmeticModeTest.rangeExtremaBounds,
-      `ArithmeticModeTest.rangeExtremaStep] do
+      `ArithmeticModeTest.rangeExtremaStep,
+      `ArithmeticModeTest.literalBoolTrue,
+      `ArithmeticModeTest.literalBoolFalse,
+      `ArithmeticModeTest.literalPropTrue,
+      `ArithmeticModeTest.literalPropFalse,
+      `ArithmeticModeTest.literalNegations,
+      `ArithmeticModeTest.literalCompound,
+      `ArithmeticModeTest.literalFunction,
+      `ArithmeticModeTest.literalDo,
+      `ArithmeticModeTest.rangeLiteralBreak,
+      `ArithmeticModeTest.rangeLiteralContinue,
+      `ArithmeticModeTest.rangeLiteralJoined,
+      `ArithmeticModeTest.rangeLiteralStep] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -1716,6 +1804,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.literalInactiveUnsupported, `ArithmeticModeTest.literalCustomDecision, `ArithmeticModeTest.literalUnusedUnsupported,
       `ArithmeticModeTest.minimumCustom, `ArithmeticModeTest.maximumCustom, `ArithmeticModeTest.extremaUnusedCustom,
       `ArithmeticModeTest.mixedGuardCustom, `ArithmeticModeTest.mixedGuardDecision, `ArithmeticModeTest.mixedGuardUnusedCustom,
       `ArithmeticModeTest.boolCompoundCustom, `ArithmeticModeTest.boolCompoundDecision, `ArithmeticModeTest.boolCompoundUnusedCustom,

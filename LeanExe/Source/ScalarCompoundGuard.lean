@@ -2,8 +2,9 @@ import LeanExe.Source.ScalarGuard
 
 namespace LeanExe.Source.Scalar
 
-/-- Both compound source forms share scalar operands and proved guard lowering. -/
+/-- Checked guard forms beyond atomic comparisons share the proved guard lowering. -/
 inductive CompoundGuard where
+  | literal (value : GuardLiteral)
   | proposition (junction : Junction) (left right : Guard) (negations : Nat := 0)
   | boolean (junction : Junction) (left right : BooleanGuard) (negations : Nat := 0) (propNegations : Nat := 0)
   deriving Repr
@@ -11,6 +12,7 @@ inductive CompoundGuard where
 namespace CompoundGuard
 
 def tree : CompoundGuard → Guard
+  | .literal value => .literal value
   | .proposition op a b n => .junction n op a b
   | .boolean op a b n m => .boolean m n op a b
 
