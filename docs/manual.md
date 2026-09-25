@@ -103,6 +103,47 @@ Sequenced actions execute exactly once even when their result is ignored.  Bindi
 
 The [byte-I/O verification gate](../proofs/byte-io/README.md) checks modeled WASI host contracts, byte-transfer protocol laws, and six exact-binary execution cases. Run `tools/byte-io-proof.js check` in the configured development environment. These proofs use explicit host and clock-progress assumptions; they do not prove every compiled I/O program correct. The native C host, Wasmtime, and OS remain outside the formal proof boundary and are checked by execution tests.
 
+### Running sum
+
+The [running-sum program](../LeanExe/Examples/RunningSum.lean) reads one signed
+decimal integer per line and writes the cumulative sum followed by a newline
+before processing the next line.  It exits on EOF, processing any final line
+without a newline.  Decimal byte arrays support integers of any length that
+fits available memory.
+
+```sh
+tools/leanrun --timeout 15m lake build lean-wasm LeanExe.Examples.RunningSum
+tools/build-wasi-io-host.sh
+tools/leanrun --timeout 2m .lake/build/bin/lean-wasm compile-wasi-io \
+  --module LeanExe.Examples.RunningSum \
+  --entry LeanExe.Examples.RunningSum.main --out build/running-sum.wasm
+build/tools/leanexe-wasi-io-host build/running-sum.wasm
+```
+
+Enter `12`, `-5`, and `20` on successive lines to receive `12`, `7`, and `27`.
+Ctrl-D at an empty terminal prompt ends input.  Piped input works too:
+
+```sh
+printf '12\n-5\n20\n' | build/tools/leanexe-wasi-io-host build/running-sum.wasm
+```
+
+Each line accepts an optional `+` or `-` followed by decimal digits.  Leading
+zeros and CRLF line endings are accepted.  An empty or malformed line exits
+with status `28`.  Read and write errors become the exit status.  Each I/O
+operation uses the maximum timeout, allowing interactive input without a
+short deadline.
+
+`node test/running_sum.js` compares compiled execution and native Lean
+arithmetic with an independent integer reference.  It also checks output
+before the next input line, split reads, EOF, malformed input, and a broken
+output pipe.
+
+The [source correctness proof](../proofs/running-sum/README.md) proves the
+integer prefix sums, output order, and EOF return for the Lean entry under
+explicit successful-I/O assumptions.  Run
+`node tools/running-sum-proof.js check-source` to check the proof and its
+axioms.  The universal execution proof for the compiled WASM remains open.
+
 ## Memory Management
 
 LeanExe modules use a small reference-counted heap inside growable WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
