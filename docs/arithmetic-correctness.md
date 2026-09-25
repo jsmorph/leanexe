@@ -140,7 +140,12 @@ Decidable.decide head and the whole standard decision expression. Converted
 values compose with Boolean negation, junctions and choices, helper arguments,
 ordinary/Id bindings, loop steps and surrounding scalar code. Unsupported
 operands are rejected even when unused or under an inactive decision. Decisions
-whose propositions directly reference saved Boolean locals are a later extension.
+also admit Boolean equality and inequality whose operands are admitted Boolean
+expressions, including saved flags and nested decisions. This includes explicit
+truth coercions (`decide flag`) and implicit Prop-to-Bool conversion. A native
+decide lemma connects the exact Eq/Ne source form to shared Boolean equality
+lowering. Broader propositional combinations containing saved flags remain a
+later extension.
 
 Bool-valued equality and inequality (`a == b`, `a != b`, and explicit BEq.beq/bne
 calls) admit the exact standard Bool equality instance. Both inputs may contain
@@ -158,8 +163,8 @@ equality meaning; the literal-true right side keeps its existing truth path.
 Dependent branches check both proof-lambda domains and preserve captures under
 erased proof binders. All operands and branches must be supported, including
 inactive branches. This composes through helpers, joined Id updates, loop
-break/continue, bounds and surrounding scalar code. Boolean-result choices and
-decide over these new propositions are separate extensions.
+break/continue, bounds and surrounding scalar code. Boolean-result choices
+directly guarded by these new propositions remain a separate extension.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
@@ -851,3 +856,14 @@ each passed 304 comparisons and twenty/eight/ten rejection tests. Eighteen
 selected prior modules kept identical bytes; five original examples now compile
 unchanged. Initial notation-precedence failures and their elaborated source are
 retained. The complete corpus contains 520 declarations; this execution was focused.
+
+The [Boolean-local-decide increment](../proofs/compiler/boolean-local-decide-2026-09-25/README.md)
+adds explicit and implicit decisions on Boolean equality/inequality and truth
+coercions, including saved flags and nested decisions. Candidate `25a0d3b5`
+passed all nine audits and 623 native Lean/V8 comparisons across 34 declarations.
+The first focused fixture passed 304 native/IR comparisons and 36 rejection
+checks. Both prior proposition-guard and closed-decide fixtures passed unchanged
+with 304 comparisons and 44/twelve rejections respectively. Eighteen selected
+prior modules kept identical bytes. Five original examples and two retained
+notation failures now compile unchanged and pass execution checks. The complete
+corpus contains 536 declarations; this was a focused execution run.
