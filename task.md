@@ -558,3 +558,17 @@ The explicit format bounds remain. Both modules build; the expanded audit
 reports only propext, Classical.choice, and Quot.sound. This theorem does NOT
 yet assert that the module passes validation. Full validation, normal compiler
 entry success composition, the usable admission mode, and final gates remain.
+
+### Compositional validation rules (checked); larger runtime checks pending
+
+ValidationRules proves signed constant ranges, typed stack operations, and
+validator sequence composition. TypedSequences derives typed encoding for
+locals, constants, all ten arithmetic operations, equality, framing, and
+concatenation. RuntimeValidation currently proves only reset. These modules
+build. Direct reduction of retain/alloc/release hit the 200000-heartbeat limit;
+a broad simplification attempt then reached the 90-second process timeout
+without further diagnostics. Preserved that attempt in the scratch log area
+and split the checked reset theorem from the unfinished larger proofs. The
+next arithmetic validation step is the compiler-generated division/remainder
+conditional, followed by the general expression theorem. No full-module
+validation claim is made.
