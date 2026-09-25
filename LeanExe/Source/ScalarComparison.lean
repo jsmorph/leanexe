@@ -4,19 +4,22 @@ namespace LeanExe.Source.Scalar
 
 /-- Canonical Lean comparison forms, with their native UInt64 meanings. -/
 inductive Comparison where
-  | eq | lt | le | gt | ge | beq | bne
+  | eq | ne | lt | le | gt | ge | beq | bne
+  | negate (comparison : Comparison)
   deriving DecidableEq, Repr
 
 namespace Comparison
 
 def denote : Comparison → UInt64 → UInt64 → Bool
   | .eq => fun x y => decide (x = y)
+  | .ne => fun x y => decide (x ≠ y)
   | .lt => fun x y => decide (x < y)
   | .le => fun x y => decide (x ≤ y)
   | .gt => fun x y => decide (x > y)
   | .ge => fun x y => decide (x ≥ y)
   | .beq => fun x y => x == y
   | .bne => fun x y => x != y
+  | .negate op => fun x y => !(denote op x y)
 
 def boolExpr (op : Comparison) (a b : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.const (if op = .bne then ``_root_.bne else ``BEq.beq) [.zero])
@@ -26,6 +29,7 @@ def boolExpr (op : Comparison) (a b : Lean.Expr) : Lean.Expr :=
 
 def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .eq, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``UInt64 [])) a) b
+  | .ne, a, b => .app (.app (.app (.const ``Ne [.succ .zero]) (.const ``UInt64 [])) a) b
   | .lt, a, b => .app (.app (.app (.app (.const ``LT.lt [.zero]) (.const ``UInt64 []))
       (.const ``instLTUInt64 [])) a) b
   | .le, a, b => .app (.app (.app (.app (.const ``LE.le [.zero]) (.const ``UInt64 []))
@@ -38,9 +42,12 @@ def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
       (boolExpr .beq a b)) (.const ``Bool.true [])
   | .bne, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
       (boolExpr .bne a b)) (.const ``Bool.true [])
+  | .negate op, a, b => .app (.const ``Not []) (condition op a b)
 
 def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .eq, a, b => .app (.app (.const ``instDecidableEqUInt64 []) a) b
+  | .ne, a, b => .app (.app (.const ``instDecidableNot []) (condition .eq a b))
+      (.app (.app (.const ``instDecidableEqUInt64 []) a) b)
   | .lt, a, b => .app (.app (.const ``UInt64.decLt []) a) b
   | .le, a, b => .app (.app (.const ``UInt64.decLe []) a) b
   | .gt, a, b => .app (.app (.const ``UInt64.decLt []) b) a
@@ -49,10 +56,12 @@ def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
       (.const ``Bool.true [])
   | .bne, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .bne a b))
       (.const ``Bool.true [])
+  | .negate op, a, b => .app (.app (.const ``instDecidableNot []) (op.condition a b))
+      (evidence op a b)
 
 theorem operands_size (op : Comparison) (a b : Lean.Expr) :
     sizeOf a < sizeOf (op.condition a b) ∧ sizeOf b < sizeOf (op.condition a b) := by
-  cases op <;> simp [condition, boolExpr] <;> omega
+  induction op <;> simp_all [condition, boolExpr] <;> omega
 
 /-- Exact ordinary `if` syntax over a supported comparison. Its decision
 procedure is part of the grammar, including the compared operands. -/

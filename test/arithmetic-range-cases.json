@@ -46,5 +46,8 @@
   "rangeResultChained",
   "rangeResultCapture",
   "rangeResultUnused",
-  "rangeResultWrapped"
+  "rangeResultWrapped",
+  "rangeNegatedBreak",
+  "rangeNegatedContinue",
+  "rangeNegatedJoin"
 ]

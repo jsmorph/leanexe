@@ -9,6 +9,7 @@ open LeanExe.Source.Scalar (Comparison)
 /-- Recognize only the canonical comparison heads and standard UInt64 instances. -/
 def comparisonOperands? : Lean.Expr → Option (Comparison × Lean.Expr × Lean.Expr)
   | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``UInt64 [])) a) b => some (.eq, a, b)
+  | .app (.app (.app (.const ``Ne [.succ .zero]) (.const ``UInt64 [])) a) b => some (.ne, a, b)
   | .app (.app (.app (.app (.const ``LT.lt [.zero]) (.const ``UInt64 []))
       (.const ``instLTUInt64 [])) a) b => some (.lt, a, b)
   | .app (.app (.app (.app (.const ``LE.le [.zero]) (.const ``UInt64 []))
@@ -25,16 +26,27 @@ def comparisonOperands? : Lean.Expr → Option (Comparison × Lean.Expr × Lean.
       (.app (.app (.app (.app (.const ``_root_.bne [.zero]) (.const ``UInt64 []))
         (.app (.app (.const ``instBEqOfDecidableEq [.zero]) (.const ``UInt64 []))
           (.const ``instDecidableEqUInt64 []))) a) b)) (.const ``Bool.true []) => some (.bne, a, b)
+  | .app (.const ``Not []) condition =>
+      (comparisonOperands? condition).map fun (op, a, b) => (.negate op, a, b)
   | _ => none
 
 @[simp] theorem comparisonOperands_condition (op : Comparison) (a b : Lean.Expr) :
     comparisonOperands? (op.condition a b) = some (op, a, b) := by
-  cases op <;> rfl
+  induction op with
+  | negate op ih => simp [Comparison.condition, comparisonOperands?, ih]
+  | _ => rfl
 
 theorem comparisonOperands_sound {condition a b : Lean.Expr} {op : Comparison}
     (h : comparisonOperands? condition = some (op, a, b)) : condition = op.condition a b := by
-  unfold comparisonOperands? at h
-  split at h <;> cases h <;> rfl
+  induction condition using comparisonOperands?.induct generalizing op a b with
+  | case1 | case2 | case3 | case4 | case5 | case6 | case7 | case8 => cases h; rfl
+  | case9 inner ih =>
+    rw [comparisonOperands?] at h
+    obtain ⟨⟨innerOp, left, right⟩, found, same⟩ := Option.map_eq_some_iff.mp h
+    cases same
+    simp [Comparison.condition, ih found]
+  | case10 condition h1 h2 h3 h4 h5 h6 h7 h8 h9 =>
+    rw [comparisonOperands?] at h <;> first | assumption | contradiction
 
 /-- Check the whole explicit decision procedure, including its operand expressions. -/
 def comparison? (condition evidence : Lean.Expr) : Option (Comparison × Lean.Expr × Lean.Expr) := do
@@ -64,22 +76,26 @@ theorem comparison_size {condition evidence a b : Lean.Expr} {op : Comparison}
 
 def lowerComparison : Comparison → LeanExe.IR.Expr → LeanExe.IR.Expr → LeanExe.IR.Cond
   | .eq, a, b => .eqU64 a b
+  | .ne, a, b => .not (.eqU64 a b)
   | .lt, a, b => .ltU64 a b
   | .le, a, b => .leU64 a b
   | .gt, a, b => .not (.leU64 a b)
   | .ge, a, b => .not (.ltU64 a b)
   | .beq, a, b => .eqU64 a b
   | .bne, a, b => .not (.eqU64 a b)
+  | .negate op, a, b => .not (lowerComparison op a b)
 
 theorem lowerComparison_correct (op : Comparison)
     {a b : LeanExe.IR.Expr} {s s₁ s₂ : LeanExe.IR.ScalarStore} {x y : UInt64}
     (left : a.ScalarEval s x s₁) (right : b.ScalarEval s₁ y s₂) :
     (lowerComparison op a b).ScalarEval s (op.denote x y) s₂ := by
-  cases op with
+  induction op with
   | eq | beq => exact .eq left right
   | lt => exact .lt left right
   | le => exact .le left right
   | bne => exact .not (.eq left right)
+  | ne => simpa only [Comparison.denote, lowerComparison, decide_not, Bool.beq_eq_decide_eq] using LeanExe.IR.Cond.ScalarEval.not (.eq left right)
+  | negate op ih => exact .not ih
   | gt => simpa [Comparison.denote, lowerComparison, ← decide_not] using LeanExe.IR.Cond.ScalarEval.not (.le left right)
   | ge => simpa [Comparison.denote, lowerComparison, ← decide_not] using LeanExe.IR.Cond.ScalarEval.not (.lt left right)
 
