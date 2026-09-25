@@ -40,8 +40,7 @@ and its exact standard decision evidence is checked recursively. The emitted
 condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
-local bounds, even when one branch is never executed. Dependent `if h : …`,
-Boolean parameters/results/bindings are not yet
+local bounds, even when one branch is never executed. Boolean parameters/results/bindings are not yet
 admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
 `!=` expressions, including repeated `!`. These guards retain their Boolean
 syntax and exact standard equality-decision evidence. Lowering computes their
@@ -77,6 +76,16 @@ Boolean results lower through word equality. Both branches and all nested
 operands remain checked even when a literal determines the result; unsupported
 inactive branches, custom decisions and unsupported unused helper bodies are
 rejected. This does not add general Boolean parameters, results or bindings.
+
+Dependent `if h : condition then … else …` admits the same guard trees and
+scalar/step result annotations. The extractor checks the standard decision and
+both proof-lambda domains exactly. Each branch keeps an erased binder in its
+lexical context, preserving references to outer values and helper captures.
+Both branch bodies and every guard operand must be supported, including inactive
+branches. Proofs cannot be read as executable scalar values. Nested dependent
+conditions, do-block joins, helper bodies, loop steps and scalar computations
+around loops use the same checked rule. This does not admit additional
+proof-dependent runtime operations.
 
 Standard UInt64 `min` and `max` lower to unsigned `≤` followed by selection.
 The extractor checks their exact standard Min/Max instance. Both operands are
