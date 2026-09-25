@@ -1,4 +1,4 @@
-# Scalar compiler correctness: arithmetic completion resumed
+# Scalar compiler correctness: arithmetic complete; expanding coverage
 
 ## Current instructions and status — local continuation, 2026-09-24
 
@@ -10,10 +10,18 @@ The false-equality control is also omitted from the current driver. Type-safety
 checks remain explicitly requested. Continue the ordinary proof build, actual
 compiler execution comparisons, standalone source proof package, and docs.
 
-The real compiler command and Node/V8 execution passed all 85 comparisons over
-seven declarations at `12978497`. Final verification will include the updated
-driver's full nine-theorem axiom audit, all reserved-export tests, and explicit
-fixture completeness checks. No standalone package result is claimed yet.
+The arithmetic milestone is complete. The real compiler and Node/V8 passed all
+85 comparisons across seven declarations, including source admission and all
+reserved-export checks. The general proof passed all nine axiom audits. The
+independent type-safety check passed its 19 behavior-test files and 438 theorem
+audits. The standalone archive rebuilt all 133 bundled source modules and passed
+all nine audits (3164 Lake jobs). These results use candidate `878cfd1e` and are
+preserved in `proofs/compiler/arithmetic-2026-09-24/`, including the exact archive,
+emitted modules, native expected results, logs and verification metadata.
+
+Next capability: pure UInt64 `let` bindings, including nested bindings and
+shadowing. Complete source support/semantics, production extraction, the general
+source-to-byte theorem and fresh native-Lean/Wasm comparisons before conditions.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
@@ -25,6 +33,9 @@ then conditionals, `do`, and loops as their dependencies permit. Report, commit,
 and push each useful step frequently. Type definitions and proofs may change
 where needed; preserve their justified guarantees, not their incidental shape.
 Use focused checks and Lake's dependency rebuilds, avoiding repeated full builds.
+Keep the arithmetic source archive as a fixed milestone. Do not regenerate it
+or rerun unrelated full runtime suites for each subsequent feature; check the
+changed source/compiler/proof dependencies and that feature's execution cases.
 
 ---
 
