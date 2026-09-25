@@ -244,5 +244,13 @@
   "rangeBoolFnBounds",
   "rangeBoolFnStep",
   "rangeBoolFnOuter",
-  "rangeResultFunctionBool"
+  "rangeResultFunctionBool",
+  "rangeDecideYield",
+  "rangeDecideBreak",
+  "rangeDecideContinue",
+  "rangeDecideJoined",
+  "rangeDecideCapture",
+  "rangeDecideBounds",
+  "rangeDecideStep",
+  "rangeDecideOuter"
 ]

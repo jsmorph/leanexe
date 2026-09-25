@@ -627,7 +627,9 @@ proposition and standard decision evidence. Preserve these examples unchanged.
 The new BooleanLocal decision form, exact-evidence parser, size/reconstruction
 proofs and shared lowering proofs pass. Scalar, step and outer-loop source
 semantics and totality also rebuild unchanged. Scalar and loop compiler proof
-integration and focused execution tests remain in progress. Sixteen candidate
+integration now passes. All 304 focused native/IR comparisons and twelve rejection
+checks pass on the first fixture run. The original-example, preceding-fixture,
+general audit and focused native/V8 gates remain in progress. Sixteen candidate
 programs cover comparisons, compound decisions, implicit conversions, helpers,
 conditional binds, captures, unused operands, loop steps and surrounding code.
 Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
