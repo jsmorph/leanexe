@@ -76,7 +76,11 @@ may also be defined before the loop, using the same unary, binary and
 Unit-prefixed argument forms. Their calls may appear in endpoints, the initial
 accumulator, loop steps and the final result. They retain their lexical captures
 across later shadowing and accumulator updates. Nested/chained helpers and
-standard Id bodies are supported; unused bodies are checked. The step supports
+standard Id bodies are supported; unused bodies are checked. An ordinary UInt64
+`let` may also bind the result of the range computation before a pure scalar
+continuation. Nested lets, aliases and captured helpers can use that result;
+unused loop values are still checked. This follows the same evaluation order
+already supported for a monadic bind of the loop result. The step supports
 UInt64 bindings and updates, direct supported local-function bindings, and
 supported scalar expressions on their right hand sides. Functions can capture
 the current index and accumulator; scalar helpers with two UInt64 arguments are
