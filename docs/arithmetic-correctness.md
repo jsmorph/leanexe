@@ -481,3 +481,10 @@ adds direct and standard overloaded bitwise complement with proved XOR lowering.
 All nine audits, 3,986 native Lean/V8 comparisons across 197 declarations,
 208 focused native Lean/IR comparisons and three rejection tests passed.
 All 185 preceding modules retained identical bytes.
+
+
+The [compound guard increment](../proofs/compiler/compound-guards-2026-09-25/README.md)
+adds nested propositional conjunction and disjunction over admitted comparisons.
+All nine audits, 4,242 native Lean/V8 comparisons across 211 declarations,
+256 focused native Lean/IR comparisons and three rejection tests passed.
+All 197 preceding modules retained identical bytes.
