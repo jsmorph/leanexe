@@ -468,11 +468,16 @@ tests passed. The fourteen selected preceding modules kept identical bytes.
 The full corpus now contains 295 declarations; this execution run checked 26.
 General type validation passed using cached dependencies.
 
-Next increment: remove the two-argument limit on local scalar helpers with a
+Current increment: remove the two-argument limit on local scalar helpers with a
 shared finite-arity description and application rule. Preserve lexical captures,
 strict argument evaluation, body checking and existing Unit/PUnit continuations.
 Complete it through focused source/IR tests, general audits and native/V8 checks
 before expanding step-result helpers or moving to another capability.
+
+Checked preparation: the shared UInt64 parameter-suffix and larger-function
+syntax modules and their parsers pass Lean checking. Round-trip, exact source
+reconstruction and recursive body-size proofs are complete. Production
+extraction is not yet extended; argument-list and closure integration follows.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
