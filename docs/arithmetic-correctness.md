@@ -514,3 +514,10 @@ adds Boolean &&/|| over UInt64 comparisons, with repeated ! at any nesting level
 All nine audits, 4,658 native Lean/V8 comparisons across 235 declarations,
 208 focused native Lean/IR comparisons and three rejection tests passed.
 All 223 preceding modules retained identical bytes.
+
+
+The [mixed guard increment](../proofs/compiler/mixed-guards-2026-09-25/README.md)
+allows compound Boolean subtrees inside propositional conjunction, disjunction
+and negation. All nine audits, 4,866 native Lean/V8 comparisons across 247
+declarations, 208 focused native Lean/IR comparisons and three rejection tests
+passed. All 235 preceding modules retained identical bytes.
