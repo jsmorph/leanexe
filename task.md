@@ -457,11 +457,15 @@ three rejection tests passed. The twelve selected preceding modules kept
 identical bytes. The full corpus now contains 283 declarations; this execution
 run checked 24. General type validation passed with cached dependencies.
 
-Next increment: scalar Id result annotations retained by elaboration. A focused
-PUnit test exposed existing restrictions on Bind output and Pure type arguments
-spelled Id UInt64. The original diagnostic is retained in the local work directory.
-Extend the source/type description and shared Id proofs, retaining exact standard
-instances, then complete the same focused proof/execution cycle.
+Current increment: scalar Id result annotations retained by elaboration.
+ResultType preserves every Id layer. Standard run/pure/bind extraction checks
+these annotations, including exact agreement between a bind input and its lambda
+parameter. Scalar and loop source semantics, acceptance, correctness and
+invariants build successfully. All 208 focused native Lean/IR comparisons and
+three rejection tests passed, including the original returned-Id-helper example.
+The fixed `id-annotations` execution group contains fourteen existing cases and
+twelve new declarations (471 results). General audits and actual execution
+checks follow before this increment is marked complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -26,11 +26,14 @@ theorem scalarStepResultType_sound {source : Lean.Expr} {type : ResultAnnotation
   | case3 source h1 h2 => rw [scalarStepResultType?] at matched <;> first | assumption | contradiction
 
 theorem scalarStepResultType_not_scalar (type : LeanExe.Source.Scalar.ResultType) :
-    scalarStepResultType? type.expr = none := by cases type <;> rfl
+    scalarStepResultType? type.expr = none := by
+  induction type with
+  | word => rfl
+  | identity inner ih => simp [LeanExe.Source.Scalar.ResultType.expr, scalarStepResultType?, ih]
 
 theorem scalarResultType_not_step (type : ResultAnnotation) : scalarResultType? (resultType type) = none := by
-  cases type with
+  induction type with
   | word => rfl
-  | identity inner => cases inner <;> rfl
+  | identity inner ih => simp [resultType, scalarResultType?, ih]
 
 end LeanExe.Extract.Core

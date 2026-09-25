@@ -40,31 +40,50 @@ theorem extractScalarRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact index
     · exact bindings binding member
-  | case2 locals body rejected ih =>
-    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.run body) = some plan at compiled
+  | case2 locals sourceType body invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case3 locals sourceType body type matched rejected ih =>
+    have same := scalarResultType_sound matched
+    subst sourceType
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.run body type) = some plan at compiled
     exact ih (by simpa only [extractScalarRangeWith_idRun] using compiled) bindings
-  | case3 locals body rejected ih =>
-    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.pure body) = some plan at compiled
+  | case4 locals sourceType body invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case5 locals sourceType body type matched rejected ih =>
+    have same := scalarResultType_sound matched
+    subst sourceType
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.pure body type) = some plan at compiled
     exact ih (by simpa only [extractScalarRangeWith_idPure] using compiled) bindings
-  | case4 locals name value body nondep rejected ih =>
+  | case6 locals name value body nondep rejected ih =>
     rw [extractScalarRangeWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hp⟩ := compiled
     exact ih bound hp (extend bindings (expression hb bindings))
-  | case5 locals value name body bi bound matched rejected ih =>
-    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.bind name bi value body) = some plan at compiled
+  | case7 locals input output value name domain body bi invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case8 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
+    obtain ⟨inputType, outputType⟩ := annotations
+    obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
+    subst input domain output
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.bind name bi value body inputType outputType) = some plan at compiled
     rw [extractScalarRangeWith_idBind, matched] at compiled
     exact ih compiled (extend bindings (expression matched bindings))
-  | case6 locals value name body bi notPure rejected ih =>
-    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.bind name bi value body) = some plan at compiled
+  | case9 locals input output value name domain body bi annotations typesMatched notPure rejected ih =>
+    obtain ⟨inputType, outputType⟩ := annotations
+    obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
+    subst input domain output
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.bind name bi value body inputType outputType) = some plan at compiled
     rw [extractScalarRangeWith_idBind, notPure] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hb, result, hr, rfl⟩ := compiled
     obtain ⟨pc, pi, ps, pr⟩ := ih hb bindings
     exact ⟨pc, pi, ps, expression hr (extend bindings pr)⟩
-  | case7 locals data body rejected ih =>
+  | case10 locals data body rejected ih =>
     exact ih (by simpa only [extractScalarRangeWith_metadata] using compiled) bindings
-  | case8 locals source rejected hrun hpure hlet hbind hmetadata =>
+  | case11 locals source rejected hrun hpure hlet hbind hmetadata =>
     rw [extractScalarRangeWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core

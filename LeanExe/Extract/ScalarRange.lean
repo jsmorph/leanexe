@@ -41,26 +41,33 @@ def extractScalarRangeWith (locals : List ScalarBinding) (slot : Nat)
       pure { count, initial, step, result := .local slot }
   | none =>
       match source with
-      | .app (.app (.const ``Id.run [.zero]) (.const ``UInt64 [])) body =>
-          extractScalarRangeWith locals slot body
+      | .app (.app (.const ``Id.run [.zero]) sourceType) body =>
+          match scalarResultType? sourceType with
+          | none => none
+          | some _ => extractScalarRangeWith locals slot body
       | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
           (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
             (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
-              (.const ``Id.instMonad [.zero])))) (.const ``UInt64 [])) body =>
-          extractScalarRangeWith locals slot body
+              (.const ``Id.instMonad [.zero])))) sourceType) body =>
+          match scalarResultType? sourceType with
+          | none => none
+          | some _ => extractScalarRangeWith locals slot body
       | .letE _ (.const ``UInt64 []) value body _ => do
           let bound ← extractScalarExprWith locals value
           extractScalarRangeWith (.word bound :: locals) slot body
       | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
           (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
-            (.const ``Id.instMonad [.zero]))) (.const ``UInt64 [])) (.const ``UInt64 [])) value)
-          (.lam _ (.const ``UInt64 []) body _) =>
-          match extractScalarExprWith locals value with
-          | some bound => extractScalarRangeWith (.word bound :: locals) slot body
-          | none => do
-              let plan ← extractScalarRangeWith locals slot value
-              let result ← extractScalarExprWith (.word plan.result :: locals) body
-              pure { plan with result }
+            (.const ``Id.instMonad [.zero]))) input) output) value)
+          (.lam _ domain body _) =>
+          match scalarBindTypes? input domain output with
+          | none => none
+          | some _ =>
+              match extractScalarExprWith locals value with
+              | some bound => extractScalarRangeWith (.word bound :: locals) slot body
+              | none => do
+                  let plan ← extractScalarRangeWith locals slot value
+                  let result ← extractScalarExprWith (.word plan.result :: locals) body
+                  pure { plan with result }
       | .mdata _ body => extractScalarRangeWith locals slot body
       | _ => none
 termination_by sizeOf source
@@ -75,12 +82,12 @@ theorem rangeSupported_excludes_pure {types : List BindingKind} {source : Lean.E
   | letE value body ih =>
     rw [extractScalarExprWith]
     cases extractScalarExprWith locals _ <;> simp [ih]
-  | idRun _ ih => simpa only [extractScalarExprWith_idRun] using ih locals
-  | idPure _ ih => simpa only [extractScalarExprWith_idPure] using ih locals
-  | bindRight value body ih =>
+  | idRun type _ ih => simpa only [extractScalarExprWith_idRun] using ih locals
+  | idPure type _ ih => simpa only [extractScalarExprWith_idPure] using ih locals
+  | bindRight input output value body ih =>
     rw [extractScalarExprWith_idBind]
     cases extractScalarExprWith locals _ <;> simp [ih]
-  | bindLeft value body ih => simp [extractScalarExprWith_idBind, ih]
+  | bindLeft input output value body ih => simp [extractScalarExprWith_idBind, ih]
   | metadata _ ih => simpa only [extractScalarExprWith] using ih locals
 
 theorem extractScalarRangeWith_call (locals : List ScalarBinding) (slot : Nat)
@@ -93,14 +100,14 @@ theorem extractScalarRangeWith_call (locals : List ScalarBinding) (slot : Nat)
       pure { count, initial, step, result := .local slot }) := by
   rw [extractScalarRangeWith.eq_def, scalarRange_accepts]
 
-@[simp] theorem extractScalarRangeWith_idRun (locals : List ScalarBinding) (slot : Nat) (body : Lean.Expr) :
-    extractScalarRangeWith locals slot (Identity.run body) = extractScalarRangeWith locals slot body := by
-  rw [Identity.run, extractScalarRangeWith]
+@[simp] theorem extractScalarRangeWith_idRun (locals : List ScalarBinding) (slot : Nat) (body : Lean.Expr) (type : ResultType) :
+    extractScalarRangeWith locals slot (Identity.run body type) = extractScalarRangeWith locals slot body := by
+  rw [Identity.run, extractScalarRangeWith, scalarResultType_accepts]
   rfl
 
-@[simp] theorem extractScalarRangeWith_idPure (locals : List ScalarBinding) (slot : Nat) (body : Lean.Expr) :
-    extractScalarRangeWith locals slot (Identity.pure body) = extractScalarRangeWith locals slot body := by
-  rw [Identity.pure, extractScalarRangeWith]
+@[simp] theorem extractScalarRangeWith_idPure (locals : List ScalarBinding) (slot : Nat) (body : Lean.Expr) (type : ResultType) :
+    extractScalarRangeWith locals slot (Identity.pure body type) = extractScalarRangeWith locals slot body := by
+  rw [Identity.pure, extractScalarRangeWith, scalarResultType_accepts]
   rfl
 
 theorem extractScalarRangeWith_letE (locals : List ScalarBinding) (slot : Nat)
@@ -112,16 +119,16 @@ theorem extractScalarRangeWith_letE (locals : List ScalarBinding) (slot : Nat)
   rfl
 
 theorem extractScalarRangeWith_idBind (locals : List ScalarBinding) (slot : Nat)
-    (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) :
-    extractScalarRangeWith locals slot (Identity.bind name bi value body) =
+    (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) (input output : ResultType) :
+    extractScalarRangeWith locals slot (Identity.bind name bi value body input output) =
       (match extractScalarExprWith locals value with
       | some bound => extractScalarRangeWith (.word bound :: locals) slot body
       | none => do
           let plan ← extractScalarRangeWith locals slot value
           let result ← extractScalarExprWith (.word plan.result :: locals) body
           pure { plan with result }) := by
-  rw [Identity.bind, extractScalarRangeWith]
-  rfl
+  rw [Identity.bind, extractScalarRangeWith, scalarBindTypes_accepts]
+  cases output <;> rfl
 
 @[simp] theorem extractScalarRangeWith_metadata (locals : List ScalarBinding) (slot : Nat)
     (data : Lean.MData) (body : Lean.Expr) :
@@ -161,13 +168,13 @@ theorem extractScalarRangeWith_accepts {types : List BindingKind} {source : Lean
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
     obtain ⟨plan, hp⟩ := ih (.word bound :: locals) (by simp [ScalarBinding.kind, typed]) (extend total bound)
     exact ⟨plan, by rw [extractScalarRangeWith_letE]; simp [hb, hp]⟩
-  | idRun _ ih => simpa using ih locals typed total
-  | idPure _ ih => simpa using ih locals typed total
-  | bindRight value _ ih =>
+  | idRun type _ ih => simpa using ih locals typed total
+  | idPure type _ ih => simpa using ih locals typed total
+  | bindRight input output value _ ih =>
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
     obtain ⟨plan, hp⟩ := ih (.word bound :: locals) (by simp [ScalarBinding.kind, typed]) (extend total bound)
     exact ⟨plan, by rw [extractScalarRangeWith_idBind, hb]; exact hp⟩
-  | bindLeft value body ih =>
+  | bindLeft input output value body ih =>
     obtain ⟨plan, hp⟩ := ih locals typed total
     obtain ⟨result, hr⟩ := extractScalarExprWith_accepts body (.word plan.result :: locals)
       (by simp [ScalarBinding.kind, typed]) (extend total plan.result)
@@ -189,30 +196,49 @@ theorem extractScalarRangeWith_supported {source : Lean.Expr} {locals : List Sca
     obtain ⟨count, hc, initial, hi, scalar, hy, step, hs, _⟩ := compiled
     exact .range (extractScalarExprWith_supported hc) (extractScalarExprWith_supported hi)
       (scalarYield_sound hy) (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hs)
-  | case2 locals body rejected ih =>
-    change extractScalarRangeWith locals slot (Identity.run body) = some plan at compiled
-    exact .idRun (ih (by simpa only [extractScalarRangeWith_idRun] using compiled))
-  | case3 locals body rejected ih =>
-    change extractScalarRangeWith locals slot (Identity.pure body) = some plan at compiled
-    exact .idPure (ih (by simpa only [extractScalarRangeWith_idPure] using compiled))
-  | case4 locals name value body nondep rejected ih =>
+  | case2 locals sourceType body invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case3 locals sourceType body type matched rejected ih =>
+    have same := scalarResultType_sound matched
+    subst sourceType
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.run body type) = some plan at compiled
+    exact .idRun type (ih (by simpa only [extractScalarRangeWith_idRun] using compiled))
+  | case4 locals sourceType body invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case5 locals sourceType body type matched rejected ih =>
+    have same := scalarResultType_sound matched
+    subst sourceType
+    change extractScalarRangeWith locals slot (LeanExe.Source.Scalar.Identity.pure body type) = some plan at compiled
+    exact .idPure type (ih (by simpa only [extractScalarRangeWith_idPure] using compiled))
+  | case6 locals name value body nondep rejected ih =>
     rw [extractScalarRangeWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hp⟩ := compiled
     exact .letE (extractScalarExprWith_supported hb) (by simpa [ScalarBinding.kind] using ih bound hp)
-  | case5 locals value name body bi bound matched rejected ih =>
-    change extractScalarRangeWith locals slot (Identity.bind name bi value body) = some plan at compiled
+  | case7 locals input output value name domain body bi invalid rejected =>
+    rw [extractScalarRangeWith] at compiled
+    simp [rejected, invalid] at compiled
+  | case8 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
+    obtain ⟨inputType, outputType⟩ := annotations
+    obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
+    subst input domain output
+    change extractScalarRangeWith locals slot (Identity.bind name bi value body inputType outputType) = some plan at compiled
     rw [extractScalarRangeWith_idBind, matched] at compiled
-    exact .bindRight (extractScalarExprWith_supported matched) (by simpa [ScalarBinding.kind] using ih compiled)
-  | case6 locals value name body bi notPure rejected ih =>
-    change extractScalarRangeWith locals slot (Identity.bind name bi value body) = some plan at compiled
+    exact .bindRight inputType outputType (extractScalarExprWith_supported matched) (by simpa [ScalarBinding.kind] using ih compiled)
+  | case9 locals input output value name domain body bi annotations typesMatched notPure rejected ih =>
+    obtain ⟨inputType, outputType⟩ := annotations
+    obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
+    subst input domain output
+    change extractScalarRangeWith locals slot (Identity.bind name bi value body inputType outputType) = some plan at compiled
     rw [extractScalarRangeWith_idBind, notPure] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hb, result, hr, _⟩ := compiled
-    exact .bindLeft (ih hb) (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case7 locals data body rejected ih =>
+    exact .bindLeft inputType outputType (ih hb) (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
+  | case10 locals data body rejected ih =>
     exact .metadata (ih (by simpa only [extractScalarRangeWith_metadata] using compiled))
-  | case8 locals source rejected hrun hpure hlet hbind hmetadata =>
+  | case11 locals source rejected hrun hpure hlet hbind hmetadata =>
     rw [extractScalarRangeWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core

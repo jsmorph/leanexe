@@ -74,5 +74,33 @@
     "rangePUnitYield",
     "rangePUnitOuter",
     "rangePUnitStride"
+  ],
+  "id-annotations": [
+    "constant",
+    "doJoined",
+    "doBranchUpdates",
+    "binaryOrder",
+    "mixedGuardDo",
+    "rangeDoneUnitFunction",
+    "rangeDirectUnitFunction",
+    "rangeOuterUnit",
+    "rangeBoolCompoundStep",
+    "rangeLiteralJoined",
+    "rangeLetHelper",
+    "rangeBreakJoined",
+    "punitDo",
+    "rangePUnitJoined",
+    "idReturnedHelper",
+    "idPureNested",
+    "idRunNested",
+    "idBindInput",
+    "idBindOutput",
+    "idConditional",
+    "idFunctions",
+    "idUnused",
+    "rangeIdWrapped",
+    "rangeIdBindLeft",
+    "rangeIdBindRight",
+    "rangeIdStepHelper"
   ]
 }
