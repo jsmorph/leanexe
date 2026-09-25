@@ -333,14 +333,21 @@ checked. All 208 focused native Lean/IR comparisons and three rejection tests
 passed, covering pure/monadic branches, local functions, computed operands,
 break, continue and result joins. All 153 preceding modules kept identical bytes.
 
-Current increment: local scalar helpers defined before a range loop, with
-lexical captures available to its bounds, initial value, body and final result.
-The source grammar and extraction reuse the checked unary, binary and
-Unit-prefixed function bindings. Acceptance, support, preservation and invariant
-proofs pass Lean checking. Ten public fixtures cover all three argument forms,
-shadowing, computed bounds, nested/chained helpers, Id bodies, unused functions
-and calls from step-result helpers. The full compiler proof, type validation
-and range execution checks follow this candidate checkpoint.
+Completed next increment: local scalar helpers defined before a range loop,
+with lexical captures available to its bounds, initial value, body and final
+result. Candidate `01d0c335` passed all nine general compiler audits and 2,737
+matching native Lean/V8 results across 115 range declarations, including
+admission and reserved exports. Evidence is in
+`proofs/compiler/range-outer-functions-2026-09-25/`. The source/IR proofs cover
+unary, binary and Unit-prefixed helpers, retaining captures for every loop state.
+All 240 focused native Lean/IR comparisons and four rejection tests passed.
+All 105 preceding range modules kept identical bytes. General type validation
+passed; unrelated suites were not rebuilt.
+
+Next incremental capability: ordinary UInt64 let bindings whose value is a
+range computation. Preserve the checked loop result before evaluating the pure
+continuation, including unused values and captured helpers. Complete the
+source/IR proof and range compiler execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

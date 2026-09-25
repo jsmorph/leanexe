@@ -442,3 +442,10 @@ adds repeated `!` guards with checked recognition, semantics, lowering, encoding
 and type validation. All nine audits, 3,298 native Lean/V8 comparisons across
 165 declarations, 208 focused native Lean/IR comparisons and three rejection
 tests passed. All 153 preceding modules retained identical bytes.
+
+
+The [helpers surrounding ranges increment](../proofs/compiler/range-outer-functions-2026-09-25/README.md)
+adds captured local functions defined before loops. All nine audits, 2,737
+native Lean/V8 comparisons across 115 range declarations, 240 focused native
+Lean/IR comparisons and four rejection tests passed. All 105 preceding range
+modules retained identical bytes.
