@@ -1,4 +1,5 @@
-import Project.Compiler.SourceInvocation
+import Project.Compiler.ArithmeticEmission
+import Project.Artifact.Binary.Validate
 
 namespace Project.Compiler.ArithmeticValidation
 
