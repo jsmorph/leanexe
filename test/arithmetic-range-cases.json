@@ -316,5 +316,13 @@
   "rangeBoolWordLetBounds",
   "rangeBoolWordLetStep",
   "rangeBoolWordLetOuter",
-  "rangeBoolWordLetUnused"
+  "rangeBoolWordLetUnused",
+  "rangeAnnotatedLetYield",
+  "rangeAnnotatedLetJoined",
+  "rangeAnnotatedLetContinue",
+  "rangeAnnotatedLetCapture",
+  "rangeAnnotatedLetBounds",
+  "rangeAnnotatedLetStep",
+  "rangeAnnotatedLetOuter",
+  "rangeAnnotatedLetUnused"
 ]
