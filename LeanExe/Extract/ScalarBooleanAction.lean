@@ -1,13 +1,14 @@
 import LeanExe.Source.ScalarBooleanAction
+import LeanExe.Extract.ScalarBooleanType
 import LeanExe.Extract.ScalarBooleanLocalSyntax
 
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
-@[simp] theorem booleanLocalOperands_booleanPure (body : Lean.Expr) :
-    booleanLocalOperands? (BooleanIdentity.pure body) = none := rfl
-@[simp] theorem booleanLocalOperands_booleanRun (body : Lean.Expr) :
-    booleanLocalOperands? (BooleanIdentity.run body) = none := rfl
+@[simp] theorem booleanLocalOperands_booleanPure (body : Lean.Expr) (type : BooleanType) :
+    booleanLocalOperands? (BooleanIdentity.pure body type) = none := rfl
+@[simp] theorem booleanLocalOperands_booleanRun (body : Lean.Expr) (type : BooleanType) :
+    booleanLocalOperands? (BooleanIdentity.run body type) = none := rfl
 @[simp] theorem booleanLocalOperands_metadata (data : Lean.MData) (body : Lean.Expr) :
     booleanLocalOperands? (.mdata data body) = none := rfl
 
@@ -17,13 +18,15 @@ def booleanAction? (source : Lean.Expr) : Option BooleanAction :=
   | some value => some (.value value)
   | none =>
       match source with
-      | .app (.app (.const ``Id.run [.zero]) (.const ``Bool [])) body =>
-          (booleanAction? body).map BooleanAction.run
+      | .app (.app (.const ``Id.run [.zero]) type) body => do
+          let annotation ← booleanType? type
+          (booleanAction? body).map (fun action => .run action annotation)
       | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
           (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
             (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
-              (.const ``Id.instMonad [.zero])))) (.const ``Bool [])) body =>
-          (booleanAction? body).map BooleanAction.pure
+              (.const ``Id.instMonad [.zero])))) type) body => do
+          let annotation ← booleanType? type
+          (booleanAction? body).map (fun action => .pure action annotation)
       | .mdata data body => (booleanAction? body).map (BooleanAction.metadata data)
       | _ => none
 termination_by sizeOf source
@@ -31,12 +34,12 @@ termination_by sizeOf source
 theorem booleanAction_accepts (action : BooleanAction) : booleanAction? action.expr = some action := by
   induction action with
   | value expression => rw [BooleanAction.expr, booleanAction?.eq_def, booleanLocalOperands_expr]
-  | run body ih =>
+  | run body type ih =>
     rw [BooleanAction.expr, booleanAction?.eq_def, booleanLocalOperands_booleanRun]
-    simpa only [BooleanIdentity.run, Option.map_some] using congrArg (Option.map BooleanAction.run) ih
-  | pure body ih =>
+    simp [BooleanIdentity.run, ih]
+  | pure body type ih =>
     rw [BooleanAction.expr, booleanAction?.eq_def, booleanLocalOperands_booleanPure]
-    simpa only [BooleanIdentity.pure, Option.map_some] using congrArg (Option.map BooleanAction.pure) ih
+    simp [BooleanIdentity.pure, ih]
   | metadata data body ih =>
     rw [BooleanAction.expr, booleanAction?.eq_def, booleanLocalOperands_metadata]
     simpa only [Option.map_some] using congrArg (Option.map (BooleanAction.metadata data)) ih
@@ -49,10 +52,12 @@ theorem booleanAction_sound {source : Lean.Expr} {action : BooleanAction}
     cases parsed
     exact booleanLocalOperands_sound found
   · split at parsed
-    · obtain ⟨body, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-      simp only [BooleanAction.expr, BooleanIdentity.run, booleanAction_sound found]
-    · obtain ⟨body, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-      simp only [BooleanAction.expr, BooleanIdentity.pure, booleanAction_sound found]
+    · simp only [bind, Option.bind_eq_some_iff, Option.map_eq_some_iff] at parsed
+      obtain ⟨type, typeFound, body, found, rfl⟩ := parsed
+      simp only [BooleanAction.expr, BooleanIdentity.run, booleanType_sound typeFound, booleanAction_sound found]
+    · simp only [bind, Option.bind_eq_some_iff, Option.map_eq_some_iff] at parsed
+      obtain ⟨type, typeFound, body, found, rfl⟩ := parsed
+      simp only [BooleanAction.expr, BooleanIdentity.pure, booleanType_sound typeFound, booleanAction_sound found]
     · obtain ⟨body, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       simp only [BooleanAction.expr, booleanAction_sound found]
     · contradiction
