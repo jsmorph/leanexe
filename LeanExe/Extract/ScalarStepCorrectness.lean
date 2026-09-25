@@ -306,6 +306,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
     exact ihb hc (bindings.cons (ihv hb bindings))
+  | idLet _ ih => exact ih (by simpa only [extractScalarStepWith_idLet] using compiled) bindings
   | metadata _ ih => exact ih (by simpa only [extractScalarStepWith] using compiled) bindings
 
 end LeanExe.Extract.Core

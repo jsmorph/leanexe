@@ -302,6 +302,7 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨bound, hb, ht⟩ := compiled
     exact ihb ht (extend bindings (ihv hb bindings htypes))
       (by simp [ScalarStepBinding.kind, htypes])
+  | idLet _ ih => exact ih (by simpa only [extractScalarStepWith_idLet] using compiled) bindings htypes
   | metadata _ ih => exact ih (by simpa only [extractScalarStepWith] using compiled) bindings htypes
 
 end LeanExe.Extract.Core
