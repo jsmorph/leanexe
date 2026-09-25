@@ -148,8 +148,18 @@ saved flags, literals, comparisons, decisions, negation, junctions, choices and
 nested equality. These results work in bindings, conditions, helper captures,
 Id actions and loop computations. Both sides are checked, including unused
 expressions; custom instances, wrong operand types and unsupported Boolean
-inputs remain rejected. This does not yet add propositional equality between
-saved Boolean values (`a = b`) to the condition grammar.
+inputs remain rejected.
+
+Propositional Boolean equality and inequality (`a = b`, `a ≠ b`) select UInt64
+or step results in ordinary and dependent conditions. Both operands may contain
+admitted Boolean expressions, including saved flags and choices. Exact Eq/Ne
+syntax and decision evidence are preserved and connected to the proved Boolean
+equality meaning; the literal-true right side keeps its existing truth path.
+Dependent branches check both proof-lambda domains and preserve captures under
+erased proof binders. All operands and branches must be supported, including
+inactive branches. This composes through helpers, joined Id updates, loop
+break/continue, bounds and surrounding scalar code. Boolean-result choices and
+decide over these new propositions are separate extensions.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
@@ -831,3 +841,13 @@ Boolean-conversion fixture passed unchanged (304 comparisons and seventeen
 rejections), and eighteen selected preceding modules kept identical bytes.
 Five original examples now compile unchanged. The complete corpus contains
 504 declarations; this was a focused execution run.
+
+The [Boolean-proposition increment](../proofs/compiler/boolean-proposition-2026-09-25/README.md)
+adds Eq/Ne Boolean conditions with scalar/step results, including dependent
+branches. Candidate `d4b102ba` passed all nine audits and 623 native Lean/V8
+comparisons across 34 declarations, plus 304 focused native/IR comparisons and
+44 rejection checks. The prior equality, Boolean-local and dependent fixtures
+each passed 304 comparisons and twenty/eight/ten rejection tests. Eighteen
+selected prior modules kept identical bytes; five original examples now compile
+unchanged. Initial notation-precedence failures and their elaborated source are
+retained. The complete corpus contains 520 declarations; this execution was focused.
