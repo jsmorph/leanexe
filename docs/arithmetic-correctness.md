@@ -505,3 +505,10 @@ adds repeated propositional Not at any level of a compound guard.
 All nine audits, 4,450 native Lean/V8 comparisons across 223 declarations,
 208 focused native Lean/IR comparisons and three rejection tests passed.
 All 211 preceding modules retained identical bytes.
+
+
+The [Boolean compound increment](../proofs/compiler/boolean-compound-2026-09-25/README.md)
+adds Boolean &&/|| over UInt64 comparisons, with repeated ! at any nesting level.
+All nine audits, 4,658 native Lean/V8 comparisons across 235 declarations,
+208 focused native Lean/IR comparisons and three rejection tests passed.
+All 223 preceding modules retained identical bytes.
