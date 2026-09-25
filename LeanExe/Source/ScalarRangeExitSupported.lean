@@ -7,12 +7,12 @@ namespace LeanExe.Source.Scalar.Range.Exit
 /-- Native source evaluation of one range with yielding or done steps, with
 pure scalar computations before and after it. -/
 inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
-  | range (indexType : IndexType) (count : EvalWith countExpr values stop) (initial : EvalWith initialExpr values start)
+  | range (indexType : IndexType) (count : Count.Eval countExpr values stop) (initial : EvalWith initialExpr values start)
       (step : ∀ index accumulator, Step.Eval body
         (.scalar (.word accumulator) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (stepFn index accumulator)) :
       Eval (call indexType countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
-        values (iterate stepFn stop.toNat 0 start)
+        values (iterate stepFn stop 0 start)
   | letE (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | idRun (body : Eval e values result) : Eval (Identity.run e) values result
@@ -25,7 +25,7 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
 
 /-- Independent source support for a single bounded early-exit range. -/
 inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
-  | range (indexType : IndexType) (count : SupportedWith types countExpr) (initial : SupportedWith types initialExpr)
+  | range (indexType : IndexType) (count : Count.Supported types countExpr) (initial : SupportedWith types initialExpr)
       (step : Step.Supported
         (.scalar .word :: .scalar .natural :: types.map Step.BindingKind.scalar) body) :
       Supported types
@@ -52,7 +52,7 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
       step.evaluates (.scalar (.word value) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (by simp [Step.Value.kind, Scalar.Value.kind, List.map_map, Function.comp_def, ← typed])
     let f := fun index value => (total index value).choose
-    exact ⟨iterate f stop.toNat 0 start, .range indexType hstop hstart
+    exact ⟨iterate f stop 0 start, .range indexType hstop hstart
       (fun index value => (total index value).choose_spec)⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates values typed

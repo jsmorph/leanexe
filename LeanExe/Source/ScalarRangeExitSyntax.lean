@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarRangeSyntax
+import LeanExe.Source.ScalarRangeCount
 
 namespace LeanExe.Source.Scalar.Range.Exit
 
@@ -21,9 +21,9 @@ def head (indexType : Lean.Expr) : Lean.Expr :=
     .const ``UInt64 []]
 
 
-def call (indexType : IndexType) (count initial : Lean.Expr) (indexName accumulatorName : Lean.Name)
+def call (indexType : IndexType) (count : Count) (initial : Lean.Expr) (indexName accumulatorName : Lean.Name)
     (indexBi accumulatorBi : Lean.BinderInfo) (body : Lean.Expr) : Lean.Expr :=
-  .app (.app (.app (head indexType.expr) (Range.range count)) initial)
+  .app (.app (.app (head indexType.expr) count.range) initial)
     (.lam indexName indexType.expr (.lam accumulatorName (.const ``UInt64 []) body accumulatorBi) indexBi)
 
 end LeanExe.Source.Scalar.Range.Exit

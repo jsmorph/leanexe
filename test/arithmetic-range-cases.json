@@ -27,5 +27,10 @@
   "rangeUnusedDone",
   "rangeDirectSteps",
   "rangeDirectFunction",
-  "rangeDirectUnitFunction"
+  "rangeDirectUnitFunction",
+  "rangeNatEmpty",
+  "rangeNatOne",
+  "rangeNatLiteral",
+  "rangeNatDirect",
+  "rangeNatMax"
 ]

@@ -121,6 +121,20 @@ def rangeUnsupportedDirect (n seed : UInt64) : UInt64 := Id.run do
     a := a + 1
   return a
 
+def rangeNatLiteral (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:8] do
+    a := a + UInt64.ofNat i
+    if a == n then break
+  return a
+
+def rangeNatOverflow (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:18446744073709551616] seed fun _ a => .done a
+
+@[instance_reducible] def customNat : OfNat Nat 8 := ⟨9⟩
+def rangeCustomNat (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:(@OfNat.ofNat Nat 8 customNat)] seed fun _ a => .done a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -150,7 +164,7 @@ run_elab do
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
-      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect] do
+      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -165,6 +179,7 @@ run_elab do
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind,
+      `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
