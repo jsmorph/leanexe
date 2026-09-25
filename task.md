@@ -658,7 +658,12 @@ exact standard Bool equality instance for both operators and explicit calls.
 The new recursive BooleanLocal equality form, parser/reconstruction/size proofs,
 shared equality lowering and all Boolean lowering proofs pass. Scalar, step and
 outer-loop source semantics and totality rebuild unchanged. Compiler proof
-integration and sixteen new execution examples remain in progress. Both sides
+integration also passes unchanged. All 304 focused native/IR comparisons and
+twenty rejection checks pass on the first fixture run. Original-example,
+preceding-fixture, general audit and focused native/V8 gates remain in progress.
+The sixteen new examples cover literal truth cases, nested equalities/choices,
+repeated negation, dependent conditions, helper captures, conditional Id binds,
+break/continue, joined updates, strided bounds and post-loop code. Both sides
 must be admitted Boolean values; custom instances and unsupported operands are
 rejected, including unused expressions. Boolean public ABI, Boolean-returning
 helpers, mixed Bool/word parameter lists, propositions directly referencing
