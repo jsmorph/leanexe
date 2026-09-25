@@ -84,6 +84,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | idPure (type : ResultType) (body : EvalWith e values value) : EvalWith (Identity.pure e type) values value
   | idBind (input output : ResultType) (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
       EvalWith (Identity.bind name bi a b input output) values y
+  | applyBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      (function : values[index]? = some (.booleanFunction f))
+      (variables : expression.VariablesMean values booleans)
+      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
+      EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
   | apply (function : values[index]? = some (.function false f)) (argument : EvalWith a values x) :
       EvalWith (.app (.bvar index) a) values (f x)
   | letFn (type : ResultType)
@@ -92,6 +97,12 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values value
+  | letBooleanFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
+      (body : EvalWith b (.booleanFunction f :: values) value) :
+      EvalWith (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep) values value
   | unitApply (unitForm : UnitSyntax) (function : values[index]? = some (.function true f)) (argument : EvalWith a values x) :
       EvalWith (.app (.app (.bvar index) unitForm.value) a) values (f x)
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
@@ -187,6 +198,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | idPure (type : ResultType) (body : SupportedWith types e) : SupportedWith types (Identity.pure e type)
   | idBind (input output : ResultType) (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
       SupportedWith types (Identity.bind name bi a b input output)
+  | applyBoolean (expression : BooleanLocal) (function : types[index]? = some .booleanFunction)
+      (variables : expression.VariablesTyped types)
+      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
+      SupportedWith types (.app (.bvar index) expression.expr)
   | apply (function : types[index]? = some (.function false)) (argument : SupportedWith types a) :
       SupportedWith types (.app (.bvar index) a)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
@@ -194,6 +209,11 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
+      (body : SupportedWith (.booleanFunction :: types) b) :
+      SupportedWith types (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep)
   | unitApply (unitForm : UnitSyntax) (function : types[index]? = some (.function true)) (argument : SupportedWith types a) :
       SupportedWith types (.app (.app (.bvar index) unitForm.value) a)
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax) (function : SupportedWith (.word :: .unit :: types) a)
@@ -348,6 +368,15 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨x, hx⟩ := ihv values typed
     obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
     exact ⟨y, .idBind input output hx hy⟩
+  | applyBoolean expression present variables _ ihArgs =>
+    obtain ⟨f, hf⟩ := booleanFunction_lookup typed present
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ expression.operands then (ihArgs operand member values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
+    exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
   | apply present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed
@@ -357,6 +386,11 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
+  | letBooleanFn type _ _ ihf ihb =>
+    have total := fun x => ihf (.boolean x :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.booleanFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBooleanFn type (fun x => (total x).choose_spec) hv⟩
   | unitApply unitForm present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed
