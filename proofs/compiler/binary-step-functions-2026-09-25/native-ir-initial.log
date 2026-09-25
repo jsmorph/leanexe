@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_range_binary_step.lean:90:7: error: unexpected token 'partial'; expected '(', ':=', 'rec', '|' or term
+test/scalar_range_binary_step.lean:90:15: error: unexpected token ':='; expected 'abbrev', 'axiom', 'builtin_initialize', 'class', 'coinductive', 'def', 'example', 'inductive', 'initialize', 'instance', 'opaque', 'register_option', 'structure' or 'theorem'
+test/scalar_range_binary_step.lean:91:11: error: unexpected token '('; expected 'abbrev', 'axiom', 'builtin_initialize', 'class', 'coinductive', 'def', 'example', 'inductive', 'initialize', 'instance', 'opaque', 'register_option', 'structure' or 'theorem'
+240 native/range-binary-step IR comparisons and five rejection tests passed
