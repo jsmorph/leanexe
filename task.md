@@ -485,8 +485,11 @@ All 256 new native Lean/IR comparisons, four declaration rejection tests and
 two raw arity rejection tests pass. The updated existing local-function test
 also passes 140 comparisons and three rejection tests; its formerly rejected
 three-argument helper is now a positive case. The fixed finite-arity execution
-group contains fourteen new declarations and seventeen preceding cases. Full
-nine compiler audits and V8 checks follow; this increment is not yet complete.
+group contains fourteen new declarations and seventeen preceding cases. All nine compiler audits pass. The first V8 driver attempt exposed one stale
+admission expectation for an outer three-argument helper. That case is now
+positive in admission and the preceding outer-helper test, which passes all
+264 comparisons and three rejection tests. V8 comparisons are still pending;
+this increment is not yet complete.
 Step-valued helper arities remain separate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
