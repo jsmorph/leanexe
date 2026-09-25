@@ -680,13 +680,18 @@ intended Boolean operands were parenthesized and failures retained. Evidence is
 in `proofs/compiler/boolean-proposition-2026-09-25/`. The complete corpus has 520
 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Next increment: explicit decide and implicit Prop-to-Bool conversion for
-propositions containing saved Boolean flags. Start with Boolean truth coercions
-and propositional Eq/Ne, preserving exact standard evidence and old closed-guard
-behavior. Revisit the retained original leading-negation expressions unchanged.
-Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
-Boolean-result choices over saved-flag propositions, broader propositional
-combinations and loops inside helpers remain later capabilities.
+Current increment: explicit decide and implicit Prop-to-Bool conversions for
+propositional equality/inequality over admitted Boolean expressions, including
+saved flags and truth coercions. The recursive source form preserves the exact
+Eq/Ne and standard decision expressions and relates native decide to the shared
+Boolean equality lowering. The prior closed decision form uses PropositionGuard
+so Boolean truth decisions follow the recursive Boolean path. Source/parser,
+scalar/step/range acceptance, native correctness and invariant proofs pass.
+Focused examples/tests, the general audit, actual compiler execution comparisons
+and final documentation are in progress. Boolean-returning helpers, Boolean
+public ABI, mixed Bool/word helper parameters, Boolean-result choices over
+saved-flag propositions, broader propositional combinations and loops inside
+helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
