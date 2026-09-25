@@ -596,3 +596,17 @@ All nine audits, 471 native Lean/V8 comparisons in the fixed 26-declaration grou
 208 focused native Lean/IR comparisons and three rejection tests passed. The
 fourteen selected preceding modules retained identical bytes. The full corpus
 contains 295 declarations; the preceding full execution checkpoint covers 259.
+
+
+The [finite-arity helper increment](../proofs/compiler/finite-arity-2026-09-25/README.md)
+removes the two-argument limit on local scalar helpers with shared checked
+parameter, application and closure rules. All nine compiler audits and all 571
+native Lean/V8 comparisons across the fixed 31-declaration group passed. All 256
+new native Lean/IR comparisons, four declaration rejection tests and two raw
+arity rejection tests passed; the preceding helper test passes 140 comparisons
+and three rejection tests after moving its three-argument case into positive
+coverage. The preceding outer-helper test passes 264 comparisons and three
+rejection tests after moving its equivalent case into positive coverage.
+The seventeen selected prior modules retained identical bytes. The
+full corpus contains 309 declarations; this was a focused execution run. Step-result
+helper arities remain a separate next increment.

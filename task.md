@@ -468,29 +468,25 @@ tests passed. The fourteen selected preceding modules kept identical bytes.
 The full corpus now contains 295 declarations; this execution run checked 26.
 General type validation passed using cached dependencies.
 
-Current increment: remove the two-argument limit on local scalar helpers with a
-shared finite-arity description and application rule. Preserve lexical captures,
-strict argument evaluation, body checking and existing Unit/PUnit continuations.
-Complete it through focused source/IR tests, general audits and native/V8 checks
-before expanding step-result helpers or moving to another capability.
+Completed next increment: arbitrary finite UInt64 parameter lists for local
+scalar helpers. Candidate `e3e3f2a5` passed all nine compiler audits and
+all 571 native Lean/V8 comparisons in the fixed 31-declaration `finite-arity`
+group. Evidence is in `proofs/compiler/finite-arity-2026-09-25/`. Shared syntax,
+argument-list and closure rules preserve exact arity, source order, captures,
+strict operand checking and unused body checking, including helper definitions
+inside steps and around loops. All 256 new native Lean/IR comparisons, four
+declaration rejection tests and two raw arity rejection tests passed. The
+preceding local-function test passed 140 comparisons and three rejection tests;
+its former three-argument rejection is now positive. The preceding outer-helper
+test also passed 264 comparisons and three rejection tests after the equivalent
+admission expectation was updated. The seventeen selected
+preceding modules kept identical bytes. The full corpus contains 309 declarations;
+this execution run checked 31. General type validation used cached dependencies.
 
-Checked implementation checkpoint: arbitrary finite UInt64 helper parameter
-lists are connected to scalar extraction, loop-step helper definitions and
-helpers surrounding loops. Exact arity, original argument order, captured
-values and unused body checking share list-based binding rules. The affected
-source totality, extraction acceptance/support/correctness and invariant proofs
-pass, including the function extractor. Definitions and expression equations
-now live in ScalarExprCore so their checks can run separately from the proofs.
-All 256 new native Lean/IR comparisons, four declaration rejection tests and
-two raw arity rejection tests pass. The updated existing local-function test
-also passes 140 comparisons and three rejection tests; its formerly rejected
-three-argument helper is now a positive case. The fixed finite-arity execution
-group contains fourteen new declarations and seventeen preceding cases. All nine compiler audits pass. The first V8 driver attempt exposed one stale
-admission expectation for an outer three-argument helper. That case is now
-positive in admission and the preceding outer-helper test, which passes all
-264 comparisons and three rejection tests. V8 comparisons are still pending;
-this increment is not yet complete.
-Step-valued helper arities remain separate.
+Next increment: remove the corresponding argument-count limit on local helpers
+returning complete ForInStep results. Reuse the checked argument-list and lexical
+binding rules, preserve scalar/step result distinctions, and complete focused
+execution and the general audits before moving to the next capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
