@@ -135,6 +135,73 @@ def rangeNatOverflow (seed : UInt64) : UInt64 :=
 def rangeCustomNat (seed : UInt64) : UInt64 :=
   forIn (m := Id) [:(@OfNat.ofNat Nat 8 customNat)] seed fun _ a => .done a
 
+def rangeFromOne (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat] do
+    a := a * 3 + UInt64.ofNat i
+  return a
+
+def rangeIntervalLiteral (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [3:8] do
+    a := a + UInt64.ofNat i + count
+  return a
+
+def rangeIntervalEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [8:3] seed fun i a => .yield (a + UInt64.ofNat i + count)
+
+def rangeIntervalEqual (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [7:7] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def rangeIntervalBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [5:count.toNat] do
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 7 then break
+    a := a * 3
+  return a
+
+def rangeIntervalContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeIntervalCapture (count seed : UInt64) : UInt64 := Id.run do
+  let delta := seed + 7
+  let mut a := seed * 3
+  for i in [2:(count + 1).toNat] do
+    let f := fun x : UInt64 => x + delta + UInt64.ofNat i
+    a := f a
+  return a - delta
+
+def rangeIntervalJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [3:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == 7 then pure (.done (a + 11)) else pure (.yield (a + UInt64.ofNat i))
+    return result
+
+def rangeIntervalHigh (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [18446744073709551613:18446744073709551615] seed fun i a =>
+    .yield (a + UInt64.ofNat i + count)
+
+def rangeIntervalMaxEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [18446744073709551615:count.toNat] seed fun i a => .done (a + UInt64.ofNat i)
+
+def rangeIntervalHugeBreak (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [2:18446744073709551615] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def intervalOverflow (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [18446744073709551616:0] seed fun _ a => .done a
+
+@[instance_reducible] def customFirst : OfNat Nat 8 := ⟨9⟩
+def intervalCustom (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(@OfNat.ofNat Nat 8 customFirst):10] seed fun _ a => .done a
+
+def intervalDynamic (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [seed.toNat:10] seed fun _ a => .done a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -348,7 +415,18 @@ run_elab do
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral,
       `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused, `ArithmeticModeTest.rangeStepWrappedBind,
       `ArithmeticModeTest.rangeStepJoined, `ArithmeticModeTest.rangeResultFunction, `ArithmeticModeTest.rangeResultChained, `ArithmeticModeTest.rangeResultCapture, `ArithmeticModeTest.rangeResultUnused, `ArithmeticModeTest.rangeResultWrapped,
-      `ArithmeticModeTest.compareNe, `ArithmeticModeTest.negatedEq, `ArithmeticModeTest.negatedLt, `ArithmeticModeTest.negatedLe, `ArithmeticModeTest.negatedGt, `ArithmeticModeTest.negatedGe, `ArithmeticModeTest.negatedBool, `ArithmeticModeTest.doubleNegation, `ArithmeticModeTest.negatedBindings, `ArithmeticModeTest.rangeNegatedBreak, `ArithmeticModeTest.rangeNegatedContinue, `ArithmeticModeTest.rangeNegatedJoin] do
+      `ArithmeticModeTest.compareNe, `ArithmeticModeTest.negatedEq, `ArithmeticModeTest.negatedLt, `ArithmeticModeTest.negatedLe, `ArithmeticModeTest.negatedGt, `ArithmeticModeTest.negatedGe, `ArithmeticModeTest.negatedBool, `ArithmeticModeTest.doubleNegation, `ArithmeticModeTest.negatedBindings, `ArithmeticModeTest.rangeNegatedBreak, `ArithmeticModeTest.rangeNegatedContinue, `ArithmeticModeTest.rangeNegatedJoin,
+      `ArithmeticModeTest.rangeFromOne,
+      `ArithmeticModeTest.rangeIntervalLiteral,
+      `ArithmeticModeTest.rangeIntervalEmpty,
+      `ArithmeticModeTest.rangeIntervalEqual,
+      `ArithmeticModeTest.rangeIntervalBreak,
+      `ArithmeticModeTest.rangeIntervalContinue,
+      `ArithmeticModeTest.rangeIntervalCapture,
+      `ArithmeticModeTest.rangeIntervalJoin,
+      `ArithmeticModeTest.rangeIntervalHigh,
+      `ArithmeticModeTest.rangeIntervalMaxEmpty,
+      `ArithmeticModeTest.rangeIntervalHugeBreak] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -365,6 +443,7 @@ run_elab do
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
+      `ArithmeticModeTest.intervalOverflow, `ArithmeticModeTest.intervalCustom, `ArithmeticModeTest.intervalDynamic,
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,

@@ -264,10 +264,13 @@ All eighty-two previous modules retained identical bytes. The fixed arithmetic
 archive and unrelated runtime suite were not rebuilt; general type validation
 passed. Boolean ! and compound conditions remain separate capabilities.
 
-Next incremental capability: nonzero standard literal range starts with unit
-step. Preserve exact native Nat indices, empty ranges and early exits. Reuse
-the current loop backend with the natural distance to the stop and an index
-offset, proving the conversion and iteration shift before public compiler checks.
+Current increment: nonzero standard literal range starts with unit step.
+Native interval iteration, truncated distance and shifted index lemmas pass,
+along with recognition, independent source support, scalar invariants and the
+whole-function source/IR proof. All 264 focused native Lean/IR comparisons passed
+across eleven new declarations, plus overflow/custom/dynamic-start rejection
+tests. The existing zero-start output is preserved by construction. General
+compiler proof/audits and actual compiler/V8 range checks are pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

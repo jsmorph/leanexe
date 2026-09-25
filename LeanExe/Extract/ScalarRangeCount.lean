@@ -32,4 +32,25 @@ theorem scalarRangeCount_sound {source : Lean.Expr} {count : Count}
     · contradiction
   · contradiction
 
+/-- First indices are bounded standard literals in this increment. -/
+def scalarRangeFirst? (source : Lean.Expr) : Option First :=
+  match scalarRangeCount? source with
+  | some (.literal number fits) => some ⟨number, fits⟩
+  | _ => none
+
+theorem scalarRangeFirst_accepts (first : First) :
+    scalarRangeFirst? first.source = some first := by
+  have accepted := scalarRangeCount_accepts (.literal first.number first.fits)
+  simp only [Count.source] at accepted
+  simp [scalarRangeFirst?, First.source, accepted]
+
+theorem scalarRangeFirst_sound {source : Lean.Expr} {first : First}
+    (matched : scalarRangeFirst? source = some first) : source = first.source := by
+  unfold scalarRangeFirst? at matched
+  split at matched
+  · rename_i number fits recognized
+    cases matched
+    exact scalarRangeCount_sound recognized
+  · contradiction
+
 end LeanExe.Extract.Core
