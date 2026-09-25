@@ -533,16 +533,24 @@ erased binder positions preserve captures throughout helper and loop scopes.
 The full corpus contains 367 declarations; this run checked 34. Type validation
 used cached dependencies; the fixed archive and runtime suite were not rebuilt.
 
-Current increment: standard UInt64 numeral instances behind inert
-let/lambda/application/metadata wrappers. The independently specified constant
-instance grammar, exact checker and scalar extraction proofs pass. The original
-helper that failed in the preceding condition increment is included unchanged
-in the new test corpus and now passes. Loop integration and 208 native/IR
-comparisons pass, along with four declaration rejections, five raw instance
-rejections and one metadata check. Compiler audits and focused WebAssembly
-execution are next; this increment is not yet complete. The checker tracks unapplied
-arguments and requires the exact standard instance for the same numeral.
-The separately observed UInt64.ofNat/Nat-OfNat metadata form remains next.
+Completed next increment: standard UInt64 numeral instances behind constant
+let/lambda/application/metadata wrappers. Candidate `422d32d8` passed all nine
+compiler audits and 537 native Lean/V8 comparisons across the fixed 30-declaration
+`literal-instances` group. The original captured helper that failed in the prior
+increment now passes unchanged. All 208 focused native/IR comparisons, four
+custom-instance declaration rejections, five raw instance rejections and one
+metadata check passed. Eighteen selected preceding modules kept identical bytes.
+Evidence is retained in `proofs/compiler/literal-instances-2026-09-25/`. The corpus
+contains 379 declarations; this execution run checked 30. No backend or runtime
+change, full archive rebuild or unrelated runtime-suite rebuild was needed.
+
+Next increment: standard Nat numeral expressions at UInt64 conversion and
+numeric-instance positions, including borrowed-type metadata. Explicit numeral
+arguments elaborate as Nat OfNat expressions rather than raw Nat literals;
+those recorded forms remain unsupported after the wrapper increment. Prove an
+independent exact NaturalLiteral grammar/parser, connect it to UInt64.ofNat and
+standard UInt64 OfNat evidence, and execute the original recorded forms before
+moving to the next capability. Keep custom Nat and UInt64 instances rejected.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -681,3 +681,12 @@ bodies, custom decisions, wrong proof domains and reads of erased binders.
 Eighteen selected preceding modules kept identical bytes. The full corpus
 contains 367 declarations. The retained first failure identifies a separate
 literal-instance wrapper elaboration, which remains outside this checkpoint.
+
+The [literal-instance increment](../proofs/compiler/literal-instances-2026-09-25/README.md)
+handles standard numeral instances behind constant let/lambda/application and
+metadata wrappers. The original captured-helper failure now passes unchanged.
+All nine audits and 537 native Lean/V8 comparisons passed across a fixed
+30-declaration group, with 208 focused native/IR comparisons, nine rejection
+tests and one metadata check. Eighteen selected preceding modules kept identical
+bytes. The full corpus contains 379 declarations. Standard Nat numeral
+expressions in explicit instance arguments remain a separate next capability.
