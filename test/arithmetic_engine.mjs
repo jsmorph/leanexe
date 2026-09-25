@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 
 const directory = process.argv[2];
 const suite = process.argv[3] || 'all';
-if (!directory || process.argv.length > 4 || !['all', 'range'].includes(suite)) {
-  throw new Error('usage: node test/arithmetic_engine.mjs <artifact-directory> [all|range]');
+const groups = JSON.parse(readFileSync(new URL('./arithmetic-engine-groups.json', import.meta.url), 'utf8'));
+if (!directory || process.argv.length > 4 || (!['all', 'range'].includes(suite) && !Object.hasOwn(groups, suite))) {
+  throw new Error('usage: node test/arithmetic_engine.mjs <artifact-directory> [all|range|checked-group]');
 }
 const rangeEntries = JSON.parse(readFileSync(new URL('./arithmetic-range-cases.json', import.meta.url), 'utf8'));
 const cases = readFileSync(resolve(directory, 'expected.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
@@ -16,7 +17,11 @@ const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', '
   'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
   'unusedFunction', 'doJoined', 'doBranchUpdates',
   'compareNe', 'negatedEq', 'negatedLt', 'negatedLe', 'negatedGt', 'negatedGe', 'negatedBool', 'doubleNegation', 'negatedBindings', 'binaryOrder', 'binaryCapture', 'binaryChained', 'binaryUnused', 'binaryDo', 'binaryNested', 'binaryChoice', 'binaryArguments', 'binaryWrapped', 'boolNotEqual', 'boolNotUnequal', 'boolNotTwice', 'boolNotThrice', 'boolNotNested', 'boolNotFunction', 'boolNotDo', 'boolNotProposition', 'complementDirect', 'complementOperator', 'complementTwice', 'complementMixed', 'complementChoice', 'complementFunction', 'complementDo', 'complementOperand', 'compoundAnd', 'compoundOr', 'compoundNested', 'compoundNegatedLeaves', 'compoundZeroDivisor', 'compoundFunction', 'compoundDo', 'compoundOperand', 'compoundNotAnd', 'compoundNotOr', 'compoundNotTwice', 'compoundNotThrice', 'compoundNotNested', 'compoundNotFunction', 'compoundNotDo', 'compoundNotOperand', 'boolAndTruth', 'boolOrTruth', 'boolCompoundNot', 'boolCompoundTwice', 'boolCompoundNested', 'boolCompoundFunction', 'boolCompoundDo', 'boolCompoundOperand', 'mixedGuardAnd', 'mixedGuardOr', 'mixedGuardNot', 'mixedGuardNegations', 'mixedGuardNested', 'mixedGuardFunction', 'mixedGuardDo', 'mixedGuardOperand', 'minimumOrder', 'maximumOrder', 'extremaNested', 'extremaClamped', 'extremaFunction', 'extremaDo', 'extremaGuard', 'extremaWrapped', ...rangeEntries];
-const entries = suite === 'all' ? allEntries : rangeEntries;
+const entries = suite === 'all' ? allEntries : suite === 'range' ? rangeEntries : groups[suite];
+if (!Array.isArray(entries) || entries.length === 0 || new Set(entries).size !== entries.length ||
+    entries.some(name => !allEntries.includes(name))) {
+  throw new Error(`invalid checked execution group: ${suite}`);
+}
 const constants = new Set(['constant', 'boundConstant', 'doConstant', 'rangeConstant']);
 const ranges = new Set(rangeEntries);
 const counts = new Map(entries.map(name => [name, new Set()]));

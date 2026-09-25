@@ -5,8 +5,12 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
+const groups = require('../test/arithmetic-engine-groups.json');
+const subset = process.argv[2] === 'subset-engine' ? process.argv[3] : null;
+const validSubset = typeof subset === 'string' && /^[a-z][a-z0-9-]*$/.test(subset) &&
+  Object.hasOwn(groups, subset);
 const artifacts = path.join(root, '.lake', 'arithmetic-check',
-  process.argv[2] === 'range-engine' ? 'range' : '');
+  process.argv[2] === 'range-engine' ? 'range' : validSubset ? `subsets/${subset}` : '');
 const rangeEntries = new Set(require('../test/arithmetic-range-cases.json'));
 fs.mkdirSync(artifacts, { recursive: true });
 function lean(label, args, timeout = 120) {
@@ -43,6 +47,10 @@ function proof() {
   process.stdout.write(result.stdout);
 }
 function engine(suite = 'all') {
+  const selected = suite === 'all' ? null : suite === 'range' ? rangeEntries : new Set(groups[suite]);
+  if (selected && (selected.size === 0 || (suite !== 'range' && selected.size !== groups[suite].length))) {
+    throw new Error(`empty or duplicate entries in execution group: ${suite}`);
+  }
   lean('cli-build', ['lake', 'build', 'lean-wasm'], 600);
   lean('admission-test', ['lake', 'env', 'lean', 'test/arithmetic_mode.lean'], 60);
   lean('reserved-exports', ['lake', 'env', 'lean', 'test/arithmetic_reserved_exports.lean'], 60);
@@ -51,7 +59,13 @@ function engine(suite = 'all') {
   lean('fixture', ['lake', 'env', 'lean', '-o', fixture, 'test/ArithmeticMilestone.lean'], 60);
   const expected = lean('native-results', ['lake', 'env', 'lean', '--run', 'test/ArithmeticMilestone.lean'], 60);
   const rows = expected.stdout.trim().split('\n').map(JSON.parse)
-    .filter(row => suite === 'all' || rangeEntries.has(row.name));
+    .filter(row => selected === null || selected.has(row.name));
+  if (selected) {
+    const present = new Set(rows.map(row => row.name));
+    for (const name of selected) {
+      if (!present.has(name)) throw new Error(`execution group ${suite} has no native fixture: ${name}`);
+    }
+  }
   fs.writeFileSync(path.join(artifacts, 'expected.jsonl'), rows.map(x => JSON.stringify(x)).join('\n') + '\n');
   for (const name of new Set(rows.map(x => x.name))) {
     lean(`compile-${name}`, ['lake', 'env', path.join(root, '.lake/build/bin/lean-wasm'),
@@ -68,10 +82,16 @@ function engine(suite = 'all') {
 }
 try {
   const mode = process.argv[2] || 'all';
-  if (process.argv.length > 3 || !['all', 'proof', 'engine', 'range-engine'].includes(mode)) throw new Error('usage: tools/arithmetic-check.js [all|proof|engine|range-engine]');
+  const ordinary = ['all', 'proof', 'engine', 'range-engine'].includes(mode);
+  if ((!ordinary && mode !== 'subset-engine') ||
+      (ordinary && process.argv.length > 3) ||
+      (mode === 'subset-engine' && (process.argv.length !== 4 || !validSubset))) {
+    throw new Error('usage: tools/arithmetic-check.js [all|proof|engine|range-engine|subset-engine <checked-group>]');
+  }
   if (mode === 'all' || mode === 'proof') proof();
   if (mode === 'all' || mode === 'engine') engine();
   if (mode === 'range-engine') engine('range');
+  if (mode === 'subset-engine') engine(subset);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
