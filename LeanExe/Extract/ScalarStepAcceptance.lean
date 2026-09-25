@@ -66,6 +66,22 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨arg, ha⟩ := scalar argument typed total
     obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) arg
     exact ⟨target, by rw [extractScalarStepWith]; simp [hf, ScalarStepBinding.function?, ha, ht]⟩
+  | @letBinaryFn a types b name firstTypeName secondTypeName secondTypeBi firstTypeBi firstName secondName secondBi firstBi nondep type function _ ih =>
+    have accepts (first second : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
+      (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+      (by simpa [ScalarBinding.kind] using scalarStepBindings_typed typed) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact scalarStepBindings_total total binding member)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0) (.u64 0)
+    let f := fun first second =>
+      extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar) a
+    obtain ⟨target, ht⟩ := ih (.scalar (.binaryFunction f) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letBinaryFn]; simp [hc, ht, f]⟩
   | @letFn a types b name typeName typeBi paramName paramBi nondep type function _ ih =>
     have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
       (.word argument :: locals.map ScalarStepBinding.toScalar)

@@ -326,6 +326,121 @@ def strideCustom (seed : UInt64) : UInt64 :=
 def strideDynamic (seed : UInt64) : UInt64 :=
   forIn (m := Id) ({start := 0, stop := 10, step := seed.toNat + 1, step_pos := Nat.zero_lt_succ _} : Std.Legacy.Range) seed fun _ a => .done a
 
+def binaryOrder (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => a - b
+  f x y
+
+def binaryCapture (x y : UInt64) : UInt64 :=
+  let captured := x + 7
+  let f := fun a b : UInt64 => captured + a * 3 - b
+  let captured := y * 11
+  f captured x
+
+def binaryChained (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => a / b + a % b
+  let g := fun a b : UInt64 => f (a + b) (a - b)
+  g x y
+
+def binaryUnused (x y : UInt64) : UInt64 :=
+  let _f := fun a b : UInt64 => (a + x) / (b - y)
+  x + y
+
+def binaryDo (x y : UInt64) : UInt64 := Id.run do
+  let f : UInt64 → UInt64 → Id UInt64 := fun a b => do
+    let c ← pure (a + b)
+    return c * x
+  let result ← f x y
+  return result + x
+
+def binaryNested (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 =>
+    let g := fun c d : UInt64 => a * c + b * d
+    g x y
+  f y x
+
+def binaryChoice (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => if a < b then a + 7 else b - a
+  if f x y = x then f y x else f (x + y) (x - y)
+
+def binaryArguments (x y : UInt64) : UInt64 :=
+  let g := fun a : UInt64 => a * 3 + 1
+  let f := fun a b : UInt64 => a ^^^ (b <<< a)
+  f (g x) (g y)
+
+def binaryWrapped (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => Id.run do
+    let c ← if a < b then pure (a + 1) else pure (b + 7)
+    return c - a
+  f x y
+
+def rangeBinaryLocal (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x * 3 + y + UInt64.ofNat i
+    a := f a seed
+  return a
+
+def rangeBinaryCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:2] do
+    let f := fun x y : UInt64 => a + x - y
+    a := a + 7
+    a := f a (UInt64.ofNat i)
+  return a
+
+def rangeBinaryNested (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 3).toNat:count.toNat] do
+    let f := fun x y : UInt64 =>
+      let g := fun p q : UInt64 => p * x + q * y + UInt64.ofNat i
+      g a seed
+    a := f seed a
+  return a
+
+def rangeBinaryDo (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f : UInt64 → UInt64 → Id UInt64 := fun x y => do
+      let c ← if x < y then pure (x + 7) else pure (y + seed)
+      return c + UInt64.ofNat i
+    let delta ← f a (UInt64.ofNat i)
+    if delta % 5 == seed % 5 then break
+    a := delta * 3 + 1
+  return a
+
+def rangeBinaryContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => if x < y then x + y else x - y
+    if f (UInt64.ofNat i) seed % 3 == 0 then continue
+    a := f a (UInt64.ofNat i)
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeBinaryUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _f := fun x y : UInt64 => (x + a) / (y - UInt64.ofNat i)
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
+
+def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _f := fun x y : UInt64 => binaryRangeHelper x + y
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeBinaryPartial (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x + y
+    let g := f a
+    a := g (UInt64.ofNat i)
+  return a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -573,7 +688,22 @@ run_elab do
       `ArithmeticModeTest.rangeStrideHugeBreak,
       `ArithmeticModeTest.rangeStrideContinue,
       `ArithmeticModeTest.rangeStrideJoin,
-      `ArithmeticModeTest.rangeStrideOne] do
+      `ArithmeticModeTest.rangeStrideOne, `ArithmeticModeTest.binaryLocalFunction, `ArithmeticModeTest.rangeBinaryFunction,
+      `ArithmeticModeTest.binaryOrder,
+      `ArithmeticModeTest.binaryCapture,
+      `ArithmeticModeTest.binaryChained,
+      `ArithmeticModeTest.binaryUnused,
+      `ArithmeticModeTest.binaryDo,
+      `ArithmeticModeTest.binaryNested,
+      `ArithmeticModeTest.binaryChoice,
+      `ArithmeticModeTest.binaryArguments,
+      `ArithmeticModeTest.binaryWrapped,
+      `ArithmeticModeTest.rangeBinaryLocal,
+      `ArithmeticModeTest.rangeBinaryCapture,
+      `ArithmeticModeTest.rangeBinaryNested,
+      `ArithmeticModeTest.rangeBinaryDo,
+      `ArithmeticModeTest.rangeBinaryContinue,
+      `ArithmeticModeTest.rangeBinaryUnused] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -583,13 +713,14 @@ run_elab do
         unless LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_ ==
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
-  for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.binaryLocalFunction,
+  for name in [`ArithmeticModeTest.natBinding,
       `ArithmeticModeTest.unsupportedLocalBody,
       `ArithmeticModeTest.rangeTwice,
-      `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
+      `ArithmeticModeTest.rangeUnsupportedFunction,
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
+      `ArithmeticModeTest.rangeBinaryUnsupported, `ArithmeticModeTest.rangeBinaryPartial,
       `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,
       `ArithmeticModeTest.dynamicNatAddition, `ArithmeticModeTest.dynamicCalledStart,
       `ArithmeticModeTest.intervalOverflow, `ArithmeticModeTest.intervalCustom,

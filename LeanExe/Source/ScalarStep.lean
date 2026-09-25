@@ -25,6 +25,14 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | idBind (type : ResultAnnotation) (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (bindWord name bi type a b) values outcome
+  | letBinaryFn (type : ResultType)
+      (function : ∀ x y, EvalWith a (.word y :: .word x :: values.map Value.toScalar) (f x y))
+      (body : Eval b (.scalar (.binaryFunction f) :: values) outcome) :
+      Eval (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.function false f) :: values) outcome) :
@@ -101,6 +109,14 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | idBind (type : ResultAnnotation) (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
       Supported types (bindWord name bi type a b)
+  | letBinaryFn (type : ResultType)
+      (function : SupportedWith (.word :: .word :: types.map BindingKind.toScalar) a)
+      (body : Supported (.scalar .binaryFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
   | letFn (type : ResultType)
       (function : SupportedWith (.word :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.function false) :: types) b) :
@@ -186,6 +202,13 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .idBind type hx evaluated⟩
+  | letBinaryFn type function _ ih =>
+    have total := fun x y => function.evaluates (.word y :: .word x :: values.map Value.toScalar)
+      (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)
+    let f := fun x y => (total x y).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.binaryFunction f) :: values)
+      (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
+    exact ⟨outcome, .letBinaryFn type (fun x y => (total x y).choose_spec) evaluated⟩
   | letFn type function _ ih =>
     have total := fun x => function.evaluates (.word x :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)

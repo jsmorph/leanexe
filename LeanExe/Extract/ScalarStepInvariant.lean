@@ -84,6 +84,19 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     have same := ScalarStepBinding.function?_some.mp matched
     subst binding
     exact bindings _ (List.mem_of_getElem? hb) arg target (scalar ha bindings) ht
+  | letBinaryFn type function _ ih =>
+    rw [extractScalarStepWith_letBinaryFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    intro first second result hx hy compiled
+    apply expression compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact hy
+    rcases List.mem_cons.mp member with rfl | member
+    · exact hx
+    · exact scalarStepBindings_holds bindings binding member
   | letFn type function _ ih =>
     rw [extractScalarStepWith_letFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
