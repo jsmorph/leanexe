@@ -1,8 +1,8 @@
-import Project.Drone.Trajectory
+import Project.Drone.WholeFlight
 
 /-! Check all current drone source-proof components in one target.
-The source `compute` theorem is checked. This is not an exact-WASM behavior theorem.
-See task.md for the remaining composition obligations. -/
+The source `compute` and whole-flight safety theorems are checked.
+This is not an exact-WASM behavior theorem; see task.md for that boundary. -/
 
 #print axioms Project.Drone.Edges.state_edge_clearance
 #print axioms Project.Drone.Arithmetic.restSeconds_bounds
@@ -51,3 +51,14 @@ See task.md for the remaining composition obligations. -/
 #print axioms Project.Drone.Trajectory.compute_global_cover
 #print axioms Project.Drone.Trajectory.compute_global_clearance
 #print axioms Project.Drone.Trajectory.compute_global_speed
+
+#print axioms Project.Drone.Corridor.height_on_segment
+#print axioms Project.Drone.Corridor.compute_spatial_segment
+#print axioms Project.Drone.Trajectory.compute_global_acceleration_within
+#print axioms Project.Drone.Trajectory.compute_global_acceleration
+#print axioms Project.Drone.WholeFlight.compute_singleton
+#print axioms Project.Drone.WholeFlight.compute_global_endpoints
+#print axioms Project.Drone.WholeFlight.compute_normalized_cover
+#print axioms Project.Drone.WholeFlight.compute_throughout
+#print axioms Project.Drone.WholeFlight.compute_acceleration_away_from_joins
+#print axioms Project.Drone.WholeFlight.compute_safe
