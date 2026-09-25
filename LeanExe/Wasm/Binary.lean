@@ -3180,7 +3180,10 @@ def emitStmt (releaseIndex scratch : Nat) (statement : Stmt) : List Instr :=
       | none =>
           match ScalarDescriptor.EncodedIndex.ofIR statement with
           | some descriptor => descriptor.emit scratch
-          | none => emitStmtFallback releaseIndex scratch statement
+          | none =>
+              match ScalarDescriptor.Program.ofIR statement with
+              | some descriptor => descriptor.emit scratch
+              | none => emitStmtFallback releaseIndex scratch statement
 
 def localDecls (func : Func) : List UInt8 :=
   let extra := func.locals - func.params + funcScratch func
