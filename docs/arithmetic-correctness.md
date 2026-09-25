@@ -69,7 +69,9 @@ does not change an earlier capture. Unused function bodies are still checked.
 Standard Id monadic UInt64 bindings (`let x ← …`) are also supported in the
 step, including nested pure do computations and unused bound values. The
 complete standard Bind instance expression is checked; custom Bind instances
-remain excluded.
+remain excluded. Branching monadic computations that create loop-step-valued
+continuations remain a separate capability; use `pure (if … then … else …)`
+for a conditional scalar value within this grammar.
 A conditional inside
 an update expression is currently supported; general branching of the loop
 body, `break`, `continue`, additional accumulators, multiple/nested loops and

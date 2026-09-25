@@ -198,7 +198,7 @@ def rangeMonadic (n seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
   for i in [:n.toNat] do
     let index ← pure (UInt64.ofNat i)
-    let delta ← if a < 7 then pure (a + index) else pure (seed / index)
+    let delta ← pure (if a < 7 then a + index else seed / index)
     a := (a + delta) ^^^ index
   return a
 
