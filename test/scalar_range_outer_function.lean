@@ -132,7 +132,8 @@ run_elab do
     (`OuterRangeFunctionTest.rangeOuterNested, OuterRangeFunctionTest.rangeOuterNested),
     (`OuterRangeFunctionTest.rangeOuterDo, OuterRangeFunctionTest.rangeOuterDo),
     (`OuterRangeFunctionTest.rangeOuterUnused, OuterRangeFunctionTest.rangeOuterUnused),
-    (`OuterRangeFunctionTest.rangeOuterStep, OuterRangeFunctionTest.rangeOuterStep)]
+    (`OuterRangeFunctionTest.rangeOuterStep, OuterRangeFunctionTest.rangeOuterStep),
+    (`OuterRangeFunctionTest.rangeOuterThree, OuterRangeFunctionTest.rangeOuterThree)]
   for (name, native) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -145,9 +146,9 @@ run_elab do
         let actual := module_.evalFunc 0 [count, seed]
         unless actual == expected do
           throwError "{name}({count}, {seed}): native={expected}, IR={actual}"
-  for name in [`OuterRangeFunctionTest.rangeOuterUnsupported, `OuterRangeFunctionTest.rangeOuterThree, `OuterRangeFunctionTest.rangeOuterNat, `OuterRangeFunctionTest.rangeOuterPartial] do
+  for name in [`OuterRangeFunctionTest.rangeOuterUnsupported, `OuterRangeFunctionTest.rangeOuterNat, `OuterRangeFunctionTest.rangeOuterPartial] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
       throwError "{name}: unsupported outer function accepted"
-  Lean.logInfo "240 native/outer-range-function IR comparisons and four rejection tests passed"
+  Lean.logInfo "264 native/outer-range-function IR comparisons and three rejection tests passed"
