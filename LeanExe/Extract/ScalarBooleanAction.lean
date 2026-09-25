@@ -6,11 +6,14 @@ namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
 @[simp] theorem booleanLocalOperands_booleanPure (body : Lean.Expr) (type : BooleanType) :
-    booleanLocalOperands? (BooleanIdentity.pure body type) = none := rfl
+    booleanLocalOperands? (BooleanIdentity.pure body type) = none := by
+  simp [BooleanIdentity.pure, booleanLocalOperands?, booleanComparisonOperands?]
 @[simp] theorem booleanLocalOperands_booleanRun (body : Lean.Expr) (type : BooleanType) :
-    booleanLocalOperands? (BooleanIdentity.run body type) = none := rfl
+    booleanLocalOperands? (BooleanIdentity.run body type) = none := by
+  simp [BooleanIdentity.run, booleanLocalOperands?, booleanComparisonOperands?]
 @[simp] theorem booleanLocalOperands_metadata (data : Lean.MData) (body : Lean.Expr) :
-    booleanLocalOperands? (.mdata data body) = none := rfl
+    booleanLocalOperands? (.mdata data body) = none := by
+  simp [booleanLocalOperands?, booleanComparisonOperands?]
 
 /-- Direct Boolean values or exact standard pure Id wrappers. -/
 def booleanAction? (source : Lean.Expr) : Option BooleanAction :=

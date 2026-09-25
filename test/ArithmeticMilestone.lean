@@ -3617,6 +3617,137 @@ def rangeRelationChoiceUnused (count seed : UInt64) : UInt64 := Id.run do
     if flag then break
   return a
 
+def dependentChoiceEqual (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y == 0
+  let flag := if _h : a = b then b else !b
+  flag.toUInt64 + x
+
+def dependentChoiceProposition (x y : UInt64) : UInt64 :=
+  let flag := if _h : x < y then x == 0 else y != 0
+  flag.toUInt64 + y
+
+def dependentChoiceNested (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y != 0
+  let flag := if _h : a then
+      if _k : a ≠ b then decide (a = b) else !b
+    else if _j : x ≤ y then a == b else a != b
+  flag.toUInt64
+
+def dependentChoiceCapture (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let f := fun flag : Bool =>
+    let value := if _h : flag = outer then
+        (let g := fun z : UInt64 => z + x; g y) == x
+      else !flag
+    (if _k : value then outer else !outer).toUInt64 + x
+  f (y != 0)
+
+def dependentChoiceLiterals (x y : UInt64) : UInt64 :=
+  (if _h : True then true else false).toUInt64 * x +
+  (if _h : False then true else false).toUInt64 * y +
+  (if _h : true ≠ false then false else true).toUInt64 +
+  (if _h : false = false then true else false).toUInt64 * 7
+
+def dependentChoiceDo (x y : UInt64) : UInt64 := Id.run do
+  let a ← if x = y then pure true else pure (decide (x > 0))
+  let b ← pure (y != 0)
+  let flag ← pure (if _h : a = b then decide (a ≠ false) else !b)
+  let mut z := x
+  if _h : flag then z := z + y else z := z - y
+  return z + (if _h : flag ≠ a then b else !b).toUInt64
+
+def dependentChoiceTruth (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y != 0
+  let first := if _h : a then b else !b
+  let second := if _h : a = true then b else !b
+  (first == second).toUInt64 + (if _h : first = false then x == y else x != y).toUInt64
+
+def dependentChoiceUnused (x y : UInt64) : UInt64 :=
+  let _unused := if _h : (x == 0) ≠ (y == 0) then decide (x < y) else decide (x > y)
+  x + y
+
+def rangeDependentChoiceYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first := a % 2 == 0
+    let second := UInt64.ofNat i % 3 == 0
+    let flag ← pure (if _h : first ≠ second then !second else first)
+    a := a + (if _k : flag then first else !second).toUInt64
+    if flag then break
+  return a
+
+def rangeDependentChoiceJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let even ← if a % 2 = 0 then pure true else pure false
+    let other ← pure (UInt64.ofNat i % 2 == 0)
+    let next ← if even then pure (if _h : even = other then other else !other) else pure (if _h : even ≠ other then even else !even)
+    if next then a := a + 2 else a := a + 5
+    if (if _h : next = even then a % 7 == 0 else a % 11 == 0) then break
+  return a
+
+def rangeDependentChoiceContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first := UInt64.ofNat i % 3 == 1
+    let second := a == seed
+    let skip := if _h : first ≠ second then first else !second
+    if _h : skip then continue
+    a := a + UInt64.ofNat i
+    if (if _h : first = false then second else !second) then break
+  return a
+
+def rangeDependentChoiceCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer := seed != 0
+  let f := fun flag : Bool => (if _h : flag = outer then flag else !flag).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun flag : Bool => f (if _h : flag ≠ outer then outer else !outer) + a
+    a := g (UInt64.ofNat i % 2 == 0)
+    if (if _h : (a % 11 == 0) ≠ outer then outer else !outer) then break
+  return a + f (a == 0)
+
+def rangeDependentChoiceBounds (count seed : UInt64) : UInt64 := Id.run do
+  let flag := decide (seed % 3 ≤ 1)
+  let first := (if _h : flag = false then flag else !flag).toUInt64
+  let stop := count + (if _h : flag ≠ true then !flag else flag).toUInt64
+  let mut a := seed
+  for i in [first.toNat:stop.toNat:2] do
+    let even := UInt64.ofNat i % 2 == 0
+    a := a + (if _h : even = flag then flag else !even).toUInt64
+    if (if _h : a ≤ seed then even else flag) then break
+  return a
+
+def rangeDependentChoiceStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let outer := a == seed
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let next ← pure (if _h : flag = outer then !flag else outer)
+      if _h : next then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (if _h : flag ≠ false then flag else !outer).toUInt64)
+    f (if _h : (UInt64.ofNat i ≥ 7 : Bool) = outer then outer else !outer)
+
+def rangeDependentChoiceOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag ← pure (count != 0)
+  let mut a := seed + (if _h : flag = false then true else false).toUInt64
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if (if _h : (a % 7 == 0) ≠ flag then flag else !flag) then break
+  let changed ← if a = seed then pure (if _h : (a == 0) = flag then flag else !flag) else pure (if _h : flag ≠ false then true else false)
+  return a + (if _h : changed = flag then changed else flag).toUInt64
+
+def rangeDependentChoiceUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := a == seed
+    let _unused := if _h : flag = (UInt64.ofNat i == 0) then !flag else flag
+    a := a + UInt64.ofNat i + 1
+    if flag then break
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -3906,7 +4037,15 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeRelationChoiceBounds", rangeRelationChoiceBounds),
    ("rangeRelationChoiceStep", rangeRelationChoiceStep),
    ("rangeRelationChoiceOuter", rangeRelationChoiceOuter),
-   ("rangeRelationChoiceUnused", rangeRelationChoiceUnused)]
+   ("rangeRelationChoiceUnused", rangeRelationChoiceUnused),
+   ("rangeDependentChoiceYield", rangeDependentChoiceYield),
+   ("rangeDependentChoiceJoined", rangeDependentChoiceJoined),
+   ("rangeDependentChoiceContinue", rangeDependentChoiceContinue),
+   ("rangeDependentChoiceCapture", rangeDependentChoiceCapture),
+   ("rangeDependentChoiceBounds", rangeDependentChoiceBounds),
+   ("rangeDependentChoiceStep", rangeDependentChoiceStep),
+   ("rangeDependentChoiceOuter", rangeDependentChoiceOuter),
+   ("rangeDependentChoiceUnused", rangeDependentChoiceUnused)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -4149,7 +4288,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("relationChoiceLiterals", relationChoiceLiterals),
    ("relationChoiceDo", relationChoiceDo),
    ("relationChoiceTruth", relationChoiceTruth),
-   ("relationChoiceUnused", relationChoiceUnused)]
+   ("relationChoiceUnused", relationChoiceUnused),
+   ("dependentChoiceEqual", dependentChoiceEqual),
+   ("dependentChoiceProposition", dependentChoiceProposition),
+   ("dependentChoiceNested", dependentChoiceNested),
+   ("dependentChoiceCapture", dependentChoiceCapture),
+   ("dependentChoiceLiterals", dependentChoiceLiterals),
+   ("dependentChoiceDo", dependentChoiceDo),
+   ("dependentChoiceTruth", dependentChoiceTruth),
+   ("dependentChoiceUnused", dependentChoiceUnused)]
 
 end ArithmeticMilestone
 
