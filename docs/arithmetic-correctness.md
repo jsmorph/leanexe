@@ -20,6 +20,7 @@ nesting of supported expressions:
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `~~~` | Bitwise complement of all 64 bits |
+| `min`, `max` | Smaller/larger UInt64 operand using unsigned order |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
 | `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards admit `&&`, `||` and repeated `!`; propositional `∧` and `∨` combine admitted comparison guards |
 
@@ -68,6 +69,12 @@ lowering. Compound Boolean guards can also appear inside propositional `∧`,
 counts retain Bool.not and propositional Not, with their exact decision evidence.
 Every Boolean subtree and compared scalar operand is checked. Custom BEq and
 decision instances, including in unused helper bodies, remain rejected.
+
+Standard UInt64 `min` and `max` lower to unsigned `≤` followed by selection.
+The extractor checks their exact standard Min/Max instance. Both operands are
+pure and total, so their repeated evaluation in emitted code preserves results.
+Custom instances, including in unused function bodies, remain rejected. These
+operations may appear in guards, helper bodies, loop steps and range bounds.
 
 Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
 (`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
