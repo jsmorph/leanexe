@@ -131,8 +131,8 @@ Nat literal smaller than 2^64, as in `[first:stop:2]`. Steps may yield or finish
 The source index retains its Nat type, including Lean borrowing metadata on
 that type, and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
 bindings and arithmetic may precede and follow the loop. Local scalar helpers
-may also be defined before the loop, using the same unary, binary and
-Unit-prefixed argument forms. Their calls may appear in endpoints, the initial
+may also be defined before the loop, using arbitrary finite UInt64 parameter
+lists and the supported Unit-prefixed argument forms. Their calls may appear in endpoints, the initial
 accumulator, loop steps and the final result. They retain their lexical captures
 across later shadowing and accumulator updates. Nested/chained helpers and
 standard Id bodies are supported; unused bodies are checked. An ordinary UInt64
@@ -159,8 +159,8 @@ and every continuation body are checked, including unused continuations.
 The early-exit path also accepts explicit standard `pure (ForInStep.done …)`
 and `pure (ForInStep.yield …)` results, direct `.done`/`.yield` constructors,
 and local functions returning them. Functions returning step results may take
-one or two UInt64 arguments, one UInt64 argument with a Unit prefix, or one
-complete step result. Two-argument functions preserve argument order and captured
+any finite positive number of UInt64 arguments, one UInt64 argument with a Unit
+prefix, or one complete step result. Functions preserve argument order and captured
 values, including through nested/chained calls and standard Id result wrappers. Scalar and step-valued
 functions have distinct binding kinds; both
 compiled projections describe the same native step result. Step-result bindings

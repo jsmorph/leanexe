@@ -169,5 +169,15 @@
   "rangeManyYield",
   "rangeManyStride",
   "rangeManyGuard",
-  "rangeManyResult"
+  "rangeManyResult",
+  "stepManyOrder",
+  "stepManyFour",
+  "stepManySix",
+  "stepManyCapture",
+  "stepManyChained",
+  "stepManyNested",
+  "stepManyBind",
+  "stepManyScalarMix",
+  "stepManyUnused",
+  "stepManyWrapped"
 ]

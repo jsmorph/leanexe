@@ -1797,6 +1797,79 @@ def rangeManyResult (count seed : UInt64) : UInt64 :=
       if a % 5 == 0 then break
     return f a seed count 7
 
+def stepManyOrder (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if (x - y) % 7 == z % 7 then .done (x - y * 3 + z) else .yield (x + y * 5 - z)
+    f a seed (UInt64.ofNat i)
+
+def stepManyFour (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z w =>
+      if x < y ∨ z == w then .done (x * 3 - y + z * 7 - w) else .yield (x - y * 5 + z + w)
+    f a (UInt64.ofNat i) seed count
+
+def stepManySix (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) :=
+      fun x y z u v w => do
+        let result ← pure (x + y * 3 - z * 5 + u * 7 - v * 11 + w * 13)
+        if result % 5 == 0 then return .done result
+        return .yield (result + 1)
+    f a (UInt64.ofNat i) seed 1 2 count
+
+def stepManyCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let captured := a + UInt64.ofNat i
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if x % 7 == y % 7 then .done (captured + z) else .yield (captured + x - y + z)
+    let captured := seed + 11
+    f captured a count
+
+def stepManyChained (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if x % 5 == 0 then .done (x + y - z) else .yield (x - y + z)
+    let g : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) :=
+      fun p q r s t => pure (f (p + q) r (s + t))
+    g a seed (UInt64.ofNat i) count 1
+
+def stepManyNested (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z w =>
+      let g : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun p q r =>
+        if p + x < q + y then .done (p + z - w) else .yield (r + x * y - z + w)
+      g a seed (UInt64.ofNat i)
+    f a seed count (UInt64.ofNat i)
+
+def stepManyBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y z =>
+      pure (if x % 7 == y % 7 then .done (x + z) else .yield (x - y + z))
+    let result ← f a seed (UInt64.ofNat i)
+    let alias ← pure result
+    return alias
+
+def stepManyScalarMix (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      let g := fun p q r s : UInt64 => p + q * r - s
+      let value := g x y z seed
+      if value % 11 == 0 then .done value else .yield (value + UInt64.ofNat i)
+    f a (UInt64.ofNat i) count
+
+def stepManyUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let _f : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z u v =>
+      if x < y then .done (a + z - u) else .yield (a + z / u + v)
+    .yield (a + UInt64.ofNat i + 1)
+
+def stepManyWrapped (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → Id (Id (ForInStep UInt64)) :=
+      fun x y z w => pure (pure (if x % 3 == 0 then .done (x + y - z) else .yield (x - y + z + w)))
+    @Id.run (Id (ForInStep UInt64)) (f a seed (UInt64.ofNat i) count)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1963,7 +2036,17 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeManyYield", rangeManyYield),
    ("rangeManyStride", rangeManyStride),
    ("rangeManyGuard", rangeManyGuard),
-   ("rangeManyResult", rangeManyResult)]
+   ("rangeManyResult", rangeManyResult),
+   ("stepManyOrder", stepManyOrder),
+   ("stepManyFour", stepManyFour),
+   ("stepManySix", stepManySix),
+   ("stepManyCapture", stepManyCapture),
+   ("stepManyChained", stepManyChained),
+   ("stepManyNested", stepManyNested),
+   ("stepManyBind", stepManyBind),
+   ("stepManyScalarMix", stepManyScalarMix),
+   ("stepManyUnused", stepManyUnused),
+   ("stepManyWrapped", stepManyWrapped)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

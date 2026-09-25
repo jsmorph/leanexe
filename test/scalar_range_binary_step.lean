@@ -119,7 +119,8 @@ run_elab do
     (`RangeBinaryStepTest.rangeBinaryStepScalar, RangeBinaryStepTest.rangeBinaryStepScalar),
     (`RangeBinaryStepTest.rangeBinaryStepUnused, RangeBinaryStepTest.rangeBinaryStepUnused),
     (`RangeBinaryStepTest.rangeBinaryStepResult, RangeBinaryStepTest.rangeBinaryStepResult),
-    (`RangeBinaryStepTest.rangeBinaryStepWrapped, RangeBinaryStepTest.rangeBinaryStepWrapped)]
+    (`RangeBinaryStepTest.rangeBinaryStepWrapped, RangeBinaryStepTest.rangeBinaryStepWrapped),
+    (`RangeBinaryStepTest.rangeBinaryStepThree, RangeBinaryStepTest.rangeBinaryStepThree)]
   for (name, native) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -132,9 +133,9 @@ run_elab do
         let actual := module_.evalFunc 0 [count, seed]
         unless actual == expected do
           throwError "{name}({count}, {seed}): native={expected}, IR={actual}"
-  for name in [`RangeBinaryStepTest.rangeBinaryStepUnsupported, `RangeBinaryStepTest.rangeBinaryStepPartial, `RangeBinaryStepTest.rangeBinaryStepThree, `RangeBinaryStepTest.rangeBinaryStepBool, `RangeBinaryStepTest.rangeBinaryStepNat] do
+  for name in [`RangeBinaryStepTest.rangeBinaryStepUnsupported, `RangeBinaryStepTest.rangeBinaryStepPartial, `RangeBinaryStepTest.rangeBinaryStepBool, `RangeBinaryStepTest.rangeBinaryStepNat] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
       throwError "{name}: unsupported binary step function accepted"
-  Lean.logInfo "240 native/range-binary-step IR comparisons and five rejection tests passed"
+  Lean.logInfo "264 native/range-step-helper IR comparisons and four rejection tests passed"

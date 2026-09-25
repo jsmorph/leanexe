@@ -1674,6 +1674,102 @@ def manyPartial (x y : UInt64) : UInt64 :=
   let g := f x
   g y x
 
+def stepManyOrder (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if (x - y) % 7 == z % 7 then .done (x - y * 3 + z) else .yield (x + y * 5 - z)
+    f a seed (UInt64.ofNat i)
+
+def stepManyFour (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z w =>
+      if x < y ∨ z == w then .done (x * 3 - y + z * 7 - w) else .yield (x - y * 5 + z + w)
+    f a (UInt64.ofNat i) seed count
+
+def stepManySix (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) :=
+      fun x y z u v w => do
+        let result ← pure (x + y * 3 - z * 5 + u * 7 - v * 11 + w * 13)
+        if result % 5 == 0 then return .done result
+        return .yield (result + 1)
+    f a (UInt64.ofNat i) seed 1 2 count
+
+def stepManyCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let captured := a + UInt64.ofNat i
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if x % 7 == y % 7 then .done (captured + z) else .yield (captured + x - y + z)
+    let captured := seed + 11
+    f captured a count
+
+def stepManyChained (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      if x % 5 == 0 then .done (x + y - z) else .yield (x - y + z)
+    let g : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) :=
+      fun p q r s t => pure (f (p + q) r (s + t))
+    g a seed (UInt64.ofNat i) count 1
+
+def stepManyNested (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z w =>
+      let g : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun p q r =>
+        if p + x < q + y then .done (p + z - w) else .yield (r + x * y - z + w)
+      g a seed (UInt64.ofNat i)
+    f a seed count (UInt64.ofNat i)
+
+def stepManyBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : UInt64 → UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y z =>
+      pure (if x % 7 == y % 7 then .done (x + z) else .yield (x - y + z))
+    let result ← f a seed (UInt64.ofNat i)
+    let alias ← pure result
+    return alias
+
+def stepManyScalarMix (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      let g := fun p q r s : UInt64 => p + q * r - s
+      let value := g x y z seed
+      if value % 11 == 0 then .done value else .yield (value + UInt64.ofNat i)
+    f a (UInt64.ofNat i) count
+
+def stepManyUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let _f : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z u v =>
+      if x < y then .done (a + z - u) else .yield (a + z / u + v)
+    .yield (a + UInt64.ofNat i + 1)
+
+def stepManyWrapped (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → UInt64 → Id (Id (ForInStep UInt64)) :=
+      fun x y z w => pure (pure (if x % 3 == 0 then .done (x + y - z) else .yield (x - y + z + w)))
+    @Id.run (Id (ForInStep UInt64)) (f a seed (UInt64.ofNat i) count)
+
+def stepManyUnusedUnsupported (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a =>
+    let _f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z =>
+      .yield (UInt64.ofNat ((toString x).length) + y + z)
+    .yield (a + 1)
+
+def stepManyWrongDomain (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a =>
+    let _f : UInt64 → UInt64 → UInt64 → Bool → ForInStep UInt64 := fun x y z b =>
+      if b then .done (x + y) else .yield (z + a)
+    .yield (a + 1)
+
+def stepManyPartial (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y z => .yield (x + y + z)
+    let g := f a
+    g seed (UInt64.ofNat i)
+
+def stepManyIgnoredOperand (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a =>
+    let f : UInt64 → UInt64 → UInt64 → ForInStep UInt64 := fun x y _z => .yield (x + y)
+    f a seed (UInt64.ofNat ((toString seed).length))
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -2120,7 +2216,18 @@ run_elab do
       `ArithmeticModeTest.rangeManyStride,
       `ArithmeticModeTest.rangeManyGuard,
       `ArithmeticModeTest.rangeManyResult,
-      `ArithmeticModeTest.rangeOuterThree] do
+      `ArithmeticModeTest.rangeOuterThree,
+      `ArithmeticModeTest.stepManyOrder,
+      `ArithmeticModeTest.stepManyFour,
+      `ArithmeticModeTest.stepManySix,
+      `ArithmeticModeTest.stepManyCapture,
+      `ArithmeticModeTest.stepManyChained,
+      `ArithmeticModeTest.stepManyNested,
+      `ArithmeticModeTest.stepManyBind,
+      `ArithmeticModeTest.stepManyScalarMix,
+      `ArithmeticModeTest.stepManyUnused,
+      `ArithmeticModeTest.stepManyWrapped,
+      `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -2138,6 +2245,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.stepManyUnusedUnsupported, `ArithmeticModeTest.stepManyWrongDomain, `ArithmeticModeTest.stepManyPartial, `ArithmeticModeTest.stepManyIgnoredOperand,
       `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,
@@ -2150,7 +2258,7 @@ run_elab do
       `ArithmeticModeTest.complementCustom, `ArithmeticModeTest.complementHelper, `ArithmeticModeTest.complementUnusedCustom,
       `ArithmeticModeTest.rangeLetUnsupported, `ArithmeticModeTest.rangeLetTwoLoops, `ArithmeticModeTest.rangeLetBool,
       `ArithmeticModeTest.rangeOuterUnsupported, `ArithmeticModeTest.rangeOuterNat, `ArithmeticModeTest.rangeOuterPartial,
-      `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepThree, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,
+      `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,
       `ArithmeticModeTest.rangeBinaryUnsupported, `ArithmeticModeTest.rangeBinaryPartial,
       `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,
       `ArithmeticModeTest.dynamicNatAddition, `ArithmeticModeTest.dynamicCalledStart,

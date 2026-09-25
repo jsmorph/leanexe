@@ -109,6 +109,23 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc
       ((bindings.toScalar.cons (binding := .unit) (value := .unit) trivial).cons ha)
+  | manyApply call function arguments =>
+    rw [extractScalarStepWith_manyApply] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, compiledArguments, ha, ht⟩ := compiled
+    apply bindings.manyFunction (Option.bind_eq_some_iff.mpr hf) function compiledArguments _ code
+      (extractScalarArguments_length _ _ ha) ?_ ht
+    exact extractScalarArguments_relation call.arguments _ _ _ ha
+      (fun operand member expression found =>
+        extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+  | letManyStepFn shape function _ ihf ihb =>
+    rw [extractScalarStepWith_letManyStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht
+    apply bindings.cons
+    intro arguments native target len meanings compiled
+    exact ihf native (meanings.length.symm.trans len) compiled (bindings.words meanings.reverse)
   | binaryApply function first second =>
     rw [extractScalarStepWith_binaryApply _ _ _ _ first.not_unit] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

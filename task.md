@@ -495,7 +495,13 @@ both result kinds. The new larger-step-helper parser checks and remains disjoint
 from scalar helper parsing. All existing affected extraction proofs, including
 function correctness and range invariants, pass. The preceding step-helper test
 passes 240 native Lean/IR comparisons and five rejection tests. The new binding
-and application rules are not yet enabled; this increment is not complete.
+and application rules are now enabled. Source totality, acceptance, successful
+extraction support, correctness and both output invariants pass through the
+function extractor. All 240 new native Lean/IR comparisons, four declaration
+rejection tests and two raw arity rejection tests pass. The preceding step-helper
+test passes 264 comparisons and four rejection tests, with its three-argument
+case now accepted. The complete compiler audits and focused V8 execution remain
+to be checked before this increment is complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
