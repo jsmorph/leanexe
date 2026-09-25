@@ -7,6 +7,8 @@ def comparison : LeanExe.Source.Scalar.Comparison → Expr → Expr → Cond
   | .eq, a, b => .eq a b
   | .lt, a, b => .ltU a b
   | .le, a, b => .leU a b
+  | .gt, a, b => .not (.leU a b)
+  | .ge, a, b => .not (.ltU a b)
   | .beq, a, b => .eq a b
   | .bne, a, b => .not (.eq a b)
 

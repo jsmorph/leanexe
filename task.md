@@ -31,14 +31,16 @@ code/repeat computations. No type-safety implementation changed, so its prior
 
 In progress: conditionals over unsigned scalar comparisons. The new
 `Source/ExprEquality`, `Source/ScalarComparison`, and `Extract/ScalarComparison`
-modules pass their focused Lean build. They define canonical `=`, `<`, `≤`,
+modules pass their focused Lean build. They define canonical `=`, `<`, `≤`, `>`, `≥`,
 `==`, and `!=` syntax, check its complete decision evidence with a proved
 structural Expr comparison (including metadata), and prove recognition and
 comparison lowering. Source branch evaluation, extraction preservation/acceptance/soundness and static
 bounds for both branches now pass focused builds. Exact byte encoding, whole-module validation and the final source-to-byte
 execution theorem now pass the general proof build, including all nine axiom
 audits. The integration suite now has 254 expected comparisons over twenty
-declarations, but this expanded suite has not run yet. Complete the real
+declarations. Its first run found that Lean preserves distinct `GT.gt`/`GE.ge`
+heads instead of rewriting them to reversed `LT.lt`/`LE.le` expressions. Those
+forms now have recognition/lowering proofs; repeat the final theorem and real
 compiler/engine checks before moving to `do`, further Boolean forms or loops.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
