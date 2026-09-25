@@ -107,29 +107,41 @@ def initial : Array UInt64 := Id.run do
     row := ((row.push cost).push cost).push 0
   return row
 
+-- Named tail-recursive boundaries for source correctness proofs.
+def validHeights : Nat → Array UInt64 → Bool
+  | 0, _ => true
+  | count+1, terrain =>
+    if terrain[count]! > 1000000 then false else validHeights count terrain
+
+def appendParents : Nat → Nat → Array UInt64 → Array UInt64 → Array UInt64
+  | 0, _, _, history => history
+  | count+1, state, layer, history =>
+    appendParents count (state+1) layer (history.push layer[3*state+2]!)
+
+def buildHistory : Nat → Nat → Array UInt64 → Array UInt64 → Array UInt64 → Array UInt64
+  | 0, _, _, _, history => history
+  | count+1, i, terrain, previous, history =>
+    let layer := advance (floorAt terrain (i-1)) (floorAt terrain i)
+      (i+1 == terrain.size) previous
+    buildHistory count (i+1) terrain layer (appendParents stateCount 0 layer history)
+
+def unwind : Nat → Nat → Nat → Array UInt64 → Array UInt64 → Array UInt64 → Array UInt64
+  | 0, _, _, _, _, reversed => reversed.reverse
+  | count+1, i, state, terrain, history, reversed =>
+    let reversed := (reversed.push (speed state)).push (altitude (floorAt terrain i) state)
+    let parent := if i > 0 then history[(i-1)*stateCount+state]!.toNat else state
+    unwind count (i-1) parent terrain history reversed
+
 /-- Input: 0..64 terrain elevations in 0..1,000,000 relative to a datum.
 Output: [alt0,speed0,...]. Endpoints are on the ground and at rest.
 Empty input returns []; invalid input also returns [], never a partial flight.
+The all-stop witness ensures the terminal stopped state is always reachable.
 -/
-def compute (terrain : Array UInt64) : Array UInt64 := Id.run do
-  if terrain.size == 0 || terrain.size > 64 then return #[]
-  for height in terrain do
-    if height > 1000000 then return #[]
-  let mut layer := initial
-  let mut history : Array UInt64 := #[]
-  for i in [1:terrain.size] do
-    layer := advance (floorAt terrain (i - 1)) (floorAt terrain i)
-      (i + 1 == terrain.size) layer
-    for state in [:stateCount] do
-      history := history.push layer[3 * state + 2]!
-  if layer[0]! == infinity then return #[]
-  let mut reversed : Array UInt64 := #[]
-  let mut state : Nat := 0
-  for step in [:terrain.size] do
-    let i := terrain.size - 1 - step
-    reversed := reversed.push (speed state)
-    reversed := reversed.push (altitude (floorAt terrain i) state)
-    if i > 0 then state := history[(i - 1) * stateCount + state]!.toNat
-  return reversed.reverse
+def compute (terrain : Array UInt64) : Array UInt64 :=
+  if terrain.size == 0 || terrain.size > 64 then #[]
+  else if validHeights terrain.size terrain then
+    let history := buildHistory (terrain.size-1) 1 terrain initial #[]
+    unwind terrain.size (terrain.size-1) 0 terrain history #[]
+  else #[]
 
 end LeanExe.Examples.Drone
