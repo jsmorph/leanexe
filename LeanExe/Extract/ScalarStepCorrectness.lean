@@ -63,6 +63,24 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
       obtain ⟨valueEval, doneEval⟩ := ih (by simpa [flag] using ht) bindings
       exact ⟨.iteTrue (by simpa [flag] using condition) valueEval,
         .iteTrue (by simpa [flag] using condition) doneEval⟩
+  | @chooseDependent values t e outcome guard type tn fn tb fb native arguments _ ih =>
+    rw [extractScalarStepWith_dependentBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
+    have condition := extractGuard_correct guard _ native hc
+      (fun operand member expression found =>
+        extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+    cases flag : guard.denote native with
+    | false =>
+      obtain ⟨valueEval, doneEval⟩ := ih (by simpa [flag] using he)
+        (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+      exact ⟨.iteFalse (by simpa [flag] using condition) valueEval,
+        .iteFalse (by simpa [flag] using condition) doneEval⟩
+    | true =>
+      obtain ⟨valueEval, doneEval⟩ := ih (by simpa [flag] using ht)
+        (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+      exact ⟨.iteTrue (by simpa [flag] using condition) valueEval,
+        .iteTrue (by simpa [flag] using condition) doneEval⟩
   | letE value body ih =>
     rw [extractScalarStepWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

@@ -497,10 +497,18 @@ The eighteen selected preceding modules kept identical bytes. The full corpus
 contains 319 declarations; this execution run checked 28. General type validation
 used cached dependencies.
 
-Next increment: dependent conditionals (`if h : condition then ... else ...`)
+Current increment: dependent conditionals (`if h : condition then ... else ...`)
 over the admitted guards, with explicit proof-binder scope and both branches
 checked. Complete the independent source rules, extraction proofs and focused
 execution before proceeding to another capability.
+
+The exact dependent-conditional parser checks the full guard decision and both
+proof-lambda domains. Source semantics and support retain an erased binder in
+each branch's lexical context. Scalar and step extraction acceptance, support,
+correctness and invariants pass, including function extraction and range output
+invariants. The source literal-count inversion now excludes this additional
+conditional shape explicitly. Focused execution tests and complete audits are
+still pending; this increment is not complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

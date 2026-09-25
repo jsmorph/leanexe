@@ -6,6 +6,7 @@ import LeanExe.Extract.ScalarComplement
 import LeanExe.Extract.ScalarExtremum
 import LeanExe.Extract.ScalarDo
 import LeanExe.Extract.ScalarBindings
+import LeanExe.Extract.ScalarDependentBranch
 import LeanExe.Extract.ScalarGuard
 import LeanExe.Source.Scalar
 
@@ -89,6 +90,18 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       let a ← extractScalarExprWith locals left
       let b ← extractScalarExprWith locals right
       pure (lowerExtremum .maximum a b)
+  | .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) type)
+      condition) evidence) (.lam _ trueDomain onTrue _)) (.lam _ falseDomain onFalse _) =>
+      match scalarResultType? type with
+      | none => none
+      | some _ =>
+          match _guard : dependentGuard? condition evidence trueDomain falseDomain with
+          | none => none
+          | some guard => do
+              let c ← extractGuard guard (fun operand _member => extractScalarExprWith locals operand)
+              let t ← extractScalarExprWith (.unit :: locals) onTrue
+              let e ← extractScalarExprWith (.unit :: locals) onFalse
+              pure (.ite c t e)
   | .app (.app head left) right =>
       match ScalarPrimitive.ofHead? head with
       | some op => do
@@ -161,6 +174,7 @@ decreasing_by
     | omega
     | (exact scalarManyCall_size _call _member)
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
+    | (have bounds := dependentGuard_size _guard _member; omega)
     | (have bounds := comparison_size _h; omega)
     | (have bounds := compoundGuard_size _g _member; omega)
 
@@ -217,6 +231,17 @@ theorem extractScalarExprWith_compoundBranch (guard : LeanExe.Source.Scalar.Comp
       pure (.ite c onTrue onFalse)) := by
   rw [LeanExe.Source.Scalar.CompoundGuard.branch, extractScalarExprWith]
   rw [scalarResultType_accepts, compoundGuard_not_comparison, compoundGuard_accepts]
+
+theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.Guard)
+    (locals : List ScalarBinding) (type : LeanExe.Source.Scalar.ResultType)
+    (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr) :
+    extractScalarExprWith locals (guard.dependentBranch type.expr tn fn tb fb t e) = (do
+      let c ← extractGuard guard (fun operand _ => extractScalarExprWith locals operand)
+      let onTrue ← extractScalarExprWith (.unit :: locals) t
+      let onFalse ← extractScalarExprWith (.unit :: locals) e
+      pure (.ite c onTrue onFalse)) := by
+  rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarExprWith,
+    scalarResultType_accepts, dependentGuard_accepts]
 
 @[simp] theorem extractScalarExprWith_idRun (locals : List ScalarBinding) (body : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.run body type) =
