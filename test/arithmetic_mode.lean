@@ -2274,6 +2274,90 @@ def rangeInstanceCustom (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun _ a =>
     .yield (a + @OfNat.ofNat UInt64 (nat_lit 5) ((fun (_ : UInt64) => ⟨a⟩) seed))
 
+def naturalConverted (x y : UInt64) : UInt64 := x + UInt64.ofNat 5 - y
+
+def naturalConvertedOverflow (x y : UInt64) : UInt64 :=
+  x + UInt64.ofNat 18446744073709551621 - y
+
+def naturalExplicitLet (x y : UInt64) : UInt64 :=
+  x + @OfNat.ofNat UInt64 7 (let _unused := x + y; @UInt64.instOfNat 7) - y
+
+def naturalExplicitApplied (x y : UInt64) : UInt64 :=
+  x * @OfNat.ofNat UInt64 11 ((fun (_ : UInt64) => @UInt64.instOfNat 11) (x + y)) - y
+
+def naturalExplicitNested (x y : UInt64) : UInt64 :=
+  let n := @OfNat.ofNat UInt64 13
+    ((let _flag := x == y; fun (_ : UInt64) (_ : Unit) => @UInt64.instOfNat 13) y ())
+  n + x * y
+
+def naturalDependentMany (x y : UInt64) : UInt64 :=
+  let outer := x != y
+  let f := fun a b c : UInt64 =>
+    let inner := a == b || b == c
+    if _h : outer && !inner then a + b * 3 - c else a - b * UInt64.ofNat 5 + c
+  f x y (x + 7)
+
+def naturalDo (x y : UInt64) : UInt64 := Id.run do
+  let flag := x == y
+  let mut a := x
+  if h : flag then
+    a := a + @OfNat.ofNat UInt64 3 ((fun (_ : flag = true) => @UInt64.instOfNat 3) h)
+  else a := a - @OfNat.ofNat UInt64 5 (let _unused := a; @UInt64.instOfNat 5)
+  return a ^^^ y
+
+def naturalOperand (x y : UInt64) : UInt64 :=
+  let flag := UInt64.ofNat 7 == x
+  if _h : flag then max (UInt64.ofNat 17) y else min (UInt64.ofNat 5 + y) x
+
+def rangeNaturalStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if h : a < UInt64.ofNat i then
+      a := a + @OfNat.ofNat UInt64 3 ((fun (_ : a < UInt64.ofNat i) => @UInt64.instOfNat 3) h)
+    else a := a + @OfNat.ofNat UInt64 5 (let _unused := a; @UInt64.instOfNat 5)
+  return a
+
+def rangeNaturalBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first := @OfNat.ofNat UInt64 1 ((fun (_ : UInt64) => @UInt64.instOfNat 1) count)
+  let mut a := seed + @OfNat.ofNat UInt64 13 (let _unused := count; @UInt64.instOfNat 13)
+  for i in [first.toNat:count.toNat:2] do
+    a := a + UInt64.ofNat i
+    if a % 7 == 0 then continue
+    a := a + @OfNat.ofNat UInt64 3 ((fun (_ : UInt64) => @UInt64.instOfNat 3) a)
+  return a
+
+def rangeNaturalConversion (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat 17 + UInt64.ofNat i
+    let stop := a % 11 == 0
+    if _h : stop then break
+  return a
+
+def rangeNaturalOuter (count seed : UInt64) : UInt64 :=
+  let f := fun x y z : UInt64 =>
+    x + y * @OfNat.ofNat UInt64 5 ((fun (_ : UInt64) => @UInt64.instOfNat 5) z)
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f a (UInt64.ofNat i) count
+      if a % 7 == 0 then break
+    return a
+  f result seed count
+
+def naturalCustomNat (x y : UInt64) : UInt64 :=
+  x + UInt64.ofNat (@OfNat.ofNat Nat (nat_lit 5) ⟨y.toNat⟩)
+
+def naturalCustomWord (x y : UInt64) : UInt64 :=
+  @OfNat.ofNat UInt64 5 ((fun (_ : UInt64) => ⟨y⟩) x)
+
+def naturalNotLiteral (x y : UInt64) : UInt64 :=
+  UInt64.ofNat (x.toNat + y.toNat)
+
+def rangeNaturalCustomNat (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a =>
+    .yield (a + UInt64.ofNat (@OfNat.ofNat Nat (nat_lit 5) ⟨seed.toNat⟩))
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -2791,6 +2875,18 @@ run_elab do
       `ArithmeticModeTest.rangeInstanceBreak,
       `ArithmeticModeTest.rangeInstanceBounds,
       `ArithmeticModeTest.rangeInstanceOuter,
+      `ArithmeticModeTest.naturalConverted,
+      `ArithmeticModeTest.naturalConvertedOverflow,
+      `ArithmeticModeTest.naturalExplicitLet,
+      `ArithmeticModeTest.naturalExplicitApplied,
+      `ArithmeticModeTest.naturalExplicitNested,
+      `ArithmeticModeTest.naturalDependentMany,
+      `ArithmeticModeTest.naturalDo,
+      `ArithmeticModeTest.naturalOperand,
+      `ArithmeticModeTest.rangeNaturalStep,
+      `ArithmeticModeTest.rangeNaturalBounds,
+      `ArithmeticModeTest.rangeNaturalConversion,
+      `ArithmeticModeTest.rangeNaturalOuter,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -2814,6 +2910,7 @@ run_elab do
       `ArithmeticModeTest.booleanUnusedUnsupported, `ArithmeticModeTest.booleanCustomEquality, `ArithmeticModeTest.booleanIgnoredOperand, `ArithmeticModeTest.rangeBooleanUnusedUnsupported,
       `ArithmeticModeTest.booleanDependentInactiveUnsupported, `ArithmeticModeTest.booleanDependentCustomDecision, `ArithmeticModeTest.booleanDependentUnusedUnsupported, `ArithmeticModeTest.rangeBooleanDependentInactiveUnsupported,
       `ArithmeticModeTest.instanceCustom, `ArithmeticModeTest.instanceWrappedCustom, `ArithmeticModeTest.instanceWrappedVariable, `ArithmeticModeTest.rangeInstanceCustom,
+      `ArithmeticModeTest.naturalCustomNat, `ArithmeticModeTest.naturalCustomWord, `ArithmeticModeTest.naturalNotLiteral, `ArithmeticModeTest.rangeNaturalCustomNat,
       `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,
