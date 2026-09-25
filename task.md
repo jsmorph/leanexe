@@ -718,8 +718,14 @@ native lowering, and 465 proof references rejected. Boolean-result dependent
 choice source forms, lowering correctness, parser acceptance/reconstruction and
 source scalar/step/range integration now pass focused Lean builds. The parser
 checks exact proof domains and removes only unused proof binders before parsing
-branch bodies; source reconstruction restores their exact scopes. Compiler
-integration, end-to-end execution and documentation remain in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
+branch bodies; source reconstruction restores their exact scopes. Scalar and loop
+compiler integration now pass. The first focused fixture passed all 304 native/IR
+comparisons and 76 rejection checks. All five original examples compile unchanged;
+preceding relation-choice and dependent-condition fixtures each passed 304
+comparisons and their 44/ten rejection checks. All 20 new declaration bodies match
+across focused/admission fixtures, and the 16 accepted bodies match native
+execution fixtures. The general proof audit, actual WebAssembly execution and
+final documentation remain in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
 parameters, broader saved-flag propositions and loops inside helpers remain
 later capabilities.
 
