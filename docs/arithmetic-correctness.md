@@ -653,3 +653,14 @@ All 304 focused native Lean/IR comparisons, four declaration rejection tests
 and four proof-domain rejection tests passed. The eighteen selected preceding
 modules kept identical bytes. The full corpus contains 335 declarations; this
 was a focused execution run.
+
+
+The [Boolean-local increment](../proofs/compiler/boolean-locals-2026-09-25/README.md)
+adds ordinary Boolean lets and Boolean conditions over saved flags, keeping
+Boolean and UInt64 binding kinds distinct. Scalar code, helper captures, loop
+steps and outer loop bindings have checked source and extraction rules. All
+nine compiler audits and all 623 native Lean/V8 comparisons in the fixed
+34-declaration group passed. All 304 focused native Lean/IR comparisons, four
+declaration rejection tests and four binding-kind rejection tests passed.
+Eighteen selected preceding modules kept identical bytes. The full corpus
+contains 351 declarations; this was a focused execution run.
