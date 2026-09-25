@@ -605,3 +605,12 @@ is rejected for exported entries with the expected diagnostic, each remains
 allowed for an internal function, and an ordinary arithmetic export compiles.
 This fixes invalid duplicate-export modules and supplies the needed name
 precondition for whole-module validation.
+
+### Complete module metadata validation (checked)
+
+MetadataValidation proves section ordering, the fixed memory limit and globals,
+function type resolution, all eleven export indices, UTF-8 name agreement, and
+export-name uniqueness for every source entry outside the runtime reserved list.
+The module builds. This closes the metadata portion of validation; retain,
+allocator, release, full validator composition, normal-entry composition,
+usable arithmetic mode, and final gates remain unfinished.
