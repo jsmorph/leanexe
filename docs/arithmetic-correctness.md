@@ -940,3 +940,12 @@ malformed-head rejections across all ten word operations. Five valid original
 examples now compile unchanged. Prior word-let/Boolean-let fixtures passed
 304/318 comparisons and 68/39 rejections unchanged; eighteen prior modules kept
 identical bytes. The full corpus has 616 declarations; this execution was focused.
+
+The [nested Boolean Id increment](../proofs/compiler/boolean-nested-id-2026-09-25/README.md)
+adds standard Id.run/pure and metadata at recursive Boolean expression positions,
+sharing syntax with existing Boolean actions. Candidate `44637199` passed all
+nine audits and 623 native Lean/V8 comparisons across 34 declarations. The
+focused fixture passed 304 native/IR comparisons and 164 rejections; five original
+examples compile unchanged. Prior annotated-let/word-let fixtures passed 304
+comparisons each and 100/68 rejections unchanged; eighteen prior modules kept
+identical bytes. The full corpus has 632 declarations; this execution was focused.
