@@ -394,14 +394,16 @@ monadic joins, break, continue and step-result continuations. All 211 prior
 modules kept identical bytes. General type validation passed; unrelated suites
 were not rebuilt.
 
-Current increment: Boolean &&/|| compound guards with repeated !. The independent
-BooleanGuard syntax, operand-size bounds, exact parser acceptance/soundness and
-conversion to the shared guard representation pass Lean checking. The conversion
-preserves every scalar operand and native Boolean result. A focused elaboration
-probe confirmed canonical Bool.and, Bool.or and Bool.not under the standard
-Bool-equals-true guard and decision evidence. Public CompoundGuard integration,
-source/function extraction and end-to-end tests remain pending; public compiler
-coverage is still the completed compound-proposition checkpoint above.
+Current increment: Boolean &&/|| compound guards with repeated !. The common
+CompoundGuard interface now carries either propositional or Boolean source
+syntax. Exact recognition, operand bounds and conversion to shared lowering
+pass, preserving native Boolean results and retaining the existing scalar and
+loop-step integration proofs. Public function extraction builds and all 208
+focused native Lean/IR comparisons plus three rejection tests pass across
+twelve new declarations. The general compiler proof/audits and native Lean/V8
+execution checks remain pending at this candidate checkpoint. Compound Boolean
+guards nested inside propositional connectives and general Boolean values
+remain later increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
