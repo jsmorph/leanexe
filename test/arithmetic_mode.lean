@@ -836,6 +836,74 @@ def rangeLetBool (count seed : UInt64) : UInt64 :=
     return a == 0
   if flag then count else seed
 
+def complementDirect (x y : UInt64) : UInt64 := UInt64.complement x + y
+
+def complementOperator (x y : UInt64) : UInt64 := ~~~(x + y)
+
+def complementTwice (x y : UInt64) : UInt64 := ~~~(~~~x) + UInt64.complement y
+
+def complementMixed (x y : UInt64) : UInt64 :=
+  ((~~~x) &&& y) ||| ((~~~y) ^^^ (x <<< y))
+
+def complementChoice (x y : UInt64) : UInt64 :=
+  if !(~~~x == y) then ~~~(x / y) else UInt64.complement (y % x)
+
+def complementFunction (x y : UInt64) : UInt64 :=
+  let captured := ~~~(x + 7)
+  let f := fun a b : UInt64 => ~~~(a * 3 + b + captured)
+  f x y - f y x
+
+def complementDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := ~~~x
+  let z ← if x < y then pure (~~~(a + y)) else pure (UInt64.complement y)
+  a := a ^^^ z
+  return ~~~a
+
+def complementOperand (x y : UInt64) : UInt64 :=
+  if (if x == 0 then UInt64.complement y else ~~~x) ≤ (~~~y)
+  then (~~~x) <<< (~~~y) else ~~~(x ^^^ y) / (~~~y)
+
+def rangeComplement (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := ~~~(a + UInt64.ofNat i)
+    if a % 5 == seed % 5 then break
+  return UInt64.complement a
+
+def rangeComplementContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (~~~(UInt64.ofNat i)) % 3 == seed % 3 then continue
+    a := a ^^^ (~~~(UInt64.ofNat i + seed))
+  return a
+
+def rangeComplementHelper (count seed : UInt64) : UInt64 :=
+  let f := fun x y : UInt64 => ~~~(x * 3 + y + seed)
+  let result := Id.run do
+    let mut a := seed
+    for i in [(~~~count).toNat:(~~~count + 3).toNat:2] do
+      a := f a (UInt64.ofNat i)
+    return a
+  f result seed
+
+def rangeComplementStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if UInt64.ofNat i == seed % 7 then .done (UInt64.complement x)
+      else .yield (~~~(y + UInt64.ofNat i))
+    finish (a + seed) a
+
+def complementCustom (x y : UInt64) : UInt64 :=
+  @Complement.complement UInt64 ⟨fun z => z + 1⟩ (x + y)
+
+def complementExternal (x : UInt64) : UInt64 := ~~~x
+
+def complementHelper (x y : UInt64) : UInt64 := complementExternal x + y
+
+def complementUnusedCustom (x y : UInt64) : UInt64 :=
+  let _f := fun z : UInt64 => @Complement.complement UInt64 ⟨fun v => v + 1⟩ z
+  x + y
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -1157,7 +1225,19 @@ run_elab do
       `ArithmeticModeTest.rangeLetContinue,
       `ArithmeticModeTest.rangeLetMonadic,
       `ArithmeticModeTest.rangeLetHelper,
-      `ArithmeticModeTest.rangeLetNested] do
+      `ArithmeticModeTest.rangeLetNested,
+      `ArithmeticModeTest.complementDirect,
+      `ArithmeticModeTest.complementOperator,
+      `ArithmeticModeTest.complementTwice,
+      `ArithmeticModeTest.complementMixed,
+      `ArithmeticModeTest.complementChoice,
+      `ArithmeticModeTest.complementFunction,
+      `ArithmeticModeTest.complementDo,
+      `ArithmeticModeTest.complementOperand,
+      `ArithmeticModeTest.rangeComplement,
+      `ArithmeticModeTest.rangeComplementContinue,
+      `ArithmeticModeTest.rangeComplementHelper,
+      `ArithmeticModeTest.rangeComplementStep] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -1175,6 +1255,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.complementCustom, `ArithmeticModeTest.complementHelper, `ArithmeticModeTest.complementUnusedCustom,
       `ArithmeticModeTest.rangeLetUnsupported, `ArithmeticModeTest.rangeLetTwoLoops, `ArithmeticModeTest.rangeLetBool,
       `ArithmeticModeTest.rangeOuterUnsupported, `ArithmeticModeTest.rangeOuterThree, `ArithmeticModeTest.rangeOuterNat, `ArithmeticModeTest.rangeOuterPartial,
       `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepThree, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,

@@ -47,6 +47,7 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
       simpa only [UInt64.toNat_ofNat_of_lt' fits] using
         (Count.Eval.literal (values := values) (number := number) (fits := fits))
     | binary operation => cases operation
+    | complement head => exact False.elim (head.not_ofNat number rfl)
 
 theorem Count.Supported.evaluates {types : List BindingKind} {count : Count}
     (supported : Supported types count) (values : List Value)

@@ -15,7 +15,7 @@ const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', '
   'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant',
   'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
   'unusedFunction', 'doJoined', 'doBranchUpdates',
-  'compareNe', 'negatedEq', 'negatedLt', 'negatedLe', 'negatedGt', 'negatedGe', 'negatedBool', 'doubleNegation', 'negatedBindings', 'binaryOrder', 'binaryCapture', 'binaryChained', 'binaryUnused', 'binaryDo', 'binaryNested', 'binaryChoice', 'binaryArguments', 'binaryWrapped', 'boolNotEqual', 'boolNotUnequal', 'boolNotTwice', 'boolNotThrice', 'boolNotNested', 'boolNotFunction', 'boolNotDo', 'boolNotProposition', ...rangeEntries];
+  'compareNe', 'negatedEq', 'negatedLt', 'negatedLe', 'negatedGt', 'negatedGe', 'negatedBool', 'doubleNegation', 'negatedBindings', 'binaryOrder', 'binaryCapture', 'binaryChained', 'binaryUnused', 'binaryDo', 'binaryNested', 'binaryChoice', 'binaryArguments', 'binaryWrapped', 'boolNotEqual', 'boolNotUnequal', 'boolNotTwice', 'boolNotThrice', 'boolNotNested', 'boolNotFunction', 'boolNotDo', 'boolNotProposition', 'complementDirect', 'complementOperator', 'complementTwice', 'complementMixed', 'complementChoice', 'complementFunction', 'complementDo', 'complementOperand', ...rangeEntries];
 const entries = suite === 'all' ? allEntries : rangeEntries;
 const constants = new Set(['constant', 'boundConstant', 'doConstant', 'rangeConstant']);
 const ranges = new Set(rangeEntries);

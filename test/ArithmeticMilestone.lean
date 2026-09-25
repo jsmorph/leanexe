@@ -1083,6 +1083,63 @@ def rangeLetNested (count seed : UInt64) : UInt64 :=
     inner * 3 + start
   outer + seed
 
+def complementDirect (x y : UInt64) : UInt64 := UInt64.complement x + y
+
+def complementOperator (x y : UInt64) : UInt64 := ~~~(x + y)
+
+def complementTwice (x y : UInt64) : UInt64 := ~~~(~~~x) + UInt64.complement y
+
+def complementMixed (x y : UInt64) : UInt64 :=
+  ((~~~x) &&& y) ||| ((~~~y) ^^^ (x <<< y))
+
+def complementChoice (x y : UInt64) : UInt64 :=
+  if !(~~~x == y) then ~~~(x / y) else UInt64.complement (y % x)
+
+def complementFunction (x y : UInt64) : UInt64 :=
+  let captured := ~~~(x + 7)
+  let f := fun a b : UInt64 => ~~~(a * 3 + b + captured)
+  f x y - f y x
+
+def complementDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := ~~~x
+  let z ← if x < y then pure (~~~(a + y)) else pure (UInt64.complement y)
+  a := a ^^^ z
+  return ~~~a
+
+def complementOperand (x y : UInt64) : UInt64 :=
+  if (if x == 0 then UInt64.complement y else ~~~x) ≤ (~~~y)
+  then (~~~x) <<< (~~~y) else ~~~(x ^^^ y) / (~~~y)
+
+def rangeComplement (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := ~~~(a + UInt64.ofNat i)
+    if a % 5 == seed % 5 then break
+  return UInt64.complement a
+
+def rangeComplementContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (~~~(UInt64.ofNat i)) % 3 == seed % 3 then continue
+    a := a ^^^ (~~~(UInt64.ofNat i + seed))
+  return a
+
+def rangeComplementHelper (count seed : UInt64) : UInt64 :=
+  let f := fun x y : UInt64 => ~~~(x * 3 + y + seed)
+  let result := Id.run do
+    let mut a := seed
+    for i in [(~~~count).toNat:(~~~count + 3).toNat:2] do
+      a := f a (UInt64.ofNat i)
+    return a
+  f result seed
+
+def rangeComplementStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if UInt64.ofNat i == seed % 7 then .done (UInt64.complement x)
+      else .yield (~~~(y + UInt64.ofNat i))
+    finish (a + seed) a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1203,7 +1260,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeLetContinue", rangeLetContinue),
    ("rangeLetMonadic", rangeLetMonadic),
    ("rangeLetHelper", rangeLetHelper),
-   ("rangeLetNested", rangeLetNested)]
+   ("rangeLetNested", rangeLetNested),
+   ("rangeComplement", rangeComplement),
+   ("rangeComplementContinue", rangeComplementContinue),
+   ("rangeComplementHelper", rangeComplementHelper),
+   ("rangeComplementStep", rangeComplementStep)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -1248,7 +1309,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("boolNotNested", boolNotNested),
    ("boolNotFunction", boolNotFunction),
    ("boolNotDo", boolNotDo),
-   ("boolNotProposition", boolNotProposition)]
+   ("boolNotProposition", boolNotProposition),
+   ("complementDirect", complementDirect),
+   ("complementOperator", complementOperator),
+   ("complementTwice", complementTwice),
+   ("complementMixed", complementMixed),
+   ("complementChoice", complementChoice),
+   ("complementFunction", complementFunction),
+   ("complementDo", complementDo),
+   ("complementOperand", complementOperand)]
 
 end ArithmeticMilestone
 

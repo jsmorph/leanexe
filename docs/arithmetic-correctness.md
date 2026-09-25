@@ -19,11 +19,16 @@ nesting of supported expressions:
 | `+`, `-`, `*` | Arithmetic modulo 2^64 |
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
+| `~~~` | Bitwise complement of all 64 bits |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
 | `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards also admit repeated `!` |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
-standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
+standard UInt64 instances are admitted. Both `UInt64.complement x` and standard
+`~~~x` are admitted, including in helper bodies, comparison operands and range
+bounds. Complement lowers to XOR with the full 64-bit mask, with a checked
+identity to Lean's native operation. Custom Complement instances are rejected,
+including in unused bodies. Literals reduce modulo 2^64. Custom
 instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision

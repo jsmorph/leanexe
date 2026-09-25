@@ -356,10 +356,15 @@ continue, monadic continuations and captured helpers. All 115 preceding range
 modules kept identical bytes. General type validation passed; unrelated suites
 were not rebuilt.
 
-Next incremental capability: UInt64 bitwise complement, through the direct
-primitive and standard `~~~` operator. Reuse the existing xor instruction and
-prove its all-ones lowering, then complete source/IR and full compiler execution
-checks before another capability.
+Current increment: UInt64 bitwise complement through the direct primitive and
+standard `~~~` operator. Exact source heads, native semantics, XOR-with-all-ones
+lowering, extraction, acceptance and scalar invariants pass Lean checking. The
+public range/source proof connection passes too, including the literal-bound
+syntax distinction introduced by the new source rule. Eight pure and four range
+fixtures cover nested uses, arithmetic, guards, functions, monadic computations,
+continue/break and complemented interval bounds near the UInt64 limit. The full
+compiler proof, type validation and execution group follow this candidate
+checkpoint because shared scalar extraction changed.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -123,5 +123,9 @@
   "rangeLetContinue",
   "rangeLetMonadic",
   "rangeLetHelper",
-  "rangeLetNested"
+  "rangeLetNested",
+  "rangeComplement",
+  "rangeComplementContinue",
+  "rangeComplementHelper",
+  "rangeComplementStep"
 ]
