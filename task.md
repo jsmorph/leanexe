@@ -114,6 +114,12 @@ execution for either advancing the index or moving it directly to the bound
 after done. Both focused targets pass. Source extraction, the actual local-slot
 layout, emitted control flow, general proofs and execution tests remain pending;
 the public compiler still rejects break while this capability is developed.
+The concrete four-local layout now has checked reads/writes, decision staging,
+accumulator updates, index advance/exit and complete IR loop execution in
+`IR/ScalarRangeExitSlots.lean`. The exit decision is evaluated before changing
+the accumulator; done moves the index to the stop, and yield increments it.
+The focused target passes, including zero iterations and the returned done
+accumulator in the universally quantified statement.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
