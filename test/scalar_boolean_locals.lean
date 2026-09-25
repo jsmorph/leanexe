@@ -202,7 +202,7 @@ run_elab do
       (fun _ _ => none)).isNone do
     throwError "UInt64 binding accepted as a Boolean"
   let one := LeanExe.Source.Scalar.literalExpr 1
-  let branch := LeanExe.Source.Scalar.BooleanLocalGuard.branch ⟨condition, by decide⟩ (.const ``UInt64 []) one one
+  let branch := LeanExe.Source.Scalar.BooleanLocalGuard.branch { value := condition, expanded := by decide } (.const ``UInt64 []) one one
   unless (LeanExe.Extract.Core.extractScalarExprWith [.word (.u64 1)] branch).isNone do
     throwError "word binding accepted by a Boolean condition"
   unless (LeanExe.Extract.Core.extractScalarExprWith [.unit] branch).isNone do

@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarBooleanLocal
 import LeanExe.Extract.ScalarPropositionGuard
+import LeanExe.Extract.ScalarBooleanRelation
 import LeanExe.Extract.ScalarDecisionGuard
 
 namespace LeanExe.Extract.Core
@@ -319,67 +320,110 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (expanded : value.ext
 
 theorem booleanLocal_not_guard (guard : BooleanLocalGuard) :
     guardOperands? guard.condition = none := by
-  have noComparison := booleanLocal_not_comparison guard.value guard.expanded
-  have noClosed := booleanGuardOperands_local_none guard.value guard.expanded
-  simp only [BooleanLocal.condition] at noComparison
-  rw [guardOperands?]
-  · simp [noComparison, booleanGuardCondition?, BooleanLocal.condition, noClosed]
-  all_goals simp [BooleanLocalGuard.condition, BooleanLocal.condition]
+  obtain ⟨value, expanded, form⟩ := guard
+  cases form with
+  | truth value =>
+    have noComparison := booleanLocal_not_comparison value expanded
+    have noClosed := booleanGuardOperands_local_none value expanded
+    simp only [BooleanLocal.condition] at noComparison
+    change guardOperands? value.condition = none
+    rw [guardOperands?]
+    · simp [noComparison, booleanGuardCondition?, BooleanLocal.condition, noClosed]
+    all_goals simp [BooleanLocal.condition]
+  | equal left right nontrue => exact booleanRelationEqual_not_guard left.expr right.expr nontrue
+  | unequal left right => exact booleanRelationUnequal_not_guard left.expr right.expr
 
 theorem booleanLocal_not_compound (guard : BooleanLocalGuard) :
     compoundGuard? guard.condition guard.evidence = none := by
   simp [compoundGuard?, compoundGuardShape?, booleanLocal_not_guard]
 
-def booleanLocalCondition? : Lean.Expr → Option BooleanLocal
-  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) expression) (.const ``Bool.true []) =>
-      booleanLocalOperands? expression
+def booleanLocalGuard? (condition evidence : Lean.Expr) : Option BooleanLocalGuard :=
+  match condition with
+  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) expression) (.const ``Bool.true []) => do
+    let value ← booleanLocalOperands? expression
+    if expanded : value.extended = true then
+      if LeanExe.Source.ExprEquality.same evidence value.evidence then some ⟨value, expanded, .truth value⟩ else none
+    else none
+  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) left) right => do
+    let a ← booleanLocalOperands? left
+    let b ← booleanLocalOperands? right
+    if nontrue : b.expr ≠ .const ``Bool.true [] then
+      let guard : BooleanLocalGuard := ⟨.equality 0 false a b, rfl, .equal a b nontrue⟩
+      if LeanExe.Source.ExprEquality.same evidence guard.evidence then some guard else none
+    else none
+  | .app (.app (.app (.const ``Ne [.succ .zero]) (.const ``Bool [])) left) right => do
+    let a ← booleanLocalOperands? left
+    let b ← booleanLocalOperands? right
+    let guard : BooleanLocalGuard := ⟨.equality 0 true a b, rfl, .unequal a b⟩
+    if LeanExe.Source.ExprEquality.same evidence guard.evidence then some guard else none
   | _ => none
-
-theorem booleanLocalCondition_sound {condition : Lean.Expr} {value : BooleanLocal}
-    (parsed : booleanLocalCondition? condition = some value) : condition = value.condition := by
-  unfold booleanLocalCondition? at parsed
-  split at parsed
-  · rename_i expression
-    rw [booleanLocalOperands_sound parsed]
-    rfl
-  · contradiction
-
-def booleanLocalGuard? (condition evidence : Lean.Expr) : Option BooleanLocalGuard := do
-  let value ← booleanLocalCondition? condition
-  if expanded : value.extended = true then
-    if LeanExe.Source.ExprEquality.same evidence value.evidence then some ⟨value, expanded⟩ else none
-  else none
 
 @[simp] theorem booleanLocalGuard_accepts (guard : BooleanLocalGuard) :
     booleanLocalGuard? guard.condition guard.evidence = some guard := by
-  cases guard with
-  | mk value expanded =>
-    simp [booleanLocalGuard?, booleanLocalCondition?, BooleanLocalGuard.condition, BooleanLocal.condition,
-      BooleanLocalGuard.evidence, expanded]
+  obtain ⟨value, expanded, form⟩ := guard
+  cases form with
+  | truth value =>
+    simp [booleanLocalGuard?, BooleanLocalGuard.condition, BooleanConditionForm.condition,
+      BooleanLocal.condition, BooleanLocalGuard.evidence, BooleanConditionForm.evidence, expanded]
+  | equal left right nontrue =>
+    simp [booleanLocalGuard?, BooleanLocalGuard.condition, BooleanConditionForm.condition,
+      booleanRelationCondition, BooleanLocalGuard.evidence, BooleanConditionForm.evidence, nontrue]
+  | unequal left right =>
+    simp [booleanLocalGuard?, BooleanLocalGuard.condition, BooleanConditionForm.condition,
+      booleanRelationCondition, BooleanLocalGuard.evidence, BooleanConditionForm.evidence]
 
 theorem booleanLocalGuard_sound {condition evidence : Lean.Expr} {guard : BooleanLocalGuard}
     (parsed : booleanLocalGuard? condition evidence = some guard) :
     condition = guard.condition ∧ evidence = guard.evidence := by
-  simp only [booleanLocalGuard?, bind, Option.bind_eq_some_iff] at parsed
-  obtain ⟨value, matched, accepted⟩ := parsed
-  split at accepted
-  · split at accepted
+  unfold booleanLocalGuard? at parsed
+  split at parsed
+  · rename_i expression
+    simp only [bind, Option.bind_eq_some_iff] at parsed
+    obtain ⟨value, matched, accepted⟩ := parsed
+    split at accepted
+    · split at accepted
+      · rename_i same
+        cases accepted
+        exact ⟨by rw [booleanLocalOperands_sound matched]; rfl,
+          LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
+      · contradiction
+    · contradiction
+  · rename_i left right excluded
+    simp only [bind, Option.bind_eq_some_iff] at parsed
+    obtain ⟨a, ha, b, hb, accepted⟩ := parsed
+    split at accepted
+    · split at accepted
+      · rename_i same
+        cases accepted
+        exact ⟨by rw [booleanLocalOperands_sound ha, booleanLocalOperands_sound hb]; rfl,
+          LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
+      · contradiction
+    · contradiction
+  · rename_i left right
+    simp only [bind, Option.bind_eq_some_iff] at parsed
+    obtain ⟨a, ha, b, hb, accepted⟩ := parsed
+    split at accepted
     · rename_i same
       cases accepted
-      exact ⟨booleanLocalCondition_sound matched, LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
+      exact ⟨by rw [booleanLocalOperands_sound ha, booleanLocalOperands_sound hb]; rfl,
+        LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
     · contradiction
   · contradiction
 
 theorem booleanLocalGuard_not_comparison (guard : BooleanLocalGuard) :
     comparison? guard.condition guard.evidence = none := by
-  simp [comparison?, booleanLocal_not_comparison guard.value guard.expanded]
+  have absent : comparisonOperands? guard.condition = none := by
+    obtain ⟨value, expanded, form⟩ := guard
+    cases form with
+    | truth value => exact booleanLocal_not_comparison value expanded
+    | equal left right nontrue => exact booleanRelationEqual_not_comparison left.expr right.expr nontrue
+    | unequal left right => exact booleanRelationUnequal_not_comparison left.expr right.expr
+  simp [comparison?, absent]
 
 theorem booleanLocalGuard_size {condition evidence : Lean.Expr} {guard : BooleanLocalGuard}
     (parsed : booleanLocalGuard? condition evidence = some guard) {operand : Lean.Expr}
     (member : operand ∈ guard.value.operands) : sizeOf operand < sizeOf condition := by
   rw [(booleanLocalGuard_sound parsed).1]
-  have bound := guard.value.operands_size member
-  simp only [BooleanLocalGuard.condition, BooleanLocal.condition]
-  simp_all; omega
+  exact guard.operands_size member
 
 end LeanExe.Extract.Core
