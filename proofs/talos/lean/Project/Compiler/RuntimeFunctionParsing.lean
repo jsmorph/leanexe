@@ -1,4 +1,4 @@
-import Project.Compiler.RuntimeBodies
+import Project.Compiler.RuntimeLengths
 import Project.Compiler.FunctionParsing
 
 namespace Project.Compiler.RuntimeEncoding
@@ -46,20 +46,24 @@ def resetCode : Wasm.Binary.Code := { locals := [], body := resetEncoding.val }
 def retainCode : Wasm.Binary.Code := { locals := i64Locals 1, body := retainEncoding.val }
 def releaseCode : Wasm.Binary.Code := { locals := i64Locals 8, body := releaseEncoding.val }
 
-theorem alloc_body (bound : (encodeInstrs coreAllocInstrs).length + 4 < 2 ^ 32) :
+theorem alloc_body :
     Parses Wasm.Binary.code coreAllocBody allocCode := by
+  have bound := alloc_bound
   exact body_parses locals_six allocEncoding.property (by simp only [LeanExe.Wasm.Binary.ofNats, List.length_append, List.length_map, List.length_cons, List.length_nil]; omega)
 
-theorem reset_body (bound : (encodeInstrs coreResetInstrs).length + 2 < 2 ^ 32) :
+theorem reset_body :
     Parses Wasm.Binary.code coreResetBody resetCode := by
+  have bound := reset_bound
   exact body_parses no_locals resetEncoding.property (by simp only [LeanExe.Wasm.Binary.ofNats, List.length_append, List.length_map, List.length_cons, List.length_nil]; omega)
 
-theorem retain_body (bound : (encodeInstrs coreRetainInstrs).length + 4 < 2 ^ 32) :
+theorem retain_body :
     Parses Wasm.Binary.code coreRetainBody retainCode := by
+  have bound := retain_bound
   exact body_parses locals_one retainEncoding.property (by simp only [LeanExe.Wasm.Binary.ofNats, List.length_append, List.length_map, List.length_cons, List.length_nil]; omega)
 
-theorem release_body (bound : (encodeInstrs (coreReleaseInstrs 4)).length + 4 < 2 ^ 32) :
+theorem release_body :
     Parses Wasm.Binary.code (coreReleaseBody 4) releaseCode := by
+  have bound := release_bound
   exact body_parses locals_eight releaseEncoding.property (by simp only [LeanExe.Wasm.Binary.ofNats, List.length_append, List.length_map, List.length_cons, List.length_nil]; omega)
 
 end Project.Compiler.RuntimeEncoding

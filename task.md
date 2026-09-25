@@ -487,3 +487,12 @@ four body parsers is proved under its explicit U32 payload-length bound. The
 module builds. These fixed bounds are being discharged using general encoder
 length lemmas; complete section assembly, validation, and exported execution
 remain unfinished.
+
+### Runtime body decoding without assumed bounds (checked)
+
+LebLengths proves the production signed and unsigned UInt64 encoders emit at
+most ten bytes. RuntimeLengths bounds nested runtime instruction encodings and
+discharges all four fixed payload limits. RuntimeFunctionParsing now proves
+complete decoding of all four actual runtime bodies without length hypotheses.
+All three modules build. This completes that component; complete module
+sections, validation, exported invocation, and final gates remain pending.
