@@ -768,14 +768,21 @@ word-let and Boolean-let fixtures passed unchanged with 304/318 comparisons and
 is in `proofs/compiler/boolean-let-annotation-2026-09-25/`. The full corpus has
 616 declarations; this was a focused run. No emitter/runtime changes.
 
-Current increment: standard Boolean Id.run and pure operations nested inside
-Boolean expressions. Five valid probes reject before implementation; their
-original sources are retained. The recursive source representation now includes
-exact run/pure/metadata wrappers with native evaluation and checked size rules.
-Outer Boolean actions use the same representation. All six lowering proofs pass.
-Parser reconstruction/acceptance and integration are being checked; execution
-and general audits remain pending. Preserve existing action/metadata forms while
-composing through bindings, operators, choices and loop code.
+Completed next increment: standard Boolean Id.run/pure operations nested inside
+Boolean expressions, including Id annotations and metadata. Shared recursive
+value/action syntax preserves exact source expressions and native meanings.
+All source/parser/lowering proofs and nine compiler audits passed. Candidate
+`44637199` passed 623 native Lean/V8 comparisons across 34 declarations; the
+focused fixture passed 304 native/IR comparisons and 164 rejections. All five
+original probes compile unchanged. Prior annotated-let and word-let fixtures
+passed unchanged (304 comparisons each, 100/68 rejections); eighteen prior
+modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-nested-id-2026-09-25/`. The corpus has 632 declarations;
+this was a focused run. No emitter/runtime changes.
+
+Next increment: general Id-annotated scalar lets. Retain exact annotations while
+using the underlying word/Boolean type and native value in scalar, step and range
+code. Complete source/parser/lowering proofs and execution before moving on.
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 

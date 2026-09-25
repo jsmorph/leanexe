@@ -1,0 +1,113 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+BooleanNestedIdInspect.operators: fun (x y : UInt64) =>
+  @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+    (Bool.toUInt64
+      (Bool.and
+        (@Id.run.{0} Bool
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+            (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x
+              (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))))
+        (@Id.run.{0} Bool
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+            (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) y
+              (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))))))
+    x
+accepted: true
+BooleanNestedIdInspect.binding: fun (x y : UInt64) =>
+  @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+    (Bool.toUInt64
+      (have flag : Id.{0} Bool :=
+        @BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x
+          (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)));
+      Bool.or (@Id.run.{0} Bool flag)
+        (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) y
+          (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))))
+    y
+accepted: true
+BooleanNestedIdInspect.nested: fun (x y : UInt64) =>
+  @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+    (Bool.toUInt64
+      (Bool.not
+        (Bool.and
+          (@Id.run.{0} Bool
+            (@Pure.pure.{0, 0} Id.{0}
+              (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+              (@Id.run.{0} Bool
+                (@Pure.pure.{0, 0} Id.{0}
+                  (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+                  (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x y)))))
+          (have saved : Id.{0} (Id.{0} Bool) :=
+            @bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x
+              (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)));
+          @Id.run.{0} Bool (@Id.run.{0} (Id.{0} Bool) saved)))))
+    x
+accepted: true
+BooleanNestedIdInspect.helper: fun (x y : UInt64) =>
+  have outer : Bool :=
+    @bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)));
+  have f : (flag : Bool) → UInt64 := fun (flag : Bool) =>
+    @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+      (Bool.toUInt64
+        (Bool.and
+          (@Id.run.{0} Bool
+            (@Pure.pure.{0, 0} Id.{0}
+              (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool flag))
+          (have saved : Id.{0} Bool := outer;
+          @Id.run.{0} Bool saved)))
+      x;
+  f
+    (@Id.run.{0} Bool
+      (@Pure.pure.{0, 0} Id.{0}
+        (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+        (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) y
+          (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))))
+accepted: true
+BooleanNestedIdInspect.range: fun (count seed : UInt64) =>
+  @Id.run.{0} UInt64
+    (have a : UInt64 := seed;
+    @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+      (@ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+        (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+          (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+          (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64
+        (Std.Legacy.Range.mk (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))) (UInt64.toNat count)
+          (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) Nat.zero_lt_one)
+        a fun (i : Nat) (__s : UInt64) =>
+        have a : UInt64 := __s;
+        have stop : Bool :=
+          @Id.run.{0} Bool
+            (@Pure.pure.{0, 0} Id.{0}
+              (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+              (have value : Id.{0} Bool :=
+                @BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+                  (@HMod.hMod.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMod.{0} UInt64 instModUInt64)
+                    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a (UInt64.ofNat i))
+                    (@OfNat.ofNat.{0} UInt64 (nat_lit 7) (@UInt64.instOfNat (nat_lit 7))))
+                  (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)));
+              Bool.and (@Id.run.{0} Bool value)
+                (@Id.run.{0} Bool
+                  (@Pure.pure.{0, 0} Id.{0}
+                    (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) Bool
+                    (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+                      (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))))));
+        have a : UInt64 :=
+          @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+            (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a (UInt64.ofNat i))
+            (@OfNat.ofNat.{0} UInt64 (nat_lit 1) (@UInt64.instOfNat (nat_lit 1)));
+        @ite.{1} (Id.{0} (ForInStep.{0} UInt64)) (@Eq.{1} Bool stop Bool.true) (instDecidableEqBool stop Bool.true)
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.done.{0} UInt64 a))
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.yield.{0} UInt64 a)))
+      fun (__s : UInt64) =>
+      have a : UInt64 := __s;
+      @Pure.pure.{0, 0} Id.{0} (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64 a)
+accepted: true
