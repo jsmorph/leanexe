@@ -129,9 +129,17 @@ checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
 initial value and final computation. A conditional Boolean bind before a loop
 can generate a loop-containing helper; that case remains outside this grammar.
 Public Boolean parameters/results, Boolean-returning helpers, mixed Bool/word
-parameter lists, loops inside helper bodies, explicit/implicit decide conversions,
-and propositional combinations containing saved Boolean locals remain separate
-capabilities.
+parameter lists, loops inside helper bodies and propositional combinations
+containing saved Boolean locals remain separate capabilities.
+
+Explicit `decide` and implicit Prop-to-Bool conversions admit the existing
+closed guard grammar, including all UInt64 comparisons, propositional literals,
+negation and junctions, and closed Boolean guards. The parser requires the exact
+Decidable.decide head and the whole standard decision expression. Converted
+values compose with Boolean negation, junctions and choices, helper arguments,
+ordinary/Id bindings, loop steps and surrounding scalar code. Unsupported
+operands are rejected even when unused or under an inactive decision. Decisions
+whose propositions directly reference saved Boolean locals are a later extension.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and
@@ -776,3 +784,12 @@ preceding modules kept identical bytes. Three original conditional-bind examples
 now compile unchanged. Initial fixture annotation and unsupported-decide failures
 are retained with the final results. The full corpus contains 456 declarations;
 this was a focused execution run.
+
+The [decide increment](../proofs/compiler/decide-2026-09-25/README.md) adds explicit
+and implicit Bool-valued decisions over the existing closed guard grammar. All
+nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
+The 304 new native/IR comparisons and twelve rejection checks passed on their
+first run. The preceding Boolean-function fixture passed unchanged (328
+comparisons and sixteen rejections), and eighteen selected preceding modules
+kept identical bytes. Five original inspected examples now compile unchanged.
+The full corpus contains 472 declarations; this was a focused execution run.
