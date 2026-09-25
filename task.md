@@ -82,9 +82,14 @@ unused functions. Captures retain the accumulator value from the binding point
 even across later updates. Unsupported bodies and arities remain rejected.
 The fixed range test group avoids recompiling unchanged arithmetic fixtures.
 
-Next increment: standard Id monadic UInt64 bindings (`let x ← …`) inside the
-yielding loop step. Preserve the exact standard Bind evidence and check the
-bound value and continuation through the existing scalar grammar.
+In progress: standard Id monadic UInt64 bindings (`let x ← …`) inside the
+yielding loop step. The source relation and recognizer preserve the exact
+standard Bind evidence and check the bound value and continuation through the
+existing scalar grammar. Focused syntax acceptance/soundness proofs pass.
+Three fixtures cover monadic bindings, nested do computations and unused
+values. Rejection cases include custom Bind evidence and a break after a bind.
+The final audit and focused 289-result, thirteen-declaration execution check
+are pending for this candidate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
