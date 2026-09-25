@@ -569,18 +569,26 @@ identical bytes. Evidence is retained in
 declarations; this was a focused execution run. No emitter/runtime changes or
 unrelated archive/runtime suite rebuilds were needed.
 
-Current increment: Boolean-valued conditionals over Boolean guards, including
-saved flags, ==/!= comparisons, literals, negation and Boolean junctions.
-Preserve exact standard decision evidence, check all branches, and reuse the
-existing Boolean lowering in scalar lets, actions, helper captures and loop
-code. Admit nested choice expressions as conditions even without a saved flag.
-The source grammar, parser acceptance/reconstruction, operand-size and all
-shared Boolean lowering proofs now pass. Closed choice expressions also enter
-the existing Boolean condition path. All affected scalar and loop proofs build. The focused fixture passes all
-304 native/IR comparisons, four declaration rejections and eight raw choice
-rejections. Final compiler audits and execution gates remain open. Propositional comparison guards inside
-Boolean-valued choices and conditional Id actions remain separate subsequent
-increments.
+Completed next increment: Boolean-valued conditionals over Boolean guards,
+including saved flags, ==/!= comparisons, literals, negation and junctions.
+Candidate `27abf6a0` passed all nine compiler audits and 623 native Lean/V8
+comparisons across the fixed 34-declaration `boolean-choice` group. All 304
+focused native/IR comparisons and twelve rejection checks passed on the first
+execution run. The earlier Boolean-local/dependent tests also pass unchanged:
+608 native/IR comparisons and eighteen rejection checks. Eighteen selected
+preceding modules kept identical bytes. Evidence is retained in
+`proofs/compiler/boolean-choice-2026-09-25/`. The full corpus contains 423
+declarations; this was a focused execution run. The source grammar, parser and
+shared Boolean lowering were extended; scalar/step/loop proofs reused their
+interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
+
+Next increment: Boolean-valued choices with propositional guards, including
+UInt64 =, ≠, <, ≤, >, ≥, propositional literals, negation and junctions. Reuse
+the existing closed Guard grammar and exact standard decision evidence while
+preserving the preceding Boolean-choice path. Check operands and both arms,
+then complete focused execution and the general compiler audits before moving
+on. Conditional Id actions and Boolean public/function signatures remain later
+capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
