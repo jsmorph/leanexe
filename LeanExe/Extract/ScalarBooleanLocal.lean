@@ -52,14 +52,14 @@ def extractBooleanLocal : (guard : BooleanLocal) →
       let no ← extractBooleanLocal e (fun index member => compileVariables index (List.mem_append_right _ member))
         (fun operand member => compile operand (List.mem_append_right _ (List.mem_append_right _ member)))
       pure (lowerGuardNegations n (lowerBooleanChoice test yes no))
-  | .binding n name nondep value body type, compileVariables, compile => do
+  | .binding n name nondep value body _, compileVariables, compile => do
       let left ← extractBooleanLocal value (fun index member => compileVariables index (List.mem_append_left _ member)) (fun operand member => compile operand (List.mem_append_left _ member))
-      let right ← extractBooleanLocal body (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand type) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
+      let right ← extractBooleanLocal body (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
       pure (lowerGuardNegations n right)
-  | .wordBinding n name nondep value body type, compileVariables, compile =>
+  | .wordBinding n name nondep value body _, compileVariables, compile =>
       if noLocal : 0 ∉ body.variables then do
         let _word ← compile value (by simp [BooleanLocal.operands])
-        let condition ← extractBooleanLocal body (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand type) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
+        let condition ← extractBooleanLocal body (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
         pure (lowerGuardNegations n condition)
       else none
   | .decision n g, _, compile => do
@@ -134,7 +134,7 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
   | binding n name nondep value body type ihv ihb =>
     obtain ⟨left, hl⟩ := ihv (wellScoped := wellScoped.1) (fun index member => compileVariables index (List.mem_append_left _ member)) (fun operand member => compile operand (List.mem_append_left _ member))
       (fun index member => totalVariables index _) (fun operand member => total operand _)
-    obtain ⟨right, hr⟩ := ihb (wellScoped := wellScoped.2) (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand type) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
+    obtain ⟨right, hr⟩ := ihb (wellScoped := wellScoped.2) (booleanLetLookup body.variables (guardWord left) (fun index member => compileVariables index (List.mem_append_right _ member))) (fun operand member => compile (booleanLetExpr name nondep value.expr operand) (List.mem_append_right _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
       (booleanLetLookup_accepts _ _ _ (fun index member => totalVariables index _))
       (fun operand member => total _ _)
     exact ⟨lowerGuardNegations n right, by simp [extractBooleanLocal, hl, hr]⟩
@@ -145,7 +145,7 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
   | wordBinding n name nondep value body type ihb =>
     have noLocal := wellScoped.1
     obtain ⟨word, hv⟩ := total value (by simp [BooleanLocal.operands])
-    obtain ⟨condition, hb⟩ := ihb (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand type) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩))) wellScoped.2
+    obtain ⟨condition, hb⟩ := ihb (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩))) wellScoped.2
       (booleanWordLetLookup_accepts _ _ _ totalVariables) (fun operand member => total _ _)
     exact ⟨lowerGuardNegations n condition, by simp [extractBooleanLocal, noLocal, hv, hb]⟩
 
@@ -409,7 +409,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
       (fun index member expression found => booleanMeanings _ _ _ found)
       (fun operand member expression found => meanings _ _ _ found)
     apply lowerGuardNegations_correct n
-    exact ihb _ _ (fun operand => native (booleanLetExpr name nondep value.expr operand type))
+    exact ihb _ _ (fun operand => native (booleanLetExpr name nondep value.expr operand))
       (booleanLetBooleans (value.denote native booleans) booleans) hr
       (booleanLetLookup_correct _ _ _ _ _ _ (guardWord_correct first)
         (fun index member expression found => booleanMeanings _ _ _ found))
@@ -422,7 +422,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
       simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
       obtain ⟨word, hv, condition, hb, rfl⟩ := compiled
       apply lowerGuardNegations_correct n
-      exact ihb _ _ (fun operand => native (booleanWordLetExpr name nondep value operand type))
+      exact ihb _ _ (fun operand => native (booleanWordLetExpr name nondep value operand))
         (booleanLetBooleans false booleans) hb
         (booleanWordLetLookup_correct _ _ _ _ _ booleanMeanings)
         (fun operand member expression found => meanings _ _ _ found)

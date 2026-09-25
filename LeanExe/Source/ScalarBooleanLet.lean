@@ -13,6 +13,18 @@ def booleanWordLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Exp
     (type : ResultType := .word) : Lean.Expr :=
   .letE name type.expr value body nondep
 
+theorem BooleanType.base_size (type : BooleanType) :
+    sizeOf (BooleanType.boolean.expr) ≤ sizeOf type.expr := by
+  induction type with
+  | boolean => exact Nat.le_refl _
+  | identity inner ih => simp_all [BooleanType.expr] <;> omega
+
+theorem ResultType.word_size (type : ResultType) :
+    sizeOf (ResultType.word.expr) ≤ sizeOf type.expr := by
+  induction type with
+  | word => exact Nat.le_refl _
+  | identity inner ih => simp_all [ResultType.expr] <;> omega
+
 /-- External Boolean references after removing the innermost Boolean binding. -/
 def booleanLetVariables (indices : List Nat) : List Nat :=
   indices.filterMap fun | 0 => none | index + 1 => some index
