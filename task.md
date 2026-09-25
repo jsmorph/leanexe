@@ -595,14 +595,18 @@ contains 439 declarations; this was a focused execution run. Source/parser and
 shared lowering proofs cover the new form; scalar/step/loop proofs reuse their
 interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
 
-Next increment: conditional Boolean Id actions, such as
-`let flag ← if x < y then pure (x == 0) else pure (y != 0)`. Inspect the exact
-elaborated annotations first, then extend the independent BooleanAction grammar,
-parser and operand-size proofs while reusing the typed bind compiler. Cover both
-Boolean and propositional ordinary guards, nested actions and loop usage, and
-finish focused execution and general compiler audits before moving on.
-Dependent action choices, propositional combinations containing saved Boolean
-locals and Boolean public/function signatures remain separate capabilities.
+Current increment: Boolean-parameter local functions and the continuations
+introduced by `let flag ← if … then pure … else pure …`. The initial syntax
+inspection shows Lean produces a shared Bool → Id UInt64 continuation, with
+existing scalar conditionals and Boolean binds in its branches. Preserve the
+three inspected source examples unchanged as execution tests. Add a distinct
+Boolean-function binding kind with native Bool input and the proved zero/one
+compiled representation. Source values, compiler bindings and lookup/meaning
+lemmas now build. Add source semantics, typed support, totality and extraction
+proofs before execution gates. Include step-valued Boolean continuations and
+helpers surrounding loops as the dependent integration permits; no capability
+is complete until its focused native/V8 comparisons and general audits pass.
+No Boolean public ABI or Boolean-returning helper is claimed by this increment.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
