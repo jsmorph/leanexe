@@ -527,6 +527,77 @@ def rangeBinaryStepNat (count seed : UInt64) : UInt64 :=
     let finish : Nat → UInt64 → ForInStep UInt64 := fun _ y => .done y
     finish i a
 
+def boolNotEqual (x y : UInt64) : UInt64 :=
+  if !(x == y) then x - y else x * 3 + 1
+
+def boolNotUnequal (x y : UInt64) : UInt64 :=
+  if !(x != y) then x + 7 else y / x
+
+def boolNotTwice (x y : UInt64) : UInt64 :=
+  if !(!(x == y)) then x / y else y % x
+
+def boolNotThrice (x y : UInt64) : UInt64 :=
+  if !(!(!(x != y))) then x <<< y else y >>> x
+
+def boolNotNested (x y : UInt64) : UInt64 :=
+  if !((if !(x == 0) then x + y else y) == (if !(y != 1) then x else y))
+  then x ^^^ y else x + 11
+
+def boolNotFunction (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => if !(a == b) then a * 3 + x else b - y
+  if !(f x y != f y x) then f (x + y) x else f y (x - y)
+
+def boolNotDo (x y : UInt64) : UInt64 := Id.run do
+  let z ← if !(x == y) then pure (x + 7) else pure (y / x)
+  let mut a := z
+  if !(z != x) then a := a + y else a := a * 3
+  return a + 1
+
+def boolNotProposition (x y : UInt64) : UInt64 :=
+  if ¬ (!(x == y)) then (if ¬ (!(!(x != y))) then x + 3 else y + 7) else x - y
+
+def rangeBoolNotBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if !(a % 5 != seed % 5) then break
+    a := a * 3 + 1
+  return a
+
+def rangeBoolNotContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:2] do
+    if !(UInt64.ofNat i % 3 == seed % 3) then continue
+    a := a + UInt64.ofNat i
+    if !(!(a % 7 == 0)) then break
+  return a
+
+def rangeBoolNotJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if !(UInt64.ofNat i != seed % 7) then pure (.done (a + 9)) else pure (.yield (a + 1))
+    return result
+
+def rangeBoolNotFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 3).toNat:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y => do
+      let z ← pure (x + y + UInt64.ofNat i)
+      if !(!(!(z != seed))) then return .done (z + 17)
+      return .yield (z * 3 + 1)
+    finish a seed
+
+def boolNotCustomBEq (x y : UInt64) : UInt64 :=
+  if !(@BEq.beq UInt64 ⟨fun _ _ => true⟩ x y) then x else y
+
+def boolNotDecision (b : Bool) : Decidable (b = true) := inferInstance
+
+def boolNotCustomDecision (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Eq Bool (Bool.not (x == y)) true) (boolNotDecision (Bool.not (x == y))) (x + 3) (y - 1)
+
+def boolNotExternal (x y : UInt64) : Bool := x == y
+
+def boolNotHelper (x y : UInt64) : UInt64 :=
+  if !(boolNotExternal x y) then x + 3 else y - 1
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -816,7 +887,19 @@ run_elab do
       `ArithmeticModeTest.rangeBinaryStepScalar,
       `ArithmeticModeTest.rangeBinaryStepUnused,
       `ArithmeticModeTest.rangeBinaryStepResult,
-      `ArithmeticModeTest.rangeBinaryStepWrapped] do
+      `ArithmeticModeTest.rangeBinaryStepWrapped,
+      `ArithmeticModeTest.boolNotEqual,
+      `ArithmeticModeTest.boolNotUnequal,
+      `ArithmeticModeTest.boolNotTwice,
+      `ArithmeticModeTest.boolNotThrice,
+      `ArithmeticModeTest.boolNotNested,
+      `ArithmeticModeTest.boolNotFunction,
+      `ArithmeticModeTest.boolNotDo,
+      `ArithmeticModeTest.boolNotProposition,
+      `ArithmeticModeTest.rangeBoolNotBreak,
+      `ArithmeticModeTest.rangeBoolNotContinue,
+      `ArithmeticModeTest.rangeBoolNotJoin,
+      `ArithmeticModeTest.rangeBoolNotFunction] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -833,6 +916,7 @@ run_elab do
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
+      `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
       `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepThree, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,
       `ArithmeticModeTest.rangeBinaryUnsupported, `ArithmeticModeTest.rangeBinaryPartial,
       `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,

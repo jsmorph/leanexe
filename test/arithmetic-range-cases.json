@@ -99,5 +99,9 @@
   "rangeBinaryStepScalar",
   "rangeBinaryStepUnused",
   "rangeBinaryStepResult",
-  "rangeBinaryStepWrapped"
+  "rangeBinaryStepWrapped",
+  "rangeBoolNotBreak",
+  "rangeBoolNotContinue",
+  "rangeBoolNotJoin",
+  "rangeBoolNotFunction"
 ]

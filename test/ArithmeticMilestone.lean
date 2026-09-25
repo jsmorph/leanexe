@@ -849,6 +849,64 @@ def rangeBinaryStepWrapped (count seed : UInt64) : UInt64 :=
       return .yield (z * 3)
     pure (finish a seed)
 
+def boolNotEqual (x y : UInt64) : UInt64 :=
+  if !(x == y) then x - y else x * 3 + 1
+
+def boolNotUnequal (x y : UInt64) : UInt64 :=
+  if !(x != y) then x + 7 else y / x
+
+def boolNotTwice (x y : UInt64) : UInt64 :=
+  if !(!(x == y)) then x / y else y % x
+
+def boolNotThrice (x y : UInt64) : UInt64 :=
+  if !(!(!(x != y))) then x <<< y else y >>> x
+
+def boolNotNested (x y : UInt64) : UInt64 :=
+  if !((if !(x == 0) then x + y else y) == (if !(y != 1) then x else y))
+  then x ^^^ y else x + 11
+
+def boolNotFunction (x y : UInt64) : UInt64 :=
+  let f := fun a b : UInt64 => if !(a == b) then a * 3 + x else b - y
+  if !(f x y != f y x) then f (x + y) x else f y (x - y)
+
+def boolNotDo (x y : UInt64) : UInt64 := Id.run do
+  let z ← if !(x == y) then pure (x + 7) else pure (y / x)
+  let mut a := z
+  if !(z != x) then a := a + y else a := a * 3
+  return a + 1
+
+def boolNotProposition (x y : UInt64) : UInt64 :=
+  if ¬ (!(x == y)) then (if ¬ (!(!(x != y))) then x + 3 else y + 7) else x - y
+
+def rangeBoolNotBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if !(a % 5 != seed % 5) then break
+    a := a * 3 + 1
+  return a
+
+def rangeBoolNotContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:2] do
+    if !(UInt64.ofNat i % 3 == seed % 3) then continue
+    a := a + UInt64.ofNat i
+    if !(!(a % 7 == 0)) then break
+  return a
+
+def rangeBoolNotJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if !(UInt64.ofNat i != seed % 7) then pure (.done (a + 9)) else pure (.yield (a + 1))
+    return result
+
+def rangeBoolNotFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 3).toNat:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y => do
+      let z ← pure (x + y + UInt64.ofNat i)
+      if !(!(!(z != seed))) then return .done (z + 17)
+      return .yield (z * 3 + 1)
+    finish a seed
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -945,7 +1003,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBinaryStepScalar", rangeBinaryStepScalar),
    ("rangeBinaryStepUnused", rangeBinaryStepUnused),
    ("rangeBinaryStepResult", rangeBinaryStepResult),
-   ("rangeBinaryStepWrapped", rangeBinaryStepWrapped)]
+   ("rangeBinaryStepWrapped", rangeBinaryStepWrapped),
+   ("rangeBoolNotBreak", rangeBoolNotBreak),
+   ("rangeBoolNotContinue", rangeBoolNotContinue),
+   ("rangeBoolNotJoin", rangeBoolNotJoin),
+   ("rangeBoolNotFunction", rangeBoolNotFunction)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -982,7 +1044,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("binaryNested", binaryNested),
    ("binaryChoice", binaryChoice),
    ("binaryArguments", binaryArguments),
-   ("binaryWrapped", binaryWrapped)]
+   ("binaryWrapped", binaryWrapped),
+   ("boolNotEqual", boolNotEqual),
+   ("boolNotUnequal", boolNotUnequal),
+   ("boolNotTwice", boolNotTwice),
+   ("boolNotThrice", boolNotThrice),
+   ("boolNotNested", boolNotNested),
+   ("boolNotFunction", boolNotFunction),
+   ("boolNotDo", boolNotDo),
+   ("boolNotProposition", boolNotProposition)]
 
 end ArithmeticMilestone
 
