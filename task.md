@@ -509,11 +509,19 @@ tests passed. The eighteen selected preceding modules kept identical bytes.
 The full corpus contains 335 declarations; this execution run checked 34.
 General type validation used cached dependencies.
 
-Next increment: internal Boolean local bindings and their use in ordinary
+Current increment: internal Boolean local bindings and their use in ordinary
 Boolean conditions, including aliases, negation and conjunction/disjunction.
 Keep Boolean values distinct from UInt64 values in source and compiled binding
 kinds. Start with ordinary Boolean lets and complete scalar/helper/loop execution
 and the general proofs before broadening Boolean operations or the public ABI.
+
+Checked preparation: Boolean expression syntax keeps scalar operands and Boolean
+variable indices separate. Exact parser reconstruction and operand-size proofs
+pass. Conditions containing a Boolean local are proved disjoint from the
+preceding closed guard parsers. Lowering acceptance, operand/variable checking,
+native Boolean meaning and scalar closure invariants pass using the existing
+comparison, negation and conjunction/disjunction lowering. Binding integration,
+source let/condition semantics and end-to-end execution remain to be completed.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
