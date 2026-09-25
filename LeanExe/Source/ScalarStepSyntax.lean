@@ -4,10 +4,7 @@ import LeanExe.Source.ScalarComparison
 namespace LeanExe.Source.Scalar.Step
 
 /-- Exact step-result annotations, including every Id layer retained by elaboration. -/
-inductive ResultAnnotation where
-  | word
-  | identity (inner : ResultAnnotation)
-  deriving DecidableEq, Repr
+abbrev ResultAnnotation := ResultType
 
 def resultType : ResultAnnotation → Lean.Expr
   | .word => .app (.const ``ForInStep [.zero]) (.const ``UInt64 [])

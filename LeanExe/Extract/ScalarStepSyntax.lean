@@ -6,7 +6,7 @@ open LeanExe.Source.Scalar.Step
 
 def scalarStepResultType? : Lean.Expr → Option ResultAnnotation
   | .app (.const ``ForInStep [.zero]) (.const ``UInt64 []) => some .word
-  | .app (.const ``Id [.zero]) inner => (scalarStepResultType? inner).map ResultAnnotation.identity
+  | .app (.const ``Id [.zero]) inner => (scalarStepResultType? inner).map LeanExe.Source.Scalar.ResultType.identity
   | _ => none
 
 theorem scalarStepResultType_accepts (type : ResultAnnotation) :
