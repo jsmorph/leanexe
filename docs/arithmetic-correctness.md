@@ -185,3 +185,7 @@ the fixed arithmetic distribution package.
 The [conditional increment](../proofs/compiler/conditionals-2026-09-25/README.md)
 adds the seven comparison forms and nested branches, with the general proof,
 all nine audits, and 254 matching results across twenty declarations.
+
+The [pure do increment](../proofs/compiler/do-2026-09-25/README.md) adds standard
+Id operations, sequential updates and early returns, with all nine audits and
+339 matching results across twenty-seven declarations.
