@@ -1,0 +1,5 @@
+[
+  "rangeIndexed", "rangeIndexFree", "rangeBindings", "rangeChoice",
+  "rangeBeforeAfter", "rangeCaptured", "rangeConstant",
+  "rangeLocalFunction", "rangeChainedFunctions", "rangeUnusedFunction"
+]

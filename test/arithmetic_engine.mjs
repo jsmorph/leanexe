@@ -2,20 +2,22 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const directory = process.argv[2];
-if (!directory || process.argv.length !== 3) throw new Error('usage: node test/arithmetic_engine.mjs <artifact-directory>');
+const suite = process.argv[3] || 'all';
+if (!directory || process.argv.length > 4 || !['all', 'range'].includes(suite)) {
+  throw new Error('usage: node test/arithmetic_engine.mjs <artifact-directory> [all|range]');
+}
+const rangeEntries = JSON.parse(readFileSync(new URL('./arithmetic-range-cases.json', import.meta.url), 'utf8'));
 const cases = readFileSync(resolve(directory, 'expected.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-const entries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
+const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
   'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant',
   'compareEq', 'compareLt', 'compareLe', 'compareBEq', 'compareBNe',
   'nestedChoice', 'choiceBindings', 'choiceOperands',
   'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant',
   'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
-  'unusedFunction', 'doJoined', 'doBranchUpdates',
-  'rangeIndexed', 'rangeIndexFree', 'rangeBindings', 'rangeChoice',
-  'rangeBeforeAfter', 'rangeCaptured', 'rangeConstant'];
+  'unusedFunction', 'doJoined', 'doBranchUpdates', ...rangeEntries];
+const entries = suite === 'all' ? allEntries : rangeEntries;
 const constants = new Set(['constant', 'boundConstant', 'doConstant', 'rangeConstant']);
-const ranges = new Set(['rangeIndexed', 'rangeIndexFree', 'rangeBindings', 'rangeChoice',
-  'rangeBeforeAfter', 'rangeCaptured']);
+const ranges = new Set(rangeEntries);
 const counts = new Map(entries.map(name => [name, new Set()]));
 const uint64 = value => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value) &&
   BigInt(value) < (1n << 64n);

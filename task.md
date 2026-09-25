@@ -72,10 +72,15 @@ multiple/nested loops remain outside this increment. Focused dependency builds
 and cached general checks were used; the fixed arithmetic archive and unrelated
 438-theorem type-safety suite were not rebuilt.
 
-Next increment: direct local-function bindings in the yielding loop body.
-The pure scalar extractor already checks these functions; the yield wrapper
-currently permits only UInt64 lets. Extend that wrapper while retaining the
-existing full body support checks, then prove and execute this form end-to-end.
+In progress: direct local-function bindings in the yielding loop body. The
+yield wrapper now preserves each binding's original type, and the scalar
+extractor still checks the full transformed body, including unused functions.
+Its focused acceptance/soundness proofs pass. Three execution fixtures cover
+captured index/accumulator values, chained calls and unused functions; rejection
+tests retain unsupported bodies and function arities. The fixed `range-engine`
+group checks 217 results across ten range declarations without recompiling the
+unrelated arithmetic fixtures. The final general audit and execution check are
+pending for this candidate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
