@@ -219,5 +219,13 @@
   "rangeBoolBindCapture",
   "rangeBoolBindBounds",
   "rangeBoolBindStep",
-  "rangeBoolBindOuter"
+  "rangeBoolBindOuter",
+  "rangeBoolChoiceYield",
+  "rangeBoolChoiceBreak",
+  "rangeBoolChoiceContinue",
+  "rangeBoolChoiceJoined",
+  "rangeBoolChoiceCapture",
+  "rangeBoolChoiceBounds",
+  "rangeBoolChoiceStep",
+  "rangeBoolChoiceOuter"
 ]
