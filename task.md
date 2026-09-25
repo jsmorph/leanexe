@@ -416,9 +416,14 @@ scalar/step integration. All 208 focused native Lean/IR comparisons and three
 rejection tests passed. All 235 preceding modules kept identical bytes. General
 type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: standard UInt64 min and max, matching the existing
-dialect's comparison/selection lowering. Preserve exact standard instances,
-finish source/IR proofs and actual compiler checks before the next capability.
+Current increment: standard UInt64 min/max. Exact canonical Min/Max heads and
+native meanings now have checked comparison/selection lowering. Independent
+source rules, total evaluation, scalar admission/correctness and invariants pass,
+as does public function extraction through helpers, do blocks, loop steps and
+range bounds. All 208 focused native Lean/IR comparisons and three rejection
+tests pass across twelve new declarations, including high-bit ordering and
+short intervals near the UInt64 limit. The general compiler proof/audits and
+actual native Lean/V8 comparisons remain pending at this candidate checkpoint.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
