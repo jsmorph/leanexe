@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarBooleanGuard
+import LeanExe.Source.ScalarGuard
 
 namespace LeanExe.Source.Scalar
 

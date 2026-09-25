@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarGuard
+import LeanExe.Source.ScalarGuardCommon
 
 namespace LeanExe.Source.Scalar
 
@@ -74,19 +74,6 @@ def comparison : BooleanComparison → Comparison
 theorem comparison_denote (op : BooleanComparison) (x y : UInt64) :
     (comparison op).denote x y = op.denote x y := by
   cases op <;> rfl
-
-/-- Preserve scalar operands and Boolean meaning while sharing guard lowering. -/
-def asGuard : BooleanGuard → Guard
-  | .compare op a b => .compare (comparison op) a b
-  | .junction n op a b => .junction n op a.asGuard b.asGuard
-
-@[simp] theorem asGuard_operands (guard : BooleanGuard) :
-    guard.asGuard.operands = guard.operands := by
-  induction guard <;> simp_all [asGuard, operands, Guard.operands]
-
-theorem asGuard_denote (guard : BooleanGuard) (native : Lean.Expr → UInt64) :
-    guard.asGuard.denote native = guard.denote native := by
-  induction guard <;> simp_all [asGuard, denote, Guard.denote, comparison_denote]
 
 def condition (guard : BooleanGuard) : Lean.Expr :=
   .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) guard.expr) (.const ``Bool.true [])
