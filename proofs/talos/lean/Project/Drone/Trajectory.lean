@@ -164,7 +164,100 @@ theorem compute_global_smooth (terrain : Array UInt64) (h : terrainBound terrain
     have e := compute_joins terrain h i (by omega)
     exact ⟨e.1, e.2.2.1⟩
 
+theorem compute_first (terrain : Array UInt64) (h : terrainBound terrain) (hn : 1 < terrain.size) :
+    let out := (compute terrain).toList
+    x out 0 0 = 0 ∧ z out 0 0 = real (compute terrain)[0]! ∧
+    vx out 0 0 = 0 ∧ vz out 0 0 = 0 := by
+  have hs0 : (compute terrain).toList[1]! = 0 := by
+    have hp := congrArg (fun xs : List UInt64 => xs[1]!) (compute_endpoints terrain h (by omega)).1
+    simpa [List.getElem!_eq_getElem?_getD] using hp
+  have hx := horizontal_endpoints (compute terrain).toList 0
+    (compute_speed_bound terrain h 0 (by omega)) (compute_speed_bound terrain h 1 hn)
+    (compute_duration_pos terrain h 0 (by omega))
+  have hz := vertical_endpoints (compute terrain).toList 0 (compute_duration_pos terrain h 0 (by omega))
+  exact ⟨by simpa using hx.1,
+    by simpa only [Nat.mul_zero, Array.getElem!_toList] using hz.1,
+    by simpa [hs0, real] using hx.2.2.1, hz.2.2.1⟩
+
+/-- The four global coordinates agree with the local primitive throughout
+each cumulative-time interval, including its endpoints. -/
+theorem compute_global_segment (terrain : Array UInt64) (h : terrainBound terrain)
+    (i : Nat) (hi : i+1 < terrain.size) (t : ℝ) (ht0 : 0 ≤ t)
+    (ht1 : t ≤ duration (compute terrain).toList i) :
+    let out := (compute terrain).toList
+    let time := Gluing.clock (duration out) i+t
+    globalX terrain time = x out i t ∧ globalZ terrain time = z out i t ∧
+    globalVx terrain time = vx out i t ∧ globalVz terrain time = vz out i t := by
+  have hf := compute_first terrain h (by omega)
+  have hd : ∀ j, j < terrain.size-1 → 0 < duration (compute terrain).toList j :=
+    fun j hj => compute_duration_pos terrain h j (by omega)
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · exact Gluing.stitch_on_segment _ _ _ _ hd (fun _ => hf.1.symm)
+      (fun j hj => (compute_joins terrain h j (by omega)).1) i (by omega) t ht0 ht1
+  · exact Gluing.stitch_on_segment _ _ _ _ hd (fun _ => hf.2.1.symm)
+      (fun j hj => (compute_joins terrain h j (by omega)).2.1) i (by omega) t ht0 ht1
+  · exact Gluing.stitch_on_segment _ _ _ _ hd (fun _ => hf.2.2.1.symm)
+      (fun j hj => (compute_joins terrain h j (by omega)).2.2.1) i (by omega) t ht0 ht1
+  · exact Gluing.stitch_on_segment _ _ _ _ hd (fun _ => hf.2.2.2.symm)
+      (fun j hj => (compute_joins terrain h j (by omega)).2.2.2) i (by omega) t ht0 ht1
+
+/-- Every time in a nontrivial flight belongs to one of those proved intervals. -/
+theorem compute_global_cover (terrain : Array UInt64) (h : terrainBound terrain)
+    (hn : 1 < terrain.size) (t : ℝ) (ht0 : 0 ≤ t)
+    (ht1 : t ≤ Gluing.clock (duration (compute terrain).toList) (terrain.size-1)) :
+    ∃ i, i+1 < terrain.size ∧
+      Gluing.clock (duration (compute terrain).toList) i ≤ t ∧
+      t ≤ Gluing.clock (duration (compute terrain).toList) i + duration (compute terrain).toList i := by
+  obtain ⟨i, hi, ha, hb⟩ := Gluing.clock_cover (duration (compute terrain).toList)
+    (terrain.size-1) (by omega) (fun j hj => compute_duration_pos terrain h j (by omega)) t ht0 ht1
+  exact ⟨i, by omega, ha, hb⟩
+
+/-- Segment clearance transported to the single global altitude function. -/
+theorem compute_global_clearance (terrain : Array UInt64) (h : terrainBound terrain)
+    (i : Nat) (hi : i+1 < terrain.size) (s : ℝ) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
+    let out := (compute terrain).toList
+    Motion.floor (floorAt terrain i).toNat (floorAt terrain (i+1)).toNat
+      (if out[2*i+1]! + out[2*(i+1)+1]! = 0 then Motion.smooth s
+       else Motion.fraction out[2*i+1]!.toNat out[2*(i+1)+1]!.toNat s) ≤
+      globalZ terrain (Gluing.clock (duration out) i+s*duration out i) := by
+  have hT := compute_duration_pos terrain h i hi
+  have he := compute_global_segment terrain h i hi (s*duration (compute terrain).toList i)
+    (mul_nonneg hs0 (le_of_lt hT)) (by nlinarith)
+  dsimp only at he ⊢
+  rw [he.2.1]
+  simp only [z, Kinematics.verticalPosition, mul_div_cancel_right₀ _ (ne_of_gt hT)]
+  simpa only [Array.getElem!_toList, real] using compute_segment_clearance terrain h i hi s hs0 hs1
+
+/-- Actual global velocity components obey the speed limits on every flight interval. -/
+theorem compute_global_speed (terrain : Array UInt64) (h : terrainBound terrain)
+    (i : Nat) (hi : i+1 < terrain.size) (s : ℝ) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
+    let out := (compute terrain).toList
+    let time := Gluing.clock (duration out) i+s*duration out i
+    (0 ≤ globalVx terrain time ∧ globalVx terrain time ≤ 20) ∧
+      |globalVz terrain time| ≤ 20 := by
+  have hT := compute_duration_pos terrain h i hi
+  have he := compute_global_segment terrain h i hi (s*duration (compute terrain).toList i)
+    (mul_nonneg hs0 (le_of_lt hT)) (by nlinarith)
+  have hm := compute_segment_maneuverable terrain h i hi s hs0 hs1
+  dsimp only at he hm ⊢
+  rw [he.2.2.1, he.2.2.2]
+  unfold vx vz Kinematics.restVelocity Kinematics.forwardVelocity Kinematics.verticalVelocity
+  by_cases ht : (compute terrain).toList[2*i+1]! + (compute terrain).toList[2*(i+1)+1]! = 0
+  · simp only [ht, ite_true, mul_div_cancel_right₀ _ (ne_of_gt hT)]
+    simp only [Maneuverable, ht, ite_true] at hm
+    exact ⟨hm.2.1.1, hm.2.2.1⟩
+  · have hd : duration (compute terrain).toList i =
+        200/(real (compute terrain).toList[2*i+1]! + real (compute terrain).toList[2*(i+1)+1]!) := by
+      simp only [duration, ht, ite_false]
+    simp only [ht, ite_false, ← hd, mul_div_cancel_right₀ _ (ne_of_gt hT)]
+    simp only [Maneuverable, ht, ite_false] at hm
+    exact ⟨hm.2.1.1, hm.2.2.1⟩
+
 #print axioms compute_joins
 #print axioms compute_global_smooth
+#print axioms compute_global_segment
+#print axioms compute_global_cover
+#print axioms compute_global_clearance
+#print axioms compute_global_speed
 end
 end Project.Drone.Trajectory
