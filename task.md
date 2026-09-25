@@ -72,15 +72,19 @@ multiple/nested loops remain outside this increment. Focused dependency builds
 and cached general checks were used; the fixed arithmetic archive and unrelated
 438-theorem type-safety suite were not rebuilt.
 
-In progress: direct local-function bindings in the yielding loop body. The
-yield wrapper now preserves each binding's original type, and the scalar
-extractor still checks the full transformed body, including unused functions.
-Its focused acceptance/soundness proofs pass. Three execution fixtures cover
-captured index/accumulator values, chained calls and unused functions; rejection
-tests retain unsupported bodies and function arities. The fixed `range-engine`
-group checks 217 results across ten range declarations without recompiling the
-unrelated arithmetic fixtures. The final general audit and execution check are
-pending for this candidate.
+Completed next increment: direct local-function bindings in the yielding loop
+body. Candidate `430802eb` passed all nine general compiler axiom audits and
+217 native Lean/V8 comparisons across ten range declarations, with source
+admission and reserved-export checks. Evidence is retained in
+`proofs/compiler/range-local-functions-2026-09-25/`. The yield wrapper preserves
+binding types and order; the scalar extractor checks all bodies, including
+unused functions. Captures retain the accumulator value from the binding point
+even across later updates. Unsupported bodies and arities remain rejected.
+The fixed range test group avoids recompiling unchanged arithmetic fixtures.
+
+Next increment: standard Id monadic UInt64 bindings (`let x ← …`) inside the
+yielding loop step. Preserve the exact standard Bind evidence and check the
+bound value and continuation through the existing scalar grammar.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

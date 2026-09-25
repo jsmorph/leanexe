@@ -1,0 +1,16 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: passed
+native-results: passed
+compile-rangeConstant: passed
+compile-rangeIndexed: passed
+compile-rangeIndexFree: passed
+compile-rangeBindings: passed
+compile-rangeChoice: passed
+compile-rangeBeforeAfter: passed
+compile-rangeCaptured: passed
+compile-rangeLocalFunction: passed
+compile-rangeChainedFunctions: passed
+compile-rangeUnusedFunction: passed
+Passed 217 native Lean / independent Wasm engine comparisons across 10 declarations.
