@@ -20,6 +20,7 @@ nesting of supported expressions:
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `~~~` | Bitwise complement of all 64 bits |
+| `Bool.toUInt64` | Convert an admitted Boolean value to zero or one |
 | `min`, `max` | Smaller/larger UInt64 operand using unsigned order |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
 | `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards admit `&&`, `||` and repeated `!`; propositional `∧` and `∨` combine admitted guards; `true`, `false`, `True` and `False` may appear at any guard leaf |
@@ -140,6 +141,16 @@ values compose with Boolean negation, junctions and choices, helper arguments,
 ordinary/Id bindings, loop steps and surrounding scalar code. Unsupported
 operands are rejected even when unused or under an inactive decision. Decisions
 whose propositions directly reference saved Boolean locals are a later extension.
+
+Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
+UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
+junctions or nested choices, including those in helpers and loop contexts.
+The source rule preserves the distinct Boolean input type and native conversion;
+the lowering uses the proved zero/one representation. Converted words may be
+used in arithmetic, comparison operands, bindings, bounds, step results and
+post-loop computations. Every operand is checked even when unused. Free
+variables, wrong input kinds, extra universe arguments and unsupported Boolean
+forms are rejected. Public arguments/results remain UInt64.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and
@@ -793,3 +804,12 @@ first run. The preceding Boolean-function fixture passed unchanged (328
 comparisons and sixteen rejections), and eighteen selected preceding modules
 kept identical bytes. Five original inspected examples now compile unchanged.
 The full corpus contains 472 declarations; this was a focused execution run.
+
+The [Boolean-to-word increment](../proofs/compiler/boolean-word-2026-09-25/README.md)
+adds Bool.toUInt64 for admitted Boolean values throughout scalar and loop code.
+All nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
+The 304 new native/IR comparisons and seventeen rejection checks passed on their
+first fixture run. The preceding decide fixture passed unchanged (304 comparisons
+and twelve rejections), and eighteen selected preceding modules kept identical
+bytes. Four original examples now compile unchanged. The full corpus contains
+488 declarations; this was a focused execution run.
