@@ -262,4 +262,25 @@ theorem extractScalarStepWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
   rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarStepWith,
     scalarStepResultType_accepts, dependentGuard_accepts]
 
+theorem extractScalarStepWith_letBoolean (locals : List ScalarStepBinding)
+    (expression : LeanExe.Source.Scalar.BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (.letE name (.const ``Bool []) expression.expr body nondep) = (do
+      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) expression
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body) := by
+  rw [extractScalarStepWith, booleanLocalOperands_expr]
+
+theorem extractScalarStepWith_booleanBranch (locals : List ScalarStepBinding)
+    (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (t e : Lean.Expr) :
+    extractScalarStepWith locals (guard.branch (LeanExe.Source.Scalar.Step.resultType type) t e) = (do
+      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let onTrue ← extractScalarStepWith locals t
+      let onFalse ← extractScalarStepWith locals e
+      pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
+  rw [LeanExe.Source.Scalar.BooleanLocalGuard.branch, extractScalarStepWith,
+    scalarStepResultType_accepts, booleanLocalGuard_not_comparison, booleanLocal_not_compound,
+    booleanLocalGuard_accepts]
+
 end LeanExe.Extract.Core

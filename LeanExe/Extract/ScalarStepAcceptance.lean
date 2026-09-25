@@ -64,6 +64,23 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
       rw [extractScalarStepWith_dependentBranch]; simp [hc, ht, he]⟩
+  | letBoolean expression variables arguments _ ihb =>
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) expression
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (by rw [scalarStepBindings_typed typed]; exact variables)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨target, ht⟩ := ihb (.scalar (.boolean (guardWord c)) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨target, by rw [extractScalarStepWith_letBoolean]; simp [hc, ht]⟩
+  | chooseBoolean guard type variables arguments _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) guard.value
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (by rw [scalarStepBindings_typed typed]; exact variables)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨t, ht⟩ := iht locals typed total
+    obtain ⟨e, he⟩ := ihe locals typed total
+    exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
+      rw [extractScalarStepWith_booleanBranch]; simp [hc, ht, he]⟩
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := scalar value typed total
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)

@@ -81,6 +81,27 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
         (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
       exact ⟨.iteTrue (by simpa [flag] using condition) valueEval,
         .iteTrue (by simpa [flag] using condition) doneEval⟩
+  | @letBoolean values b value name nondep expression native booleans variables arguments body ihb =>
+    rw [extractScalarStepWith_letBoolean] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨c, hc, ht⟩ := compiled
+    have meaning := extractBooleanLocalWith_correct expression _ native booleans hc bindings.toScalar variables
+      (fun operand member target found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+    exact ihb ht (bindings.cons (binding := .scalar (.boolean (guardWord c)))
+      (value := .scalar (.boolean _)) (guardWord_correct meaning))
+  | @chooseBoolean values t e value guard type native booleans variables arguments branch ihb =>
+    rw [extractScalarStepWith_booleanBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
+    have condition := extractBooleanLocalWith_correct guard.value _ native booleans hc bindings.toScalar variables
+      (fun operand member expression found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
+    cases flag : guard.value.denote native booleans with
+    | false =>
+      obtain ⟨v, d⟩ := ihb (by simpa [flag] using he) bindings
+      exact ⟨.iteFalse (by simpa [flag] using condition) v, .iteFalse (by simpa [flag] using condition) d⟩
+    | true =>
+      obtain ⟨v, d⟩ := ihb (by simpa [flag] using ht) bindings
+      exact ⟨.iteTrue (by simpa [flag] using condition) v, .iteTrue (by simpa [flag] using condition) d⟩
   | letE value body ih =>
     rw [extractScalarStepWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

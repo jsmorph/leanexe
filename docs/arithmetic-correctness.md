@@ -40,7 +40,7 @@ and its exact standard decision evidence is checked recursively. The emitted
 condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
-local bounds, even when one branch is never executed. Boolean parameters/results/bindings are not yet
+local bounds, even when one branch is never executed. Boolean parameters and results are not yet
 admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
 `!=` expressions, including repeated `!`. These guards retain their Boolean
 syntax and exact standard equality-decision evidence. Lowering computes their
@@ -75,7 +75,19 @@ retain their exact source syntax and standard decision evidence. Their known
 Boolean results lower through word equality. Both branches and all nested
 operands remain checked even when a literal determines the result; unsupported
 inactive branches, custom decisions and unsupported unused helper bodies are
-rejected. This does not add general Boolean parameters, results or bindings.
+rejected. This does not add general Boolean parameters or results.
+
+Ordinary Boolean local bindings admit `let flag := x == y`, aliases, literals,
+standard UInt64 `==`/`!=`, and Boolean `!`, `&&`, and `||`. Boolean and UInt64
+bindings have distinct kinds. An ordinary `if` may read a saved Boolean or a
+Boolean expression combining saved values with admitted comparison/literal
+leaves. These bindings work in scalar expressions, helper captures, loop steps
+and before a loop. Captures preserve the original flag across later shadowing
+or accumulator updates. Every right-hand side and operand is checked even when
+unused or short-circuited. Boolean values use proved zero/one words internally.
+This increment covers ordinary lets and Boolean conditions; monadic Boolean
+binds, Boolean parameters/results, and propositional/dependent guards containing
+saved Boolean locals remain separate capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the standard decision and
