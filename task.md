@@ -582,13 +582,16 @@ declarations; this was a focused execution run. The source grammar, parser and
 shared Boolean lowering were extended; scalar/step/loop proofs reused their
 interfaces. No emitter/runtime changes or unrelated suite rebuilds were needed.
 
-Next increment: Boolean-valued choices with propositional guards, including
+Current increment: Boolean-valued choices with propositional guards, including
 UInt64 =, ≠, <, ≤, >, ≥, propositional literals, negation and junctions. Reuse
 the existing closed Guard grammar and exact standard decision evidence while
 preserving the preceding Boolean-choice path. Check operands and both arms,
 then complete focused execution and the general compiler audits before moving
-on. Conditional Id actions and Boolean public/function signatures remain later
-capabilities.
+on. PropositionGuard grammar, parser acceptance/reconstruction and exact
+separation from Boolean conditions now pass. BooleanLocal source syntax,
+operand-size, parser and all shared lowering proofs cover the new constructor.
+Integration builds and execution tests remain open. Conditional Id actions and
+Boolean public/function signatures remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
