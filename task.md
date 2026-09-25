@@ -795,14 +795,30 @@ comparisons each and 164/100 rejection tests. Eighteen prior modules kept identi
 bytes. Evidence is retained in `proofs/compiler/id-let-2026-09-25/`. The corpus
 has 648 declarations; this was a focused run. No emitter/runtime changes.
 
-Next increment: investigate standard Id annotations on arithmetic inputs and
-instance type arguments. First retain actual elaborated examples and current
-admission results; then extend only the necessary source/parser rules, prove
-acceptance and correctness, and check focused execution through emitted WASM.
-Complete and push that increment before the next capability. Broader comparison
-annotations, Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
-parameters, saved-flag propositions and loops inside helpers remain later work.
-Keep this file current at every verified checkpoint and commit/push frequently.
+Current increment: standard Id annotations on arithmetic input and instance
+arguments. The first ordinary-operator draft fails Lean instance synthesis; an
+attempted local reducibility change is invalid too. Both drafts/logs are retained
+separately in `../work/id-arithmetic-invalid-draft.*` and
+`../work/id-arithmetic-reducibility-draft.*`. Five valid explicit applications of
+standard instances elaborate successfully and all reject before implementation.
+Their exact source and output are retained in `../work/id-arithmetic-inspect.*`.
+
+The source head now retains independently checked Id layers on both inputs,
+result and standard instance adapter type. Exact operation, adapter and instance
+names/universes remain required. Source/parser reconstruction and acceptance
+proofs, scalar extraction and integration through step/range/function compilation
+now pass. All five original valid examples compile unchanged. The combined
+integration build hit its overall 40-second limit after completing several
+modules; splitting the remaining range and function targets passed. Next: test
+all ten operations and malformed annotations, scalar/step/range compositions
+and unchanged prior cases.
+Finish the general compiler audits and emitted-WASM execution, archive evidence,
+update this record and push completion before moving on. This is INCOMPLETE.
+The ordinary Id-let increment is complete and pushed at `b533c879` (candidate
+`cef8b86e`). Broader comparison annotations, Boolean-returning helpers, Boolean
+public ABI, mixed Bool/word helper parameters, saved-flag propositions and loops
+inside helpers remain later work. Keep this file current at every verified
+checkpoint and commit/push frequently.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -31,14 +31,14 @@ inductive ClassBinary : (Lean.Name × Lean.Name × Lean.Name) →
       (``HShiftRight.hShiftRight, ``instHShiftRightOfShiftRight, ``instShiftRightUInt64) UInt64.shiftRight
 
 def classHead (names : Lean.Name × Lean.Name × Lean.Name)
-    (result : ResultType := .word) : Lean.Expr :=
-  let type : Lean.Expr := .const ``UInt64 []
-  .app (.app (.app (.app (.const names.1 [.zero, .zero, .zero]) type) type) result.expr)
-    (.app (.app (.const names.2.1 [.zero]) type) (.const names.2.2 []))
+    (result : ResultType := .word) (left right instanceType : ResultType := .word) : Lean.Expr :=
+  .app (.app (.app (.app (.const names.1 [.zero, .zero, .zero]) left.expr) right.expr) result.expr)
+    (.app (.app (.const names.2.1 [.zero]) instanceType.expr) (.const names.2.2 []))
 
 inductive Head : Lean.Expr → (UInt64 → UInt64 → UInt64) → Prop where
   | direct (operation : Binary name f) : Head (.const name levels) f
-  | canonical (operation : ClassBinary names f) (result : ResultType := .word) :
-      Head (classHead names result) f
+  | canonical (operation : ClassBinary names f) (result : ResultType := .word)
+      (left right instanceType : ResultType := .word) :
+      Head (classHead names result left right instanceType) f
 
 end LeanExe.Source.Scalar

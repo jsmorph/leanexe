@@ -29,10 +29,13 @@ theorem ofClass_sound {names : Lean.Name × Lean.Name × Lean.Name} {p : ScalarP
 def ofHead? : Lean.Expr → Option ScalarPrimitive
   | .const name _ => ofName? name
   | .app (.app (.app (.app (.const projection [.zero, .zero, .zero])
-      (.const ``UInt64 [])) (.const ``UInt64 [])) resultType)
-      (.app (.app (.const adapter [.zero]) (.const ``UInt64 [])) (.const instanceName [])) =>
+      leftType) rightType) resultType)
+      (.app (.app (.const adapter [.zero]) instanceType) (.const instanceName [])) =>
     do
+      let _ ← scalarResultType? leftType
+      let _ ← scalarResultType? rightType
       let _ ← scalarResultType? resultType
+      let _ ← scalarResultType? instanceType
       ofClass? (projection, adapter, instanceName)
   | _ => none
 
@@ -44,8 +47,8 @@ theorem source_class_meaning (p : ScalarPrimitive) :
     LeanExe.Source.Scalar.ClassBinary p.classNames p.denote := by
   cases p <;> constructor
 
-@[simp] theorem ofHead_class (p : ScalarPrimitive) (result : LeanExe.Source.Scalar.ResultType) :
-    ofHead? (LeanExe.Source.Scalar.classHead p.classNames result) = some p := by
+@[simp] theorem ofHead_class (p : ScalarPrimitive) (result left right instanceType : LeanExe.Source.Scalar.ResultType) :
+    ofHead? (LeanExe.Source.Scalar.classHead p.classNames result left right instanceType) = some p := by
   cases p <;> simp [ofHead?, LeanExe.Source.Scalar.classHead, classNames, ofClass?, all]
 
 theorem ofHead_sound {head : Lean.Expr} {p : ScalarPrimitive}
@@ -57,11 +60,12 @@ theorem ofHead_sound {head : Lean.Expr} {p : ScalarPrimitive}
     rw [ofName_sound h] at meaning
     exact .direct meaning
   · simp only [bind, Option.bind_eq_some_iff] at h
-    obtain ⟨result, found, matched⟩ := h
+    obtain ⟨left, foundLeft, right, foundRight, result, foundResult, instanceType, foundInstance, matched⟩ := h
     have meaning := p.source_class_meaning
     rw [ofClass_sound matched] at meaning
-    rw [scalarResultType_sound found]
-    exact .canonical meaning result
+    rw [scalarResultType_sound foundLeft, scalarResultType_sound foundRight,
+      scalarResultType_sound foundResult, scalarResultType_sound foundInstance]
+    exact .canonical meaning result left right instanceType
   · contradiction
 
 end LeanExe.Extract.Core.ScalarPrimitive
@@ -85,18 +89,18 @@ theorem sourceHead_recognized {head : Lean.Expr} {f : UInt64 → UInt64 → UInt
       | exact ⟨.xor, by rfl, rfl⟩
       | exact ⟨.shiftLeft, by rfl, rfl⟩
       | exact ⟨.shiftRight, by rfl, rfl⟩
-  | canonical operation result =>
+  | canonical operation result left right instanceType =>
     cases operation
     all_goals first
-      | exact ⟨.add, ScalarPrimitive.ofHead_class .add result, rfl⟩
-      | exact ⟨.sub, ScalarPrimitive.ofHead_class .sub result, rfl⟩
-      | exact ⟨.mul, ScalarPrimitive.ofHead_class .mul result, rfl⟩
-      | exact ⟨.div, ScalarPrimitive.ofHead_class .div result, rfl⟩
-      | exact ⟨.mod, ScalarPrimitive.ofHead_class .mod result, rfl⟩
-      | exact ⟨.land, ScalarPrimitive.ofHead_class .land result, rfl⟩
-      | exact ⟨.lor, ScalarPrimitive.ofHead_class .lor result, rfl⟩
-      | exact ⟨.xor, ScalarPrimitive.ofHead_class .xor result, rfl⟩
-      | exact ⟨.shiftLeft, ScalarPrimitive.ofHead_class .shiftLeft result, rfl⟩
-      | exact ⟨.shiftRight, ScalarPrimitive.ofHead_class .shiftRight result, rfl⟩
+      | exact ⟨.add, ScalarPrimitive.ofHead_class .add result left right instanceType, rfl⟩
+      | exact ⟨.sub, ScalarPrimitive.ofHead_class .sub result left right instanceType, rfl⟩
+      | exact ⟨.mul, ScalarPrimitive.ofHead_class .mul result left right instanceType, rfl⟩
+      | exact ⟨.div, ScalarPrimitive.ofHead_class .div result left right instanceType, rfl⟩
+      | exact ⟨.mod, ScalarPrimitive.ofHead_class .mod result left right instanceType, rfl⟩
+      | exact ⟨.land, ScalarPrimitive.ofHead_class .land result left right instanceType, rfl⟩
+      | exact ⟨.lor, ScalarPrimitive.ofHead_class .lor result left right instanceType, rfl⟩
+      | exact ⟨.xor, ScalarPrimitive.ofHead_class .xor result left right instanceType, rfl⟩
+      | exact ⟨.shiftLeft, ScalarPrimitive.ofHead_class .shiftLeft result left right instanceType, rfl⟩
+      | exact ⟨.shiftRight, ScalarPrimitive.ofHead_class .shiftRight result left right instanceType, rfl⟩
 
 end LeanExe.Extract.Core
