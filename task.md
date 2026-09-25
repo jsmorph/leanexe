@@ -71,7 +71,14 @@ empty-result blocks, loops and conditionals, plus bounded branch depths. Their
 focused builds and the affected runtime encoding/length proofs pass. The first
 combined build timed out after completing the structured parsing and translation
 targets; smaller targets completed with cached dependencies. Source admission,
-whole-function validation/execution proofs and execution checks are still pending; loops are not yet in the completed certified grammar.
+whole-function validation/execution proofs and execution checks are still pending.
+The emitted while layout now has a checked validator proof for its two empty
+labels, conditional exit, back edge and preserved outer stack. Loop-free
+statement evaluation and its Talos lowering also pass, preserving the source
+locals across scratch use and matching source writes exactly. The unnecessary
+source-invocation import was moved from elementary validator rules to the
+function-level typing proof; both focused targets pass. Source range admission
+and whole-function integration remain pending; loops are not yet in the completed certified grammar.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
