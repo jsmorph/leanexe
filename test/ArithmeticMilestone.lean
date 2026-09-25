@@ -194,6 +194,33 @@ def rangeUnusedFunction (n seed : UInt64) : UInt64 := Id.run do
     a := a + UInt64.ofNat i
   return a
 
+def rangeMonadic (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let index ← pure (UInt64.ofNat i)
+    let delta ← if a < 7 then pure (a + index) else pure (seed / index)
+    a := (a + delta) ^^^ index
+  return a
+
+def rangeNestedDo (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let f := fun x : UInt64 => x + UInt64.ofNat i
+    let value ← (do
+      let x ← pure (f a)
+      let y := if x == 0 then seed else x / (seed - seed)
+      return x + y)
+    a := value * 3
+  return a
+
+def rangeUnusedBind (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:n.toNat] do
+    let _ignored ← pure (a / (UInt64.ofNat i - UInt64.ofNat i))
+    let delta ← pure (UInt64.ofNat i + 1)
+    a := a + delta
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -203,7 +230,8 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBindings", rangeBindings), ("rangeChoice", rangeChoice),
    ("rangeBeforeAfter", rangeBeforeAfter), ("rangeCaptured", rangeCaptured),
    ("rangeLocalFunction", rangeLocalFunction), ("rangeChainedFunctions", rangeChainedFunctions),
-   ("rangeUnusedFunction", rangeUnusedFunction)]
+   ("rangeUnusedFunction", rangeUnusedFunction), ("rangeMonadic", rangeMonadic),
+   ("rangeNestedDo", rangeNestedDo), ("rangeUnusedBind", rangeUnusedBind)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
