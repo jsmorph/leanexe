@@ -3523,6 +3523,7 @@ run_elab do
       `ArithmeticModeTest.rangeBoolFnBounds,
       `ArithmeticModeTest.rangeBoolFnStep,
       `ArithmeticModeTest.rangeBoolFnOuter,
+      `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -3538,7 +3539,7 @@ run_elab do
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction,
       `ArithmeticModeTest.rangeCustomBind,
-      `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
+      `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
       `ArithmeticModeTest.stepManyUnusedUnsupported, `ArithmeticModeTest.stepManyWrongDomain, `ArithmeticModeTest.stepManyPartial, `ArithmeticModeTest.stepManyIgnoredOperand,
