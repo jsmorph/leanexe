@@ -729,3 +729,13 @@ and two metadata checks passed. The recorded initial Id Bool annotation
 failure now passes unchanged. Eighteen selected preceding modules kept
 identical bytes. The full corpus contains 407 declarations; this was a focused
 run with cached dependencies.
+
+The [Boolean-choice increment](../proofs/compiler/boolean-choice-2026-09-25/README.md)
+adds Boolean-valued conditionals over Boolean guards throughout bindings,
+helper captures and loop code. Nested choices also work directly as conditions.
+All nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
+The 304 new native/IR comparisons and twelve rejection tests passed on the
+first execution run. Earlier Boolean-local/dependent tests also passed unchanged:
+608 comparisons and eighteen rejections. Eighteen selected preceding modules
+kept identical bytes. The full corpus contains 423 declarations. Propositional
+guards inside Boolean-valued choices remain a separate following increment.
