@@ -6,10 +6,10 @@ namespace Project.Gpt2CachedStep.CachedHidden
 open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project.EulerRiemann.Execution LeanExe.Models.Gpt2
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerStep : (layerBody.drop 4).take 261 =
-    (layerBody.drop 4).take 90 ++ (layerBody.drop 94).take 61 ++
-    (layerBody.drop 155).take 24 ++ (layerBody.drop 179).take 14 ++
-    (layerBody.drop 193).take 44 ++ (layerBody.drop 237).take 28 := rfl
+theorem emitted_layerStep : (layerBody.drop 4).take 241 =
+    (layerBody.drop 4).take 84 ++ (layerBody.drop 88).take 61 ++
+    (layerBody.drop 149).take 10 ++ (layerBody.drop 159).take 14 ++
+    (layerBody.drop 173).take 44 ++ (layerBody.drop 217).take 28 := rfl
 
 theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (before heap : Heap)
     (weightsOwner weightsPtr cacheOwner cachePtr embeddingPtr : UInt64) (inputNode oldUpdates : FreeNode)
@@ -51,7 +51,7 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
       regionsDisjoint (CachedBlock.hiddenNode heap position).region (updatesNode heap position layer).region →
       final.mem.pages ≤ 65536 → final.memoryCap «module» 0 = initial.memoryCap «module» 0 →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 4).take 261 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 4).take 241 ++ rest) Q initial frame env := by
   have hCacheBytes := CachedBlock.Spec.cachedBlock_cache_size weights input cache layer position
   have hNeed : PackedAppend.need updates (cachedBlock weights input cache layer position).cache = updatesNeed layer := by
     simp only [PackedAppend.need, updatesNeed, hCacheBytes, hUpdatesSize]
@@ -108,7 +108,15 @@ theorem layerStep_spec (env : HostEnv Unit) (original initial : Store Unit) (bef
     (CachedBlock.hiddenNode heap position).root (updatesNode heap position layer).root
     (CachedBlock.cacheNode heap position) (cachedBlock weights input cache layer position).cache layer updates.size
     appendFrame hAppHeap hAppCache
-    (hAppCache.root_ne (regionsDisjoint_symm hHiddenCache)) (hAppCache.root_ne (regionsDisjoint_symm hNewCache)) rfl hAppendState
+    (hAppCache.root_ne (regionsDisjoint_symm hHiddenCache)) (hAppCache.root_ne (regionsDisjoint_symm hNewCache))
+    (by
+      by_cases hZero : layer = 0
+      · rw [(hInitial hZero).2]
+        intro hRootZero
+        have := hAppCache.buffer.rootBound
+        simp [hRootZero] at this
+      · exact hAppCache.root_ne (hCacheOldUpdates hZero))
+    (hAppCache.root_ne hCacheInput) rfl hAppendState
   intro releasedFrame hReleasedState hReleasedHeap
   apply prepareLayer_spec env _ _ embeddingPtr inputNode.root oldUpdates.root (CachedBlock.hiddenNode heap position).root
     (CachedBlock.cacheNode heap position).root (updatesNode heap position layer).root layer updates.size releasedFrame rfl hReleasedState

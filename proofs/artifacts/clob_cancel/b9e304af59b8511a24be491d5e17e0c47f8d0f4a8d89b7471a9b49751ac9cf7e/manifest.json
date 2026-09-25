@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.ClobCancel.ArtifactBytes",
   "artifactBytesDefinition": "Project.ClobCancel.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.ClobCancel.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.ClobCancel.Program",
-  "cachedProgramDefinition": "Project.ClobCancel.module",
-  "specModule": "Project.ClobCancel.Spec",
+  "cachedProgramModule": "Project.ClobCancel.FrozenProgram",
+  "cachedProgramDefinition": "Project.ClobCancel.Frozen.module",
+  "specModule": "Project.ClobCancel.FrozenSpec",
   "proofTarget": "Project.ClobCancel.ArtifactTranslation",
   "identityTheorem": "Project.ClobCancel.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,10 +18,10 @@
   "cacheEqualityTheorem": "Project.ClobCancel.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.ClobCancel.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.ClobCancel.Spec.cancel_correct"
+    "Project.ClobCancel.Frozen.Spec.cancel_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
-  "verifierSourceSha256": "9f3a46e5d733dccb0c686a6a4f2ee7213e8b265d5157972794db8569b60ab6fe",
+  "verifierSourceSha256": "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194",
   "hostAssumptions": []
 }

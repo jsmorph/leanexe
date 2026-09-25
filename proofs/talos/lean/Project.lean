@@ -97,13 +97,13 @@ import Project.EulerGridStep.GridLoopTransition
 import Project.EulerGridStep.GridLoopAdvance
 import Project.EulerGridStep.GridLoopShape
 import Project.EulerGridStep.GridLoopFrame
-import Project.EulerGridStep.RecyclingLoop
+import Project.EulerGridStep.GridLoop
 import Project.EulerGridStep.GridFinalGeometry
 import Project.EulerGridStep.GridFinalRelease
-import Project.EulerGridStep.RecyclingFinishCode
+import Project.EulerGridStep.GridFinish
 import Project.EulerGridStep.GridSetup
 import Project.EulerGridStep.GridInitialFacts
-import Project.EulerGridStep.RecyclingValidBody
+import Project.EulerGridStep.GridValidBody
 import Project.EulerGridStep.GridEntryReady
 import Project.EulerGridStep.GridExecution
 import Project.EulerGridStep.GridReset
@@ -150,5 +150,8 @@ import Project.Gpt2RowMean.Spec
 import Project.Gpt2RowInvStd.Spec
 import Project.Gpt2AttentionScore.Spec
 import Project.Gpt2LinearRows.Spec
+import Project.Gpt2QuantizedLinearRows.Spec
+import Project.Gpt2QuantizedGroupedRows.Spec
+import Project.Gpt2QuantizedCached.Spec
 import Project.Gpt2CachedStep.Spec
 import Project.ByteIO.Verification

@@ -246,7 +246,7 @@ mutual
     | .trap => .trap
     | .u64 value => .u64 value
     | .f64SqrtBits value => .f64SqrtBits (shiftExprCalls offset value)
-    | .floatUnary op value => .floatUnary op (shiftExprCalls offset value)
+    | .scalarUnary op value => .scalarUnary op (shiftExprCalls offset value)
     | .u64Bin op left right =>
         .u64Bin op (shiftExprCalls offset left) (shiftExprCalls offset right)
     | .ite cond thenValue elseValue =>
@@ -334,8 +334,8 @@ mutual
     | .byteArrayLoad32 ptr len index =>
         .byteArrayLoad32 (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset index)
-    | .byteArrayGenerate32Ptr len indexSlot body =>
-        .byteArrayGenerate32Ptr (shiftExprCalls offset len) indexSlot (shiftExprCalls offset body)
+    | .byteArrayGeneratePtr width len indexSlot body =>
+        .byteArrayGeneratePtr width (shiftExprCalls offset len) indexSlot (shiftExprCalls offset body)
     | .byteArrayPushPtr ptr len value =>
         .byteArrayPushPtr (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset value)
@@ -476,9 +476,17 @@ def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .f32MulBits => [Instr.mulF32]
   | .f32DivBits => [Instr.divF32]
 
-def emitFloatUnary : LeanExe.IR.FloatUnaryOp → List Instr
+def emitScalarUnary : LeanExe.IR.ScalarUnaryOp → List Instr
   | .f32SqrtBits =>
       [.wrapI64, .f32ReinterpretI32, .sqrtF32, .i32ReinterpretF32, .extendUI32]
+  | .f32NearestBits =>
+      [.wrapI64, .f32ReinterpretI32, .nearestF32, .i32ReinterpretF32, .extendUI32]
+  | .f32ToI32Bits =>
+      [.wrapI64, .f32ReinterpretI32, .i32TruncSatF32S, .extendUI32]
+  | .i32ToF32Bits =>
+      [.wrapI64, .f32ConvertI32S, .i32ReinterpretF32, .extendUI32]
+  | .i32Extend8Bits =>
+      [.wrapI64, .extend8SI32, .extendUI32]
   | .f32ToF64Bits =>
       [.wrapI64, .f32ReinterpretI32, .f64PromoteF32, .i64ReinterpretF64]
   | .f64ToF32Bits =>
@@ -769,7 +777,7 @@ mutual
     | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
     | .f64SqrtBits value => exprScratch value
-    | .floatUnary _ value => exprScratch value
+    | .scalarUnary _ value => exprScratch value
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
@@ -858,7 +866,7 @@ mutual
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .byteArrayLoad32 ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
-    | .byteArrayGenerate32Ptr len _ body =>
+    | .byteArrayGeneratePtr _ len _ body =>
         2 + max 6 (max (exprScratch len) (exprScratch body))
     | .byteArrayPushPtr ptr len value =>
         6 + max 6 (max (exprScratch ptr) (max (exprScratch len) (exprScratch value)))
@@ -1993,9 +2001,9 @@ mutual
               Instr.load32, Instr.extendUI32]) (some [Instr.unreachable])])
         (some [Instr.unreachable])]
 
-  partial def emitByteArrayGenerate32Ptr
+  partial def emitByteArrayGeneratePtr
       (emitValue : Nat → Expr → List Instr)
-      (scratch : Nat) (byteLen : Expr) (indexSlot : Nat) (body : Expr) : List Instr :=
+      (width : IR.PackedWidth) (scratch : Nat) (byteLen : Expr) (indexSlot : Nat) (body : Expr) : List Instr :=
     let lenLocal := scratch
     let ptrLocal := scratch + 1
     let childScratch := scratch + 2
@@ -2003,11 +2011,11 @@ mutual
       rcAllocRawObject childScratch (localGet lenLocal) ++ localSet ptrLocal ++
       i64Const 0 ++ localSet indexSlot ++
       [Instr.block [Instr.loop
-        (localGet indexSlot ++ i64Const 4 ++ [Instr.mulI64] ++
+        (localGet indexSlot ++ i64Const width.bytes ++ [Instr.mulI64] ++
           localGet lenLocal ++ i64GeU ++ [Instr.brIf 1] ++
-          localGet ptrLocal ++ localGet indexSlot ++ i64Const 4 ++
+          localGet ptrLocal ++ localGet indexSlot ++ i64Const width.bytes ++
           [Instr.mulI64, Instr.addI64, Instr.wrapI64] ++
-          emitValue childScratch body ++ [Instr.wrapI64, Instr.store32] ++
+          emitValue childScratch body ++ [Instr.wrapI64, match width with | .u8 => Instr.store8 | .u32 => Instr.store32] ++
           localGet indexSlot ++ i64Const 1 ++ [Instr.addI64] ++ localSet indexSlot ++
           [Instr.br 0])]] ++ localGet ptrLocal
 
@@ -2686,7 +2694,7 @@ mutual
     | .f64SqrtBits value =>
         emitExpr scratch value ++
           [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
-    | .floatUnary op value => emitExpr scratch value ++ emitFloatUnary op
+    | .scalarUnary op value => emitExpr scratch value ++ emitScalarUnary op
     | .u64Bin op left right =>
         if isF32Binary op then
           emitExpr scratch left ++ [Instr.wrapI64, Instr.f32ReinterpretI32] ++
@@ -2744,8 +2752,8 @@ mutual
     | .arrayReverseSlots width childMask array => emitArrayReverseSlots scratch width childMask array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .byteArrayLoad32 ptr len offset => emitByteArrayLoad32 emitExpr scratch ptr len offset
-    | .byteArrayGenerate32Ptr len indexSlot body =>
-        emitByteArrayGenerate32Ptr emitExpr scratch len indexSlot body
+    | .byteArrayGeneratePtr width len indexSlot body =>
+        emitByteArrayGeneratePtr emitExpr width scratch len indexSlot body
     | .byteArrayPushPtr ptr len value => emitByteArrayPushPtr scratch ptr len value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
         emitByteArrayAppendPtr scratch leftPtr leftLen rightPtr rightLen
@@ -2903,8 +2911,8 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
   | .f64SqrtBits value =>
       emitExprWithReleaseFallback releaseIndex scratch value ++
         [Instr.f64ReinterpretI64, Instr.sqrtF64, Instr.i64ReinterpretF64]
-  | .floatUnary op value =>
-      emitExprWithReleaseFallback releaseIndex scratch value ++ emitFloatUnary op
+  | .scalarUnary op value =>
+      emitExprWithReleaseFallback releaseIndex scratch value ++ emitScalarUnary op
   | .u64Bin op left right =>
       if isF32Binary op then
         emitExprWithReleaseFallback releaseIndex scratch left ++
@@ -2932,8 +2940,8 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
         globalGet (runtimeStatGlobal .frees)
   | .byteArrayLoad32 ptr len offset =>
       emitByteArrayLoad32 (emitExprWithReleaseFallback releaseIndex) scratch ptr len offset
-  | .byteArrayGenerate32Ptr len indexSlot body =>
-      emitByteArrayGenerate32Ptr (emitExprWithReleaseFallback releaseIndex) scratch len indexSlot body
+  | .byteArrayGeneratePtr width len indexSlot body =>
+      emitByteArrayGeneratePtr (emitExprWithReleaseFallback releaseIndex) width scratch len indexSlot body
   | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets =>
       emitArrayMapSlots (emitExprWithReleaseFallback releaseIndex) (emitLocalLetWithRelease releaseIndex)
         scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues bodyLets

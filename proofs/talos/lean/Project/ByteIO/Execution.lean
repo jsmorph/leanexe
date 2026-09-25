@@ -1,5 +1,6 @@
 import Project.ByteIO.Artifact
 import Project.ByteIO.ExecutionModel
+import Project.ProofKit.InterpreterEvaluation
 import Interpreter.Wasm.Spec.Termination
 import Lean.Elab.Tactic.Cbv
 

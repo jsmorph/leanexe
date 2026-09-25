@@ -8,15 +8,18 @@ set_option maxRecDepth 16384
 set_option maxHeartbeats 1000000
 
 def invalidEntryFreshSearchFrame (base : Locals) : Locals :=
-  { base with locals := ((base.locals.set 46 (.i64 0)).set 42 (.i64 0)).set 43 (.i64 0) }
+  { base with locals := ((base.locals.set 44 (.i64 0)).set 40 (.i64 0)).set 41 (.i64 0) }
 
 def invalidEntryFreshBumpFrame (base : Locals) (heapTop capacity : UInt64) : Locals :=
   { base with
-    locals := ((((((base.locals.set 46 (.i64 0)).set 42 (.i64 0)).set 43 (.i64 0)).set 44 (.i64 (heapTop + 48 + capacity))).set 45 (.i64 ((heapTop + 48 + capacity - 1) / 65536 + 1))).set 46 (.i64 (heapTop + 48))), values := [] }
+    locals := ((((((base.locals.set 44 (.i64 0)).set 40 (.i64 0)).set 41 (.i64 0)).set
+      42 (.i64 (heapTop + 48 + capacity))).set
+      43 (.i64 ((heapTop + 48 + capacity - 1) / 65536 + 1))).set
+      44 (.i64 (heapTop + 48))), values := [] }
 
 def invalidEntryFreshAllocFrame (base : Locals) (heapTop capacity : UInt64) : Locals :=
   { invalidEntryFreshBumpFrame base heapTop capacity with
-    locals := (invalidEntryFreshBumpFrame base heapTop capacity).locals.set 37 (.i64 (heapTop + 48)) }
+    locals := (invalidEntryFreshBumpFrame base heapTop capacity).locals.set 35 (.i64 (heapTop + 48)) }
 
 def invalidEntryFreshBumpedStore (initial : Store Unit) (heapTop capacity : UInt64) : Store Unit :=
   { initial with globals := { globals := initial.globals.globals.set 0 (.i64 (heapTop + 48 + capacity)) } }
@@ -25,9 +28,9 @@ def invalidEntryFreshBumpedStore (initial : Store Unit) (heapTop capacity : UInt
 theorem invalid_entry_allocation_bump_spec
     (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit) (frame : Locals)
     (heapTop capacity allocs : UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 49)
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 47)
     (hValues : frame.values = [])
-    (hCapacityLocal : frame.locals[41]? = some (.i64 capacity))
+    (hCapacityLocal : frame.locals[39]? = some (.i64 capacity))
     (hCapacity : 8 ≤ capacity.toNat)
     (hFitMemory : heapTop.toNat + 48 + capacity.toNat ≤ st.mem.pages * 65536)
     (hPages : st.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
@@ -39,7 +42,7 @@ theorem invalid_entry_allocation_bump_spec
       (FixedArrayAllocator.allocStore st heapTop capacity 1 allocs)
       (invalidEntryFreshAllocFrame frame heapTop capacity) env) :
     wp module_ (invalidEntryAllocationRegion ++ rest) Q st frame env := by
-  have hCapacityGet : frame.locals[41] = .i64 capacity := by
+  have hCapacityGet : frame.locals[39] = .i64 capacity := by
     have h := hCapacityLocal
     rw [List.getElem?_eq_getElem (by omega)] at h
     exact Option.some.inj h
@@ -73,9 +76,9 @@ theorem invalid_entry_allocation_bump_spec
     rw [wp_nil]
     simp only [List.take_zero, List.drop_zero, List.nil_append]
     wp_alloc_window_lists [hHeapTop, hParams, hLocals, hValues, hCapacityGet]
-    change wp module_ (allocationHeaderProgram 48 43 ++ []) _ (invalidEntryFreshBumpedStore st heapTop capacity)
+    change wp module_ (allocationHeaderProgram 46 41 ++ []) _ (invalidEntryFreshBumpedStore st heapTop capacity)
       (invalidEntryFreshBumpFrame frame heapTop capacity) env
-    apply allocation_header_program_spec 48 43 module_ env (invalidEntryFreshBumpedStore st heapTop capacity)
+    apply allocation_header_program_spec 46 41 module_ env (invalidEntryFreshBumpedStore st heapTop capacity)
       (invalidEntryFreshBumpFrame frame heapTop capacity) (heapTop + 48) capacity
       (by simp [invalidEntryFreshBumpFrame, Wasm.Locals.get, hParams, hLocals])
       (by simp [invalidEntryFreshBumpFrame, Wasm.Locals.get, hParams, hLocals, hCapacityGet])

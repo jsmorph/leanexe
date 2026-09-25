@@ -11,6 +11,7 @@ theorem writer_accepted_sequence {m : Wasm.Module} (layout : Layout m)
     (env : HostEnv Unit) (initial : Store Unit) (unused : UInt64)
     (roots : Nat → UInt64) (index : Nat) (cell : Project.EulerCellStep.Model.CheckedCell)
     (W R : Nat → Store Unit → Prop) (hAccepted : cell.status = 0) (hInitial : W 0 initial)
+    (hDistinct : ∀ count, 1 ≤ count → count ≤ 5 → roots count ≠ roots 6)
     (hWrite : ∀ field < 6, ∀ current, W field current →
       TerminatesWith env m 27 current
         [.i64 ((Model.payload cell).getD field 0), .i64 (UInt64.ofNat field),
@@ -19,7 +20,6 @@ theorem writer_accepted_sequence {m : Wasm.Module} (layout : Layout m)
           W (field + 1) final))
     (hBridge : ∀ current, W 6 current → R 5 current ∧
       ∀ count, 1 ≤ count → count ≤ 5 → roots count ≠ 0)
-    (hDistinct : ∀ a ≤ 6, ∀ b ≤ 6, a ≠ b → roots a ≠ roots b)
     (hRelease : ∀ count, 1 ≤ count → count ≤ 5 → ∀ current, R count current →
       TerminatesWith env m 40 current [.i64 (roots count)]
         (fun final values => values = [] ∧ R (count - 1) final)) :

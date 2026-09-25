@@ -18,7 +18,7 @@ theorem initial_arena_shape : gridValidBody.take 78 =
 /-- The valid entry initializes slot zero using the same cells+6 arena budget as the loop. -/
 theorem initial_arena_spec (m : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (pointer allocs releases frees : UInt64) (base : Nat) (input : Array UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 49)
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 47)
     (hValues : frame.values = []) (hPointer : frame.params[1]? = some (.i64 pointer))
     (hInput : UInt64Array.At initial pointer input) (hCells : 0 < input.size / 3)
     (hPages : initial.mem.pages ≤ 65536) (hMemory32 : m.memIs64 = false)

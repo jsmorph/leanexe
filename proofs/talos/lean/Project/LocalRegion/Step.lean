@@ -81,6 +81,7 @@ theorem execOne_succ
   | orI64 => relate_atomic frame hFrame
   | shlI64 => relate_atomic frame hFrame
   | shrUI64 => relate_atomic frame hFrame
+  | extend8S => relate_atomic frame hFrame
   | f32ReinterpretI32 => relate_atomic frame hFrame
   | i32ReinterpretF32 => relate_atomic frame hFrame
   | f32Add => relate_atomic frame hFrame
@@ -88,6 +89,9 @@ theorem execOne_succ
   | f32Mul => relate_atomic frame hFrame
   | f32Div => relate_atomic frame hFrame
   | f32Sqrt => relate_atomic frame hFrame
+  | f32Nearest => relate_atomic frame hFrame
+  | i32TruncSatF32S => relate_atomic frame hFrame
+  | f32ConvertI32S => relate_atomic frame hFrame
   | f64ReinterpretI64 => relate_atomic frame hFrame
   | i64ReinterpretF64 => relate_atomic frame hFrame
   | f64Add => relate_atomic frame hFrame
@@ -103,6 +107,8 @@ theorem execOne_succ
   | geUI64 => relate_atomic frame hFrame
   | wrapI64 => relate_atomic frame hFrame
   | extendUI32 => relate_atomic frame hFrame
+  | load8U => relate_atomic frame hFrame
+  | store8 => relate_atomic frame hFrame
   | load32 => relate_atomic frame hFrame
   | store32 => relate_atomic frame hFrame
   | load64 => relate_atomic frame hFrame

@@ -1,6 +1,7 @@
 import Lean
 import LeanExe.Float64
 import LeanExe.Float32
+import LeanExe.Signed32
 import LeanExe.Packed
 
 namespace LeanExe.IR
@@ -45,17 +46,34 @@ inductive U64Op where
   | f32DivBits
   deriving BEq, Repr
 
-inductive FloatUnaryOp where
+inductive ScalarUnaryOp where
   | f32SqrtBits
+  | f32NearestBits
+  | f32ToI32Bits
+  | i32ToF32Bits
+  | i32Extend8Bits
   | f32ToF64Bits
   | f64ToF32Bits
   deriving BEq, Repr
 
-def FloatUnaryOp.eval (op : FloatUnaryOp) (value : UInt64) : UInt64 :=
+def ScalarUnaryOp.eval (op : ScalarUnaryOp) (value : UInt64) : UInt64 :=
   match op with
   | .f32SqrtBits => (LeanExe.Float32.sqrtBits value.toUInt32).toUInt64
+  | .f32NearestBits => (LeanExe.Float32.nearestBits value.toUInt32).toUInt64
+  | .f32ToI32Bits => (LeanExe.Float32.toInt32Bits value.toUInt32).toUInt64
+  | .i32ToF32Bits => (LeanExe.Float32.ofInt32Bits value.toUInt32).toUInt64
+  | .i32Extend8Bits => (LeanExe.Signed32.extend8Bits value.toUInt32).toUInt64
   | .f32ToF64Bits => LeanExe.Float32.toFloat64Bits value.toUInt32
   | .f64ToF32Bits => (LeanExe.Float32.ofFloat64Bits value).toUInt64
+
+inductive PackedWidth where
+  | u8
+  | u32
+  deriving BEq, Repr
+
+def PackedWidth.bytes : PackedWidth → Nat
+  | .u8 => 1
+  | .u32 => 4
 
 inductive RuntimeStat where
   | allocs
@@ -87,7 +105,7 @@ mutual
     | trap
     | u64 (value : Nat)
     | f64SqrtBits (value : Expr)
-    | floatUnary (op : FloatUnaryOp) (value : Expr)
+    | scalarUnary (op : ScalarUnaryOp) (value : Expr)
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
@@ -131,7 +149,7 @@ mutual
     | arrayReverseSlots (width childMask : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | byteArrayLoad32 (ptr len offset : Expr)
-    | byteArrayGenerate32Ptr (byteLen : Expr) (indexSlot : Nat) (body : Expr)
+    | byteArrayGeneratePtr (width : PackedWidth) (byteLen : Expr) (indexSlot : Nat) (body : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
     | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
     | byteArraySetPtr (ptr len index value : Expr)
@@ -234,7 +252,7 @@ mutual
     | .trap => 0
     | .u64 value => UInt64.ofNat value
     | .f64SqrtBits value => LeanExe.Float64.sqrtBits (value.eval module_ store)
-    | .floatUnary op value => op.eval (value.eval module_ store)
+    | .scalarUnary op value => op.eval (value.eval module_ store)
     | .u64Bin op left right =>
         let leftValue := left.eval module_ store
         let rightValue := right.eval module_ store
@@ -321,7 +339,7 @@ mutual
     | .arrayReverseSlots _ _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .byteArrayLoad32 _ _ _ => 0
-    | .byteArrayGenerate32Ptr _ _ _ => 0
+    | .byteArrayGeneratePtr _ _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
     | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
     | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store

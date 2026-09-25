@@ -1,7 +1,8 @@
-import Project.EulerRiemann.CellResidualExecution
+import Project.EulerRiemann.FrozenCellResidualExecution
 import Project.EulerRiemann.ArtifactModule
 
 namespace Project.EulerRiemann.CellResidual
+open Project.EulerRiemann.Frozen.CellResidual
 
 theorem artifact_cell_residual :
     ∃ raw validated,

@@ -5,17 +5,17 @@ namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit ArrayPushLayout FixedArrayFold
 
 def initialSetupMoves : Wasm.Program :=
-  [.localGet 50, .localSet 21, .localGet 21, .localSet 22,
-   .constI64 0, .localSet 50, .constI64 256, .localSet 51, .constI64 1, .localSet 52,
-   .localGet 21, .localSet 23, .localGet 22, .localSet 24, .localGet 23, .localSet 71]
+  [.localGet 48, .localSet 21, .localGet 21, .localSet 22,
+   .constI64 0, .localSet 48, .constI64 256, .localSet 49, .constI64 1, .localSet 50,
+   .localGet 21, .localSet 23, .localGet 22, .localSet 24, .localGet 23, .localSet 69]
 
 theorem initial_setup_shape : (func78.drop 67).take 22 =
-    [.localGet 59, .localSet 50] ++ FixedArrayResult.lengthStoreProgram 50 0 ++ initialSetupMoves := rfl
+    [.localGet 57, .localSet 48] ++ FixedArrayResult.lengthStoreProgram 48 0 ++ initialSetupMoves := rfl
 
 def initialReadyFrame (pointer t0 t1 t2 t3 : UInt64) (x : Row) (start : Nat)
     (previous : UInt64) : Locals :=
-  [(50, (node start 0).root), (21, (node start 0).root), (22, (node start 0).root),
-    (50, 0), (51, 256), (52, 1), (23, (node start 0).root), (24, (node start 0).root), (71, (node start 0).root)].foldl
+  [(48, (node start 0).root), (21, (node start 0).root), (22, (node start 0).root),
+    (48, 0), (49, 256), (50, 1), (23, (node start 0).root), (24, (node start 0).root), (69, (node start 0).root)].foldl
     (fun frame assignment => resultFrame frame assignment.1 assignment.2)
     (initialAllocatedFrame pointer t0 t1 t2 t3 x start previous)
 
@@ -50,7 +50,7 @@ theorem initial_setup_spec (env : HostEnv Unit) (initial : Store Unit)
   simp only [List.append_assoc, List.cons_append, List.nil_append]
   wp_fixed_frame [initialAllocatedFrame, initialAllocationFrame, inferenceParams, inferenceSaved,
     FixedArraySearch.frame, List.replicate, List.cons_append, List.nil_append]
-  apply FixedArrayResult.lengthStore_spec module env _ _ (node start 0).root 0 50 rfl rfl hBound
+  apply FixedArrayResult.lengthStore_spec module env _ _ (node start 0).root 0 48 rfl rfl hBound
   simp only [initialSetupMoves, List.cons_append, List.nil_append]
   wp_fixed_frame
   simpa only [initialReadyFrame, List.foldl, resultFrame, initialAllocatedFrame, initialAllocationFrame,

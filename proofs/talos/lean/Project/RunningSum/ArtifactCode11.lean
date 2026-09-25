@@ -13,16 +13,16 @@ set_option maxRecDepth 131072
 set_option cbv.maxSteps 1000000
 
 @[cbv_eval] theorem sequence_11_tail0 :
-    instructionSequenceAt 7 false { bytes := bytes, pos := 15808, limit := 15815 } =
-      .ok ((((raw.core.codes[11]!).body).drop 0, .end), { bytes := bytes, pos := 15815, limit := 15815 }) := by
+    instructionSequenceAt 7 false { bytes := bytes, pos := 15892, limit := 15899 } =
+      .ok ((((raw.core.codes[11]!).body).drop 0, .end), { bytes := bytes, pos := 15899, limit := 15899 }) := by
   cbv
 
 theorem code11_decoded :
-    code { bytes := bytes, pos := 15806, limit := 16469 } = .ok (raw.core.codes[11]!, { bytes := bytes, pos := 15815, limit := 16469 }) := by
+    code { bytes := bytes, pos := 15890, limit := 16553 } = .ok (raw.core.codes[11]!, { bytes := bytes, pos := 15899, limit := 16553 }) := by
   refine code_eq_of_parts (size := 8)
-    (payload := { bytes := bytes, pos := 15807, limit := 16469 })
-    (bodyStart := { bytes := bytes, pos := 15808, limit := 15815 })
-    (bodyFinish := { bytes := bytes, pos := 15815, limit := 15815 })
+    (payload := { bytes := bytes, pos := 15891, limit := 16553 })
+    (bodyStart := { bytes := bytes, pos := 15892, limit := 15899 })
+    (bodyFinish := { bytes := bytes, pos := 15899, limit := 15899 })
     ?_ ?_ ?_ ?_ ?_ ?_
   · cbv
   · decide

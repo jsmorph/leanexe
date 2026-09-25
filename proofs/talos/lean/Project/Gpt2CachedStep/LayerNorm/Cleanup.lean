@@ -1,11 +1,11 @@
 import Project.Gpt2CachedStep.LayerNorm.Output
-import Project.ProofKit.PackedReleaseAliases
+import Project.ProofKit.PackedReleaseGuard
 
 namespace Project.Gpt2CachedStep.LayerNorm
 open Wasm Project.Runtime Project.ProofKit PackedFloatFrame Project.EulerRiemann.Execution
 
 set_option maxRecDepth 32768 in
-theorem emitted_cleanup : func20.drop 156 = PackedReleaseAliases.program 41 [67, 17, 16] 42 ++
+theorem emitted_cleanup : func20.drop 156 = PackedReleaseGuard.program 41 67 42 ++
     PackedReleaseGuard.program 16 67 42 ++ [.localGet 67, .localGet 68, .localGet 69] := rfl
 
 theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
@@ -27,13 +27,11 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       result.values = [.i64 (UInt64.ofNat (4 * (rows * 768))), .i64 outputNode.root, .i64 outputNode.root] →
       wp «module» rest Q final result env) :
     wp «module» (func20.drop 156 ++ rest) Q initial frame env := by
-  rcases hState with ⟨⟨⟨hFrameParams, hLocals, hValues, hMeanOwner, hMeanPtr, _, _⟩,
+  rcases hState with ⟨⟨⟨hFrameParams, hLocals, hValues, hMeanOwner, _, _, _⟩,
     hInverseOwner, _, _⟩, hOutputOwner, hOutputPtr, hOutputSize⟩
   have hParamLength : frame.params.length = 9 := by rw [hFrameParams, hParams]
   have hGetMean : frame.get 16 = some (.i64 meanNode.root) := by
     simpa [Locals.get, hParamLength, hLocals] using hMeanOwner
-  have hGetMeanPtr : frame.get 17 = some (.i64 meanNode.root) := by
-    simpa [Locals.get, hParamLength, hLocals] using hMeanPtr
   have hGetInverse : frame.get 41 = some (.i64 inverseNode.root) := by
     simpa [Locals.get, hParamLength, hLocals] using hInverseOwner
   have hGetOutput : frame.get 67 = some (.i64 outputNode.root) := by
@@ -53,14 +51,9 @@ theorem cleanup_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (regionsDisjoint_symm hMeanOutput)
   rw [emitted_cleanup]
   simp only [List.append_assoc]
-  apply PackedReleaseAliases.program_spec env «module» 42 initial heap frame inverseNode inverseBytes
-    41 [67, 17, 16] (typeIdx := some 42) rfl rfl hHeap hInverses hValues hGetInverse
-  · intro slot hSlot
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hSlot
-    rcases hSlot with rfl | rfl | rfl
-    · exact ⟨outputNode.root, hGetOutput, hInverses.root_ne hInverseOutput⟩
-    · exact ⟨meanNode.root, hGetMeanPtr, hInverses.root_ne (regionsDisjoint_symm hMeanInverse)⟩
-    · exact ⟨meanNode.root, hGetMean, hInverses.root_ne (regionsDisjoint_symm hMeanInverse)⟩
+  apply PackedReleaseGuard.program_spec env «module» 42 initial heap frame inverseNode inverseBytes
+    outputNode.root 41 67 (typeIdx := some 42) rfl rfl hHeap hInverses hValues hGetInverse hGetOutput
+    (hInverses.root_ne hInverseOutput)
   intro hHeapAfter
   apply PackedReleaseGuard.program_spec env «module» 42 (heap.releaseStore initial inverseNode)
     (heap.release inverseNode) frame meanNode meanBytes outputNode.root 16 67

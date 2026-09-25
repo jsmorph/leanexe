@@ -9,8 +9,7 @@ def AttentionState (params : List Value) (base : Nat) (normalizedPtr qkvPtr atte
   QkvState params base normalizedPtr qkvPtr frame ∧
   frame.locals[41]? = some (.i64 attentionPtr) ∧ frame.locals[42]? = some (.i64 attentionPtr) ∧
   frame.locals[43]? = some (.i64 3072) ∧ frame.locals[44]? = some (.i64 attentionPtr) ∧
-  frame.locals[45]? = some (.i64 attentionPtr) ∧ frame.locals[46]? = some (.i64 3072) ∧
-  frame.locals[36]? = some (.i64 qkvPtr)
+  frame.locals[45]? = some (.i64 attentionPtr) ∧ frame.locals[46]? = some (.i64 3072)
 
 def attentionCode : Wasm.Program :=
   [.localGet 6, .localSet 44, .localGet 7, .localSet 45, .localGet 8, .localSet 46,
@@ -51,7 +50,7 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     wp «module» ((func33.drop 129).take 34 ++ rest) Q initial frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hBase, hNormalizedOwner, hNormalizedPtr,
     hNormalizedBytes, hCopiedOwner, hCopiedPtr, hCopiedBytes, hTyped⟩,
-    hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes, hNormalizedArgument⟩
+    hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes⟩
   have hCall := CachedAttention.Spec.cachedAttention_exact env initial heap cacheOwner qkvPtr cachePtr qkvPtr
     cache qkv layer position hHeap hCache hQkv hCacheProtected hQkvProtected hLayer hPosition
     hCacheSize (by rw [hQkvSize]) hResources hPages
@@ -68,7 +67,7 @@ theorem attention_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp (config := { maxDischargeDepth := 64 }) only [AttentionState, QkvState, NormalizedState, parameters,
       hLocals, List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte, hBase,
       hNormalizedOwner, hNormalizedPtr, hNormalizedBytes, hCopiedOwner, hCopiedPtr, hCopiedBytes,
-      hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes, hNormalizedArgument,
+      hQkvOwner, hQkvPtr, hQkvBytes, hQkvCopiedOwner, hQkvCopiedPtr, hQkvCopiedBytes,
       I64Values.set, hTyped, show UInt64.ofNat 3072 = 3072 from rfl, and_self]
   · exact hFinalHeap
   · exact hOutput
