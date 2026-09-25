@@ -16,14 +16,17 @@ maneuverability constraints while maintaining a clearance corridor and beginning
 and ending on the terrain. No motor, propeller, battery, attitude, drag, lift,
 or detailed aerodynamic model is wanted.
 
-**The current proof is not yet an end-to-end theorem about `compute` or the
-emitted WASM.** Checked components establish segment clearance, component
-kinematic bounds, physical-time derivatives, exact tick timing, bounded word
-arithmetic, predecessor selection, packed row representation, and cost/parent
-invariants. A Bellman invariant connects repeated calls to the actual row
-transition to feasible minimum-cost prefixes. The public input validation,
-forward/history loops, final reconstruction and output encoding still need to
-be connected to those results. Exact-artifact execution is a further boundary.
+**The public Lean source theorem now checks.** `Output.compute_correct`
+proves that every nonempty accepted terrain produces exactly 2n words encoding
+a feasible route, and that its exact tick/excess cost is globally minimal in
+the finite graph. Separate corollaries prove on-ground stopped endpoints and
+empty/rejected-input behavior. The forward/history and reconstruction helpers
+are connected to the actual public entry. Checked segment theorems establish
+continuous clearance, component kinematic bounds, physical-time derivatives,
+exact tick timing and bounded word arithmetic. Remaining work is to expose
+those continuous guarantees directly for every segment of the returned output,
+assemble global position/velocity joins, and prove the emitted WASM semantics.
+**There is no exact-artifact execution theorem yet.**
 
 ## Repository and execution environment
 
@@ -157,8 +160,8 @@ The duration obeys the component speed and acceleration limits. Its square root
 uses 17 steps of binary search with bounds 0 and 65536. Such edges allow steep
 terrain to be traversed slowly; zero waypoint speeds do not mean zero motion
 between waypoints. Local acceptance and the all-stop whole-route witness are
-proved for the reference row sequence. Its connection to the public computation
-still needs to be established.
+proved and connected to the public computation, so every accepted nonempty
+terrain has a feasible returned route.
 
 ## Optimization and representation
 
@@ -177,6 +180,12 @@ current public function stores a flat history of parent state numbers and
 walks backwards from terminal state 0, builds reversed altitude/speed words,
 and reverses the final array. Work is O(n*45²), with O(n*45) predecessor memory,
 plus LeanExe array allocation/copy overhead.
+
+Named tail-recursive helpers `validHeights`, `appendParents`, `buildHistory`
+and `unwind` expose induction boundaries for the public source proof. Input
+heights are checked in reverse order, with the same acceptance condition. The
+redundant terminal-infinity return was removed: the checked all-stop witness
+establishes a finite terminal label for every accepted nonempty input.
 
 Bounds used by the proofs:
 
@@ -219,13 +228,15 @@ Proofs, under `proofs/talos/lean/Project/Drone/`:
 | `Planner.lean` | Bellman invariant, feasibility and optimum for repeated executable `advance` transitions |
 | `Feasibility.lean` | All-stop route witness, finite and optimal terminal labels, exact floor decoding and terrain specialization |
 | `Reconstruction.lean` | Following stored parent words yields a bounded concrete state list attaining the optimal label |
+| `History.lean` | Actual input guard, flat parent-history size/indexing, correspondence with the row recurrence |
+| `Output.lean` | Actual unwind loop, encoded route, `compute_correct`, invalid/empty cases and exact endpoint pairs |
 | `SourceChecks.lean` | Aggregate check and printed axiom audit for these source components |
 
-`Planner.layers` is a reference sequence consisting of the actual executable
-`initial` and `advance` calls. It is not yet identified with the public
-function's forward loop or history. `layers_optimal` must not be represented as
-an end-to-end output theorem until those representation and reconstruction
-bridges are complete.
+`Planner.layers` is a reference sequence of the actual executable `initial`
+and `advance` calls. `History.computed_history_valid` connects its stored
+parents to `buildHistory`. `Output.unwind_words` connects the public backward
+loop to the encoded feasible route. `Output.compute_correct` composes these
+results with Bellman optimality for the actual returned array.
 
 Proofs use no proof holes, custom axioms or native evaluation proof shortcuts.
 The printed axiom dependencies are only the standard Lean `propext`,
@@ -274,8 +285,8 @@ kinematic checks, reversal/translation properties, signed CLI handling,
 invalid input guards, the 64-point limit and million-unit elevation changes.
 The four saved plotted outputs also match the refactored WASM exactly.
 
-Current emitted WASM: 14,903 bytes; SHA-256:
-`8bda7ff61e5c9771bbe28be59f6c6d6a9303b09a262a5ce4a608912d01d906eb`.
+Current emitted WASM: 14,198 bytes; SHA-256:
+`0c24d2c1568ca40321421d19387843d4ee81c970d53e75adcb035b32343c0942`.
 The binary is not committed and is not an exact-artifact proof.
 The full repo test suite and Talos artifact-proof gates have not been run for
 this new controller.
@@ -307,34 +318,25 @@ commits should continue respecting that file scope unless the user changes it.
 
 ## Remaining verification plan, in order
 
-1. **Connect input guards and floor decoding.** Prove accepted terrain bounds,
-   floor arithmetic and endpoint/interior conventions for the actual entry.
-   Handle empty, singleton, two-point and rejected-input cases explicitly.
-2. **Connect forward computation and history.** Identify the public forward
-   loop with `Planner.layers`; prove history size, stored parent values and
-   indexing. Use the checked `advance_word`, `best_parent`, `advance_bound`
-   and Bellman invariant. Introduce named helpers if they make the boundary
-   smaller, then check that LeanExe still accepts them and rerun behavior tests.
-3. **Whole-route feasibility — checked for the row sequence.**
-   `Feasibility.all_stop_flight` lifts `rest_admitted` to an all-stop route.
-   `terrain_terminal_optimal` establishes an attained optimal terminal label
-   for every nonempty bounded terrain. The remaining task is to transport this
-   result through the public forward/history loop correspondence.
-4. **Reconstruction and output contract — reference parent traversal checked.**
-   `Reconstruction.backtrack_correct` follows actual row parent fields and
-   proves the resulting state list is feasible and attains its label.
-   `reconstructed_optimal` proves its length and global lexicographic optimum.
-   Still prove the public flat-history and output loops implement that traversal,
-   all public parent reads are in range,
-   predecessor traversal reaches the unique initial state, the output has
-   length 2n and correct alternating encoding, endpoints are on the ground
-   and stopped, every adjacent output pair is an admitted edge, and the
-   reconstructed route attains its final DP cost.
-5. **Compose full source correctness.** Combine reconstruction, the checked
-   Bellman invariant and exact tick timing into minimum-time and secondary-cost
-   optimality for the public output. Compose segment clearance, physical-time
-   derivatives and component bounds across the flight. Formalize the global
-   position/velocity joins; acceleration may jump at waypoints.
+1. **Input guards and floor decoding — checked.** The actual guard accepts
+   exactly the bounded heights; source theorems handle empty/rejected input.
+   Floor arithmetic preserves the endpoint/interior convention without wrap.
+2. **Forward computation and history — checked.** The public named helpers
+   implement the actual row recurrence, with exact history size and parent
+   indexing. Every reconstructed parent read uses its proved row value.
+3. **Whole-route feasibility — checked.** The all-stop witness establishes
+   a finite terminal label for every accepted nonempty terrain and is used
+   by the public source correctness proof.
+4. **Reconstruction, encoding and graph optimum — checked.** The returned
+   array has length 2n, encodes admitted edges, reaches the unique initial
+   state, begins/ends at the terrain with speed zero, and attains the global
+   lexicographic optimum in exact ticks and total excess altitude.
+5. **Compose continuous guarantees for the returned output — next.** Expose
+   interior clearance and each segment's continuous safety/dynamics directly
+   from the public output theorem. Formalize global position/velocity joins;
+   acceleration may jump at waypoints. Existing segment results and exact
+   tick timing are checked, but a single global real-time path is not yet
+   assembled as a Lean object.
 6. **Exact WASM semantics.** Freeze the compiled artifact and digest. Prepare
    Talos's decoded program and annotations, prove ABI/array/allocator/loop
    behavior and an actual `Wasm.TerminatesWith` theorem for that artifact.
@@ -409,3 +411,23 @@ the globally optimal terminal label. The public function's separate flat parent
 history and reversed altitude/speed output loop are not yet equated to this
 reference reconstruction. That correspondence is the next implementation proof.
 The aggregate source target includes the new theorems and axiom audit.
+
+
+### 2026-09-25 — public source correctness checkpoint
+
+The stored-parent checkpoint was published as
+`6d1208f42d90e37c5eb3040f8f9889339f75d1ca`. Refactored the public loops into
+named tail-recursive helpers supported by LeanExe. Added `History.lean` and
+`Output.lean`. The aggregate `Project.Drone.SourceChecks` target passes
+(1,995 jobs), including `compute_correct`, `compute_invalid`, and
+`compute_endpoints`; axiom dependencies remain standard only. No proof holes
+or unchecked evaluation shortcuts were introduced.
+
+The new public entry was compiled to WASM and the full targeted drone
+regression passed again: 48 WASM flights, 12 native comparisons, six exhaustive
+short-route optima, continuous limit checks and input/translation cases.
+Logs: `build/drone/source-proof-check.log` and
+`build/drone/public-refactor-regression.log` (generated, not committed).
+The graph contract is now proved for the actual source `compute`, while the
+continuous whole-flight composition and exact emitted-WASM proof remain
+explicit further tasks. Keep future commits restricted to Lean and this file.

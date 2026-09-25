@@ -1,8 +1,8 @@
-import Project.Drone.Reconstruction
+import Project.Drone.Output
 import Project.Drone.Kinematics
 
 /-! Check all current drone source-proof components in one target.
-This is not a full `compute` specification or an exact-WASM behavior theorem.
+The source `compute` theorem is checked. This is not an exact-WASM behavior theorem.
 See task.md for the remaining composition obligations. -/
 
 #print axioms Project.Drone.Edges.state_edge_clearance
@@ -34,3 +34,8 @@ See task.md for the remaining composition obligations. -/
 
 #print axioms Project.Drone.Reconstruction.backtrack_correct
 #print axioms Project.Drone.Reconstruction.reconstructed_optimal
+
+#print axioms Project.Drone.History.computed_history_valid
+#print axioms Project.Drone.Output.compute_correct
+#print axioms Project.Drone.Output.compute_invalid
+#print axioms Project.Drone.Output.compute_endpoints
