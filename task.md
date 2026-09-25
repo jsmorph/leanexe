@@ -546,3 +546,15 @@ Classical.choice, and Quot.sound for the composed theorem, module decoder, and
 runtime body proofs. Both modules build. Export lookup/calling convention,
 module validation, normal-entry success composition, usable admission mode,
 and final gates remain unfinished.
+
+### Source-to-exported-invocation preservation (checked and audited)
+
+ModuleInvocation proves lookup of the actual requested export, the translated
+user function, argument reversal into interpreter stack order, exact local
+initialization, and return-value extraction. SourceInvocation composes this
+with exact module decoding and original source semantics: every argument list
+of the correct arity terminates with the source value and preserves the store.
+The explicit format bounds remain. Both modules build; the expanded audit
+reports only propext, Classical.choice, and Quot.sound. This theorem does NOT
+yet assert that the module passes validation. Full validation, normal compiler
+entry success composition, the usable admission mode, and final gates remain.
