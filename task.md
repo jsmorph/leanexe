@@ -106,10 +106,14 @@ branches and continue now work end-to-end. The previously rejected monadic join
 is an explicit passing fixture. Breaks, unused done-returning functions, and
 custom comparison evidence remain rejected.
 
-Next increment: break in range loops. Introduce a bounded early-exit iteration
-model tied to native ForInStep.done/yield behavior, then connect extraction,
-actual emitted control flow, general proofs and execution tests. Keep the
-completed yielding range path working while developing the new behavior.
+In progress: break in range loops. `Source/ScalarRangeExit.lean` proves bounded
+early-exit iteration agrees with native List/range ForIn behavior, including
+the accumulator produced by done. The existing yielding iteration is proved
+to be a special case. `IR/ScalarIterationExit.lean` proves finite while
+execution for either advancing the index or moving it directly to the bound
+after done. Both focused targets pass. Source extraction, the actual local-slot
+layout, emitted control flow, general proofs and execution tests remain pending;
+the public compiler still rejects break while this capability is developed.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
