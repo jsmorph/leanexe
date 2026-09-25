@@ -497,21 +497,23 @@ The eighteen selected preceding modules kept identical bytes. The full corpus
 contains 319 declarations; this execution run checked 28. General type validation
 used cached dependencies.
 
-Current increment: dependent conditionals (`if h : condition then ... else ...`)
-over the admitted guards, with explicit proof-binder scope and both branches
-checked. Complete the independent source rules, extraction proofs and focused
-execution before proceeding to another capability.
+Completed next increment: dependent conditionals (`if h : condition then ...
+else ...`). Candidate `7d9535a3` passed all nine compiler audits and all 623
+native Lean/V8 comparisons in the fixed 34-declaration `dependent-if` group.
+Evidence is in `proofs/compiler/dependent-if-2026-09-25/`. Exact decision and
+proof-lambda domain checks preserve an erased binder in each branch context.
+Scalar and step source semantics, totality, acceptance, support, correctness
+and output invariants cover the new form. All 304 focused native Lean/IR
+comparisons, four declaration rejection tests and four proof-domain rejection
+tests passed. The eighteen selected preceding modules kept identical bytes.
+The full corpus contains 335 declarations; this execution run checked 34.
+General type validation used cached dependencies.
 
-The exact dependent-conditional parser checks the full guard decision and both
-proof-lambda domains. Source semantics and support retain an erased binder in
-each branch's lexical context. Scalar and step extraction acceptance, support,
-correctness and invariants pass, including function extraction and range output
-invariants. The source literal-count inversion now excludes this additional
-conditional shape explicitly. All 304 focused native Lean/IR comparisons, four
-declaration rejection tests and four proof-domain rejection tests pass. A fixture
-initially inferred a Nat range start; its explicit UInt64 annotation now checks.
-Complete audits and focused V8 execution are still pending; this increment is
-not complete.
+Next increment: internal Boolean local bindings and their use in ordinary
+Boolean conditions, including aliases, negation and conjunction/disjunction.
+Keep Boolean values distinct from UInt64 values in source and compiled binding
+kinds. Start with ordinary Boolean lets and complete scalar/helper/loop execution
+and the general proofs before broadening Boolean operations or the public ABI.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
