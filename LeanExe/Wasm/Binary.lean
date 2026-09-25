@@ -3958,9 +3958,14 @@ def directCallResults
       (callIndex + 1, #[], "stack")
     else
       let candidates := (code.drop (callIndex + 1)).take resultCount
-      match candidates.mapM directCallLocalSet? with
-      | some locals => (callIndex + 1 + resultCount, locals.reverse.toArray, "locals")
-      | none => (callIndex + 1, #[], "stack")
+      -- `take` can return a shorter suffix when a call ends a branch.  Such a
+      -- call leaves its results on the stack; it has no complete local bundle.
+      if candidates.length != resultCount then
+        (callIndex + 1, #[], "stack")
+      else
+        match candidates.mapM directCallLocalSet? with
+        | some locals => (callIndex + 1 + resultCount, locals.reverse.toArray, "locals")
+        | none => (callIndex + 1, #[], "stack")
   else
     (callIndex + 1, #[], "stack")
 
