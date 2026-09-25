@@ -2310,6 +2310,77 @@ def rangeInstanceOuter (count seed : UInt64) : UInt64 :=
     return a
   f result seed count
 
+def naturalConverted (x y : UInt64) : UInt64 := x + UInt64.ofNat 5 - y
+
+def naturalConvertedOverflow (x y : UInt64) : UInt64 :=
+  x + UInt64.ofNat 18446744073709551621 - y
+
+def naturalExplicitLet (x y : UInt64) : UInt64 :=
+  x + @OfNat.ofNat UInt64 7 (let _unused := x + y; @UInt64.instOfNat 7) - y
+
+def naturalExplicitApplied (x y : UInt64) : UInt64 :=
+  x * @OfNat.ofNat UInt64 11 ((fun (_ : UInt64) => @UInt64.instOfNat 11) (x + y)) - y
+
+def naturalExplicitNested (x y : UInt64) : UInt64 :=
+  let n := @OfNat.ofNat UInt64 13
+    ((let _flag := x == y; fun (_ : UInt64) (_ : Unit) => @UInt64.instOfNat 13) y ())
+  n + x * y
+
+def naturalDependentMany (x y : UInt64) : UInt64 :=
+  let outer := x != y
+  let f := fun a b c : UInt64 =>
+    let inner := a == b || b == c
+    if _h : outer && !inner then a + b * 3 - c else a - b * UInt64.ofNat 5 + c
+  f x y (x + 7)
+
+def naturalDo (x y : UInt64) : UInt64 := Id.run do
+  let flag := x == y
+  let mut a := x
+  if h : flag then
+    a := a + @OfNat.ofNat UInt64 3 ((fun (_ : flag = true) => @UInt64.instOfNat 3) h)
+  else a := a - @OfNat.ofNat UInt64 5 (let _unused := a; @UInt64.instOfNat 5)
+  return a ^^^ y
+
+def naturalOperand (x y : UInt64) : UInt64 :=
+  let flag := UInt64.ofNat 7 == x
+  if _h : flag then max (UInt64.ofNat 17) y else min (UInt64.ofNat 5 + y) x
+
+def rangeNaturalStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if h : a < UInt64.ofNat i then
+      a := a + @OfNat.ofNat UInt64 3 ((fun (_ : a < UInt64.ofNat i) => @UInt64.instOfNat 3) h)
+    else a := a + @OfNat.ofNat UInt64 5 (let _unused := a; @UInt64.instOfNat 5)
+  return a
+
+def rangeNaturalBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first := @OfNat.ofNat UInt64 1 ((fun (_ : UInt64) => @UInt64.instOfNat 1) count)
+  let mut a := seed + @OfNat.ofNat UInt64 13 (let _unused := count; @UInt64.instOfNat 13)
+  for i in [first.toNat:count.toNat:2] do
+    a := a + UInt64.ofNat i
+    if a % 7 == 0 then continue
+    a := a + @OfNat.ofNat UInt64 3 ((fun (_ : UInt64) => @UInt64.instOfNat 3) a)
+  return a
+
+def rangeNaturalConversion (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat 17 + UInt64.ofNat i
+    let stop := a % 11 == 0
+    if _h : stop then break
+  return a
+
+def rangeNaturalOuter (count seed : UInt64) : UInt64 :=
+  let f := fun x y z : UInt64 =>
+    x + y * @OfNat.ofNat UInt64 5 ((fun (_ : UInt64) => @UInt64.instOfNat 5) z)
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f a (UInt64.ofNat i) count
+      if a % 7 == 0 then break
+    return a
+  f result seed count
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -2514,7 +2585,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeInstanceStep", rangeInstanceStep),
    ("rangeInstanceBreak", rangeInstanceBreak),
    ("rangeInstanceBounds", rangeInstanceBounds),
-   ("rangeInstanceOuter", rangeInstanceOuter)]
+   ("rangeInstanceOuter", rangeInstanceOuter),
+   ("rangeNaturalStep", rangeNaturalStep),
+   ("rangeNaturalBounds", rangeNaturalBounds),
+   ("rangeNaturalConversion", rangeNaturalConversion),
+   ("rangeNaturalOuter", rangeNaturalOuter)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -2669,7 +2744,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("instanceShadow", instanceShadow),
    ("instanceProof", instanceProof),
    ("instanceOverflow", instanceOverflow),
-   ("instanceDo", instanceDo)]
+   ("instanceDo", instanceDo),
+   ("naturalConverted", naturalConverted),
+   ("naturalConvertedOverflow", naturalConvertedOverflow),
+   ("naturalExplicitLet", naturalExplicitLet),
+   ("naturalExplicitApplied", naturalExplicitApplied),
+   ("naturalExplicitNested", naturalExplicitNested),
+   ("naturalDependentMany", naturalDependentMany),
+   ("naturalDo", naturalDo),
+   ("naturalOperand", naturalOperand)]
 
 end ArithmeticMilestone
 

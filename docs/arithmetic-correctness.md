@@ -34,7 +34,13 @@ instances also admit inert let, lambda/application and metadata wrappers. The
 checker tracks unapplied arguments and requires the same numeral at the exact
 standard instance leaf. Unknown instance variables, custom instance values,
 unapplied lambdas and extra applications are rejected. This handles elaborator
-wrappers introduced inside captured-helper and dependent-proof scopes. Custom
+wrappers introduced inside captured-helper and dependent-proof scopes. Standard
+Nat numeral expressions are accepted as arguments to `UInt64.ofNat` and in the
+numeric positions of UInt64 OfNat values and instances. The Nat type and value
+may carry metadata, including borrowedness. The source grammar retains that
+syntax and checks the exact standard Nat instance and its matching number.
+Conversions reduce modulo 2^64; this does not add general Nat arithmetic or
+public Nat parameters/results. Custom
 instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
