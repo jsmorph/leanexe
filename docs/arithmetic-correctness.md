@@ -69,12 +69,14 @@ does not change an earlier capture. Unused function bodies are still checked.
 Standard Id monadic UInt64 bindings (`let x ← …`) are also supported in the
 step, including nested pure do computations and unused bound values. The
 complete standard Bind instance expression is checked; custom Bind instances
-remain excluded. Branching monadic computations that create loop-step-valued
-continuations remain a separate capability; use `pure (if … then … else …)`
-for a conditional scalar value within this grammar.
-A conditional inside
-an update expression is currently supported; general branching of the loop
-body, `break`, `continue`, additional accumulators, multiple/nested loops and
+remain excluded. Conditional monadic values, nested scalar branches, branch
+updates followed by further computation, and `continue` are supported when
+their elaborated continuations belong to the scalar grammar. The source
+relation converts yielding continuation result types and bodies together,
+preserving input domains, binder positions and captured values. Both branches
+and every continuation body are checked, including unused continuations.
+`continue` yields the current accumulator and advances the range index.
+`break`, additional accumulators, multiple/nested loops and
 other range starts/steps remain separate capabilities. Constant bounds must
 currently be written as a UInt64 value followed by `.toNat`.
 
@@ -115,14 +117,14 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles forty-seven fresh declarations with that command,
+and all reserved names, compiles fifty-one fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 726 results against native Lean evaluation, including overflow, zero
+It compares 822 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
@@ -138,14 +140,16 @@ Three more range declarations cover direct local-function bindings, chained
 calls, accumulator capture across later updates, and unused local functions.
 Three further range declarations cover monadic step bindings, nested do
 computations and unused monadic values.
+Four further range declarations cover joined monadic branches, mutable branch
+updates followed by computation, continue, and nested branch continuations.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
 is a separate check of the arithmetic theorem's integration with the actual CLI.
 
 For changes confined to range loops, `tools/arithmetic-check.js range-engine`
-checks the fixed range fixture group: 289 results across thirteen declarations,
-including the local-function and monadic-binding cases. It retains admission and reserved-export
+checks the fixed range fixture group: 385 results across seventeen declarations,
+including local functions, monadic bindings and branch continuations. It retains admission and reserved-export
 checks and saves its output under `.lake/arithmetic-check/range`. The full engine
 check remains available when a change affects the broader scalar grammar.
 
