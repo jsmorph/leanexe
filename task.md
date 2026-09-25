@@ -515,3 +515,13 @@ instantiates this for the actual five function-type indices, 16-page memory,
 and six mutable i64 globals, and connects these payloads to the production
 sections. All affected modules build. Variable signatures, exports, and user
 code must still be assembled with these fixed payloads.
+
+### All six concrete payload parsers (checked)
+
+UserPayloads proves the actual variable function signatures and UTF-8 exports
+decode correctly under their U32 bounds. CodePayloads assembles the actual user
+body and all four proved runtime bodies into the production code vector.
+FixedPayloadBounds discharges fixed function-index, memory, and global section
+length bounds using general vector and constant-encoding length proofs. All
+affected modules build. The exact moduleBytes composition theorem is now being
+checked; validation and export invocation remain unfinished.
