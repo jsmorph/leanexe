@@ -304,3 +304,10 @@ adds unwrapped done/yield expressions and continuations returning them, with
 all nine audits and 673 matching results across twenty-nine range declarations.
 All twenty-six prior range modules retained identical bytes. The 1,110-result
 full suite is configured but was not rerun for this focused increment.
+
+
+The [literal range-count increment](../proofs/compiler/range-count-2026-09-25/README.md)
+adds bounded standard Nat literal stops, with all nine audits and 793 matching
+results across thirty-four range declarations. All twenty-nine prior range
+modules retained identical bytes. The full 1,230-case suite is configured;
+this increment ran the focused range group.

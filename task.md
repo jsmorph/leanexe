@@ -211,21 +211,24 @@ source grammar and proofs cover these directly; the existing early-exit Wasm
 layout is reused. The focused native/IR test passed 216 comparisons. All
 twenty-six prior range modules retained byte-for-byte identical output.
 
-Next incremental capability: ordinary Nat literal range bounds such as `[:8]`,
-instead of requiring a UInt64 literal followed by `.toNat`. Keep the existing
-zero start, unit step and one-accumulator scope; check representability before
-lowering the bound to a word. Complete source recognition, native agreement,
-proofs and actual compiler execution before the following capability.
+Completed next increment: standard Nat literal range bounds. Candidate
+`49c8e055` passed all nine general compiler audits and 793 native Lean/V8
+comparisons across thirty-four range declarations, including admission and
+reserved exports. Evidence is in `proofs/compiler/range-count-2026-09-25/`.
+The source count model retains Nat semantics and proves scalar lowering cannot
+wrap; literals must use the standard OfNat evidence and be smaller than 2^64.
+Tests include zero, one, small loops with break and the maximum bound with an
+immediate exit; overflow and custom literal instances reject. The focused test
+passed 120 native Lean/IR comparisons and two rejection tests. All twenty-nine
+prior range modules retained identical bytes. The general proof includes full
+type validation; the fixed arithmetic archive and unrelated runtime suite were
+not rebuilt.
 
-Literal range counts now have a separate source count model with exact Nat
-evaluation. Its checked lowering to scalar syntax proves UInt64 conversion
-cannot wrap. Range extraction retains either the original `.toNat` source or
-the standard bounded Nat literal, including exact OfNat evidence. Source
-acceptance, support, preservation and IR proofs pass. The focused count test
-passed 120 native Lean/IR comparisons over five declarations, covering empty,
-one-step, ordinary literal and maximum-word bounds; the maximum bound exits
-immediately. Overflowing bounds and custom Nat literal instances are rejected.
-Public fixtures are added; general proof/audits and V8 checks are next.
+Next incremental capability: nested standard Id computations returning loop
+steps, including step-valued let/monadic bindings. Extend the typed step
+environment with a step-result binding so it remains distinct from scalar
+values and functions, and reuse the paired result/value lowering. Complete
+source proofs and actual compiler/V8 checks before the following capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
