@@ -544,13 +544,14 @@ Evidence is retained in `proofs/compiler/literal-instances-2026-09-25/`. The cor
 contains 379 declarations; this execution run checked 30. No backend or runtime
 change, full archive rebuild or unrelated runtime-suite rebuild was needed.
 
-Next increment: standard Nat numeral expressions at UInt64 conversion and
-numeric-instance positions, including borrowed-type metadata. Explicit numeral
-arguments elaborate as Nat OfNat expressions rather than raw Nat literals;
-those recorded forms remain unsupported after the wrapper increment. Prove an
-independent exact NaturalLiteral grammar/parser, connect it to UInt64.ofNat and
-standard UInt64 OfNat evidence, and execute the original recorded forms before
-moving to the next capability. Keep custom Nat and UInt64 instances rejected.
+Current increment: standard Nat numeral expressions at UInt64 conversion and
+numeric-instance positions, including borrowed-type metadata. Independent
+NaturalType/NaturalLiteral syntax and exact parser acceptance/soundness pass.
+The constant UInt64-instance grammar now admits those numeric arguments. Source
+totality, all scalar extraction proofs and exact literal-count inversion pass.
+Loop integration and focused execution are next; this increment is not complete.
+Test the recorded explicit-instance and UInt64.ofNat failures unchanged, while
+continuing to reject custom Nat and UInt64 instances and general Nat arithmetic.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
