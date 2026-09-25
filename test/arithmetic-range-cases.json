@@ -276,5 +276,13 @@
   "rangeBoolPropCapture",
   "rangeBoolPropBounds",
   "rangeBoolPropStep",
-  "rangeBoolPropOuter"
+  "rangeBoolPropOuter",
+  "rangeLocalDecideYield",
+  "rangeLocalDecideJoined",
+  "rangeLocalDecideContinue",
+  "rangeLocalDecideCapture",
+  "rangeLocalDecideBounds",
+  "rangeLocalDecideStep",
+  "rangeLocalDecideOuter",
+  "rangeLocalDecideUnused"
 ]

@@ -3465,6 +3465,152 @@ def rangeBoolPropUnsupported (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun _ a => do
     if _h : true ≠ false then return .yield (a + 1)
     else return .done ((toString a).length.toUInt64)
+def localDecideEqual (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y == 0
+  (decide (a = b)).toUInt64 + (decide (a ≠ b)).toUInt64 * 3
+
+def localDecideTruth (x y : UInt64) : UInt64 :=
+  let flag := x != y
+  (decide flag).toUInt64 + (decide (flag = true)).toUInt64 * 7
+
+def localDecideImplicit (x y : UInt64) : UInt64 :=
+  let a := x != 0
+  let b := y == 0
+  let same : Bool := a = b
+  let different : Bool := a ≠ b
+  (same && different).toUInt64 + (same || different).toUInt64
+
+def localDecideNested (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y == 0
+  let first := decide ((decide (a = b)) ≠ (decide (a = false)))
+  if _h : !first then x + y else x - y
+
+def localDecideLiterals (x y : UInt64) : UInt64 :=
+  (decide (true = true)).toUInt64 * x + (decide (false ≠ false)).toUInt64 * y +
+    (decide (false = false)).toUInt64 * 3 + (decide (true ≠ false)).toUInt64 * 7 +
+    (decide ((x == y) = true)).toUInt64
+
+def localDecideCapture (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let f := fun flag : Bool =>
+    let g := fun other : Bool => (decide (flag = other)).toUInt64 + (decide (other ≠ outer)).toUInt64
+    g (decide (flag ≠ outer)) + x
+  f (y == 0)
+
+def localDecideDo (x y : UInt64) : UInt64 := Id.run do
+  let a ← if x = y then pure true else pure (decide (x > 0))
+  let b ← pure (y != 0)
+  let same ← if a then pure (decide (a = b)) else pure (decide (a ≠ b))
+  let mut z := x
+  if same then z := z + y else z := z - y
+  return z + (decide same).toUInt64
+
+def localDecideChoices (x y : UInt64) : UInt64 :=
+  let a := x == 0
+  let b := y != 0
+  if (if a then b else !b) = (if x < y then a else !a) then
+    if _h : (a && b) ≠ (a || b) then x + y else x - y
+  else if _h : !(a == b) = !!(a != b) then x / y else y % x
+
+def rangeLocalDecideYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let even := a % 2 == 0
+    let other := UInt64.ofNat i % 3 == 0
+    let same ← pure (decide (even = other))
+    a := a + same.toUInt64
+    if !even ≠ other then break
+  return a
+
+def rangeLocalDecideJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let even ← if a % 2 = 0 then pure true else pure false
+    let other ← pure (UInt64.ofNat i % 2 == 0)
+    if even = other then a := a + 2 else a := a + 5
+    if _h : !even ≠ other then a := a + UInt64.ofNat i else a := a - count
+    if even = (a % 13 == 0) then break
+  return a
+
+def rangeLocalDecideContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first := UInt64.ofNat i % 3 == 1
+    let second := a == seed
+    let skip : Bool := first ≠ second
+    if _h : skip then continue
+    a := a + UInt64.ofNat i
+    if decide (first = false) then break
+  return a
+
+def rangeLocalDecideCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer := seed != 0
+  let f := fun flag : Bool => (decide (flag = outer)).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun flag : Bool => f (decide (flag ≠ outer)) + a
+    a := g (UInt64.ofNat i % 2 == 0)
+    if decide ((a % 11 == 0) ≠ outer) then break
+  return a + f (decide (a == 0))
+
+def rangeLocalDecideBounds (count seed : UInt64) : UInt64 := Id.run do
+  let flag := decide (seed % 3 ≤ 1)
+  let first := (decide (flag = false)).toUInt64
+  let stop := count + (decide (flag ≠ true)).toUInt64
+  let mut a := seed
+  for i in [first.toNat:stop.toNat:2] do
+    let even := UInt64.ofNat i % 2 == 0
+    a := a + (decide (even = flag)).toUInt64
+    if decide ((a % 7 == 0) ≠ flag) then break
+  return a
+
+def rangeLocalDecideStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let outer := a == seed
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let same ← pure (decide (flag = outer))
+      if _h : same then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (decide (flag ≠ false)).toUInt64)
+    f (decide ((UInt64.ofNat i ≥ 7 : Bool) = outer))
+
+def rangeLocalDecideOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag ← pure (count != 0)
+  let mut a := seed + (decide (flag = false)).toUInt64
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if decide ((a % 7 == 0) ≠ flag) then break
+  let changed ← if a = seed then pure (decide ((a == 0) = flag)) else pure (decide (flag ≠ false))
+  return a + (decide (changed = flag)).toUInt64
+
+def rangeLocalDecideUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _unused := decide ((a == seed) = (UInt64.ofNat i == 0))
+    let flag := decide ((a == 0) ≠ false)
+    a := a + flag.toUInt64
+    if _h : flag then break
+  return a
+
+def localDecideUnsupported (x y : UInt64) : UInt64 :=
+  let flag := x == 0
+  (decide (flag = (toString x == toString y))).toUInt64
+
+def localDecideInactiveUnsupported (x y : UInt64) : UInt64 :=
+  let flag := x == 0
+  let _unused := decide ((if true then flag else (toString x == toString y)) = false)
+  x + y
+
+def localDecideCustomDecision (x y : UInt64) : UInt64 :=
+  let flag := x == 0
+  let value := @Decidable.decide (flag = flag) (isTrue rfl)
+  if value then x else y
+
+def rangeLocalDecideUnsupported (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun _ a => do
+    let _unused := decide ((a == seed) ≠ (toString a == toString seed))
+    return .yield (a + 1)
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -4123,6 +4269,22 @@ run_elab do
       `ArithmeticModeTest.rangeBoolPropBounds,
       `ArithmeticModeTest.rangeBoolPropStep,
       `ArithmeticModeTest.rangeBoolPropOuter,
+      `ArithmeticModeTest.localDecideEqual,
+      `ArithmeticModeTest.localDecideTruth,
+      `ArithmeticModeTest.localDecideImplicit,
+      `ArithmeticModeTest.localDecideNested,
+      `ArithmeticModeTest.localDecideLiterals,
+      `ArithmeticModeTest.localDecideCapture,
+      `ArithmeticModeTest.localDecideDo,
+      `ArithmeticModeTest.localDecideChoices,
+      `ArithmeticModeTest.rangeLocalDecideYield,
+      `ArithmeticModeTest.rangeLocalDecideJoined,
+      `ArithmeticModeTest.rangeLocalDecideContinue,
+      `ArithmeticModeTest.rangeLocalDecideCapture,
+      `ArithmeticModeTest.rangeLocalDecideBounds,
+      `ArithmeticModeTest.rangeLocalDecideStep,
+      `ArithmeticModeTest.rangeLocalDecideOuter,
+      `ArithmeticModeTest.rangeLocalDecideUnused,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -4155,6 +4317,7 @@ run_elab do
       `ArithmeticModeTest.boolWordUnsupported, `ArithmeticModeTest.boolWordUnusedUnsupported, `ArithmeticModeTest.boolWordUnknownHelper, `ArithmeticModeTest.rangeBoolWordUnsupported,
       `ArithmeticModeTest.boolEqUnsupported, `ArithmeticModeTest.boolEqUnusedUnsupported, `ArithmeticModeTest.boolEqCustomInstance, `ArithmeticModeTest.rangeBoolEqUnsupported,
       `ArithmeticModeTest.boolPropUnsupported, `ArithmeticModeTest.boolPropInactiveUnsupported, `ArithmeticModeTest.boolPropCustomDecision, `ArithmeticModeTest.rangeBoolPropUnsupported,
+      `ArithmeticModeTest.localDecideUnsupported, `ArithmeticModeTest.localDecideInactiveUnsupported, `ArithmeticModeTest.localDecideCustomDecision, `ArithmeticModeTest.rangeLocalDecideUnsupported,
       `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,
