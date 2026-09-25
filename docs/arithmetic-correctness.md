@@ -711,3 +711,13 @@ and 537 native Lean/V8 comparisons passed across a fixed 30-declaration group.
 The focused source test passed 208 native/IR comparisons, nine rejection checks
 and two metadata checks. Eighteen selected preceding modules kept identical
 bytes. The full corpus contains 391 declarations; this was a focused run.
+
+The [Boolean-bind increment](../proofs/compiler/boolean-bind-2026-09-25/README.md)
+supports standard Id Boolean monadic bindings in scalar expressions, helpers,
+loop steps and before/after a loop. Actions retain Boolean and nested Id
+annotations. All nine audits and 623 native Lean/V8 comparisons passed across
+34 declarations. All 304 focused native/IR comparisons, ten rejection tests
+and two metadata checks passed. The recorded initial Id Bool annotation
+failure now passes unchanged. Eighteen selected preceding modules kept
+identical bytes. The full corpus contains 407 declarations; this was a focused
+run with cached dependencies.

@@ -556,23 +556,26 @@ this run checked 30. No emitter/runtime changes or unrelated archive/runtime
 suite rebuilds were needed. Custom instances and general Nat arithmetic remain
 outside the admitted source grammar.
 
-Current increment: Boolean monadic bindings, such as `let flag ← pure (x == y)`,
-in Id do-blocks, helper bodies, loop steps and computations surrounding a loop.
-The independent Boolean action grammar and parser now have acceptance, exact
-reconstruction and operand-size proofs. Actions retain standard Id.pure/Id.run
-wrappers with Boolean/nested Id annotations and metadata around a BooleanLocal
-leaf. The first focused run exposed an inferred Id Bool action annotation; its
-failure is retained and the annotation parser/proofs now support that form. The
-exact Boolean bind input/domain checker is also proved. Source evaluation,
-support and totality cover scalar, step and outer-loop Boolean binds. Scalar
-production extraction and all four scalar proofs now pass. Step and outer-loop
-production extraction, acceptance, successful-support, correctness and invariant
-proofs also pass. The unchanged focused fixture now passes all 304 native/IR
+Completed next increment: standard Id Boolean monadic bindings in scalar code,
+helper bodies, loop steps and computations surrounding a loop. Candidate
+`d17cbd2f` passed all nine compiler audits and 623 native Lean/V8 comparisons
+across the fixed 34-declaration `boolean-bind` group. All 304 focused native/IR
 comparisons, four declaration rejections, six raw bind rejections and two
-metadata checks. Final compiler audits and execution gates remain open.
-Reuse typed Boolean bindings and existing lowering. Broader Boolean result
-expressions, Boolean function parameters and the public Bool ABI remain later
-capabilities unless included and proved as part of this increment.
+metadata checks passed. The first failure exposed inferred Id Bool action
+annotations; the grammar/parser proofs now retain nested Id annotations and
+the unchanged fixture passes. Eighteen selected preceding modules kept
+identical bytes. Evidence is retained in
+`proofs/compiler/boolean-bind-2026-09-25/`. The full corpus contains 407
+declarations; this was a focused execution run. No emitter/runtime changes or
+unrelated archive/runtime suite rebuilds were needed.
+
+Next increment: Boolean-valued conditionals over Boolean guards, including
+saved flags, ==/!= comparisons, literals, negation and Boolean junctions.
+Preserve exact standard decision evidence, check all branches, and reuse the
+existing Boolean lowering in scalar lets, actions, helper captures and loop
+code. Admit nested choice expressions as conditions even without a saved flag.
+Propositional comparison guards inside Boolean-valued choices and conditional
+Id actions remain separate subsequent increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
