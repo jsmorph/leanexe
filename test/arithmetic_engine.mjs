@@ -14,7 +14,8 @@ const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', '
   'nestedChoice', 'choiceBindings', 'choiceOperands',
   'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant',
   'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
-  'unusedFunction', 'doJoined', 'doBranchUpdates', ...rangeEntries];
+  'unusedFunction', 'doJoined', 'doBranchUpdates',
+  'compareNe', 'negatedEq', 'negatedLt', 'negatedLe', 'negatedGt', 'negatedGe', 'negatedBool', 'doubleNegation', 'negatedBindings', ...rangeEntries];
 const entries = suite === 'all' ? allEntries : rangeEntries;
 const constants = new Set(['constant', 'boundConstant', 'doConstant', 'rangeConstant']);
 const ranges = new Set(rangeEntries);

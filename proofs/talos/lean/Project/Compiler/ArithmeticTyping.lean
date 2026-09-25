@@ -8,7 +8,7 @@ theorem comparison_typed (op : LeanExe.Source.Scalar.Comparison) (a b : Expr)
     (count scratch : Nat) (left : Sequence count [] [.i64] (a.emit scratch))
     (right : Sequence count [] [.i64] (b.emit scratch)) :
     Sequence count [] [.i32] ((comparison op a b).emit scratch) := by
-  cases op with
+  induction op with
   | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.eq count))
   | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.lt count))
   | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append ((right.frame [.i64]).append (Sequence.le count))
@@ -18,9 +18,10 @@ theorem comparison_typed (op : LeanExe.Source.Scalar.Comparison) (a b : Expr)
   | ge =>
     simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.lt count))).append
       (Sequence.eqz32 count)
-  | bne =>
+  | ne | bne =>
     simpa [comparison, Cond.emit, List.append_assoc] using (left.append ((right.frame [.i64]).append (Sequence.eq count))).append
       (Sequence.eqz32 count)
+  | negate op ih => simpa [comparison, Cond.emit] using ih.append (Sequence.eqz32 count)
 
 theorem checked_tail (count scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroTyped : Sequence count [] [.i64] zero)

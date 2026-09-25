@@ -5,20 +5,26 @@ namespace LeanExe.Wasm.ScalarDescriptor
 
 def comparison : LeanExe.Source.Scalar.Comparison → Expr → Expr → Cond
   | .eq, a, b => .eq a b
+  | .ne, a, b => .not (.eq a b)
   | .lt, a, b => .ltU a b
   | .le, a, b => .leU a b
   | .gt, a, b => .not (.leU a b)
   | .ge, a, b => .not (.ltU a b)
   | .beq, a, b => .eq a b
   | .bne, a, b => .not (.eq a b)
+  | .negate op, a, b => .not (comparison op a b)
 
 @[simp] theorem comparison_reads (op : LeanExe.Source.Scalar.Comparison) (a b : Expr) :
     (comparison op a b).reads = a.reads ++ b.reads := by
-  cases op <;> rfl
+  induction op with
+  | negate op ih => exact ih
+  | _ => rfl
 
 @[simp] theorem comparison_scratch (op : LeanExe.Source.Scalar.Comparison) (a b : Expr) :
     (comparison op a b).scratchWidth = max a.scratchWidth b.scratchWidth := by
-  cases op <;> rfl
+  induction op with
+  | negate op ih => exact ih
+  | _ => rfl
 
 end LeanExe.Wasm.ScalarDescriptor
 
@@ -34,7 +40,9 @@ theorem lowerComparison_descriptor (op : LeanExe.Source.Scalar.Comparison)
     {a b : LeanExe.IR.Expr} {da db : Expr}
     (ha : Expr.ofIR a = some da) (hb : Expr.ofIR b = some db) :
     Cond.ofIR (lowerComparison op a b) = some (comparison op da db) := by
-  cases op <;> simp [lowerComparison, comparison, Cond.ofIR, ha, hb]
+  induction op with
+  | negate op ih => simp [lowerComparison, comparison, Cond.ofIR, ih]
+  | _ => simp [lowerComparison, comparison, Cond.ofIR, ha, hb]
 
 /-- The proved production source traversal produces IR accepted by the scalar
 backend recognizer, including both branches of nested conditionals. -/

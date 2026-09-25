@@ -52,13 +52,14 @@ theorem operation_encodable (op : U64Op) : Encodable [op.instruction] := by
 theorem comparison_encodable (op : LeanExe.Source.Scalar.Comparison)
     (a b : Expr) (scratch : Nat) (left : Encodable (a.emit scratch))
     (right : Encodable (b.emit scratch)) : Encodable ((comparison op a b).emit scratch) := by
-  cases op with
+  induction op with
   | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .eq))
   | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .lt))
   | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .le))
   | gt => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .le))).append (.atom .eqz32)
   | ge => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .lt))).append (.atom .eqz32)
-  | bne => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .eq))).append (.atom .eqz32)
+  | ne | bne => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .eq))).append (.atom .eqz32)
+  | negate op ih => simpa [comparison, Cond.emit] using ih.append (.atom .eqz32)
 
 theorem checked_tail (scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroEncoded : Encodable zero) (bound : scratch + 1 < 2 ^ 32) :
