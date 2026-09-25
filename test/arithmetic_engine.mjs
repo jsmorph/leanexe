@@ -10,8 +10,12 @@ const entries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nes
   'nestedChoice', 'choiceBindings', 'choiceOperands',
   'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant',
   'localFunction', 'capturedShadow', 'chainedFunctions', 'nestedFunctions',
-  'unusedFunction', 'doJoined', 'doBranchUpdates'];
-const constants = new Set(['constant', 'boundConstant', 'doConstant']);
+  'unusedFunction', 'doJoined', 'doBranchUpdates',
+  'rangeIndexed', 'rangeIndexFree', 'rangeBindings', 'rangeChoice',
+  'rangeBeforeAfter', 'rangeCaptured', 'rangeConstant'];
+const constants = new Set(['constant', 'boundConstant', 'doConstant', 'rangeConstant']);
+const ranges = new Set(['rangeIndexed', 'rangeIndexFree', 'rangeBindings', 'rangeChoice',
+  'rangeBeforeAfter', 'rangeCaptured']);
 const counts = new Map(entries.map(name => [name, new Set()]));
 const uint64 = value => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value) &&
   BigInt(value) < (1n << 64n);
@@ -26,7 +30,7 @@ for (const row of cases) {
   counts.get(row.name).add(key);
 }
 for (const [name, inputs] of counts) {
-  if (inputs.size !== (constants.has(name) ? 1 : 14)) {
+  if (inputs.size !== (constants.has(name) ? 1 : ranges.has(name) ? 24 : 14)) {
     throw new Error(`incomplete native results for ${name}: ${inputs.size} inputs`);
   }
 }
