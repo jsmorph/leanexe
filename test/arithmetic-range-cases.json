@@ -89,5 +89,15 @@
   "rangeBinaryNested",
   "rangeBinaryDo",
   "rangeBinaryContinue",
-  "rangeBinaryUnused"
+  "rangeBinaryUnused",
+  "rangeBinaryStep",
+  "rangeBinaryStepOrder",
+  "rangeBinaryStepCapture",
+  "rangeBinaryStepChained",
+  "rangeBinaryStepNested",
+  "rangeBinaryStepDo",
+  "rangeBinaryStepScalar",
+  "rangeBinaryStepUnused",
+  "rangeBinaryStepResult",
+  "rangeBinaryStepWrapped"
 ]

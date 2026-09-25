@@ -66,6 +66,30 @@ theorem extractScalarStepWith_letBinaryFn (locals : List ScalarStepBinding)
           extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar) a)) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_accepts]
 
+theorem extractScalarStepWith_binaryApply (locals : List ScalarStepBinding) (index : Nat) (a b : Lean.Expr)
+    (notUnit : a ≠ .const ``Unit.unit []) :
+    extractScalarStepWith locals (.app (.app (.bvar index) a) b) = (do
+      let function ← locals[index]?.bind ScalarStepBinding.binaryFunction?
+      let first ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
+      let second ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) b
+      function first second) := by
+  rw [extractScalarStepWith]
+  exact notUnit
+
+theorem extractScalarStepWith_letBinaryStepFn (locals : List ScalarStepBinding)
+    (name firstTypeName secondTypeName firstName secondName : Lean.Name)
+    (firstTypeBi secondTypeBi firstBi secondBi : Lean.BinderInfo)
+    (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (.letE name
+      (.forallE firstTypeName (.const ``UInt64 [])
+        (.forallE secondTypeName (.const ``UInt64 []) (Step.resultType type) secondTypeBi) firstTypeBi)
+      (.lam firstName (.const ``UInt64 [])
+        (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) = (do
+        let _ ← extractScalarStepWith (.scalar (.word (.u64 0)) :: .scalar (.word (.u64 0)) :: locals) a
+        extractScalarStepWith (.binaryFunction (fun first second =>
+          extractScalarStepWith (.scalar (.word second) :: .scalar (.word first) :: locals) a) :: locals) b) := by
+  rw [extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
+
 theorem extractScalarStepWith_letFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
     (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :

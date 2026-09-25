@@ -84,6 +84,23 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc
       ((bindings.toScalar.cons (binding := .unit) (value := .unit) trivial).cons ha)
+  | binaryApply function first second =>
+    rw [extractScalarStepWith_binaryApply _ _ _ _ first.not_unit] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, a, ha, b, hb, hc⟩ := compiled
+    exact bindings.binaryFunction (Option.bind_eq_some_iff.mpr hf) function a _ b _ code
+      (extractScalarExprWith_correct first ha bindings.toScalar)
+      (extractScalarExprWith_correct second hb bindings.toScalar) hc
+  | letBinaryStepFn type function body ihf ihb =>
+    rw [extractScalarStepWith_letBinaryStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht
+    apply bindings.cons
+    intro first x second y target hx hy hc
+    exact ihf x y hc
+      ((bindings.cons (binding := .scalar (.word first)) (value := .scalar (.word x)) hx).cons
+        (binding := .scalar (.word second)) (value := .scalar (.word y)) hy)
   | @apply values index f a x function argument =>
     rw [extractScalarStepWith] at compiled
     cases found : locals[index]?.bind (ScalarStepBinding.function? false) with

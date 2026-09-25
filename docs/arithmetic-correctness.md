@@ -85,9 +85,10 @@ and every continuation body are checked, including unused continuations.
 `break` returns the current accumulator, including updates made before it.
 The early-exit path also accepts explicit standard `pure (ForInStep.done …)`
 and `pure (ForInStep.yield …)` results, direct `.done`/`.yield` constructors,
-and local functions returning them, with the same unary and Unit-prefixed
-shapes. Functions returning step results still take one UInt64 argument (with an
-optional Unit prefix), or one complete step result. Scalar and step-valued
+and local functions returning them. Functions returning step results may take
+one or two UInt64 arguments, one UInt64 argument with a Unit prefix, or one
+complete step result. Two-argument functions preserve argument order and captured
+values, including through nested/chained calls and standard Id result wrappers. Scalar and step-valued
 functions have distinct binding kinds; both
 compiled projections describe the same native step result. Step-result bindings
 also admit ordinary lets, aliases, lexical capture and straight-line standard
