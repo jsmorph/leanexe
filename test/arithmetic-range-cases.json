@@ -211,5 +211,13 @@
   "rangeNaturalStep",
   "rangeNaturalBounds",
   "rangeNaturalConversion",
-  "rangeNaturalOuter"
+  "rangeNaturalOuter",
+  "rangeBoolBindYield",
+  "rangeBoolBindBreak",
+  "rangeBoolBindContinue",
+  "rangeBoolBindJoined",
+  "rangeBoolBindCapture",
+  "rangeBoolBindBounds",
+  "rangeBoolBindStep",
+  "rangeBoolBindOuter"
 ]
