@@ -60,6 +60,11 @@ theorem comparison_encodable (op : LeanExe.Source.Scalar.Comparison)
   | ge => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .lt))).append (.atom .eqz32)
   | ne | bne => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .eq))).append (.atom .eqz32)
   | negate op ih => simpa [comparison, Cond.emit] using ih.append (.atom .eqz32)
+  | boolNot op =>
+    cases h : op.positive
+    · simpa [comparison, h, Cond.emit, List.append_assoc] using left.append (right.append (.atom .eq))
+    · simpa [comparison, h, Cond.emit, List.append_assoc] using
+        (left.append (right.append (.atom .eq))).append (.atom .eqz32)
 
 theorem checked_tail (scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroEncoded : Encodable zero) (bound : scratch + 1 < 2 ^ 32) :

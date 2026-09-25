@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarDo
+import LeanExe.Source.ScalarBooleanComparison
 
 namespace LeanExe.Source.Scalar
 
@@ -6,6 +6,7 @@ namespace LeanExe.Source.Scalar
 inductive Comparison where
   | eq | ne | lt | le | gt | ge | beq | bne
   | negate (comparison : Comparison)
+  | boolNot (comparison : BooleanComparison)
   deriving DecidableEq, Repr
 
 namespace Comparison
@@ -20,6 +21,7 @@ def denote : Comparison → UInt64 → UInt64 → Bool
   | .beq => fun x y => x == y
   | .bne => fun x y => x != y
   | .negate op => fun x y => !(denote op x y)
+  | .boolNot op => fun x y => !(op.denote x y)
 
 def boolExpr (op : Comparison) (a b : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.const (if op = .bne then ``_root_.bne else ``BEq.beq) [.zero])
@@ -43,6 +45,8 @@ def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .bne, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
       (boolExpr .bne a b)) (.const ``Bool.true [])
   | .negate op, a, b => .app (.const ``Not []) (condition op a b)
+  | .boolNot op, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
+      (.app (.const ``Bool.not []) (op.expr a b))) (.const ``Bool.true [])
 
 def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .eq, a, b => .app (.app (.const ``instDecidableEqUInt64 []) a) b
@@ -58,10 +62,16 @@ def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
       (.const ``Bool.true [])
   | .negate op, a, b => .app (.app (.const ``instDecidableNot []) (op.condition a b))
       (evidence op a b)
+  | .boolNot op, a, b => .app (.app (.const ``instDecidableEqBool [])
+      (.app (.const ``Bool.not []) (op.expr a b))) (.const ``Bool.true [])
 
 theorem operands_size (op : Comparison) (a b : Lean.Expr) :
     sizeOf a < sizeOf (op.condition a b) ∧ sizeOf b < sizeOf (op.condition a b) := by
-  induction op <;> simp_all [condition, boolExpr] <;> omega
+  induction op with
+  | boolNot op =>
+    have size := op.operands_size a b
+    simp [condition] <;> omega
+  | _ => simp_all [condition, boolExpr] <;> omega
 
 /-- Exact ordinary `if` syntax over a supported comparison. Its decision
 procedure is part of the grammar, including the compared operands. -/

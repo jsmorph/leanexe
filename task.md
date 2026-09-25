@@ -322,9 +322,14 @@ acceptance, preservation and invariants. All 240 focused native Lean/IR comparis
 and five rejection tests passed. All 91 preceding range modules retained identical
 bytes. General type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: Boolean negation in conditional guards, preserving
-canonical evidence and the existing propositional-negation behavior. Complete
-its source-to-module proof and compiler execution checks before another capability.
+Current increment: Boolean `!` over standard UInt64 equality/inequality guards,
+including repeated negation and combination with propositional `¬`. Independent
+Boolean syntax and native semantics preserve exact standard BEq and decision
+evidence. Recognition, polarity lowering and public source/IR extraction pass
+Lean checking. Eight pure and four range declarations cover nesting, computed
+operands, functions, monadic binds, break, continue and step-result joins.
+The complete compiler proof, type validation and full execution group follow
+this candidate checkpoint because shared comparison extraction changed.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
