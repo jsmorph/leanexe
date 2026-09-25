@@ -7114,7 +7114,8 @@ def shortExportName (name : Name) : String :=
   | [] => LeanExe.Extract.Env.displayName name
 
 def reservedExportNames : List String :=
-  ["memory", "alloc", "reset"]
+  ["memory", "alloc", "reset", "retain", "release", "free",
+    "allocCount", "retainCount", "releaseCount", "freeCount"]
 
 def extractFunction
     (exportEntry : Bool)

@@ -593,3 +593,15 @@ Both modules build. ModuleBytesAudit reports only propext, Classical.choice,
 and Quot.sound for extracted_function_valid. Larger runtime functions and
 whole-module metadata validation remain. During export validation, found
 reservedExportNames omits seven runtime exports; a regression and fix are next.
+
+### Runtime export collision bug fixed and regression-tested
+
+The production reserved-export list covered only memory/alloc/reset despite
+emitting retain/release/free and four counter exports as well. A regression
+against the actual compiler reproduced acceptance of RuntimeExportNames.retain
+before the fix. Extended the list to all ten runtime exports. Rebuilt
+LeanExe.Extract.Core and reran the regression successfully: every runtime name
+is rejected for exported entries with the expected diagnostic, each remains
+allowed for an internal function, and an ordinary arithmetic export compiles.
+This fixes invalid duplicate-export modules and supplies the needed name
+precondition for whole-module validation.
