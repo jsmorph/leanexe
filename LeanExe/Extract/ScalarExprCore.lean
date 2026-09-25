@@ -1,3 +1,4 @@
+import Lean.Meta.Tactic.FunInd
 import LeanExe.Extract.ScalarBooleanBind
 import LeanExe.Extract.ScalarLiteralInstance
 import LeanExe.Extract.ScalarCall
@@ -16,6 +17,7 @@ import LeanExe.Source.Scalar
 
 namespace LeanExe.Extract.Core
 
+set_option maxHeartbeats 300000 in
 /-- Compile pure, total scalar expressions with an environment of already
 compiled bindings. Substitution removes source lets without introducing effects.
 Bindings may be duplicated or unused in the output; this is valid only for this
@@ -202,10 +204,28 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           let function := ScalarBinding.function true fun argument =>
             extractScalarExprWith (.word argument :: .unit :: locals) value
           extractScalarExprWith (function :: locals) body
-  | .app (.bvar index) argument => do
-      let function ← locals[index]?.bind (ScalarBinding.function? false)
-      let value ← extractScalarExprWith locals argument
-      function value
+  | .app (.bvar index) argument =>
+      match locals[index]?.bind (ScalarBinding.function? false) with
+      | some function => do
+          let value ← extractScalarExprWith locals argument
+          function value
+      | none =>
+          match _boolean : booleanLocalOperands? argument with
+          | none => none
+          | some expression => do
+              let function ← locals[index]?.bind ScalarBinding.booleanFunction?
+              let c ← extractBooleanLocalWith locals expression
+                (fun operand _member => extractScalarExprWith locals operand)
+              function (guardWord c)
+  | .letE _ (.forallE _ (.const ``Bool []) resultType _)
+      (.lam _ (.const ``Bool []) value _) body _ =>
+      match scalarResultType? resultType with
+      | none => none
+      | some _ => do
+          let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals) value
+          let function := ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith (.boolean argument :: locals) value
+          extractScalarExprWith (function :: locals) body
   | .mdata _ body => extractScalarExprWith locals body
   | _ => none
 termination_by source => sizeOf source
@@ -222,6 +242,10 @@ decreasing_by
     | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
     | (have bounds := comparison_size _h; omega)
     | (have bounds := compoundGuard_size _g _member; omega)
+
+-- Realize the induction theorem in this module so dependent modules reuse it
+-- with the definition's bounded elaboration budget.
+run_elab Lean.executeReservedNameAction `LeanExe.Extract.Core.extractScalarExprWith.induct
 
 /-- Source argument indices map to the production IR's materialized slots. -/
 def extractScalarExpr (locals : List Nat) (source : Lean.Expr) : Option LeanExe.IR.Expr :=
@@ -349,6 +373,38 @@ theorem extractScalarExprWith_booleanDependentBranch (locals : List ScalarBindin
       extractScalarExprWith (.word bound :: locals) body) := by
   rw [LeanExe.Source.Scalar.Identity.bind, extractScalarExprWith, scalarBindTypes_accepts]
 
+theorem extractScalarExprWith_booleanApply (locals : List ScalarBinding) (index : Nat)
+    (expression : LeanExe.Source.Scalar.BooleanLocal)
+    (function : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+    (found : (locals[index]?.bind ScalarBinding.booleanFunction?) = some function) :
+    extractScalarExprWith locals (.app (.bvar index) expression.expr) = (do
+      let c ← extractBooleanLocalWith locals expression
+        (fun operand _ => extractScalarExprWith locals operand)
+      function (guardWord c)) := by
+  rw [extractScalarExprWith, scalarBooleanFunction_not_word found, booleanLocalOperands_expr]
+  simp [found]
+
+theorem extractScalarExprWith_wordApply (locals : List ScalarBinding) (index : Nat)
+    (argument : Lean.Expr) (function : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+    (found : (locals[index]?.bind (ScalarBinding.function? false)) = some function) :
+    extractScalarExprWith locals (.app (.bvar index) argument) = (do
+      let value ← extractScalarExprWith locals argument
+      function value) := by
+  rw [extractScalarExprWith, found]
+
+theorem extractScalarExprWith_wordApplyOnly (locals : List ScalarBinding) (index : Nat)
+    (argument : Lean.Expr)
+    (noBoolean : (locals[index]?.bind ScalarBinding.booleanFunction?) = none) :
+    extractScalarExprWith locals (.app (.bvar index) argument) = (do
+      let function ← locals[index]?.bind (ScalarBinding.function? false)
+      let value ← extractScalarExprWith locals argument
+      function value) := by
+  rw [extractScalarExprWith]
+  cases found : locals[index]?.bind (ScalarBinding.function? false) with
+  | some function => rfl
+  | none =>
+    cases booleanLocalOperands? argument <;> simp [noBoolean]
+
 theorem extractScalarExprWith_letFn (locals : List ScalarBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
     (type : LeanExe.Source.Scalar.ResultType) (a b : Lean.Expr) (nondep : Bool) :
@@ -360,6 +416,17 @@ theorem extractScalarExprWith_letFn (locals : List ScalarBinding)
           extractScalarExprWith (.word argument :: locals) a) :: locals) b) := by
   rw [extractScalarExprWith, scalarResultType_accepts]
   cases type <;> simp [LeanExe.Source.Scalar.ResultType.expr]
+
+theorem extractScalarExprWith_letBooleanFn (locals : List ScalarBinding)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (type : LeanExe.Source.Scalar.ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarExprWith locals (.letE name
+      (.forallE typeName (.const ``Bool []) type.expr typeBi)
+      (.lam paramName (.const ``Bool []) a paramBi) b nondep) = (do
+        let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals) a
+        extractScalarExprWith (.booleanFunction (fun argument =>
+          extractScalarExprWith (.boolean argument :: locals) a) :: locals) b) := by
+  rw [extractScalarExprWith, scalarResultType_accepts]
 
 theorem extractScalarExprWith_letUnitFn (locals : List ScalarBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)

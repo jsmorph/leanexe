@@ -602,8 +602,13 @@ existing scalar conditionals and Boolean binds in its branches. Preserve the
 three inspected source examples unchanged as execution tests. Add a distinct
 Boolean-function binding kind with native Bool input and the proved zero/one
 compiled representation. Source values, compiler bindings and lookup/meaning
-lemmas now build. Add source semantics, typed support, totality and extraction
-proofs before execution gates. Include step-valued Boolean continuations and
+lemmas now build. Scalar source semantics, typed support, totality, production
+extraction and all four scalar proofs pass. The larger dispatch uses a local
+300,000-heartbeat elaboration limit and explicitly realizes its ordinary
+Lean-generated induction theorem in the defining module. This avoids generating
+it again with import-time default limits; the scalar core builds in 12 seconds
+and its proof consumer in 1.2 seconds. Step/outer-loop integration and execution
+gates remain open. Include step-valued Boolean continuations and
 helpers surrounding loops as the dependent integration permits; no capability
 is complete until its focused native/V8 comparisons and general audits pass.
 No Boolean public ABI or Boolean-returning helper is claimed by this increment.
