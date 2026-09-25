@@ -665,23 +665,28 @@ preceding modules kept identical bytes. Evidence is retained in
 declarations; this was a focused execution run. Five original inspected
 examples now compile unchanged. No emitter/runtime or dispatch changes were needed.
 
-Current increment: propositional Boolean equality and inequality conditions
-involving saved flags (`if flag = other ...`, `if flag ≠ other ...`), including
-dependent scalar and step branches. The guard retains its exact Eq/Ne condition
-and decision expression, indexed by the already proved Boolean equality value.
-The literal-true RHS preserves the existing truth-condition path. Parser
-acceptance, reconstruction, size bounds and separation proofs pass, together
-with scalar/step/range source, acceptance, correctness and invariant builds.
-All five original inspected examples now compile unchanged. The 304 focused
-native/IR comparisons, four declaration rejections and forty raw guard/type/
-proof-binder rejections pass. The prior equality, Boolean-local and dependent
-fixtures each pass all 304 comparisons and their rejection tests. Two initial
-fixture failures revealed that leading ! consumed a larger proposition; the
-intended Boolean operands are now parenthesized, with failures retained for
-the future decide extension. The general compiler audit, actual emitted-Wasm
-comparisons and documentation are still in progress. Boolean-returning helpers, Boolean public ABI, mixed
-Bool/word helper parameters, Boolean-valued choices/decide over saved-flag
-propositions and loops inside helpers remain later capabilities.
+Completed next increment: propositional Boolean equality and inequality guards
+(`if flag = other ...`, `if flag ≠ other ...`) in scalar and step conditions,
+including dependent branches. An indexed form preserves exact Eq/Ne syntax and
+decision evidence while reusing the proved Boolean equality meaning. The
+literal-true RHS keeps its previous truth-condition path. Candidate `d4b102ba`
+passed all nine general compiler audits and 623 native Lean/V8 comparisons over
+34 declarations. All 304 focused native/IR comparisons and 44 rejection checks
+pass. Prior equality, Boolean-local and dependent fixtures each pass all 304
+comparisons and their twenty/eight/ten rejection tests. Eighteen selected prior
+modules have identical bytes, and the five original examples compile unchanged.
+Two initial fixture failures came from leading ! consuming a larger proposition;
+intended Boolean operands were parenthesized and failures retained. Evidence is
+in `proofs/compiler/boolean-proposition-2026-09-25/`. The complete corpus has 520
+declarations; this was a focused execution run. No emitter/runtime changes.
+
+Next increment: explicit decide and implicit Prop-to-Bool conversion for
+propositions containing saved Boolean flags. Start with Boolean truth coercions
+and propositional Eq/Ne, preserving exact standard evidence and old closed-guard
+behavior. Revisit the retained original leading-negation expressions unchanged.
+Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
+Boolean-result choices over saved-flag propositions, broader propositional
+combinations and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
