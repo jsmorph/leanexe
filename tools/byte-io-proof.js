@@ -37,14 +37,18 @@ const theoremNames = [
   "ValidationChecks.rejects_export_past_end", "exits_of_check", "echo_start_exits",
 ].map(name => `Project.ByteIO.${name}`);
 
-function embeddedSource(bytes) {
+function embeddedSource(bytes, {
+  project = "ByteIO", fixturePath = "proofs/byte-io/echo.wasm", entry = "LeanExe.Examples.ByteIO.echo",
+  generator = "tools/byte-io-proof.js",
+} = {}) {
   const hash = crypto.createHash("sha256").update(bytes).digest("hex");
   const rows = [];
   for (let i = 0; i < bytes.length; i += 24) rows.push(`  ${[...bytes.subarray(i, i + 24)].join(", ")}`);
-  return `/-!\nGenerated from \`proofs/byte-io/echo.wasm\`; checked by \`tools/byte-io-proof.js\`.\nSource: \`LeanExe.Examples.ByteIO.echo\`.\nSHA-256: ${hash}\n-/\nnamespace Project.ByteIO.Artifact\n\ndef bytes : ByteArray := ByteArray.mk #[\n${rows.join(",\n")}\n]\n\nend Project.ByteIO.Artifact\n`;
+  const depth = bytes.length > 4096 ? "set_option maxRecDepth 131072\n\n" : "";
+  return `/-!\nGenerated from \`${fixturePath}\`; checked by \`${generator}\`.\nSource: \`${entry}\`.\nSHA-256: ${hash}\n-/\nnamespace Project.${project}.Artifact\n\n${depth}def bytes : ByteArray := ByteArray.mk #[\n${rows.join(",\n")}\n]\n\nend Project.${project}.Artifact\n`;
 }
 
-function byteLookupSource(bytes) {
+function byteLookupSource(bytes, project = "ByteIO") {
   const declarations = [];
   function split(lo, hi) {
     const name = `bytes_${lo}_${hi}`;
@@ -64,10 +68,10 @@ theorem ${name}_length : ${name}.length = ${hi - lo} := by
     return name;
   }
   const tree = split(0, bytes.length);
-  return `import Project.ByteIO.ArtifactBytes
+  return `import Project.${project}.ArtifactBytes
 import Project.Artifact.Binary.Evaluate
 
-namespace Project.ByteIO.Artifact.ByteLookup
+namespace Project.${project}.Artifact.ByteLookup
 
 set_option maxRecDepth 131072
 
@@ -84,7 +88,7 @@ theorem data_eq : data.toList = ${tree} := by rfl
 @[cbv_eval] theorem data_size : data.size = ${bytes.length} := rfl
 
 #print axioms data_get
-end Project.ByteIO.Artifact.ByteLookup
+end Project.${project}.Artifact.ByteLookup
 `;
 }
 
