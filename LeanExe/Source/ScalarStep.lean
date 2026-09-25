@@ -57,6 +57,16 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
+  | manyApply (call : ManyCall) {native : Lean.Expr → UInt64}
+      (function : values[call.index]? = some (.manyFunction call.arity f))
+      (arguments : ∀ operand, operand ∈ call.arguments →
+        EvalWith operand (values.map Value.toScalar) (native operand)) :
+      Eval call.expr values (f (call.arguments.map native))
+  | letManyStepFn (shape : ManyFunction)
+      (function : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        Eval shape.body (arguments.reverse.map (fun value => .scalar (.word value)) ++ values) (f arguments))
+      (body : Eval b (.manyFunction shape.arity f :: values) outcome) :
+      Eval (shape.bind name b nondep resultType) values outcome
   | binaryApply (function : values[index]? = some (.binaryFunction f))
       (first : EvalWith a (values.map Value.toScalar) x)
       (second : EvalWith b (values.map Value.toScalar) y) :
@@ -162,6 +172,15 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName unitForm.type
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
+  | manyApply (call : ManyCall)
+      (function : types[call.index]? = some (.manyFunction call.arity))
+      (arguments : ∀ operand, operand ∈ call.arguments →
+        SupportedWith (types.map BindingKind.toScalar) operand) :
+      Supported types call.expr
+  | letManyStepFn (shape : ManyFunction)
+      (function : Supported (List.replicate shape.arity (.scalar .word) ++ types) shape.body)
+      (body : Supported (.manyFunction shape.arity :: types) b) :
+      Supported types (shape.bind name b nondep resultType)
   | binaryApply (function : types[index]? = some .binaryFunction)
       (first : SupportedWith (types.map BindingKind.toScalar) a)
       (second : SupportedWith (types.map BindingKind.toScalar) b) :
@@ -285,6 +304,29 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function true f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letUnitFn type unitForm (fun x => (total x).choose_spec) evaluated⟩
+  | manyApply call present arguments =>
+    obtain ⟨f, hf⟩ := manyFunction_lookup typed present
+    have total := fun operand member =>
+      (arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ call.arguments then (total operand member).choose else 0
+    have meanings : ∀ operand, operand ∈ call.arguments →
+        EvalWith operand (values.map Value.toScalar) (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (total operand member).choose_spec
+    exact ⟨f (call.arguments.map native), .manyApply call hf meanings⟩
+  | letManyStepFn shape _ _ ihf ihb =>
+    have total := fun (arguments : List UInt64) (len : arguments.length = shape.arity) =>
+      ihf (arguments.reverse.map (fun value => .scalar (.word value)) ++ values)
+        (by simp [List.map_map, Function.comp_def, Value.kind, Scalar.Value.kind, List.map_const', len, typed])
+    let f : List UInt64 → ForInStep UInt64 := fun arguments =>
+      if len : arguments.length = shape.arity then (total arguments len).choose else .yield 0
+    have meanings : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        Eval shape.body (arguments.reverse.map (fun value => .scalar (.word value)) ++ values) (f arguments) := by
+      intro arguments len
+      simpa only [f, dite_eq_left len] using (total arguments len).choose_spec
+    obtain ⟨outcome, evaluated⟩ := ihb (.manyFunction shape.arity f :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letManyStepFn shape meanings evaluated⟩
   | binaryApply present first second =>
     obtain ⟨f, hf⟩ := binaryFunction_lookup typed present
     obtain ⟨x, hx⟩ := first.evaluates (values.map Value.toScalar) (typed_projection typed)

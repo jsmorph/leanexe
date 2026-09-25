@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarManyStepFunction
 import LeanExe.Extract.ScalarExpr
 import LeanExe.Extract.ScalarStepBindings
 import LeanExe.Extract.ScalarStepSyntax
@@ -62,7 +63,19 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
                   (.forallE firstTypeName (.const ``UInt64 [])
                     (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
                   (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
-              | none => none
+              | none =>
+                  match _stepFunction : scalarManyStepFunction?
+                      (.forallE firstTypeName (.const ``UInt64 [])
+                        (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+                      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
+                  | none => none
+                  | some shape => do
+                      let _ ← extractScalarStepWith
+                        (List.replicate shape.arity (.scalar (.word (.u64 0))) ++ locals) shape.body
+                      let function := ScalarStepBinding.manyFunction shape.arity fun arguments =>
+                        extractScalarStepWith
+                          (arguments.reverse.map (fun argument => .scalar (.word argument)) ++ locals) shape.body
+                      extractScalarStepWith (function :: locals) body
               | some shape => do
                   let _ ← extractScalarExprWith
                     (List.replicate shape.arity (.word (.u64 0)) ++ locals.map ScalarStepBinding.toScalar) shape.body
@@ -173,7 +186,18 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
         | _, _ => none
       else none
   | .mdata _ body => extractScalarStepWith locals body
+  | .app (.app head first) second => do
+      let call ← scalarManyCall? head first second
+      let function ← locals[call.index]?.bind (ScalarStepBinding.manyFunction? call.arity)
+      let arguments ← extractScalarArguments call.arguments
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      function arguments
   | _ => none
 termination_by source => sizeOf source
+decreasing_by
+  all_goals simp_wf
+  all_goals first
+    | omega
+    | (have bound := scalarManyStepFunction_body_size _stepFunction; simp_all; omega)
 
 end LeanExe.Extract.Core
