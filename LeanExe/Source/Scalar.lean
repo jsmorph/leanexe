@@ -6,8 +6,8 @@ namespace LeanExe.Source.Scalar
 /-! Semantics of concrete, elaborated Lean UInt64 syntax. The constants below
 are paired explicitly with their native Lean definitions, independently of the
 extractor's dispatch table and the IR operation selected by compilation.
-The fragment covers pure arithmetic and UInt64 let bindings. Conditions,
-calls, and iteration remain separate obligations.
+The fragment covers pure arithmetic, UInt64 let bindings and comparison-based
+conditionals. Calls and iteration remain separate obligations.
 -/
 
 def literalExpr (n : Nat) : Lean.Expr :=

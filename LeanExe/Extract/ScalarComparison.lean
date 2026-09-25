@@ -13,6 +13,10 @@ def comparisonOperands? : Lean.Expr → Option (Comparison × Lean.Expr × Lean.
       (.const ``instLTUInt64 [])) a) b => some (.lt, a, b)
   | .app (.app (.app (.app (.const ``LE.le [.zero]) (.const ``UInt64 []))
       (.const ``instLEUInt64 [])) a) b => some (.le, a, b)
+  | .app (.app (.app (.app (.const ``GT.gt [.zero]) (.const ``UInt64 []))
+      (.const ``instLTUInt64 [])) a) b => some (.gt, a, b)
+  | .app (.app (.app (.app (.const ``GE.ge [.zero]) (.const ``UInt64 []))
+      (.const ``instLEUInt64 [])) a) b => some (.ge, a, b)
   | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
       (.app (.app (.app (.app (.const ``BEq.beq [.zero]) (.const ``UInt64 []))
         (.app (.app (.const ``instBEqOfDecidableEq [.zero]) (.const ``UInt64 []))
@@ -62,6 +66,8 @@ def lowerComparison : Comparison → LeanExe.IR.Expr → LeanExe.IR.Expr → Lea
   | .eq, a, b => .eqU64 a b
   | .lt, a, b => .ltU64 a b
   | .le, a, b => .leU64 a b
+  | .gt, a, b => .not (.leU64 a b)
+  | .ge, a, b => .not (.ltU64 a b)
   | .beq, a, b => .eqU64 a b
   | .bne, a, b => .not (.eqU64 a b)
 
@@ -74,5 +80,7 @@ theorem lowerComparison_correct (op : Comparison)
   | lt => exact .lt left right
   | le => exact .le left right
   | bne => exact .not (.eq left right)
+  | gt => simpa [Comparison.denote, lowerComparison, ← decide_not] using LeanExe.IR.Cond.ScalarEval.not (.le left right)
+  | ge => simpa [Comparison.denote, lowerComparison, ← decide_not] using LeanExe.IR.Cond.ScalarEval.not (.lt left right)
 
 end LeanExe.Extract.Core

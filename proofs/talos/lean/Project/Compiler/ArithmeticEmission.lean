@@ -56,6 +56,8 @@ theorem comparison_encodable (op : LeanExe.Source.Scalar.Comparison)
   | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .eq))
   | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .lt))
   | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .le))
+  | gt => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .le))).append (.atom .eqz32)
+  | ge => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .lt))).append (.atom .eqz32)
   | bne => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .eq))).append (.atom .eqz32)
 
 theorem checked_tail (scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)

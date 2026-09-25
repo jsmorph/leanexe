@@ -19,14 +19,16 @@ nesting of supported expressions:
 | `/`, `%` | Unsigned quotient/remainder; zero divisor gives zero/dividend |
 | `&&&`, `|||`, `^^^` | Bitwise and/or/xor |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `<`, `≤`, `==`, or `!=` between UInt64 expressions |
+| `if … then … else …` | Branch on `=`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Literals reduce modulo 2^64. Custom
 instances, helper calls, recursion, loops, runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
-procedures. `>` and `≥` elaborate as reversed `<` and `≤` comparisons. Nested
+procedures. `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
+decision procedures with reversed operands. Their lowering preserves unsigned
+comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
 local bounds, even when one branch is never executed. Dependent `if h : …`,

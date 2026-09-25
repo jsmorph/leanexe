@@ -4,7 +4,7 @@ namespace LeanExe.Source.Scalar
 
 /-- Canonical Lean comparison forms, with their native UInt64 meanings. -/
 inductive Comparison where
-  | eq | lt | le | beq | bne
+  | eq | lt | le | gt | ge | beq | bne
   deriving DecidableEq, Repr
 
 namespace Comparison
@@ -13,6 +13,8 @@ def denote : Comparison → UInt64 → UInt64 → Bool
   | .eq => fun x y => decide (x = y)
   | .lt => fun x y => decide (x < y)
   | .le => fun x y => decide (x ≤ y)
+  | .gt => fun x y => decide (x > y)
+  | .ge => fun x y => decide (x ≥ y)
   | .beq => fun x y => x == y
   | .bne => fun x y => x != y
 
@@ -28,6 +30,10 @@ def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
       (.const ``instLTUInt64 [])) a) b
   | .le, a, b => .app (.app (.app (.app (.const ``LE.le [.zero]) (.const ``UInt64 []))
       (.const ``instLEUInt64 [])) a) b
+  | .gt, a, b => .app (.app (.app (.app (.const ``GT.gt [.zero]) (.const ``UInt64 []))
+      (.const ``instLTUInt64 [])) a) b
+  | .ge, a, b => .app (.app (.app (.app (.const ``GE.ge [.zero]) (.const ``UInt64 []))
+      (.const ``instLEUInt64 [])) a) b
   | .beq, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
       (boolExpr .beq a b)) (.const ``Bool.true [])
   | .bne, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
@@ -37,6 +43,8 @@ def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
   | .eq, a, b => .app (.app (.const ``instDecidableEqUInt64 []) a) b
   | .lt, a, b => .app (.app (.const ``UInt64.decLt []) a) b
   | .le, a, b => .app (.app (.const ``UInt64.decLe []) a) b
+  | .gt, a, b => .app (.app (.const ``UInt64.decLt []) b) a
+  | .ge, a, b => .app (.app (.const ``UInt64.decLe []) b) a
   | .beq, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .beq a b))
       (.const ``Bool.true [])
   | .bne, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .bne a b))
