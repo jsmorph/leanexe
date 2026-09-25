@@ -21,9 +21,9 @@ def head (indexType : Lean.Expr) : Lean.Expr :=
     .const ``UInt64 []]
 
 
-def call (indexType : IndexType) (first : First) (count : Count) (initial : Lean.Expr) (indexName accumulatorName : Lean.Name)
+def call (indexType : IndexType) (first : Count) (count : Count) (initial : Lean.Expr) (indexName accumulatorName : Lean.Name)
     (indexBi accumulatorBi : Lean.BinderInfo) (body : Lean.Expr) : Lean.Expr :=
-  .app (.app (.app (head indexType.expr) (count.range first.number)) initial)
+  .app (.app (.app (head indexType.expr) (count.range first)) initial)
     (.lam indexName indexType.expr (.lam accumulatorName (.const ``UInt64 []) body accumulatorBi) indexBi)
 
 end LeanExe.Source.Scalar.Range.Exit

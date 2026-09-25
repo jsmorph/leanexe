@@ -6,7 +6,7 @@ open LeanExe.Source.Scalar
 
 structure ScalarRangeExitView where
   indexType : Range.Exit.IndexType
-  first : Range.Exit.First
+  first : Range.Exit.Count
   count : Range.Exit.Count
   initial : Lean.Expr
   indexName : Lean.Name
@@ -29,7 +29,7 @@ def scalarRangeExit? : Lean.Expr → Option ScalarRangeExitView
       if exactSyntax : indexType.consumeMData = .const ``Nat [] ∧ head = Range.Exit.head indexType ∧ step = Range.natLiteral 1 ∧
           positive = .const ``Nat.zero_lt_one [] then
         do
-          let first ← scalarRangeFirst? start
+          let first ← scalarRangeCount? start
           let count ← scalarRangeCount? stop
           pure { indexType := ⟨indexType, exactSyntax.1⟩, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body }
       else none
@@ -38,8 +38,7 @@ def scalarRangeExit? : Lean.Expr → Option ScalarRangeExitView
 theorem scalarRangeExit_accepts (view : ScalarRangeExitView) :
     scalarRangeExit? view.source = some view := by
   rcases view with ⟨⟨indexType, isNat⟩, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body⟩
-  have firstAccepted : scalarRangeFirst? (Range.natLiteral first.number) = some first := scalarRangeFirst_accepts first
-  simp [ScalarRangeExitView.source, Range.Exit.call, Range.Exit.Count.range, Lean.mkAppN, Lean.mkApp, scalarRangeExit?, isNat, scalarRangeCount_accepts, firstAccepted]
+  simp [ScalarRangeExitView.source, Range.Exit.call, Range.Exit.Count.range, Lean.mkAppN, Lean.mkApp, scalarRangeExit?, isNat, scalarRangeCount_accepts]
 
 theorem scalarRangeExit_sound {source : Lean.Expr} {view : ScalarRangeExitView}
     (matched : scalarRangeExit? source = some view) : source = view.source := by
@@ -50,7 +49,7 @@ theorem scalarRangeExit_sound {source : Lean.Expr} {view : ScalarRangeExitView}
       obtain ⟨isNat, rfl, rfl, rfl⟩ := exactSyntax
       simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at matched
       obtain ⟨first, recognizedFirst, count, recognized, rfl⟩ := matched
-      have sameFirst := scalarRangeFirst_sound recognizedFirst
+      have sameFirst := scalarRangeCount_sound recognizedFirst
       have same := scalarRangeCount_sound recognized
       subst_vars
       rfl

@@ -275,9 +275,13 @@ break/continue, captured helpers, result joins, high indices and huge intervals
 with immediate exits are included. All fifty-one previous range modules kept
 identical bytes. General type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: dynamic range starts expressed as a supported
-UInt64 expression followed by .toNat. Preserve native truncated distance,
-captured first-index values and existing literal-start output.
+Current increment: dynamic range starts expressed as a supported UInt64
+expression followed by .toNat. The common endpoint source model, exact syntax
+recognition, truncated-distance/index-offset semantics and whole source/IR
+proof pass. All 264 focused native Lean/IR comparisons and two rejection tests
+pass. Captured first-index values remain fixed during accumulator updates.
+Existing literal-start output is preserved by the same zero-literal simplification.
+General compiler audits and actual compiler/V8 range checks are pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
