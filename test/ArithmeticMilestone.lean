@@ -992,6 +992,97 @@ def rangeOuterStep (count seed : UInt64) : UInt64 := Id.run do
     finish a seed
   return f result count
 
+def rangeLetResult (count seed : UInt64) : UInt64 :=
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + UInt64.ofNat i + 1
+    return a
+  result * 3 + seed
+
+def rangeLetDirect (count seed : UInt64) : UInt64 :=
+  let result : UInt64 := forIn (m := Id) [:count.toNat] seed fun i a =>
+    if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a * 3 + 1)
+  result + count
+
+def rangeLetCapture (count seed : UInt64) : UInt64 :=
+  let captured := seed + 7
+  let result := Id.run do
+    let mut a := captured
+    for i in [:count.toNat] do
+      a := a + captured + UInt64.ofNat i
+    return a
+  let captured := result + 11
+  result + captured
+
+def rangeLetAliases (count seed : UInt64) : UInt64 :=
+  let result := Id.run do
+    let mut a := seed
+    for _ in [:count.toNat] do
+      a := a * 3 + 1
+    return a
+  let alias := result
+  let result := alias + 7
+  result - alias / 3
+
+def rangeLetUnused (count seed : UInt64) : UInt64 :=
+  let _ignored := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + UInt64.ofNat i
+      if a % 5 == 0 then break
+    return a
+  seed + count
+
+def rangeLetStride (count seed : UInt64) : UInt64 :=
+  let result := Id.run do
+    let mut a := seed
+    for i in [(seed % 3).toNat:count.toNat:2] do
+      a := a + UInt64.ofNat i
+      if a % 7 == seed % 7 then break
+    return a
+  if !(result == seed) then result + 11 else result * 3
+
+def rangeLetContinue (count seed : UInt64) : UInt64 :=
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if UInt64.ofNat i % 3 == 0 then continue
+      a := a + UInt64.ofNat i
+    return a
+  result ^^^ seed
+
+def rangeLetMonadic (count seed : UInt64) : UInt64 := Id.run do
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      let x ← pure (a + UInt64.ofNat i)
+      a := x * 3
+    return a
+  let z ← pure (result + 7)
+  return z * 3 + seed
+
+def rangeLetHelper (count seed : UInt64) : UInt64 :=
+  let f := fun x y : UInt64 => x * 3 + y + seed
+  let result := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f a (UInt64.ofNat i)
+    return a
+  let g := fun x : UInt64 => f x result
+  g seed + g count
+
+def rangeLetNested (count seed : UInt64) : UInt64 :=
+  let outer :=
+    let start := seed + 3
+    let inner := Id.run do
+      let mut a := start
+      for i in [1:count.toNat] do
+        a := a + UInt64.ofNat i
+      return a
+    inner * 3 + start
+  outer + seed
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1102,7 +1193,17 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeOuterNested", rangeOuterNested),
    ("rangeOuterDo", rangeOuterDo),
    ("rangeOuterUnused", rangeOuterUnused),
-   ("rangeOuterStep", rangeOuterStep)]
+   ("rangeOuterStep", rangeOuterStep),
+   ("rangeLetResult", rangeLetResult),
+   ("rangeLetDirect", rangeLetDirect),
+   ("rangeLetCapture", rangeLetCapture),
+   ("rangeLetAliases", rangeLetAliases),
+   ("rangeLetUnused", rangeLetUnused),
+   ("rangeLetStride", rangeLetStride),
+   ("rangeLetContinue", rangeLetContinue),
+   ("rangeLetMonadic", rangeLetMonadic),
+   ("rangeLetHelper", rangeLetHelper),
+   ("rangeLetNested", rangeLetNested)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

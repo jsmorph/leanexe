@@ -113,5 +113,15 @@
   "rangeOuterNested",
   "rangeOuterDo",
   "rangeOuterUnused",
-  "rangeOuterStep"
+  "rangeOuterStep",
+  "rangeLetResult",
+  "rangeLetDirect",
+  "rangeLetCapture",
+  "rangeLetAliases",
+  "rangeLetUnused",
+  "rangeLetStride",
+  "rangeLetContinue",
+  "rangeLetMonadic",
+  "rangeLetHelper",
+  "rangeLetNested"
 ]

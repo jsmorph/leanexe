@@ -103,11 +103,10 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
       rw [boundNat]
       exact .local (LeanExe.IR.rangeExitStore_value _ _ _ _ _)
   | letE sourceValue _ ih =>
-    rw [extractScalarRangeExitWith_letE] at compiled
-    simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨bound, hb, hp⟩ := compiled
+    obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts sourceValue locals localsTyped totalBindings
+    rw [extractScalarRangeExitWith_letE, hb] at compiled
     obtain ⟨x, hx⟩ := sourceValue.evaluates values valuesTyped
-    obtain ⟨y, hy, result⟩ := ih hp (by simp [ScalarBinding.kind, localsTyped])
+    obtain ⟨y, hy, result⟩ := ih compiled (by simp [ScalarBinding.kind, localsTyped])
       (by simp [Value.kind, valuesTyped]) (bindings.bind hx hb) (total_word_cons totalBindings bound)
     exact ⟨y, .letE hx hy, result⟩
   | idRun _ ih =>
@@ -207,6 +206,17 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
           · exact totalBindings binding member
         · exact totalBindings binding member)
     exact ⟨result, .letUnitFn type (fun x => (total x).choose_spec) hs, hm⟩
+  | letLeft sourceValue sourceBody ih =>
+    rw [extractScalarRangeExitWith_letE, rangeExitSupported_excludes_pure sourceValue] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨before, hb, resultIR, hr, rfl⟩ := compiled
+    obtain ⟨x, hx, stop, start, step, countEval, initialEval, stepEval, resultEval⟩ :=
+      ih hb localsTyped valuesTyped bindings totalBindings
+    obtain ⟨y, hy⟩ := sourceBody.evaluates (.word x :: values) (by simp [Value.kind, valuesTyped])
+    refine ⟨y, .letLeft hx hy, stop, start, step, countEval, initialEval, stepEval, ?_⟩
+    intro flag
+    exact extractScalarExprWith_correct hy hr
+      ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop flag).cons (resultEval flag))
   | metadata _ ih =>
     rw [extractScalarRangeExitWith_metadata] at compiled
     obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
