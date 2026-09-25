@@ -11,6 +11,19 @@ def customBinding (x y : UInt64) : UInt64 :=
   let f := fun z : UInt64 => z + 1
   f (x + y)
 def branch (x : UInt64) : UInt64 := if x = 0 then 1 else x
+def sequential (x : UInt64) : UInt64 := Id.run do
+  let mut y := x
+  y := y + 1
+  let z ← pure (y * 2)
+  return z
+@[instance_reducible] def customPure : Pure Id := ⟨fun value => value⟩
+@[instance_reducible] def customBind : Bind Id := ⟨fun value next => next value⟩
+def customReturn (x : UInt64) : UInt64 := Id.run (@Pure.pure Id customPure UInt64 x)
+def customSequence (x : UInt64) : UInt64 :=
+  Id.run (@Bind.bind Id customBind UInt64 UInt64 x (fun y => y + 1))
+def joinedChoice (x y : UInt64) : UInt64 := Id.run do
+  let a ← if x < y then pure (x + 1) else pure (y - 1)
+  return a * x
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -31,7 +44,7 @@ end ArithmeticModeTest
 run_elab do
   let env ← Lean.getEnv
   for name in [`ArithmeticModeTest.expression, `ArithmeticModeTest.bits, `ArithmeticModeTest.literal,
-      `ArithmeticModeTest.binding, `ArithmeticModeTest.branch] do
+      `ArithmeticModeTest.binding, `ArithmeticModeTest.branch, `ArithmeticModeTest.sequential] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -42,6 +55,7 @@ run_elab do
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
   for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.customBinding,
+      `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
       `ArithmeticModeTest.missing] do

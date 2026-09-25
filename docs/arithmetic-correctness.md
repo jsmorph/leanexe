@@ -10,7 +10,8 @@ yet covered by this theorem.
 
 A declaration must be safe, total, have an executable body, take zero or more
 `UInt64` arguments and return `UInt64`. Its body may read arguments, contain
-UInt64 literals, metadata, UInt64 `let` bindings and conditionals, with arbitrary
+UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
+operations, with arbitrary
 nesting of supported expressions:
 
 | Source operation | Meaning |
@@ -34,6 +35,15 @@ bindings. Both branches must belong to the supported grammar and satisfy static
 local bounds, even when one branch is never executed. Dependent `if h : …`,
 Boolean parameters/results/bindings and compound Boolean conditions are not yet
 admitted by this source grammar.
+
+Pure `Id.run do` blocks admit `return`/`pure` and monadic UInt64 bindings
+(`let x ← …`) with the exact standard Id instance. Straight-line `let mut`
+updates become ordinary shadowing lets. Nested blocks, branch-local bindings,
+and early returns are supported. Conditionals may carry either the elaborated
+`UInt64` or `Id UInt64` result type. Branches that join a following computation
+can elaborate to local continuation functions; those functions are not yet
+admitted. General monads, effects and custom Id instance expressions remain
+outside this increment.
 
 The requested export name must avoid all ten runtime exports. Admission checks
 explicit limits below 2^32 on parameter/result counts, UTF-8 export-name bytes,
@@ -63,18 +73,20 @@ tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic
 ```
 
 The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles twenty fresh declarations with that command,
+and all reserved names, compiles twenty-seven fresh declarations with that command,
 and runs their exact output modules with Node/V8:
 
 ```sh
 tools/arithmetic-check.js engine
 ```
 
-It compares 254 results against native Lean evaluation, including overflow, zero
+It compares 339 results against native Lean evaluation, including overflow, zero
 divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
 unused, and zero-argument let bindings. Eight more cover the comparison forms,
 both branches, nested choices, branch-local bindings, and conditionals inside
-comparison operands.
+comparison operands. Seven further declarations cover pure return, monadic
+bindings, sequential updates, early returns, nested blocks, branch-local binds
+and a constant do block.
 Expected values come from `test/ArithmeticMilestone.lean`, independently of the
 extractor and IR evaluator. This check requires the repository's pinned Node
 24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison

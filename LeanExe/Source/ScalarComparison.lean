@@ -1,4 +1,4 @@
-import Lean
+import LeanExe.Source.ScalarDo
 
 namespace LeanExe.Source.Scalar
 
@@ -56,8 +56,9 @@ theorem operands_size (op : Comparison) (a b : Lean.Expr) :
 
 /-- Exact ordinary `if` syntax over a supported comparison. Its decision
 procedure is part of the grammar, including the compared operands. -/
-def branch (op : Comparison) (a b onTrue onFalse : Lean.Expr) : Lean.Expr :=
-  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``UInt64 []))
+def branch (op : Comparison) (a b onTrue onFalse : Lean.Expr)
+    (type : ResultType := .word) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type.expr)
     (op.condition a b)) (op.evidence a b)) onTrue) onFalse
 
 end Comparison

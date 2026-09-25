@@ -7,8 +7,9 @@ const cases = readFileSync(resolve(directory, 'expected.jsonl'), 'utf8').trim().
 const entries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
   'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant',
   'compareEq', 'compareLt', 'compareLe', 'compareBEq', 'compareBNe',
-  'nestedChoice', 'choiceBindings', 'choiceOperands'];
-const constants = new Set(['constant', 'boundConstant']);
+  'nestedChoice', 'choiceBindings', 'choiceOperands',
+  'doReturn', 'doBind', 'doUpdates', 'doEarly', 'doNested', 'doBranches', 'doConstant'];
+const constants = new Set(['constant', 'boundConstant', 'doConstant']);
 const counts = new Map(entries.map(name => [name, new Set()]));
 const uint64 = value => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value) &&
   BigInt(value) < (1n << 64n);
