@@ -27,4 +27,20 @@ theorem vector (items : List (List UInt8)) :
   rw [fold_bytes]
   simp [byteArray_toList, Function.comp_def]
 
+private theorem fold_unsigned (items : List UInt64) (acc : ByteArray) :
+    (items.foldl (fun bytes value => bytes ++ LeanExe.Wasm.Leb.u32lebU64 value) acc).toList =
+      acc.toList ++ (items.map (fun value => (LeanExe.Wasm.Leb.u32lebU64 value).toList)).flatten := by
+  induction items generalizing acc with
+  | nil => simp
+  | cons a b ih => simp [List.foldl_cons, ih, List.append_assoc]
+
+theorem unsigned_vector (values : List Nat) :
+    u32Vec values = vec (values.map u32leb) := by
+  rw [vector]
+  simp only [u32Vec, LeanExe.Wasm.Leb.u32VecBytes, List.size_toArray, List.length_map,
+    List.forIn_toArray, List.forIn_pure_yield_eq_foldl, Id.run_pure, pure_bind]
+  rw [fold_unsigned]
+  simp only [List.map_map, u32leb, Function.comp_def]
+  rfl
+
 end Project.Compiler.ContainerEncoding

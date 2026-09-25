@@ -505,3 +505,13 @@ It proves section order and uniqueness checks, exact module header consumption,
 and sufficient section-loop fuel. The module builds. The remaining task at this
 boundary is to supply the actual compiler payloads and their bounds; this general
 composition theorem alone is not the source-to-module correctness result.
+
+### Production vectors and fixed module payloads (checked)
+
+ContainerEncoding now characterizes the native unsigned-vector emitter.
+PayloadVectors proves production vectors decode from their entry proofs and
+nonempty encodings, including arbitrary bounded U32 vectors. FixedPayloads
+instantiates this for the actual five function-type indices, 16-page memory,
+and six mutable i64 globals, and connects these payloads to the production
+sections. All affected modules build. Variable signatures, exports, and user
+code must still be assembled with these fixed payloads.
