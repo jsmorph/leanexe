@@ -86,6 +86,14 @@ range recognizer checks complete standard ForIn evidence and exact unit-step
 syntax; its acceptance and soundness proofs pass. The elaborated source test
 `test/scalar_range_admission.lean` accepts indexed/index-free yielding steps
 and rejects non-unit steps and break bodies at their respective boundaries.
+`Extract/ScalarRange.lean` now extracts one dynamic loop plus pure prefix/suffix
+computations into ordinary scalar IR with three fresh locals. Its source-only
+acceptance and success-implies-supported theorems pass, and the source range
+grammar has a total evaluation theorem. The same source test passed 45 native
+Lean/IR comparisons, including zero iterations, wrapping accumulators, indexed
+steps, conditional updates and computations before/after the loop. This extractor
+is not yet enabled in the public entry; the general preservation proof and final
+Wasm execution/validation connection remain pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

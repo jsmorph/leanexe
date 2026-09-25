@@ -1,6 +1,7 @@
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarValues
 import LeanExe.Source.ScalarComparison
+import LeanExe.Source.ScalarRangeSyntax
 
 namespace LeanExe.Source.Scalar
 
@@ -51,6 +52,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values value
+  | range (countValue : EvalWith count values stop) (initialValue : EvalWith initial values start)
+      (yielding : Range.YieldScalar stepBody scalarBody)
+      (steps : ∀ index value, EvalWith scalarBody (.word value :: .natural index :: values) (step index value)) :
+      EvalWith (Range.call count initial indexName accumulatorName indexBi accumulatorBi stepBody)
+        values (Range.iterate step stop.toNat 0 start)
   | metadata (body : EvalWith e values value) : EvalWith (.mdata data e) values value
 
 /-- Syntactic support, defined without inspecting compiler output. -/
