@@ -797,10 +797,18 @@ source-support, semantic-preservation and invariant proofs pass. Foundation
 commit `c6b97048` and scalar proof commit `77632167` are pushed. Step extraction
 and its acceptance, support, correctness and invariant proofs pass and are pushed
 at `fa014c91`. Range extraction and its corresponding proofs now pass too.
-Next steps: check function integration and the original examples; run the unchanged original
-probes, focused native/IR and malformed-input tests, then all nine compiler audits
-and the selected CLI/native-V8 checks. Archive evidence, update these docs and
-push completion before starting another capability. This increment is INCOMPLETE.
+Range integration is pushed at `46db06e3`. Function integration and all five
+unchanged original examples now pass. The first focused execution fixture passed
+304 native/IR comparisons, 18 typed-numeral comparisons and 148 rejection tests
+(four declarations, 64 malformed lets and 80 malformed numeral forms). All twenty
+focused/admission bodies match; the sixteen accepted native bodies match too.
+The preceding nested-Id and annotated-Boolean-let fixtures pass unchanged with
+304 comparisons each and 164/100 rejection tests.
+
+Next steps: commit this execution checkpoint, run all nine compiler audits and
+the selected production compiler/native-V8 checks, then archive evidence and
+update the completion record. Only start another capability after those checks
+pass and completion is pushed. This increment is INCOMPLETE until then.
 The completed nested Boolean Id increment is pushed at `2699d1b4` (candidate
 `44637199`); the annotated Boolean-let increment is pushed at `22983e16`
 (candidate `1feb91fb`).
