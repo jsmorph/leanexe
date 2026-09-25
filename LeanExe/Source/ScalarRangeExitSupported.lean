@@ -45,6 +45,8 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
+  | letLeft (value : Eval a values x) (body : EvalWith b (.word x :: values) y) :
+      Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | metadata (body : Eval e values result) : Eval (.mdata data e) values result
 
 /-- Independent source support for a single bounded early-exit range. -/
@@ -81,6 +83,8 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
+  | letLeft (value : Supported types a) (body : SupportedWith (.word :: types) b) :
+      Supported types (.letE name (.const ``UInt64 []) a b nondep)
   | metadata (body : Supported types e) : Supported types (.mdata data e)
 
 theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
@@ -132,6 +136,10 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letUnitFn type (fun x => (total x).choose_spec) hv⟩
+  | letLeft _ body ih =>
+    obtain ⟨x, hx⟩ := ih values typed
+    obtain ⟨y, hy⟩ := body.evaluates (.word x :: values) (by simp [Scalar.Value.kind, typed])
+    exact ⟨y, .letLeft hx hy⟩
   | metadata _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩

@@ -344,10 +344,14 @@ All 240 focused native Lean/IR comparisons and four rejection tests passed.
 All 105 preceding range modules kept identical bytes. General type validation
 passed; unrelated suites were not rebuilt.
 
-Next incremental capability: ordinary UInt64 let bindings whose value is a
-range computation. Preserve the checked loop result before evaluating the pure
-continuation, including unused values and captured helpers. Complete the
-source/IR proof and range compiler execution checks before another capability.
+Current increment: ordinary UInt64 let bindings whose value is a range
+computation. The source grammar, extraction, acceptance, support, preservation
+and invariant proofs pass Lean checking. The existing final-result expression
+composes the loop value with its pure continuation. Ten public fixtures cover
+nested lets, aliases, captures, unused results, early exits, continue, monadic
+continuations and local helpers. All 240 focused native Lean/IR comparisons and
+three rejection tests pass. The full compiler proof, type validation and range
+execution checks follow this candidate checkpoint.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
