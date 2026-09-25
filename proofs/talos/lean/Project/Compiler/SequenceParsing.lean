@@ -47,6 +47,11 @@ theorem grammar_nonempty {bytes : List UInt8} {instruction : Instr}
   obtain ⟨opcode, rest, rfl, _, _⟩ := grammar_prefix h
   simp
 
+theorem block_empty : Parses blockType [64] .empty := by
+  unfold blockType
+  apply bind_parses (a := [64]) (b := []) (read_byte 64)
+  exact pure_parses _
+
 theorem block_i64 : Parses blockType [126] (.value .i64) := by
   unfold blockType
   apply bind_parses (a := [126]) (b := []) (read_byte 126)

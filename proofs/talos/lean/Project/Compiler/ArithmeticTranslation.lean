@@ -27,6 +27,12 @@ theorem Atom.translation {a : LeanExe.Wasm.Instr} {b : Wasm.Binary.Instr}
   | set index bound =>
     exact ⟨.localSet index, by simp [ScalarLowering.instruction], by
       simp [Wasm.Binary.Instr.toTalos, UInt32.toNat_ofNat_of_lt' bound]⟩
+  | br depth bound =>
+    exact ⟨.br depth, by simp [ScalarLowering.instruction], by
+      simp [Wasm.Binary.Instr.toTalos, UInt32.toNat_ofNat_of_lt' bound]⟩
+  | brIf depth bound =>
+    exact ⟨.br_if depth, by simp [ScalarLowering.instruction], by
+      simp [Wasm.Binary.Instr.toTalos, UInt32.toNat_ofNat_of_lt' bound]⟩
   | const n =>
     exact ⟨.constI64 (UInt64.ofNat n), by simp [ScalarLowering.instruction], by
       simp [Wasm.Binary.Instr.toTalos, uint64_signed_roundtrip]⟩
@@ -54,6 +60,19 @@ mutual
       obtain ⟨r, hr, er⟩ := right.translation
       refine ⟨.iff 0 1 l r, ?_, .cons (.iff el er) .nil⟩
       simp [ScalarLowering.instruction, hl, hr]
+    | if0 left right =>
+      obtain ⟨l, hl, el⟩ := left.translation
+      obtain ⟨r, hr, er⟩ := right.translation
+      refine ⟨.iff 0 0 l r, ?_, .cons (.iff el er) .nil⟩
+      simp [ScalarLowering.instruction, hl, hr]
+    | block0 body =>
+      obtain ⟨b, hb, eb⟩ := body.translation
+      refine ⟨.block 0 0 b, ?_, .cons (.block eb) .nil⟩
+      simp [ScalarLowering.instruction, hb]
+    | loop0 body =>
+      obtain ⟨b, hb, eb⟩ := body.translation
+      refine ⟨.loop 0 0 b, ?_, .cons (.loop eb) .nil⟩
+      simp [ScalarLowering.instruction, hb]
   termination_by sizeOf a
 
   theorem ProgramEncoding.translation {a : List LeanExe.Wasm.Instr} {b : List Wasm.Binary.Instr}
