@@ -1,5 +1,6 @@
 import LeanExe.Core
 import LeanExe.Extract.Core
+import LeanExe.Extract.Arithmetic
 import LeanExe.Extract.Eval
 import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
@@ -24,6 +25,7 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-arithmetic --module <module> --entry <name> --out <path>",
     "  lean-wasm compile --module <module> --entry <name> --out <path> --annotations <path>",
     "  lean-wasm compile-image --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
@@ -311,6 +313,12 @@ def dispatch : List String → IO UInt32
               match ← captureError .io context printValues with
               | .ok _ => return 0
               | .error error => reportError error
+  | ["compile-arithmetic", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile-arithmetic" [("module", moduleName), ("entry", entryName), ("out", out)])
+        out
+        (LeanExe.Extract.Arithmetic.compile moduleName entryName)
+        (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
   | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile"

@@ -655,3 +655,15 @@ output. Bindings, branches, helper calls, custom instances, non-UInt64 types,
 reserved exports, and missing entries are rejected. An oversized parameter
 count is rejected without constructing its type vector. These are executable
 regression checks; the complete correctness theorem and CLI gate remain open.
+
+### Arithmetic admission proofs and CLI wiring (checked)
+
+ArithmeticCorrectness proves strict compilation accepts the independent source
+subset whenever the explicit numeric format limits hold. It also proves every
+successful strict compilation provides the original environment declaration,
+safe/total flags, nonreserved export name, exact scalar extraction, and all
+numeric bounds. ScalarEntryCorrectness now exposes the reusable connection
+from successful extraction to the actual normal compiler. These modules build.
+The CLI's compile-arithmetic command builds and calls this strict entry followed
+by the unchanged production emitter. The actual CLI executable/engine gate and
+full source-to-module theorem are still pending.

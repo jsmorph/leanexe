@@ -8,6 +8,29 @@ theorem compileEnvironment_scalar {env : Lean.Environment} {moduleName entry : L
   simp [compileEnvironment, compileEnvironmentWithEntryMode,
     compileEnvironmentWithEntryModeDetailed, h]
 
+/-- Successful scalar extraction reaches the unchanged normal compiler entry. -/
+theorem compileEnvironment_of_scalar_extraction
+    {env : Lean.Environment} {moduleName entry : Lean.Name}
+    {info : Lean.ConstantInfo} {source : Lean.Expr} {func : LeanExe.IR.Func}
+    (lookup : env.find? entry = some info) (body : info.value? = some source)
+    (safe : info.isUnsafe = false) (total : info.isPartial = false)
+    (exportable : reservedExportNames.contains (shortExportName entry) = false)
+    (extracted : extractScalarFunc entry (some (shortExportName entry)) info.type source = some func) :
+    compileEnvironment env moduleName entry = .ok { funcs := #[func] } := by
+  have available : shortExportName entry ∉ reservedExportNames := by simpa using exportable
+  have hentry : extractScalarEntry? true env moduleName entry = some {
+      ctx := {
+        env := env
+        root := moduleName.getRoot
+        names := #[entry]
+        synthetics := #[]
+        freshResultOwnerOffsets := #[[]]
+        inlineStack := [] }
+      module := { funcs := #[func] }
+      releaseJudgments := #[] } := by
+    simp [extractScalarEntry?, lookup, body, safe, total, available, extracted]
+  exact compileEnvironment_scalar hentry
+
 /-- A general theorem about the actual production compiler entry point and
 original source declaration. Its endpoint is the existing IR, not WASM bytes.
 All supported declarations and all argument lists of the declared arity are
