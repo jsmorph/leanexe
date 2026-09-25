@@ -17,6 +17,8 @@ def literalExpr (n : Nat) : Lean.Expr :=
 
 inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | var (h : values[index]? = some (.word value)) : EvalWith (.bvar index) values value
+  | natural (h : values[index]? = some (.natural value)) :
+      EvalWith (.app (.const ``UInt64.ofNat levels) (.bvar index)) values (UInt64.ofNat value)
   | literal : EvalWith (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
       values (UInt64.ofNat n)
   | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
@@ -54,6 +56,8 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
 /-- Syntactic support, defined without inspecting compiler output. -/
 inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | var (h : types[index]? = some .word) : SupportedWith types (.bvar index)
+  | natural (h : types[index]? = some .natural) :
+      SupportedWith types (.app (.const ``UInt64.ofNat levels) (.bvar index))
   | literal : SupportedWith types (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
   | ofNat : SupportedWith types (literalExpr n)
   | binary (operation : Head head f) (left : SupportedWith types a) (right : SupportedWith types b) :
@@ -93,6 +97,9 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
   | var hi =>
     obtain ⟨value, hv⟩ := word_lookup typed hi
     exact ⟨value, .var hv⟩
+  | natural hi =>
+    obtain ⟨value, hv⟩ := natural_lookup typed hi
+    exact ⟨UInt64.ofNat value, .natural hv⟩
   | literal => exact ⟨_, .literal⟩
   | ofNat => exact ⟨_, .ofNat⟩
   | binary op _ _ ihl ihr =>

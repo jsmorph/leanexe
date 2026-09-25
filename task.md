@@ -78,7 +78,14 @@ statement evaluation and its Talos lowering also pass, preserving the source
 locals across scratch use and matching source writes exactly. The unnecessary
 source-invocation import was moved from elementary validator rules to the
 function-level typing proof; both focused targets pass. Source range admission
-and whole-function integration remain pending; loops are not yet in the completed certified grammar.
+and whole-function integration remain pending; loops are not yet in the completed
+certified grammar. The source binding model now distinguishes Nat indices from
+UInt64 values and admits only explicit `UInt64.ofNat` conversion of those
+indices. Its acceptance, preservation and backend invariant proofs pass. The
+range recognizer checks complete standard ForIn evidence and exact unit-step
+syntax; its acceptance and soundness proofs pass. The elaborated source test
+`test/scalar_range_admission.lean` accepts indexed/index-free yielding steps
+and rejects non-unit steps and break bodies at their respective boundaries.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
