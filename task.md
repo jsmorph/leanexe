@@ -51,7 +51,10 @@ now has internal word/function bindings while preserving the public scalar
 parameter and result convention. Source totality, extraction preservation,
 acceptance, successful-admission soundness and backend invariants pass focused
 builds. Function compilation closes over the environment at definition time;
-all function bodies are checked, including unused functions. The expanded suite
+all function bodies are checked, including unused functions. The first execution
+attempt exposed `Unit → UInt64 → Id UInt64` continuations for branch updates.
+These now have distinct binding kinds and proved source/extraction rules, and
+the full focused extraction build passes. The expanded suite
 has 437 comparisons across thirty-four declarations. Finish execution and final
 general proof checks before moving to loops or broader Boolean forms.
 
