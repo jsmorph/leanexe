@@ -794,8 +794,9 @@ Scalar, step and range source totality now pass, including the literal range-cou
 conversion proof. Scalar extraction now removes one standard Id layer from let
 annotations and recognizes the matching typed numeral instances. Its acceptance,
 source-support, semantic-preservation and invariant proofs pass. Foundation
-commit `c6b97048` is pushed. Next steps: finish step and range extraction and
-their acceptance, soundness, semantic-preservation and invariant proofs; run the unchanged original
+commit `c6b97048` and scalar proof commit `77632167` are pushed. Step extraction
+and its acceptance, support, correctness and invariant proofs now pass too.
+Next steps: finish range extraction and its corresponding proofs; run the unchanged original
 probes, focused native/IR and malformed-input tests, then all nine compiler audits
 and the selected CLI/native-V8 checks. Archive evidence, update these docs and
 push completion before starting another capability. This increment is INCOMPLETE.

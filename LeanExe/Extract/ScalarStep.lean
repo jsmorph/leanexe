@@ -220,6 +220,8 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
             extractScalarStepWith (function :: locals) body
         | _, _ => none
       else none
+  | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
+      extractScalarStepWith locals (.letE name type value body nondep)
   | .letE _ type value body _ =>
       match scalarStepResultType? type with
       | none => none

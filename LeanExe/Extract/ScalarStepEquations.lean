@@ -192,13 +192,20 @@ theorem extractScalarStepWith_idPure (locals : List ScalarStepBinding) (type : S
     extractScalarStepWith locals (Step.idPure type a) = extractScalarStepWith locals a := by
   rw [Step.idPure, extractScalarStepWith, scalarStepResultType_accepts]
 
+theorem extractScalarStepWith_idLet (locals : List ScalarStepBinding)
+    (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (idLetExpr name type value body nondep) =
+      extractScalarStepWith locals (.letE name type value body nondep) := by
+  rw [idLetExpr, extractScalarStepWith]
+
 theorem extractScalarStepWith_letResult (locals : List ScalarStepBinding)
     (name : Lean.Name) (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name (Step.resultType type) a b nondep) = (do
       let bound ← extractScalarStepWith locals a
       extractScalarStepWith (.result bound :: locals) b) := by
-  cases type <;> rw [Step.resultType, extractScalarStepWith] <;>
-    simp [scalarStepResultType?, scalarStepResultType_accepts]
+  induction type with
+  | word => rw [Step.resultType, extractScalarStepWith] <;> simp [scalarStepResultType?]
+  | identity inner ih => rw [Step.resultType, extractScalarStepWith]; exact ih
 
 theorem extractScalarStepWith_bindResult (locals : List ScalarStepBinding)
     (name : Lean.Name) (bi : Lean.BinderInfo) (input output : Step.ResultAnnotation) (a b : Lean.Expr) :

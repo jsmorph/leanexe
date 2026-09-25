@@ -291,6 +291,7 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.result bound :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_bindResult]; simp [hb, ht]⟩
+  | idLet _ ih => simpa only [extractScalarStepWith_idLet] using ih locals typed total
   | metadata _ ih => simpa only [extractScalarStepWith] using ih locals typed total
 
 end LeanExe.Extract.Core
