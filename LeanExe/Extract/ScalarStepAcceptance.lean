@@ -83,6 +83,14 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.scalar (.boolean (guardWord c)) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_letBoolean]; simp [hc, ht]⟩
+  | idBindBoolean action type variables arguments _ ihb =>
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) action.leaf
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (by rw [scalarStepBindings_typed typed]; exact variables)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨target, ht⟩ := ihb (.scalar (.boolean (guardWord c)) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨target, by rw [extractScalarStepWith_booleanBind]; simp [hc, ht]⟩
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (locals.map ScalarStepBinding.toScalar) guard.value
       (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)

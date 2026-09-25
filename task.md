@@ -563,8 +563,9 @@ reconstruction and operand-size proofs. Actions retain exact Bool-annotated
 standard Id.pure/Id.run wrappers and metadata around a BooleanLocal leaf. The
 exact Boolean bind input/domain checker is also proved. Source evaluation,
 support and totality cover scalar, step and outer-loop Boolean binds. Scalar
-production extraction and all four scalar proofs now pass. Step/outer-loop
-production integration and execution tests remain open.
+production extraction and all four scalar proofs now pass. Step and outer-loop
+production extraction, acceptance, successful-support, correctness and invariant
+proofs also pass. Focused tests and final compiler execution gates remain open.
 Reuse typed Boolean bindings and existing lowering. Broader Boolean result
 expressions, Boolean function parameters and the public Bool ABI remain later
 capabilities unless included and proved as part of this increment.
