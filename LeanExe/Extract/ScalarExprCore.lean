@@ -273,7 +273,7 @@ theorem extractScalarExprWith_binary {head : Lean.Expr} {f : UInt64 → UInt64 �
   obtain ⟨op, found, _⟩ := sourceHead_recognized h
   cases h with
   | direct meaning => cases meaning <;> rw [extractScalarExprWith] <;> simp_all
-  | canonical meaning result => cases meaning <;> dsimp only [LeanExe.Source.Scalar.classHead] <;>
+  | canonical meaning result left right instanceType => cases meaning <;> dsimp only [LeanExe.Source.Scalar.classHead] <;>
       rw [extractScalarExprWith] <;> simp_all [LeanExe.Source.Scalar.classHead]
 
 theorem extractScalarExprWith_extremum (op : LeanExe.Source.Scalar.Extremum)
