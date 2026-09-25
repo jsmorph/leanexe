@@ -24,7 +24,8 @@ def extractBooleanLocal : (guard : BooleanLocal) →
       let right ← extractBooleanLocal b (fun index member => compileVariables index (List.mem_append_right _ member))
         (fun operand member => compile operand (List.mem_append_right _ member))
       pure (lowerGuardNegations n (lowerJunction op left right))
-  | .equality n unequal a b, compileVariables, compile => do
+  | .equality n unequal a b, compileVariables, compile
+  | .relationDecision n unequal a b, compileVariables, compile => do
       let left ← extractBooleanLocal a (fun index member => compileVariables index (List.mem_append_left _ member))
         (fun operand member => compile operand (List.mem_append_left _ member))
       let right ← extractBooleanLocal b (fun index member => compileVariables index (List.mem_append_right _ member))
@@ -46,7 +47,7 @@ def extractBooleanLocal : (guard : BooleanLocal) →
         (fun operand member => compile operand (List.mem_append_right _ (List.mem_append_right _ member)))
       pure (lowerGuardNegations n (lowerBooleanChoice test yes no))
   | .decision n g, _, compile => do
-      let condition ← extractGuard g compile
+      let condition ← extractGuard g.value compile
       pure (lowerGuardNegations n condition)
 
 
@@ -75,7 +76,8 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
       (fun index member => totalVariables index _)
       (fun operand member => total operand _)
     exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractBooleanLocal, hl, hr]⟩
-  | equality n unequal a b iha ihb =>
+  | equality n unequal a b iha ihb
+  | relationDecision n unequal a b iha ihb =>
     obtain ⟨left, hl⟩ := iha (fun index member => compileVariables index (List.mem_append_left _ member))
       (fun operand member => compile operand (List.mem_append_left _ member))
       (fun index member => totalVariables index _)
@@ -111,7 +113,7 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
       (fun index member => totalVariables index _) (fun operand member => total operand _)
     exact ⟨lowerGuardNegations n (lowerBooleanChoice test yes no), by simp [extractBooleanLocal, hc, ht, he]⟩
   | decision n g =>
-    obtain ⟨condition, hc⟩ := extractGuard_accepts g compile total
+    obtain ⟨condition, hc⟩ := extractGuard_accepts g.value compile total
     exact ⟨lowerGuardNegations n condition, by simp [extractBooleanLocal, hc]⟩
 
 theorem extractBooleanLocal_operands (guard : BooleanLocal)
@@ -138,7 +140,8 @@ theorem extractBooleanLocal_operands (guard : BooleanLocal)
     rcases List.mem_append.mp member with first | second
     · exact iha _ _ hl operand first
     · exact ihb _ _ hr operand second
-  | equality n unequal a b iha ihb =>
+  | equality n unequal a b iha ihb
+  | relationDecision n unequal a b iha ihb =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro operand member
@@ -166,7 +169,7 @@ theorem extractBooleanLocal_operands (guard : BooleanLocal)
   | decision n g =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, _⟩ := compiled
-    exact extractGuard_operands g compile hc
+    exact extractGuard_operands g.value compile hc
 
 theorem extractBooleanLocal_variables (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -191,7 +194,8 @@ theorem extractBooleanLocal_variables (guard : BooleanLocal)
     rcases List.mem_append.mp member with first | second
     · exact iha _ _ hl index first
     · exact ihb _ _ hr index second
-  | equality n unequal a b iha ihb =>
+  | equality n unequal a b iha ihb
+  | relationDecision n unequal a b iha ihb =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro index member
@@ -247,9 +251,11 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
         (fun operand member expression found => meanings _ _ _ found))
       (ihb _ _ hr (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found)))
-  | equality n unequal a b iha ihb =>
+  | equality n unequal a b iha ihb
+  | relationDecision n unequal a b iha ihb =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
+    simp only [BooleanLocal.denote, LeanExe.Source.Scalar.booleanRelationDecision_correct]
     exact lowerGuardNegations_correct n (lowerBooleanEquality_correct unequal
       (iha _ _ hl (fun index member expression found => booleanMeanings _ _ _ found)
         (fun operand member expression found => meanings _ _ _ found))
@@ -277,7 +283,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
   | decision n g =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, rfl⟩ := compiled
-    exact lowerGuardNegations_correct n (extractGuard_correct g compile native hc meanings)
+    exact lowerGuardNegations_correct n (extractGuard_correct g.value compile native hc meanings)
 
 theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -313,7 +319,8 @@ theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
         (fun operand member expression found => operands _ _ _ found))
         (ihb _ _ hr (fun index member expression found => variables _ _ _ found)
         (fun operand member expression found => operands _ _ _ found)))
-  | equality n unequal a b iha ihb =>
+  | equality n unequal a b iha ihb
+  | relationDecision n unequal a b iha ihb =>
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
@@ -348,6 +355,6 @@ theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
-      (extractGuard_choice P literal binary choice g compile hc operands)
+      (extractGuard_choice P literal binary choice g.value compile hc operands)
 
 end LeanExe.Extract.Core
