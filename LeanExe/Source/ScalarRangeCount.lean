@@ -54,8 +54,8 @@ theorem Count.Supported.evaluates {types : List BindingKind} {count : Count}
   obtain ⟨word, evaluated⟩ := supported.scalar.evaluates values typed
   exact ⟨word.toNat, .of_scalar evaluated⟩
 
-def Count.range (count first : Count) : Lean.Expr :=
+def Count.range (count first : Count) (stride : Nat) (positive : Lean.Expr) : Lean.Expr :=
   Lean.mkAppN (.const ``Std.Legacy.Range.mk []) #[first.source,
-    count.source, Range.natLiteral 1, .const ``Nat.zero_lt_one []]
+    count.source, Range.natLiteral stride, positive]
 
 end LeanExe.Source.Scalar.Range.Exit

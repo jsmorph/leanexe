@@ -71,5 +71,17 @@
   "rangeDynamicHugeBreak",
   "rangeDynamicContinue",
   "rangeDynamicJoin",
-  "rangeDynamicChoice"
+  "rangeDynamicChoice",
+  "rangeStrideTwo",
+  "rangeStrideLiteral",
+  "rangeStrideDynamic",
+  "rangeStrideCapture",
+  "rangeStrideHigh",
+  "rangeStrideEmpty",
+  "rangeStrideHuge",
+  "rangeStrideHugeTwo",
+  "rangeStrideHugeBreak",
+  "rangeStrideContinue",
+  "rangeStrideJoin",
+  "rangeStrideOne"
 ]

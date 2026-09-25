@@ -40,10 +40,12 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
       rcases List.mem_cons.mp member with rfl | member
       · exact accumulator
       rcases List.mem_cons.mp member with rfl | member
-      · exact scalarRangeOffset_holds P binary (expression hf bindings) index
+      · exact scalarRangeOffset_holds P binary (expression hf bindings)
+          (scalarRangeScale_holds P literal binary view.stride.number index)
       obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
       exact bindings original present)
-    exact ⟨scalarRangeDistance_holds P literal binary choice (expression hf bindings) (expression hc bindings), expression hi bindings, both.1, both.2, accumulator⟩
+    exact ⟨scalarRangeTrips_holds P literal binary choice view.stride.number
+      (scalarRangeDistance_holds P literal binary choice (expression hf bindings) (expression hc bindings)), expression hi bindings, both.1, both.2, accumulator⟩
   | case2 locals body rejected ih =>
     change extractScalarRangeExitWith locals slot (LeanExe.Source.Scalar.Identity.run body) = some plan at compiled
     exact ih (by simpa only [extractScalarRangeExitWith_idRun] using compiled) bindings
