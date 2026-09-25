@@ -46,6 +46,14 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     exact ⟨⟨.ite (lowerComparison op a b) t.value e.value,
       .ite (lowerComparison op a b) t.done e.done⟩, by
         rw [extractScalarStepWith_branch]; simp [ha, hb, ht, he]⟩
+  | chooseCompound guard type arguments _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := extractGuard_accepts guard.tree
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨t, ht⟩ := iht locals typed total
+    obtain ⟨e, he⟩ := ihe locals typed total
+    exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
+      rw [extractScalarStepWith_compoundBranch]; simp [hc, ht, he]⟩
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := scalar value typed total
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)
