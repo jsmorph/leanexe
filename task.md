@@ -762,8 +762,12 @@ binding types, because scalar let extraction accepts those base types. Derived
 operands now use those types while the original annotation remains in source
 syntax. Size and annotation-independent evaluation proofs justify this rule;
 type-family disjointness and all lowering/type-scope proofs pass. The initial
-fixture failure is retained. Integration checks and the unchanged execution
-fixture are being rerun; general audits and documentation remain in progress. Nested Boolean Id operations,
+fixture failure is retained. A second failure in the unchanged shadowing example
+showed Lean can annotate an arithmetic operation’s result type with nested Id.
+The primitive-head relation and parser now admit that type family for all ten
+operations while retaining exact UInt64 inputs and standard instance evidence.
+Recognition, source reconstruction and scalar integration proofs pass. The second
+failure and diagnostic are retained. Integration and execution are being rerun; general audits and documentation remain in progress. Nested Boolean Id operations,
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 
