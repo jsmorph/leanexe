@@ -27,8 +27,10 @@ exact tick timing and bounded word arithmetic. `Safety.lean` now exposes
 those continuous guarantees directly for every segment of the returned output.
 `Trajectory.compute_global_smooth` now assembles the actual output into a
 global real-time path and proves its position derivative and continuous velocity,
-including joins. Remaining work is the interval correspondence/safety packaging
-for that global path, and the emitted WASM semantics.
+including joins. The cumulative-time intervals are now proved to cover the entire flight and
+to agree with their local primitives; clearance and component speed bounds
+are transported to the global coordinate functions. The emitted WASM semantics
+remain the main outstanding verification boundary.
 **There is no exact-artifact execution theorem yet.**
 
 ## Repository and execution environment
@@ -351,9 +353,14 @@ commits should continue respecting that file scope unless the user changes it.
    have the stated velocity derivatives everywhere and continuous velocities.
    The construction is constant before takeoff and extends the final polynomial
    after arrival. Only the finite flight interval carries safety requirements.
-   **Remaining:** explicitly identify each cumulative-time segment interval
-   of the global path with its local primitive, transporting the existing
-   segment safety bounds to the global-time formulation. Acceleration may jump.
+   **Global interval correspondence — checked:** `compute_global_segment`
+   identifies both position and velocity coordinates with each local primitive
+   throughout its cumulative-time interval. `compute_global_cover` covers every
+   time in the finite nontrivial flight; the singleton is a constant path.
+   `compute_global_clearance` and `compute_global_speed` expose direct global
+   guarantees. Local acceleration bounds and physical-time second-derivative
+   theorems remain the applicable statements within each segment; a two-sided
+   acceleration at a join is intentionally not required.
 6. **Exact WASM semantics.** Freeze the compiled artifact and digest. Prepare
    Talos's decoded program and annotations, prove ABI/array/allocator/loop
    behavior and an actual `Wasm.TerminatesWith` theorem for that artifact.
@@ -501,3 +508,25 @@ next exact-artifact step (`complete: false`, annotations enabled, source module
 `Project.Drone`). Its future behavior target is `Project.Drone.Spec.compute_correct`;
 that target is not yet proved. The JSON registry edit is deliberately outside
 commits under the user's Lean-code-and-task-only instruction.
+
+
+### 2026-09-25 — cumulative interval and global safety checkpoint
+
+The global smoothness checkpoint was published as
+`3e55d65e225782b241a2a97421e89f0e6369ef94`. Added monotonic cumulative clocks,
+interval coverage, and `stitch_on_segment`: the assembled curve equals the
+intended primitive on each whole closed interval. Public corollaries connect
+all four actual global coordinates to local primitives and transfer continuous
+clearance and speed bounds to the global functions. The aggregate source check
+passes; axiom dependencies remain standard only. Executable source is unchanged.
+
+Started `tools/talos-artifact.js prepare drone`. Restored the pinned native
+verifier's dependencies, reusing build caches only after matching their exact
+Git revisions. Its default optimized C compilation of the large generated
+emitter was slow and was explicitly interrupted (exit 130) to complete source
+proof checks first. The next attempt uses a temporary local `moreLeancArgs =
+["-O0"]` in the verifier/interpreter package configuration. This changes native
+build optimization, not Lean definitions, kernel checking, or proof assumptions.
+Record the emitted artifact digest and check it against the prior 14,198-byte
+artifact before claiming artifact reproduction. Do not mark the unfinished
+behavior theorem or exact-byte decoder identity as proved merely from generation.
