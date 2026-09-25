@@ -276,6 +276,17 @@ including local functions, monadic bindings, branch continuations and breaks. It
 checks and saves its output under `.lake/arithmetic-check/range`. The full engine
 check remains available when a change affects the broader scalar grammar.
 
+For a narrow capability increment, `tools/arithmetic-check.js subset-engine
+<checked-group>` runs the fixed declarations listed in
+`test/arithmetic-engine-groups.json`. The driver and independent comparator use
+the same checked membership, retain admission and reserved-export checks, and
+save outputs under `.lake/arithmetic-check/subsets/<checked-group>`. Each new
+capability adds its fixtures to a fixed group of relevant existing cases. The
+initial `guard-core` group passed 295 comparisons across seventeen declarations.
+General compiler proofs and type validation still run for each increment; evidence
+records the actual execution group and counts rather than claiming a full-corpus
+rerun. Broader changes can use the existing full and range modes.
+
 Check the general proofs and all nine printed axiom dependencies with:
 
 ```sh
