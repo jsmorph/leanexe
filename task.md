@@ -275,13 +275,21 @@ break/continue, captured helpers, result joins, high indices and huge intervals
 with immediate exits are included. All fifty-one previous range modules kept
 identical bytes. General type validation passed; unrelated suites were not rebuilt.
 
-Current increment: dynamic range starts expressed as a supported UInt64
-expression followed by .toNat. The common endpoint source model, exact syntax
-recognition, truncated-distance/index-offset semantics and whole source/IR
-proof pass. All 264 focused native Lean/IR comparisons and two rejection tests
-pass. Captured first-index values remain fixed during accumulator updates.
-Existing literal-start output is preserved by the same zero-literal simplification.
-General compiler audits and actual compiler/V8 range checks are pending.
+Completed next increment: dynamic range starts from supported UInt64 expressions.
+Candidate `ce8443b8` passed all nine general compiler audits and 1,729 matching
+native Lean/V8 results across seventy-three range declarations, including
+admission and reserved exports. Evidence is in
+`proofs/compiler/range-dynamic-2026-09-25/`. Both endpoints share the checked
+source model. Truncated distance, offset and captured-start semantics connect
+to the existing loop backend. All 264 focused native Lean/IR comparisons and
+two rejection tests passed. Computed/conditional bounds, captured initial
+accumulators, high indices, empty/equal bounds, break/continue and result joins
+are included. All sixty-two preceding range modules retained identical bytes.
+General type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: positive literal range strides. Prove native
+strided iteration and the bounded internal iteration count before integrating
+extraction and actual compiler checks. Preserve existing unit-step output.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
