@@ -16,6 +16,10 @@ def wordGuard (value : LeanExe.IR.Expr) : LeanExe.IR.Cond := .eqU64 value (.u64 
 def lowerBooleanChoice (condition yes no : LeanExe.IR.Cond) : LeanExe.IR.Cond :=
   wordGuard (.ite condition (guardWord yes) (guardWord no))
 
+/-- Compare the canonical zero/one words of two Boolean values. -/
+def lowerBooleanEquality (unequal : Bool) (left right : LeanExe.IR.Cond) : LeanExe.IR.Cond :=
+  lowerComparison (if unequal then .bne else .beq) (guardWord left) (guardWord right)
+
 def junctionPrimitive : Junction → ScalarPrimitive
   | .conjunction => .land
   | .disjunction => .lor
@@ -59,6 +63,25 @@ theorem lowerBooleanChoice_choice (P : LeanExe.IR.Expr → Prop)
   exact choice .eq _ _ _ _
     (test _ _ (first _ _ (literal 1) (literal 0)) (second _ _ (literal 1) (literal 0)))
     (literal 1) ht he
+
+theorem lowerBooleanEquality_correct (unequal : Bool) {left right : LeanExe.IR.Cond}
+    {store : LeanExe.IR.ScalarStore} {a b : Bool}
+    (first : left.ScalarEval store a store) (second : right.ScalarEval store b store) :
+    (lowerBooleanEquality unequal left right).ScalarEval store (if unequal then a != b else a == b) store := by
+  have result := lowerComparison_correct (if unequal then .bne else .beq)
+    (guardWord_correct first) (guardWord_correct second)
+  cases unequal <;> cases a <;> cases b <;> exact result
+
+theorem lowerBooleanEquality_choice (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
+    (unequal : Bool) (left right : LeanExe.IR.Cond)
+    (first : ∀ t e, P t → P e → P (.ite left t e))
+    (second : ∀ t e, P t → P e → P (.ite right t e)) :
+    ∀ t e, P t → P e → P (.ite (lowerBooleanEquality unequal left right) t e) := by
+  intro t e ht he
+  exact choice (if unequal then .bne else .beq) _ _ _ _
+    (first _ _ (literal 1) (literal 0)) (second _ _ (literal 1) (literal 0)) ht he
 
 theorem junctionPrimitive_denote (op : Junction) (left right : Bool) :
     (junctionPrimitive op).denote (Bool.toUInt64 left) (Bool.toUInt64 right) =

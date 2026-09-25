@@ -651,14 +651,18 @@ selected preceding modules kept identical bytes. Evidence is retained in
 declarations; this was a focused execution run. Four original inspected
 examples now compile unchanged. No emitter/runtime changes were needed.
 
-Next increment: Boolean equality and inequality of admitted Boolean values.
-Inspect the actual standard operator/direct-call syntax, extend the shared
-Boolean grammar and checked lowering, then test conditions, choices, captures,
-helper calls and loops end-to-end before proceeding. Boolean public ABI,
-Boolean-returning helpers, mixed Bool/word parameter lists, propositions directly
-referencing saved Boolean locals, and loops inside helpers remain later
-capabilities. A conditional Boolean bind before a loop can elaborate to such
-a loop-containing helper.
+Current increment: Boolean equality and inequality of admitted Boolean values.
+All five initial examples reject, covering saved flags, explicit BEq.beq/bne
+calls, conditions, captures and a loop. Preserve them unchanged. Lean uses the
+exact standard Bool equality instance for both operators and explicit calls.
+The new recursive BooleanLocal equality form, parser/reconstruction/size proofs,
+shared equality lowering and all Boolean lowering proofs pass. Scalar, step and
+outer-loop source semantics and totality rebuild unchanged. Compiler proof
+integration and sixteen new execution examples remain in progress. Both sides
+must be admitted Boolean values; custom instances and unsupported operands are
+rejected, including unused expressions. Boolean public ABI, Boolean-returning
+helpers, mixed Bool/word parameter lists, propositions directly referencing
+saved Boolean locals and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
