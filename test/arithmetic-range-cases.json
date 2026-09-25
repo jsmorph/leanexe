@@ -292,5 +292,13 @@
   "rangeRelationChoiceBounds",
   "rangeRelationChoiceStep",
   "rangeRelationChoiceOuter",
-  "rangeRelationChoiceUnused"
+  "rangeRelationChoiceUnused",
+  "rangeDependentChoiceYield",
+  "rangeDependentChoiceJoined",
+  "rangeDependentChoiceContinue",
+  "rangeDependentChoiceCapture",
+  "rangeDependentChoiceBounds",
+  "rangeDependentChoiceStep",
+  "rangeDependentChoiceOuter",
+  "rangeDependentChoiceUnused"
 ]
