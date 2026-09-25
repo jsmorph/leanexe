@@ -284,5 +284,13 @@
   "rangeLocalDecideBounds",
   "rangeLocalDecideStep",
   "rangeLocalDecideOuter",
-  "rangeLocalDecideUnused"
+  "rangeLocalDecideUnused",
+  "rangeRelationChoiceYield",
+  "rangeRelationChoiceJoined",
+  "rangeRelationChoiceContinue",
+  "rangeRelationChoiceCapture",
+  "rangeRelationChoiceBounds",
+  "rangeRelationChoiceStep",
+  "rangeRelationChoiceOuter",
+  "rangeRelationChoiceUnused"
 ]
