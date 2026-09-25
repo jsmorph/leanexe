@@ -405,15 +405,20 @@ native Lean/IR comparisons and three rejection tests passed. All 223 preceding
 modules kept identical bytes. General type validation passed; unrelated suites
 were not rebuilt.
 
-Current increment: mix Boolean compound guards with surrounding propositional
-conjunction, disjunction and negation. Guard trees now retain Boolean compound
-nodes and independent counts for Bool.not and propositional Not. The integrated
-parser checks exact source shape and complete standard decision evidence, and
-the shared Boolean/compiler helpers preserve native results and invariants.
-Public function extraction builds with unchanged scalar/step integration proofs.
-All 208 focused native Lean/IR comparisons and three rejection tests pass across
-twelve new declarations. The general compiler proof/audits and actual native
-Lean/V8 comparisons remain pending at this candidate checkpoint.
+Completed next increment: Boolean compounds inside propositional conjunction,
+disjunction and negation, including repeated negation at either layer.
+Candidate `cf104d36` passed all nine compiler audits and 4,866 native Lean/V8
+comparisons across 247 declarations, including admission and reserved exports.
+Evidence is in `proofs/compiler/mixed-guards-2026-09-25/`. Mixed guard nodes retain
+both wrapper kinds and exact decision evidence. The checked Boolean compiler
+helper composes with the propositional compiler, retaining the existing public
+scalar/step integration. All 208 focused native Lean/IR comparisons and three
+rejection tests passed. All 235 preceding modules kept identical bytes. General
+type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: standard UInt64 min and max, matching the existing
+dialect's comparison/selection lowering. Preserve exact standard instances,
+finish source/IR proofs and actual compiler checks before the next capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
