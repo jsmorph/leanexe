@@ -104,6 +104,10 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
       let a ← booleanLocalOperands? left
       let b ← booleanLocalOperands? right
       pure (.equality 0 true a b)
+  | .letE name (.const ``Bool []) value body nondep => do
+      let v ← booleanLocalOperands? value
+      let b ← booleanLocalOperands? body
+      pure (.binding 0 name nondep v b)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
 decreasing_by

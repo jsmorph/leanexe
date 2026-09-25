@@ -300,5 +300,13 @@
   "rangeDependentChoiceBounds",
   "rangeDependentChoiceStep",
   "rangeDependentChoiceOuter",
-  "rangeDependentChoiceUnused"
+  "rangeDependentChoiceUnused",
+  "rangeBoolLetYield",
+  "rangeBoolLetJoined",
+  "rangeBoolLetContinue",
+  "rangeBoolLetCapture",
+  "rangeBoolLetBounds",
+  "rangeBoolLetStep",
+  "rangeBoolLetOuter",
+  "rangeBoolLetUnused"
 ]
