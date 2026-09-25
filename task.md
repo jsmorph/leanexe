@@ -133,6 +133,15 @@ same native step outcome. Its scalar projection preserves binding positions
 and the existing scalar matching relation. The source totality audit uses only
 the three permitted logical axioms. No public extraction behavior has changed
 in these preparation commits.
+`Extract/ScalarStep.lean` now compiles done/yield, scalar branches, binds,
+scalar functions and both step-valued continuation shapes into paired IR
+expressions. Its result-type checks and reusable equations pass, as does
+`ScalarStepCorrectness.lean`: both projections preserve the same source step
+and leave locals unchanged. `test/scalar_range_exit.lean` passed 120 native
+Lean/IR comparisons using the concrete early-exit loop layout, including
+returned done values, wrapping, joined branches and both continuation shapes.
+Source acceptance/success support, static bounds, whole-function extraction,
+Wasm proofs and public execution checks are still pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
