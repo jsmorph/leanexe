@@ -92,7 +92,72 @@ theorem stitch_smooth (p0 v0 : ℝ) (p v : Nat → ℝ → ℝ) (d : Nat → ℝ
     · exact join_continuous _ _ _ prev.2 ((hc n (by omega)).comp (continuous_id.sub continuous_const))
         (by simpa using hmatch.2)
 
+theorem clock_mono (d : Nat → ℝ) (N : Nat) (hd : ∀ i, i < N → 0 ≤ d i)
+    (i : Nat) (hi : i ≤ N) : clock d i ≤ clock d N := by
+  induction N with
+  | zero =>
+    have : i = 0 := by omega
+    subst i
+    rfl
+  | succ n ih =>
+    by_cases he : i = n+1
+    · subst i; rfl
+    · have hp := ih (fun j hj => hd j (by omega)) (by omega)
+      have hn := hd n (by omega)
+      simp only [clock]
+      linarith
+
+/-- Every local flight interval is represented by its intended primitive,
+including both boundary instants. -/
+theorem stitch_on_segment (p0 : ℝ) (p : Nat → ℝ → ℝ) (d : Nat → ℝ) (N : Nat)
+    (hd : ∀ i, i < N → 0 < d i)
+    (hfirst : 0 < N → p0 = p 0 0)
+    (hjoin : ∀ i, i+1 < N → p i (d i) = p (i+1) 0)
+    (i : Nat) (hi : i < N) (t : ℝ) (ht0 : 0 ≤ t) (ht1 : t ≤ d i) :
+    stitch p0 p d N (clock d i+t) = p i t := by
+  induction N with
+  | zero => omega
+  | succ n ih =>
+    by_cases he : i = n
+    · subst i
+      by_cases ht : t = 0
+      · subst t
+        simp only [add_zero, stitch, join, le_refl, ite_true]
+        cases n with
+        | zero => simpa [stitch] using hfirst (by omega)
+        | succ k =>
+          rw [stitch_end p0 p d k (hd k (by omega))]
+          exact hjoin k (by omega)
+      · have htpos : 0 < t := lt_of_le_of_ne ht0 (Ne.symm ht)
+        have hgt : ¬clock d n+t ≤ clock d n := by linarith
+        simp [stitch, join, hgt]
+    · have hin : i < n := by omega
+      have hc := clock_mono d n (fun j hj => le_of_lt (hd j (by omega))) (i+1) (by omega)
+      have ht : clock d i+t ≤ clock d n := by simp only [clock] at hc; linarith
+      simp only [stitch, join, ht, ite_true]
+      exact ih (fun j hj => hd j (by omega)) (fun hn => hfirst (by omega))
+        (fun j hj => hjoin j (by omega)) hin
+
+/-- The cumulative intervals cover every physical time during a nonempty flight. -/
+theorem clock_cover (d : Nat → ℝ) (N : Nat) (hN : 0 < N)
+    (hd : ∀ i, i < N → 0 < d i) (t : ℝ) (ht0 : 0 ≤ t) (ht1 : t ≤ clock d N) :
+    ∃ i, i < N ∧ clock d i ≤ t ∧ t ≤ clock d i+d i := by
+  induction N with
+  | zero => omega
+  | succ n ih =>
+    by_cases ht : clock d n ≤ t
+    · exact ⟨n, by omega, ht, by simpa [clock] using ht1⟩
+    · have hn : 0 < n := by
+        by_contra hn
+        have : n = 0 := by omega
+        subst n
+        exact ht (by simpa [clock] using ht0)
+      obtain ⟨i, hi, ha, hb⟩ := ih hn (fun j hj => hd j (by omega)) (le_of_lt (lt_of_not_ge ht))
+      exact ⟨i, by omega, ha, hb⟩
+
 #print axioms join_derivative
 #print axioms stitch_smooth
+#print axioms stitch_on_segment
+#print axioms clock_cover
 end
 end Project.Drone.Gluing

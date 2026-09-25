@@ -47,3 +47,7 @@ See task.md for the remaining composition obligations. -/
 #print axioms Project.Drone.Gluing.stitch_smooth
 #print axioms Project.Drone.Trajectory.compute_joins
 #print axioms Project.Drone.Trajectory.compute_global_smooth
+#print axioms Project.Drone.Trajectory.compute_global_segment
+#print axioms Project.Drone.Trajectory.compute_global_cover
+#print axioms Project.Drone.Trajectory.compute_global_clearance
+#print axioms Project.Drone.Trajectory.compute_global_speed
