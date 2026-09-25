@@ -369,18 +369,22 @@ complemented interval bounds near the UInt64 limit. All 185 preceding modules
 kept identical bytes. General type validation passed; unrelated suites were not
 rebuilt.
 
-Current increment: nested propositional conjunction and disjunction in
-conditional guards. Shared syntax recognition, exact standard decision evidence,
-source totality, extraction acceptance/correctness and scalar invariants now
-pass for both ordinary expressions and paired loop-step results. Public
-function extraction builds, and all 256 focused native Lean/IR comparisons
-plus three rejection tests pass across fourteen new declarations. Lowering
-materializes Boolean words and uses existing bitwise AND/OR and equality;
-operands are pure and total, so eager guard evaluation preserves results.
-The general compiler proof/audits and actual native Lean/V8 comparisons are
-pending at this candidate checkpoint. Existing comparison output is retained.
-Boolean &&/||, whole-compound negation and general Boolean values remain later
-increments.
+Completed next increment: nested propositional conjunction and disjunction
+through scalar conditionals and loop-step results. Candidate `943588a1` passed
+all nine compiler audits and 4,242 native Lean/V8 comparisons across 211
+declarations, including admission and reserved exports. Evidence is in
+`proofs/compiler/compound-guards-2026-09-25/`. Separate recursive guard syntax
+checks the entire standard decision evidence and every pure, total operand;
+proved lowering reuses existing Boolean-word AND/OR and equality operations.
+All 256 focused native Lean/IR comparisons and three rejection tests passed,
+covering truth tables, mixed nesting, negated leaves, zero divisors, functions,
+monadic joins, break, continue and step-result continuations. All 197 prior
+modules kept identical bytes. The general proof includes type validation;
+unrelated suites were not rebuilt.
+
+Next incremental capability: negation of compound propositional guards, using
+the existing guard model and preserving the comparison fast path. Finish its
+proofs and public compiler execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
