@@ -54,6 +54,16 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨e, he⟩ := ihe locals typed total
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
       rw [extractScalarStepWith_compoundBranch]; simp [hc, ht, he]⟩
+  | chooseDependent guard type tn fn tb fb arguments _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := extractGuard_accepts guard
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨t, ht⟩ := iht (.scalar .unit :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨e, he⟩ := ihe (.scalar .unit :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
+      rw [extractScalarStepWith_dependentBranch]; simp [hc, ht, he]⟩
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := scalar value typed total
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)

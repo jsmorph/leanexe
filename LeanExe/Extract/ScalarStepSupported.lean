@@ -268,7 +268,28 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     simp [different] at compiled
   | case42 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarStepWith] using compiled))
-  | case43 locals head first second noPure noWordBind noChoice noUnit noPUnit noBinary noYield noDone noRun noBind =>
+  | case43 locals type condition evidence tn td t tb fn fd e fb rejected =>
+    rw [extractScalarStepWith, rejected] at compiled
+    contradiction
+  | case44 locals type condition evidence tn td t tb fn fd e fb result matched rejected =>
+    rw [extractScalarStepWith, matched, rejected] at compiled
+    contradiction
+  | case45 locals sourceType condition evidence tn td t tb fn fd e fb type matched guard parsed iht ihe =>
+    have typeEq := scalarStepResultType_sound matched
+    subst sourceType
+    obtain ⟨hc, hd, htDomain, heDomain⟩ := dependentGuard_sound parsed
+    subst condition evidence td fd
+    change extractScalarStepWith locals (guard.dependentBranch (Step.resultType type) tn fn tb fb t e) = some target at compiled
+    rw [extractScalarStepWith_dependentBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, _⟩ := compiled
+    apply Step.Supported.chooseDependent guard type tn fn tb fb
+    · intro operand member
+      obtain ⟨expression, found⟩ := extractGuard_operands guard _ hc operand member
+      exact scalar found
+    · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using iht ht
+    · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihe he
+  | case46 locals head first second noPure noWordBind noChoice noUnit noPUnit noBinary noYield noDone noRun noBind noDependent =>
     rw [extractScalarStepWith] at compiled
     · simp only [bind, Option.bind_eq_some_iff] at compiled
       obtain ⟨call, matched, f, hf, arguments, ha, _⟩ := compiled
@@ -278,7 +299,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
       obtain ⟨expression, found⟩ := extractScalarArguments_operands call.arguments _ ha operand member
       exact scalar found
     all_goals assumption
-  | case44 locals source hp hl hb hc hf huf hpf hua hpa ha hdy hdd hv hr hrf hlr hbr hm happ =>
+  | case47 locals source hp hl hb hc hf huf hpf hua hpa ha hdy hdd hv hr hrf hlr hbr hm happ =>
     rw [extractScalarStepWith] at compiled <;> first | assumption | contradiction
 
 end LeanExe.Extract.Core
