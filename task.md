@@ -509,25 +509,24 @@ tests passed. The eighteen selected preceding modules kept identical bytes.
 The full corpus contains 335 declarations; this execution run checked 34.
 General type validation used cached dependencies.
 
-Current increment: internal Boolean local bindings and their use in ordinary
-Boolean conditions, including aliases, negation and conjunction/disjunction.
-Keep Boolean values distinct from UInt64 values in source and compiled binding
-kinds. Start with ordinary Boolean lets and complete scalar/helper/loop execution
-and the general proofs before broadening Boolean operations or the public ABI.
+Completed next increment: ordinary internal Boolean local bindings and ordinary
+Boolean conditions over saved flags. Candidate `f9d25355` passed all nine
+compiler audits and all 623 native Lean/V8 comparisons in the fixed
+34-declaration `boolean-locals` group. Evidence is in
+`proofs/compiler/boolean-locals-2026-09-25/`. Native and compiled binding kinds
+keep Booleans distinct from UInt64 values, with proved zero/one representation.
+Independent source rules, totality, acceptance, successful extraction support,
+correctness and invariants cover aliases, negation, conjunction/disjunction,
+helper captures, loop steps and outer loop bindings. All 304 focused native
+Lean/IR comparisons, four declaration rejection tests and four binding-kind
+rejection tests passed. Eighteen selected preceding modules kept identical
+bytes. The full corpus contains 351 declarations; this execution run checked 34.
+General type validation used cached dependencies.
 
-Checked preparation: Boolean expression syntax keeps scalar operands and Boolean
-variable indices separate. Exact parser reconstruction and operand-size proofs
-pass. Conditions containing a Boolean local are proved disjoint from the
-preceding closed guard parsers. Lowering acceptance, operand/variable checking,
-native Boolean meaning and scalar closure invariants pass using the existing
-comparison, negation and conjunction/disjunction lowering. Distinct native and
-compiled Boolean bindings, lookup/meaning facts and source let/condition totality
-now pass. Scalar extraction and all four scalar extraction proofs also pass.
-Step and outer-loop extraction, acceptance, source admission, correctness and
-invariants now pass through function extraction. All 304 focused native Lean/IR
-comparisons, four declaration rejection tests and four binding-kind rejection
-tests pass. Complete audits and focused V8 execution remain open; the increment
-is not yet complete.
+Next increment: allow dependent conditions (`if h : flag then ... else ...`)
+to use saved Boolean locals, retaining exact proof-lambda domains and binder
+scope. Complete that combination through source proofs and focused execution
+before moving to broader Boolean operations or public interfaces.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
