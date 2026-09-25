@@ -55,10 +55,14 @@ All function bodies are checked, including unused ones. Plain unary functions
 and the `Unit → UInt64 → result` update-continuation form have distinct binding
 kinds. Other arities and top-level helpers remain outside this increment.
 
-Next increment: bounded range loops with one UInt64 accumulator. Inspect actual
-elaborated range/ForIn syntax, define its source behavior, connect it to the
-production loop emission, and complete the general byte/validation proof and
-execution checks before adding further loop shapes.
+In progress: bounded `[:count.toNat]` range loops with one UInt64 accumulator
+and yielding steps. `Source/ScalarRange.lean` passes its focused build: the
+ascending iteration model equals Lean's actual Id range iterator, iteration
+composition is proved, and every index up to the UInt64 stop is represented
+exactly. Actual elaborated `ForIn` syntax and production IR for indexed and
+index-free examples were inspected. Compiler admission, production loop
+emission correspondence, full byte/validation proofs and execution checks are
+still pending; loops are not yet in the completed certified source grammar.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
