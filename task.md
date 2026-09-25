@@ -232,11 +232,19 @@ ordinary inference: Id.run can carry Id (ForInStep UInt64), with another Id
 layer in the branch result. The recognizer is being extended to preserve and
 check those annotations. No completed execution claim is made yet.
 
-Next incremental capability: nested standard Id computations returning loop
-steps, including step-valued let/monadic bindings. Extend the typed step
-environment with a step-result binding so it remains distinct from scalar
-values and functions, and reuse the paired result/value lowering. Complete
-source proofs and actual compiler/V8 checks before the following capability.
+Current increment: nested standard Id computations returning loop steps,
+including result-valued let/monadic bindings, lexical captures, and unused
+values. Result annotations preserve and check arbitrary nested Id layers.
+The complete source/extraction proofs pass, including acceptance, successful
+extraction support, invariant preservation and semantic correctness. The focused
+test passes all 192 native Lean/IR comparisons across eight new declarations.
+The general compiler theorem and actual compiler/V8 checks are next.
+
+Next incremental capability after those checks: local continuations taking a
+ForInStep UInt64 argument, including the joined monadic branch form generated
+by Lean. The initial branching-bind test is retained as evidence of that
+separate missing function domain. Result-valued lets and straight-line monadic
+bindings remain this increment's scope.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

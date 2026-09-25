@@ -30,7 +30,7 @@ def rangeStepCapture (count seed : UInt64) : UInt64 :=
 
 def rangeStepBind (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun i a => do
-    let result ← if UInt64.ofNat i == seed % 7 then pure (.done (a + 9)) else pure (.yield (a + 1))
+    let result ← pure (if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a + 1))
     let alias ← pure result
     return alias
 
@@ -48,6 +48,15 @@ def rangeStepUnused (count seed : UInt64) : UInt64 :=
     let result : ForInStep UInt64 := .yield (a + UInt64.ofNat i + 1)
     return result
 
+def rangeStepWrappedBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let computation : Id (Id (ForInStep UInt64)) := Id.run do
+      let x ← pure (a + UInt64.ofNat i)
+      if x % 3 == seed % 3 then return .done (x + 11)
+      return .yield (x + 1)
+    @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id (Id (ForInStep UInt64))) (Id (Id (ForInStep UInt64)))
+      computation (fun result => pure result)
+
 end StepResultTest
 
 run_elab do
@@ -59,7 +68,8 @@ run_elab do
     (`StepResultTest.rangeStepCapture, StepResultTest.rangeStepCapture),
     (`StepResultTest.rangeStepBind, StepResultTest.rangeStepBind),
     (`StepResultTest.rangeStepIdLet, StepResultTest.rangeStepIdLet),
-    (`StepResultTest.rangeStepUnused, StepResultTest.rangeStepUnused)]
+    (`StepResultTest.rangeStepUnused, StepResultTest.rangeStepUnused),
+    (`StepResultTest.rangeStepWrappedBind, StepResultTest.rangeStepWrappedBind)]
   for (name, native) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -74,4 +84,4 @@ run_elab do
         let actual := module_.evalFunc 0 [limit, seed]
         unless actual == expected do
           throwError "{name}({limit}, {seed}): native={expected}, IR={actual}"
-  Lean.logInfo "168 native/step-result IR comparisons passed"
+  Lean.logInfo "192 native/step-result IR comparisons passed"

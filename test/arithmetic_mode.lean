@@ -182,7 +182,7 @@ def rangeStepCapture (count seed : UInt64) : UInt64 :=
 
 def rangeStepBind (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun i a => do
-    let result ← if UInt64.ofNat i == seed % 7 then pure (.done (a + 9)) else pure (.yield (a + 1))
+    let result ← pure (if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a + 1))
     let alias ← pure result
     return alias
 
@@ -220,6 +220,15 @@ def rangeCustomStepBind (n seed : UInt64) : UInt64 :=
     @Bind.bind Id customBind (ForInStep UInt64) (ForInStep UInt64)
       (pure (.done a)) (fun result => pure result)
 
+def rangeStepWrappedBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let computation : Id (Id (ForInStep UInt64)) := Id.run do
+      let x ← pure (a + UInt64.ofNat i)
+      if x % 3 == seed % 3 then return .done (x + 11)
+      return .yield (x + 1)
+    @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id (Id (ForInStep UInt64))) (Id (Id (ForInStep UInt64)))
+      computation (fun result => pure result)
+
 end ArithmeticModeTest
 
 run_elab do
@@ -230,7 +239,7 @@ run_elab do
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral,
-      `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused] do
+      `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused, `ArithmeticModeTest.rangeStepWrappedBind] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>

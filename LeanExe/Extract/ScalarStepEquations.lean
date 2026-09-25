@@ -6,12 +6,18 @@ open LeanExe.Source.Scalar
 theorem extractScalarStepWith_yield (locals : List ScalarStepBinding) (a : Lean.Expr) :
     extractScalarStepWith locals (Range.yieldValue a) = (do
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
-      pure { value, done := .u64 0 }) := by rw [Range.yieldValue, extractScalarStepWith, extractScalarStepWith]
+      pure { value, done := .u64 0 }) := by
+  rw [Range.yieldValue, extractScalarStepWith]
+  change extractScalarStepWith locals (Step.yieldDirect a) = _
+  rw [Step.yieldDirect, extractScalarStepWith]
 
 theorem extractScalarStepWith_done (locals : List ScalarStepBinding) (a : Lean.Expr) :
     extractScalarStepWith locals (Step.doneValue a) = (do
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
-      pure { value, done := .u64 1 }) := by rw [Step.doneValue, extractScalarStepWith, extractScalarStepWith]
+      pure { value, done := .u64 1 }) := by
+  rw [Step.doneValue, extractScalarStepWith]
+  change extractScalarStepWith locals (Step.doneDirect a) = _
+  rw [Step.doneDirect, extractScalarStepWith]
 
 theorem extractScalarStepWith_yieldDirect (locals : List ScalarStepBinding) (a : Lean.Expr) :
     extractScalarStepWith locals (Step.yieldDirect a) = (do
@@ -29,14 +35,14 @@ theorem extractScalarStepWith_letE (locals : List ScalarStepBinding)
       let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
       extractScalarStepWith (.scalar (.word bound) :: locals) b) := by rw [extractScalarStepWith]
 
-theorem extractScalarStepWith_bind (locals : List ScalarStepBinding)
+theorem extractScalarStepWith_bind (locals : List ScalarStepBinding) (type : Step.ResultAnnotation)
     (name : Lean.Name) (bi : Lean.BinderInfo) (a b : Lean.Expr) :
-    extractScalarStepWith locals (Range.bindYield name bi a b) = (do
+    extractScalarStepWith locals (Step.bindWord name bi type a b) = (do
       let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
-      extractScalarStepWith (.scalar (.word bound) :: locals) b) := by rw [Range.bindYield, extractScalarStepWith]
+      extractScalarStepWith (.scalar (.word bound) :: locals) b) := by rw [Step.bindWord, extractScalarStepWith, scalarStepResultType_accepts]
 
 theorem extractScalarStepWith_branch (locals : List ScalarStepBinding)
-    (op : Comparison) (type : ResultType) (a b t e : Lean.Expr) :
+    (op : Comparison) (type : Step.ResultAnnotation) (a b t e : Lean.Expr) :
     extractScalarStepWith locals (Step.branch op type a b t e) = (do
       let ai ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a
       let bi ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) b
@@ -73,7 +79,7 @@ theorem extractScalarStepWith_letUnitFn (locals : List ScalarStepBinding)
 
 theorem extractScalarStepWith_letStepFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
       (.forallE typeName (.const ``UInt64 []) (Step.resultType type) typeBi)
       (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) = (do
@@ -85,7 +91,7 @@ theorem extractScalarStepWith_letStepFn (locals : List ScalarStepBinding)
 theorem extractScalarStepWith_letUnitStepFn (locals : List ScalarStepBinding)
     (name unitTypeName typeName unitName paramName : Lean.Name)
     (unitTypeBi typeBi unitBi paramBi : Lean.BinderInfo)
-    (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
       (.forallE unitTypeName (.const ``Unit [])
         (.forallE typeName (.const ``UInt64 []) (Step.resultType type) typeBi) unitTypeBi)
@@ -96,26 +102,28 @@ theorem extractScalarStepWith_letUnitStepFn (locals : List ScalarStepBinding)
           extractScalarStepWith (.scalar (.word argument) :: .scalar .unit :: locals) a) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_not_step, scalarStepResultType_accepts]
 
-theorem extractScalarStepWith_idRun (locals : List ScalarStepBinding) (a : Lean.Expr) :
-    extractScalarStepWith locals (Step.idRun a) = extractScalarStepWith locals a := by
-  rw [Step.idRun, Step.resultType, extractScalarStepWith]
+theorem extractScalarStepWith_idRun (locals : List ScalarStepBinding) (type : Step.ResultAnnotation) (a : Lean.Expr) :
+    extractScalarStepWith locals (Step.idRun type a) = extractScalarStepWith locals a := by
+  rw [Step.idRun, extractScalarStepWith, scalarStepResultType_accepts]
 
-theorem extractScalarStepWith_idPure (locals : List ScalarStepBinding) (a : Lean.Expr) :
-    extractScalarStepWith locals (Step.idPure a) = extractScalarStepWith locals a := by
-  rw [Step.idPure, Step.resultType, extractScalarStepWith]
+theorem extractScalarStepWith_idPure (locals : List ScalarStepBinding) (type : Step.ResultAnnotation) (a : Lean.Expr) :
+    extractScalarStepWith locals (Step.idPure type a) = extractScalarStepWith locals a := by
+  rw [Step.idPure, extractScalarStepWith, scalarStepResultType_accepts]
 
 theorem extractScalarStepWith_letResult (locals : List ScalarStepBinding)
-    (name : Lean.Name) (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :
+    (name : Lean.Name) (type : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name (Step.resultType type) a b nondep) = (do
       let bound ← extractScalarStepWith locals a
       extractScalarStepWith (.result bound :: locals) b) := by
-  cases type <;> rw [Step.resultType, extractScalarStepWith]
+  cases type <;> rw [Step.resultType, extractScalarStepWith] <;>
+    simp [scalarStepResultType?, scalarStepResultType_accepts]
 
 theorem extractScalarStepWith_bindResult (locals : List ScalarStepBinding)
-    (name : Lean.Name) (bi : Lean.BinderInfo) (a b : Lean.Expr) :
-    extractScalarStepWith locals (Step.bindResult name bi a b) = (do
+    (name : Lean.Name) (bi : Lean.BinderInfo) (input output : Step.ResultAnnotation) (a b : Lean.Expr) :
+    extractScalarStepWith locals (Step.bindResult name bi input output a b) = (do
       let bound ← extractScalarStepWith locals a
       extractScalarStepWith (.result bound :: locals) b) := by
-  rw [Step.bindResult, Step.resultType, extractScalarStepWith]
+  cases input <;> rw [Step.bindResult, Step.resultType, extractScalarStepWith] <;>
+    simp [scalarStepResultType?, scalarStepResultType_accepts]
 
 end LeanExe.Extract.Core
