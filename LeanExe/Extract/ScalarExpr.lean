@@ -105,6 +105,12 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
     | true =>
       exact .iteTrue (by simpa [flag] using condition)
         (ihb (by simpa [flag] using ht) (bindings.cons (binding := .unit) (value := .unit) trivial))
+  | booleanWord expression variables _ ihArgs =>
+    rw [extractScalarExprWith_booleanWord] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc bindings variables
+      (fun operand member target found => ihArgs operand member found bindings))
   | @letBoolean values b value name nondep expression native booleans variables arguments body ihArgs ihb =>
     rw [extractScalarExprWith_letBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -298,6 +304,11 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     obtain ⟨t, ht⟩ := iht (.unit :: locals) (by simp [ScalarBinding.kind, typed]) extended
     obtain ⟨e, he⟩ := ihe (.unit :: locals) (by simp [ScalarBinding.kind, typed]) extended
     exact ⟨.ite c t e, by rw [extractScalarExprWith_booleanDependentBranch]; simp [hc, ht, he]⟩
+  | booleanWord expression variables _ ihArgs =>
+    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts locals expression
+      (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
+      (fun operand member => ihArgs operand member locals typed total)
+    exact ⟨guardWord condition, by rw [extractScalarExprWith_booleanWord]; simp [hc]⟩
   | letBoolean expression variables _ _ ihArgs ihb =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals expression
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
@@ -798,9 +809,22 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBooleanFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case53 locals data body ih =>
+  | case53 locals argument rejected =>
+    rw [extractScalarExprWith, rejected] at compiled
+    contradiction
+  | case54 locals argument expression parsed ihArgs =>
+    have same := booleanLocalOperands_sound parsed
+    subst argument
+    rw [extractScalarExprWith_booleanWord] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, _⟩ := compiled
+    apply LeanExe.Source.Scalar.SupportedWith.booleanWord expression (extractBooleanLocalWith_variables hc)
+    intro operand member
+    obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
+    exact ihArgs operand member found
+  | case55 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case54 locals expr hvar hliteral hnatural hconverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hmetadata =>
+  | case56 locals expr hvar hliteral hnatural hconverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -907,6 +931,13 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
       (fun operand member expression found => ihArgs operand member found bindings htypes)
       t e (iht ht extended (by simp [ScalarBinding.kind, htypes]))
       (ihe he extended (by simp [ScalarBinding.kind, htypes]))
+  | booleanWord expression variables _ ihArgs =>
+    rw [extractScalarExprWith_booleanWord] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact extractBooleanLocalWith_choice P literal binary choice expression _ hc bindings
+      (fun operand member target found => ihArgs operand member found bindings htypes)
+      _ _ (literal 1) (literal 0)
   | letBoolean expression variables _ _ ihArgs ihb =>
     rw [extractScalarExprWith_letBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

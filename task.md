@@ -638,13 +638,17 @@ runtime, scalar dispatch or loop dispatch changes were needed. The cached
 proof build includes complete module type validation and the usual nine axiom
 audits; unrelated runtime suites and the fixed arithmetic archive were reused.
 
-Next increment: Bool.toUInt64 conversion of admitted Boolean values. Inspect
-its actual syntax, add source semantics and a checked scalar lowering using the
-existing zero/one representation, and verify it through helper/loop contexts
-before proceeding. Boolean public ABI, Boolean-returning helpers, mixed
-Bool/word parameter lists, propositions directly referencing saved Boolean
-locals, and loops inside helpers remain later capabilities. A conditional
-Boolean bind before a loop can elaborate to such a loop-containing helper.
+Current increment: Bool.toUInt64 conversion of admitted Boolean values. Four
+initial examples reject, covering direct comparison/decision values, captures,
+conditional binds and a range loop. Preserve the valid inspected examples
+unchanged. The new source rule, typed support, totality, scalar production
+extraction and all four scalar proofs pass. Shared guardWord correctness proves
+the zero/one conversion directly; step proof modules rebuild unchanged. The
+outer-loop proof integration and sixteen new execution examples are in progress.
+Boolean public ABI, Boolean-returning helpers, mixed Bool/word parameter lists,
+propositions directly referencing saved Boolean locals, and loops inside helpers
+remain later capabilities. A conditional Boolean bind before a loop can
+elaborate to such a loop-containing helper.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

@@ -55,6 +55,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (arguments : ∀ expression, expression ∈ guard.operands → EvalWith expression values (native expression))
       (branch : EvalWith (if guard.denote native then onTrue else onFalse) (.unit :: values) value) :
       EvalWith (guard.dependentBranch type.expr trueName falseName trueBi falseBi onTrue onFalse) values value
+  | booleanWord (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      (variables : expression.VariablesMean values booleans)
+      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) values
+        (Bool.toUInt64 (expression.denote native booleans))
   | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand))
@@ -171,6 +176,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (arguments : ∀ expression, expression ∈ guard.operands → SupportedWith types expression)
       (onTrue : SupportedWith (.unit :: types) t) (onFalse : SupportedWith (.unit :: types) e) :
       SupportedWith types (guard.dependentBranch type.expr trueName falseName trueBi falseBi t e)
+  | booleanWord (expression : BooleanLocal)
+      (variables : expression.VariablesTyped types)
+      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) expression.expr)
   | letBoolean (expression : BooleanLocal)
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand)
@@ -306,6 +315,14 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     | true =>
       obtain ⟨value, hv⟩ := iht (.unit :: values) (by simp [Value.kind, typed])
       exact ⟨value, .chooseDependent guard type tn fn tb fb meanings (by simpa [flag] using hv)⟩
+  | booleanWord expression variables _ ihArgs =>
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ expression.operands then (ihArgs operand member values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
+    exact ⟨Bool.toUInt64 (expression.denote native booleans), .booleanWord expression hbooleans meanings⟩
   | letBoolean expression variables _ _ ihArgs ihb =>
     obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
     let native : Lean.Expr → UInt64 := fun operand =>
