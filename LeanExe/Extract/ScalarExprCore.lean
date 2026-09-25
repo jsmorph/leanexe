@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanBind
 import LeanExe.Extract.ScalarLiteralInstance
 import LeanExe.Extract.ScalarCall
 import LeanExe.Extract.ScalarArguments
@@ -47,7 +48,16 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
         (.const ``Id.instMonad [.zero]))) input) output) value)
       (.lam _ domain body _) =>
       match scalarBindTypes? input domain output with
-      | none => none
+      | none =>
+          match booleanBindType? scalarResultType? input domain output with
+          | none => none
+          | some _ =>
+              match _action : booleanAction? value with
+              | none => none
+              | some action => do
+                  let c ← extractBooleanLocalWith locals action.leaf
+                    (fun operand _member => extractScalarExprWith locals operand)
+                  extractScalarExprWith (.boolean (guardWord c) :: locals) body
       | some _ => do
           let bound ← extractScalarExprWith locals value
           extractScalarExprWith (.word bound :: locals) body
@@ -207,6 +217,7 @@ decreasing_by
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := booleanLocalDependentGuard_size _booleanGuard _member; omega)
     | (have bounds := dependentGuard_size _guard _member; omega)
+    | (have bounds := booleanAction_size _action _member; omega)
     | (have bounds := booleanLocalOperands_size _boolean _member; omega)
     | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
     | (have bounds := comparison_size _h; omega)
@@ -276,6 +287,16 @@ theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
       pure (.ite c onTrue onFalse)) := by
   rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarExprWith,
     scalarResultType_accepts, dependentGuard_accepts]
+
+theorem extractScalarExprWith_booleanBind (locals : List ScalarBinding)
+    (action : LeanExe.Source.Scalar.BooleanAction) (type : LeanExe.Source.Scalar.ResultType)
+    (name : Lean.Name) (bi : Lean.BinderInfo) (body : Lean.Expr) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.BooleanIdentity.bind name bi action.expr body type.expr) = (do
+      let c ← extractBooleanLocalWith locals action.leaf
+        (fun operand _ => extractScalarExprWith locals operand)
+      extractScalarExprWith (.boolean (guardWord c) :: locals) body) := by
+  rw [LeanExe.Source.Scalar.BooleanIdentity.bind, extractScalarExprWith,
+    booleanBindType_not_scalar, booleanBindType_accepts _ (scalarResultType_accepts type), booleanAction_accepts]
 
 theorem extractScalarExprWith_letBoolean (locals : List ScalarBinding)
     (expression : LeanExe.Source.Scalar.BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
