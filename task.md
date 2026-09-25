@@ -109,7 +109,14 @@ retaining its existing fallback for other conditions. Assignment, sequence and
 while annotation code projections are proved separately. The range extractor's
 generic invariant and `extractScalarRange_admitted` derive arithmetic descriptors
 and static read bounds for all four expressions; their focused builds pass.
-Whole-function typed encoding and Talos execution are the active next boundary.
+Whole-function typed encoding (`RangeTyping.lean`) and Talos execution
+(`RangeLoopExecution.lean`, `RangeFunctionExecution.lean`) now pass. The loop
+proof uses the remaining natural index count as its decreasing rank; the full
+function proof includes setup, final result assignment and the unchanged scalar
+ABI. The two focused backend axiom audits use only `propext`, `Classical.choice`
+and `Quot.sound`. Integration into successful source-function dispatch, full
+module bytes/validation, the final nine audits and native/V8 comparisons remain
+pending before enabling or claiming this loop increment complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
