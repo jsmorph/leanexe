@@ -33,17 +33,17 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
     subst source
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨count, hc, initial, hi, code, hs, rfl⟩ := compiled
+    obtain ⟨first, hf, count, hc, initial, hi, code, hs, rfl⟩ := compiled
     have pair := extractScalarStepWith_invariant P literal binary choice hs
     have both : code.Holds P := pair (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · exact accumulator
       rcases List.mem_cons.mp member with rfl | member
-      · exact scalarRangeOffset_holds P literal binary view.first.number index
+      · exact scalarRangeOffset_holds P binary (expression hf bindings) index
       obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
       exact bindings original present)
-    exact ⟨scalarRangeDistance_holds P literal binary choice view.first.number (expression hc bindings), expression hi bindings, both.1, both.2, accumulator⟩
+    exact ⟨scalarRangeDistance_holds P literal binary choice (expression hf bindings) (expression hc bindings), expression hi bindings, both.1, both.2, accumulator⟩
   | case2 locals body rejected ih =>
     change extractScalarRangeExitWith locals slot (LeanExe.Source.Scalar.Identity.run body) = some plan at compiled
     exact ih (by simpa only [extractScalarRangeExitWith_idRun] using compiled) bindings

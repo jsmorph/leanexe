@@ -60,5 +60,16 @@
   "rangeIntervalJoin",
   "rangeIntervalHigh",
   "rangeIntervalMaxEmpty",
-  "rangeIntervalHugeBreak"
+  "rangeIntervalHugeBreak",
+  "rangeDynamicStart",
+  "rangeDynamicLiteral",
+  "rangeDynamicComputed",
+  "rangeDynamicCapture",
+  "rangeDynamicHigh",
+  "rangeDynamicEmpty",
+  "rangeDynamicEqual",
+  "rangeDynamicHugeBreak",
+  "rangeDynamicContinue",
+  "rangeDynamicJoin",
+  "rangeDynamicChoice"
 ]
