@@ -108,6 +108,21 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.function true f :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letUnitStepFn]; simp [hc, ht, f]⟩
+  | applyResult present _ ih =>
+    obtain ⟨f, hf⟩ := scalarStepResultFunction_lookup (typed ▸ present)
+    obtain ⟨arg, ha⟩ := ih locals typed total
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) arg
+    exact ⟨target, by
+      rw [extractScalarStepWith]
+      simp [hf, ScalarStepBinding.function?, ScalarStepBinding.resultFunction?, ha, ht]⟩
+  | @letResultFn types a b name typeName typeBi paramName paramBi nondep input output _ _ ihf ihb =>
+    have accepts (argument : ScalarStepCode) := ihf (.result argument :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total trivial)
+    obtain ⟨checked, hc⟩ := accepts ⟨.u64 0, .u64 0⟩
+    let f := fun argument => extractScalarStepWith (.result argument :: locals) a
+    obtain ⟨target, ht⟩ := ihb (.resultFunction f :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letResultFn]; simp [hc, ht, f]⟩
   | resultVar present =>
     obtain ⟨code, found⟩ := scalarStepResult_lookup (typed ▸ present)
     exact ⟨code, by rw [extractScalarStepWith]; simp [found, ScalarStepBinding.result?]⟩

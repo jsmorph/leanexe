@@ -40,5 +40,11 @@
   "rangeStepBind",
   "rangeStepIdLet",
   "rangeStepUnused",
-  "rangeStepWrappedBind"
+  "rangeStepWrappedBind",
+  "rangeStepJoined",
+  "rangeResultFunction",
+  "rangeResultChained",
+  "rangeResultCapture",
+  "rangeResultUnused",
+  "rangeResultWrapped"
 ]
