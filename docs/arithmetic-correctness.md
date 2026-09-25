@@ -60,7 +60,7 @@ top-level helper calls remain separate capabilities.
 A function may also contain one ascending `for i in [:count.toNat]` loop with
 one UInt64 accumulator. The stop is a supported UInt64 expression; iteration
 starts at zero and has unit step. Steps may yield or finish early with `break`. The source index retains its
-Nat type and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
+Nat type, including Lean borrowing metadata on that type, and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
 bindings and arithmetic may precede and follow the loop. The step supports
 UInt64 bindings and updates, direct supported local-function bindings, and
 supported scalar expressions on their right hand sides. Functions can capture
@@ -77,7 +77,7 @@ preserving input domains, binder positions and captured values. Both branches
 and every continuation body are checked, including unused continuations.
 `continue` yields the current accumulator and advances the range index.
 `break` returns the current accumulator, including updates made before it.
-The early-exit path also accepts explicit standard `ForInStep.done`/`yield`
+The early-exit path also accepts explicit standard `pure (ForInStep.done …)`/`pure (ForInStep.yield …)`
 results and local functions returning them, with the same unary and Unit-prefixed
 shapes. Scalar and step-valued functions have distinct binding kinds; both
 compiled projections describe the same native step result. Additional

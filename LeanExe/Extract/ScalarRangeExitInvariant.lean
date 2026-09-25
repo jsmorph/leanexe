@@ -29,7 +29,7 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact bindings binding member
   induction locals, source using extractScalarRangeExitWith.induct generalizing plan with
   | case1 locals source view matched =>
-    have same := scalarRange_sound matched
+    have same := scalarRangeExit_sound matched
     subst source
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
