@@ -1,0 +1,11 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_not.lean:69:33: error: Application type mismatch: The argument
+  boolNotDecision !x == y
+has type
+  Decidable ((!x == y) = true)
+but is expected to have type
+  Decidable ((!decide ((x == y) = true)) = true)
+in the application
+  @ite UInt64 ((!decide ((x == y) = true)) = true) (boolNotDecision !x == y)
+208 native/Boolean-not IR comparisons and three rejection tests passed

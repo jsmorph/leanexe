@@ -322,14 +322,21 @@ acceptance, preservation and invariants. All 240 focused native Lean/IR comparis
 and five rejection tests passed. All 91 preceding range modules retained identical
 bytes. General type validation passed; unrelated suites were not rebuilt.
 
-Current increment: Boolean `!` over standard UInt64 equality/inequality guards,
-including repeated negation and combination with propositional `¬`. Independent
-Boolean syntax and native semantics preserve exact standard BEq and decision
-evidence. Recognition, polarity lowering and public source/IR extraction pass
-Lean checking. Eight pure and four range declarations cover nesting, computed
-operands, functions, monadic binds, break, continue and step-result joins.
-The complete compiler proof, type validation and full execution group follow
-this candidate checkpoint because shared comparison extraction changed.
+Completed next increment: Boolean `!` over standard UInt64 equality/inequality
+guards, including repeated negation and combination with propositional `¬`.
+Candidate `3c620953` passed all nine general compiler audits and 3,298 matching
+native Lean/V8 results across the full 165-declaration group, including admission
+and reserved exports. Evidence is in `proofs/compiler/boolean-not-2026-09-25/`.
+Independent Boolean syntax and native semantics preserve exact standard BEq
+and decision evidence. The polarity lowering, encoding and type validation are
+checked. All 208 focused native Lean/IR comparisons and three rejection tests
+passed, covering pure/monadic branches, local functions, computed operands,
+break, continue and result joins. All 153 preceding modules kept identical bytes.
+
+Next incremental capability: local scalar helpers defined before a range loop,
+with lexical captures available to its bounds, initial value, body and final
+result. Reuse the checked unary, binary and Unit-prefixed binding forms. Complete
+the source/IR proof and range compiler execution checks before another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
