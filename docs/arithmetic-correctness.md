@@ -453,3 +453,10 @@ adds captured local functions defined before loops. All nine audits, 2,737
 native Lean/V8 comparisons across 115 range declarations, 240 focused native
 Lean/IR comparisons and four rejection tests passed. All 105 preceding range
 modules retained identical bytes.
+
+
+The [ordinary lets of loop results increment](../proofs/compiler/range-let-results-2026-09-25/README.md)
+adds pure continuations after a loop-valued UInt64 binding. All nine audits,
+2,977 native Lean/V8 comparisons across 125 range declarations, 240 focused
+native Lean/IR comparisons and three rejection tests passed. All 115 preceding
+range modules retained identical bytes.
