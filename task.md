@@ -481,8 +481,13 @@ values and unused body checking share list-based binding rules. The affected
 source totality, extraction acceptance/support/correctness and invariant proofs
 pass, including the function extractor. Definitions and expression equations
 now live in ScalarExprCore so their checks can run separately from the proofs.
-Focused native/IR and V8 tests and the full nine compiler audits follow; this
-increment is not yet complete. Step-valued helper arities remain separate.
+All 256 new native Lean/IR comparisons, four declaration rejection tests and
+two raw arity rejection tests pass. The updated existing local-function test
+also passes 140 comparisons and three rejection tests; its formerly rejected
+three-argument helper is now a positive case. The fixed finite-arity execution
+group contains fourteen new declarations and seventeen preceding cases. Full
+nine compiler audits and V8 checks follow; this increment is not yet complete.
+Step-valued helper arities remain separate.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

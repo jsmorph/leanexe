@@ -102,7 +102,7 @@ helper bodies remain rejected. This extends monadic and result annotations;
 ordinary scalar lets and function argument declarations still use their existing
 concrete UInt64 syntax.
 
-Local functions of one or two UInt64 arguments and a UInt64 result with retained Id layers are
+Local functions with any finite positive number of UInt64 arguments and a UInt64 result with retained Id layers are
 supported when their bodies belong to this same grammar. They capture bindings
 where they are defined, so later shadowing does not change the captured values.
 Functions may call previously bound functions or introduce further local
@@ -118,7 +118,9 @@ share the same unit-binding semantics and proofs. Function types and lambda
 domains retain their exact admitted spelling; higher PUnit universes remain
 excluded. Bodies are checked even when unused. These have a distinct binding
 kind from ordinary unary functions.
-Functions with three or more arguments, partial applications, function-valued parameters/results and
+Calls must supply exactly the declared number of arguments, in source order.
+All arguments are checked and evaluated, including ones unused by the body.
+Partial applications, function-valued parameters/results and
 top-level helper calls remain separate capabilities.
 
 A function may also contain one ascending `for i in [first:count.toNat]` loop
@@ -140,8 +142,8 @@ unused loop values are still checked. This follows the same evaluation order
 already supported for a monadic bind of the loop result. The step supports
 UInt64 bindings and updates, direct supported local-function bindings, and
 supported scalar expressions on their right hand sides. Functions can capture
-the current index and accumulator; scalar helpers with two UInt64 arguments are
-also supported directly in a step. Updating the accumulator later in the step
+the current index and accumulator; scalar helpers of any finite positive arity
+are supported directly in a step. Updating the accumulator later in the step
 does not change an earlier capture. Unused function bodies are still checked.
 Standard Id monadic UInt64 bindings (`let x ← …`) are also supported in the
 step, including nested pure do computations and unused bound values. The

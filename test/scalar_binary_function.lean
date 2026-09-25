@@ -81,7 +81,8 @@ run_elab do
     (`BinaryFunctionTest.binaryNested, BinaryFunctionTest.binaryNested),
     (`BinaryFunctionTest.binaryChoice, BinaryFunctionTest.binaryChoice),
     (`BinaryFunctionTest.binaryArguments, BinaryFunctionTest.binaryArguments),
-    (`BinaryFunctionTest.binaryWrapped, BinaryFunctionTest.binaryWrapped)]
+    (`BinaryFunctionTest.binaryWrapped, BinaryFunctionTest.binaryWrapped),
+    (`BinaryFunctionTest.ternary, BinaryFunctionTest.ternary)]
   let inputs : List (UInt64 × UInt64) :=
     [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
      (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -101,11 +102,11 @@ run_elab do
       let actual := module_.evalFunc 0 [x, y]
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
-  for name in [`BinaryFunctionTest.unusedUnsupported, `BinaryFunctionTest.ternary,
+  for name in [`BinaryFunctionTest.unusedUnsupported,
       `BinaryFunctionTest.partiallyApplied, `BinaryFunctionTest.wrongDomain] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     let some body := LeanExe.Extract.Core.collectLambdas value 2 | throwError "missing parameters"
     unless (LeanExe.Extract.Core.extractScalarExprWith locals body).isNone do
       throwError "{name}: unsupported function accepted"
-  Lean.logInfo "126 native/binary-function IR comparisons and four rejection tests passed"
+  Lean.logInfo "140 native/local-function IR comparisons and three rejection tests passed"

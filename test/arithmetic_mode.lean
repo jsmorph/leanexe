@@ -1560,6 +1560,120 @@ def idUnusedUnsupported (x y : UInt64) : UInt64 :=
     pure (pure (@Min.min UInt64 ⟨fun b c => b ^^^ c⟩ a y))
   x + y
 
+def manyOrder (x y : UInt64) : UInt64 :=
+  let f := fun a b c : UInt64 => (a - b) / c + a % c
+  f x y (x ^^^ y)
+
+def manyFour (x y : UInt64) : UInt64 :=
+  let f := fun a b c d : UInt64 => ((a - b) <<< c) ^^^ (d >>> b)
+  f x y (y + 1) (x + 7)
+
+def manySix (x y : UInt64) : UInt64 :=
+  let f := fun a b c d e g : UInt64 => a + b * 3 - c * 5 + d * 7 - e * 11 + g * 13 + x
+  f x y 1 2 (x + y) (x - y)
+
+def manyCapture (x y : UInt64) : UInt64 :=
+  let captured := x + 7
+  let f := fun a b c : UInt64 =>
+    let g := fun d e h : UInt64 => captured + a * d - b * e + c * h
+    g y x (a + b)
+  let captured := y + 11
+  f captured x y
+
+def manyChained (x y : UInt64) : UInt64 :=
+  let f := fun a b c : UInt64 => a + b * c
+  let g := fun a b c d e : UInt64 => f (a - b) (c + d) e
+  g (f x y 3) (f y x 5) x y (x ^^^ y)
+
+def manyDo (x y : UInt64) : UInt64 := Id.run do
+  let f : UInt64 → UInt64 → UInt64 → Id UInt64 := fun a b c => do
+    let mut z := a + c
+    if z < b then z := z + x else z := z - y
+    return z ^^^ c
+  let z ← f x y (x + 1)
+  return f y z (y + 7)
+
+def manyId (x y : UInt64) : UInt64 :=
+  let f : UInt64 → UInt64 → UInt64 → UInt64 → Id (Id UInt64) :=
+    fun a b c d => pure (pure (if a < b ∧ c != d then min a d else max b c))
+  @Id.run (Id UInt64) (f x y (x + y) (x - y))
+
+def manyUnused (x y : UInt64) : UInt64 :=
+  let _f := fun a b c d e : UInt64 => (a + x) / (b - y) + c * d - e
+  x ^^^ y
+
+def rangeManyStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y z : UInt64 => x + y * 3 - z + UInt64.ofNat i
+    let z := f a seed (UInt64.ofNat i)
+    if z % 3 == 1 then continue
+    a := z + 1
+    if a % 7 == 0 then break
+  return a
+
+def rangeManyOuter (count seed : UInt64) : UInt64 :=
+  let bound := fun a b c : UInt64 => min a b + c
+  let f := fun a b c d : UInt64 => a + b * c - d
+  Id.run do
+    let mut a := f seed count 2 1
+    for i in [:(bound count 31 0).toNat] do
+      a := f a (UInt64.ofNat i) 3 seed
+      if a % 7 == 0 then break
+    return f a seed count 11
+
+def rangeManyYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y z : UInt64 => x + y * z
+    a := f a (UInt64.ofNat i) (seed + 1)
+  return a
+
+def rangeManyStride (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:3] do
+    let f := fun x y z u v : UInt64 => x + y * z - u + v + UInt64.ofNat i
+    a := f a seed 3 7 11
+    if a % 5 == 0 then continue
+    a := a + 1
+  return a
+
+def rangeManyGuard (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun x y z : UInt64 => x ^^^ (y + z)
+    if f a seed (UInt64.ofNat i) < 7 ∨ (f seed a 1 == 0 ∧ True) then continue
+    a := f a (UInt64.ofNat i) 3
+    if a % 11 == 0 then break
+  return a
+
+def rangeManyResult (count seed : UInt64) : UInt64 :=
+  let f : UInt64 → UInt64 → UInt64 → UInt64 → Id UInt64 :=
+    fun a b c d => pure (a * b + c - d)
+  Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + UInt64.ofNat i + 1
+      if a % 5 == 0 then break
+    return f a seed count 7
+
+def manyUnusedUnsupported (x y : UInt64) : UInt64 :=
+  let _f := fun a b c : UInt64 => UInt64.ofNat ((toString a).length) + b + c
+  x + y
+
+def manyWrongDomain (x y : UInt64) : UInt64 :=
+  let _f := fun (a b c : UInt64) (d : Nat) => a + b + c + UInt64.ofNat d
+  x + y
+
+def manyIgnoredOperand (x y : UInt64) : UInt64 :=
+  let f := fun (a b _c : UInt64) => a + b
+  f x y (UInt64.ofNat ((toString x).length))
+
+def manyPartial (x y : UInt64) : UInt64 :=
+  let f := fun a b c : UInt64 => a + b + c
+  let g := f x
+  g y x
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -1991,7 +2105,21 @@ run_elab do
       `ArithmeticModeTest.rangeIdWrapped,
       `ArithmeticModeTest.rangeIdBindLeft,
       `ArithmeticModeTest.rangeIdBindRight,
-      `ArithmeticModeTest.rangeIdStepHelper] do
+      `ArithmeticModeTest.rangeIdStepHelper,
+      `ArithmeticModeTest.manyOrder,
+      `ArithmeticModeTest.manyFour,
+      `ArithmeticModeTest.manySix,
+      `ArithmeticModeTest.manyCapture,
+      `ArithmeticModeTest.manyChained,
+      `ArithmeticModeTest.manyDo,
+      `ArithmeticModeTest.manyId,
+      `ArithmeticModeTest.manyUnused,
+      `ArithmeticModeTest.rangeManyStep,
+      `ArithmeticModeTest.rangeManyOuter,
+      `ArithmeticModeTest.rangeManyYield,
+      `ArithmeticModeTest.rangeManyStride,
+      `ArithmeticModeTest.rangeManyGuard,
+      `ArithmeticModeTest.rangeManyResult] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -2009,6 +2137,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.manyUnusedUnsupported, `ArithmeticModeTest.manyWrongDomain, `ArithmeticModeTest.manyPartial, `ArithmeticModeTest.manyIgnoredOperand,
       `ArithmeticModeTest.idCustomPure, `ArithmeticModeTest.idCustomBind, `ArithmeticModeTest.idUnusedUnsupported,
       `ArithmeticModeTest.punitHigherUniverse, `ArithmeticModeTest.punitUnsupportedBody, `ArithmeticModeTest.punitUnusedUnsupported,
       `ArithmeticModeTest.literalInactiveUnsupported, `ArithmeticModeTest.literalCustomDecision, `ArithmeticModeTest.literalUnusedUnsupported,
