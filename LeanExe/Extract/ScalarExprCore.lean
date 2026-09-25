@@ -1,6 +1,6 @@
 import Lean.Meta.Tactic.FunInd
 import LeanExe.Extract.ScalarBooleanBind
-import LeanExe.Extract.ScalarLiteralInstance
+import LeanExe.Extract.ScalarTypedLiteralInstance
 import LeanExe.Extract.ScalarCall
 import LeanExe.Extract.ScalarArguments
 import LeanExe.Extract.ScalarManyFunction
@@ -30,10 +30,13 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       match naturalLiteral? numeral with
       | some n => some (.u64 n)
       | none => none
-  | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) numeral) evidence =>
-      match naturalLiteral? numeral with
-      | some n => if literalInstance? n evidence 0 then some (.u64 n) else none
+  | .app (.app (.app (.const ``OfNat.ofNat [.zero]) sourceType) numeral) evidence =>
+      match scalarResultType? sourceType with
       | none => none
+      | some type =>
+          match naturalLiteral? numeral with
+          | some n => if typedLiteralInstance? n type evidence then some (.u64 n) else none
+          | none => none
   | .app (.app (.const ``Id.run [.zero]) sourceType) body =>
       match scalarResultType? sourceType with
       | none => none
@@ -233,6 +236,8 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           let condition ← extractBooleanLocalWith locals expression
             (fun operand _member => extractScalarExprWith locals operand)
           pure (guardWord condition)
+  | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
+      extractScalarExprWith locals (.letE name type value body nondep)
   | .mdata _ body => extractScalarExprWith locals body
   | _ => none
 termination_by source => sizeOf source
@@ -499,13 +504,28 @@ theorem extractScalarExprWith_naturalLiteral (locals : List ScalarBinding) (leve
   | metadata literal =>
     simp [extractScalarExprWith, naturalLiteral_accepts (.metadata literal)]
 
+theorem extractScalarExprWith_idLet (locals : List ScalarBinding)
+    (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.idLetExpr name type value body nondep) =
+      extractScalarExprWith locals (.letE name type value body nondep) := by
+  rw [LeanExe.Source.Scalar.idLetExpr, extractScalarExprWith]
+
+theorem extractScalarExprWith_ofNatTyped (locals : List ScalarBinding)
+    {n : Nat} {type : LeanExe.Source.Scalar.ResultType} {numeral evidence : Lean.Expr}
+    (numberMeaning : LeanExe.Source.Scalar.NaturalLiteral n numeral)
+    (instanceMeaning : LeanExe.Source.Scalar.TypedLiteralInstance n type evidence) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.typedLiteralExpr type numeral evidence) =
+      some (.u64 n) := by
+  rw [LeanExe.Source.Scalar.typedLiteralExpr, extractScalarExprWith,
+    scalarResultType_accepts, naturalLiteral_accepts numberMeaning]
+  simp [typedLiteralInstance_accepts instanceMeaning]
+
 theorem extractScalarExprWith_ofNatNatural (locals : List ScalarBinding)
     {n : Nat} {numeral evidence : Lean.Expr}
     (numberMeaning : LeanExe.Source.Scalar.NaturalLiteral n numeral)
     (instanceMeaning : LeanExe.Source.Scalar.LiteralInstance n 0 evidence) :
     extractScalarExprWith locals (.app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) numeral) evidence) = some (.u64 n) := by
-  rw [extractScalarExprWith, naturalLiteral_accepts numberMeaning]
-  simp [literalInstance_accepts instanceMeaning]
+  exact extractScalarExprWith_ofNatTyped locals numberMeaning (.word instanceMeaning)
 
 theorem extractScalarExprWith_ofNatInstance (locals : List ScalarBinding)
     {n : Nat} {evidence : Lean.Expr} (meaning : LeanExe.Source.Scalar.LiteralInstance n 0 evidence) :
@@ -514,7 +534,7 @@ theorem extractScalarExprWith_ofNatInstance (locals : List ScalarBinding)
 
 @[simp] theorem extractScalarExprWith_literalExpr (locals : List ScalarBinding) (n : Nat) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) := by
-  simp [extractScalarExprWith, LeanExe.Source.Scalar.literalExpr, literalInstance?, naturalLiteral?]
+  exact extractScalarExprWith_ofNatInstance locals .standard
 
 theorem extractScalarExpr_binary {head : Lean.Expr} {f : UInt64 → UInt64 → UInt64}
     (h : LeanExe.Source.Scalar.Head head f) (locals : List Nat) (a b : Lean.Expr) :
