@@ -172,10 +172,17 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       | some function => do
           let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) argument
           function value
-      | none => do
-          let function ← locals[index]?.bind ScalarStepBinding.resultFunction?
-          let value ← extractScalarStepWith locals argument
-          function value
+      | none =>
+          match locals[index]?.bind ScalarStepBinding.booleanFunction? with
+          | some function => do
+              let expression ← booleanLocalOperands? argument
+              let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) expression
+                (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+              function (guardWord c)
+          | none => do
+              let function ← locals[index]?.bind ScalarStepBinding.resultFunction?
+              let value ← extractScalarStepWith locals argument
+              function value
   | .app (.app (.const ``ForInStep.yield [.zero]) (.const ``UInt64 [])) value => do
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       pure { value, done := .u64 0 }
@@ -187,6 +194,22 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       match scalarStepResultType? type with
       | none => none
       | some _ => extractScalarStepWith locals body
+  | .letE _ (.forallE _ (.const ``Bool []) resultType _)
+      (.lam _ (.const ``Bool []) value _) body _ =>
+      match scalarResultType? resultType with
+      | some _ => do
+          let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) value
+          let function := ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) value
+          extractScalarStepWith (.scalar function :: locals) body
+      | none =>
+          match scalarStepResultType? resultType with
+          | none => none
+          | some _ => do
+              let _ ← extractScalarStepWith (.scalar (.boolean (.u64 0)) :: locals) value
+              let function := ScalarStepBinding.booleanFunction fun argument =>
+                extractScalarStepWith (.scalar (.boolean argument) :: locals) value
+              extractScalarStepWith (function :: locals) body
   | .letE _ (.forallE _ input output _) (.lam _ domain value _) body _ =>
       if input = domain then
         match scalarStepResultType? input, scalarStepResultType? output with

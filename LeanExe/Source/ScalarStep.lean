@@ -78,6 +78,12 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
+  | letBooleanFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.boolean x :: values.map Value.toScalar) (f x))
+      (body : Eval b (.scalar (.booleanFunction f) :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep) values outcome
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : ∀ x, EvalWith a (.word x :: .unit :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.function true f) :: values) outcome) :
@@ -108,6 +114,11 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
+  | applyBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      (function : values[index]? = some (.booleanFunction f))
+      (variables : expression.VariablesMean (values.map Value.toScalar) booleans)
+      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand)) :
+      Eval (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
   | apply (function : values[index]? = some (.function false f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
       Eval (.app (.bvar index) a) values (f x)
@@ -120,6 +131,12 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
+  | letBooleanStepFn (type : ResultAnnotation)
+      (function : ∀ x, Eval a (.scalar (.boolean x) :: values) (f x))
+      (body : Eval b (.booleanFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``Bool []) (resultType type) typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep) values outcome
   | letUnitStepFn (type : ResultAnnotation) (unitForm : UnitSyntax)
       (function : ∀ x, Eval a (.scalar (.word x) :: .scalar .unit :: values) (f x))
       (body : Eval b (.function true f :: values) outcome) :
@@ -220,6 +237,12 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letBooleanFn (type : ResultType)
+      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) a)
+      (body : Supported (.scalar (.booleanFunction) :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep)
   | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
       (function : SupportedWith (.word :: .unit :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.function true) :: types) b) :
@@ -249,6 +272,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | applyBoolean (expression : BooleanLocal)
+      (function : types[index]? = some .booleanFunction)
+      (variables : expression.VariablesTyped (types.map BindingKind.toScalar))
+      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith (types.map BindingKind.toScalar) operand) :
+      Supported types (.app (.bvar index) expression.expr)
   | apply (function : types[index]? = some (.function false))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (.app (.bvar index) a)
@@ -260,6 +288,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letBooleanStepFn (type : ResultAnnotation) (function : Supported (.scalar .boolean :: types) a)
+      (body : Supported (.booleanFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``Bool []) (resultType type) typeBi)
+        (.lam paramName (.const ``Bool []) a paramBi) b nondep)
   | letUnitStepFn (type : ResultAnnotation) (unitForm : UnitSyntax)
       (function : Supported (.scalar .word :: .scalar .unit :: types) a)
       (body : Supported (.function true :: types) b) :
@@ -420,6 +453,12 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function false f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letFn type (fun x => (total x).choose_spec) evaluated⟩
+  | letBooleanFn type function _ ih =>
+    have total := fun x => function.evaluates (.boolean x :: values.map Value.toScalar)
+      (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanFunction f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
+    exact ⟨outcome, .letBooleanFn type (fun x => (total x).choose_spec) evaluated⟩
   | letUnitFn type unitForm function _ ih =>
     have total := fun x => function.evaluates (.word x :: .unit :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)
@@ -460,6 +499,15 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x y => (total x y).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letBinaryStepFn type (fun x y => (total x y).choose_spec) evaluated⟩
+  | applyBoolean expression present variables arguments =>
+    obtain ⟨f, hf⟩ := booleanFunction_lookup typed present
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates (values.map Value.toScalar) (typed_projection typed)
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ expression.operands then ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose else 0
+    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose_spec
+    exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
@@ -473,6 +521,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letStepFn type (fun x => (total x).choose_spec) evaluated⟩
+  | letBooleanStepFn type _ _ ihf ihb =>
+    have total := fun x => ihf (.scalar (.boolean x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ihb (.booleanFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letBooleanStepFn type (fun x => (total x).choose_spec) evaluated⟩
   | letUnitStepFn type unitForm _ _ ihf ihb =>
     have total := fun x => ihf (.scalar (.word x) :: .scalar .unit :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     let f := fun x => (total x).choose
