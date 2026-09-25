@@ -752,22 +752,26 @@ Eighteen selected prior modules kept identical bytes. Evidence is retained in
 `proofs/compiler/boolean-word-let-2026-09-25/`. The corpus has 600 declarations;
 this was a focused run. No emitter/runtime changes; pure computations may repeat.
 
-Current increment: standard Id type annotations on Boolean and UInt64 let
-bindings inside Boolean expressions. Two initial probe drafts were invalid Lean;
-their sources/logs are retained. The corrected five probes are valid Lean and
-currently reject. Word uses explicitly unwrap Id; Boolean operations have fixed
-Bool argument types. Exact nested Id annotations live in the source binding forms. The first execution
-fixture exposed that generated scalar operands also need underlying Bool/UInt64
-binding types, because scalar let extraction accepts those base types. Derived
-operands now use those types while the original annotation remains in source
-syntax. Size and annotation-independent evaluation proofs justify this rule;
-type-family disjointness and all lowering/type-scope proofs pass. The initial
-fixture failure is retained. A second failure in the unchanged shadowing example
-showed Lean can annotate an arithmetic operation’s result type with nested Id.
-The primitive-head relation and parser now admit that type family for all ten
-operations while retaining exact UInt64 inputs and standard instance evidence.
-Recognition, source reconstruction and scalar integration proofs pass. The second
-failure and diagnostic are retained. Integration and execution are being rerun; general audits and documentation remain in progress. Nested Boolean Id operations,
+Completed next increment: standard Id type annotations on Boolean/UInt64 lets
+inside Boolean expressions, including nested Id layers. Exact annotations remain
+in source syntax; derived scalar operands use underlying types with checked
+size and annotation-independent evaluation rules. Two execution failures exposed generated operand types and annotated arithmetic
+result types; both are retained and the fixture was unchanged by the fixes. All
+ten word operations admit the latter with exact inputs and instance evidence;
+a focused test passed 420 native/IR comparisons and 100 malformed-head rejections.
+Two earlier invalid probe drafts are also retained separately from the five valid
+pre-implementation examples, which now compile unchanged. Candidate `1feb91fb`
+passed all nine audits and 623 native Lean/V8 comparisons across 34 declarations.
+The focused fixture passed 304 native/IR comparisons and 100 rejections. Prior
+word-let and Boolean-let fixtures passed unchanged with 304/318 comparisons and
+68/39 rejections. Eighteen selected prior modules kept identical bytes. Evidence
+is in `proofs/compiler/boolean-let-annotation-2026-09-25/`. The full corpus has
+616 declarations; this was a focused run. No emitter/runtime changes.
+
+Next increment: standard Boolean Id.run and pure operations nested inside Boolean
+expressions. Preserve the existing outer action/metadata forms while making the
+operations compose through bindings, operators, choices and loop code. Complete
+source/parser/lowering proofs and execution before the next capability.
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 

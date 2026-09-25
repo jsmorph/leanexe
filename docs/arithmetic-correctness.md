@@ -137,6 +137,10 @@ UInt64 bindings inside Boolean results use the same scope-preserving approach.
 Word and flag bindings can mix and nest. The source type condition recursively
 forbids direct Boolean reads of word slots, and successful extraction proves that
 condition; scalar operands retain their original word binding context.
+These Boolean/word let annotations also admit standard Id layers. Original
+annotations remain in the exact source syntax; derived scalar operands use the
+underlying binder type, preserving value and scope. Checked type-size and
+annotation-independent evaluation rules justify that representation.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -924,3 +928,15 @@ passed 318 comparisons and 39 rejections. Prior dependent-choice tests passed
 unchanged with 304 comparisons and 76 rejections. Five original examples now
 compile unchanged; eighteen selected prior modules kept identical bytes. The
 full corpus has 600 declarations; this execution run was focused.
+
+The [annotated-let increment](../proofs/compiler/boolean-let-annotation-2026-09-25/README.md)
+adds standard nested Id annotations on Boolean/word bindings inside Boolean
+expressions. Candidate `1feb91fb` passed all nine audits and 623 native Lean/V8
+comparisons across 34 declarations. The focused fixture passed 304 native/IR
+comparisons and 100 rejections after correcting generated scalar operand types
+and annotated arithmetic result types; both failures and the unchanged test
+source are retained. A primitive test passed 420 native/IR comparisons and 100
+malformed-head rejections across all ten word operations. Five valid original
+examples now compile unchanged. Prior word-let/Boolean-let fixtures passed
+304/318 comparisons and 68/39 rejections unchanged; eighteen prior modules kept
+identical bytes. The full corpus has 616 declarations; this execution was focused.
