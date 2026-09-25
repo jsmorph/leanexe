@@ -1,0 +1,41 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+protected theorem Nat.zero_lt_one : @LT.lt.{0} Nat instLTNat
+  (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0)))
+  (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) :=
+Nat.zero_lt_succ (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0)))
+def StrideShapes.strideTwo : (n seed : UInt64) → UInt64 :=
+fun (n seed : UInt64) =>
+  @Id.run.{0} UInt64
+    (have a : UInt64 := seed;
+    @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+      (@ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+        (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+          (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+          (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64
+        (Std.Legacy.Range.mk (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) (UInt64.toNat n)
+          (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))) StrideShapes.strideTwo._proof_1)
+        a fun (i : Nat) (__s : UInt64) =>
+        have a : UInt64 := __s;
+        have a : UInt64 :=
+          @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a (UInt64.ofNat i);
+        @Pure.pure.{0, 0} Id.{0}
+          (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+          (ForInStep.{0} UInt64) (@ForInStep.yield.{0} UInt64 a))
+      fun (__s : UInt64) =>
+      have a : UInt64 := __s;
+      @Pure.pure.{0, 0} Id.{0} (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64 a)
+def StrideShapes.strideSeven : (n seed : UInt64) → UInt64 :=
+fun (n seed : UInt64) =>
+  @ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+    (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+      (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+      (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+    UInt64
+    (Std.Legacy.Range.mk (UInt64.toNat n) (@OfNat.ofNat.{0} Nat (nat_lit 31) (instOfNatNat (nat_lit 31)))
+      (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))) StrideShapes.strideSeven._proof_1)
+    seed fun (i : Nat) (a : UInt64) =>
+    @ForInStep.yield.{0} UInt64
+      (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a (UInt64.ofNat i))

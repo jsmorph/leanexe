@@ -287,13 +287,23 @@ accumulators, high indices, empty/equal bounds, break/continue and result joins
 are included. All sixty-two preceding range modules retained identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Current increment: positive literal range strides. Native strided iteration,
-its ceiling-divided iteration count, word arithmetic, source recognition,
-independent support and whole source/IR correctness pass. All 288 focused
-native Lean/IR comparisons across twelve declarations and four rejection tests
-pass. Unit stride retains the existing expressions. Generated erased positivity
-proofs are retained, while numeric positivity and representability are checked
-independently. General compiler audits and actual compiler/V8 checks are pending.
+Completed next increment: positive standard literal range strides.
+Candidate `a98a6517` passed all nine general compiler audits and 2,017 matching
+native Lean/V8 results across eighty-five range declarations, including
+admission and reserved exports. Evidence is in
+`proofs/compiler/range-stride-2026-09-25/`. Native strided traversal, the bounded
+ceiling-divided count and scaled source indices connect to the existing backend.
+All 288 focused native Lean/IR comparisons and four rejection tests passed.
+Uneven distances, dynamic endpoints, captures, high indices, maximal steps,
+empty ranges, break/continue and result joins are included. Explicit stride
+proofs are retained; numeric positivity and representability are checked
+independently. All seventy-three prior range modules kept identical bytes.
+General type validation passed; unrelated suites were not rebuilt.
+
+Next incremental capability: ordinary local functions with two UInt64
+arguments. Preserve captured values and checked unused bodies, with both pure
+and loop-step use. Complete source/IR, general proof and actual compiler tests
+before moving to another capability.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
