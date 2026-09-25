@@ -1,6 +1,7 @@
 import LeanExe.Source.ScalarBooleanLocal
 import LeanExe.Extract.ScalarPropositionGuard
 import LeanExe.Extract.ScalarBooleanProofBodies
+import LeanExe.Extract.ScalarBooleanLetTypes
 
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
@@ -104,13 +105,16 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
       let a ← booleanLocalOperands? left
       let b ← booleanLocalOperands? right
       pure (.equality 0 true a b)
-  | .letE name (.const ``Bool []) value body nondep => do
-      let v ← booleanLocalOperands? value
-      let b ← booleanLocalOperands? body
-      pure (.binding 0 name nondep v b)
-  | .letE name (.const ``UInt64 []) value body nondep => do
-      let b ← booleanLocalOperands? body
-      pure (.wordBinding 0 name nondep value b)
+  | .letE name type value body nondep =>
+      match scalarResultType? type with
+      | some annotation => do
+          let b ← booleanLocalOperands? body
+          pure (.wordBinding 0 name nondep value b annotation)
+      | none => do
+          let annotation ← booleanType? type
+          let v ← booleanLocalOperands? value
+          let b ← booleanLocalOperands? body
+          pure (.binding 0 name nondep v b annotation)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
 decreasing_by

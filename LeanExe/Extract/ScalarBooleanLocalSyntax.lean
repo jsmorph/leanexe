@@ -82,17 +82,15 @@ open LeanExe.Source.Scalar
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
-  | binding n name nondep value body ihv ihb =>
+  | binding n name nondep value body type ihv ihb =>
     induction n with
-    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLetExpr,
-        booleanLocalOperands?, ihv, ihb]
+    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, ihv, ihb]
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
-  | wordBinding n name nondep value body ihb =>
+  | wordBinding n name nondep value body type ihb =>
     induction n with
-    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanWordLetExpr,
-        booleanLocalOperands?, ihb]
+    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, ihb]
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
@@ -257,17 +255,19 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨a, ha, b, hb, rfl⟩ := parsed
     simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanEqualityExpr, ihl ha, ihr hb]
-  | case27 name value body nondep ihv ihb =>
-    rw [booleanLocalOperands?] at parsed
-    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
-    obtain ⟨v, hv, b, hb, rfl⟩ := parsed
-    simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLetExpr, ihv hv, ihb hb]
-  | case28 name value body nondep ihb =>
-    rw [booleanLocalOperands?] at parsed
+  | case27 name type value body nondep annotation found ihb =>
+    rw [booleanLocalOperands?, found] at parsed
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨b, hb, rfl⟩ := parsed
-    simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanWordLetExpr, ihb hb]
-  | case29 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding excludedWordBinding =>
+    have typeShape := scalarResultType_sound found
+    simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanWordLetExpr, typeShape, ihb hb]
+  | case28 name type value body nondep noWord ihv ihb =>
+    rw [booleanLocalOperands?, noWord] at parsed
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨annotation, ht, v, hv, b, hb, rfl⟩ := parsed
+    have typeShape := booleanType_sound ht
+    simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLetExpr, typeShape, ihv hv, ihb hb]
+  | case29 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
@@ -289,7 +289,6 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     · exact excludedEq
     · exact excludedNe
     · exact excludedBinding
-    · exact excludedWordBinding
 
 theorem booleanLocalOperands_size {expression : Lean.Expr} {value : BooleanLocal}
     (parsed : booleanLocalOperands? expression = some value) {operand : Lean.Expr}
@@ -375,26 +374,30 @@ theorem booleanEquality_not_comparison (n : Nat) (unequal : Bool) (a b : Lean.Ex
   | zero => cases unequal <;> rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
 
-theorem booleanLet_not_guard (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) :
-    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanLetExpr name nondep value body)) = none := by
+theorem booleanLet_not_guard (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : BooleanType) :
+    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanLetExpr name nondep value body type)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
 
-theorem booleanLet_not_comparison (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) :
-    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanLetExpr name nondep value body)) = none := by
+theorem booleanLet_not_comparison (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : BooleanType) :
+    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanLetExpr name nondep value body type)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
 
-theorem booleanWordLet_not_guard (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) :
-    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanWordLetExpr name nondep value body)) = none := by
+theorem booleanWordLet_not_guard (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : ResultType) :
+    booleanGuardOperands? (BooleanGuardNegation.expr n (booleanWordLetExpr name nondep value body type)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
 
-theorem booleanWordLet_not_comparison (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) :
-    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanWordLetExpr name nondep value body)) = none := by
+theorem booleanWordLet_not_comparison (n : Nat) (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : ResultType) :
+    booleanComparisonOperands? (BooleanGuardNegation.expr n (booleanWordLetExpr name nondep value body type)) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
@@ -408,8 +411,8 @@ theorem booleanGuardOperands_local_closed (value : BooleanLocal) {guard : Boolea
   | proposition n g t e => simp [BooleanLocal.expr, propositionChoice_not_guard] at parsed
   | dependentChoice n shape unequal a b t e => simp [BooleanLocal.expr, booleanProofBranch_not_guard] at parsed
   | dependentProposition n shape g t e => simp [BooleanLocal.expr, booleanProofBranch_not_guard] at parsed
-  | binding n name nondep value body => simp [BooleanLocal.expr, booleanLet_not_guard] at parsed
-  | wordBinding n name nondep value body => simp [BooleanLocal.expr, booleanWordLet_not_guard] at parsed
+  | binding n name nondep value body type => simp [BooleanLocal.expr, booleanLet_not_guard] at parsed
+  | wordBinding n name nondep value body type => simp [BooleanLocal.expr, booleanWordLet_not_guard] at parsed
   | decision n g => simp [BooleanLocal.expr, decision_not_guard] at parsed
   | equality n unequal a b => simp [BooleanLocal.expr, booleanEquality_not_guard] at parsed
   | relationDecision n unequal a b => simp [BooleanLocal.expr, relationDecision_not_guard] at parsed
@@ -475,12 +478,12 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (expanded : value.ext
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, booleanProofBranch_not_comparison]
-  | binding n name nondep value body =>
+  | binding n name nondep value body type =>
     cases n with
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, booleanLet_not_comparison]
-  | wordBinding n name nondep value body =>
+  | wordBinding n name nondep value body type =>
     cases n with
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
