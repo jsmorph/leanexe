@@ -10,16 +10,18 @@ inductive ScalarBinding where
   | natural (expression : LeanExe.IR.Expr)
   | unit
   | function (withUnit : Bool) (apply : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+  | binaryFunction (apply : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
 
 def ScalarBinding.kind : ScalarBinding → LeanExe.Source.Scalar.BindingKind
   | .word _ => .word
   | .natural _ => .natural
   | .unit => .unit
   | .function withUnit _ => .function withUnit
+  | .binaryFunction _ => .binaryFunction
 
 def ScalarBinding.word? : ScalarBinding → Option LeanExe.IR.Expr
   | .word expression => some expression
-  | .natural _ | .unit | .function _ _ => none
+  | .natural _ | .unit | .function _ _ | .binaryFunction _ => none
 
 /-- A Nat loop index is represented by its explicit UInt64 conversion. -/
 def ScalarBinding.natural? : ScalarBinding → Option LeanExe.IR.Expr
@@ -42,18 +44,20 @@ def ScalarBinding.function? (withUnit : Bool) : ScalarBinding → Option (LeanEx
     {f : LeanExe.IR.Expr → Option LeanExe.IR.Expr} :
     binding.function? withUnit = some f ↔ binding = .function withUnit f := by
   cases binding with
-  | word _ | natural _ | unit => simp [function?]
+  | word _ | natural _ | unit | binaryFunction _ => simp [function?]
   | function shape g => cases shape <;> cases withUnit <;> simp [function?]
 
 def ScalarBinding.Total : ScalarBinding → Prop
   | .word _ | .natural _ => True
   | .unit => True
   | .function _ f => ∀ argument, ∃ target, f argument = some target
+  | .binaryFunction f => ∀ first second, ∃ target, f first second = some target
 
 def ScalarBinding.Holds (P : LeanExe.IR.Expr → Prop) : ScalarBinding → Prop
   | .word expression | .natural expression => P expression
   | .unit => True
   | .function _ f => ∀ argument target, P argument → f argument = some target → P target
+  | .binaryFunction f => ∀ first second target, P first → P second → f first second = some target → P target
 
 def ScalarBinding.Matches (store : LeanExe.IR.ScalarStore) :
     ScalarBinding → LeanExe.Source.Scalar.Value → Prop
@@ -63,6 +67,9 @@ def ScalarBinding.Matches (store : LeanExe.IR.ScalarStore) :
   | .function _ compile, .function _ apply =>
       ∀ argument value target, argument.ScalarEval store value store → compile argument = some target →
         target.ScalarEval store (apply value) store
+  | .binaryFunction compile, .binaryFunction apply =>
+      ∀ first x second y target, first.ScalarEval store x store → second.ScalarEval store y store →
+        compile first second = some target → target.ScalarEval store (apply x y) store
   | _, _ => False
 
 def ScalarBindingsMatch (locals : List ScalarBinding) (values : List LeanExe.Source.Scalar.Value)
@@ -141,7 +148,7 @@ theorem scalarWord_lookup {locals : List ScalarBinding} {index : Nat}
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
   | word target => exact ⟨target, by simp [found, ScalarBinding.word?]⟩
-  | natural _ | unit | function _ _ => cases kind
+  | natural _ | unit | function _ _ | binaryFunction _ => cases kind
 
 theorem scalarNatural_lookup {locals : List ScalarBinding} {index : Nat}
     (present : (locals.map ScalarBinding.kind)[index]? = some .natural) :
@@ -150,7 +157,7 @@ theorem scalarNatural_lookup {locals : List ScalarBinding} {index : Nat}
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
   | natural target => exact ⟨target, by simp [found, ScalarBinding.natural?]⟩
-  | word _ | unit | function _ _ => cases kind
+  | word _ | unit | function _ _ | binaryFunction _ => cases kind
 
 theorem scalarFunction_lookup {locals : List ScalarBinding} {index : Nat} {withUnit : Bool}
     (present : (locals.map ScalarBinding.kind)[index]? = some (.function withUnit)) :
@@ -158,7 +165,47 @@ theorem scalarFunction_lookup {locals : List ScalarBinding} {index : Nat} {withU
   rw [List.getElem?_map] at present
   obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases binding with
-  | word _ | natural _ | unit => cases kind
+  | word _ | natural _ | unit | binaryFunction _ => cases kind
   | function shape f => cases kind; exact ⟨f, found⟩
+
+def ScalarBinding.binaryFunction? : ScalarBinding → Option (LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+  | .binaryFunction f => some f
+  | _ => none
+
+@[simp] theorem ScalarBinding.binaryFunction?_some {binding : ScalarBinding}
+    {f : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr} :
+    binding.binaryFunction? = some f ↔ binding = .binaryFunction f := by
+  cases binding <;> simp [binaryFunction?]
+
+theorem ScalarBindingsMatch.binaryFunction {locals : List ScalarBinding} {values : List LeanExe.Source.Scalar.Value}
+    {store : LeanExe.IR.ScalarStore} {index : Nat}
+    {compile : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr}
+    {apply : UInt64 → UInt64 → UInt64}
+    (bindings : ScalarBindingsMatch locals values store)
+    (compiled : (locals[index]?.bind ScalarBinding.binaryFunction?) = some compile)
+    (source : values[index]? = some (.binaryFunction apply)) :
+    (ScalarBinding.binaryFunction compile).Matches store (.binaryFunction apply) := by
+  obtain ⟨binding, found, matched⟩ := Option.bind_eq_some_iff.mp compiled
+  have same := ScalarBinding.binaryFunction?_some.mp matched
+  subst binding
+  exact bindings index _ _ found source
+
+theorem scalarBinaryFunction_kind {locals : List ScalarBinding} {index : Nat}
+    {f : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr}
+    (found : (locals[index]?.bind ScalarBinding.binaryFunction?) = some f) :
+    (locals.map ScalarBinding.kind)[index]? = some .binaryFunction := by
+  obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+  have same := ScalarBinding.binaryFunction?_some.mp matched
+  subst binding
+  simp [List.getElem?_map, present, ScalarBinding.kind]
+
+theorem scalarBinaryFunction_lookup {locals : List ScalarBinding} {index : Nat}
+    (present : (locals.map ScalarBinding.kind)[index]? = some .binaryFunction) :
+    ∃ f, locals[index]? = some (.binaryFunction f) := by
+  rw [List.getElem?_map] at present
+  obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases binding with
+  | binaryFunction f => exact ⟨f, found⟩
+  | word _ | natural _ | unit | function _ _ => cases kind
 
 end LeanExe.Extract.Core

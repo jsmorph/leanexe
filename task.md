@@ -300,10 +300,14 @@ proofs are retained; numeric positivity and representability are checked
 independently. All seventy-three prior range modules kept identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: ordinary local functions with two UInt64
-arguments. Preserve captured values and checked unused bodies, with both pure
-and loop-step use. Complete source/IR, general proof and actual compiler tests
-before moving to another capability.
+Current increment: ordinary local functions with two UInt64 arguments and
+UInt64/Id UInt64 results. The distinct native/compiled function bindings, typed
+lookups, independent source semantics/support, extraction, both admission
+directions, semantics and scalar invariants pass. All 126 focused native Lean/IR
+comparisons across nine pure declarations and four rejection tests pass. Argument
+order, captures, shadowing, chained/nested functions, Id results and checked
+unused bodies are covered. Definitions inside loop steps, general compiler
+audits and actual compiler/V8 comparisons are still pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
