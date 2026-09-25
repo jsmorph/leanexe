@@ -60,9 +60,9 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     ∃ value, Range.Exit.Eval source values value ∧ plan.Meaning saved value := by
   classical
   induction supported generalizing locals plan values with
-  | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType hc hi hs =>
+  | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType first hc hi hs =>
     change extractScalarRangeExitWith locals saved.length
-      ({ indexType, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body } : ScalarRangeExitView).source = some plan at compiled
+      ({ indexType, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body } : ScalarRangeExitView).source = some plan at compiled
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨countIR, ec, initialIR, ei, code, es, rfl⟩ := compiled
@@ -72,18 +72,30 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
       hs.evaluates (.scalar (.word accumulator) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (by simp [Step.Value.kind, Value.kind, List.map_map, Function.comp_def, ← valuesTyped])
     let f := fun index accumulator => (total index accumulator).choose
-    refine ⟨Range.Exit.iterate f stop.toNat 0 start,
-      .range indexType (.of_scalar sc) si (fun index accumulator => (total index accumulator).choose_spec),
-      stop, start, f, ?_, ?_, ?_, ?_⟩
-    · exact extractScalarExprWith_correct sc ec (bindings 0 0 0 0)
-    · exact extractScalarExprWith_correct si ei (bindings 0 0 stop 0)
+    let distance := UInt64.ofNat (stop.toNat - first.number)
+    have distanceNat : distance.toNat = stop.toNat - first.number :=
+      UInt64.toNat_ofNat_of_lt' (Nat.lt_of_le_of_lt (Nat.sub_le _ _) stop.toNat_lt_size)
+    let shifted := fun index accumulator => f (first.number + index) accumulator
+    have same : Range.Exit.iterate shifted distance.toNat 0 start =
+        Range.Exit.iterate f (stop.toNat - first.number) first.number start := by
+      simpa only [distanceNat, Nat.add_zero] using
+        Range.Exit.shift_iteration f first.number (stop.toNat - first.number) 0 start
+    refine ⟨Range.Exit.iterate f (stop.toNat - first.number) first.number start,
+      .range indexType first (.of_scalar sc) si (fun index accumulator => (total index accumulator).choose_spec),
+      distance, start, shifted, ?_, ?_, ?_, ?_⟩
+    · exact scalarRangeDistance_correct first.fits
+        (extractScalarExprWith_correct sc ec (bindings 0 0 0 0))
+    · exact extractScalarExprWith_correct si ei (bindings 0 0 distance 0)
     · intro index below accumulator flag
-      apply extractScalarStepWith_correct ((total index accumulator).choose_spec) es
+      apply extractScalarStepWith_correct ((total (first.number + index) accumulator).choose_spec) es
       apply ScalarStepBindingsMatch.cons
-      · apply ScalarStepBindingsMatch.cons (bindings accumulator index stop flag).step
-        exact LeanExe.IR.Expr.ScalarEval.local (LeanExe.IR.rangeExitStore_index saved accumulator index stop flag)
-      · exact LeanExe.IR.Expr.ScalarEval.local (LeanExe.IR.rangeExitStore_value saved accumulator index stop flag)
+      · apply ScalarStepBindingsMatch.cons (bindings accumulator index distance flag).step
+        exact scalarRangeOffset_correct first.number index
+          (.local (LeanExe.IR.rangeExitStore_index saved accumulator index distance flag))
+      · exact LeanExe.IR.Expr.ScalarEval.local (LeanExe.IR.rangeExitStore_value saved accumulator index distance flag)
     · intro flag
+      change (LeanExe.IR.Expr.local saved.length).ScalarEval _ _ _
+      rw [same]
       exact .local (LeanExe.IR.rangeExitStore_value _ _ _ _ _)
   | letE sourceValue _ ih =>
     rw [extractScalarRangeExitWith_letE] at compiled

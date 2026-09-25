@@ -1,18 +1,18 @@
 import LeanExe.Source.ScalarStep
 import LeanExe.Source.ScalarRangeExitSyntax
-import LeanExe.Source.ScalarRangeExit
+import LeanExe.Source.ScalarRangeInterval
 
 namespace LeanExe.Source.Scalar.Range.Exit
 
 /-- Native source evaluation of one range with yielding or done steps, with
 pure scalar computations before and after it. -/
 inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
-  | range (indexType : IndexType) (count : Count.Eval countExpr values stop) (initial : EvalWith initialExpr values start)
+  | range (indexType : IndexType) (first : First) (count : Count.Eval countExpr values stop) (initial : EvalWith initialExpr values start)
       (step : ∀ index accumulator, Step.Eval body
         (.scalar (.word accumulator) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (stepFn index accumulator)) :
-      Eval (call indexType countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
-        values (iterate stepFn stop 0 start)
+      Eval (call indexType first countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
+        values (iterate stepFn (stop - first.number) first.number start)
   | letE (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | idRun (body : Eval e values result) : Eval (Identity.run e) values result
@@ -25,11 +25,11 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
 
 /-- Independent source support for a single bounded early-exit range. -/
 inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
-  | range (indexType : IndexType) (count : Count.Supported types countExpr) (initial : SupportedWith types initialExpr)
+  | range (indexType : IndexType) (first : First) (count : Count.Supported types countExpr) (initial : SupportedWith types initialExpr)
       (step : Step.Supported
         (.scalar .word :: .scalar .natural :: types.map Step.BindingKind.scalar) body) :
       Supported types
-        (call indexType countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
+        (call indexType first countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
   | letE (value : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
   | idRun (body : Supported types e) : Supported types (Identity.run e)
@@ -45,14 +45,14 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     (typed : values.map Scalar.Value.kind = types) : ∃ value, Eval expr values value := by
   classical
   induction supported generalizing values with
-  | range indexType count initial step =>
+  | range indexType first count initial step =>
     obtain ⟨stop, hstop⟩ := count.evaluates values typed
     obtain ⟨start, hstart⟩ := initial.evaluates values typed
     have total (index : Nat) (value : UInt64) :=
       step.evaluates (.scalar (.word value) :: .scalar (.natural index) :: values.map Step.Value.scalar)
         (by simp [Step.Value.kind, Scalar.Value.kind, List.map_map, Function.comp_def, ← typed])
     let f := fun index value => (total index value).choose
-    exact ⟨iterate f stop 0 start, .range indexType hstop hstart
+    exact ⟨iterate f (stop - first.number) first.number start, .range indexType first hstop hstart
       (fun index value => (total index value).choose_spec)⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates values typed

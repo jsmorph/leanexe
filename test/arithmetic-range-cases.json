@@ -49,5 +49,16 @@
   "rangeResultWrapped",
   "rangeNegatedBreak",
   "rangeNegatedContinue",
-  "rangeNegatedJoin"
+  "rangeNegatedJoin",
+  "rangeFromOne",
+  "rangeIntervalLiteral",
+  "rangeIntervalEmpty",
+  "rangeIntervalEqual",
+  "rangeIntervalBreak",
+  "rangeIntervalContinue",
+  "rangeIntervalCapture",
+  "rangeIntervalJoin",
+  "rangeIntervalHigh",
+  "rangeIntervalMaxEmpty",
+  "rangeIntervalHugeBreak"
 ]
