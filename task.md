@@ -709,14 +709,17 @@ unchanged and have matching bodies across execution fixtures. Evidence is in
 declarations; this was a focused execution run. No emitter/runtime changes.
 
 Current increment: dependent Boolean-result choices. Five inspected examples
-currently reject. ExprProofBinder now supplies checked structural insertion and
+were rejected before this change. ExprProofBinder now supplies checked structural insertion and
 removal of an unused proof binder, preserving names, metadata, type expressions
 and nested scopes. It proves both reconstruction directions and the size bound
 needed by the recursive parser. The focused test matched Lean's native lifting
 and occurrence checks at 4,452 binder positions; 3,987 successful removals matched
-native lowering, and 465 proof references rejected. Choice source forms, parser
-integration, compiler proofs, end-to-end execution and documentation remain in
-progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
+native lowering, and 465 proof references rejected. Boolean-result dependent
+choice source forms, lowering correctness, parser acceptance/reconstruction and
+source scalar/step/range integration now pass focused Lean builds. The parser
+checks exact proof domains and removes only unused proof binders before parsing
+branch bodies; source reconstruction restores their exact scopes. Compiler
+integration, end-to-end execution and documentation remain in progress. Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
 parameters, broader saved-flag propositions and loops inside helpers remain
 later capabilities.
 
