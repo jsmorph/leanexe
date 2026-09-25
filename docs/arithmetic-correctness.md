@@ -204,3 +204,7 @@ all nine audits, and 254 matching results across twenty declarations.
 The [pure do increment](../proofs/compiler/do-2026-09-25/README.md) adds standard
 Id operations, sequential updates and early returns, with all nine audits and
 339 matching results across twenty-seven declarations.
+
+The [local-function increment](../proofs/compiler/local-functions-2026-09-25/README.md)
+adds lexical captures and branch continuations, with all nine audits and 437
+matching results across thirty-four declarations.

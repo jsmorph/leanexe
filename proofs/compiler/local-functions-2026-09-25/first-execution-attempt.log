@@ -1,0 +1,43 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: passed
+native-results: passed
+compile-constant: passed
+compile-boundConstant: passed
+compile-doConstant: passed
+compile-wrapping: passed
+compile-quotient: passed
+compile-remainder: passed
+compile-shifts: passed
+compile-nested: passed
+compile-order: passed
+compile-bindings: passed
+compile-shadowed: passed
+compile-nestedBindings: passed
+compile-unusedBinding: passed
+compile-compareEq: passed
+compile-compareLt: passed
+compile-compareLe: passed
+compile-compareBEq: passed
+compile-compareBNe: passed
+compile-nestedChoice: passed
+compile-choiceBindings: passed
+compile-choiceOperands: passed
+compile-doReturn: passed
+compile-doBind: passed
+compile-doUpdates: passed
+compile-doEarly: passed
+compile-doNested: passed
+compile-doBranches: passed
+compile-localFunction: passed
+compile-capturedShadow: passed
+compile-chainedFunctions: passed
+compile-nestedFunctions: passed
+compile-unusedFunction: passed
+compile-doJoined: passed
+compile-doBranchUpdates: exit 3
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+lean-wasm: source: command "compile-arithmetic", module "test.ArithmeticMilestone", entry "ArithmeticMilestone.doBranchUpdates", out "/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/arithmetic-check/doBranchUpdates.wasm": unsupported arithmetic source: expected UInt64 arguments and result, UInt64 let bindings, standard Id do operations, literals, arithmetic operators, and conditionals over supported comparisons
+

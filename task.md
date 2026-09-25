@@ -45,18 +45,20 @@ binds. Candidate `140ce818` passed all nine general compiler axiom audits and
 retained in `proofs/compiler/do-2026-09-25/`. Complete standard Id instance
 expressions are checked; no backend emission changes were needed.
 
-In progress: local unary UInt64 functions and the continuation functions Lean
-introduces when a `do` branch joins a following computation. The source model
-now has internal word/function bindings while preserving the public scalar
-parameter and result convention. Source totality, extraction preservation,
-acceptance, successful-admission soundness and backend invariants pass focused
-builds. Function compilation closes over the environment at definition time;
-all function bodies are checked, including unused functions. The first execution
-attempt exposed `Unit → UInt64 → Id UInt64` continuations for branch updates.
-These now have distinct binding kinds and proved source/extraction rules, and
-the full focused extraction build passes. The expanded suite
-has 437 comparisons across thirty-four declarations. Finish execution and final
-general proof checks before moving to loops or broader Boolean forms.
+Completed next increment: local UInt64 functions, lexical captures and the
+continuations introduced by joined `do` branches and branch updates. Candidate
+`d73e047d` passed all nine general compiler axiom audits and 437 native Lean/Wasm
+comparisons across thirty-four declarations. Evidence is retained in
+`proofs/compiler/local-functions-2026-09-25/`. The source model distinguishes
+word/Unit/function bindings internally while preserving the public scalar ABI.
+All function bodies are checked, including unused ones. Plain unary functions
+and the `Unit → UInt64 → result` update-continuation form have distinct binding
+kinds. Other arities and top-level helpers remain outside this increment.
+
+Next increment: bounded range loops with one UInt64 accumulator. Inspect actual
+elaborated range/ForIn syntax, define its source behavior, connect it to the
+production loop emission, and complete the general byte/validation proof and
+execution checks before adding further loop shapes.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
