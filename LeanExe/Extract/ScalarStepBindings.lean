@@ -115,4 +115,44 @@ theorem ScalarStepBindingsMatch.function {locals : List ScalarStepBinding}
   subst binding
   exact bindings index _ _ found source
 
+theorem scalarStepBindings_typed {locals : List ScalarStepBinding}
+    {types : List LeanExe.Source.Scalar.Step.BindingKind}
+    (typed : locals.map ScalarStepBinding.kind = types) :
+    (locals.map ScalarStepBinding.toScalar).map ScalarBinding.kind =
+      types.map LeanExe.Source.Scalar.Step.BindingKind.toScalar := by
+  rw [← typed]
+  simp [List.map_map, Function.comp_def]
+
+theorem scalarStepBindings_total {locals : List ScalarStepBinding}
+    (total : ∀ binding ∈ locals, binding.Total) :
+    ∀ binding ∈ locals.map ScalarStepBinding.toScalar, binding.Total := by
+  intro binding member
+  obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
+  exact ScalarStepBinding.total_toScalar (total original present)
+
+theorem scalarStepBindings_holds {locals : List ScalarStepBinding} {P : LeanExe.IR.Expr → Prop}
+    (holds : ∀ binding ∈ locals, binding.Holds P) :
+    ∀ binding ∈ locals.map ScalarStepBinding.toScalar, binding.Holds P := by
+  intro binding member
+  obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
+  exact ScalarStepBinding.holds_toScalar (holds original present)
+
+theorem scalarStepFunction_lookup {locals : List ScalarStepBinding} {index : Nat} {withUnit : Bool}
+    (present : (locals.map ScalarStepBinding.kind)[index]? = some (.function withUnit)) :
+    ∃ f, locals[index]? = some (.function withUnit f) := by
+  rw [List.getElem?_map] at present
+  obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases binding with
+  | scalar _ => cases kind
+  | function shape f => cases kind; exact ⟨f, found⟩
+
+theorem scalarStepFunction_kind {locals : List ScalarStepBinding} {index : Nat}
+    {f : LeanExe.IR.Expr → Option ScalarStepCode} {withUnit : Bool}
+    (found : (locals[index]?.bind (ScalarStepBinding.function? withUnit)) = some f) :
+    (locals.map ScalarStepBinding.kind)[index]? = some (.function withUnit) := by
+  obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+  have same := ScalarStepBinding.function?_some.mp matched
+  subst binding
+  simp [List.getElem?_map, present, ScalarStepBinding.kind]
+
 end LeanExe.Extract.Core
