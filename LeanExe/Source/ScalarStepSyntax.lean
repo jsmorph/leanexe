@@ -24,4 +24,19 @@ def doneDirect (value : Lean.Expr) : Lean.Expr :=
 def branch (op : Comparison) (type : ResultType) (a b onTrue onFalse : Lean.Expr) : Lean.Expr :=
   Range.branch (resultType type) (op.condition a b) (op.evidence a b) onTrue onFalse
 
+def idRun (body : Lean.Expr) : Lean.Expr :=
+  .app (.app (.const ``Id.run [.zero]) (resultType .word)) body
+
+def idPure (body : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
+    (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero])))) (resultType .word)) body
+
+def bindResult (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+    (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+      (.const ``Id.instMonad [.zero]))) (resultType .word)) (resultType .word)) value)
+    (.lam name (resultType .word) body bi)
+
 end LeanExe.Source.Scalar.Step

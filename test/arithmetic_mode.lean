@@ -155,6 +155,71 @@ def rangeCustomOrder (n seed : UInt64) : UInt64 := Id.run do
     if @LT.lt UInt64 reversedLT a (UInt64.ofNat i) then a := a + 1
   return a
 
+def rangeStepRun (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => Id.run do
+    let x ← pure (a + UInt64.ofNat i)
+    if x % 5 == seed % 5 then return .done (x + 7)
+    return .yield (x * 3 + 1)
+
+def rangeStepPure (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    pure (if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a + 1))
+
+def rangeStepLet (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let result : ForInStep UInt64 :=
+      if UInt64.ofNat i == seed % 3 then .done (a + 7) else .yield (a + UInt64.ofNat i)
+    let alias := result
+    pure alias
+
+def rangeStepCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let result : ForInStep UInt64 :=
+      if a % 5 == seed % 5 then .done (a + 3) else .yield (a + UInt64.ofNat i)
+    let finish : UInt64 → Id (ForInStep UInt64) := fun x =>
+      if x < 7 then pure result else pure (.yield (x + 1))
+    finish (a + 1)
+
+def rangeStepBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == seed % 7 then pure (.done (a + 9)) else pure (.yield (a + 1))
+    let alias ← pure result
+    return alias
+
+def rangeStepIdLet (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let result : Id (ForInStep UInt64) := do
+      let x ← pure (a + UInt64.ofNat i)
+      if x % 7 == seed % 7 then return .done (x + 1)
+      return .yield (x * 3)
+    result
+
+def rangeStepUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let _ignored ← pure (ForInStep.done (a + 99))
+    let result : ForInStep UInt64 := .yield (a + UInt64.ofNat i + 1)
+    return result
+
+def rangeUnusedStepValue (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : ForInStep UInt64 := .done (expression a seed)
+    .yield (a + 1)
+
+def rangeUnusedStepBind (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a => do
+    let _bad ← pure (ForInStep.done (expression a seed))
+    return .yield (a + 1)
+
+def rangeCustomStepPure (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    @Pure.pure Id customPure (ForInStep UInt64)
+      (if a < 7 then .done a else .yield (a + 1))
+
+def rangeCustomStepBind (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    @Bind.bind Id customBind (ForInStep UInt64) (ForInStep UInt64)
+      (pure (.done a)) (fun result => pure result)
+
 end ArithmeticModeTest
 
 run_elab do
@@ -164,7 +229,8 @@ run_elab do
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
-      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral] do
+      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral,
+      `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -179,6 +245,7 @@ run_elab do
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind,
+      `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
