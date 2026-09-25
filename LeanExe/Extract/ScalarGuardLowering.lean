@@ -60,4 +60,34 @@ theorem lowerJunction_choice (P : LeanExe.IR.Expr → Prop)
     (binary _ _ _ (first _ _ (literal 1) (literal 0)) (second _ _ (literal 1) (literal 0)))
     (literal 1) ht he
 
+/-- Each source Not wrapper tests the previous Boolean word against zero. -/
+def lowerGuardNegations : Nat → LeanExe.IR.Cond → LeanExe.IR.Cond
+  | 0, condition => condition
+  | n + 1, condition => .eqU64 (guardWord (lowerGuardNegations n condition)) (.u64 0)
+
+theorem lowerGuardNegations_correct (n : Nat) {condition : LeanExe.IR.Cond}
+    {store : LeanExe.IR.ScalarStore} {value : Bool}
+    (evaluated : condition.ScalarEval store value store) :
+    (lowerGuardNegations n condition).ScalarEval store
+      (LeanExe.Source.Scalar.GuardNegation.denote n value) store := by
+  induction n with
+  | zero => exact evaluated
+  | succ n ih =>
+    have result := LeanExe.IR.Cond.ScalarEval.eq (guardWord_correct ih) (LeanExe.IR.Expr.ScalarEval.const (n := 0))
+    have negates (b : Bool) : (Bool.toUInt64 b == UInt64.ofNat 0) = !b := by cases b <;> rfl
+    rw [negates] at result
+    exact result
+
+theorem lowerGuardNegations_choice (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
+    (n : Nat) (condition : LeanExe.IR.Cond)
+    (preserve : ∀ t e, P t → P e → P (.ite condition t e)) :
+    ∀ t e, P t → P e → P (.ite (lowerGuardNegations n condition) t e) := by
+  induction n with
+  | zero => exact preserve
+  | succ n ih =>
+    intro t e ht he
+    exact choice .eq _ _ _ _ (ih _ _ (literal 1) (literal 0)) (literal 0) ht he
+
 end LeanExe.Extract.Core
