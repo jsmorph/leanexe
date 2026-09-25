@@ -41,6 +41,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       (arguments : ∀ operand, operand ∈ guard.value.operands → EvalWith operand (values.map Value.toScalar) (native operand))
       (branch : Eval (if guard.value.denote native booleans then t else e) values value) :
       Eval (guard.branch (resultType type) t e) values value
+  | chooseBooleanDependent (guard : BooleanLocalGuard) (type : ResultAnnotation)
+      (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
+      {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      (variables : guard.value.VariablesMean (values.map Value.toScalar) booleans)
+      (arguments : ∀ operand, operand ∈ guard.value.operands → EvalWith operand (values.map Value.toScalar) (native operand))
+      (branch : Eval (if guard.value.denote native booleans then t else e) (.scalar .unit :: values) value) :
+      Eval (guard.dependentBranch (resultType type) trueName falseName trueBi falseBi t e) values value
   | letE (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values outcome
@@ -173,6 +180,12 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (arguments : ∀ operand, operand ∈ guard.value.operands → SupportedWith (types.map BindingKind.toScalar) operand)
       (onTrue : Supported types t) (onFalse : Supported types e) :
       Supported types (guard.branch (resultType type) t e)
+  | chooseBooleanDependent (guard : BooleanLocalGuard) (type : ResultAnnotation)
+      (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
+      (variables : guard.value.VariablesTyped (types.map BindingKind.toScalar))
+      (arguments : ∀ operand, operand ∈ guard.value.operands → SupportedWith (types.map BindingKind.toScalar) operand)
+      (onTrue : Supported (.scalar .unit :: types) t) (onFalse : Supported (.scalar .unit :: types) e) :
+      Supported types (guard.dependentBranch (resultType type) trueName falseName trueBi falseBi t e)
   | letE (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
@@ -347,6 +360,20 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     | true =>
       obtain ⟨value, body⟩ := iht values typed
       exact ⟨value, .chooseBoolean guard type hbooleans meanings (by simpa [flag] using body)⟩
+  | chooseBooleanDependent guard type tn fn tb fb variables arguments _ _ iht ihe =>
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates (values.map Value.toScalar) (typed_projection typed)
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ guard.value.operands then ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose else 0
+    have meanings : ∀ operand, operand ∈ guard.value.operands → EvalWith operand (values.map Value.toScalar) (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose_spec
+    cases flag : guard.value.denote native booleans with
+    | false =>
+      obtain ⟨value, body⟩ := ihe (.scalar .unit :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨value, .chooseBooleanDependent guard type tn fn tb fb hbooleans meanings (by simpa [flag] using body)⟩
+    | true =>
+      obtain ⟨value, body⟩ := iht (.scalar .unit :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨value, .chooseBooleanDependent guard type tn fn tb fb hbooleans meanings (by simpa [flag] using body)⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])

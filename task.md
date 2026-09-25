@@ -523,10 +523,11 @@ rejection tests passed. Eighteen selected preceding modules kept identical
 bytes. The full corpus contains 351 declarations; this execution run checked 34.
 General type validation used cached dependencies.
 
-Next increment: allow dependent conditions (`if h : flag then ... else ...`)
-to use saved Boolean locals, retaining exact proof-lambda domains and binder
-scope. Complete that combination through source proofs and focused execution
-before moving to broader Boolean operations or public interfaces.
+Current increment: dependent conditions (`if h : flag then ... else ...`)
+using saved Boolean locals. The exact decision/proof-domain parser, independent
+source totality and all four scalar extraction proofs pass. Loop-step proof
+integration and focused execution are being checked; this increment is not
+yet complete. Preserve erased proof-binder positions in both branches.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
