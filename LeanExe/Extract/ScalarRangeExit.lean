@@ -1,5 +1,6 @@
 import LeanExe.Extract.ScalarStepAcceptance
 import LeanExe.Extract.ScalarStepSupported
+import LeanExe.Extract.ScalarRangeInterval
 import LeanExe.Extract.ScalarRangeExitSyntax
 import LeanExe.Source.ScalarRangeExitSupported
 import LeanExe.IR.ScalarRangeExitSlots
@@ -39,9 +40,9 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
       let count ← extractScalarExprWith locals view.count.scalar
       let initial ← extractScalarExprWith locals view.initial
       let code ← extractScalarStepWith
-        (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
+        (.scalar (.word (.local slot)) :: .scalar (.natural (scalarRangeOffset view.first.number (.local (slot + 1)))) ::
           locals.map ScalarStepBinding.scalar) view.body
-      pure { count, initial, step := code.value, done := code.done, result := .local slot }
+      pure { count := scalarRangeDistance view.first.number count, initial, step := code.value, done := code.done, result := .local slot }
   | none =>
       match source with
       | .app (.app (.const ``Id.run [.zero]) (.const ``UInt64 [])) body =>
@@ -93,9 +94,9 @@ theorem extractScalarRangeExitWith_call (locals : List ScalarBinding) (slot : Na
       let count ← extractScalarExprWith locals view.count.scalar
       let initial ← extractScalarExprWith locals view.initial
       let code ← extractScalarStepWith
-        (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
+        (.scalar (.word (.local slot)) :: .scalar (.natural (scalarRangeOffset view.first.number (.local (slot + 1)))) ::
           locals.map ScalarStepBinding.scalar) view.body
-      pure { count, initial, step := code.value, done := code.done, result := .local slot }) := by
+      pure { count := scalarRangeDistance view.first.number count, initial, step := code.value, done := code.done, result := .local slot }) := by
   rw [extractScalarRangeExitWith.eq_def, scalarRangeExit_accepts]
 
 @[simp] theorem extractScalarRangeExitWith_idRun (locals : List ScalarBinding) (slot : Nat) (body : Lean.Expr) :
@@ -146,11 +147,11 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
     · trivial
     · exact total binding member
   induction supported generalizing locals with
-  | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType hc hi hs =>
+  | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType first hc hi hs =>
     obtain ⟨c, ec⟩ := extractScalarExprWith_accepts hc.scalar locals typed total
     obtain ⟨i, ei⟩ := extractScalarExprWith_accepts hi locals typed total
     obtain ⟨code, es⟩ := extractScalarStepWith_accepts hs
-      (.scalar (.word (.local slot)) :: .scalar (.natural (.local (slot + 1))) ::
+      (.scalar (.word (.local slot)) :: .scalar (.natural (scalarRangeOffset first.number (.local (slot + 1)))) ::
         locals.map ScalarStepBinding.scalar)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, List.map_map, Function.comp_def, ← typed]) (by
         intro binding member
@@ -160,9 +161,9 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
         · trivial
         obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
         exact total original present)
-    refine ⟨{ count := c, initial := i, step := code.value, done := code.done, result := .local slot }, ?_⟩
+    refine ⟨{ count := scalarRangeDistance first.number c, initial := i, step := code.value, done := code.done, result := .local slot }, ?_⟩
     have equation := extractScalarRangeExitWith_call locals slot
-      { indexType, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body }
+      { indexType, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body }
     simpa [ScalarRangeExitView.source, ec, ei, es] using equation
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
@@ -194,7 +195,7 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨count, hc, initial, hi, code, hs, _⟩ := compiled
-    exact .range view.indexType (Range.Exit.Count.Supported.of_scalar _ (extractScalarExprWith_supported hc)) (extractScalarExprWith_supported hi)
+    exact .range view.indexType view.first (Range.Exit.Count.Supported.of_scalar _ (extractScalarExprWith_supported hc)) (extractScalarExprWith_supported hi)
       (by simpa [ScalarStepBinding.kind, ScalarBinding.kind, List.map_map, Function.comp_def]
         using extractScalarStepWith_supported hs)
   | case2 locals body rejected ih =>

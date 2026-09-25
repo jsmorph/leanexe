@@ -513,6 +513,63 @@ def rangeNegatedJoin (count seed : UInt64) : UInt64 :=
     let result ← if ¬ (UInt64.ofNat i < seed % 7) then pure (.done (a + 11)) else pure (.yield (a + 1))
     return result
 
+def rangeFromOne (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat] do
+    a := a * 3 + UInt64.ofNat i
+  return a
+
+def rangeIntervalLiteral (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [3:8] do
+    a := a + UInt64.ofNat i + count
+  return a
+
+def rangeIntervalEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [8:3] seed fun i a => .yield (a + UInt64.ofNat i + count)
+
+def rangeIntervalEqual (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [7:7] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def rangeIntervalBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [5:count.toNat] do
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 7 then break
+    a := a * 3
+  return a
+
+def rangeIntervalContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeIntervalCapture (count seed : UInt64) : UInt64 := Id.run do
+  let delta := seed + 7
+  let mut a := seed * 3
+  for i in [2:(count + 1).toNat] do
+    let f := fun x : UInt64 => x + delta + UInt64.ofNat i
+    a := f a
+  return a - delta
+
+def rangeIntervalJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [3:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == 7 then pure (.done (a + 11)) else pure (.yield (a + UInt64.ofNat i))
+    return result
+
+def rangeIntervalHigh (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [18446744073709551613:18446744073709551615] seed fun i a =>
+    .yield (a + UInt64.ofNat i + count)
+
+def rangeIntervalMaxEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [18446744073709551615:count.toNat] seed fun i a => .done (a + UInt64.ofNat i)
+
+def rangeIntervalHugeBreak (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [2:18446744073709551615] seed fun i a => .done (a + UInt64.ofNat i + count)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -559,7 +616,18 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeResultWrapped", rangeResultWrapped),
    ("rangeNegatedBreak", rangeNegatedBreak),
    ("rangeNegatedContinue", rangeNegatedContinue),
-   ("rangeNegatedJoin", rangeNegatedJoin)]
+   ("rangeNegatedJoin", rangeNegatedJoin),
+   ("rangeFromOne", rangeFromOne),
+   ("rangeIntervalLiteral", rangeIntervalLiteral),
+   ("rangeIntervalEmpty", rangeIntervalEmpty),
+   ("rangeIntervalEqual", rangeIntervalEqual),
+   ("rangeIntervalBreak", rangeIntervalBreak),
+   ("rangeIntervalContinue", rangeIntervalContinue),
+   ("rangeIntervalCapture", rangeIntervalCapture),
+   ("rangeIntervalJoin", rangeIntervalJoin),
+   ("rangeIntervalHigh", rangeIntervalHigh),
+   ("rangeIntervalMaxEmpty", rangeIntervalMaxEmpty),
+   ("rangeIntervalHugeBreak", rangeIntervalHugeBreak)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
