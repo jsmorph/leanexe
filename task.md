@@ -559,8 +559,10 @@ outside the admitted source grammar.
 Current increment: Boolean monadic bindings, such as `let flag ← pure (x == y)`,
 in Id do-blocks, helper bodies, loop steps and computations surrounding a loop.
 The independent Boolean action grammar and parser now have acceptance, exact
-reconstruction and operand-size proofs. Actions retain exact Bool-annotated
-standard Id.pure/Id.run wrappers and metadata around a BooleanLocal leaf. The
+reconstruction and operand-size proofs. Actions retain standard Id.pure/Id.run
+wrappers with Boolean/nested Id annotations and metadata around a BooleanLocal
+leaf. The first focused run exposed an inferred Id Bool action annotation; its
+failure is retained and the annotation parser/proofs now support that form. The
 exact Boolean bind input/domain checker is also proved. Source evaluation,
 support and totality cover scalar, step and outer-loop Boolean binds. Scalar
 production extraction and all four scalar proofs now pass. Step and outer-loop
