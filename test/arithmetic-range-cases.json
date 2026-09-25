@@ -103,5 +103,15 @@
   "rangeBoolNotBreak",
   "rangeBoolNotContinue",
   "rangeBoolNotJoin",
-  "rangeBoolNotFunction"
+  "rangeBoolNotFunction",
+  "rangeOuterUnary",
+  "rangeOuterBinary",
+  "rangeOuterUnit",
+  "rangeOuterCapture",
+  "rangeOuterBounds",
+  "rangeOuterChained",
+  "rangeOuterNested",
+  "rangeOuterDo",
+  "rangeOuterUnused",
+  "rangeOuterStep"
 ]

@@ -598,6 +598,122 @@ def boolNotExternal (x y : UInt64) : Bool := x == y
 def boolNotHelper (x y : UInt64) : UInt64 :=
   if !(boolNotExternal x y) then x + 3 else y - 1
 
+def rangeOuterUnary (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x : UInt64 => x * 3 + seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := f a + UInt64.ofNat i
+  return f a
+
+def rangeOuterBinary (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x y : UInt64 => x * 3 + y - seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := f a (UInt64.ofNat i)
+    if a % 7 == 0 then break
+  return f a count
+
+def rangeOuterUnit (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun (_ : Unit) (x : UInt64) => x + seed + 1
+  let mut a := f () seed
+  for i in [1:count.toNat:2] do
+    a := f () (a + UInt64.ofNat i)
+  return f () a
+
+def rangeOuterCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  let f := fun x : UInt64 => x + a
+  a := a + 17
+  for i in [:count.toNat] do
+    a := f a + UInt64.ofNat i
+    if !(a % 5 != seed % 5) then break
+  return f a
+
+def rangeOuterBounds (count seed : UInt64) : UInt64 := Id.run do
+  let endpoint := fun x y : UInt64 => (x + y) % 7
+  let mut a := endpoint seed count
+  for i in [(endpoint seed 1).toNat:(endpoint count seed + 16).toNat] do
+    a := a + UInt64.ofNat i
+  return endpoint a seed
+
+def rangeOuterChained (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x : UInt64 => x + seed
+  let g := fun x y : UInt64 => f (x * 3) + y
+  let mut a := seed
+  for i in [:count.toNat] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := g a (UInt64.ofNat i)
+  return g a count
+
+def rangeOuterNested (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x y : UInt64 =>
+    let g := fun z : UInt64 => if !(z == x) then z + y else z * 3
+    g seed + g x
+  let mut a := f seed count
+  for i in [:count.toNat] do
+    a := f a (UInt64.ofNat i)
+  return f a seed
+
+def rangeOuterDo (count seed : UInt64) : UInt64 := Id.run do
+  let f : UInt64 → Id UInt64 := fun x => do
+    let z ← if x < seed then pure (x + 3) else pure (x / 3)
+    return z + 1
+  let mut a ← f seed
+  for i in [:count.toNat] do
+    let z ← f a
+    a := z + UInt64.ofNat i
+    if a % 5 == 0 then break
+  let result ← f a
+  return result
+
+def rangeOuterUnused (count seed : UInt64) : UInt64 := Id.run do
+  let _f := fun x y : UInt64 => x / y + seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeOuterStep (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x y : UInt64 => x * 3 + y + seed
+  let result ← forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y => do
+      let z ← pure (f x y)
+      if z % 5 == seed % 5 then return .done (z + 7)
+      return .yield (z + UInt64.ofNat i)
+    finish a seed
+  return f result count
+
+def outerRangeExternal (x : UInt64) : UInt64 := x + 1
+
+def rangeOuterUnsupported (count seed : UInt64) : UInt64 := Id.run do
+  let _f := fun x : UInt64 => outerRangeExternal x
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeOuterThree (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x y z : UInt64 => x + y + z
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := f a seed (UInt64.ofNat i)
+  return a
+
+def rangeOuterNat (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x : Nat => UInt64.ofNat x
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + f i
+  return a
+
+def rangeOuterPartial (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun x y : UInt64 => x + y
+  let g := f seed
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := g a + UInt64.ofNat i
+  return a
+
 def binaryRangeHelper (x : UInt64) : UInt64 := x + 1
 
 def rangeBinaryUnsupported (count seed : UInt64) : UInt64 := Id.run do
@@ -899,7 +1015,17 @@ run_elab do
       `ArithmeticModeTest.rangeBoolNotBreak,
       `ArithmeticModeTest.rangeBoolNotContinue,
       `ArithmeticModeTest.rangeBoolNotJoin,
-      `ArithmeticModeTest.rangeBoolNotFunction] do
+      `ArithmeticModeTest.rangeBoolNotFunction,
+      `ArithmeticModeTest.rangeOuterUnary,
+      `ArithmeticModeTest.rangeOuterBinary,
+      `ArithmeticModeTest.rangeOuterUnit,
+      `ArithmeticModeTest.rangeOuterCapture,
+      `ArithmeticModeTest.rangeOuterBounds,
+      `ArithmeticModeTest.rangeOuterChained,
+      `ArithmeticModeTest.rangeOuterNested,
+      `ArithmeticModeTest.rangeOuterDo,
+      `ArithmeticModeTest.rangeOuterUnused,
+      `ArithmeticModeTest.rangeOuterStep] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -917,6 +1043,7 @@ run_elab do
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.boolNotCustomBEq, `ArithmeticModeTest.boolNotCustomDecision, `ArithmeticModeTest.boolNotHelper,
+      `ArithmeticModeTest.rangeOuterUnsupported, `ArithmeticModeTest.rangeOuterThree, `ArithmeticModeTest.rangeOuterNat, `ArithmeticModeTest.rangeOuterPartial,
       `ArithmeticModeTest.rangeBinaryStepUnsupported, `ArithmeticModeTest.rangeBinaryStepPartial, `ArithmeticModeTest.rangeBinaryStepThree, `ArithmeticModeTest.rangeBinaryStepBool, `ArithmeticModeTest.rangeBinaryStepNat,
       `ArithmeticModeTest.rangeBinaryUnsupported, `ArithmeticModeTest.rangeBinaryPartial,
       `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,

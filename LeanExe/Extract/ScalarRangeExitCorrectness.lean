@@ -136,6 +136,77 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     intro flag
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop flag).cons (resultEval flag))
+  | letFn type function _ ih =>
+    rw [extractScalarRangeExitWith_letFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, hp⟩ := compiled
+    have total (x : UInt64) := function.evaluates (.word x :: values)
+      (by simp [Value.kind, valuesTyped])
+    let f := fun x => (total x).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .function false f :: values) hp
+      (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
+        intro accumulator index stop flag
+        apply (bindings accumulator index stop flag).cons
+        intro argument x target hx hc
+        exact extractScalarExprWith_correct ((total x).choose_spec) hc
+          ((bindings accumulator index stop flag).cons hx)) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · intro argument
+          exact extractScalarExprWith_accepts function (.word argument :: locals)
+            (by simp [ScalarBinding.kind, localsTyped]) (total_word_cons totalBindings argument)
+        · exact totalBindings binding member)
+    exact ⟨result, .letFn type (fun x => (total x).choose_spec) hs, hm⟩
+  | letBinaryFn type function _ ih =>
+    rw [extractScalarRangeExitWith_letBinaryFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, hp⟩ := compiled
+    have total (x y : UInt64) := function.evaluates (.word y :: .word x :: values)
+      (by simp [Value.kind, valuesTyped])
+    let f := fun x y => (total x y).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .binaryFunction f :: values) hp
+      (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
+        intro accumulator index stop flag
+        apply (bindings accumulator index stop flag).cons
+        intro first x second y target hx hy hc
+        exact extractScalarExprWith_correct ((total x y).choose_spec) hc
+          (((bindings accumulator index stop flag).cons (binding := .word first) (value := .word x) hx).cons
+            (binding := .word second) (value := .word y) hy)) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · intro first second
+          exact extractScalarExprWith_accepts function (.word second :: .word first :: locals)
+            (by simp [ScalarBinding.kind, localsTyped])
+            (total_word_cons (total_word_cons totalBindings first) second)
+        · exact totalBindings binding member)
+    exact ⟨result, .letBinaryFn type (fun x y => (total x y).choose_spec) hs, hm⟩
+  | letUnitFn type function _ ih =>
+    rw [extractScalarRangeExitWith_letUnitFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, hp⟩ := compiled
+    have total (x : UInt64) := function.evaluates (.word x :: .unit :: values)
+      (by simp [Value.kind, valuesTyped])
+    let f := fun x => (total x).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .function true f :: values) hp
+      (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
+        intro accumulator index stop flag
+        apply (bindings accumulator index stop flag).cons
+        intro argument x target hx hc
+        exact extractScalarExprWith_correct ((total x).choose_spec) hc
+          (((bindings accumulator index stop flag).cons (binding := .unit) (value := .unit) trivial).cons hx)) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · intro argument
+          apply extractScalarExprWith_accepts function (.word argument :: .unit :: locals)
+            (by simp [ScalarBinding.kind, localsTyped])
+          intro binding member
+          rcases List.mem_cons.mp member with rfl | member
+          · trivial
+          rcases List.mem_cons.mp member with rfl | member
+          · trivial
+          · exact totalBindings binding member
+        · exact totalBindings binding member)
+    exact ⟨result, .letUnitFn type (fun x => (total x).choose_spec) hs, hm⟩
   | metadata _ ih =>
     rw [extractScalarRangeExitWith_metadata] at compiled
     obtain ⟨value, hv, result⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
