@@ -195,5 +195,13 @@
   "rangeBooleanJoined",
   "rangeBooleanOuter",
   "rangeBooleanBounds",
-  "rangeBooleanStep"
+  "rangeBooleanStep",
+  "rangeBooleanDependentYield",
+  "rangeBooleanDependentBreak",
+  "rangeBooleanDependentContinue",
+  "rangeBooleanDependentCapture",
+  "rangeBooleanDependentJoined",
+  "rangeBooleanDependentOuter",
+  "rangeBooleanDependentBounds",
+  "rangeBooleanDependentStep"
 ]

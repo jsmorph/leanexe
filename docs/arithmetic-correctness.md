@@ -79,14 +79,16 @@ rejected. This does not add general Boolean parameters or results.
 
 Ordinary Boolean local bindings admit `let flag := x == y`, aliases, literals,
 standard UInt64 `==`/`!=`, and Boolean `!`, `&&`, and `||`. Boolean and UInt64
-bindings have distinct kinds. An ordinary `if` may read a saved Boolean or a
+bindings have distinct kinds. Both ordinary `if` and dependent `if h : ...`
+may read a saved Boolean or a
 Boolean expression combining saved values with admitted comparison/literal
 leaves. These bindings work in scalar expressions, helper captures, loop steps
 and before a loop. Captures preserve the original flag across later shadowing
 or accumulator updates. Every right-hand side and operand is checked even when
 unused or short-circuited. Boolean values use proved zero/one words internally.
-This increment covers ordinary lets and Boolean conditions; monadic Boolean
-binds, Boolean parameters/results, and propositional/dependent guards containing
+This covers ordinary lets and Boolean conditions, including dependent
+conditions with exact proof domains and erased binder scope. Monadic Boolean
+binds, Boolean parameters/results, and propositional combinations containing
 saved Boolean locals remain separate capabilities.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
