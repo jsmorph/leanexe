@@ -62,6 +62,9 @@ def extractBooleanLocal : (guard : BooleanLocal) →
         let condition ← extractBooleanLocal body (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩)))
         pure (lowerGuardNegations n condition)
       else none
+  | .wrapped n _ body, compileVariables, compile => do
+      let condition ← extractBooleanLocal body compileVariables compile
+      pure (lowerGuardNegations n condition)
   | .decision n g, _, compile => do
       let condition ← extractGuard g.value compile
       pure (lowerGuardNegations n condition)
@@ -148,6 +151,10 @@ theorem extractBooleanLocal_accepts (guard : BooleanLocal)
     obtain ⟨condition, hb⟩ := ihb (booleanWordLetLookup body.variables noLocal compileVariables) (fun operand member => compile (booleanWordLetExpr name nondep value operand) (List.mem_cons_of_mem _ (List.mem_map.mpr ⟨operand, member, rfl⟩))) wellScoped.2
       (booleanWordLetLookup_accepts _ _ _ totalVariables) (fun operand member => total _ _)
     exact ⟨lowerGuardNegations n condition, by simp [extractBooleanLocal, noLocal, hv, hb]⟩
+  | wrapped n wrapper body ih =>
+    obtain ⟨condition, hc⟩ := ih compileVariables compile wellScoped totalVariables total
+    exact ⟨lowerGuardNegations n condition, by simp [extractBooleanLocal, hc]⟩
+
 
 theorem extractBooleanLocal_operands (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -228,6 +235,11 @@ theorem extractBooleanLocal_operands (guard : BooleanLocal)
       · subst operand; exact ⟨word, hv⟩
       · subst operand; exact ihb _ _ hb inner innerMember
     · contradiction
+  | wrapped n wrapper body ih =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact ih compileVariables compile hc
+
 
 theorem extractBooleanLocal_variables (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -295,6 +307,11 @@ theorem extractBooleanLocal_variables (guard : BooleanLocal)
       obtain ⟨word, hv, condition, hb, _⟩ := compiled
       exact booleanWordLetLookup_external _ _ _ (ihb _ _ hb)
     · contradiction
+  | wrapped n wrapper body ih =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact ih compileVariables compile hc
+
 
 theorem extractBooleanLocal_scoped (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -328,6 +345,11 @@ theorem extractBooleanLocal_scoped (guard : BooleanLocal)
       obtain ⟨word, hv, condition, hb, _⟩ := compiled
       exact ⟨noLocal, ihb _ _ hb⟩
     · contradiction
+  | wrapped n wrapper body ih =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact ih compileVariables compile hc
+
 
 theorem extractBooleanLocal_correct (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
@@ -427,6 +449,12 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
         (booleanWordLetLookup_correct _ _ _ _ _ booleanMeanings)
         (fun operand member expression found => meanings _ _ _ found)
     · contradiction
+  | wrapped n wrapper body ih =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    simpa only [BooleanLocal.denote, LeanExe.Source.Scalar.BooleanWrapper.denote_eq] using
+      lowerGuardNegations_correct n (ih compileVariables compile native booleans hc booleanMeanings meanings)
+
 
 theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -525,5 +553,11 @@ theorem extractBooleanLocal_choice (P : LeanExe.IR.Expr → Prop)
         (ihb _ _ hb (booleanWordLetLookup_holds P _ _ _ variables)
           (fun operand member expression found => operands _ _ _ found))
     · contradiction
+  | wrapped n wrapper body ih =>
+    simp only [extractBooleanLocal, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    exact lowerGuardNegations_choice P literal choice n _
+      (ih compileVariables compile hc variables operands)
+
 
 end LeanExe.Extract.Core

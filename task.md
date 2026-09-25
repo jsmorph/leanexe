@@ -768,10 +768,14 @@ word-let and Boolean-let fixtures passed unchanged with 304/318 comparisons and
 is in `proofs/compiler/boolean-let-annotation-2026-09-25/`. The full corpus has
 616 declarations; this was a focused run. No emitter/runtime changes.
 
-Next increment: standard Boolean Id.run and pure operations nested inside Boolean
-expressions. Preserve the existing outer action/metadata forms while making the
-operations compose through bindings, operators, choices and loop code. Complete
-source/parser/lowering proofs and execution before the next capability.
+Current increment: standard Boolean Id.run and pure operations nested inside
+Boolean expressions. Five valid probes reject before implementation; their
+original sources are retained. The recursive source representation now includes
+exact run/pure/metadata wrappers with native evaluation and checked size rules.
+Outer Boolean actions use the same representation. All six lowering proofs pass.
+Parser reconstruction/acceptance and integration are being checked; execution
+and general audits remain pending. Preserve existing action/metadata forms while
+composing through bindings, operators, choices and loop code.
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 
