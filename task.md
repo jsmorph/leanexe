@@ -29,19 +29,19 @@ arithmetic expressions; this preserves source results but can expand emitted
 code/repeat computations. No type-safety implementation changed, so its prior
 438-theorem audit was not repeated.
 
-In progress: conditionals over unsigned scalar comparisons. The new
-`Source/ExprEquality`, `Source/ScalarComparison`, and `Extract/ScalarComparison`
-modules pass their focused Lean build. They define canonical `=`, `<`, `≤`, `>`, `≥`,
-`==`, and `!=` syntax, check its complete decision evidence with a proved
-structural Expr comparison (including metadata), and prove recognition and
-comparison lowering. Source branch evaluation, extraction preservation/acceptance/soundness and static
-bounds for both branches now pass focused builds. Exact byte encoding, whole-module validation and the final source-to-byte
-execution theorem now pass the general proof build, including all nine axiom
-audits. The integration suite now has 254 expected comparisons over twenty
-declarations. Its first run found that Lean preserves distinct `GT.gt`/`GE.ge`
-heads instead of rewriting them to reversed `LT.lt`/`LE.le` expressions. Those
-forms now have recognition/lowering proofs; repeat the final theorem and real
-compiler/engine checks before moving to `do`, further Boolean forms or loops.
+Completed next increment: UInt64-valued conditionals over `=`, `<`, `≤`, `>`,
+`≥`, `==`, and `!=`, with exact standard instance and decision evidence.
+Candidate `b06b8e12` passed the general proof and all nine axiom audits, plus
+254 native Lean/Wasm comparisons over twenty declarations. Static bounds cover
+both branches; nested choices and branch-local bindings are included. The first
+execution attempt exposed distinct `GT.gt`/`GE.ge` heads, which were then added
+and proved before repeating the checks. Evidence is retained in
+`proofs/compiler/conditionals-2026-09-25/`.
+
+Next increment: pure `Id.run do` blocks with return, UInt64 bindings and
+sequential updates. Inspect actual elaborated syntax, prove its source semantics
+and extraction, and finish execution checks before moving on to loops or broader
+Boolean forms.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
