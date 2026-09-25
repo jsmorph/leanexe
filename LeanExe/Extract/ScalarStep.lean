@@ -186,6 +186,18 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
         | _, _ => none
       else none
   | .mdata _ body => extractScalarStepWith locals body
+  | .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) type)
+      condition) evidence) (.lam _ trueDomain onTrue _)) (.lam _ falseDomain onFalse _) =>
+      match scalarStepResultType? type with
+      | none => none
+      | some _ =>
+          match _guard : dependentGuard? condition evidence trueDomain falseDomain with
+          | none => none
+          | some guard => do
+              let c ← extractGuard guard (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+              let t ← extractScalarStepWith (.scalar .unit :: locals) onTrue
+              let e ← extractScalarStepWith (.scalar .unit :: locals) onFalse
+              pure { value := .ite c t.value e.value, done := .ite c t.done e.done }
   | .app (.app head first) second => do
       let call ← scalarManyCall? head first second
       let function ← locals[call.index]?.bind (ScalarStepBinding.manyFunction? call.arity)
