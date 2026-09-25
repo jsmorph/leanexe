@@ -268,5 +268,13 @@
   "rangeBoolEqCapture",
   "rangeBoolEqBounds",
   "rangeBoolEqStep",
-  "rangeBoolEqOuter"
+  "rangeBoolEqOuter",
+  "rangeBoolPropYield",
+  "rangeBoolPropBreak",
+  "rangeBoolPropContinue",
+  "rangeBoolPropJoined",
+  "rangeBoolPropCapture",
+  "rangeBoolPropBounds",
+  "rangeBoolPropStep",
+  "rangeBoolPropOuter"
 ]

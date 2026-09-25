@@ -672,9 +672,14 @@ and decision expression, indexed by the already proved Boolean equality value.
 The literal-true RHS preserves the existing truth-condition path. Parser
 acceptance, reconstruction, size bounds and separation proofs pass, together
 with scalar/step/range source, acceptance, correctness and invariant builds.
-All five original inspected examples now compile unchanged. Focused tests,
-the general compiler audit, actual emitted-Wasm comparisons and documentation
-are still in progress. Boolean-returning helpers, Boolean public ABI, mixed
+All five original inspected examples now compile unchanged. The 304 focused
+native/IR comparisons, four declaration rejections and forty raw guard/type/
+proof-binder rejections pass. The prior equality, Boolean-local and dependent
+fixtures each pass all 304 comparisons and their rejection tests. Two initial
+fixture failures revealed that leading ! consumed a larger proposition; the
+intended Boolean operands are now parenthesized, with failures retained for
+the future decide extension. The general compiler audit, actual emitted-Wasm
+comparisons and documentation are still in progress. Boolean-returning helpers, Boolean public ABI, mixed
 Bool/word helper parameters, Boolean-valued choices/decide over saved-flag
 propositions and loops inside helpers remain later capabilities.
 
