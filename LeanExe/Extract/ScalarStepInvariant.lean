@@ -77,6 +77,24 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     have preserve := extractGuard_choice P literal binary choice guard _ hc
       (fun operand member expression found => scalar found bindings)
     exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
+  | letBoolean expression variables arguments _ ihb =>
+    rw [extractScalarStepWith_letBoolean] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨c, hc, ht⟩ := compiled
+    have bound := extractBooleanLocalWith_choice P literal binary choice expression _ hc
+      (scalarStepBindings_holds bindings) (fun operand member target found => scalar found bindings)
+      _ _ (literal 1) (literal 0)
+    exact ihb ht (extend bindings (head := .scalar (.boolean (guardWord c))) bound)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | chooseBoolean guard type variables arguments _ _ iht ihe =>
+    rw [extractScalarStepWith_booleanBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
+    have preserve := extractBooleanLocalWith_choice P literal binary choice guard.value _ hc
+      (scalarStepBindings_holds bindings) (fun operand member expression found => scalar found bindings)
+    obtain ⟨tv, td⟩ := iht ht bindings htypes
+    obtain ⟨ev, ed⟩ := ihe he bindings htypes
+    exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
   | letE value _ ih =>
     rw [extractScalarStepWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

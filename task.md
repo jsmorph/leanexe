@@ -523,8 +523,11 @@ native Boolean meaning and scalar closure invariants pass using the existing
 comparison, negation and conjunction/disjunction lowering. Distinct native and
 compiled Boolean bindings, lookup/meaning facts and source let/condition totality
 now pass. Scalar extraction and all four scalar extraction proofs also pass.
-Source rules cover steps and outer loop bindings; their production extraction
-and proof integration, focused execution and the complete audits remain open.
+Step and outer-loop extraction, acceptance, source admission, correctness and
+invariants now pass through function extraction. All 304 focused native Lean/IR
+comparisons, four declaration rejection tests and four binding-kind rejection
+tests pass. Complete audits and focused V8 execution remain open; the increment
+is not yet complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
