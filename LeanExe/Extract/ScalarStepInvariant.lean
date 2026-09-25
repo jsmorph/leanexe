@@ -69,13 +69,14 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨bound, hb, ht⟩ := compiled
     exact ih ht (extend bindings (scalar hb bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
-  | apply present argument =>
-    rw [extractScalarStepWith] at compiled
+  | @apply types index a present argument =>
+    obtain ⟨f, hf⟩ := scalarStepFunction_lookup (htypes ▸ present)
+    have found : locals[index]?.bind (ScalarStepBinding.function? false) = some f := by
+      simp [hf, ScalarStepBinding.function?]
+    rw [extractScalarStepWith, found] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨f, ⟨binding, hb, matched⟩, arg, ha, ht⟩ := compiled
-    have same := ScalarStepBinding.function?_some.mp matched
-    subst binding
-    exact bindings _ (List.mem_of_getElem? hb) arg target (scalar ha bindings) ht
+    obtain ⟨arg, ha, ht⟩ := compiled
+    exact bindings _ (List.mem_of_getElem? hf) arg target (scalar ha bindings) ht
   | unitApply present argument =>
     rw [extractScalarStepWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -123,6 +124,20 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro argument result ha compiled
     exact ihf compiled (extend (extend bindings trivial) ha)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | applyResult present _ ih =>
+    obtain ⟨f, hf⟩ := scalarStepResultFunction_lookup (htypes ▸ present)
+    rw [extractScalarStepWith] at compiled
+    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.resultFunction?] at compiled
+    simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
+    obtain ⟨arg, ha, ht⟩ := compiled
+    exact bindings _ (List.mem_of_getElem? hf) arg target (ih ha bindings htypes) ht
+  | letResultFn input output _ _ ihf ihb =>
+    rw [extractScalarStepWith_letResultFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, htypes])
+    intro argument result ha compiled
+    exact ihf compiled (extend bindings ha) (by simp [ScalarStepBinding.kind, htypes])
   | resultVar present =>
     rw [extractScalarStepWith] at compiled
     obtain ⟨binding, found, matched⟩ := Option.bind_eq_some_iff.mp compiled

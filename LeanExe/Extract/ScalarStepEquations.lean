@@ -126,4 +126,16 @@ theorem extractScalarStepWith_bindResult (locals : List ScalarStepBinding)
   cases input <;> rw [Step.bindResult, Step.resultType, extractScalarStepWith] <;>
     simp [scalarStepResultType?, scalarStepResultType_accepts]
 
+theorem extractScalarStepWith_letResultFn (locals : List ScalarStepBinding)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (input output : Step.ResultAnnotation) (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (.letE name
+      (.forallE typeName (Step.resultType input) (Step.resultType output) typeBi)
+      (.lam paramName (Step.resultType input) a paramBi) b nondep) = (do
+        let _ ← extractScalarStepWith (.result ⟨.u64 0, .u64 0⟩ :: locals) a
+        extractScalarStepWith (.resultFunction (fun argument =>
+          extractScalarStepWith (.result argument :: locals) a) :: locals) b) := by
+  cases input <;> rw [Step.resultType, extractScalarStepWith] <;>
+    simp [scalarStepResultType?, scalarStepResultType_accepts]
+
 end LeanExe.Extract.Core

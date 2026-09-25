@@ -229,6 +229,65 @@ def rangeStepWrappedBind (count seed : UInt64) : UInt64 :=
     @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id (Id (ForInStep UInt64))) (Id (Id (ForInStep UInt64)))
       computation (fun result => pure result)
 
+def rangeStepJoined (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == seed % 7 then pure (.done (a + 9)) else pure (.yield (a + 1))
+    let alias ← pure result
+    return alias
+
+def rangeResultFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : ForInStep UInt64 → Id (ForInStep UInt64) := fun result =>
+      if a % 3 == 0 then pure (.done (a + seed)) else pure result
+    finish (if UInt64.ofNat i == seed % 7 then .done (a + 9) else .yield (a + 1))
+
+def rangeResultChained (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let first : ForInStep UInt64 → ForInStep UInt64 := fun result =>
+      if a < 7 then result else .yield (a / 3)
+    let second : ForInStep UInt64 → Id (ForInStep UInt64) := fun result =>
+      let alias := first result
+      if UInt64.ofNat i == 7 then pure (.done (a + 5)) else pure alias
+    second (.yield (a * 7 + seed))
+
+def rangeResultCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let captured : ForInStep UInt64 := .done (a + UInt64.ofNat i)
+    let finish : ForInStep UInt64 → ForInStep UInt64 := fun result =>
+      if a % 5 == seed % 5 then captured else result
+    let a := a + 17
+    finish (.yield a)
+
+def rangeResultUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let _unused : ForInStep UInt64 → Id (ForInStep UInt64) := fun result => pure result
+    let ignore : ForInStep UInt64 → ForInStep UInt64 := fun _ => .yield (a + UInt64.ofNat i + 1)
+    ignore (.done (a + 99))
+
+def rangeResultWrapped (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : Id (Id (ForInStep UInt64)) → Id (Id (ForInStep UInt64)) := fun result =>
+      Id.run do
+        let x ← pure (a + UInt64.ofNat i)
+        if x % 5 == seed % 5 then return .done (x + 1)
+        return result
+    finish (pure (.yield (a + 3)))
+
+def rangeUnsupportedResultFunction (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : ForInStep UInt64 → ForInStep UInt64 := fun _ => .done (expression a seed)
+    .yield (a + 1)
+
+def rangeResultFunctionScalar (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : ForInStep UInt64 → UInt64 := fun _ => a + 1
+    .yield (a + 1)
+
+def rangeResultFunctionBool (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : Bool → ForInStep UInt64 := fun _ => .done a
+    .yield (a + 1)
+
 end ArithmeticModeTest
 
 run_elab do
@@ -239,7 +298,8 @@ run_elab do
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
       `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect, `ArithmeticModeTest.rangeNatLiteral,
-      `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused, `ArithmeticModeTest.rangeStepWrappedBind] do
+      `ArithmeticModeTest.rangeStepRun, `ArithmeticModeTest.rangeStepPure, `ArithmeticModeTest.rangeStepLet, `ArithmeticModeTest.rangeStepCapture, `ArithmeticModeTest.rangeStepBind, `ArithmeticModeTest.rangeStepIdLet, `ArithmeticModeTest.rangeStepUnused, `ArithmeticModeTest.rangeStepWrappedBind,
+      `ArithmeticModeTest.rangeStepJoined, `ArithmeticModeTest.rangeResultFunction, `ArithmeticModeTest.rangeResultChained, `ArithmeticModeTest.rangeResultCapture, `ArithmeticModeTest.rangeResultUnused, `ArithmeticModeTest.rangeResultWrapped] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -254,6 +314,7 @@ run_elab do
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind,
+      `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
