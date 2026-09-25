@@ -1,14 +1,17 @@
-import Lean
+import LeanExe.Source.ScalarBooleanType
+import LeanExe.Source.ScalarDo
 
 namespace LeanExe.Source.Scalar
 
 /-- Preserve a Boolean binding around a scalar operand from its body. -/
-def booleanLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) : Lean.Expr :=
-  .letE name (.const ``Bool []) value body nondep
+def booleanLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : BooleanType := .boolean) : Lean.Expr :=
+  .letE name type.expr value body nondep
 
 /-- Preserve a word binding around a scalar operand of a Boolean result. -/
-def booleanWordLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr) : Lean.Expr :=
-  .letE name (.const ``UInt64 []) value body nondep
+def booleanWordLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)
+    (type : ResultType := .word) : Lean.Expr :=
+  .letE name type.expr value body nondep
 
 /-- External Boolean references after removing the innermost Boolean binding. -/
 def booleanLetVariables (indices : List Nat) : List Nat :=
