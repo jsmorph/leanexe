@@ -1419,6 +1419,65 @@ def rangeMixedGuardStep (count seed : UInt64) : UInt64 :=
     let keep : ForInStep UInt64 → ForInStep UInt64 := fun result => result
     return keep r
 
+def minimumOrder (x y : UInt64) : UInt64 := min x y
+
+def maximumOrder (x y : UInt64) : UInt64 := max x y
+
+def extremaNested (x y : UInt64) : UInt64 := max (min x y) (min (~~~x) (~~~y))
+
+def extremaClamped (x y : UInt64) : UInt64 :=
+  let lo := min x y
+  let hi := max x y
+  min hi (max lo (x + y))
+
+def extremaFunction (x y : UInt64) : UInt64 :=
+  let captured := max x 7
+  let f := fun a b : UInt64 => min (max a captured) (b + 17)
+  f x y + max (f y x) (min x y)
+
+def extremaDo (x y : UInt64) : UInt64 := Id.run do
+  let mut a := min x y
+  let z ← if x < y then pure (max a (x + y)) else pure (min a (x * y))
+  a := max (a + 3) z
+  return min a (x ^^^ y)
+
+def extremaGuard (x y : UInt64) : UInt64 :=
+  if (min x y == 0 || max x y == x) ∧ min (x + y) (~~~y) ≤ max x y
+  then max (x / y) (y % x) else min (~~~x) (~~~y)
+
+def extremaWrapped (x y : UInt64) : UInt64 :=
+  min (x + 1) (y - 1) + max (x * 3) (y <<< x) - min (x >>> y) (~~~y)
+
+def rangeExtremaCount (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := min seed 17
+  for i in [:(max (count % 17) (seed % 7)).toNat] do
+    a := max (a + 1) (UInt64.ofNat i + seed)
+  return min a (seed + 31)
+
+def rangeExtremaExit (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if min (UInt64.ofNat i % 3) (seed % 3) == 1 then continue
+    a := min (max a (a + UInt64.ofNat i)) (seed + 17)
+    if max a (UInt64.ofNat i) % 5 == seed % 5 then break
+  return max a seed
+
+def rangeExtremaBounds (count seed : UInt64) : UInt64 :=
+  let first := min seed 18446744073709551613
+  let result := Id.run do
+    let mut a := seed
+    for i in [first.toNat:(first + min count 2).toNat] do
+      a := max (min a (UInt64.ofNat i)) (a + 1)
+    return a
+  min (max result seed) (result + count)
+
+def rangeExtremaStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if min x y = seed ∨ (max x y == 0 && UInt64.ofNat i % 3 == 0)
+      then .done (max x y) else .yield (min (x + UInt64.ofNat i) (y + 3))
+    finish (a + 1) (a + seed)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1561,7 +1620,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeMixedGuardBreak", rangeMixedGuardBreak),
    ("rangeMixedGuardContinue", rangeMixedGuardContinue),
    ("rangeMixedGuardJoined", rangeMixedGuardJoined),
-   ("rangeMixedGuardStep", rangeMixedGuardStep)]
+   ("rangeMixedGuardStep", rangeMixedGuardStep),
+   ("rangeExtremaCount", rangeExtremaCount),
+   ("rangeExtremaExit", rangeExtremaExit),
+   ("rangeExtremaBounds", rangeExtremaBounds),
+   ("rangeExtremaStep", rangeExtremaStep)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -1646,7 +1709,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("mixedGuardNested", mixedGuardNested),
    ("mixedGuardFunction", mixedGuardFunction),
    ("mixedGuardDo", mixedGuardDo),
-   ("mixedGuardOperand", mixedGuardOperand)]
+   ("mixedGuardOperand", mixedGuardOperand),
+   ("minimumOrder", minimumOrder),
+   ("maximumOrder", maximumOrder),
+   ("extremaNested", extremaNested),
+   ("extremaClamped", extremaClamped),
+   ("extremaFunction", extremaFunction),
+   ("extremaDo", extremaDo),
+   ("extremaGuard", extremaGuard),
+   ("extremaWrapped", extremaWrapped)]
 
 end ArithmeticMilestone
 

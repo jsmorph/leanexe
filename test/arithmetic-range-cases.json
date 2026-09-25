@@ -145,5 +145,9 @@
   "rangeMixedGuardBreak",
   "rangeMixedGuardContinue",
   "rangeMixedGuardJoined",
-  "rangeMixedGuardStep"
+  "rangeMixedGuardStep",
+  "rangeExtremaCount",
+  "rangeExtremaExit",
+  "rangeExtremaBounds",
+  "rangeExtremaStep"
 ]

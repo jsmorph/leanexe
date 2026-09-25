@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarHead
 import LeanExe.Source.ScalarComplement
+import LeanExe.Source.ScalarExtremum
 import LeanExe.Source.ScalarValues
 import LeanExe.Source.ScalarCompoundGuard
 import LeanExe.Source.ScalarRangeSyntax
@@ -26,6 +27,8 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
   | complement (head : ComplementHead operation) (argument : EvalWith a values x) :
       EvalWith (.app operation a) values (UInt64.complement x)
+  | extremum (op : Extremum) (left : EvalWith a values x) (right : EvalWith b values y) :
+      EvalWith (op.expr a b) values (op.denote x y)
   | binary (operation : Head head f) (left : EvalWith a values x) (right : EvalWith b values y) :
       EvalWith (.app (.app head a) b) values (f x y)
   | choose (op : Comparison) (type : ResultType) (left : EvalWith a values x) (right : EvalWith b values y)
@@ -86,6 +89,8 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | ofNat : SupportedWith types (literalExpr n)
   | complement (head : ComplementHead operation) (argument : SupportedWith types a) :
       SupportedWith types (.app operation a)
+  | extremum (op : Extremum) (left : SupportedWith types a) (right : SupportedWith types b) :
+      SupportedWith types (op.expr a b)
   | binary (operation : Head head f) (left : SupportedWith types a) (right : SupportedWith types b) :
       SupportedWith types (.app (.app head a) b)
   | choose (op : Comparison) (type : ResultType) (left : SupportedWith types a) (right : SupportedWith types b)
@@ -145,6 +150,10 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
   | complement head _ ih =>
     obtain ⟨x, hx⟩ := ih values typed
     exact ⟨UInt64.complement x, .complement head hx⟩
+  | extremum op _ _ ihl ihr =>
+    obtain ⟨x, hx⟩ := ihl values typed
+    obtain ⟨y, hy⟩ := ihr values typed
+    exact ⟨op.denote x y, .extremum op hx hy⟩
   | binary op _ _ ihl ihr =>
     obtain ⟨x, hx⟩ := ihl values typed
     obtain ⟨y, hy⟩ := ihr values typed
