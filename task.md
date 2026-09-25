@@ -795,8 +795,9 @@ conversion proof. Scalar extraction now removes one standard Id layer from let
 annotations and recognizes the matching typed numeral instances. Its acceptance,
 source-support, semantic-preservation and invariant proofs pass. Foundation
 commit `c6b97048` and scalar proof commit `77632167` are pushed. Step extraction
-and its acceptance, support, correctness and invariant proofs now pass too.
-Next steps: finish range extraction and its corresponding proofs; run the unchanged original
+and its acceptance, support, correctness and invariant proofs pass and are pushed
+at `fa014c91`. Range extraction and its corresponding proofs now pass too.
+Next steps: check function integration and the original examples; run the unchanged original
 probes, focused native/IR and malformed-input tests, then all nine compiler audits
 and the selected CLI/native-V8 checks. Archive evidence, update these docs and
 push completion before starting another capability. This increment is INCOMPLETE.
@@ -822,17 +823,16 @@ changed source/compiler/proof dependencies and that feature's execution cases.
 
 ---
 
-# Scalar compiler correctness: INCOMPLETE — work stopped by user
+# Historical handoff — superseded by the resumed work above
 
-## Authoritative handoff — 2026-09-25 UTC / 2026-09-24 America/Chicago
+## Stopping-point record — 2026-09-25 UTC / 2026-09-24 America/Chicago
 
-The user's last instruction is to finish this handoff, commit and push, and do
-nothing else. **Do not resume implementation, dependency installation, builds,
-or tests without a new instruction to resume.** Only documentation and its
-commit/push are authorized at this stopping point. This section supersedes
-historical status and next-step statements in the journal below. Preserve the
-journal as history; its earlier statements that particular results are missing
-are not descriptions of the current code.
+At this historical stopping point, the user requested a documentation handoff
+and a pause. The user subsequently authorized resuming implementation and
+incremental expansion, with frequent commits and pushes. The current status and
+next steps above supersede this stopping-point record. Preserve the journal as
+history; its earlier missing-work lists and paused-work instructions do not
+describe the current code or authorization.
 
 ### What exists and what does not
 
