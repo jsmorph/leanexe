@@ -528,3 +528,10 @@ allows compound Boolean subtrees inside propositional conjunction, disjunction
 and negation. All nine audits, 4,866 native Lean/V8 comparisons across 247
 declarations, 208 focused native Lean/IR comparisons and three rejection tests
 passed. All 235 preceding modules retained identical bytes.
+
+
+The [UInt64 min/max increment](../proofs/compiler/extrema-2026-09-25/README.md)
+adds standard minimum and maximum with proved unsigned comparison/selection.
+All nine audits, 5,074 native Lean/V8 comparisons across 259 declarations,
+208 focused native Lean/IR comparisons and three rejection tests passed.
+All 247 preceding modules retained identical bytes.

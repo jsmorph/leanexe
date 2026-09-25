@@ -1,0 +1,44 @@
+⚠ [1/95] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [53/95] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [77/95] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [82/95] Replayed LeanExe.Extract.ScalarFunc
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [94/202] Built LeanExe.Extract.Eval (942ms)
+✔ [121/202] Built LeanExe.Source.ScalarExtremum:c.o (103ms)
+✔ [125/202] Built LeanExe.Extract.ScalarExtremum:c.o (90ms)
+✔ [141/202] Built LeanExe.Source.Scalar:c.o (99ms)
+✔ [142/202] Built LeanExe.Extract.ScalarExpr:c.o (2.5s)
+✔ [192/202] Built LeanExe.Extract.Report (1.4s)
+✔ [196/202] Built LeanExe.Extract.OwnershipReport (1.1s)
+✔ [198/202] Built LeanExe.CLI (1.2s)
+✔ [200/202] Built Main (891ms)
+✔ [202/202] Built «lean-wasm»:exe (501ms)
+Build completed successfully (202 jobs).
