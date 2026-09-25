@@ -46,6 +46,45 @@ def choiceOperands (x y : UInt64) : UInt64 :=
   if (if x < y then x + 1 else y - 1) = (if y ≤ x then x - y else y - x)
   then x + y else x * y
 
+def doReturn (x y : UInt64) : UInt64 := Id.run do
+  return x + y
+
+def doBind (x y : UInt64) : UInt64 := Id.run do
+  let a := x + y
+  let b ← pure (a * x)
+  let c ← pure (b / y)
+  return (c + a) % (x + 1)
+
+def doUpdates (x y : UInt64) : UInt64 := Id.run do
+  let mut a := x
+  a := a + y
+  a := a * x
+  return a - y
+
+def doEarly (x y : UInt64) : UInt64 := Id.run do
+  if x < y then return x + 1
+  if x = y then return x / y
+  return y + 2
+
+def doNested (x y : UInt64) : UInt64 := Id.run do
+  let a ← (do
+    let b := x / y
+    return b + x)
+  return (Id.run do return a + y) % y
+
+def doBranches (x y : UInt64) : UInt64 := Id.run do
+  if x ≥ y then
+    let a ← pure (x - y)
+    return a * x
+  else
+    let b ← pure (y - x)
+    return b / y
+
+def doConstant : UInt64 := Id.run do
+  let mut value : UInt64 := 18446744073709551615
+  value := value + 2
+  return value
+
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
    (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -58,7 +97,9 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("bindings", bindings), ("shadowed", shadowed), ("nestedBindings", nestedBindings),
    ("unusedBinding", unusedBinding), ("compareEq", compareEq), ("compareLt", compareLt),
    ("compareLe", compareLe), ("compareBEq", compareBEq), ("compareBNe", compareBNe),
-   ("nestedChoice", nestedChoice), ("choiceBindings", choiceBindings), ("choiceOperands", choiceOperands)]
+   ("nestedChoice", nestedChoice), ("choiceBindings", choiceBindings), ("choiceOperands", choiceOperands),
+   ("doReturn", doReturn), ("doBind", doBind), ("doUpdates", doUpdates),
+   ("doEarly", doEarly), ("doNested", doNested), ("doBranches", doBranches)]
 
 end ArithmeticMilestone
 
@@ -69,6 +110,9 @@ def main : IO Unit := do
   IO.println (Json.compress (Json.mkObj [
     ("name", toJson "boundConstant"), ("args", Json.arr #[]),
     ("expected", toJson (toString ArithmeticMilestone.boundConstant))]))
+  IO.println (Json.compress (Json.mkObj [
+    ("name", toJson "doConstant"), ("args", Json.arr #[]),
+    ("expected", toJson (toString ArithmeticMilestone.doConstant))]))
   for (name, source) in ArithmeticMilestone.cases do
     for (x, y) in ArithmeticMilestone.inputs do
       IO.println (Json.compress (Json.mkObj [

@@ -1,4 +1,5 @@
 import LeanExe.Extract.ScalarHead
+import LeanExe.Extract.ScalarDo
 import LeanExe.Extract.ScalarComparison
 import LeanExe.Source.Scalar
 
@@ -14,16 +15,32 @@ def extractScalarExprWith (locals : List LeanExe.IR.Expr) : Lean.Expr → Option
   | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const ``UInt64 [])) (.lit (.natVal n)))
       (.app (.const ``UInt64.instOfNat []) (.lit (.natVal m))) =>
       if n == m then some (.u64 n) else none
-  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``UInt64 []))
+  | .app (.app (.const ``Id.run [.zero]) (.const ``UInt64 [])) body =>
+      extractScalarExprWith locals body
+  | .app (.app (.app (.app (.const ``Pure.pure [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Applicative.toPure [.zero, .zero]) (.const ``Id [.zero]))
+        (.app (.app (.const ``Monad.toApplicative [.zero, .zero]) (.const ``Id [.zero]))
+          (.const ``Id.instMonad [.zero])))) (.const ``UInt64 [])) body =>
+      extractScalarExprWith locals body
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) (.const ``UInt64 [])) (.const ``UInt64 [])) value)
+      (.lam _ (.const ``UInt64 []) body _) => do
+      let bound ← extractScalarExprWith locals value
+      extractScalarExprWith (bound :: locals) body
+  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
       condition) evidence) onTrue) onFalse =>
-      match _h : comparison? condition evidence with
+      match scalarResultType? type with
       | none => none
-      | some (op, left, right) => do
-          let a ← extractScalarExprWith locals left
-          let b ← extractScalarExprWith locals right
-          let t ← extractScalarExprWith locals onTrue
-          let e ← extractScalarExprWith locals onFalse
-          pure (.ite (lowerComparison op a b) t e)
+      | some _ =>
+        match _h : comparison? condition evidence with
+        | none => none
+        | some (op, left, right) => do
+            let a ← extractScalarExprWith locals left
+            let b ← extractScalarExprWith locals right
+            let t ← extractScalarExprWith locals onTrue
+            let e ← extractScalarExprWith locals onFalse
+            pure (.ite (lowerComparison op a b) t e)
   | .app (.app head left) right => do
       let op ← ScalarPrimitive.ofHead? head
       let a ← extractScalarExprWith locals left
@@ -57,15 +74,32 @@ theorem extractScalarExprWith_binary {head : Lean.Expr} {f : UInt64 → UInt64 �
   | canonical op => cases op <;> dsimp only [LeanExe.Source.Scalar.classHead] <;> rw [extractScalarExprWith] <;> simp
 
 theorem extractScalarExprWith_branch (op : LeanExe.Source.Scalar.Comparison)
-    (locals : List LeanExe.IR.Expr) (a b t e : Lean.Expr) :
-    extractScalarExprWith locals (op.branch a b t e) = (do
+    (locals : List LeanExe.IR.Expr) (a b t e : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
+    extractScalarExprWith locals (op.branch a b t e type) = (do
       let left ← extractScalarExprWith locals a
       let right ← extractScalarExprWith locals b
       let onTrue ← extractScalarExprWith locals t
       let onFalse ← extractScalarExprWith locals e
       pure (.ite (lowerComparison op left right) onTrue onFalse)) := by
   rw [LeanExe.Source.Scalar.Comparison.branch, extractScalarExprWith]
-  rw [comparison_accepts]
+  rw [scalarResultType_accepts, comparison_accepts]
+
+@[simp] theorem extractScalarExprWith_idRun (locals : List LeanExe.IR.Expr) (body : Lean.Expr) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.run body) =
+      extractScalarExprWith locals body := by
+  rw [LeanExe.Source.Scalar.Identity.run, extractScalarExprWith]
+
+@[simp] theorem extractScalarExprWith_idPure (locals : List LeanExe.IR.Expr) (body : Lean.Expr) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.pure body) =
+      extractScalarExprWith locals body := by
+  rw [LeanExe.Source.Scalar.Identity.pure, extractScalarExprWith]
+
+@[simp] theorem extractScalarExprWith_idBind (locals : List LeanExe.IR.Expr)
+    (name : Lean.Name) (bi : Lean.BinderInfo) (value body : Lean.Expr) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.bind name bi value body) = (do
+      let bound ← extractScalarExprWith locals value
+      extractScalarExprWith (bound :: locals) body) := by
+  rw [LeanExe.Source.Scalar.Identity.bind, extractScalarExprWith]
 
 @[simp] theorem extractScalarExprWith_literalExpr (locals : List LeanExe.IR.Expr) (n : Nat) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.literalExpr n) = some (.u64 n) := by
@@ -124,7 +158,7 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List UInt64
         subst target
         rw [← hf]
         exact p.lower_correct (ihl ha bindings) (ihr hb bindings)
-  | @choose a values x b y t e value op left right branch ihl ihr ihb =>
+  | @choose a values x b y t e value op type left right branch ihl ihr ihb =>
     rw [extractScalarExprWith_branch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, rfl⟩ := compiled
@@ -138,6 +172,20 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List UInt64
         (ihb (by simpa [flag] using ht) bindings)
   | letE value body ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, hb, hc⟩ := compiled
+    apply ihb hc
+    intro index expression result he hv
+    cases index with
+    | zero =>
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at he hv
+      subst expression
+      subst result
+      exact ihv hb bindings
+    | succ index => exact bindings index expression result he hv
+  | idRun _ ih => exact ih (by simpa only [extractScalarExprWith_idRun] using compiled) bindings
+  | idPure _ ih => exact ih (by simpa only [extractScalarExprWith_idPure] using compiled) bindings
+  | idBind value body ihv ihb =>
+    simp only [extractScalarExprWith_idBind, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
     apply ihb hc
     intro index expression result he hv
@@ -179,7 +227,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {arity : Nat}
     obtain ⟨a, ha⟩ := ihl locals len
     obtain ⟨b, hb⟩ := ihr locals len
     exact ⟨p.lower a b, by rw [extractScalarExprWith_binary op]; simp [hp, ha, hb]⟩
-  | choose op _ _ _ _ ihl ihr iht ihe =>
+  | choose op type _ _ _ _ ihl ihr iht ihe =>
     obtain ⟨a, ha⟩ := ihl locals len
     obtain ⟨b, hb⟩ := ihr locals len
     obtain ⟨t, ht⟩ := iht locals len
@@ -190,6 +238,12 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {arity : Nat}
     obtain ⟨bound, hb⟩ := ihv locals len
     obtain ⟨target, ht⟩ := ihb (bound :: locals) (by simp [len])
     exact ⟨target, by simp [extractScalarExprWith, hb, ht]⟩
+  | idRun _ ih => simpa only [extractScalarExprWith_idRun] using ih locals len
+  | idPure _ ih => simpa only [extractScalarExprWith_idPure] using ih locals len
+  | idBind _ _ ihv ihb =>
+    obtain ⟨bound, hb⟩ := ihv locals len
+    obtain ⟨target, ht⟩ := ihb (bound :: locals) (by simp [len])
+    exact ⟨target, by simp [hb, ht]⟩
   | metadata _ ih => simpa only [extractScalarExprWith] using ih locals len
 
 theorem extractScalarExpr_accepts {source : Lean.Expr} {arity : Nat}
@@ -211,20 +265,34 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Lean
     subst m
     exact .ofNat
   | case4 locals n m hne => simp [extractScalarExprWith, hne] at compiled
-  | case5 locals condition evidence t e rejected =>
+  | case5 locals body ih =>
+    exact .idRun (ih (by simpa only [extractScalarExprWith] using compiled))
+  | case6 locals body ih =>
+    exact .idPure (ih (by simpa only [extractScalarExprWith] using compiled))
+  | case7 locals value name body bi ihv ihb =>
+    simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, hb, ht⟩ := compiled
+    exact .idBind (ihv hb) (by simpa using ihb bound ht)
+  | case8 locals sourceType condition evidence t e rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case6 locals condition evidence t e op a b matched ihl ihr iht ihe =>
+  | case9 locals sourceType condition evidence t e type typeMatched rejected =>
+    rw [extractScalarExprWith] at compiled
+    rw [typeMatched, rejected] at compiled
+    contradiction
+  | case10 locals sourceType condition evidence t e type typeMatched op a b matched ihl ihr iht ihe =>
+    have typeEq := scalarResultType_sound typeMatched
+    subst sourceType
     obtain ⟨hc, he⟩ := comparison_sound matched
     subst condition evidence
-    change LeanExe.Source.Scalar.Supported locals.length (op.branch a b t e)
-    change extractScalarExprWith locals (op.branch a b t e) = some target at compiled
+    change LeanExe.Source.Scalar.Supported locals.length (op.branch a b t e type)
+    change extractScalarExprWith locals (op.branch a b t e type) = some target at compiled
     rw [extractScalarExprWith_branch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, _⟩ := compiled
-    exact .choose op (ihl ha) (ihr hb) (iht ht) (ihe he)
-  | case7 locals head left right excluded excludedIf ihl ihr =>
+    exact .choose op type (ihl ha) (ihr hb) (iht ht) (ihe he)
+  | case11 locals head left right excluded excludedRun excludedPure excludedBind excludedIf ihl ihr =>
     cases hp : ScalarPrimitive.ofHead? head with
     | none =>
       simp only [extractScalarExprWith] at compiled
@@ -238,13 +306,13 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Lean
         cases hb : extractScalarExprWith locals right with
         | none => simp [hp, ha, hb] at compiled
         | some b => exact .binary meaning (ihl ha) (ihr hb)
-  | case8 locals name value body nondep ihv ihb =>
+  | case12 locals name value body nondep ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letE (ihv hb) (by simpa using ihb bound ht)
-  | case9 locals data body ih =>
+  | case13 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case10 locals expr hvar hliteral hofNat hchoice hbin hlet hmetadata =>
+  | case14 locals expr hvar hliteral hofNat hrun hpure hbind hchoice hbin hlet hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -277,7 +345,7 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨p, hp, a, ha, b, hb, rfl⟩ := compiled
     exact binary p a b (ihl ha bindings hlen) (ihr hb bindings hlen)
-  | choose op _ _ _ _ ihl ihr iht ihe =>
+  | choose op type _ _ _ _ ihl ihr iht ihe =>
     rw [extractScalarExprWith_branch] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨a, ha, b, hb, t, ht, e, he, rfl⟩ := compiled
@@ -285,6 +353,16 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
       (iht ht bindings hlen) (ihe he bindings hlen)
   | letE _ _ ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, hb, ht⟩ := compiled
+    apply ihb ht _ (by simp [hlen])
+    intro expression member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact ihv hb bindings hlen
+    · exact bindings expression member
+  | idRun _ ih => exact ih (by simpa only [extractScalarExprWith_idRun] using compiled) bindings hlen
+  | idPure _ ih => exact ih (by simpa only [extractScalarExprWith_idPure] using compiled) bindings hlen
+  | idBind _ _ ihv ihb =>
+    simp only [extractScalarExprWith_idBind, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     apply ihb ht _ (by simp [hlen])
     intro expression member
