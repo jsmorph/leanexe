@@ -694,18 +694,26 @@ unchanged; all seven bodies are included in the execution fixtures. Evidence is
 in `proofs/compiler/boolean-local-decide-2026-09-25/`. The complete corpus contains
 536 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Current increment: Boolean-result choices directly guarded by Boolean equality
-or inequality, including saved flags. The unified choice form preserves exact
-Eq/Ne syntax and standard evidence and recursively checks both condition inputs
-and both result branches. A proved literal-true specialization keeps the prior
-ordinary Boolean-choice lowering. Source/parser, lowering, scalar/step/range
-acceptance, native correctness and invariant proofs pass. All five original examples now compile unchanged. The first focused fixture
-passed 304 native/IR comparisons and 44 rejection tests. The prior Boolean-local
-decide and original Boolean-choice fixtures each pass all 304 comparisons and
-their 36/twelve rejection tests unchanged. General audits, actual compiler
-execution and documentation are in progress. Dependent Boolean-result choices, Boolean-returning helpers,
-Boolean public ABI, mixed Bool/word helper parameters, broader propositional
-combinations and loops inside helpers remain later capabilities.
+Completed next increment: Boolean-result choices guarded directly by Boolean
+Eq/Ne, including saved flags, choices and decisions. The unified source form
+retains exact conditions/evidence and checks both inputs and both result
+branches. A proved literal-true specialization preserves ordinary Boolean
+choice lowering. Candidate `2b75649b` passed all nine compiler audits and 623
+native Lean/V8 comparisons across 34 declarations. The first focused fixture
+passed 304 native/IR comparisons and 44 rejection checks. The preceding
+Boolean-local-decide and original Boolean-choice fixtures each passed 304
+comparisons and their 36 and twelve rejection checks unchanged. Eighteen
+selected prior modules kept identical bytes. Five original examples compile
+unchanged and have matching bodies across execution fixtures. Evidence is in
+`proofs/compiler/boolean-relation-choice-2026-09-25/`. The complete corpus has 552
+declarations; this was a focused execution run. No emitter/runtime changes.
+
+Next increment: dependent Boolean-result choices, retaining exact proof domains
+and lexical captures while rejecting proof reads as executable values. Inspect
+elaborated dite Bool syntax and prove the needed binder handling before adding
+it to ordinary/Id bindings, helpers and scalar/loop contexts. Boolean-returning
+helpers, Boolean public ABI, mixed Bool/word helper parameters, broader saved-flag
+propositions and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
