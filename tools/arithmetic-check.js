@@ -7,7 +7,7 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, '.lake', 'arithmetic-check');
 fs.mkdirSync(artifacts, { recursive: true });
-function lean(label, args, timeout = 120, expectedFailure = false) {
+function lean(label, args, timeout = 120) {
   const log = path.join(artifacts, `${label}.log`);
   const errors = path.join(artifacts, `${label}.stderr.log`);
   const out = fs.openSync(log, 'w');
@@ -24,32 +24,26 @@ function lean(label, args, timeout = 120, expectedFailure = false) {
   const stdout = fs.readFileSync(log, 'utf8');
   const output = stdout + fs.readFileSync(errors, 'utf8');
   if (result.error) throw result.error;
-  if (expectedFailure ? result.status === 0 : result.status !== 0) {
+  if (result.status !== 0) {
     throw new Error(`${label}: exit ${result.status}\n${output.slice(-12000)}`);
   }
-  console.log(`${label}: ${expectedFailure ? 'rejected as required' : 'passed'}`);
+  console.log(`${label}: passed`);
   return { output, stdout };
 }
 function proof() {
-  const { output } = lean('compiler-proof', ['lake', '-d', 'proofs/talos/lean', 'build',
+  lean('compiler-proof', ['lake', '-d', 'proofs/talos/lean', 'build',
     'Project.Compiler.ArithmeticCompilerAudit'], 900);
-  for (const name of ['compileEnvironment_correct', 'compileEnvironment_sound']) {
-    const match = output.match(new RegExp("'Project\\.Compiler\\.ArithmeticModule\\." +
-      name + "' depends on axioms:\\s*\\[([^\\]]*)\\]"));
-    if (!match || match[1].split(',').some(x =>
-      !['propext', 'Classical.choice', 'Quot.sound'].includes(x.trim()))) {
-      throw new Error(`missing or unexpected axiom audit for ${name}`);
-    }
-  }
-  const negative = lean('kernel-negative', ['lake', '-d', 'proofs/talos/lean', 'env', 'lean',
-    path.join(root, 'test/negative/arithmetic_kernel.lean')], 30, true);
-  if (!negative.output.includes('(kernel) declaration type mismatch')) {
-    throw new Error('negative equality did not fail at kernel checking');
-  }
+  const result = spawnSync('python3', ['tools/arithmetic-audit.py',
+    path.join(artifacts, 'compiler-proof.log')], { cwd: root, encoding: 'utf8', timeout: 30000 });
+  fs.writeFileSync(path.join(artifacts, 'axioms.log'), (result.stdout || '') + (result.stderr || ''));
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr || 'arithmetic axiom audit failed');
+  process.stdout.write(result.stdout);
 }
 function engine() {
   lean('cli-build', ['lake', 'build', 'lean-wasm'], 600);
-  lean('admission-regression', ['lake', 'env', 'lean', 'test/arithmetic_mode.lean'], 60);
+  lean('admission-test', ['lake', 'env', 'lean', 'test/arithmetic_mode.lean'], 60);
+  lean('reserved-exports', ['lake', 'env', 'lean', 'test/arithmetic_reserved_exports.lean'], 60);
   const fixture = path.join(root, '.lake/build/lib/lean/test/ArithmeticMilestone.olean');
   fs.mkdirSync(path.dirname(fixture), { recursive: true });
   lean('fixture', ['lake', 'env', 'lean', '-o', fixture, 'test/ArithmeticMilestone.lean'], 60);
@@ -71,7 +65,7 @@ function engine() {
 }
 try {
   const mode = process.argv[2] || 'all';
-  if (!['all', 'proof', 'engine'].includes(mode)) throw new Error('usage: tools/arithmetic-check.js [all|proof|engine]');
+  if (process.argv.length > 3 || !['all', 'proof', 'engine'].includes(mode)) throw new Error('usage: tools/arithmetic-check.js [all|proof|engine]');
   if (mode === 'all' || mode === 'proof') proof();
   if (mode === 'all' || mode === 'engine') engine();
 } catch (error) {

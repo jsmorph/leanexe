@@ -1,3 +1,28 @@
+# Scalar compiler correctness: arithmetic completion resumed
+
+## Current instructions and status — local continuation, 2026-09-24
+
+The user explicitly resumed work on `correct` here and authorized running Lean
+locally, with frequent commits and pushes. This section supersedes the stopped
+handoff below. The user removed both the separate clean-checkout requirement
+and deliberate compiler/package/harness breakage checks. Do not reinstate them.
+The false-equality control is also omitted from the current driver. Type-safety
+checks remain explicitly requested. Continue the ordinary proof build, actual
+compiler execution comparisons, standalone source proof package, and docs.
+
+The real compiler command and Node/V8 execution passed all 85 comparisons over
+seven declarations at `12978497`. Final verification will include the updated
+driver's full nine-theorem axiom audit, all reserved-export tests, and explicit
+fixture completeness checks. No standalone package result is claimed yet.
+
+Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
+Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
+continue through `tools/leanrun`, with local mode and a shared serial lock.
+The old Linux recovery paths below are historical. The larger scalar extensions
+remain deferred until this arithmetic milestone is complete.
+
+---
+
 # Scalar compiler correctness: INCOMPLETE — work stopped by user
 
 ## Authoritative handoff — 2026-09-25 UTC / 2026-09-24 America/Chicago
