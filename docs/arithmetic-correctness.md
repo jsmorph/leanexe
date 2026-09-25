@@ -140,3 +140,8 @@ runner environment as normal development.
 Subsequent language extensions will be completed individually through source
 support, production compilation, proofs and execution tests. Checks should
 follow the affected dependencies, without repeating unrelated full suites.
+
+The [2026-09-24 arithmetic checkpoint](../proofs/compiler/arithmetic-2026-09-24/README.md)
+retains the completed proof, execution and type-safety checks plus the independently
+verified source archive and its hash. It is a fixed arithmetic milestone; later
+language extensions are tracked separately in `task.md`.
