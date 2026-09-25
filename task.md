@@ -780,9 +780,26 @@ modules kept identical bytes. Evidence is retained in
 `proofs/compiler/boolean-nested-id-2026-09-25/`. The corpus has 632 declarations;
 this was a focused run. No emitter/runtime changes.
 
-Next increment: general Id-annotated scalar lets. Retain exact annotations while
-using the underlying word/Boolean type and native value in scalar, step and range
-code. Complete source/parser/lowering proofs and execution before moving on.
+Current increment: general standard Id annotations on let bindings. Five valid
+pre-implementation probes (word, Boolean, numeral, helper and range) all reject;
+their unchanged sources/logs are in `../work/id-let-inspect.lean` and `.log`.
+The source rule retains the exact annotated let and relates it to the same let
+with one Id layer removed. The underlying name, value, body and letE flag stay
+unchanged, and a checked size lemma supports terminating extraction. Lean also
+elaborates an annotated numeral with matching nested Id.instOfNat evidence.
+Typed numeral recognition now checks each Id type layer, numeral and standard
+instance, with acceptance and source-reconstruction proofs passing.
+
+Scalar, step and range source totality now pass, including the literal range-count
+conversion proof. Next steps for this increment: connect let normalization and
+typed numeral recognition to extraction; prove acceptance,
+soundness, native-meaning preservation and invariants; run the unchanged original
+probes, focused native/IR and malformed-input tests, then all nine compiler audits
+and the selected CLI/native-V8 checks. Archive evidence, update these docs and
+push completion before starting another capability. This increment is INCOMPLETE.
+The completed nested Boolean Id increment is pushed at `2699d1b4` (candidate
+`44637199`); the annotated Boolean-let increment is pushed at `22983e16`
+(candidate `1feb91fb`).
 Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper parameters,
 broader saved-flag propositions and loops inside helpers remain later capabilities.
 

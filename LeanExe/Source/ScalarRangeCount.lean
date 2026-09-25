@@ -44,7 +44,8 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
   | literal number fits =>
     generalize same : Count.scalar (.literal number fits) = source at evaluated
     cases evaluated <;>
-      simp_all [Count.scalar, Scalar.literalExpr, Identity.run, Identity.pure, Identity.bind, BooleanIdentity.bind,
+      simp_all [Count.scalar, Scalar.literalExpr, idLetExpr, typedLiteralExpr,
+        Identity.run, Identity.pure, Identity.bind, BooleanIdentity.bind,
         Comparison.branch, CompoundGuard.branch, Guard.dependentBranch, BooleanLocalGuard.branch, BooleanLocalGuard.dependentBranch,
         Extremum.expr, Extremum.head,
         ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp]
@@ -56,6 +57,11 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
       simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))
     case ofNatNatural n numeral evidence numberMeaning instanceMeaning =>
       rcases same with ⟨rfl, _⟩
+      have numberEq := numberMeaning.raw_value
+      subst n
+      simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))
+    case ofNatTyped n numeral type evidence numberMeaning instanceMeaning =>
+      rcases same with ⟨⟨_, rfl⟩, _⟩
       have numberEq := numberMeaning.raw_value
       subst n
       simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))

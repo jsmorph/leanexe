@@ -1,3 +1,5 @@
+import LeanExe.Source.ScalarLetAnnotation
+import LeanExe.Source.ScalarTypedLiteralInstance
 import LeanExe.Source.ScalarBooleanAction
 import LeanExe.Source.ScalarLiteralInstance
 import LeanExe.Source.ScalarCall
@@ -143,6 +145,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (steps : ∀ index value, EvalWith scalarBody (.word value :: .natural index :: values) (step index value)) :
       EvalWith (Range.call count initial indexName accumulatorName indexBi accumulatorBi stepBody)
         values (Range.iterate step stop.toNat 0 start)
+  | idLet (body : EvalWith (.letE name type a b nondep) values value) :
+      EvalWith (idLetExpr name type a b nondep) values value
+  | ofNatTyped (numberMeaning : NaturalLiteral n numeral)
+      (instanceMeaning : TypedLiteralInstance n type evidence) :
+      EvalWith (typedLiteralExpr type numeral evidence) values (UInt64.ofNat n)
   | metadata (body : EvalWith e values value) : EvalWith (.mdata data e) values value
 
 /-- Syntactic support, defined without inspecting compiler output. -/
@@ -250,6 +257,11 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (function : SupportedWith (List.replicate shape.arity .word ++ types) shape.body)
       (body : SupportedWith (.manyFunction shape.arity :: types) b) :
       SupportedWith types (shape.bind name b nondep)
+  | idLet (body : SupportedWith types (.letE name type a b nondep)) :
+      SupportedWith types (idLetExpr name type a b nondep)
+  | ofNatTyped (numberMeaning : NaturalLiteral n numeral)
+      (instanceMeaning : TypedLiteralInstance n type evidence) :
+      SupportedWith types (typedLiteralExpr type numeral evidence)
   | metadata (body : SupportedWith types e) : SupportedWith types (.mdata data e)
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
@@ -447,6 +459,10 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       simpa [f, len] using (total arguments len).choose_spec
     obtain ⟨value, hv⟩ := ihb (.manyFunction shape.arity f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letManyFn shape meanings hv⟩
+  | idLet _ ih =>
+    obtain ⟨value, hv⟩ := ih values typed
+    exact ⟨value, .idLet hv⟩
+  | ofNatTyped numeral evidence => exact ⟨_, .ofNatTyped numeral evidence⟩
   | metadata _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩
