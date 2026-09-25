@@ -568,3 +568,11 @@ adds Boolean and propositional literals throughout mixed guards. All nine audits
 native Lean/IR comparisons and three rejection tests passed. The seventeen
 selected preceding modules retained identical bytes. The full corpus contains
 271 declarations; the preceding full execution checkpoint covers 259.
+
+
+The [PUnit continuation increment](../proofs/compiler/punit-continuations-2026-09-25/README.md)
+adds the unit spelling used by further generated do joins. All nine audits,
+453 native Lean/V8 comparisons in the fixed 24-declaration group, 228 focused
+native Lean/IR comparisons and three rejection tests passed. The twelve selected
+preceding modules retained identical bytes. The full corpus contains 283
+declarations; the preceding full execution checkpoint covers 259.

@@ -446,15 +446,22 @@ seventeen selected preceding modules kept identical bytes. The full corpus now
 has 271 declarations; this execution run checked 29. General type validation
 passed, using cached dependencies; unrelated suites were not rebuilt.
 
-Current increment: admit PUnit.{1}/PUnit.unit.{1} do-block continuations alongside
-Unit. The shared UnitSyntax descriptor now carries the exact type/value spelling
-through scalar source, yielding-step conversion, step-result source, extraction,
-and outer range helpers. Source totality, acceptance, correctness and invariants
-build successfully. All 228 focused native Lean/IR comparisons and three
-rejection tests passed, including the exact generated mutable-branch join that
-exposed the restriction. General audits and actual execution checks
-follow before this increment is marked complete. The fixed `punit-continuations`
-group contains twelve existing cases and twelve new declarations (453 results).
+Completed next increment: PUnit.{1} do-block continuations.
+Candidate `af86f5d8` passed all nine compiler audits and all 453 native
+Lean/V8 comparisons in the fixed 24-declaration `punit-continuations` group.
+Evidence is in `proofs/compiler/punit-continuations-2026-09-25/`. A shared concrete
+unit syntax description carries both spellings through scalar and step helper
+semantics, yielding conversion and outer range helpers. The original generated
+branch-update join now passes. All 228 focused native Lean/IR comparisons and
+three rejection tests passed. The twelve selected preceding modules kept
+identical bytes. The full corpus now contains 283 declarations; this execution
+run checked 24. General type validation passed with cached dependencies.
+
+Next increment: scalar Id result annotations retained by elaboration. A focused
+PUnit test exposed existing restrictions on Bind output and Pure type arguments
+spelled Id UInt64. The original diagnostic is retained in the local work directory.
+Extend the source/type description and shared Id proofs, retaining exact standard
+instances, then complete the same focused proof/execution cycle.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
