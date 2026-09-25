@@ -677,3 +677,17 @@ parsing, reset validation, and complete metadata validation successfully
 (3110 jobs). Narrowed the runtime and metadata validation imports to the binary
 layout and validator definitions they need. Retain/allocator/release validation
 and the final composed theorem are still being checked.
+
+### All actual runtime functions validate (checked and audited)
+
+Retain, allocator, and release validation now pass Lean kernel checking in
+3.5, 3.6, and 3.7 seconds respectively. Each theorem quantifies over the actual
+surrounding arithmetic module and reports only propext in its dependencies.
+Together with reset, all four fixed runtime bodies are covered.
+
+KernelReduction constructs an ordinary Eq.refl proof term and leaves the
+conversion check to declaration kernel checking, avoiding repeated expensive
+elaborator normalization. It adds no axiom or native-evaluation oracle. A
+negative control asserting Nat 0 = 1 was rejected by the kernel with a declaration
+type mismatch. Full module-validation composition and the complete normal-entry
+source-to-file theorem are being checked next; final gates remain open.
