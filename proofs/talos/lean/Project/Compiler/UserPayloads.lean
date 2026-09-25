@@ -1,3 +1,4 @@
+import LeanExe.Wasm.ArithmeticBounds
 import Project.Compiler.FixedPayloads
 
 namespace Project.Compiler.ArithmeticModule
@@ -5,11 +6,12 @@ namespace Project.Compiler.ArithmeticModule
 open Project.Compiler.Parsing
 open Wasm.Binary
 
-def typeItems (func : LeanExe.IR.Func) : List (List UInt8) :=
-  [LeanExe.Wasm.Binary.CoreWasm.typeForFunc func,
-   LeanExe.Wasm.Binary.funcType [126] [126], LeanExe.Wasm.Binary.funcType [] [],
-   LeanExe.Wasm.Binary.funcType [126] [126], LeanExe.Wasm.Binary.funcType [126] []]
-def typePayload (func : LeanExe.IR.Func) : List UInt8 := LeanExe.Wasm.Binary.vec (typeItems func)
+abbrev typeItems (func : LeanExe.IR.Func) : List (List UInt8) :=
+  LeanExe.Wasm.ArithmeticBounds.typeItems func
+
+abbrev typePayload (func : LeanExe.IR.Func) : List UInt8 :=
+  LeanExe.Wasm.ArithmeticBounds.typePayload func
+
 def typeValues (func : LeanExe.IR.Func) : List FuncType :=
   [{ params := List.replicate func.params .i64, results := List.replicate func.results.length .i64 },
    { params := [.i64], results := [.i64] }, { params := [], results := [] },
@@ -27,7 +29,7 @@ theorem types_parsed (func : LeanExe.IR.Func)
     (.cons (function_type 1 1 (by decide) (by decide))
     (.cons (function_type 1 0 (by decide) (by decide)) .nil)))))
   · intro bs member
-    simp only [typeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+    simp only [typeItems, LeanExe.Wasm.ArithmeticBounds.typeItems, List.mem_cons, List.not_mem_nil, or_false] at member
     rcases member with rfl | rfl | rfl | rfl | rfl <;>
       simp [LeanExe.Wasm.Binary.CoreWasm.typeForFunc, LeanExe.Wasm.Binary.funcType]
   · change 5 < 2 ^ 32
@@ -36,19 +38,12 @@ theorem types_parsed (func : LeanExe.IR.Func)
 def exportValue (text : String) (kind : ExportKind) (index : Nat) : Export :=
   { name := { bytes := text.toUTF8.data.toList, text }, desc := kind.desc index }
 
-def exportItems (entry : String) : List (List UInt8) :=
-  [LeanExe.Wasm.Binary.exportEntry "memory" 2 0,
-   LeanExe.Wasm.Binary.exportEntry entry 0 0,
-   LeanExe.Wasm.Binary.exportEntry "alloc" 0 1,
-   LeanExe.Wasm.Binary.exportEntry "reset" 0 2,
-   LeanExe.Wasm.Binary.exportEntry "retain" 0 3,
-   LeanExe.Wasm.Binary.exportEntry "release" 0 4,
-   LeanExe.Wasm.Binary.exportEntry "free" 0 4,
-   LeanExe.Wasm.Binary.exportEntry "allocCount" 3 2,
-   LeanExe.Wasm.Binary.exportEntry "retainCount" 3 3,
-   LeanExe.Wasm.Binary.exportEntry "releaseCount" 3 4,
-   LeanExe.Wasm.Binary.exportEntry "freeCount" 3 5]
-def exportPayload (entry : String) : List UInt8 := LeanExe.Wasm.Binary.vec (exportItems entry)
+abbrev exportItems (entry : String) : List (List UInt8) :=
+  LeanExe.Wasm.ArithmeticBounds.exportItems entry
+
+abbrev exportPayload (entry : String) : List UInt8 :=
+  LeanExe.Wasm.ArithmeticBounds.exportPayload entry
+
 def exportValues (entry : String) : List Export :=
   [exportValue "memory" .memory 0,
    exportValue entry .func 0,
@@ -78,7 +73,7 @@ theorem exports_parsed (entry : String) (bound : entry.toUTF8.size < 2 ^ 32) :
     (.cons (export_entry "freeCount" .global 5 (by decide) (by decide))
     .nil)))))))))))
   · intro bs member
-    simp only [exportItems, List.mem_cons, List.not_mem_nil, or_false] at member
+    simp only [exportItems, LeanExe.Wasm.ArithmeticBounds.exportItems, List.mem_cons, List.not_mem_nil, or_false] at member
     rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       simp [LeanExe.Wasm.Binary.exportEntry, LeanExe.Wasm.Binary.ofNats]
   · change 11 < 2 ^ 32
@@ -94,6 +89,7 @@ theorem export_section (func : LeanExe.IR.Func) (entry : String)
       LeanExe.Wasm.Binary.wasmSection 7 (exportPayload entry) := by
   simp [LeanExe.Wasm.Binary.CoreWasm.exportSection, LeanExe.Wasm.Binary.CoreWasm.enumerate,
     LeanExe.Wasm.Binary.CoreWasm.enumerateAux,
-    named, exportPayload, exportItems, LeanExe.Wasm.Binary.CoreWasm.runtimeStatGlobal]
+    named, exportPayload, exportItems, LeanExe.Wasm.ArithmeticBounds.exportPayload,
+    LeanExe.Wasm.ArithmeticBounds.exportItems, LeanExe.Wasm.Binary.CoreWasm.runtimeStatGlobal]
 
 end Project.Compiler.ArithmeticModule

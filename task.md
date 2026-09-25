@@ -667,3 +667,13 @@ from successful extraction to the actual normal compiler. These modules build.
 The CLI's compile-arithmetic command builds and calls this strict entry followed
 by the unchanged production emitter. The actual CLI executable/engine gate and
 full source-to-module theorem are still pending.
+
+### Shared admission sizes connected to the checked byte layout
+
+The production admission mode and the module-byte proofs now use the same type,
+export, and code payload definitions for numeric size checks. The production
+emitter is unchanged. Rebuilt exact whole-module decoding, fixed runtime-body
+parsing, reset validation, and complete metadata validation successfully
+(3110 jobs). Narrowed the runtime and metadata validation imports to the binary
+layout and validator definitions they need. Retain/allocator/release validation
+and the final composed theorem are still being checked.

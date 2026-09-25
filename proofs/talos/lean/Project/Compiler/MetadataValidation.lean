@@ -1,4 +1,5 @@
-import Project.Compiler.ValidationRules
+import Project.Compiler.ArithmeticModuleBytes
+import Project.Artifact.Binary.Validate
 import LeanExe.Extract.Core
 
 namespace Project.Compiler.ArithmeticModule
@@ -14,7 +15,7 @@ theorem limits_valid (func : LeanExe.IR.Func) (entry : String) (user : Code) :
 theorem globals_valid (func : LeanExe.IR.Func) (entry : String) (user : Code) :
     Validator.validateGlobals (rawModule func entry user).globals = .ok () := by
   simp [rawModule, globalValues, globalValue, Validator.validateGlobals,
-    Validator.validateGlobal, Validator.constType, Validator.inSignedRange, ArithmeticValidation.signed64_range,
+    Validator.validateGlobal, Validator.constType, Validator.inSignedRange,
     bind, Except.bind, pure, Except.pure]
 
 theorem types_resolved (func : LeanExe.IR.Func) (entry : String) (user : Code) :
