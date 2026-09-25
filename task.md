@@ -649,3 +649,58 @@ attempts), `source-whole-flight.log`, and `native-example.log`. These logs,
 dependencies and toolchain files remain ignored local state. This checkpoint
 contains only Lean proofs and this handoff. The first safety milestone is now
 complete; exact compiled-WASM execution agreement remains the next proof task.
+
+### 2026-09-25 — artifact generation recovery and annotation repair
+
+Continued from `a669b528` toward WASM execution agreement. Installed Node
+24.13.0, wasm-tools 1.251.0, and the checked Wasmtime 44.0.0 C API archive in
+ignored local build directories. The user installed the missing C headers;
+the repository's Wasmtime C host then built with the pinned Lean distribution's
+Clang, using its builtin-header include directory together with the system
+headers. No project runtime source changed.
+
+The verifier's generated `Emit.c` crashed in bundled Clang 22.1.4 at `-O0`
+(`alloc-token`) and `-O1` (`always-inline`). A focused build succeeded with
+`moreLeancArgs = ["-O0", "-Xclang", "-disable-llvm-passes"]` in the ignored
+Talos verifier package. The interpreter package retains the local `-O0`
+setting. These flags affect native build optimization only. The compiler's
+`Extract.Values` module also failed once while saving its `.olean`, then passed
+on a focused bounded rebuild. Failure logs and compiler crash reproducers were
+preserved locally.
+
+Artifact preparation exposed an actual annotation bug in `directCallResults`:
+`List.take resultCount` can yield a shorter suffix at the end of a branch, and
+`mapM` on that suffix can succeed without a complete set of result stores.
+The emitter now checks the suffix length before describing a complete local
+result bundle. A call without that bundle keeps the stack-result annotation.
+Focused regression cases cover no stores, a partial two-result bundle, and a
+complete reversed stack-to-local bundle.
+
+`tools/talos-artifact.js prepare drone` passes after that change. Its generated
+`Program.lean` and `AnnotationMatches.lean` describe the real artifact. Both
+before and after the annotation fix, the WASM has 14,198 bytes and SHA-256
+`0c24d2c1568ca40321421d19387843d4ee81c970d53e75adcb035b32343c0942`, exactly
+matching the earlier artifact. A fresh Wasmtime run returns
+`[0, 0, 145, 10, 180, 15, 165, 10, 0, 0]` for the recorded example. A local
+regression driver checks 48 accepted flights and four empty/rejected inputs
+against an independent finite-graph planner; all pass, including 64-point
+terrains and the maximum allowed height range. Runtime testing is supporting
+evidence, not the missing execution theorem.
+
+The first generated-annotation Lean build reached its five-minute limit while
+building the broader interpreter dependency closure. It reported dependency
+segfaults and a missing compiled linter declaration, before reaching drone proof
+checking. A full forced cache restore is replacing the incomplete mixed mathlib
+cache. Its first attempt was blocked by sandbox DNS and was stopped; the
+approved network retry downloaded all 8,747 files and is extracting them.
+`ExecutionScalar.lean` is being developed against the emitted functions, but
+its Lean checks, the generated annotation checks, and native comparison harness
+remain pending at this point. The full WASM execution and safety-transfer
+milestone remains open. The local case registry stays outside commits.
+
+The full forced cache extraction completed successfully. The corrected
+`test/direct_call_annotations.lean` passes, and the generated native harness
+passes all 12 native/WASM comparisons. This verified compiler-annotation
+checkpoint includes `Binary.lean`, that focused regression, and this handoff.
+The generated model and in-progress scalar proof files await their own Lean
+verification before being committed. No instruction bytes changed.
