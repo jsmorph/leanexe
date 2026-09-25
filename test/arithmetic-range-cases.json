@@ -332,5 +332,13 @@
   "rangeNestedIdBounds",
   "rangeNestedIdStep",
   "rangeNestedIdOuter",
-  "rangeNestedIdUnused"
+  "rangeNestedIdUnused",
+  "rangeIdLetYield",
+  "rangeIdLetJoined",
+  "rangeIdLetContinue",
+  "rangeIdLetCapture",
+  "rangeIdLetBounds",
+  "rangeIdLetStep",
+  "rangeIdLetOuter",
+  "rangeIdLetUnused"
 ]

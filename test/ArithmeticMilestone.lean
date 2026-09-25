@@ -4189,6 +4189,128 @@ def rangeNestedIdUnused (count seed : UInt64) : UInt64 := Id.run do
     if Id.run (pure (a % 7 == 0)) && seed != 0 then break
   return a
 
+def idLetWord (x y : UInt64) : UInt64 :=
+  let value : Id UInt64 := x + y
+  Id.run value + y
+
+def idLetBoolean (x y : UInt64) : UInt64 :=
+  let flag : Id Bool := x == 0
+  if Id.run flag && y != 0 then x + y else x - y
+
+def idLetLiteral (x y : UInt64) : UInt64 :=
+  let value : Id (Id UInt64) := 3
+  Id.run (Id.run value) + x + y
+
+def idLetHelper (x y : UInt64) : UInt64 :=
+  let f : Id (UInt64 → UInt64) := fun z => z + x
+  f y
+
+def idLetShadow (x y : UInt64) : UInt64 :=
+  let value : Id (Id UInt64) := x + y
+  let value : Id UInt64 := Id.run (Id.run value) * 3
+  let flag : Id (Id Bool) := Id.run value == y
+  if Id.run (Id.run flag) then Id.run value else x + y
+
+def idLetOverflow (x y : UInt64) : UInt64 :=
+  let value : Id (Id UInt64) := 18446744073709551619
+  Id.run (Id.run value) + x + y
+
+def idLetUnused (x y : UInt64) : UInt64 :=
+  let _value : Id UInt64 := x / y
+  let _flag : Id (Id Bool) := x == y
+  x + y
+
+def idLetDo (x y : UInt64) : UInt64 := Id.run do
+  let flag : Id Bool := x != 0
+  let value : Id (Id UInt64) := Id.run (pure (if Id.run flag then x + y else x - y))
+  let saved ← pure (Id.run (Id.run value))
+  let next : Id UInt64 := saved + y
+  return Id.run next
+
+def rangeIdLetYield (count seed : UInt64) : UInt64 := Id.run do
+  let outer : Id Bool := seed != 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    let value : Id UInt64 := a + UInt64.ofNat i
+    a := Id.run value + 1
+    let stop : Id (Id Bool) := a % 7 == 0
+    if Id.run (Id.run stop) && Id.run outer then break
+  let value : Id UInt64 := a + seed
+  return Id.run value
+
+def rangeIdLetJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first : Id Bool := a % 2 == 0
+    let next ← if Id.run first then pure (UInt64.ofNat i == 0) else pure (a != seed)
+    let saved : Id (Id Bool) := next
+    if Id.run (Id.run saved) then a := a + 2 else a := a + 5
+    let stop : Id Bool := a % 7 == 0
+    if Id.run stop && seed != 0 then break
+  return a
+
+def rangeIdLetContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let skip : Id (Id Bool) := UInt64.ofNat i % 3 == 1
+    if Id.run (Id.run skip) && a != 0 then continue
+    let value : Id UInt64 := a + UInt64.ofNat i
+    a := Id.run value
+    let stop : Id Bool := a % 7 == 0
+    if Id.run stop && seed != 0 then break
+  return a
+
+def rangeIdLetCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer : Id Bool := seed != 0
+  let f : Id (Bool → UInt64) := fun flag => (flag && Id.run outer).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g : Id (UInt64 → UInt64) := fun value => value + a
+    a := g (f (UInt64.ofNat i % 2 == 0))
+    let stop : Id (Id Bool) := a % 11 == 0
+    if Id.run (Id.run stop) && Id.run outer then break
+  return a + f (a == seed)
+
+def rangeIdLetBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first : Id UInt64 := 1
+  let stop : Id (Id UInt64) := count + (seed != 0).toUInt64
+  let mut a := seed
+  for i in [(Id.run first).toNat:(Id.run (Id.run stop)).toNat:2] do
+    let delta : Id UInt64 := UInt64.ofNat i + 1
+    a := a + Id.run delta
+    let stop : Id Bool := a % 7 == 0
+    if Id.run stop && seed != 0 then break
+  return a
+
+def rangeIdLetStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : Id (Bool → Id (ForInStep UInt64)) := fun flag => do
+      let next : Id Bool := flag && a != 0
+      if _h : Id.run next then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (!flag).toUInt64)
+    f (UInt64.ofNat i % 2 == 0)
+
+def rangeIdLetOuter (count seed : UInt64) : UInt64 :=
+  let initial : Id UInt64 := seed + 1
+  let total : Id (Id UInt64) := Id.run do
+    let mut a := Id.run initial
+    for i in [:count.toNat] do
+      a := a + UInt64.ofNat i + 1
+      let stop : Id Bool := a % 7 == 0
+      if Id.run stop && seed != 0 then break
+    return a
+  Id.run (Id.run total) + seed
+
+def rangeIdLetUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _unused : Id UInt64 := a / UInt64.ofNat i
+    let _flag : Id (Id Bool) := a == seed
+    a := a + UInt64.ofNat i + 1
+    let stop : Id Bool := a % 7 == 0
+    if Id.run stop && seed != 0 then break
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -4518,7 +4640,15 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeNestedIdBounds", rangeNestedIdBounds),
    ("rangeNestedIdStep", rangeNestedIdStep),
    ("rangeNestedIdOuter", rangeNestedIdOuter),
-   ("rangeNestedIdUnused", rangeNestedIdUnused)]
+   ("rangeNestedIdUnused", rangeNestedIdUnused),
+   ("rangeIdLetYield", rangeIdLetYield),
+   ("rangeIdLetJoined", rangeIdLetJoined),
+   ("rangeIdLetContinue", rangeIdLetContinue),
+   ("rangeIdLetCapture", rangeIdLetCapture),
+   ("rangeIdLetBounds", rangeIdLetBounds),
+   ("rangeIdLetStep", rangeIdLetStep),
+   ("rangeIdLetOuter", rangeIdLetOuter),
+   ("rangeIdLetUnused", rangeIdLetUnused)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -4801,7 +4931,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("nestedIdDo", nestedIdDo),
    ("nestedIdDependent", nestedIdDependent),
    ("nestedIdUnused", nestedIdUnused),
-   ("nestedIdShadow", nestedIdShadow)]
+   ("nestedIdShadow", nestedIdShadow),
+   ("idLetWord", idLetWord),
+   ("idLetBoolean", idLetBoolean),
+   ("idLetLiteral", idLetLiteral),
+   ("idLetHelper", idLetHelper),
+   ("idLetShadow", idLetShadow),
+   ("idLetOverflow", idLetOverflow),
+   ("idLetUnused", idLetUnused),
+   ("idLetDo", idLetDo)]
 
 end ArithmeticMilestone
 
