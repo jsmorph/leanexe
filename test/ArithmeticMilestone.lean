@@ -329,6 +329,23 @@ def rangeUnusedDone (count seed : UInt64) : UInt64 := Id.run do
     a := a + 1
   return a
 
+def rangeDirectSteps (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    if UInt64.ofNat i == seed % 7 then .done (a + 9)
+    else .yield (a + UInt64.ofNat i + 1)
+
+def rangeDirectFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → ForInStep UInt64 := fun x =>
+      if x % 5 == seed % 5 then .done (x + 7) else .yield (x + UInt64.ofNat i)
+    finish (a + 1)
+
+def rangeDirectUnitFunction (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : Unit → UInt64 → ForInStep UInt64 := fun _ x =>
+      if x % 3 == seed % 3 then .done (x * 3) else .yield (x + UInt64.ofNat i)
+    finish () (a + UInt64.ofNat i + 1)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -350,7 +367,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeContinueBreak", rangeContinueBreak),
    ("rangeDoneFunction", rangeDoneFunction),
    ("rangeDoneUnitFunction", rangeDoneUnitFunction),
-   ("rangeUnusedDone", rangeUnusedDone)]
+   ("rangeUnusedDone", rangeUnusedDone),
+   ("rangeDirectSteps", rangeDirectSteps),
+   ("rangeDirectFunction", rangeDirectFunction),
+   ("rangeDirectUnitFunction", rangeDirectUnitFunction)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

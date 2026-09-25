@@ -11,6 +11,10 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (Range.yieldValue a) values (.yield x)
   | doneValue (value : EvalWith a (values.map Value.toScalar) x) :
       Eval (doneValue a) values (.done x)
+  | yieldDirect (value : EvalWith a (values.map Value.toScalar) x) :
+      Eval (yieldDirect a) values (.yield x)
+  | doneDirect (value : EvalWith a (values.map Value.toScalar) x) :
+      Eval (doneDirect a) values (.done x)
   | choose (op : Comparison) (type : ResultType)
       (left : EvalWith a (values.map Value.toScalar) x) (right : EvalWith b (values.map Value.toScalar) y)
       (chosen : Eval (if op.denote x y then onTrue else onFalse) values outcome) :
@@ -65,6 +69,10 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (Range.yieldValue a)
   | doneValue (value : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (doneValue a)
+  | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) a) :
+      Supported types (yieldDirect a)
+  | doneDirect (value : SupportedWith (types.map BindingKind.toScalar) a) :
+      Supported types (doneDirect a)
   | choose (op : Comparison) (type : ResultType)
       (left : SupportedWith (types.map BindingKind.toScalar) a)
       (right : SupportedWith (types.map BindingKind.toScalar) b)
@@ -122,6 +130,12 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
   | doneValue value =>
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     exact ⟨.done x, .doneValue hx⟩
+  | yieldDirect value =>
+    obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
+    exact ⟨.yield x, .yieldDirect hx⟩
+  | doneDirect value =>
+    obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
+    exact ⟨.done x, .doneDirect hx⟩
   | choose op type left right _ _ it ie =>
     obtain ⟨x, hx⟩ := left.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨y, hy⟩ := right.evaluates (values.map Value.toScalar) (typed_projection typed)

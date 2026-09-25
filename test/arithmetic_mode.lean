@@ -110,6 +110,17 @@ def rangeUnusedUnsupportedDone (n seed : UInt64) : UInt64 := Id.run do
     a := a + 1
   return a
 
+def rangeDirect (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun i a =>
+    if a == seed + 2 then .done (a + UInt64.ofNat i) else .yield (a + 1)
+
+def rangeUnsupportedDirect (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    let _bad : UInt64 → ForInStep UInt64 := fun x => .done (expression x a)
+    a := a + 1
+  return a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -139,7 +150,7 @@ run_elab do
       `ArithmeticModeTest.customBinding, `ArithmeticModeTest.joinedChoice,
       `ArithmeticModeTest.range, `ArithmeticModeTest.rangeLocal,
       `ArithmeticModeTest.rangeBind, `ArithmeticModeTest.rangeJoined,
-      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone] do
+      `ArithmeticModeTest.rangeBreak, `ArithmeticModeTest.rangeBindBreak, `ArithmeticModeTest.rangeUnusedDone, `ArithmeticModeTest.rangeDirect] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -154,7 +165,7 @@ run_elab do
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind,
-      `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
+      `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,
       `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
