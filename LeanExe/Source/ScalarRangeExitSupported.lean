@@ -23,6 +23,28 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
       Eval (Identity.bind name bi a b) values y
   | bindLeft (value : Eval a values x) (body : EvalWith b (.word x :: values) y) :
       Eval (Identity.bind name bi a b) values y
+  | letFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.word x :: values) (f x))
+      (body : Eval b (.function false f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
+  | letBinaryFn (type : ResultType)
+      (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
+      (body : Eval b (.binaryFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
+  | letUnitFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.word x :: .unit :: values) (f x))
+      (body : Eval b (.function true f :: values) outcome) :
+      Eval (.letE name
+        (.forallE unitTypeName (.const ``Unit [])
+          (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
+        (.lam unitName (.const ``Unit [])
+          (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | metadata (body : Eval e values result) : Eval (.mdata data e) values result
 
 /-- Independent source support for a single bounded early-exit range. -/
@@ -40,6 +62,25 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
       Supported types (Identity.bind name bi a b)
   | bindLeft (value : Supported types a) (body : SupportedWith (.word :: types) b) :
       Supported types (Identity.bind name bi a b)
+  | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
+      (body : Supported (.function false :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
+      (body : Supported (.binaryFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | letUnitFn (type : ResultType) (function : SupportedWith (.word :: .unit :: types) a)
+      (body : Supported (.function true :: types) b) :
+      Supported types (.letE name
+        (.forallE unitTypeName (.const ``Unit [])
+          (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
+        (.lam unitName (.const ``Unit [])
+          (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | metadata (body : Supported types e) : Supported types (.mdata data e)
 
 theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
@@ -76,6 +117,21 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     obtain ⟨x, hx⟩ := ih values typed
     obtain ⟨y, hy⟩ := body.evaluates (.word x :: values) (by simp [Scalar.Value.kind, typed])
     exact ⟨y, .bindLeft hx hy⟩
+  | letFn type function _ ihb =>
+    have total := fun x => function.evaluates (.word x :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
+  | letBinaryFn type function _ ihb =>
+    have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
+    let f := fun x y => (total x y).choose
+    obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
+  | letUnitFn type function _ ihb =>
+    have total := fun x => function.evaluates (.word x :: .unit :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letUnitFn type (fun x => (total x).choose_spec) hv⟩
   | metadata _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩
