@@ -43,8 +43,8 @@ theorem extracted_function_body_bytes
     omega
   have reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32 := by
     intro index member
-    have h := arithmetic.reads_bound (Expr.ofIR_eval irEval recognized).1 index member
-    simp only [List.length_append, List.length_cons, List.length_nil] at h
+    have h := extractScalarExpr_reads hi recognized (count := args.length)
+      (by intro slot present; simpa using present) index member
     omega
   obtain ⟨raw, encoded⟩ := scalar_function_encodable name exportName args.length
     releaseIndex recognized arithmetic reads room

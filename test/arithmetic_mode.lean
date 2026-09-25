@@ -17,12 +17,21 @@ def retain (x : UInt64) : UInt64 := x + 1
 @[instance_reducible] def custom : HAdd UInt64 UInt64 UInt64 := ⟨UInt64.sub⟩
 def customAdd (x y : UInt64) : UInt64 := @HAdd.hAdd _ _ _ custom x y
 
+@[instance_reducible] def reversedLT : LT UInt64 := ⟨fun x y => y < x⟩
+@[instance_reducible] def neverEqual : BEq UInt64 := ⟨fun _ _ => false⟩
+def customOrder (x y : UInt64) : UInt64 :=
+  if @LT.lt UInt64 reversedLT x y then x else y
+def customEquality (x y : UInt64) : UInt64 :=
+  if @BEq.beq UInt64 neverEqual x y then x else y
+def customDecision (x y : UInt64) : Decidable (x = y) := inferInstance
+def customDecisionBranch (x y : UInt64) : UInt64 := @ite UInt64 (x = y) (customDecision x y) x y
+
 end ArithmeticModeTest
 
 run_elab do
   let env ← Lean.getEnv
   for name in [`ArithmeticModeTest.expression, `ArithmeticModeTest.bits, `ArithmeticModeTest.literal,
-      `ArithmeticModeTest.binding] do
+      `ArithmeticModeTest.binding, `ArithmeticModeTest.branch] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -32,7 +41,8 @@ run_elab do
         unless LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_ ==
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
-  for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.customBinding, `ArithmeticModeTest.branch, `ArithmeticModeTest.helper,
+  for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.customBinding,
+      `ArithmeticModeTest.customOrder, `ArithmeticModeTest.customEquality, `ArithmeticModeTest.customDecisionBranch, `ArithmeticModeTest.helper,
       `ArithmeticModeTest.wrongType, `ArithmeticModeTest.retain, `ArithmeticModeTest.customAdd,
       `ArithmeticModeTest.missing] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with

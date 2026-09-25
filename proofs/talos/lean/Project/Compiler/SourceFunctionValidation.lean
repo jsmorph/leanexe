@@ -27,17 +27,11 @@ theorem extracted_function_valid
   have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by
     rw [scratch] at localBound
     exact localBound
-  let args : List UInt64 := List.replicate arity 0
-  have supported := extractScalarExpr_supported extracted
-  obtain ⟨value, sourceEval⟩ := supported.evaluates args.reverse (by simp [args])
-  have argumentLocals : ScalarLocalsMatch (List.range arity).reverse args.reverse (args ++ [0]) := by
-    simpa only [args, List.length_replicate] using scalarArgumentLocals args [0]
-  have irEval := extractScalarExpr_correct sourceEval extracted argumentLocals
-  have readBound := arithmetic.reads_bound (Expr.ofIR_eval irEval recognized).1
+  have readBound := extractScalarExpr_reads extracted recognized (count := arity)
+    (by intro slot present; simpa using present)
   have reads : ∀ index ∈ descriptor.reads, index < arity + 1 + descriptor.scratchWidth := by
     intro index member
     have h := readBound index member
-    simp only [args, List.length_append, List.length_replicate, List.length_cons, List.length_nil] at h
     omega
   obtain ⟨raw, encoded, typed⟩ := function_sequence name entry arity recognized arithmetic reads format
   have parsedTyped := function_body 4 encoded

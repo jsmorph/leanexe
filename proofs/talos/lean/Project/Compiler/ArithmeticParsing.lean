@@ -82,5 +82,20 @@ theorem Atom.parses {a : LeanExe.Wasm.Instr} {b : Wasm.Binary.Instr} (h : Atom a
     unfold Wasm.Binary.instruction
     apply bind_parses (a := [81]) (b := []) (read_byte 81)
     exact pure_parses _
+  | lt =>
+    simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, byte_list]
+    unfold Wasm.Binary.instruction
+    apply bind_parses (a := [84]) (b := []) (read_byte 84)
+    exact pure_parses _
+  | le =>
+    simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, byte_list]
+    unfold Wasm.Binary.instruction
+    apply bind_parses (a := [88]) (b := []) (read_byte 88)
+    exact pure_parses _
+  | eqz32 =>
+    simp only [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, byte_list]
+    unfold Wasm.Binary.instruction
+    apply bind_parses (a := [69]) (b := []) (read_byte 69)
+    exact pure_parses _
 
 end Project.Compiler.ArithmeticEncoding

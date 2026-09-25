@@ -1,6 +1,6 @@
 import LeanExe.Extract.Core
 
-/-! Regression for source class evidence in the actual production extractor.
+/-! Test for source class evidence in the actual production extractor.
 This executable check is not a compiler-correctness theorem. -/
 
 namespace ScalarClassEvidence
@@ -52,8 +52,7 @@ run_elab do
       throwError "missing parameters {name}"
     let expectedTree := ![
       `ScalarClassEvidence.customAdd, `ScalarClassEvidence.customSub,
-      `ScalarClassEvidence.customMul, `ScalarClassEvidence.customLiteral,
-      `ScalarClassEvidence.standardBranch].contains name
+      `ScalarClassEvidence.customMul, `ScalarClassEvidence.customLiteral].contains name
     let actualTree := (LeanExe.Extract.Core.extractScalarExpr [1, 0] body).isSome
     unless actualTree == expectedTree do
       throwError "{name}: raw source traversal acceptance mismatch"

@@ -52,6 +52,12 @@ theorem comparison_sound {condition evidence a b : Lean.Expr} {op : Comparison}
     exact ⟨comparisonOperands_sound operands, LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
   · contradiction
 
+theorem comparison_size {condition evidence a b : Lean.Expr} {op : Comparison}
+    (h : comparison? condition evidence = some (op, a, b)) :
+    sizeOf a < sizeOf condition ∧ sizeOf b < sizeOf condition := by
+  rw [(comparison_sound h).1]
+  exact op.operands_size a b
+
 def lowerComparison : Comparison → LeanExe.IR.Expr → LeanExe.IR.Expr → LeanExe.IR.Cond
   | .eq, a, b => .eqU64 a b
   | .lt, a, b => .ltU64 a b

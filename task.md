@@ -34,10 +34,12 @@ In progress: conditionals over unsigned scalar comparisons. The new
 modules pass their focused Lean build. They define canonical `=`, `<`, `≤`,
 `==`, and `!=` syntax, check its complete decision evidence with a proved
 structural Expr comparison (including metadata), and prove recognition and
-comparison lowering. Ordinary branch extraction is not yet enabled. Extend source
-semantics/admission, both-branch static local bounds, byte encoding/validation,
-and the general source-to-byte theorem, then test both branches in the actual
-compiler and engine before moving to `do` or loops.
+comparison lowering. Source branch evaluation, extraction preservation/acceptance/soundness and static
+bounds for both branches now pass focused builds. Exact byte encoding, whole-module validation and the final source-to-byte
+execution theorem now pass the general proof build, including all nine axiom
+audits. The integration suite now has 254 expected comparisons over twenty
+declarations, but this expanded suite has not run yet. Complete the real
+compiler/engine checks before moving to `do`, further Boolean forms or loops.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

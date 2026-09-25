@@ -22,6 +22,9 @@ inductive Atom : Instr → Wasm.Binary.Instr → Prop where
   | shl : Atom .shlI64 .i64Shl
   | shr : Atom .shrUI64 .i64ShrU
   | eq : Atom .eqI64 .i64Eq
+  | lt : Atom .ltUI64 .i64LtU
+  | le : Atom .leUI64 .i64LeU
+  | eqz32 : Atom .eqzI32 .i32Eqz
 
 mutual
   inductive InstructionEncoding : Instr → Wasm.Binary.Instr → Prop where
@@ -82,6 +85,9 @@ theorem Atom.grammar {a : Instr} {b : Wasm.Binary.Instr} (h : Atom a b) :
   | shl => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i64Shl
   | shr => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i64ShrU
   | eq => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i64Eq
+  | lt => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i64LtU
+  | le => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i64LeU
+  | eqz32 => simpa [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, Wasm.Binary.Grammar.byte] using Wasm.Binary.Grammar.Instr.i32Eqz
 
 mutual
   theorem InstructionEncoding.grammar {a : Instr} {b : Wasm.Binary.Instr}

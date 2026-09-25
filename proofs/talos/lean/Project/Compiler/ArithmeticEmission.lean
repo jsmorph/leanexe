@@ -49,6 +49,15 @@ theorem operation_encodable (op : U64Op) : Encodable [op.instruction] := by
   · exact .atom .shl
   · exact .atom .shr
 
+theorem comparison_encodable (op : LeanExe.Source.Scalar.Comparison)
+    (a b : Expr) (scratch : Nat) (left : Encodable (a.emit scratch))
+    (right : Encodable (b.emit scratch)) : Encodable ((comparison op a b).emit scratch) := by
+  cases op with
+  | eq | beq => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .eq))
+  | lt => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .lt))
+  | le => simpa [comparison, Cond.emit, List.append_assoc] using left.append (right.append (.atom .le))
+  | bne => simpa [comparison, Cond.emit, List.append_assoc] using (left.append (right.append (.atom .eq))).append (.atom .eqz32)
+
 theorem checked_tail (scratch : Nat) (op : U64Op) (zero : List LeanExe.Wasm.Instr)
     (zeroEncoded : Encodable zero) (bound : scratch + 1 < 2 ^ 32) :
     Encodable [.localGet (scratch + 1), .constI64 0, .eqI64,
@@ -91,5 +100,18 @@ theorem arithmetic_encodable {e : Expr} (arithmetic : e.Arithmetic) (scratch : N
       simpa only [Expr.emit, checked, Bool.false_eq_true, ite_false, List.append_assoc] using
         (ihl scratch leftReads (by omega)).append
           ((ihr scratch rightReads (by omega)).append (operation_encodable op))
+  | @choose a b t e op aa ab aTrue ae iha ihb iht ihe =>
+    have ra : ∀ index ∈ a.reads, index < 2 ^ 32 := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have rb : ∀ index ∈ b.reads, index < 2 ^ 32 := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have rt : ∀ index ∈ t.reads, index < 2 ^ 32 := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    have re : ∀ index ∈ e.reads, index < 2 ^ 32 := by
+      intro index member; exact reads index (by simp [Expr.reads, member])
+    simp only [Expr.scratchWidth, comparison_scratch] at room
+    exact (comparison_encodable op a b scratch
+      (iha scratch ra (by omega)) (ihb scratch rb (by omega))).append
+      ((iht scratch rt (by omega)).iff (ihe scratch re (by omega)))
 
 end Project.Compiler.ArithmeticEncoding
