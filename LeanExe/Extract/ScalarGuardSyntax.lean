@@ -3,29 +3,36 @@ import LeanExe.Extract.ScalarComparison
 
 namespace LeanExe.Extract.Core
 
-open LeanExe.Source.Scalar (Guard CompoundGuard Junction Comparison)
+open LeanExe.Source.Scalar
 
 def guardOperands? : Lean.Expr → Option Guard
   | .app (.app (.const ``And []) left) right => do
       let a ← guardOperands? left
       let b ← guardOperands? right
-      pure (.junction .conjunction a b)
+      pure (.junction 0 .conjunction a b)
   | .app (.app (.const ``Or []) left) right => do
       let a ← guardOperands? left
       let b ← guardOperands? right
-      pure (.junction .disjunction a b)
+      pure (.junction 0 .disjunction a b)
+  | .app (.const ``Not []) inner => (guardOperands? inner).map Guard.negate
   | expression => (comparisonOperands? expression).map fun (op, a, b) => .compare op a b
 
 @[simp] theorem guardOperands_compare (op : Comparison) (a b : Lean.Expr) :
     guardOperands? (op.condition a b) = some (.compare op a b) := by
-  cases op <;> simp [Comparison.condition, Comparison.boolExpr, guardOperands?, comparisonOperands?]
+  induction op with
+  | negate op ih => simp [Comparison.condition, guardOperands?, ih, Guard.negate]
+  | _ => simp [Comparison.condition, Comparison.boolExpr, guardOperands?, comparisonOperands?]
 
 @[simp] theorem guardOperands_condition (guard : Guard) :
     guardOperands? guard.condition = some guard := by
   induction guard with
   | compare op a b => exact guardOperands_compare op a b
-  | junction op a b iha ihb =>
-    cases op <;> simp [Guard.condition, Junction.condition, guardOperands?, iha, ihb]
+  | junction n op a b iha ihb =>
+    induction n with
+    | zero => cases op <;> simp [Guard.condition, GuardNegation.condition, Junction.condition, guardOperands?, iha, ihb]
+    | succ n ih =>
+      simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
+        congrArg (Option.map Guard.negate) ih
 
 theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
     (parsed : guardOperands? expression = some guard) : expression = guard.condition := by
@@ -34,23 +41,28 @@ theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
     rw [guardOperands?] at parsed
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨a, ha, b, hb, rfl⟩ := parsed
-    simp [Guard.condition, Junction.condition, ihl ha, ihr hb]
+    simp [Guard.condition, GuardNegation.condition, Junction.condition, ihl ha, ihr hb]
   | case2 left right ihl ihr =>
     rw [guardOperands?] at parsed
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
     obtain ⟨a, ha, b, hb, rfl⟩ := parsed
-    simp [Guard.condition, Junction.condition, ihl ha, ihr hb]
-  | case3 expression excludedAnd excludedOr =>
+    simp [Guard.condition, GuardNegation.condition, Junction.condition, ihl ha, ihr hb]
+  | case3 inner ih =>
+    rw [guardOperands?] at parsed
+    obtain ⟨guard, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
+    rw [Guard.negate_condition, ih found]
+  | case4 expression excludedAnd excludedOr excludedNot =>
     rw [guardOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact comparisonOperands_sound found
     · exact excludedAnd
     · exact excludedOr
+    · exact excludedNot
 
 /-- The complete tree's standard decision evidence is checked before admission. -/
 def compoundGuard? (condition evidence : Lean.Expr) : Option CompoundGuard := do
-  let .junction op left right ← guardOperands? condition | none
-  let guard : CompoundGuard := ⟨op, left, right⟩
+  let .junction negations op left right ← guardOperands? condition | none
+  let guard : CompoundGuard := ⟨op, left, right, negations⟩
   if LeanExe.Source.ExprEquality.same evidence guard.evidence then some guard else none
 
 @[simp] theorem compoundGuard_accepts (guard : CompoundGuard) :
@@ -66,10 +78,10 @@ theorem compoundGuard_sound {condition evidence : Lean.Expr} {guard : CompoundGu
   obtain ⟨tree, found, accepted⟩ := parsed
   cases tree with
   | compare => contradiction
-  | junction op left right =>
+  | junction negations op left right =>
     change (if LeanExe.Source.ExprEquality.same evidence
-        ({ junction := op, left, right } : CompoundGuard).evidence = true
-      then some { junction := op, left, right } else none) = some guard at accepted
+        ({ junction := op, left, right, negations } : CompoundGuard).evidence = true
+      then some { junction := op, left, right, negations } else none) = some guard at accepted
     split at accepted
     · rename_i same
       cases accepted
@@ -82,9 +94,14 @@ theorem compoundGuard_size {condition evidence : Lean.Expr} {guard : CompoundGua
   rw [(compoundGuard_sound parsed).1]
   exact guard.tree.operands_size member
 
+theorem junction_not_comparison (n : Nat) (op : Junction) (a b : Lean.Expr) :
+    comparisonOperands? (GuardNegation.condition n (op.condition a b)) = none := by
+  induction n with
+  | zero => cases op <;> rfl
+  | succ n ih => simp [GuardNegation.condition, comparisonOperands?, ih]
+
 @[simp] theorem compoundGuard_not_comparison (guard : CompoundGuard) :
     comparison? guard.condition guard.evidence = none := by
-  rcases guard with ⟨op, a, b⟩
-  cases op <;> rfl
+  simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, junction_not_comparison]
 
 end LeanExe.Extract.Core

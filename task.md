@@ -382,9 +382,16 @@ monadic joins, break, continue and step-result continuations. All 197 prior
 modules kept identical bytes. The general proof includes type validation;
 unrelated suites were not rebuilt.
 
-Next incremental capability: negation of compound propositional guards, using
-the existing guard model and preserving the comparison fast path. Finish its
-proofs and public compiler execution checks before another capability.
+Current increment: negation of whole compound propositional guards, including
+repeated Not wrappers and arbitrary nesting inside conjunction/disjunction.
+The shared guard syntax retains wrapper counts and exact standard decision
+evidence. Checked lowering compares the preceding Boolean word with zero;
+zero wrappers preserve the existing junction output. Recognition, source/IR
+correctness, scalar invariants and public function extraction pass, as do all
+208 focused native Lean/IR comparisons and three rejection tests. The general
+compiler proof/audits and actual native Lean/V8 checks are pending at this
+candidate checkpoint. Boolean &&/|| and general Boolean values remain later
+increments.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

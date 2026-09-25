@@ -22,29 +22,61 @@ def evidence (op : Junction) (a b ha hb : Lean.Expr) : Lean.Expr :=
 
 end Junction
 
+namespace GuardNegation
+
+def condition : Nat → Lean.Expr → Lean.Expr
+  | 0, expression => expression
+  | n + 1, expression => .app (.const ``Not []) (condition n expression)
+
+def evidence : Nat → Lean.Expr → Lean.Expr → Lean.Expr
+  | 0, _, decision => decision
+  | n + 1, expression, decision =>
+      .app (.app (.const ``instDecidableNot []) (condition n expression)) (evidence n expression decision)
+
+def denote : Nat → Bool → Bool
+  | 0, value => value
+  | n + 1, value => !(denote n value)
+
+theorem condition_size (n : Nat) (expression : Lean.Expr) :
+    sizeOf expression ≤ sizeOf (condition n expression) := by
+  induction n with
+  | zero => exact Nat.le_refl _
+  | succ n ih => simp only [condition]; simp_all; omega
+
+end GuardNegation
+
 /-- A guard tree retains each original scalar operand and its comparison syntax. -/
 inductive Guard where
   | compare (op : Comparison) (left right : Lean.Expr)
-  | junction (op : Junction) (left right : Guard)
+  | junction (negations : Nat) (op : Junction) (left right : Guard)
   deriving Repr
 
 namespace Guard
 
 def operands : Guard → List Lean.Expr
   | .compare _ a b => [a, b]
-  | .junction _ a b => a.operands ++ b.operands
+  | .junction _ _ a b => a.operands ++ b.operands
 
 def condition : Guard → Lean.Expr
   | .compare op a b => op.condition a b
-  | .junction op a b => op.condition a.condition b.condition
+  | .junction n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
 
 def evidence : Guard → Lean.Expr
   | .compare op a b => op.evidence a b
-  | .junction op a b => op.evidence a.condition b.condition a.evidence b.evidence
+  | .junction n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
+      (op.evidence a.condition b.condition a.evidence b.evidence)
 
 def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .compare op a b => op.denote (native a) (native b)
-  | .junction op a b => op.denote (a.denote native) (b.denote native)
+  | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
+
+def negate : Guard → Guard
+  | .compare op a b => .compare (.negate op) a b
+  | .junction n op a b => .junction (n + 1) op a b
+
+theorem negate_condition (guard : Guard) :
+    guard.negate.condition = .app (.const ``Not []) guard.condition := by
+  cases guard <;> rfl
 
 theorem operands_size (guard : Guard) {operand : Lean.Expr}
     (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition := by
@@ -55,9 +87,10 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
     rcases member with rfl | rfl
     · exact bounds.1
     · exact bounds.2
-  | junction op a b iha ihb =>
+  | junction n op a b iha ihb =>
+    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
     simp only [operands, List.mem_append] at member
-    cases op <;> simp only [condition, Junction.condition]
+    cases op <;> simp only [Junction.condition]
     all_goals rcases member with member | member
     all_goals first
       | (have h := iha member; simp_all; omega)
@@ -70,11 +103,12 @@ structure CompoundGuard where
   junction : Junction
   left : Guard
   right : Guard
+  negations : Nat := 0
   deriving Repr
 
 namespace CompoundGuard
 
-def tree (guard : CompoundGuard) : Guard := .junction guard.junction guard.left guard.right
+def tree (guard : CompoundGuard) : Guard := .junction guard.negations guard.junction guard.left guard.right
 abbrev operands (guard : CompoundGuard) : List Lean.Expr := guard.tree.operands
 abbrev condition (guard : CompoundGuard) : Lean.Expr := guard.tree.condition
 abbrev evidence (guard : CompoundGuard) : Lean.Expr := guard.tree.evidence
