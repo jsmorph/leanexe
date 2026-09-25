@@ -250,16 +250,24 @@ passed; unsupported unused bodies and other argument/result domains reject.
 All forty-two prior modules retained identical bytes. General type validation
 passed; the fixed arithmetic archive and unrelated runtime suite were not rebuilt.
 
-Current increment: UInt64 inequality and negated comparison conditions.
-The source comparison model now includes canonical Ne and recursive Not with
-exact standard decision evidence. Source recognition, semantic lowering and
-Wasm descriptor admission pass; all 198 focused native Lean/IR comparisons
-pass across twelve new declarations. These cover every comparison family,
-repeated negation, local functions and monadic bindings, plus break, continue
-and step-result branch joins. General compiler proof checks are next, followed
-by the full 1,764-result/94-declaration compiler/V8 group because shared scalar
-comparison behavior changed. The fixed arithmetic archive and unrelated
-runtime suite remain unchanged.
+Completed next increment: UInt64 inequality and negated comparison conditions.
+Candidate `95ea4329` passed all nine general compiler audits and the full
+1,764-result/94-declaration native Lean/V8 group, including source admission and
+reserved exports. Evidence is in `proofs/compiler/negative-conditions-2026-09-25/`.
+The recursive comparison model preserves canonical Ne, repeated Not and exact
+standard decision evidence. Source recognition, semantic lowering, Wasm
+recognition, encoding and typing are checked. All 198 focused native Lean/IR
+comparisons passed across twelve new declarations, including negation of every
+comparison family, repeated negation, functions and monadic binds, plus break,
+continue and step-result branch joins. Custom decision expressions reject.
+All eighty-two previous modules retained identical bytes. The fixed arithmetic
+archive and unrelated runtime suite were not rebuilt; general type validation
+passed. Boolean ! and compound conditions remain separate capabilities.
+
+Next incremental capability: nonzero standard literal range starts with unit
+step. Preserve exact native Nat indices, empty ranges and early exits. Reuse
+the current loop backend with the natural distance to the stop and an index
+offset, proving the conversion and iteration shift before public compiler checks.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
