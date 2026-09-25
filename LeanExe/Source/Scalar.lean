@@ -52,6 +52,17 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values value
+  | binaryApply (function : values[index]? = some (.binaryFunction f))
+      (first : EvalWith a values x) (second : EvalWith b values y) :
+      EvalWith (.app (.app (.bvar index) a) b) values (f x y)
+  | letBinaryFn (type : ResultType)
+      (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
+      (body : EvalWith b (.binaryFunction f :: values) value) :
+      EvalWith (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values value
   | range (countValue : EvalWith count values stop) (initialValue : EvalWith initial values start)
       (yielding : Range.YieldScalar stepBody scalarBody)
       (steps : ∀ index value, EvalWith scalarBody (.word value :: .natural index :: values) (step index value)) :
@@ -93,6 +104,16 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
+  | binaryApply (function : types[index]? = some .binaryFunction)
+      (first : SupportedWith types a) (second : SupportedWith types b) :
+      SupportedWith types (.app (.app (.bvar index) a) b)
+  | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
+      (body : SupportedWith (.binaryFunction :: types) b) :
+      SupportedWith types (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
   | metadata (body : SupportedWith types e) : SupportedWith types (.mdata data e)
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
@@ -154,9 +175,31 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letUnitFn type (fun x => (total x).choose_spec) hv⟩
+  | binaryApply present _ _ ihFirst ihSecond =>
+    obtain ⟨f, hf⟩ := binaryFunction_lookup typed present
+    obtain ⟨x, hx⟩ := ihFirst values typed
+    obtain ⟨y, hy⟩ := ihSecond values typed
+    exact ⟨f x y, .binaryApply hf hx hy⟩
+  | letBinaryFn type _ _ ihf ihb =>
+    have total := fun x y => ihf (.word y :: .word x :: values) (by simp [Value.kind, typed])
+    let f := fun x y => (total x y).choose
+    obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
   | metadata _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
     exact ⟨value, .metadata hv⟩
+
+theorem EvalWith.not_unit {expression values value} (evaluated : EvalWith expression values value) :
+    expression ≠ .const ``Unit.unit [] := by
+  intro same
+  subst expression
+  cases evaluated
+
+theorem SupportedWith.not_unit {types expression} (supported : SupportedWith types expression) :
+    expression ≠ .const ``Unit.unit [] := by
+  intro same
+  subst expression
+  cases supported
 
 /-- Public scalar entry semantics: parameters contain words; closures are internal. -/
 abbrev Eval (expr : Lean.Expr) (values : List UInt64) (value : UInt64) : Prop :=
