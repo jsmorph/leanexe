@@ -798,3 +798,31 @@ call boundaries rather than searching through alternative callee rules.
 Its check and the moving-case proof remain pending. The existing external
 annotation examples remain pending behind the allocator dependency as recorded
 above. No executable instructions or source input assumptions changed.
+
+### 2026-09-25 — edge branch and arithmetic checkpoint
+
+Published the validation/read-prefix checkpoint as `76e8c330`. Added and checked
+`ProofKit.ConstIf.wp_constIf`, which handles constant-valued Boolean branches
+without duplicating the caller's postcondition, and
+`ProofKit.CheckedNatAdd.guard_spec`, which discharges the emitted overflow guard
+from a representable Nat sum. Their axiom audits contain only standard axioms.
+`Drone.EdgeSource.edgeTicks_eq` gives a checked non-monadic equation for the
+source segment cost. `ExecutionEdgeRestBody` and `ExecutionEdgeRest` now prove
+the complete emitted rest-to-rest segment-cost case. The final body check takes
+about four seconds, and the public wrapper checks in two seconds.
+
+The unrestricted moving-case tactic still exceeded its bounded runtime after
+several control-flow reductions. A no-progress simplification could roll back
+a preceding branch split; fixing that exposed the remaining nested arithmetic.
+The next decomposition uses the already-checked `ScalarTransition.Expr`
+framework for that arithmetic suffix, with an explicit evaluation lemma before
+reconnecting it to the emitted body. That suffix, the moving-case theorem,
+and the full predecessor theorem remain unverified development files. A generic
+WP congruence experiment is also local and has not established a performance
+benefit yet. No source behavior, instruction bytes, or input bounds changed.
+
+Evidence: `build/logs/const-if-1.log`, the passing `CheckedNatAdd` target in
+`edge-source-add-rest-1.log`, and the passing rest wrapper in
+`drone-edges-compact-1.log`. Those latter aggregates contain other failed targets
+and are not recorded as wholly passing runs. Subsequent tail attempts and
+moving-case timeouts remain in their numbered local logs.
