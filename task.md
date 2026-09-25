@@ -477,7 +477,11 @@ before expanding step-result helpers or moving to another capability.
 Checked preparation: the shared UInt64 parameter-suffix and larger-function
 syntax modules and their parsers pass Lean checking. Round-trip, exact source
 reconstruction and recursive body-size proofs are complete. Production
-extraction is not yet extended; argument-list and closure integration follows.
+extraction integration is in progress. The checked local-call parser preserves
+all operands and their order. The argument-list compiler proves acceptance,
+operand success, exact length, elementwise meaning and output invariants.
+These shared modules pass focused builds; the full compiler extension and
+its execution checks are not yet complete.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
