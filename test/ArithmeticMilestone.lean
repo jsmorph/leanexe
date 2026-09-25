@@ -4082,6 +4082,113 @@ def rangeAnnotatedLetUnused (count seed : UInt64) : UInt64 := Id.run do
     if (let value : Id UInt64 := a - seed; Id.run value % 7 == 0) then break
   return a
 
+def nestedIdOperators (x y : UInt64) : UInt64 :=
+  (Id.run (pure (x == 0)) && Id.run (pure (y != 0))).toUInt64 + x
+
+def nestedIdBinding (x y : UInt64) : UInt64 :=
+  (let flag : Id Bool := x == 0; Id.run flag || y != 0).toUInt64 + y
+
+def nestedIdNested (x y : UInt64) : UInt64 :=
+  (!(Id.run (pure (Id.run (pure (x == y)))) &&
+    (let saved : Id (Id Bool) := x != 0; Id.run (Id.run saved)))).toUInt64 + x
+
+def nestedIdHelper (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let f := fun flag : Bool =>
+    (Id.run (pure flag) && (let saved : Id Bool := outer; Id.run saved)).toUInt64 + x
+  f (Id.run (pure (y == 0)))
+
+def nestedIdDo (x y : UInt64) : UInt64 := Id.run do
+  let flag ← pure (Id.run (pure (x == 0)) && y != 0)
+  let next ← if flag then pure (Id.run (pure (x != y)) || flag)
+    else pure (!(Id.run (pure (y == 0))))
+  return x + (Id.run (pure next) && !flag).toUInt64
+
+def nestedIdDependent (x y : UInt64) : UInt64 :=
+  (if _h : Id.run (pure (x == 0)) && y != 0 then
+    Id.run (pure (y == 1)) || x == y
+   else Id.run (pure (x != y)) && y == 0).toUInt64 + x
+
+def nestedIdUnused (x y : UInt64) : UInt64 :=
+  (let _flag := Id.run (pure (x == y)) && x != 0
+   Id.run (pure (x != y)) || y == 0).toUInt64 + x
+
+def nestedIdShadow (x y : UInt64) : UInt64 :=
+  (let flag : Id Bool := x == 0
+   let flag : Id (Id Bool) := pure (Id.run flag && y != 0)
+   Id.run (Id.run flag) || x == y).toUInt64 + y
+
+def rangeNestedIdYield (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let stop := Id.run (pure (let value : Id Bool := (a + UInt64.ofNat i) % 7 == 0
+                            Id.run value && Id.run (pure (seed != 0))))
+    a := a + UInt64.ofNat i + 1
+    if stop then break
+  return a
+
+def rangeNestedIdJoined (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first ← pure (Id.run (pure (a % 2 == 0)) && seed != 0)
+    let next ← if first then pure (Id.run (pure (UInt64.ofNat i == 0)) || a == seed)
+      else pure (Id.run (pure (a != seed)) && !first)
+    if next then a := a + 2 else a := a + 5
+    if Id.run (pure (a % 7 == 0)) && seed != 0 then break
+  return a
+
+def rangeNestedIdContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if Id.run (pure (UInt64.ofNat i % 3 == 1)) && a != 0 then continue
+    a := a + UInt64.ofNat i
+    if Id.run (pure (a % 7 == 0)) && seed != 0 then break
+  return a
+
+def rangeNestedIdCapture (count seed : UInt64) : UInt64 := Id.run do
+  let outer := seed != 0
+  let f := fun flag : Bool => (Id.run (pure flag) && outer).toUInt64 + count
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun flag : Bool => f (Id.run (pure flag) || a == seed) + a
+    a := g (Id.run (pure (UInt64.ofNat i % 2 == 0)) && outer)
+    if Id.run (pure (a % 11 == 0)) && outer then break
+  return a + f (Id.run (pure (a == seed)) || !outer)
+
+def rangeNestedIdBounds (count seed : UInt64) : UInt64 := Id.run do
+  let first := (Id.run (pure (seed != 0)) && count != 0).toUInt64
+  let stop := count + (Id.run (pure (count != 0)) || seed == 0).toUInt64
+  let mut a := seed
+  for i in [first.toNat:stop.toNat:2] do
+    a := a + (Id.run (pure (UInt64.ofNat i % 2 == 0)) && a != 0).toUInt64
+    if Id.run (pure (a % 7 == 0)) && seed != 0 then break
+  return a
+
+def rangeNestedIdStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : Bool → Id (ForInStep UInt64) := fun flag => do
+      let next ← pure (Id.run (pure flag) && a != 0)
+      if _h : next then return .done (a + UInt64.ofNat i)
+      else return .yield (a + (Id.run (pure (!next)) || flag).toUInt64)
+    f (Id.run (pure (UInt64.ofNat i % 2 == 0)) && seed != 0)
+
+def rangeNestedIdOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag ← pure (Id.run (pure (count != 0)) && seed != 0)
+  let mut a := seed + (Id.run (pure flag) || count == 0).toUInt64
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if Id.run (pure (a % 7 == 0)) && flag then break
+  let changed ← pure (Id.run (pure (a != seed)) && flag)
+  return a + (Id.run (pure changed) || !flag).toUInt64
+
+def rangeNestedIdUnused (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let _unused := Id.run (pure (a == seed)) && UInt64.ofNat i != 0
+    a := a + UInt64.ofNat i + 1
+    if Id.run (pure (a % 7 == 0)) && seed != 0 then break
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -4403,7 +4510,15 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeAnnotatedLetBounds", rangeAnnotatedLetBounds),
    ("rangeAnnotatedLetStep", rangeAnnotatedLetStep),
    ("rangeAnnotatedLetOuter", rangeAnnotatedLetOuter),
-   ("rangeAnnotatedLetUnused", rangeAnnotatedLetUnused)]
+   ("rangeAnnotatedLetUnused", rangeAnnotatedLetUnused),
+   ("rangeNestedIdYield", rangeNestedIdYield),
+   ("rangeNestedIdJoined", rangeNestedIdJoined),
+   ("rangeNestedIdContinue", rangeNestedIdContinue),
+   ("rangeNestedIdCapture", rangeNestedIdCapture),
+   ("rangeNestedIdBounds", rangeNestedIdBounds),
+   ("rangeNestedIdStep", rangeNestedIdStep),
+   ("rangeNestedIdOuter", rangeNestedIdOuter),
+   ("rangeNestedIdUnused", rangeNestedIdUnused)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -4678,7 +4793,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("annotatedLetUnused", annotatedLetUnused),
    ("annotatedLetDo", annotatedLetDo),
    ("annotatedLetNegated", annotatedLetNegated),
-   ("annotatedLetShadow", annotatedLetShadow)]
+   ("annotatedLetShadow", annotatedLetShadow),
+   ("nestedIdOperators", nestedIdOperators),
+   ("nestedIdBinding", nestedIdBinding),
+   ("nestedIdNested", nestedIdNested),
+   ("nestedIdHelper", nestedIdHelper),
+   ("nestedIdDo", nestedIdDo),
+   ("nestedIdDependent", nestedIdDependent),
+   ("nestedIdUnused", nestedIdUnused),
+   ("nestedIdShadow", nestedIdShadow)]
 
 end ArithmeticMilestone
 
