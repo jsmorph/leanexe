@@ -520,8 +520,11 @@ variable indices separate. Exact parser reconstruction and operand-size proofs
 pass. Conditions containing a Boolean local are proved disjoint from the
 preceding closed guard parsers. Lowering acceptance, operand/variable checking,
 native Boolean meaning and scalar closure invariants pass using the existing
-comparison, negation and conjunction/disjunction lowering. Binding integration,
-source let/condition semantics and end-to-end execution remain to be completed.
+comparison, negation and conjunction/disjunction lowering. Distinct native and
+compiled Boolean bindings, lookup/meaning facts and source let/condition totality
+now pass. Scalar extraction and all four scalar extraction proofs also pass.
+Source rules cover steps and outer loop bindings; their production extraction
+and proof integration, focused execution and the complete audits remain open.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

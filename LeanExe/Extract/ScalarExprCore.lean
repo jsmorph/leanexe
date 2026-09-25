@@ -5,6 +5,7 @@ import LeanExe.Extract.ScalarHead
 import LeanExe.Extract.ScalarComplement
 import LeanExe.Extract.ScalarExtremum
 import LeanExe.Extract.ScalarDo
+import LeanExe.Extract.ScalarBooleanLocalBindings
 import LeanExe.Extract.ScalarBindings
 import LeanExe.Extract.ScalarDependentBranch
 import LeanExe.Extract.ScalarGuard
@@ -51,7 +52,15 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
         match _h : comparison? condition evidence with
         | none =>
           match _g : compoundGuard? condition evidence with
-          | none => none
+          | none =>
+            match _booleanGuard : booleanLocalGuard? condition evidence with
+            | none => none
+            | some guard => do
+                let c ← extractBooleanLocalWith locals guard.value
+                  (fun operand _member => extractScalarExprWith locals operand)
+                let t ← extractScalarExprWith locals onTrue
+                let e ← extractScalarExprWith locals onFalse
+                pure (.ite c t e)
           | some guard => do
               let c ← extractGuard guard.tree (fun operand _member => extractScalarExprWith locals operand)
               let t ← extractScalarExprWith locals onTrue
@@ -116,6 +125,13 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
               let arguments ← extractScalarArguments call.arguments
                 (fun operand _member => extractScalarExprWith locals operand)
               function arguments
+  | .letE _ (.const ``Bool []) value body _ =>
+      match _boolean : booleanLocalOperands? value with
+      | none => none
+      | some expression => do
+          let c ← extractBooleanLocalWith locals expression
+            (fun operand _member => extractScalarExprWith locals operand)
+          extractScalarExprWith (.boolean (guardWord c) :: locals) body
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith locals value
       extractScalarExprWith (.word bound :: locals) body
@@ -175,6 +191,8 @@ decreasing_by
     | (exact scalarManyCall_size _call _member)
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := dependentGuard_size _guard _member; omega)
+    | (have bounds := booleanLocalOperands_size _boolean _member; omega)
+    | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
     | (have bounds := comparison_size _h; omega)
     | (have bounds := compoundGuard_size _g _member; omega)
 
@@ -242,6 +260,27 @@ theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
       pure (.ite c onTrue onFalse)) := by
   rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarExprWith,
     scalarResultType_accepts, dependentGuard_accepts]
+
+theorem extractScalarExprWith_letBoolean (locals : List ScalarBinding)
+    (expression : LeanExe.Source.Scalar.BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarExprWith locals (.letE name (.const ``Bool []) expression.expr body nondep) = (do
+      let c ← extractBooleanLocalWith locals expression
+        (fun operand _ => extractScalarExprWith locals operand)
+      extractScalarExprWith (.boolean (guardWord c) :: locals) body) := by
+  rw [extractScalarExprWith, booleanLocalOperands_expr]
+
+theorem extractScalarExprWith_booleanBranch (locals : List ScalarBinding)
+    (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.ResultType)
+    (t e : Lean.Expr) :
+    extractScalarExprWith locals (guard.branch type.expr t e) = (do
+      let c ← extractBooleanLocalWith locals guard.value
+        (fun operand _ => extractScalarExprWith locals operand)
+      let onTrue ← extractScalarExprWith locals t
+      let onFalse ← extractScalarExprWith locals e
+      pure (.ite c onTrue onFalse)) := by
+  rw [LeanExe.Source.Scalar.BooleanLocalGuard.branch, extractScalarExprWith,
+    scalarResultType_accepts, booleanLocalGuard_not_comparison, booleanLocal_not_compound,
+    booleanLocalGuard_accepts]
 
 @[simp] theorem extractScalarExprWith_idRun (locals : List ScalarBinding) (body : Lean.Expr) (type : LeanExe.Source.Scalar.ResultType) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.run body type) =

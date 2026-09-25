@@ -15,6 +15,11 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
       Eval (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
         values (iterate (fun i accumulator => stepFn (begin + stride.number * i) accumulator)
           (trips (stop - begin) stride.number) 0 start)
+  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      (variables : expression.VariablesMean values booleans)
+      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand))
+      (body : Eval b (.boolean (expression.denote native booleans) :: values) outcome) :
+      Eval (.letE name (.const ``Bool []) expression.expr b nondep) values outcome
   | letE (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
   | idRun (type : ResultType) (body : Eval e values result) : Eval (Identity.run e type) values result
@@ -61,6 +66,11 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
         (.scalar .word :: .scalar .natural :: types.map Step.BindingKind.scalar) body) :
       Supported types
         (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
+  | letBoolean (expression : BooleanLocal)
+      (variables : expression.VariablesTyped types)
+      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand)
+      (body : Supported (.boolean :: types) b) :
+      Supported types (.letE name (.const ``Bool []) expression.expr b nondep)
   | letE (value : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
   | idRun (type : ResultType) (body : Supported types e) : Supported types (Identity.run e type)
@@ -112,6 +122,16 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     exact ⟨iterate (fun i accumulator => f (begin + stride.number * i) accumulator)
       (trips (stop - begin) stride.number) 0 start, .range indexType stride hbegin hstop hstart
       (fun index value => (total index value).choose_spec)⟩
+  | letBoolean expression variables arguments _ ihb =>
+    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ expression.operands then ((arguments operand member).evaluates values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using ((arguments operand member).evaluates values typed).choose_spec
+    obtain ⟨result, body⟩ := ihb (.boolean (expression.denote native booleans) :: values)
+      (by simp [Scalar.Value.kind, typed])
+    exact ⟨result, .letBoolean expression hbooleans meanings body⟩
   | letE value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates values typed
     obtain ⟨y, hy⟩ := ih (.word x :: values) (by simp [Scalar.Value.kind, typed])
