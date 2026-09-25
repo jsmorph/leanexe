@@ -258,3 +258,7 @@ across forty-one declarations.
 The [local functions in loop steps increment](../proofs/compiler/range-local-functions-2026-09-25/README.md)
 adds direct function bindings in the yielding body, with all nine audits and
 217 matching results across the focused ten-declaration range group.
+
+The [monadic loop-step increment](../proofs/compiler/range-do-2026-09-25/README.md)
+adds straight-line Id monadic bindings in the yielding body, with all nine
+audits and 289 matching results across thirteen range declarations.
