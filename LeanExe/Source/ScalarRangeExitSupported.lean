@@ -17,12 +17,12 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
           (trips (stop - begin) stride.number) 0 start)
   | letE (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values y
-  | idRun (body : Eval e values result) : Eval (Identity.run e) values result
-  | idPure (body : Eval e values result) : Eval (Identity.pure e) values result
-  | bindRight (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
-      Eval (Identity.bind name bi a b) values y
-  | bindLeft (value : Eval a values x) (body : EvalWith b (.word x :: values) y) :
-      Eval (Identity.bind name bi a b) values y
+  | idRun (type : ResultType) (body : Eval e values result) : Eval (Identity.run e type) values result
+  | idPure (type : ResultType) (body : Eval e values result) : Eval (Identity.pure e type) values result
+  | bindRight (input output : ResultType) (value : EvalWith a values x) (body : Eval b (.word x :: values) y) :
+      Eval (Identity.bind name bi a b input output) values y
+  | bindLeft (input output : ResultType) (value : Eval a values x) (body : EvalWith b (.word x :: values) y) :
+      Eval (Identity.bind name bi a b input output) values y
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values) (f x))
       (body : Eval b (.function false f :: values) outcome) :
@@ -58,12 +58,12 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
         (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
   | letE (value : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
-  | idRun (body : Supported types e) : Supported types (Identity.run e)
-  | idPure (body : Supported types e) : Supported types (Identity.pure e)
-  | bindRight (value : SupportedWith types a) (body : Supported (.word :: types) b) :
-      Supported types (Identity.bind name bi a b)
-  | bindLeft (value : Supported types a) (body : SupportedWith (.word :: types) b) :
-      Supported types (Identity.bind name bi a b)
+  | idRun (type : ResultType) (body : Supported types e) : Supported types (Identity.run e type)
+  | idPure (type : ResultType) (body : Supported types e) : Supported types (Identity.pure e type)
+  | bindRight (input output : ResultType) (value : SupportedWith types a) (body : Supported (.word :: types) b) :
+      Supported types (Identity.bind name bi a b input output)
+  | bindLeft (input output : ResultType) (value : Supported types a) (body : SupportedWith (.word :: types) b) :
+      Supported types (Identity.bind name bi a b input output)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
       (body : Supported (.function false :: types) b) :
       Supported types (.letE name
@@ -107,20 +107,20 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     obtain ⟨x, hx⟩ := value.evaluates values typed
     obtain ⟨y, hy⟩ := ih (.word x :: values) (by simp [Scalar.Value.kind, typed])
     exact ⟨y, .letE hx hy⟩
-  | idRun _ ih =>
+  | idRun type _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
-    exact ⟨value, .idRun hv⟩
-  | idPure _ ih =>
+    exact ⟨value, .idRun type hv⟩
+  | idPure type _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
-    exact ⟨value, .idPure hv⟩
-  | bindRight value _ ih =>
+    exact ⟨value, .idPure type hv⟩
+  | bindRight input output value _ ih =>
     obtain ⟨x, hx⟩ := value.evaluates values typed
     obtain ⟨y, hy⟩ := ih (.word x :: values) (by simp [Scalar.Value.kind, typed])
-    exact ⟨y, .bindRight hx hy⟩
-  | bindLeft _ body ih =>
+    exact ⟨y, .bindRight input output hx hy⟩
+  | bindLeft input output _ body ih =>
     obtain ⟨x, hx⟩ := ih values typed
     obtain ⟨y, hy⟩ := body.evaluates (.word x :: values) (by simp [Scalar.Value.kind, typed])
-    exact ⟨y, .bindLeft hx hy⟩
+    exact ⟨y, .bindLeft input output hx hy⟩
   | letFn type function _ ihb =>
     have total := fun x => function.evaluates (.word x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose

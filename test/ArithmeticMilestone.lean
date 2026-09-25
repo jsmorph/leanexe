@@ -1628,6 +1628,78 @@ def rangePUnitStride (count seed : UInt64) : UInt64 := Id.run do
     if a % 5 == 1 then break
   return a
 
+def idReturnedHelper (x y : UInt64) : UInt64 := Id.run do
+  let f : PUnit.{1} → UInt64 → Id UInt64 := fun _ a => do
+    let mut z := a
+    if z < x then z := z + y else z := z - y
+    return z ^^^ x
+  let z ← f PUnit.unit y
+  return f PUnit.unit (z + x)
+
+def idPureNested (x y : UInt64) : UInt64 :=
+  @Id.run (Id (Id UInt64))
+    (@Pure.pure Id _ (Id (Id UInt64)) (@Pure.pure Id _ (Id UInt64) (pure (x + y))))
+
+def idRunNested (x y : UInt64) : UInt64 :=
+  @Id.run (Id UInt64) (@Id.run (Id (Id UInt64)) (pure (pure (pure (x - y)))))
+
+def idBindInput (x y : UInt64) : UInt64 :=
+  @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id UInt64) (Id (Id UInt64))
+    (pure (pure (x + y))) (fun value =>
+      @Pure.pure Id _ (Id (Id UInt64)) (pure (pure (UInt64.mul value x))))
+
+def idBindOutput (x y : UInt64) : UInt64 := Id.run do
+  let f : UInt64 → Id (Id UInt64) := fun a => pure (pure (a + x))
+  let z ← pure (x ^^^ y)
+  return f (y + z)
+
+def idConditional (x y : UInt64) : UInt64 :=
+  @Id.run (Id UInt64) (if x < y then pure (pure (x + 7)) else pure (pure (y - 3)))
+
+def idFunctions (x y : UInt64) : UInt64 :=
+  let f : UInt64 → UInt64 → Id (Id UInt64) := fun a b => pure (pure (min (a + x) (b + y)))
+  let g : PUnit.{1} → UInt64 → Id (Id UInt64) := fun _ a => f a y
+  @Id.run (Id UInt64) (g PUnit.unit (x + y))
+
+def idUnused (x y : UInt64) : UInt64 :=
+  let _f : UInt64 → Id (Id UInt64) := fun a => pure (pure (a * x))
+  y + 1
+
+def rangeIdWrapped (count seed : UInt64) : UInt64 :=
+  @Id.run (Id UInt64) (@Pure.pure Id _ (Id UInt64) (Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + UInt64.ofNat i + 1
+    return a))
+
+def rangeIdBindLeft (count seed : UInt64) : UInt64 :=
+  @Bind.bind Id (@Monad.toBind Id Id.instMonad) UInt64 (Id UInt64)
+    (Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + UInt64.ofNat i + 1
+        if a % 5 == 0 then break
+      return a)
+    (fun result => @Pure.pure Id _ (Id UInt64) (pure (result + seed)))
+
+def rangeIdBindRight (count seed : UInt64) : UInt64 :=
+  @Bind.bind Id (@Monad.toBind Id Id.instMonad) (Id UInt64) UInt64
+    (pure (pure (seed + 1))) (fun initial => Id.run do
+      let mut a : UInt64 := initial
+      for i in [:count.toNat] do
+        a := a + UInt64.ofNat i
+      return a)
+
+def rangeIdStepHelper (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f : UInt64 → Id (Id UInt64) := fun x => pure (pure (x + UInt64.ofNat i))
+    let z : UInt64 := @Id.run (Id UInt64) (f a)
+    if z % 3 == 1 then continue
+    a := z + 1
+    if a % 5 == 0 then break
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -1784,7 +1856,11 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangePUnitScalar", rangePUnitScalar),
    ("rangePUnitYield", rangePUnitYield),
    ("rangePUnitOuter", rangePUnitOuter),
-   ("rangePUnitStride", rangePUnitStride)]
+   ("rangePUnitStride", rangePUnitStride),
+   ("rangeIdWrapped", rangeIdWrapped),
+   ("rangeIdBindLeft", rangeIdBindLeft),
+   ("rangeIdBindRight", rangeIdBindRight),
+   ("rangeIdStepHelper", rangeIdStepHelper)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -1891,7 +1967,15 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("punitChain", punitChain),
    ("punitUnused", punitUnused),
    ("punitDo", punitDo),
-   ("punitNested", punitNested)]
+   ("punitNested", punitNested),
+   ("idReturnedHelper", idReturnedHelper),
+   ("idPureNested", idPureNested),
+   ("idRunNested", idRunNested),
+   ("idBindInput", idBindInput),
+   ("idBindOutput", idBindOutput),
+   ("idConditional", idConditional),
+   ("idFunctions", idFunctions),
+   ("idUnused", idUnused)]
 
 end ArithmeticMilestone
 

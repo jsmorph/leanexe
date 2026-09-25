@@ -41,10 +41,10 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (guard.branch type.expr onTrue onFalse) values value
   | letE (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
       EvalWith (.letE name (.const ``UInt64 []) a b nondep) values y
-  | idRun (body : EvalWith e values value) : EvalWith (Identity.run e) values value
-  | idPure (body : EvalWith e values value) : EvalWith (Identity.pure e) values value
-  | idBind (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
-      EvalWith (Identity.bind name bi a b) values y
+  | idRun (type : ResultType) (body : EvalWith e values value) : EvalWith (Identity.run e type) values value
+  | idPure (type : ResultType) (body : EvalWith e values value) : EvalWith (Identity.pure e type) values value
+  | idBind (input output : ResultType) (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
+      EvalWith (Identity.bind name bi a b input output) values y
   | apply (function : values[index]? = some (.function false f)) (argument : EvalWith a values x) :
       EvalWith (.app (.bvar index) a) values (f x)
   | letFn (type : ResultType)
@@ -103,10 +103,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (guard.branch type.expr t e)
   | letE (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
       SupportedWith types (.letE name (.const ``UInt64 []) a b nondep)
-  | idRun (body : SupportedWith types e) : SupportedWith types (Identity.run e)
-  | idPure (body : SupportedWith types e) : SupportedWith types (Identity.pure e)
-  | idBind (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
-      SupportedWith types (Identity.bind name bi a b)
+  | idRun (type : ResultType) (body : SupportedWith types e) : SupportedWith types (Identity.run e type)
+  | idPure (type : ResultType) (body : SupportedWith types e) : SupportedWith types (Identity.pure e type)
+  | idBind (input output : ResultType) (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
+      SupportedWith types (Identity.bind name bi a b input output)
   | apply (function : types[index]? = some (.function false)) (argument : SupportedWith types a) :
       SupportedWith types (.app (.bvar index) a)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
@@ -186,16 +186,16 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨x, hx⟩ := ihv values typed
     obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
     exact ⟨y, .letE hx hy⟩
-  | idRun _ ih =>
+  | idRun type _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
-    exact ⟨value, .idRun hv⟩
-  | idPure _ ih =>
+    exact ⟨value, .idRun type hv⟩
+  | idPure type _ ih =>
     obtain ⟨value, hv⟩ := ih values typed
-    exact ⟨value, .idPure hv⟩
-  | idBind _ _ ihv ihb =>
+    exact ⟨value, .idPure type hv⟩
+  | idBind input output _ _ ihv ihb =>
     obtain ⟨x, hx⟩ := ihv values typed
     obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
-    exact ⟨y, .idBind hx hy⟩
+    exact ⟨y, .idBind input output hx hy⟩
   | apply present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed
