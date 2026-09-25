@@ -312,10 +312,13 @@ covering captures/shadowing, chained/nested helpers, unused bodies, Id results,
 conditionals and break/continue. All 128 prior modules kept identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
-Next incremental capability: local functions with two UInt64 arguments that
-return ForInStep UInt64, including standard Id result wrappers. Reuse the paired
-value/exit representation and preserve scalar helper behavior. Complete the
-source/IR proof and range compiler execution checks before another capability.
+Current increment: local functions with two UInt64 arguments returning
+ForInStep UInt64, including standard Id result wrappers. The new typed bindings,
+source semantics, extraction and source/IR acceptance, preservation and invariant
+proofs pass Lean checking. Ten public fixtures cover argument order, captures,
+nested/chained helpers, unused bodies, scalar/step helper mixing, monadic
+computations, result aliases and nested Id results. The full compiler proof,
+type validation and range execution checks follow this candidate checkpoint.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

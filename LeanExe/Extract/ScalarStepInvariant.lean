@@ -69,6 +69,21 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨bound, hb, ht⟩ := compiled
     exact ih ht (extend bindings (scalar hb bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | binaryApply present first second =>
+    rw [extractScalarStepWith_binaryApply _ _ _ _ first.not_unit] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, ⟨binding, found, matched⟩, a, ha, b, hb, ht⟩ := compiled
+    have same := ScalarStepBinding.binaryFunction?_some.mp matched
+    subst binding
+    exact bindings _ (List.mem_of_getElem? found) a b target (scalar ha bindings) (scalar hb bindings) ht
+  | letBinaryStepFn type _ _ ihf ihb =>
+    rw [extractScalarStepWith_letBinaryStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, htypes])
+    intro first second result hx hy compiled
+    exact ihf compiled (extend (extend bindings hx) hy)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
   | @apply types index a present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (htypes ▸ present)
     have found : locals[index]?.bind (ScalarStepBinding.function? false) = some f := by

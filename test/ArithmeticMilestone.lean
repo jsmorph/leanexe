@@ -775,6 +775,80 @@ def rangeBinaryUnused (count seed : UInt64) : UInt64 := Id.run do
     a := a + UInt64.ofNat i + 1
   return a
 
+def rangeBinaryStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x == seed % 7 then .done (y + 9) else .yield (y + x + 1)
+    finish (UInt64.ofNat i) a
+
+def rangeBinaryStepOrder (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x < y then .done (x - y) else .yield (y - x)
+    finish (UInt64.ofNat i + 3) a
+
+def rangeBinaryStepCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [1:count.toNat:2] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x % 5 == a % 5 then .done (a + x - y)
+      else .yield (y + a + UInt64.ofNat i)
+    let a := a + 17
+    finish a seed
+
+def rangeBinaryStepChained (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let first : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x % 7 == seed % 7 then .done (y + 13) else .yield (x + y)
+    let second : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      first (x + UInt64.ofNat i) (y * 3)
+    second a seed
+
+def rangeBinaryStepNested (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 3).toNat:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      let inner : UInt64 → UInt64 → ForInStep UInt64 := fun p q =>
+        if p < x then .done (q + y) else .yield (p + q + UInt64.ofNat i)
+      inner y a
+    finish (a + 1) seed
+
+def rangeBinaryStepDo (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → Id (ForInStep UInt64) := fun x y => do
+      let z ← if x < y then pure (x + 3) else pure (y + seed)
+      if z % 7 == UInt64.ofNat i then return .done (z * 3)
+      return .yield (x + z + 1)
+    finish a (UInt64.ofNat i)
+
+def rangeBinaryStepScalar (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let add := fun x y : UInt64 => x * 3 + y + seed
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      let z := add x y
+      if z % 5 == 0 then .done (z + 11) else .yield z
+    finish a (UInt64.ofNat i)
+
+def rangeBinaryStepUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let _unused : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x == y then .done (a + 99) else .yield (x / y)
+    .yield (a + UInt64.ofNat i + 1)
+
+def rangeBinaryStepResult (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → ForInStep UInt64 := fun x y =>
+      if x == seed % 7 then .done (y + 9) else .yield (x + y + 1)
+    let use : ForInStep UInt64 → Id (ForInStep UInt64) := fun result => pure result
+    let result := finish (UInt64.ofNat i) a
+    use result
+
+def rangeBinaryStepWrapped (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let finish : UInt64 → UInt64 → Id (Id (ForInStep UInt64)) := fun x y => Id.run do
+      let z ← pure (x + y + UInt64.ofNat i)
+      if z % 5 == seed % 5 then return .done (z + 11)
+      return .yield (z * 3)
+    pure (finish a seed)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -861,7 +935,17 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBinaryNested", rangeBinaryNested),
    ("rangeBinaryDo", rangeBinaryDo),
    ("rangeBinaryContinue", rangeBinaryContinue),
-   ("rangeBinaryUnused", rangeBinaryUnused)]
+   ("rangeBinaryUnused", rangeBinaryUnused),
+   ("rangeBinaryStep", rangeBinaryStep),
+   ("rangeBinaryStepOrder", rangeBinaryStepOrder),
+   ("rangeBinaryStepCapture", rangeBinaryStepCapture),
+   ("rangeBinaryStepChained", rangeBinaryStepChained),
+   ("rangeBinaryStepNested", rangeBinaryStepNested),
+   ("rangeBinaryStepDo", rangeBinaryStepDo),
+   ("rangeBinaryStepScalar", rangeBinaryStepScalar),
+   ("rangeBinaryStepUnused", rangeBinaryStepUnused),
+   ("rangeBinaryStepResult", rangeBinaryStepResult),
+   ("rangeBinaryStepWrapped", rangeBinaryStepWrapped)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
