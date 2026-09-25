@@ -666,3 +666,13 @@ nine compiler audits and all 623 native Lean/V8 comparisons in the fixed
 declaration rejection tests and four binding-kind rejection tests passed.
 Eighteen selected preceding modules kept identical bytes. The full corpus
 contains 351 declarations; this was a focused execution run.
+
+The [dependent Boolean-local increment](../proofs/compiler/boolean-dependent-2026-09-25/README.md)
+combines saved Boolean flags with dependent conditionals in scalar expressions,
+helper captures and loop steps. All nine audits and 623 native Lean/V8
+comparisons passed across a fixed 34-declaration group. The focused source test
+passed 304 native/IR comparisons and ten rejection checks for unsupported
+bodies, custom decisions, wrong proof domains and reads of erased binders.
+Eighteen selected preceding modules kept identical bytes. The full corpus
+contains 367 declarations. The retained first failure identifies a separate
+literal-instance wrapper elaboration, which remains outside this checkpoint.
