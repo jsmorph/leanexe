@@ -288,10 +288,12 @@ are included. All sixty-two preceding range modules retained identical bytes.
 General type validation passed; unrelated suites were not rebuilt.
 
 Current increment: positive literal range strides. Native strided iteration,
-its ceiling-divided iteration count and the count bound pass. Checked IR helpers
-compute the count without overflowing and scale the native index. Unit stride
-retains the existing expressions. Source recognition, whole-range integration
-and public compiler checks are still pending.
+its ceiling-divided iteration count, word arithmetic, source recognition,
+independent support and whole source/IR correctness pass. All 288 focused
+native Lean/IR comparisons across twelve declarations and four rejection tests
+pass. Unit stride retains the existing expressions. Generated erased positivity
+proofs are retained, while numeric positivity and representability are checked
+independently. General compiler audits and actual compiler/V8 checks are pending.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands

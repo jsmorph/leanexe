@@ -263,6 +263,69 @@ def dynamicHelper (seed : UInt64) : UInt64 := seed + 1
 def dynamicCalledStart (seed : UInt64) : UInt64 :=
   forIn (m := Id) [(dynamicHelper seed).toNat:10] seed fun _ a => .done a
 
+def rangeStrideTwo (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [0:count.toNat:2] do
+    a := a * 3 + UInt64.ofNat i
+  return a
+
+def rangeStrideLiteral (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [2:15:3] seed fun i a => .yield (a + UInt64.ofNat i + count)
+
+def rangeStrideDynamic (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 5).toNat:count.toNat:3] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeStrideCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [a.toNat:(a + count).toNat:3] do
+    a := a + UInt64.ofNat i + 7
+  return a
+
+def rangeStrideHigh (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(18446744073709551615 - count).toNat:18446744073709551615:2] seed fun i a =>
+    .yield (a + UInt64.ofNat i)
+
+def rangeStrideEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [8:3:7] seed fun i a => .yield (a + UInt64.ofNat i + count)
+
+def rangeStrideHuge (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [0:count.toNat:18446744073709551615] seed fun i a => .yield (a + UInt64.ofNat i + 7)
+
+def rangeStrideHugeTwo (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [0:18446744073709551615:18446744073709551614] seed fun i a => .yield (a + UInt64.ofNat i + count)
+
+def rangeStrideHugeBreak (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [1:18446744073709551615:2] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def rangeStrideContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:2] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeStrideJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [2:count.toNat:3] seed fun i a => do
+    let result ← if UInt64.ofNat i == 8 then pure (.done (a + 11)) else pure (.yield (a + UInt64.ofNat i))
+    return result
+
+def rangeStrideOne (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [2:count.toNat:1] seed fun i a => .yield (a + UInt64.ofNat i)
+
+def strideOverflow (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [0:10:18446744073709551616] seed fun _ a => .done a
+
+@[instance_reducible] def customStride : OfNat Nat 2 := ⟨3⟩
+def strideCustom (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [0:10:(@OfNat.ofNat Nat 2 customStride)] seed fun _ a => .done a
+
+def strideDynamic (seed : UInt64) : UInt64 :=
+  forIn (m := Id) ({start := 0, stop := 10, step := seed.toNat + 1, step_pos := Nat.zero_lt_succ _} : Std.Legacy.Range) seed fun _ a => .done a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -498,7 +561,19 @@ run_elab do
       `ArithmeticModeTest.rangeDynamicHugeBreak,
       `ArithmeticModeTest.rangeDynamicContinue,
       `ArithmeticModeTest.rangeDynamicJoin,
-      `ArithmeticModeTest.rangeDynamicChoice] do
+      `ArithmeticModeTest.rangeDynamicChoice, `ArithmeticModeTest.rangeNonUnitStep,
+      `ArithmeticModeTest.rangeStrideTwo,
+      `ArithmeticModeTest.rangeStrideLiteral,
+      `ArithmeticModeTest.rangeStrideDynamic,
+      `ArithmeticModeTest.rangeStrideCapture,
+      `ArithmeticModeTest.rangeStrideHigh,
+      `ArithmeticModeTest.rangeStrideEmpty,
+      `ArithmeticModeTest.rangeStrideHuge,
+      `ArithmeticModeTest.rangeStrideHugeTwo,
+      `ArithmeticModeTest.rangeStrideHugeBreak,
+      `ArithmeticModeTest.rangeStrideContinue,
+      `ArithmeticModeTest.rangeStrideJoin,
+      `ArithmeticModeTest.rangeStrideOne] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -509,12 +584,13 @@ run_elab do
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
   for name in [`ArithmeticModeTest.natBinding, `ArithmeticModeTest.binaryLocalFunction,
-      `ArithmeticModeTest.unsupportedLocalBody, `ArithmeticModeTest.rangeNonUnitStep,
+      `ArithmeticModeTest.unsupportedLocalBody,
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction, `ArithmeticModeTest.rangeBinaryFunction,
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
+      `ArithmeticModeTest.strideOverflow, `ArithmeticModeTest.strideCustom, `ArithmeticModeTest.strideDynamic,
       `ArithmeticModeTest.dynamicNatAddition, `ArithmeticModeTest.dynamicCalledStart,
       `ArithmeticModeTest.intervalOverflow, `ArithmeticModeTest.intervalCustom,
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
