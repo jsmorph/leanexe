@@ -1,0 +1,27 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: passed
+native-results: passed
+compile-constant: passed
+compile-boundConstant: passed
+compile-wrapping: passed
+compile-quotient: passed
+compile-remainder: passed
+compile-shifts: passed
+compile-nested: passed
+compile-order: passed
+compile-bindings: passed
+compile-shadowed: passed
+compile-nestedBindings: passed
+compile-unusedBinding: passed
+compile-compareEq: passed
+compile-compareLt: passed
+compile-compareLe: passed
+compile-compareBEq: passed
+compile-compareBNe: passed
+compile-nestedChoice: exit 3
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+lean-wasm: source: command "compile-arithmetic", module "test.ArithmeticMilestone", entry "ArithmeticMilestone.nestedChoice", out "/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/arithmetic-check/nestedChoice.wasm": unsupported arithmetic source: expected UInt64 arguments and result, UInt64 let bindings, literals, arithmetic operators, and conditionals over supported comparisons
+
