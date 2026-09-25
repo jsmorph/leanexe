@@ -480,6 +480,7 @@
     "rangeBoolFnCapture",
     "rangeBoolFnBounds",
     "rangeBoolFnStep",
-    "rangeBoolFnOuter"
+    "rangeBoolFnOuter",
+    "rangeResultFunctionBool"
   ]
 }

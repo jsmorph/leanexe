@@ -2882,6 +2882,11 @@ def rangeBoolFnOuter (count seed : UInt64) : UInt64 := Id.run do
   let changed ← if a = seed then pure (count != 0) else pure (a != 0)
   return if changed then a + count else a - count
 
+def rangeResultFunctionBool (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : Bool → ForInStep UInt64 := fun _ => .done a
+    .yield (a + 1)
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -3122,7 +3127,8 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolFnCapture", rangeBoolFnCapture),
    ("rangeBoolFnBounds", rangeBoolFnBounds),
    ("rangeBoolFnStep", rangeBoolFnStep),
-   ("rangeBoolFnOuter", rangeBoolFnOuter)]
+   ("rangeBoolFnOuter", rangeBoolFnOuter),
+   ("rangeResultFunctionBool", rangeResultFunctionBool)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

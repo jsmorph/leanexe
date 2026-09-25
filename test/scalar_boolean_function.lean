@@ -139,6 +139,11 @@ def rangeBoolFnUnusedUnsupported (count seed : UInt64) : UInt64 :=
       pure (if flag then .yield ((toString a).length.toUInt64) else .done a)
     return .yield (a + 1)
 
+def rangeResultFunctionBool (n seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:n.toNat] seed fun _ a =>
+    let _bad : Bool → ForInStep UInt64 := fun _ => .done a
+    .yield (a + 1)
+
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
    (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
@@ -165,7 +170,8 @@ run_elab do
     (`BooleanFunctionTest.rangeBoolFnCapture, BooleanFunctionTest.rangeBoolFnCapture, true),
     (`BooleanFunctionTest.rangeBoolFnBounds, BooleanFunctionTest.rangeBoolFnBounds, true),
     (`BooleanFunctionTest.rangeBoolFnStep, BooleanFunctionTest.rangeBoolFnStep, true),
-    (`BooleanFunctionTest.rangeBoolFnOuter, BooleanFunctionTest.rangeBoolFnOuter, true)]
+    (`BooleanFunctionTest.rangeBoolFnOuter, BooleanFunctionTest.rangeBoolFnOuter, true),
+    (`BooleanFunctionTest.rangeResultFunctionBool, BooleanFunctionTest.rangeResultFunctionBool, true)]
   for (name, native, isRange) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -206,4 +212,4 @@ run_elab do
       let rejected := if isStep then (LeanExe.Extract.Core.extractScalarStepWith [] source).isNone
         else (LeanExe.Extract.Core.extractScalarExprWith [] source).isNone
       unless rejected do throwError "invalid Boolean helper accepted: {source}"
-  Lean.logInfo "304 native/Boolean-function IR comparisons, four declaration rejection tests and twelve raw helper rejection tests passed"
+  Lean.logInfo "328 native/Boolean-function IR comparisons, four declaration rejection tests and twelve raw helper rejection tests passed"
