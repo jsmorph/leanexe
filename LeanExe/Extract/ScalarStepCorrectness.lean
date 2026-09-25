@@ -74,12 +74,19 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc
       ((bindings.toScalar.cons (binding := .unit) (value := .unit) trivial).cons ha)
-  | apply function argument =>
+  | @apply values index f a x function argument =>
     rw [extractScalarStepWith] at compiled
-    simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨f, hf, arg, ha, hc⟩ := compiled
-    exact bindings.function (Option.bind_eq_some_iff.mpr hf) function arg _ code
-      (extractScalarExprWith_correct argument ha bindings.toScalar) hc
+    cases found : locals[index]?.bind (ScalarStepBinding.function? false) with
+    | none =>
+      rw [found] at compiled
+      have absent := bindings.noResultFunction function
+      simp [absent] at compiled
+    | some f =>
+      rw [found] at compiled
+      simp only [bind, Option.bind_eq_some_iff] at compiled
+      obtain ⟨arg, ha, hc⟩ := compiled
+      exact bindings.function found function arg _ code
+        (extractScalarExprWith_correct argument ha bindings.toScalar) hc
   | unitApply function argument =>
     rw [extractScalarStepWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -103,6 +110,19 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     intro argument value target ha hc
     exact ihf value hc
       ((bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial).cons ha)
+  | applyResult function argument ih =>
+    rw [extractScalarStepWith, bindings.noWordFunction function] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, hf, arg, ha, hc⟩ := compiled
+    exact bindings.resultFunction (Option.bind_eq_some_iff.mpr hf) function arg _ code (ih ha bindings) hc
+  | letResultFn input output function body ihf ihb =>
+    rw [extractScalarStepWith_letResultFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht
+    apply bindings.cons
+    intro argument value target ha hc
+    exact ihf value hc (bindings.cons ha)
   | resultVar present =>
     exact bindings.result (by simpa only [extractScalarStepWith] using compiled) present
   | idRun type _ ih => exact ih (by simpa only [extractScalarStepWith_idRun] using compiled) bindings

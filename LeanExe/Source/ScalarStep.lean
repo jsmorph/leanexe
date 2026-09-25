@@ -59,6 +59,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
+  | applyResult (function : values[index]? = some (.resultFunction f))
+      (argument : Eval a values input) : Eval (.app (.bvar index) a) values (f input)
+  | letResultFn (input output : ResultAnnotation)
+      (function : ∀ outcome, Eval a (.result outcome :: values) (f outcome))
+      (body : Eval b (.resultFunction f :: values) outcome) :
+      Eval (.letE name (.forallE typeName (resultType input) (resultType output) typeBi)
+        (.lam paramName (resultType input) a paramBi) b nondep) values outcome
   | resultVar (present : values[index]? = some (.result outcome)) :
       Eval (.bvar index) values outcome
   | idRun (type : ResultAnnotation) (body : Eval a values outcome) : Eval (idRun type a) values outcome
@@ -127,6 +134,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE typeName (.const ``UInt64 []) (resultType type) typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
+  | applyResult (function : types[index]? = some .resultFunction)
+      (argument : Supported types a) : Supported types (.app (.bvar index) a)
+  | letResultFn (input output : ResultAnnotation)
+      (function : Supported (.result :: types) a)
+      (body : Supported (.resultFunction :: types) b) :
+      Supported types (.letE name (.forallE typeName (resultType input) (resultType output) typeBi)
+        (.lam paramName (resultType input) a paramBi) b nondep)
   | resultVar (present : types[index]? = some .result) : Supported types (.bvar index)
   | idRun (type : ResultAnnotation) (body : Supported types a) : Supported types (idRun type a)
   | idPure (type : ResultAnnotation) (body : Supported types a) : Supported types (idPure type a)
@@ -202,6 +216,15 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letUnitStepFn type (fun x => (total x).choose_spec) evaluated⟩
+  | applyResult present _ ih =>
+    obtain ⟨f, hf⟩ := resultFunction_lookup typed present
+    obtain ⟨input, evaluated⟩ := ih values typed
+    exact ⟨f input, .applyResult hf evaluated⟩
+  | letResultFn input output _ _ ihf ihb =>
+    have total := fun result => ihf (.result result :: values) (by simp [Value.kind, typed])
+    let f := fun result => (total result).choose
+    obtain ⟨outcome, evaluated⟩ := ihb (.resultFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letResultFn input output (fun result => (total result).choose_spec) evaluated⟩
   | resultVar present =>
     obtain ⟨outcome, found⟩ := result_lookup typed present
     exact ⟨outcome, .resultVar found⟩
