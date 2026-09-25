@@ -47,7 +47,14 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       (.forallE _ (.const ``UInt64 []) resultType _) _)
       (.lam _ (.const ``UInt64 []) (.lam _ (.const ``UInt64 []) value _) _) body _ =>
       match scalarResultType? resultType with
-      | none => none
+      | none =>
+          match scalarStepResultType? resultType with
+          | none => none
+          | some _ => do
+              let _ ← extractScalarStepWith (.scalar (.word (.u64 0)) :: .scalar (.word (.u64 0)) :: locals) value
+              let function := ScalarStepBinding.binaryFunction fun first second =>
+                extractScalarStepWith (.scalar (.word second) :: .scalar (.word first) :: locals) value
+              extractScalarStepWith (function :: locals) body
       | some _ => do
           let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals.map ScalarStepBinding.toScalar) value
           let function := ScalarBinding.binaryFunction fun first second =>
@@ -90,6 +97,11 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       let function ← locals[index]?.bind (ScalarStepBinding.function? true)
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) argument
       function value
+  | .app (.app (.bvar index) first) second => do
+      let function ← locals[index]?.bind ScalarStepBinding.binaryFunction?
+      let a ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) first
+      let b ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) second
+      function a b
   | .app (.bvar index) argument =>
       match locals[index]?.bind (ScalarStepBinding.function? false) with
       | some function => do

@@ -56,6 +56,24 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_bind]; simp [hb, ht]⟩
+  | binaryApply present first second =>
+    obtain ⟨f, hf⟩ := scalarStepBinaryFunction_lookup (typed ▸ present)
+    obtain ⟨a, ha⟩ := scalar first typed total
+    obtain ⟨b, hb⟩ := scalar second typed total
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) a b
+    exact ⟨target, by
+      rw [extractScalarStepWith_binaryApply _ _ _ _ first.not_unit]
+      simp [hf, ScalarStepBinding.binaryFunction?, ha, hb, ht]⟩
+  | @letBinaryStepFn types a b name firstTypeName secondTypeName secondTypeBi firstTypeBi firstName secondName secondBi firstBi nondep type _ _ ihf ihb =>
+    have accepts (first second : LeanExe.IR.Expr) := ihf
+      (.scalar (.word second) :: .scalar (.word first) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend (extend total trivial) trivial)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0) (.u64 0)
+    let f := fun first second =>
+      extractScalarStepWith (.scalar (.word second) :: .scalar (.word first) :: locals) a
+    obtain ⟨target, ht⟩ := ihb (.binaryFunction f :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letBinaryStepFn]; simp [hc, ht, f]⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (typed ▸ present)
     obtain ⟨arg, ha⟩ := scalar argument typed total

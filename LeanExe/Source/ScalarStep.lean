@@ -47,6 +47,18 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
+  | binaryApply (function : values[index]? = some (.binaryFunction f))
+      (first : EvalWith a (values.map Value.toScalar) x)
+      (second : EvalWith b (values.map Value.toScalar) y) :
+      Eval (.app (.app (.bvar index) a) b) values (f x y)
+  | letBinaryStepFn (type : ResultAnnotation)
+      (function : ∀ x y, Eval a (.scalar (.word y) :: .scalar (.word x) :: values) (f x y))
+      (body : Eval b (.binaryFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
   | apply (function : values[index]? = some (.function false f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
       Eval (.app (.bvar index) a) values (f x)
@@ -131,6 +143,18 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
         (.lam unitName (.const ``Unit [])
           (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
+  | binaryApply (function : types[index]? = some .binaryFunction)
+      (first : SupportedWith (types.map BindingKind.toScalar) a)
+      (second : SupportedWith (types.map BindingKind.toScalar) b) :
+      Supported types (.app (.app (.bvar index) a) b)
+  | letBinaryStepFn (type : ResultAnnotation)
+      (function : Supported (.scalar .word :: .scalar .word :: types) a)
+      (body : Supported (.binaryFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
   | apply (function : types[index]? = some (.function false))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (.app (.bvar index) a)
@@ -221,6 +245,17 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function true f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letUnitFn type (fun x => (total x).choose_spec) evaluated⟩
+  | binaryApply present first second =>
+    obtain ⟨f, hf⟩ := binaryFunction_lookup typed present
+    obtain ⟨x, hx⟩ := first.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨y, hy⟩ := second.evaluates (values.map Value.toScalar) (typed_projection typed)
+    exact ⟨f x y, .binaryApply hf hx hy⟩
+  | letBinaryStepFn type _ _ ihf ihb =>
+    have total := fun x y => ihf (.scalar (.word y) :: .scalar (.word x) :: values)
+      (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
+    let f := fun x y => (total x y).choose
+    obtain ⟨outcome, evaluated⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letBinaryStepFn type (fun x y => (total x y).choose_spec) evaluated⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
