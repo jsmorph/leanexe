@@ -102,6 +102,14 @@ connects the actual three-local loop layout to native ascending iteration. Their
 three focused axiom audits report only `propext`, `Classical.choice` and
 `Quot.sound`. The public entry remains unchanged until the full emitted-function
 proof, byte/validation connection and native/V8 checks are completed.
+`ScalarRangeCertificate.lean` now proves the actual annotated function emitter's
+exact setup/loop/result instruction list and scratch allocation. The annotated
+while path now uses the checked scalar condition emitter when recognized,
+retaining its existing fallback for other conditions. Assignment, sequence and
+while annotation code projections are proved separately. The range extractor's
+generic invariant and `extractScalarRange_admitted` derive arithmetic descriptors
+and static read bounds for all four expressions; their focused builds pass.
+Whole-function typed encoding and Talos execution are the active next boundary.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
